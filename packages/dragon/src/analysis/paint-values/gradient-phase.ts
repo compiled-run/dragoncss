@@ -4,18 +4,14 @@
 // starts outside the box, its phase is the unsnapped offset, and the snapped dest outgrows the tile wherever a box edge is not a
 // whole device px (planBackground: singleTile false, modelled false; the device throws). That depends on the laid-out box, so the
 // compiler accepts a layer only when it proves the offset positive for every box the program can lay out, at every device scale.
-import type { BackgroundPaint, GradientImage, LayerGeometry, LengthPct } from '@dragon/layout';
-import { NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from '@dragon/layout';
-import type { Rgba8 } from '../../css/color.ts';
+import type { LengthPct } from '@dragon/layout';
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue } from '../../css/values.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Bg2PhaseFaults } from '../../faults/bg2-phase.ts';
-import { usedColors } from '../../lower/paint/colors.ts';
-import { linearSlope } from '../../paint-data/libm.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
-import type { BoxItem, ElementLayer, GradientSpec } from './gradient.ts';
+import type { BoxItem, ElementLayer } from './gradient.ts';
 import { BG2_TILING, boxWidths, paintsGradient, resolvedLayers } from './gradient.ts';
 
 /** The device scales each native target's device lanes run at (parity targets.ts deviceDprs checks it holds the same). */
@@ -247,48 +243,19 @@ export function phaseOffsetLower(el: ResolvedElement, layer: ElementLayer, axis:
   return boxOffset + offset;
 }
 
-/** The layout image of a layer's gradient, for a witness plan: colours resolved, the slope folded (0 off the grid). */
-function witnessImage(el: ResolvedElement, g: GradientSpec): GradientImage {
-  const current: Rgba8 = usedColors(el).color;
-  const slope = !g.radial && g.direction === 'angle' ? (linearSlope(g.angleDeg) ?? 0) : 0;
-  return { ...g, slope, stops: g.stops.map((s) => ({ color: s.color.kind === 'currentcolor' ? current : s.color.value, unit: s.unit, value: s.value })) };
-}
-
 /**
- * A box the plan does not model at one of dprs, laid out at whole CSS px: the first device scale and the origin-box extent on the
- * axis, or null. It searches boxes 0 to 3 px from the page edge, 1 to 64 px long on the axis and 100 px across.
+ * The first of a target's device scales at which a box laid out at whole CSS px can have an edge off the device px grid, so a tile
+ * that starts outside it is unmodelled (gradient-phase.test.ts finds such a box through planBackground), or null: at a whole scale
+ * only a fractional layout does it.
  */
-function witness(el: ResolvedElement, layer: ElementLayer, axis: Axis, dprs: readonly number[]): { readonly dpr: number; readonly extent: number } | null {
-  if (layer.image.kind !== 'gradient') return null;
-  const image = witnessImage(el, layer.image.gradient);
-  const g = layer.geometry;
-  const geometry: LayerGeometry = { ...g, repeatX: g.repeatX === 'repeat' ? 'repeat' : 'no-repeat', repeatY: g.repeatY === 'repeat' ? 'repeat' : 'no-repeat' };
-  const w = boxWidths(el);
-  const pads = w.padding.map((p) => p ?? 0);
-  const [start, end] = SIDES[axis];
-  for (const dpr of dprs) {
-    const lu = (v: number): number => Math.round(v * dpr * 64);
-    const borders = w.borders.map((b) => Math.floor(b * dpr) * 64);
-    const inner = (borders[start] as number) + (borders[end] as number) + lu((pads[start] as number) + (pads[end] as number));
-    for (let at = 0; at <= 3; at++) {
-      for (let extent = 1; extent <= 64; extent++) {
-        const along = lu(extent) + inner;
-        const across = lu(100);
-        const box = { x: lu(at), y: lu(at), width: axis === 'x' ? along : across, height: axis === 'y' ? along : across, borders, padding: pads.map(lu), obscures: w.obscures };
-        const paint: BackgroundPaint = { box, color: { r: 255, g: 255, b: 255, alpha: 255 }, colorClip: g.clip, layers: [{ geometry, image }], lastIsBottom: true, zoom: dpr, tileSize: referenceTileSize(dpr), layerX: 0, layerY: 0 };
-        if (!planBackground(paint, NO_GRADIENT_FAULTS).modelled) return { dpr, extent };
-      }
-    }
-  }
-  return null;
-}
+const fractionalScale = (dprs: readonly number[]): number | null => dprs.find((d) => !Number.isInteger(d)) ?? null;
 
 const describePosition = (v: LengthPct): string => (v.unit === 'percent' ? `${v.value}%` : v.unit === 'px' ? `${v.value}px` : `${v.unit === 'end-percent' ? `${v.value}%` : `${v.value}px`} from the far edge`);
 
 /**
  * BG2-t on the native targets: every no-repeat axis of a gradient layer away from the start edge must sit at an offset proven
  * positive (phaseOffsetLower), or the layer is refused at that axis's background-position longhand on ios and android, naming the
- * first device scale of the target at which planBackground leaves a whole-px box of that kind unmodelled.
+ * target's device scale at which a box at whole CSS px can leave it unmodelled (fractionalScale).
  */
 export function checkGradientPhase(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: Bg2PhaseFaults): void {
   const native = targets.filter((t): t is 'ios' | 'android' => t === 'ios' || t === 'android');
@@ -318,8 +285,8 @@ export function checkGradientPhase(root: ResolvedElement, targets: readonly stri
           const id = `${t}|background-layers-phase|${el.element.address}`;
           if (reported.has(id)) continue;
           reported.add(id);
-          const found = witness(el, layer, axis, NATIVE_DEVICE_DPRS[t]);
-          const where = found === null ? `at a box edge that is not a whole device px (the device scales ${NATIVE_DEVICE_DPRS[t].join(', ')} alone leave a whole-px box modelled)` : `at DPR ${found.dpr}, for example with a ${found.extent}px positioning area`;
+          const dpr = fractionalScale(NATIVE_DEVICE_DPRS[t]);
+          const where = dpr === null ? `at a box edge that is not a whole device px (at DPR ${NATIVE_DEVICE_DPRS[t].join(' and ')} a box at whole CSS px stays modelled)` : `at DPR ${dpr}, where a box at whole CSS px has edges off the device px grid`;
           const message = `${property} on ${el.element.address}: layer ${i + 1} (a ${kind} gradient) sits at ${describePosition(pos)} with no-repeat, and Dragon cannot prove the box ${long} than its tile, so the tile may start outside the box at a phase that is not a whole device px, which the native background plan does not model ${where} (${BG2_TILING})`;
           diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: `Place the layer at the ${axis === 'x' ? 'left' : 'top'} edge or a px offset from it, or give the box a px ${axis === 'x' ? 'width' : 'height'} larger than the tile.`, basis: 'computed-value' }));
         }
