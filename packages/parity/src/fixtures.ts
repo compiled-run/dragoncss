@@ -18,6 +18,7 @@ import { CHARSET } from './fixture-groups/charset.ts';
 import { CLIP_PATH } from './fixture-groups/clip-path.ts';
 import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
+import { CONTROLS } from './fixture-groups/controls.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
@@ -158,6 +159,7 @@ export const GROUPS = {
   'clip-path': CLIP_PATH,
   'clip-rect': CLIP_RECT,
   contexts: CONTEXTS,
+  controls: CONTROLS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,

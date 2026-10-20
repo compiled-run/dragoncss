@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: #111; }
+button { font-family: inherit; font-size: inherit; }
+nav { display: flex; align-items: center; justify-content: space-between; width: 380px; padding: 4px; }
+.library-button { background: transparent; border: 2px solid #3a414f; color: #123; min-height: 2.5rem; padding: 0.5rem; position: relative; }
+.play-control { align-items: center; display: flex; justify-content: space-between; padding: 1rem; width: 280px; }
+.play-control button { background: transparent; border: 0; color: #123; font-size: 2rem; line-height: 1; min-height: 3rem; min-width: 3rem; padding: 0.25rem; }
+.library-song { align-items: center; background: transparent; border: 0; color: inherit; display: flex; gap: 0; padding: 1rem 2rem; text-align: left; width: 100%; }
+.library-song.selected { background: #234; }
+.thumb { width: 6.5rem; height: 3.6rem; background-color: #050608; }
+.song-description { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; padding-left: 1rem; }
+.list { width: 360px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<nav data-dragon-id="nav"><div data-dragon-id="title">XXXX</div><button type="button" class="library-button" data-dragon-id="library-button">XXX X</button></nav>
+<div data-dragon-id="play-control" class="play-control"><button type="button" class="skip-back" aria-label="Previous track" data-dragon-id="skip-back">X</button><button type="button" class="play" aria-label="Play or pause" data-dragon-id="play">XX</button><button type="button" class="skip-forward" aria-label="Next track" data-dragon-id="skip-forward">X</button></div>
+<div data-dragon-id="list" class="list"><button type="button" class="library-song selected" data-dragon-id="song-1"><div data-dragon-id="thumb-1" class="thumb"></div><div data-dragon-id="desc-1" class="song-description"><div data-dragon-id="t-1">XXXX XX</div><div data-dragon-id="a-1">XXX</div></div></button><button type="button" class="library-song" data-dragon-id="song-2"><div data-dragon-id="thumb-2" class="thumb"></div><div data-dragon-id="desc-2" class="song-description"><div data-dragon-id="t-2">XX</div><div data-dragon-id="a-2">XXXXX XXXXX XXXXX XXXXX</div></div></button></div>
+</body>
+</html>

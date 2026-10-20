@@ -1,6 +1,7 @@
 // The element table: the HTML tags the compiler resolves, each with captured Chrome UA defaults (ua/chrome-145.*.generated.ts).
 // Every other tag is refused by the projection. pre is refused: white-space: pre is not supported.
 import type { CapturedTag, UaKey } from '../ua/datasets.ts';
+import { CONTROL_TAGS, CONTROL_UA_KEYS } from './elements/controls.ts';
 import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from './elements/replaced.ts';
 
 export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
@@ -11,6 +12,7 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'br',
   ...REPLACED_TAGS,
   ...SVG_SHAPE_TAGS,
+  ...CONTROL_TAGS,
   'b', 'strong', 'em', 'i',
 ]);
 
@@ -31,5 +33,6 @@ export const GENERATED_TAGS: ReadonlySet<string> = new Set(['::before', '::after
 export function uaTagOf(tag: string): UaKey {
   if (Object.hasOwn(REPLACED_UA_KEYS, tag)) return REPLACED_UA_KEYS[tag] as UaKey;
   if (GENERATED_TAGS.has(tag)) return 'dragon-unstyled';
+  if (Object.hasOwn(CONTROL_UA_KEYS, tag)) return CONTROL_UA_KEYS[tag] as UaKey;
   return (UNSTYLED_TAGS.has(tag) ? 'dragon-unstyled' : tag) as CapturedTag;
 }

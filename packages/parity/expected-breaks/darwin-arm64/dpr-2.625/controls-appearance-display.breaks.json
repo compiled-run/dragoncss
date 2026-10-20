@@ -1,0 +1,11 @@
+{
+  "case": "controls-appearance-display",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"i1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"i2:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"s1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

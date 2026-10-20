@@ -386,7 +386,7 @@ const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak>
   const out = new WeakSet<LayoutNode | InlineBox | LineBreak>();
   const walk = (b: LayoutNode | InlineBox | LineBreak): void => {
     out.add(b);
-    if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
+    if (b.kind === 'box' || b.kind === 'control' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
   };
   walk(root);
   return out;

@@ -1,0 +1,13 @@
+{
+  "case": "controls-button-inherit",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"before:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b2-in:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"b3:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b4:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"after:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

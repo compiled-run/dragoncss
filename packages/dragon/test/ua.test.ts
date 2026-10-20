@@ -179,6 +179,7 @@ describe('dependency boundaries', () => {
 // ELB-2: the element keys are captured into tables of their own; the pins above cover only the element-table tags.
 describe('UA longhands of the element keys (ELB-2)', () => {
   it('pins the longhands a Chrome UA rule sets per element key', () => {
+    // FORM-a A2: appearance (auto, from html.css) joins the three form-control keys once it is a longhand.
     expect(elementKeyLonghands).toEqual({
       button: ['appearance', 'background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
       input: ['appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],

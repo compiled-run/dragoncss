@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+button { font-family: inherit; font-size: inherit; appearance: none; background-color: #cdf; border: 2px solid #036; padding: 1px 6px; }
+.row { display: flex; width: 360px; margin-bottom: 4px; background-color: #eee; }
+.col { display: flex; flex-direction: column; width: 200px; margin-bottom: 4px; background-color: #eee; }
+.between { justify-content: space-between; align-items: center; height: 50px; }
+.ctr { align-items: center; }
+.big { min-height: 30px; min-width: 30px; padding: 2px; }
+.grow { flex-grow: 1; }
+.fb { display: flex; width: 100%; align-items: center; padding: 4px 8px; text-align: left; }
+.fb2 { display: flex; justify-content: center; align-items: flex-end; width: 80px; height: 40px; }
+.colfb { display: flex; flex-direction: column; width: 120px; }
+.inner { width: 20px; height: 8px; background-color: #f80; }
+.desc { display: flex; flex-direction: column; padding-left: 6px; min-width: 0; }
+.s { align-self: flex-start; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r1" class="row between"><button data-dragon-id="a1" class="big">X</button><button data-dragon-id="a2" class="big grow">XX</button><button data-dragon-id="a3" class="big">X</button></div>
+<div data-dragon-id="r2" class="row ctr"><button data-dragon-id="c1">XX XX</button><button data-dragon-id="c2" class="s">XX</button></div>
+<div data-dragon-id="c" class="col"><button data-dragon-id="d1">XX</button><button data-dragon-id="d2" class="s">XX</button><button data-dragon-id="d3" class="big">XX XX XX XX XX XX</button></div>
+<div data-dragon-id="w" class="col"><button data-dragon-id="e1" class="fb"><div data-dragon-id="e1-a" class="inner"></div><div data-dragon-id="e1-b" class="desc"><div data-dragon-id="e1-t">XXX</div><div data-dragon-id="e1-u">XX</div></div></button><button data-dragon-id="e2" class="fb2">XX</button><button data-dragon-id="e3" class="colfb"><div data-dragon-id="e3-a" class="inner"></div>XX</button></div>
+</body>
+</html>
