@@ -4,7 +4,7 @@
 // equals Chrome at every such pixel (bg2-reference.test.ts), and the device runs the same code translated, so a device pixel
 // that differs is a device fault. backgroundPlans is the same plan the device builds, for the host reference test. Both keep to the
 // pixels the background alone decides (backgroundOnly): the raster runs under borders and past rounded corners, where the border
-// stage and the rounded clip decide the pixel. A box whose url() layer no native write draws yet keeps no base point (BG2-u part 1).
+// stage and the rounded clip decide the pixel. A url() layer's samples are bg-image.ts's (BG2-u).
 import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, GradientFaults, GradientImage, LayoutBox, LayoutRect } from '@dragon/layout';
 import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
@@ -13,6 +13,7 @@ import { REFERENCE_PLATFORM } from '../platform.ts';
 import { glyphLines } from '../pixel-reference.ts';
 import type { GlyphBox, SampleBox, SamplePoint } from '../samples.ts';
 import { glyphSpanAt, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
+import { keepsTiles, tilePoints } from './bg-image.ts';
 import { boxRadii, clearInside, nearArc, rectArcs } from './radius.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
@@ -233,28 +234,5 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
   return out;
 }
 
-/**
- * BG2-u part 1: the boxes whose url() layer no native write draws (dragon lower/paint/gradient.ts GradientFacts undrawnImage), which
- * only a lane-only case lowers (native refuses a url() layer until part 2): a base point is dropped when its rule names such a box
- * or its pixel lies in one's snapped border box, so the device pixel lanes never judge a pixel the image decides.
- */
-const undrawn = new WeakMap<PaintSampleContext, readonly SampleBox[]>();
-function undrawnImageBoxes(ctx: PaintSampleContext): readonly SampleBox[] {
-  const hit = undrawn.get(ctx);
-  if (hit !== undefined) return hit;
-  const ids = new Set(ctx.program.nodes.filter((n) => (n.facts['gradient'] as { readonly undrawnImage?: unknown } | undefined)?.undrawnImage === true).map((n) => n.id));
-  const out = ctx.boxes.filter((b) => ids.has(b.id));
-  if (out.length !== ids.size) throw new Error(`a box with an undrawn url() layer has no sample box: ${[...ids].filter((id) => !out.some((b) => b.id === id)).join(', ')}`);
-  undrawn.set(ctx, out);
-  return out;
-}
-
-export function keepsUndrawnImage(p: SamplePoint, ctx: PaintSampleContext): boolean {
-  const boxes = undrawnImageBoxes(ctx);
-  if (boxes.length === 0) return true;
-  const named = p.rule.slice(p.rule.indexOf(':') + 1);
-  if (boxes.some((b) => named === b.id || named.startsWith(`${b.id}:`))) return false;
-  return !boxes.some((b) => p.x + 1 > b.left && p.x < b.right && p.y + 1 > b.top && p.y < b.bottom);
-}
-
-export const GRADIENT_SAMPLES: PaintSamples = { name: 'gradient', keep: keepsUndrawnImage, points: gradientPoints };
+/** The gradient module's samples: the gradient points, and a url() layer's tile points and base-point drops (bg-image.ts, BG2-u). */
+export const GRADIENT_SAMPLES: PaintSamples = { name: 'gradient', keep: keepsTiles, points: (ctx) => [...gradientPoints(ctx), ...tilePoints(ctx)] };

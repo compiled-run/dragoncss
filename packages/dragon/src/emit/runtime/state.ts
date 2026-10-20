@@ -915,6 +915,9 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       case 'background-layers':
         // BG2-a: a state record holds no gradient write; the layers are painted from the static program only.
         throw new StateEmitError(`${n.id}: background layers in a state program have no state-node write (BG2 writes them on the static program only)`);
+      case 'background-image':
+        // BG2-u: a state record holds no url() layer write; the image is drawn from the static program only.
+        throw new StateEmitError(`${n.id}: a url() background image in a state program has no state-node write (BG2-u writes it on the static program only)`);
       case 'text-decoration':
         // TDEC-b draws decorations from the static program only; the state runtime has no decoration writer yet.
         throw new StateEmitError(`${n.id}: text decorations in a state program have no state-node write (TDEC-b draws them on the static program only)`);

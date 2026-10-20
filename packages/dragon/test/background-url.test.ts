@@ -2,12 +2,16 @@
 // every target; images/compile.ts reads its source at build time from every resolved case and state (a data: URL anywhere, a src the
 // images option maps only where the base is the document's: a <style> or style attribute), so a remote, unmapped or foreign-based
 // src is DRAGON_REMOTE_IMAGE at its token, and bytes REPL-a cannot draw are DRAGON_UNSUPPORTED_IMAGE. Web compiles one url() layer
-// at size auto with repeat or no-repeat and a px or % position; every other url() stack is refused on every target. The native
-// targets refuse every url() layer until part 2; the parity lanes run it lane-only, and the lowering marks the box undrawn.
+// at size auto with repeat or no-repeat and a px or % position; every other url() stack is refused on every target. Part 2: the
+// native targets draw that layer from a background-image write (lower/paint/bg-image.ts, emit/paint/bg-image.ts), refusing only a
+// rounded box that clips it inside its border box and a url() box in a transformed subtree.
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
+import { emitNativeSupport, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
+import { paintAppliedValue, paintWriteLines } from '../src/emit/paint/registry.ts';
 import { createProjectWith, laneOnlyNative, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { lowerUrlLayer } from '../src/lower/paint/bg-image.ts';
 import { GRADIENT_LOWERING } from '../src/lower/paint/gradient.ts';
 import { ProgramError } from '../src/lower/paint/types.ts';
 import type { FrontEndResult, SourceRef, Targets, TreeNode } from '../src/types.ts';
@@ -193,58 +197,115 @@ describe('url() stacks web does not draw yet are refused on every target', () =>
   });
 });
 
-describe('the native targets refuse a url() layer until part 2; the parity lanes run it lane-only', () => {
+describe('the native targets draw a url() layer from its own write (BG2-u part 2)', () => {
   const css = `.a { background: url(${PNG}) no-repeat 4px 25% #123456; }`;
-  it('a user compile draws it on web and refuses it on ios and android, at its background-image, naming BG2-u', () => {
-    const input = withAsset(inputFor(BASE + css, tree));
-    const c = compileInput(input, { targets: ALL });
-    expect(c.outputs.web.kind).toBe('ready');
-    expect(c.outputs.ios.kind).toBe('blocked');
-    expect(c.outputs.android.kind).toBe('blocked');
-    const native = errors(c);
-    expect(native.map((d) => `${d.code} [${d.target}]`).sort()).toEqual(['DRAGON_UNSUPPORTED_VALUE [android]', 'DRAGON_UNSUPPORTED_VALUE [ios]']);
-    for (const d of native) {
-      expect(d.message).toBe('background-image on a: a url() image is drawn on the web target only until the native image layers land (BG2-u)');
-      expect(spanTextOf(input, d)).toBe(`url(${PNG}) no-repeat 4px 25% #123456`);
+  const programsOf = (c: ReturnType<typeof compile>) => {
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    return p.programs;
+  };
+  it('a user compile blocks no target, and the box gets one background-image write with the layer and the bytes', () => {
+    const c = compile(css, { targets: ALL });
+    expect(codes(c)).toEqual([]);
+    expect([c.outputs.web.kind, c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['ready', 'analysis-only', 'analysis-only']);
+    for (const prog of Object.values(programsOf(c))) {
+      const a = prog.nodes.find((n) => n.id === 'a');
+      expect(a?.writes.filter((w) => w.kind === 'background-image' || w.kind === 'background-layers').map((w) => w.kind)).toEqual(['background-image']);
+      expect(a?.writes.find((w) => w.kind === 'background-image')).toMatchObject({ kind: 'background-image', key: 'dragonBackgroundImage', data: PNG.slice(PNG.indexOf(',') + 1), width: 16, height: 16, repeatX: 'no-repeat', repeatY: 'no-repeat', positionX: { unit: 'px', value: 4 }, positionY: { unit: 'percent', value: 25 }, origin: 'padding-box', clip: 'border-box', layer: true });
+      expect(prog.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-image')).map((n) => n.id)).toEqual(['a']);
     }
+    // The lanes compile is not lane-only on native.
+    const lanes = compile(css, { targets: ALL, lanes: true });
+    expect([laneOnlyNative(lanes, 'ios'), laneOnlyNative(lanes, 'android')]).toEqual([false, false]);
+  });
+  it('each axis, origin and clip reaches the write as the longhands compute', () => {
+    const c = compile(`.a { background-image: url(${PNG}); background-repeat: repeat-x; background-position: center 3px; background-origin: content-box; background-clip: padding-box; padding: 2px; }`, { targets: ALL });
+    expect(codes(c)).toEqual([]);
+    const w = programsOf(c).uikit.nodes.find((n) => n.id === 'a')?.writes.find((x) => x.kind === 'background-image');
+    expect(w).toMatchObject({ repeatX: 'repeat', repeatY: 'no-repeat', positionX: { unit: 'percent', value: 50 }, positionY: { unit: 'px', value: 3 }, origin: 'content-box', clip: 'padding-box' });
+  });
+  it('the case code calls the public writer, and the readback is the write and the decoded size', () => {
+    const programs = programsOf(compile(css, { targets: ALL }));
+    const data = PNG.slice(PNG.indexOf(',') + 1);
+    const node = (b: 'uikit' | 'android-views') => programs[b].nodes.find((n) => n.id === 'a') as (typeof programs)['uikit']['nodes'][number];
+    const write = (b: 'uikit' | 'android-views') => node(b).writes.find((x) => x.kind === 'background-image') as never;
+    expect(paintWriteLines('uikit', 'v', node('uikit'), write('uikit'))).toEqual([`  dragonSetBackgroundImage(v, "${data}", natural: [16.0, 16.0], repeats: ["no-repeat", "no-repeat"], units: ["px", "percent"], position: [4.0, 25.0], origin: "padding-box", clip: "border-box")`]);
+    expect(paintWriteLines('android-views', 'v', node('android-views'), write('android-views'))).toEqual([`  dragonSetBackgroundImage(v, "${data}", doubleArrayOf(16.0, 16.0), arrayOf("no-repeat", "no-repeat"), arrayOf("px", "percent"), doubleArrayOf(4.0, 25.0), "padding-box", "border-box", true)`]);
+    const applied = { natural: [16, 16], decoded: [16, 16], repeat: ['no-repeat', 'no-repeat'], position: [['px', 4], ['percent', 25]], origin: 'padding-box', clip: 'border-box' };
+    for (const b of ['uikit', 'android-views'] as const) expect(paintAppliedValue(null as never, b, write(b), 2, null as never)).toEqual(applied);
+  });
+  it('the support code draws it in the background-layers stage, reads it back, and has the bg-image-offset-1 plant', () => {
+    expect(SUPPORT_PLANTS).toContain('bg-image-offset-1');
+    for (const [b, ext] of [['uikit', 'swift'], ['android-views', 'kt']] as const) {
+      const own = emitNativeSupport(b).find((f) => f.path.endsWith(`DragonPaintGradient.${ext}`))?.text ?? '';
+      expect(own).toContain(b === 'uikit' ? '  dragonPaintBackgroundImage(v, ctx, shape)\n  guard let r = v.dragonGradientRaster' : '  dragonPaintBackgroundImage(v, canvas, shape)\n  val r = v.dragonGradientRaster');
+      expect(own).toContain(b === 'uikit' ? '  dragonAfterLayoutBackgroundImage(v, shape, scale)\n  guard let p = v.dragonGradientLayers' : '  dragonAfterLayoutBackgroundImage(v, shape, scale)\n  val p = v.dragonGradientLayers');
+      expect(own).toContain(b === 'uikit' ? 'guard let p = v.dragonGradientLayers else { return dragonAppliedBackgroundImage(v) }' : 'val p = v.dragonGradientLayers ?: return dragonAppliedBackgroundImage(v)');
+      // A no-repeat axis places the tile at a whole device px (Blink LayoutUnit::Round, half up).
+      expect(own).toContain(b === 'uikit' ? 'if !b.repeats[k] { at = (at + 0.5).rounded(.down) }' : 'if (!b.repeats[k]) at = kotlin.math.floor(at + 0.5)');
+      const planted = emitNativeSupport(b, 'bg-image-offset-1').find((f) => f.path.endsWith(`DragonPaintGradient.${ext}`))?.text ?? '';
+      expect(planted).toContain(b === 'uikit' ? 'public let dragonBackgroundImagePlantDevicePx: Double = 2\n' : 'const val DRAGON_BACKGROUND_IMAGE_PLANT_DEVICE_PX = 2.0\n');
+      expect(planted.replace(b === 'uikit' ? 'Double = 2\n' : 'PX = 2.0\n', b === 'uikit' ? 'Double = 0\n' : 'PX = 0.0\n')).toBe(own);
+    }
+  });
+  it('a url() only a :hover rule sets is read on every target; native refuses only the :hover selector', () => {
+    const c = compile(`.a:hover { background-image: url(${PNG}); }`, { targets: ALL });
+    expect(errors(c).filter((d) => d.target !== null).map((d) => `${d.code} [${d.target}]`).sort()).toEqual(['DRAGON_UNSUPPORTED_SELECTOR [android]', 'DRAGON_UNSUPPORTED_SELECTOR [ios]']);
+    expect(c.outputs.web.kind).toBe('ready');
+  });
+  for (const [what, extra, key] of [
+    ['a rounded box that clips it to its padding box', 'border-radius: 6px; background-clip: padding-box; border: 2px solid #000;', 'a rounded box clips a padding-box or content-box url() layer to its inner rounded box'],
+    ['a rounded box that clips it to its content box', 'border-radius: 6px; background-clip: content-box; padding: 2px;', 'a rounded box clips a padding-box or content-box url() layer to its inner rounded box'],
+  ] as const) {
+    it(`native refuses ${what}, at its background-image; web draws it`, () => {
+      const input = withAsset(inputFor(`${BASE}.a { background-image: url(${PNG}); ${extra} }`, tree));
+      const c = compileInput(input, { targets: ALL });
+      const native = errors(c);
+      expect(native.map((d) => `${d.code} [${d.target}]`).sort(), codes(c).join(', ')).toEqual(['DRAGON_UNSUPPORTED_VALUE [android]', 'DRAGON_UNSUPPORTED_VALUE [ios]']);
+      for (const d of native) {
+        expect(d.message).toContain(key);
+        expect(spanTextOf(input, d)).toBe(`url(${PNG})`);
+      }
+      expect(c.outputs.web.kind).toBe('ready');
+      expectCatalogued(c.diagnostics);
+    });
+  }
+  it('a rounded box clipping it to the border box draws natively', () => {
+    expect(codes(compile(`.a { background-image: url(${PNG}); border-radius: 6px; }`, { targets: ALL }))).toEqual([]);
+  });
+  it('native refuses a url() box in a transformed subtree as an unproven context, at its background-image', () => {
+    const input = withAsset(inputFor(`${BASE}.a { transform: translateX(3px); } .b { width: 20px; height: 10px; background-image: url(${PNG}); }`, tree));
+    const c = compileInput(input, { targets: ALL });
+    const native = errors(c);
+    expect(native.map((d) => `${d.code} [${d.target}]`).sort(), codes(c).join(', ')).toEqual(['DRAGON_UNPROVEN_CONTEXT [android]', 'DRAGON_UNPROVEN_CONTEXT [ios]']);
+    for (const d of native) {
+      expect(d.message).toBe('background-image on b: the url() image is inside a, whose transform is not the identity; the native targets draw it in the box\'s own coordinates and the device lanes do not sample a transformed image yet (BG2-x)');
+      expect(spanTextOf(input, d)).toBe(`url(${PNG})`);
+    }
+    expect(c.outputs.web.kind).toBe('ready');
     expectCatalogued(c.diagnostics);
   });
-  it('a url() only a :hover rule sets is refused natively too', () => {
-    const c = compile(`.a:hover { background-image: url(${PNG}); }`, { targets: ALL });
-    expect(codes(c).sort()).toEqual(expect.arrayContaining(['DRAGON_UNSUPPORTED_VALUE [android]', 'DRAGON_UNSUPPORTED_VALUE [ios]']));
-    expect(codes(c)).not.toContain('DRAGON_UNSUPPORTED_VALUE [web]');
-  });
-  it('an enforced compile refuses it natively without a profile row, and the lanes run it lane-only with the box marked undrawn', () => {
-    const enforced = compile(css, { targets: ALL, profiles: 'enforce' });
-    expect(enforced.outputs.ios.kind).toBe('blocked');
-    const lanes = compile(css, { targets: ALL, lanes: true });
-    expect(codes(lanes)).toEqual([]);
-    expect([laneOnlyNative(lanes, 'ios'), laneOnlyNative(lanes, 'android')]).toEqual([true, true]);
-    const p = nativePrograms(lanes, []);
-    if (p.kind !== 'ready') throw new Error(p.reason);
-    for (const prog of [p.programs.uikit, p.programs['android-views']]) {
-      const a = prog.nodes.find((n) => n.id === 'a');
-      expect(a?.facts['gradient']).toEqual({ undrawnImage: true });
-      expect(a?.writes.some((w) => w.kind === 'background-layers')).toBe(false);
-      expect(prog.nodes.filter((n) => n.facts['gradient'] !== undefined).map((n) => n.id)).toEqual(['a']);
-    }
-    // A box without a url() in the same lanes compile is not lane-only.
-    expect(laneOnlyNative(compile(`.a { background: linear-gradient(red, blue); }`, { targets: ALL, lanes: true }), 'ios')).toBe(false);
-  });
-  it('the lowering refuses a url() layer beside other layers, which every target refuses before it', () => {
+  it('the lowering refuses what every target refuses before it, and a src without bytes', () => {
     const kw = (value: string) => ({ value: { kind: 'keyword', value } });
-    const props = new Map<string, unknown>([
-      ['background-image', { value: { kind: 'other', type: 'list', text: `url("${PNG}"), linear-gradient(red, blue)` } }],
+    const props = (image: string, repeat = 'repeat', size = 'auto') => new Map<string, unknown>([
+      ['background-image', { value: { kind: 'other', type: image.includes(',') ? 'list' : 'url()', text: image } }],
       ['background-position-x', { value: { kind: 'percentage', value: 0 } }],
       ['background-position-y', { value: { kind: 'percentage', value: 0 } }],
-      ['background-size', kw('auto')],
-      ['background-repeat', kw('repeat')],
+      ['background-size', kw(size)],
+      ['background-repeat', kw(repeat)],
       ['background-attachment', kw('scroll')],
       ['background-origin', kw('padding-box')],
       ['background-clip', kw('border-box')],
     ]);
-    const el = { element: { address: 'a' }, props, children: [] };
-    expect(() => GRADIENT_LOWERING.lower({ box: null, el, facts: {} } as never)).toThrow(ProgramError);
-    expect(() => GRADIENT_LOWERING.lower({ box: null, el, facts: {} } as never)).toThrow('a: a url() layer beside other layers reached the native lowering, which every target refuses (BG2-u)');
+    const lower = (p: Map<string, unknown>, images = new Map<string, Uint8Array>([[PNG, new Uint8Array(PNG_BYTES)]])) => () => GRADIENT_LOWERING.lower({ box: null, el: { element: { address: 'a' }, props: p, children: [] }, facts: {}, images, transformMoves: false } as never);
+    expect(lower(props(`url("${PNG}"), linear-gradient(red, blue)`))).toThrow(ProgramError);
+    expect(lower(props(`url("${PNG}"), linear-gradient(red, blue)`))).toThrow('a: a url() layer beside other layers reached the native lowering, which every target refuses (BG2-u)');
+    expect(lower(props(`url("${PNG}")`, 'space'))).toThrow('a: background-repeat space on a url() layer reached the native lowering, which every target refuses (BG2-t)');
+    expect(lower(props(`url("${PNG}")`, 'repeat', 'cover'))).toThrow('a: a url() layer at a size other than auto reached the native lowering');
+    expect(lower(props(`url("${PNG}")`), new Map())).toThrow('a: no image bytes for its url() layer');
+    expect(lower(props(`url("${PNG}")`), new Map([[PNG, new Uint8Array([1, 2, 3])]]))).toThrow("a: the url() layer's bytes are not the PNG images/compile.ts accepted");
+    expect(lower(props(`url("${PNG}")`))()).toEqual([expect.objectContaining({ kind: 'background-image', width: 16, height: 16, repeatX: 'repeat', repeatY: 'repeat', positionX: { unit: 'percent', value: 0 } })]);
+    const end = [{ image: { kind: 'url', url: PNG }, geometry: { sizeKind: 'length', sizeX: { unit: 'auto', value: 0 }, sizeY: { unit: 'auto', value: 0 }, positionX: { unit: 'end-px', value: 3 }, positionY: { unit: 'px', value: 0 }, repeatX: 'repeat', repeatY: 'repeat', origin: 'padding-box', clip: 'border-box' } }] as never;
+    expect(() => lowerUrlLayer('a', end, new Map([[PNG, new Uint8Array(PNG_BYTES)]]), false)).toThrow('a: a url() layer position end-px 3 reached the native lowering');
   });
 });
