@@ -219,6 +219,20 @@ describe('opacity: a group native pre-composites', () => {
       expect(errs, css).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: ${why.replace(/[.()]/g, (x) => `\\${x}`)}$`))));
     }
   });
+  it('admits a group under the element whose overflow the viewport takes, which neither clips nor scrolls', () => {
+    for (const css of ['html { overflow-y: scroll; }', 'body { overflow: auto; }', 'html { overflow: hidden; }']) expect(errors(build(`${css} .g { opacity: 0.4; }`)), css).toEqual([]);
+  });
+  it('refuses on native a member\'s text decoration that reaches the text of a box inside it', () => {
+    const input = inputFor('body { margin: 0; font-family: Ahem; font-size: 10px; } .g { height: 20px; background-color: rgb(250, 250, 0); opacity: 0.4; } .k { color: rgb(0, 0, 0); }', (r) => [
+      div(r, 'g', ['g'], [div(r, 'k', ['k'], [text(r, 'kt', 'Ab')])]),
+    ]);
+    const decorated = inputFor('body { margin: 0; font-family: Ahem; font-size: 10px; } .g { height: 20px; background-color: rgb(250, 250, 0); text-decoration: underline; opacity: 0.4; } .k { color: rgb(0, 0, 0); }', (r) => [
+      div(r, 'g', ['g'], [div(r, 'k', ['k'], [text(r, 'kt', 'Ab')])]),
+    ]);
+    const run = (i: typeof input) => errors(createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(i));
+    expect(run(input)).toEqual([]);
+    expect(run(decorated)).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: g has a text-decoration-line, which reaches the text inside it$`))));
+  });
   it('refuses on native an animation or transition on a member or a backdrop painter', () => {
     const motion = (who: string) => `on ${who}, which a pre-composited opacity group draws or composites over: the group's composite is recomputed on layout and paint changes, not on animation frames (package PNT1-opacity-b)`;
     const all = (c: ReturnType<typeof build>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);

@@ -26,6 +26,7 @@ const SWIFT_MEMBERS = String.raw`  /// Chrome's paint alpha byte of the box's op
 `;
 
 const SWIFT = String.raw`import UIKit
+import CoreText
 
 /// Whether the opacity writer ignores the alpha; false except in the alpha-ignored plant build.
 public let dragonAlphaPlantIgnored = false
@@ -89,6 +90,36 @@ func dragonGroupOuterEdges(_ r: CGRect, _ s: Double) -> [Int] {
   let l = (Double(r.minX) * s).rounded(.down), t = (Double(r.minY) * s).rounded(.down)
   let rr = (Double(r.maxX) * s).rounded(.up), b = (Double(r.maxY) * s).rounded(.up)
   return [Int(l), Int(t), Int(rr), Int(b)]
+}
+
+/// The draw ops of a group member box's display item (Blink box_border_painter.cc PaintBorderFastPath): its background fill, then
+/// one op for four solid sides in one colour (the compiler admits no other border in a group) or one FillRect per side.
+func dragonGroupBoxOps(_ fillsBg: Bool, _ sides: Int) -> Int {
+  return (fillsBg ? 1 : 0) + (sides == 4 ? 1 : sides)
+}
+
+/// A text line's glyph ink in root device px [left, top, right, bottom], bounded as DragonTextView.dragonInkFrame bounds it (the
+/// font's bounding box at the first and last glyph origins, sheared, and grown by the fake-bold stroke's miter reach), at whole
+/// device px; ox, oy is the text view's origin in root device px. Nil for a line with no glyphs.
+func dragonGroupLineInk(_ tv: DragonTextView, _ font: UIFont, _ l: DragonLineSpec, _ ox: Double, _ oy: Double, _ s: Double) -> [Double]? {
+  let upright = CTFontGetBoundingBox(font as CTFont)
+  let k = tv.dragonGlyphShear
+  let minY = Double(upright.minY), maxY = Double(upright.maxY)
+  let left = Double(upright.minX) + min(k * minY, k * maxY)
+  let right = Double(upright.maxX) + max(k * minY, k * maxY)
+  let base = oy + l.baseline + dragonGlyphPlantYDevicePx
+  var out: [Double]? = nil
+  // em scales the font's box (in points) to device px at the run's size.
+  func ink(_ xs: [Double], _ em: Double, _ sizeDevicePx: Double) {
+    guard let lo = xs.min(), let hi = xs.max() else { return }
+    let h = 2 * tv.dragonBoldStroke(sizeDevicePx)
+    let r = [ox + lo + dragonGlyphPlantDevicePx + left * em - h, base - maxY * em - h, ox + hi + dragonGlyphPlantDevicePx + right * em + h, base - minY * em + h]
+    if let o = out { out = [min(o[0], r[0]), min(o[1], r[1]), max(o[2], r[2]), max(o[3], r[3])] } else { out = r }
+  }
+  ink(l.xs, s, Double(font.pointSize) * s)
+  ink(l.ellipsisXs, l.ellipsisSize / Double(font.pointSize), l.ellipsisSize)
+  guard let o = out else { return nil }
+  return [o[0].rounded(.down), o[1].rounded(.down), o[2].rounded(.up), o[3].rounded(.up)]
 }
 
 /// Every layer's pending drawing done, so render(in:) sees this frame's contents.
@@ -249,24 +280,21 @@ public final class DragonGroupView: UIView {
         }
       }
     }
-    // The group's display items for the per-tile fold: each painting box (a lone fill folds) and each text line's run.
+    // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
+    // each text line's ink (a DrawTextBlob, which cc never folds).
     var draws: [Double] = []
     for b in boxes where b.dragonVisible {
       let fillsBg = b.dragonBackgroundColor.a > 0
       let sides = (0..<4).filter { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }.count
-      if !fillsBg && sides == 0 { continue }
-      draws += b.dragonShape.edges + [fillsBg && sides == 0 ? 1 : 0]
+      let ops = dragonGroupBoxOps(fillsBg, sides)
+      if ops == 0 { continue }
+      draws += b.dragonShape.edges + [ops == 1 ? 1 : 0]
     }
     for tv in texts where !tv.isHidden {
       guard let font = tv.dragonFont else { continue }
       let r = dragonLayoutRect(tv, in: root)
-      let o = [Double(r.minX) * s, Double(r.minY) * s]
-      let ascent = Double(CTFontGetAscent(font as CTFont)) * s
-      let descent = Double(CTFontGetDescent(font as CTFont)) * s
       for l in tv.specs where !l.glyphs.isEmpty {
-        let x0 = o[0] + l.xLU / units_LU_PER_PX
-        let base = o[1] + l.baseline
-        draws += [x0.rounded(.down), (base - ascent).rounded(.down), (x0 + l.widthLU / units_LU_PER_PX).rounded(.up), (base + descent).rounded(.up), 0]
+        if let ink = dragonGroupLineInk(tv, font, l, Double(r.minX) * s, Double(r.minY) * s, s) { draws += ink + [0] }
       }
     }
     let jsDraws = JsArray(draws)
@@ -325,6 +353,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
+import android.text.TextPaint
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -394,6 +424,51 @@ fun dragonSetOpacityGroup(t: DragonTree, v: DragonBoxView, opacity: Double, back
   val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters)
   v.dragonGroup = g
   v.dragonContainer.addView(g)
+}
+
+/**
+ * The draw ops of a group member box's display item (Blink box_border_painter.cc PaintBorderFastPath): its background fill, then
+ * one op for four solid sides in one colour (the compiler admits no other border in a group) or one FillRect per side.
+ */
+fun dragonGroupBoxOps(fillsBg: Boolean, sides: Int): Int = (if (fillsBg) 1 else 0) + (if (sides == 4) 1 else sides)
+
+/**
+ * Each glyph line's ink in root device px (left, top, right, bottom) at whole device px, as the text view draws it: every glyph's
+ * horizontal bounds at its origin (Font.getGlyphBounds, at the run's text size) and the font's vertical bounds (top, bottom), moved by
+ * the synthetic oblique's skew (x - shear * y) and grown by the fake-bold stroke's miter reach (4 times half its width), as iOS's
+ * dragonInkFrame bounds it; ox, oy is the text view's origin in root device px.
+ */
+fun dragonGroupLineInks(tv: DragonTextView, ox: Double, oy: Double): List<DoubleArray> {
+  val f = tv.font ?: return emptyList()
+  val out = ArrayList<DoubleArray>()
+  val r = RectF()
+  val sh = tv.dragonGlyphShear
+  for (l in tv.specs) {
+    if (l.glyphs.isEmpty()) continue
+    val e = doubleArrayOf(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY)
+    val base = oy + l.baseline + DRAGON_GLYPH_PLANT_Y_DEVICE_PX
+    fun add(glyphs: IntArray, xs: DoubleArray, size: (Int) -> Float) {
+      for (k in glyphs.indices) {
+        val p = TextPaint(tv.paint)
+        p.textSize = size(k)
+        val fm = p.fontMetrics
+        val top = fm.top.toDouble()
+        val bottom = fm.bottom.toDouble()
+        val h = 2.0 * tv.dragonBoldStroke(p.textSize).toDouble()
+        r.setEmpty()
+        f.getGlyphBounds(glyphs[k], p, r)
+        val x = ox + xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX
+        e[0] = minOf(e[0], x + minOf(r.left.toDouble(), 0.0) + minOf(-sh * top, -sh * bottom) - h)
+        e[1] = minOf(e[1], base + top - h)
+        e[2] = maxOf(e[2], x + maxOf(r.right.toDouble(), 0.0) + maxOf(-sh * top, -sh * bottom) + h)
+        e[3] = maxOf(e[3], base + bottom + h)
+      }
+    }
+    add(l.glyphs, l.xs) { k -> if (l.sizes.isNotEmpty() && l.sizes[k] != 0.0) l.sizes[k].toFloat() else tv.paint.textSize }
+    add(l.ellipsisGlyphs, l.ellipsisXs) { _ -> l.ellipsisSize.toFloat() }
+    out.add(doubleArrayOf(kotlin.math.floor(e[0]), kotlin.math.floor(e[1]), kotlin.math.ceil(e[2]), kotlin.math.ceil(e[3])))
+  }
+  return out
 }
 
 /**
@@ -491,15 +566,14 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       }
     }
     grow(g)
-    // A text view draws its glyph ink past its frame: the extent takes each line's run box with the font's bounds.
+    // A text view draws its glyph ink past its frame: the extent takes each line's ink (dragonGroupLineInks) and 2 device px of
+    // antialiasing, as iOS's dragonInkFrame does.
+    val inks = HashMap<DragonTextView, List<DoubleArray>>()
     for (tv in texts) {
       val o = dragonLayoutOffset(tv, root)
-      val fm = tv.paint.fontMetrics
-      for (l in tv.specs) {
-        if (l.glyphs.isEmpty()) continue
-        val x0 = o[0] + l.xLU / units_LU_PER_PX
-        ext = intArrayOf(minOf(ext[0], kotlin.math.floor(x0).toInt() - 2), minOf(ext[1], o[1] + l.baseline + kotlin.math.floor(fm.top.toDouble()).toInt() - 2), maxOf(ext[2], kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX).toInt() + 2), maxOf(ext[3], o[1] + l.baseline + kotlin.math.ceil(fm.bottom.toDouble()).toInt() + 2))
-      }
+      val lines = dragonGroupLineInks(tv, o[0].toDouble(), o[1].toDouble())
+      inks[tv] = lines
+      for (e in lines) ext = intArrayOf(minOf(ext[0], e[0].toInt() - 2), minOf(ext[1], e[1].toInt() - 2), maxOf(ext[2], e[2].toInt() + 2), maxOf(ext[3], e[3].toInt() + 2))
     }
     ext = intArrayOf(maxOf(ext[0], 0), maxOf(ext[1], 0), minOf(ext[2], root.width), minOf(ext[3], root.height))
     val w = ext[2] - ext[0]
@@ -570,25 +644,23 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
         }
       }
     }
-    // The group's display items for the per-tile fold: each painting box (a lone fill folds) and each text line's run.
+    // The group's display items for the per-tile fold: each painting box (it folds when it is one draw op: dragonGroupBoxOps) and
+    // each text line's ink (a DrawTextBlob, which cc never folds).
     val draws = ArrayList<Double>()
     for (b in boxes) {
       if (!b.dragonVisible) continue
       val fillsBg = b.dragonBackgroundColor.a > 0
       val sides = (0 until 4).count { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
-      if (!fillsBg && sides == 0) continue
+      val ops = dragonGroupBoxOps(fillsBg, sides)
+      if (ops == 0) continue
       for (k in 0 until 4) draws.add(b.dragonShape.edges[k])
-      draws.add(if (fillsBg && sides == 0) 1.0 else 0.0)
+      draws.add(if (ops == 1) 1.0 else 0.0)
     }
     for (tv in texts) {
       if (tv.visibility != View.VISIBLE) continue
-      val o = dragonLayoutOffset(tv, root)
-      val fm = tv.paint.fontMetrics
-      for (l in tv.specs) {
-        if (l.glyphs.isEmpty()) continue
-        val x0 = o[0] + l.xLU / units_LU_PER_PX
-        val base = (o[1] + l.baseline).toDouble()
-        draws.add(kotlin.math.floor(x0)); draws.add(kotlin.math.floor(base + fm.ascent)); draws.add(kotlin.math.ceil(x0 + l.widthLU / units_LU_PER_PX)); draws.add(kotlin.math.ceil(base + fm.descent)); draws.add(0.0)
+      for (e in inks[tv] ?: emptyList()) {
+        for (k in 0 until 4) draws.add(e[k])
+        draws.add(0.0)
       }
     }
     val jsDraws = JsArray(draws.toMutableList())

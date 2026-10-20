@@ -130,7 +130,7 @@ const clipsAt = (el: ResolvedElement): boolean => (keywordAt(el, 'overflow-x') ?
  * Why a box cannot be drawn by the overlay's models (null when it can): as a member of a group (its paint rendered by the
  * platform) or as a backdrop painter (its paint modelled in software); a painter that is an ancestor of the group may clip.
  */
-function boxProblem(el: ResolvedElement, role: 'member' | 'painter' | 'ancestor-painter'): string | null {
+function boxProblem(el: ResolvedElement, role: 'member' | 'painter' | 'ancestor-painter', viewportScroller = false): string | null {
   const a = el.element.address;
   const tag = el.element.tag;
   const canvasTag = tag === 'html' || tag === 'body';
@@ -143,7 +143,8 @@ function boxProblem(el: ResolvedElement, role: 'member' | 'painter' | 'ancestor-
   const position = keywordAt(el, 'position') ?? 'static';
   if (position !== 'static' && position !== 'relative') return `${a} has position ${position}`;
   const allowed = role === 'ancestor-painter' ? ['visible', 'hidden', 'clip'] : ['visible'];
-  for (const p of ['overflow-x', 'overflow-y']) if (!allowed.includes(keywordAt(el, p) ?? 'visible')) return `${a} has ${p}: ${keywordAt(el, p)}${role === 'ancestor-painter' ? ', a scroller' : ', a clip or scroller'}`;
+  // The element whose overflow the viewport takes neither clips nor scrolls itself.
+  if (!viewportScroller) for (const p of ['overflow-x', 'overflow-y']) if (!allowed.includes(keywordAt(el, p) ?? 'visible')) return `${a} has ${p}: ${keywordAt(el, p)}${role === 'ancestor-painter' ? ', a scroller' : ', a clip or scroller'}`;
   if ((keywordAt(el, 'visibility') ?? 'visible') !== 'visible') return `${a} is not visible`;
   if (paintedOutlineStyle(el) !== null) return `${a} has an outline`;
   if (rounds(el)) return `${a} has a border radius`;
@@ -228,6 +229,9 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
         const t = textProblem(m);
         if (t !== null) return refused(t);
       }
+      // A decoration reaches the text of the boxes inside its box too.
+      const line = keywordAt(m, 'text-decoration-line') ?? 'none';
+      if (line !== 'none' && members.some((x) => x !== m && x.children.some((c) => c.kind === 'text') && ancestors(x).includes(m))) return refused(`${m.element.address} has a text-decoration-line, which reaches the text inside it`);
     }
     // What composites it differently: an enclosing group, layer, scroller or fixed box, or a decoration from above.
     const up = ancestors(g);
@@ -238,7 +242,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       const position = keywordAt(a, 'position') ?? 'static';
       // An absolute box's containing block may skip the backdrop's clip.
       if (position === 'fixed' || position === 'sticky' || position === 'absolute') return refused(`it is inside ${at}, which has position ${position}`);
-      for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(a, p) ?? 'visible')) return refused(`it is inside ${at}, a scroller`);
+      if (a !== propagated) for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(a, p) ?? 'visible')) return refused(`it is inside ${at}, a scroller`);
       if ((keywordAt(a, 'text-decoration-line') ?? 'none') !== 'none') return refused(`it is inside ${at}, whose text decoration reaches its text`);
     }
     // The backdrop box and the painters before the group inside it.
@@ -260,7 +264,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
         continue;
       }
       if (opacityAt(el) < 1) return refused(`${id} paints before it with opacity ${opacityAt(el)}`);
-      const bad = boxProblem(el, up.includes(el) ? 'ancestor-painter' : 'painter');
+      const bad = boxProblem(el, up.includes(el) ? 'ancestor-painter' : 'painter', el === propagated);
       if (bad !== null) return refused(`a painter before it in its backdrop: ${bad}`);
       painters.push(id);
     }

@@ -1,6 +1,8 @@
 // PNT1-opacity-b: an opacity group as Chrome 145's CPU raster composites it, so a device can present the result (Q) itself. In a cc
-// raster tile where the group's only drawing is one opaque rect fill, cc folds the group alpha into the fill (cc
-// PlaybackFoldingIterator) and Skia blits it as a solid colour (Skia 2ab8add5 src/opts/SkBlitRow_opts.h:243-270 blit_row_color32);
+// raster tile where the group's only display item is one draw op, cc folds the group alpha into its paint (Chromium 145.0.7632.6
+// cc/paint/paint_op_buffer_iterator.cc:13-38, 96-146: any op with srcover flags but DrawTextBlob), and Skia blits that solid colour at
+// full coverage with blit_row_color32 however it scans (Skia 2ab8add5 src/core/SkBlitter_ARGB32.cpp:1450-1494, 1647-1685: blitH,
+// blitAntiH at 255, blitV and blitRect; src/opts/SkBlitRow_opts.h:243-270);
 // in any other tile the group is a layer composited with blit_row_s32a_blend (src/core/SkBlitRow_D32.cpp:204-301, with
 // src/core/SkColorData.h:134-137 SkAlphaMulInv256). Pixels are premultiplied RGBA8; the packed result is r + g * 2^8 + b * 2^16 +
 // a * 2^24. Pinned against Chrome's pixels by packages/parity/test/pnt1-effects.test.ts.
@@ -43,7 +45,8 @@ export function groupPack(r: number, g: number, b: number, a: number): number {
 /**
  * The pixel Chrome shows where an opacity group of alpha byte a8 (paint.ts opacityAlpha8) meets the backdrop pixel d: l is the
  * group's layer pixel (its content drawn opaque into a transparent layer), both premultiplied. fold is whether the tile folds
- * (groupTileFolds): then an opaque layer pixel is the one fill, blitted at a8 with blit_row_color32, and a clear one leaves d.
+ * (groupTileFolds): then an opaque layer pixel is the one op's solid colour, blitted at a8 with blit_row_color32, and a clear one
+ * leaves d.
  */
 export function groupComposite(lr: number, lg: number, lb: number, la: number, dr: number, dg: number, db: number, da: number, a8: number, fold: boolean): number {
   if (a8 <= 0) return groupPack(dr, dg, db, da);
@@ -83,8 +86,10 @@ export function groupTileSpan(i: number, tileSize: number): number[] {
 
 /**
  * Whether cc folds a group's alpha into its drawing in a tile: draws holds the group's display items as flat groups of five
- * (left, top, right, bottom in device px, then 1 for an opaque rect fill alone or 0 for anything else: a box with a border, a text
- * run). The group folds when exactly one item meets the tile and it is a lone fill.
+ * (left, top, right, bottom in device px, then 1 for an item of one draw op cc folds, or 0 for anything else: a box with a
+ * background and a border, a text run, whose DrawTextBlob cc never folds). The group folds when exactly one item meets the tile
+ * and it folds. A box's one op is its background alone, its border alone when all four sides are solid in one colour (Blink
+ * box_border_painter.cc:261-279, 1255-1278: one stroked rect or FillDRRect), or a lone solid side (one FillRect, :841-866).
  */
 export function groupTileFolds(draws: readonly number[], tileLeft: number, tileTop: number, tileRight: number, tileBottom: number): boolean {
   if (draws.length - 5 * floorOf(draws.length / 5) !== 0) throw new Error(`paint-group: draws hold ${draws.length} numbers, not groups of five`);
