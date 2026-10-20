@@ -20,6 +20,7 @@ import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
 import { checkTranslucent } from './analysis/paint-values/effects.ts';
 import { checkSelectable } from './analysis/selection.ts';
+import { checkBidi } from './analysis/bidi.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { checkTranslucentOutlines } from './analysis/paint-values/outline.ts';
 import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
@@ -889,6 +890,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // T154: outside the parity lanes, native refuses an author user-select but none (P6c); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // css-writing-modes-4 §2.2: outside the parity lanes, native refuses an author unicode-bidi that can reorder text (analysis/bidi.ts).
+    if (!options.interactionLanes) checkBidi(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
@@ -1343,7 +1346,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
       // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
-      // lane-only on native and proves no native row (pipeline.ts).
+      // lane-only on native and proves no native row (pipeline.ts). So is one with a unicode-bidi that can reorder text (analysis/bidi.ts).
       if (options.interactionLanes) {
         const pending: Diagnostic[] = [];
         const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
@@ -1352,6 +1355,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
             if (r === null) continue;
             checkTranslucent(r, native, pending, new Set());
             checkSelectable(r, native, pending, new Set());
+            checkBidi(r, native, pending, new Set());
             checkStackingClips(r, propagatedFrom(r), native, pending, new Set());
           }
         }

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.p { width: 120px; margin-bottom: 4px; background-color: #e8d36a; }
+.i { color: rgb(160, 40, 20); }
+.row { display: flex; width: 160px; background-color: #c8e6f0; }
+.ib { display: inline-block; width: 30px; background-color: #d8f0c8; }
+.n { unicode-bidi: normal; }
+.e { unicode-bidi: embed; }
+.s { unicode-bidi: isolate; }
+.o { unicode-bidi: bidi-override; }
+.io { unicode-bidi: isolate-override; }
+.pt { unicode-bidi: plaintext; }
+.ltr { direction: ltr; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="b1" class="p n">XX X1 .Y <span data-dragon-id="s1" class="i e">AB, CD</span> EF</div>
+<div data-dragon-id="b2" class="p e">XX <span data-dragon-id="s2" class="i s">AB CD EF GH</span> IJ KL</div>
+<div data-dragon-id="b3" class="p s">XX 12 <span data-dragon-id="s3" class="i o">AB CD.</span> EF</div>
+<div data-dragon-id="b4" class="p o">XX (YY) <span data-dragon-id="s4" class="i io">AB 3 CD</span> EF GH IJ</div>
+<div data-dragon-id="b5" class="p io">XX YY <span data-dragon-id="s5" class="i pt">AB CD</span> EF</div>
+<div data-dragon-id="b6" class="p pt">1 2 XX <span data-dragon-id="s6" class="i s ltr">AB CD</span> EF</div>
+<div data-dragon-id="b7" class="p pt">... XX YY ZZ AA BB</div>
+<div data-dragon-id="row" class="row o"><div data-dragon-id="r1" class="pt">AB CD</div><div data-dragon-id="r2" class="io">EF</div><span data-dragon-id="r3" class="s">GH</span></div>
+<div data-dragon-id="b8" class="p">XX <span data-dragon-id="ib" class="ib io">A B</span> YY <span data-dragon-id="ib2" class="ib pt">C</span></div>
+</body>
+</html>

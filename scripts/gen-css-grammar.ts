@@ -163,6 +163,8 @@ const SUBSET = [
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
   // color-scheme (css-color-adjust-1 §2.1), after the counters family, as LONGHANDS registers it.
   'color-scheme',
+  // unicode-bidi (css-writing-modes-4 §2.2), after color-scheme, as LONGHANDS registers it.
+  'unicode-bidi',
 ] as const;
 
 /**
