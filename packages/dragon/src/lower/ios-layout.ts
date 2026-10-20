@@ -1,4 +1,5 @@
 // Stage 2 of docs/api.md §4.1 for ios: resolved CSS to Dragon's layout engine input, with every field set explicitly.
+import type { ListStyleType } from '../css/counter-styles.ts';
 import type {
   AlignContent,
   AspectRatioValue,
@@ -24,6 +25,7 @@ import type {
   LengthCalc,
   LineHeightValue,
   LineStrut,
+  ListMarker,
   MarginValue,
   Overflow,
   MaxInlineSizeValue,
@@ -49,6 +51,8 @@ import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
+import type { ListItemMarker } from '../analysis/markers.ts';
+import { listItemMarkers } from '../analysis/markers.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
@@ -472,7 +476,7 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   };
 }
 
-/** The overflow-wrap and word-break values the engine reads (input.ts OverflowWrap, WordBreak); it refuses the word-break values TXT2-d adds. */
+/** The overflow-wrap and word-break values the engine reads (input.ts OverflowWrap, WordBreak); it refuses auto-phrase, and break-all over anything but ASCII letters, digits and spaces (TXT2-d). */
 const OVERFLOW_WRAP: readonly string[] = ['normal', 'break-word', 'anywhere'] satisfies readonly OverflowWrap[];
 const WORD_BREAK: readonly string[] = ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'] satisfies readonly WordBreak[];
 
@@ -498,6 +502,22 @@ const displayOf = (el: ResolvedElement): string => {
 };
 
 /**
+ * css-display-3 §2.5: the children that generate boxes in el's box. display: none ones generate none, and a display: contents
+ * element is replaced by its own children (it still passes on its inherited values, which resolve.ts has applied).
+ */
+function boxChildren(el: ResolvedElement): (ResolvedElement | ResolvedText)[] {
+  return el.children.flatMap((c): (ResolvedElement | ResolvedText)[] => {
+    if (c.kind === 'text') return [c];
+    const d = displayOf(c);
+    if (d === 'none') return [];
+    if (d !== 'contents') return [c];
+    // css-display-3 §2.7 (Appendix B): a replaced element with display: contents computes to none in Chrome; Dragon refuses it.
+    if (isReplacedTag(c.element.tag)) throw new LoweringError(c.element.address, 'display', `display: contents on the replaced element ${c.element.address} is not supported`);
+    return boxChildren(c);
+  });
+}
+
+/**
  * C5: a text leaf carries its inherited text-align and direction (goal.md principle 3), while the engine reads both from the block
  * container that holds the text (css-text-3 §7.1, css-writing-modes-4 §2.1). Without inline elements they must be equal.
  */
@@ -517,7 +537,7 @@ const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'ele
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
 /** propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. */
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null };
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker> };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -533,7 +553,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
-  const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
+  const kids = boxChildren(c);
   const block = kids.find((k) => !isInlineLevel(k) || isAtomic(k));
   if (block !== undefined && block.kind === 'element') {
     if (isAtomic(block)) throw new LoweringError(block.element.address, 'display', `atomic inline <${block.element.tag}> ${block.element.address} inside inline box ${id} is not laid out (INL2c)`);
@@ -561,7 +581,7 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   const lastBaseline: LastBaselineContext = { items: false, self: parentDisplay === 'grid' || parentDisplay === 'inline-grid' };
   const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline);
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), marker: null, children: items.map((c) => lowerInlineLevel(c, l)) };
 }
 
 /**
@@ -570,9 +590,11 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
  */
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, images: ImageNaturals, mode: LowerMode): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
+  if (displayOf(root) === 'contents') throw new LoweringError(root.element.address, 'display', `display: contents on the root element ${root.element.address} is not supported`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source }, null);
+  const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers }, null);
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -626,7 +648,7 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
  */
 function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox {
   const id = el.element.address;
-  const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
+  const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);
   const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null });
@@ -668,5 +690,26 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
   // atomic inline is on a line (INL2a).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), marker: display === 'list-item' ? markerOf(el, l) : null, children };
+}
+
+const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];
+
+/** Whether a list-style-type GEN-c writes is drawn as a symbol (disc, circle, square) rather than as its marker text. */
+export const isSymbolMarker = (t: ListStyleType): boolean => t.kind === 'style' && SYMBOLS.includes(t.name);
+
+/**
+ * T151 R14: a list item's outside marker in its own font and line-height, a symbol for disc, circle and square and otherwise its
+ * compile-time counter text (analysis/markers.ts); null for list-style-type none. computed-checks.ts refuses what GEN-c does not draw.
+ */
+function markerOf(el: ResolvedElement, l: Lowerer): ListMarker | null {
+  const id = el.element.address;
+  const m = l.markers.get(id);
+  if (m === undefined) throw new LoweringError(id, 'display', `the list item ${id} has no ordinal`);
+  if (m.type.kind === 'none') return null;
+  if (m.type.kind === 'refused') throw new LoweringError(id, 'list-style-type', m.type.reason);
+  const { font, lineHeight } = lowerFont(id, (p) => (el.props.get(p) as ResolvedValue).value, l.mode);
+  const t = m.type.type;
+  if (t.kind === 'style' && isSymbolMarker(t)) return { id: `${id}::marker`, kind: 'symbol', symbol: t.name as ListMarker['symbol'], text: null, font, lineHeight };
+  return { id: `${id}::marker`, kind: 'text', symbol: null, text: m.text, font, lineHeight };
 }

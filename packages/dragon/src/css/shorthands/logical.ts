@@ -25,7 +25,7 @@ const SIDE: { readonly [E in Edge]: PhysicalSide | { readonly ltr: PhysicalSide;
 };
 
 /** The slot of a physical longhand family on an edge: pattern's "*" is replaced by the physical side. */
-function slot(pattern: string, edge: Edge): Slot {
+export function slot(pattern: string, edge: Edge): Slot {
   const side = SIDE[edge];
   const fill = (s: string): Longhand => pattern.replace('*', s) as Longhand;
   return typeof side === 'string' ? fill(side) : { ltr: fill(side.ltr), rtl: fill(side.rtl) };
@@ -48,7 +48,7 @@ function handler(slots: readonly Slot[], expand: (values: readonly CssValue[]) =
 }
 
 /** One flow-relative longhand. */
-const one = (s: Slot): ShorthandHandler => handler([s], (vs) => [[vs[0] as CssValue, true]]);
+export const one = (s: Slot): ShorthandHandler => handler([s], (vs) => [[vs[0] as CssValue, true]]);
 
 /** css-logical-1 §4.2-§4.4, §6.1: one or two values over the start and end slots; the end defaults to the start. */
 const pair = (start: Slot, end: Slot): ShorthandHandler => handler([start, end], (vs) => {
@@ -73,7 +73,7 @@ function border(edges: readonly Edge[]): ShorthandHandler {
   });
 }
 
-const edgePair = (pattern: string, axis: 'inline' | 'block'): ShorthandHandler => pair(slot(pattern, `${axis}-start`), slot(pattern, `${axis}-end`));
+export const edgePair = (pattern: string, axis: 'inline' | 'block'): ShorthandHandler => pair(slot(pattern, `${axis}-start`), slot(pattern, `${axis}-end`));
 
 export const LOGICAL_SHORTHANDS = {
   inset: fourSides(['top', 'right', 'bottom', 'left']),

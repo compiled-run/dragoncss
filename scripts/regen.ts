@@ -23,7 +23,9 @@ import { compilePattern, matchSegments } from './macroscope-ignore.ts';
 import { importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
 import { BG2 } from './regen-steps/bg2.ts';
 import { ENV_SAFE } from './regen-steps/env-safe.ts';
+import { GEN_C } from './regen-steps/gen-c.ts';
 import { MQ_R1 } from './regen-steps/mq-r1.ts';
+import { MQ_R2 } from './regen-steps/mq-r2.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
@@ -82,7 +84,8 @@ const LEGACY_STEPS: readonly Step[] = [
     name: 'profile-rows',
     argv: pnpm('profile:rows'),
     outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'],
-    reads: [FIXTURES, FONTS, ...EVIDENCE_READS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
+    // EVIDENCE_READS are digested only by device-evidence.ts, which profile:rows does not load (lanes-file.ts, lane-ids.ts).
+    reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
   },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
   { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json'], reads: [FIXTURES, FONTS], lists: ['packages/parity/expected-hit'] },
@@ -125,7 +128,9 @@ const LEGACY_STEPS: readonly Step[] = [
 export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   bg2: BG2,
   'env-safe': ENV_SAFE,
+  'gen-c': GEN_C,
   'mq-r1': MQ_R1,
+  'mq-r2': MQ_R2,
   ovfl: OVFL,
   pnt1: PNT1,
   pnt2: PNT2,

@@ -1,0 +1,19 @@
+{
+  "case": "list-markers-disc-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t2:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n1b:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f1s:text0","data":"Q","lines":1,"units":[0],"blank":[]},
+    {"id":"i1s:text0","data":"Q","lines":1,"units":[0],"blank":[]},
+    {"id":"i1s:text1","data":"R","lines":1,"units":[0],"blank":[]},
+    {"id":"l1:text0","data":"C","lines":1,"units":[0],"blank":[]},
+    {"id":"p1s:text0","data":"C","lines":1,"units":[0],"blank":[]},
+    {"id":"p2d:text0","data":"E","lines":1,"units":[0],"blank":[]},
+    {"id":"b1:text0","data":"C","lines":1,"units":[0],"blank":[]},
+    {"id":"fl1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fl2:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

@@ -918,7 +918,7 @@ function ratioFlexMain(ctx: Ctx, box: LayoutBox, isRow: boolean, columnCross: LU
   }
   const fromRatio = blockFromRatio(s, hbp, vbp, columnCross);
   // The content height without the ratio (Blink LayoutResult::IntrinsicBlockSize).
-  const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, strut: box.strut, children: box.children };
+  const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, strut: box.strut, marker: box.marker, children: box.children };
   const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true, bfcLineOffset: ZERO });
   const minWidth = lengthMinWidth(box.id, s.minWidth);
   const maxWidth = lengthMaxWidth(box.id, s.maxWidth);

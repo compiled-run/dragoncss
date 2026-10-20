@@ -1,0 +1,13 @@
+{
+  "case": "scroll-snap-values-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,5]]},
+    {"id":"t2:text0","lines":[[0,2]]},
+    {"id":"t2b:text0","lines":[[0,1]]},
+    {"id":"t3:text0","lines":[[0,5]]},
+    {"id":"t4c:text0","lines":[[0,3]]},
+    {"id":"t5:text0","lines":[[0,2]]},
+    {"id":"b6:text0","lines":[[0,5]]}
+  ]
+}

@@ -31,6 +31,7 @@ import type {
   LineHeightCalc,
   LineHeightValue,
   LineStrut,
+  ListMarker,
   MarginValue,
   MaxInlineSizeValue,
   MaxSizeValue,
@@ -161,6 +162,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
 function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
   if (styleNeedsEnvironment(b.style)) return true;
   if (b.strut !== null && fontNeedsEnvironment(b.strut.font, b.strut.lineHeight, faults)) return true;
+  if (b.marker !== null && fontNeedsEnvironment(b.marker.font, b.marker.lineHeight, faults)) return true;
   if (resolveOrder(b.style.order, faults) !== b.style.order) return true;
   for (const c of b.children) {
     if (c.kind === 'box') {
@@ -218,7 +220,7 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
 function resolveBox(b: LayoutBox, parent: Env): LayoutBox {
   const env: Env = { ...parent, node: b.id };
   const children = b.children.map((c): LayoutBox | ReplacedLeaf | InlineChild => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveInline(c, env)));
-  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: b.strut === null ? null : resolveStrut(b.strut, env), children };
+  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: b.strut === null ? null : resolveStrut(b.strut, env), marker: b.marker === null ? null : resolveMarker(b.marker, env), children };
 }
 
 function resolveInline(c: InlineChild, parent: Env): InlineChild {
@@ -235,6 +237,12 @@ function resolveInline(c: InlineChild, parent: Env): InlineChild {
 function resolveStrut(s: LineStrut, env: Env): LineStrut {
   const size = computedSize(s.font, env);
   return { font: { family: s.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true }, lineHeight: resolveLineHeightValue(s.lineHeight, size, env) };
+}
+
+/** A list marker at its computed font size, as a strut's. */
+function resolveMarker(m: ListMarker, env: Env): ListMarker {
+  const s = resolveStrut({ font: m.font, lineHeight: m.lineHeight }, env);
+  return { id: m.id, kind: m.kind, symbol: m.symbol, text: m.text, font: s.font, lineHeight: s.lineHeight };
 }
 
 /** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
@@ -316,7 +324,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     textIndent: envPadding(s.textIndent, env),
     containIntrinsicWidth: s.containIntrinsicWidth.kind === 'px' ? lengthPx(s.containIntrinsicWidth, env.zoom) : s.containIntrinsicWidth,
     containIntrinsicHeight: s.containIntrinsicHeight.kind === 'px' ? lengthPx(s.containIntrinsicHeight, env.zoom) : s.containIntrinsicHeight,
-    grid: s.grid === null ? null : zoomGrid(s.grid, env.zoom),
+    grid: s.grid === null ? null : resolveGrid(s.grid, env),
   };
 }
 
@@ -326,59 +334,67 @@ function resolveVerticalAlign(v: VerticalAlignValue, env: Env): VerticalAlignVal
   return v;
 }
 
-/** Grid track sizes: px breadths and fit-content limits are zoomed; %, fr and the keywords are not. */
-function zoomGrid(g: GridContainerStyle, z: number): GridContainerStyle {
-  const repeaters = (rs: readonly TrackRepeater[]): TrackRepeater[] => rs.map((r): TrackRepeater => ({ count: r.count, sizes: r.sizes.map((t) => zoomTrack(t, z)) }));
+/**
+ * Grid track sizes: px breadths and fit-content limits are zoomed, and a calculation resolves as a length does (Blink
+ * ConvertGridTrackBreadth through ConvertLength): to px without a percentage, else a calculation; %, fr and the keywords stay.
+ */
+function resolveGrid(g: GridContainerStyle, env: Env): GridContainerStyle {
+  const repeaters = (rs: readonly TrackRepeater[]): TrackRepeater[] => rs.map((r): TrackRepeater => ({ count: r.count, sizes: r.sizes.map((t) => resolveTrack(t, env)) }));
   return {
     ...g,
     templateColumns: repeaters(g.templateColumns),
     templateRows: repeaters(g.templateRows),
-    autoColumns: g.autoColumns.map((t) => zoomTrack(t, z)),
-    autoRows: g.autoRows.map((t) => zoomTrack(t, z)),
-    autoRepeatColumns: zoomAutoRepeat(g.autoRepeatColumns, z),
-    autoRepeatRows: zoomAutoRepeat(g.autoRepeatRows, z),
+    autoColumns: g.autoColumns.map((t) => resolveTrack(t, env)),
+    autoRows: g.autoRows.map((t) => resolveTrack(t, env)),
+    autoRepeatColumns: resolveAutoRepeat(g.autoRepeatColumns, env),
+    autoRepeatRows: resolveAutoRepeat(g.autoRepeatRows, env),
   };
 }
 
-function zoomAutoRepeat(r: GridAutoRepeat | null, z: number): GridAutoRepeat | null {
+function resolveAutoRepeat(r: GridAutoRepeat | null, env: Env): GridAutoRepeat | null {
   if (r === null) return null;
-  return { type: r.type, index: r.index, sizes: r.sizes.map((t) => zoomTrack(t, z)), lineNames: r.lineNames };
+  return { type: r.type, index: r.index, sizes: r.sizes.map((t) => resolveTrack(t, env)), lineNames: r.lineNames };
 }
 
-function zoomTrack(t: TrackSize, z: number): TrackSize {
-  if (t.kind === 'breadth') return { kind: 'breadth', breadth: zoomBreadth(t.breadth, z) };
-  if (t.kind === 'minmax') return { kind: 'minmax', min: zoomBreadth(t.min, z), max: zoomBreadth(t.max, z) };
-  return { kind: 'fit-content', limit: t.limit.kind === 'px' ? lengthPx(t.limit, z) : t.limit };
+function resolveTrack(t: TrackSize, env: Env): TrackSize {
+  if (t.kind === 'breadth') return { kind: 'breadth', breadth: resolveBreadth(t.breadth, env) };
+  if (t.kind === 'minmax') return { kind: 'minmax', min: resolveBreadth(t.min, env), max: resolveBreadth(t.max, env) };
+  if (t.limit.kind === 'px') return { kind: 'fit-content', limit: lengthPx(t.limit, env.zoom) };
+  if (t.limit.kind === 'calc') return { kind: 'fit-content', limit: resolveLengthCalc(t.limit, env) };
+  return t;
 }
 
-/** A px track breadth is a length (Blink ConvertGridTrackBreadth through ConvertLength): zoomed, then clamped to the CSS length range. */
-function zoomBreadth(b: TrackBreadth, z: number): TrackBreadth {
-  return b.kind === 'px' ? lengthPx(b, z) : b;
+/** A px track breadth is a length: zoomed, then clamped to the CSS length range. */
+function resolveBreadth(b: TrackBreadth, env: Env): TrackBreadth {
+  if (b.kind === 'px') return lengthPx(b, env.zoom);
+  if (b.kind === 'calc') return resolveLengthCalc(b, env);
+  return b;
 }
 
-function breadthOutOfRange(b: TrackBreadth): boolean {
-  return b.kind === 'px' && !inCssLengthRange(b.value);
+/** A calculation, or a px breadth outside the CSS length range. */
+function breadthNeedsEnvironment(b: TrackBreadth): boolean {
+  return b.kind === 'calc' || (b.kind === 'px' && !inCssLengthRange(b.value));
 }
 
-function trackOutOfRange(t: TrackSize): boolean {
-  if (t.kind === 'breadth') return breadthOutOfRange(t.breadth);
-  if (t.kind === 'minmax') return breadthOutOfRange(t.min) || breadthOutOfRange(t.max);
-  return t.limit.kind === 'px' && !inCssLengthRange(t.limit.value);
+function trackNeedsEnvironment(t: TrackSize): boolean {
+  if (t.kind === 'breadth') return breadthNeedsEnvironment(t.breadth);
+  if (t.kind === 'minmax') return breadthNeedsEnvironment(t.min) || breadthNeedsEnvironment(t.max);
+  return t.limit.kind === 'calc' || (t.limit.kind === 'px' && !inCssLengthRange(t.limit.value));
 }
 
-function tracksOutOfRange(ts: readonly TrackSize[]): boolean {
-  for (const t of ts) if (trackOutOfRange(t)) return true;
+function tracksNeedEnvironment(ts: readonly TrackSize[]): boolean {
+  for (const t of ts) if (trackNeedsEnvironment(t)) return true;
   return false;
 }
 
-/** Whether a grid container holds a px track size or fit-content() limit outside the CSS length range (clamped by the pass). */
+/** Whether a grid container holds a calculated track size or fit-content() limit, or a px one outside the CSS length range. */
 function gridNeedsEnvironment(g: GridContainerStyle | null): boolean {
   if (g === null) return false;
-  for (const r of g.templateColumns) if (tracksOutOfRange(r.sizes)) return true;
-  for (const r of g.templateRows) if (tracksOutOfRange(r.sizes)) return true;
-  if (g.autoRepeatColumns !== null && tracksOutOfRange(g.autoRepeatColumns.sizes)) return true;
-  if (g.autoRepeatRows !== null && tracksOutOfRange(g.autoRepeatRows.sizes)) return true;
-  return tracksOutOfRange(g.autoColumns) || tracksOutOfRange(g.autoRows);
+  for (const r of g.templateColumns) if (tracksNeedEnvironment(r.sizes)) return true;
+  for (const r of g.templateRows) if (tracksNeedEnvironment(r.sizes)) return true;
+  if (g.autoRepeatColumns !== null && tracksNeedEnvironment(g.autoRepeatColumns.sizes)) return true;
+  if (g.autoRepeatRows !== null && tracksNeedEnvironment(g.autoRepeatRows.sizes)) return true;
+  return tracksNeedEnvironment(g.autoColumns) || tracksNeedEnvironment(g.autoRows);
 }
 
 /** order: a math function's number rounded half toward +infinity and clamped to int; an integer in range is itself. */
@@ -979,6 +995,7 @@ function calcDependencies(e: CalcExpr, out: DependencyFlags): void {
 function boxDependencies(b: LayoutBox, out: DependencyFlags): void {
   styleDependencies(b.style, out);
   if (b.strut !== null) fontDependencies(b.strut.font, b.strut.lineHeight, out);
+  if (b.marker !== null) fontDependencies(b.marker.font, b.marker.lineHeight, out);
   for (const c of b.children) {
     if (c.kind === 'box') boxDependencies(c, out);
     else if (c.kind === 'replaced') styleDependencies(c.style, out);
@@ -1027,6 +1044,26 @@ function styleDependencies(s: LayoutStyle, out: DependencyFlags): void {
   if (s.columnGap.kind === 'calc') calcDependencies(s.columnGap.expr, out);
   if (s.verticalAlign.kind === 'calc') calcDependencies(s.verticalAlign.expr, out);
   if (s.textIndent.kind === 'calc') calcDependencies(s.textIndent.expr, out);
+  if (s.grid !== null) gridDependencies(s.grid, out);
+}
+
+/** The environment inputs a grid container's track sizes read. */
+function gridDependencies(g: GridContainerStyle, out: DependencyFlags): void {
+  for (const r of g.templateColumns) tracksDependencies(r.sizes, out);
+  for (const r of g.templateRows) tracksDependencies(r.sizes, out);
+  tracksDependencies(g.autoColumns, out);
+  tracksDependencies(g.autoRows, out);
+  if (g.autoRepeatColumns !== null) tracksDependencies(g.autoRepeatColumns.sizes, out);
+  if (g.autoRepeatRows !== null) tracksDependencies(g.autoRepeatRows.sizes, out);
+}
+
+function tracksDependencies(ts: readonly TrackSize[], out: DependencyFlags): void {
+  for (const t of ts) {
+    if (t.kind === 'breadth' && t.breadth.kind === 'calc') calcDependencies(t.breadth.expr, out);
+    if (t.kind === 'minmax' && t.min.kind === 'calc') calcDependencies(t.min.expr, out);
+    if (t.kind === 'minmax' && t.max.kind === 'calc') calcDependencies(t.max.expr, out);
+    if (t.kind === 'fit-content' && t.limit.kind === 'calc') calcDependencies(t.limit.expr, out);
+  }
 }
 
 /** The environment inputs the input's tree reads (translated, so the native hosts ask the engine rather than re-walk the tree). */

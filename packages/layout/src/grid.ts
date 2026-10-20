@@ -13,6 +13,7 @@ import type {
   GridLineName,
   GridSelfAlign,
   GridSpan,
+  CalcExpr,
   LayoutBox,
   LayoutStyle,
   Percent,
@@ -54,7 +55,7 @@ import {
   weightedShare,
   ZERO,
 } from './units.ts';
-import type { AreaRect, Edges, Frag, HeightBasis, MinMax, OutOfFlow, Placed, StaticAxis, StaticEdge } from './box.ts';
+import type { AreaRect, Edges, Frag, HeightBasis, LengthPercent, MinMax, OutOfFlow, Placed, StaticAxis, StaticEdge } from './box.ts';
 import {
   blockMinMax,
   borderBoxFromSpecified,
@@ -257,7 +258,10 @@ type GridProps = {
 };
 
 /** Blink GridTrackSize: min and max breadths, or fit-content (min and max auto, with the limit). */
-type GridTrack = { readonly fitContent: boolean; readonly min: TrackBreadth; readonly max: TrackBreadth; readonly limit: Px | Percent | null };
+type GridTrack = { readonly fitContent: boolean; readonly min: TrackBreadth; readonly max: TrackBreadth; readonly limit: FixedBreadth | null };
+
+/** A length, percentage or calculation breadth (Length::HasOnlyFixedAndPercent). */
+type FixedBreadth = LengthPercent;
 
 type GridSet = {
   readonly trackCount: number;
@@ -397,7 +401,9 @@ function trackOf(t: TrackSize, fitContentAsAuto: boolean): GridTrack {
 
 const isAuto = (b: TrackBreadth): boolean => b.kind === 'auto';
 /** Length::HasOnlyFixedAndPercent. */
-const isFixed = (b: TrackBreadth): boolean => b.kind === 'px' || b.kind === 'percent';
+const isFixed = (b: TrackBreadth): boolean => b.kind === 'px' || b.kind === 'percent' || b.kind === 'calc';
+/** Length::MayHavePercentDependence: a percentage or any calculation. */
+const mayHavePercent = (b: TrackBreadth): boolean => b.kind === 'percent' || b.kind === 'calc';
 const isFlex = (b: TrackBreadth): boolean => b.kind === 'fr';
 const isContent = (b: TrackBreadth): boolean => b.kind === 'min-content' || b.kind === 'max-content';
 const minIntrinsic = (t: GridTrack): boolean => isContent(t.min) || isAuto(t.min) || t.fitContent;
@@ -408,35 +414,53 @@ function breadthEqual(a: TrackBreadth, b: TrackBreadth): boolean {
   if (a.kind === 'px' && b.kind === 'px') return a.value === b.value;
   if (a.kind === 'percent' && b.kind === 'percent') return a.value === b.value;
   if (a.kind === 'fr' && b.kind === 'fr') return a.value === b.value;
+  if (a.kind === 'calc' && b.kind === 'calc') return calcEqual(a.expr, b.expr);
   return a.kind === b.kind;
+}
+
+/** CalculationValue::operator==: the same expression tree, leaf by leaf (pixels-and-percent compares its values only). */
+function calcEqual(a: CalcExpr, b: CalcExpr): boolean {
+  if (a.kind === 'pixels-and-percent' && b.kind === 'pixels-and-percent') return a.pixels === b.pixels && a.percent === b.percent;
+  if (a.kind === 'number' && b.kind === 'number') return a.value === b.value;
+  if (a.kind === 'invert' && b.kind === 'invert') return calcEqual(a.term, b.term);
+  if (a.kind === 'clamp' && b.kind === 'clamp') return calcEqual(a.min, b.min) && calcEqual(a.value, b.value) && calcEqual(a.max, b.max);
+  if ((a.kind === 'sum' && b.kind === 'sum') || (a.kind === 'product' && b.kind === 'product') || (a.kind === 'min' && b.kind === 'min') || (a.kind === 'max' && b.kind === 'max')) {
+    if (a.terms.length !== b.terms.length) return false;
+    for (let i = 0; i < a.terms.length; i++) if (!calcEqual(a.terms[i] as CalcExpr, b.terms[i] as CalcExpr)) return false;
+    return true;
+  }
+  return false;
 }
 
 /** GridTrackSize::IsDefinite: fixed and equal minimum and maximum. */
 const trackDefinite = (t: GridTrack): boolean => isFixed(t.min) && isFixed(t.max) && breadthEqual(t.min, t.max);
 
+/** GridTrackSize::HasPercentage (MayHavePercentDependence). */
 function trackHasPercentage(t: GridTrack): boolean {
-  if (t.fitContent) return t.limit !== null && t.limit.kind === 'percent';
-  return t.min.kind === 'percent' || t.max.kind === 'percent';
+  if (t.fitContent) return t.limit !== null && mayHavePercent(t.limit);
+  return mayHavePercent(t.min) || mayHavePercent(t.max);
 }
 
 /** Blink GridSet constructor: % breadths behave as auto against an indefinite size, and a flexible minimum is auto. */
 function normalizeTrack(t: GridTrack, indefinite: boolean): GridTrack {
   if (t.fitContent) {
-    if (indefinite && t.limit !== null && t.limit.kind === 'percent') return { fitContent: false, min: { kind: 'auto' }, max: { kind: 'max-content' }, limit: null };
+    if (indefinite && t.limit !== null && hasPercent(t.limit)) return { fitContent: false, min: { kind: 'auto' }, max: { kind: 'max-content' }, limit: null };
     return t;
   }
-  const min: TrackBreadth = (indefinite && t.min.kind === 'percent') || isFlex(t.min) ? { kind: 'auto' } : t.min;
-  const max: TrackBreadth = indefinite && t.max.kind === 'percent' ? { kind: 'auto' } : t.max;
+  const min: TrackBreadth = (indefinite && breadthHasPercent(t.min)) || isFlex(t.min) ? { kind: 'auto' } : t.min;
+  const max: TrackBreadth = indefinite && breadthHasPercent(t.max) ? { kind: 'auto' } : t.max;
   return { fitContent: false, min, max, limit: null };
 }
 
-/** MinimumValueForLength for a fixed or % breadth. */
-function breadthValue(b: Px | Percent, available: LU): LU {
-  return b.kind === 'px' ? fromCssPx(b.value) : percentOf(available, b.value);
+const breadthHasPercent = (b: TrackBreadth): boolean => (b.kind === 'percent' || b.kind === 'calc') && hasPercent(b);
+
+/** MinimumValueForLength for a fixed, % or calculated breadth. */
+function breadthValue(b: FixedBreadth, available: LU, faults: EngineFaults): LU {
+  return resolveLength(b, available, faults);
 }
 
-function fixedValue(b: TrackBreadth, available: LU): LU {
-  if (b.kind === 'px' || b.kind === 'percent') return breadthValue(b, available);
+function fixedValue(b: TrackBreadth, available: LU, faults: EngineFaults): LU {
+  if (b.kind === 'px' || b.kind === 'percent' || b.kind === 'calc') return breadthValue(b, available, faults);
   throw new Error(`a ${b.kind} breadth has no fixed value`);
 }
 
@@ -463,16 +487,16 @@ type GridAxisTracks = {
 };
 
 /** GridTrackSize::HasFixedMinTrackBreadth: the minimum breadth when it is a length or percentage. */
-function fixedMinOf(t: TrackSize): Px | Percent | null {
-  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' ? t.breadth : null;
-  if (t.kind === 'minmax') return t.min.kind === 'px' || t.min.kind === 'percent' ? t.min : null;
+function fixedMinOf(t: TrackSize): FixedBreadth | null {
+  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' || t.breadth.kind === 'calc' ? t.breadth : null;
+  if (t.kind === 'minmax') return t.min.kind === 'px' || t.min.kind === 'percent' || t.min.kind === 'calc' ? t.min : null;
   return null;
 }
 
 /** GridTrackSize::HasFixedMaxTrackBreadth: the maximum breadth when it is a length or percentage. */
-function fixedMaxOf(t: TrackSize): Px | Percent | null {
-  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' ? t.breadth : null;
-  if (t.kind === 'minmax') return t.max.kind === 'px' || t.max.kind === 'percent' ? t.max : null;
+function fixedMaxOf(t: TrackSize): FixedBreadth | null {
+  if (t.kind === 'breadth') return t.breadth.kind === 'px' || t.breadth.kind === 'percent' || t.breadth.kind === 'calc' ? t.breadth : null;
+  if (t.kind === 'minmax') return t.max.kind === 'px' || t.max.kind === 'percent' || t.max.kind === 'calc' ? t.max : null;
   return null;
 }
 
@@ -483,16 +507,16 @@ function definitionIntrinsic(t: TrackSize): boolean {
 }
 
 /** One repetition of a repeater's sizes, each with a gutter; an automatic repeater floors each size at 1px. */
-function repeaterSize(sizes: readonly TrackSize[], isAutoRepeater: boolean, gutter: LU, available: LU): LU {
+function repeaterSize(sizes: readonly TrackSize[], isAutoRepeater: boolean, gutter: LU, available: LU, faults: EngineFaults): LU {
   let size = ZERO;
   for (const t of sizes) {
     if (definitionIntrinsic(t)) throw new Error('an automatic repetition beside an intrinsic track size; validateLayoutInput rejects this input');
     const min = fixedMinOf(t);
     const max = fixedMaxOf(t);
     let contribution = ZERO;
-    if (max !== null && min !== null) contribution = maxLu(breadthValue(max, available), breadthValue(min, available));
-    else if (max !== null) contribution = breadthValue(max, available);
-    else if (min !== null) contribution = breadthValue(min, available);
+    if (max !== null && min !== null) contribution = maxLu(breadthValue(max, available, faults), breadthValue(min, available, faults));
+    else if (max !== null) contribution = breadthValue(max, available, faults);
+    else if (min !== null) contribution = breadthValue(min, available, faults);
     if (isAutoRepeater) contribution = maxLu(fromCssPx(1), contribution);
     size = add(size, add(contribution, gutter));
   }
@@ -503,14 +527,14 @@ function repeaterSize(sizes: readonly TrackSize[], isAutoRepeater: boolean, gutt
  * Blink CalculateAutomaticRepetitions (grid_layout_utils.cc): with a definite size, or else a maximum, the most repetitions that
  * fit (floor); with only a minimum, the fewest that fill it (ceil); never fewer than one (css-grid-2 §7.2.3.2).
  */
-function autoRepetitions(template: readonly TrackRepeater[], auto: GridAutoRepeat, gutter: LU, available: LU, minAvailable: LU, maxAvailable: LU, faults: GridFaults): number {
+function autoRepetitions(template: readonly TrackRepeater[], auto: GridAutoRepeat, gutter: LU, available: LU, minAvailable: LU, maxAvailable: LU, faults: GridFaults, engineFaults: EngineFaults): number {
   let size = available;
   let max = maxAvailable;
   if (size === INDEFINITE) size = minAvailable;
   else max = size;
   let nonAuto = ZERO;
-  for (const r of template) nonAuto = add(nonAuto, mulInt(repeaterSize(r.sizes, false, gutter, size), r.count));
-  const autoSize = repeaterSize(auto.sizes, true, gutter, size);
+  for (const r of template) nonAuto = add(nonAuto, mulInt(repeaterSize(r.sizes, false, gutter, size, engineFaults), r.count));
+  const autoSize = repeaterSize(auto.sizes, true, gutter, size, engineFaults);
   nonAuto = sub(nonAuto, gutter);
   if (max !== LU_MAX) {
     const fit = divLu(sub(max, nonAuto), autoSize);
@@ -542,7 +566,7 @@ function axisTracks(box: LayoutBox, g: GridContainerStyle, axis: GridAxis, avail
   const columns = axis === 'columns';
   const size = columns ? available.inline : available.block;
   const gutter = gutterSize(box, axis, size, engineFaults);
-  const repetitions = autoRepetitions(template, auto, gutter, size, columns ? available.minInline : available.minBlock, columns ? available.maxInline : available.maxBlock, faults);
+  const repetitions = autoRepetitions(template, auto, gutter, size, columns ? available.minInline : available.minBlock, columns ? available.maxInline : available.maxBlock, faults, engineFaults);
   for (let i = 0; i <= template.length; i++) {
     if (i === auto.index) repeaters.push({ count: repetitions, sizes: auto.sizes, autoFit: auto.type === 'auto-fit' });
     if (i < template.length) {
@@ -1161,9 +1185,9 @@ function buildSets(grid: GridState, c: GridCollection, available: LU): void {
   c.props = all;
   for (const s of c.sets) {
     const t = s.track;
-    if (t.fitContent && t.limit !== null) s.fitContentLimit = mulInt(breadthValue(t.limit, available), s.trackCount);
-    s.growthLimit = isFixed(t.max) ? mulInt(fixedValue(t.max, available), s.trackCount) : INDEFINITE;
-    initBaseSize(s, isFixed(t.min) ? mulInt(fixedValue(t.min, available), s.trackCount) : ZERO);
+    if (t.fitContent && t.limit !== null) s.fitContentLimit = mulInt(breadthValue(t.limit, available, grid.engineFaults), s.trackCount);
+    s.growthLimit = isFixed(t.max) ? mulInt(fixedValue(t.max, available, grid.engineFaults), s.trackCount) : INDEFINITE;
+    initBaseSize(s, isFixed(t.min) ? mulInt(fixedValue(t.min, available, grid.engineFaults), s.trackCount) : ZERO);
   }
 }
 

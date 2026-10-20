@@ -7,7 +7,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { CompilerFaults } from '../faults.ts';
-import { usedColors } from '../lower/paint/colors.ts';
+import { glyphFill } from '../lower/paint/colors.ts';
 import type { Diagnostic } from '../types.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
@@ -81,7 +81,7 @@ function inlineDescendants(el: ResolvedElement): ResolvedElement[] {
 }
 
 /** The style the ellipsis takes from its block and the native text view from its text: colour, visibility and face. */
-const paintOf = (e: ResolvedElement): string => JSON.stringify([usedColors(e).color, ...(['visibility', 'font-family', 'font-weight', 'font-style'] as const).map((p) => valueToString(prop(e, p).value))]);
+const paintOf = (e: ResolvedElement): string => JSON.stringify([glyphFill(e), ...(['visibility', 'font-family', 'font-weight', 'font-style'] as const).map((p) => valueToString(prop(e, p).value))]);
 
 /**
  * The refusals of the legacy -webkit-box and of the line-clamp pattern. hidden: the element is in a display: none subtree, where

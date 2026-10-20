@@ -1,0 +1,6 @@
+<div panel
+{open === true ? 'open' : ''}
+open: [false, true] = false
+component App
+<html>
+<body>

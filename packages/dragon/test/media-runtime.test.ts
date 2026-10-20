@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import type { Compiled, FrontEndResult } from '../src/index.ts';
 import { createProject } from '../src/index.ts';
 import { createProjectWith, MAX_STATE_TABLE_ASSIGNMENTS, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, nativePrograms, NO_FAULTS } from '../src/internal.ts';
-import { bandTableOf, refuseBandedStateSpace } from '../src/lower/band-program.ts';
+import { bandEnvironmentOf, bandTableOf, refuseBandedStateSpace } from '../src/lower/band-program.ts';
+import { DESKTOP_DEVICE } from '../src/media/index.ts';
 import { rtBand } from '@dragon/layout';
 import { band, parseMediaQueryList } from '../src/media/index.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -105,7 +106,7 @@ describe('the native refusals MQ-R1 adds beside R8 (PR #140 review)', () => {
     const p = band(['(width <= 400px)', '(width > 400px)'].map((x) => parseMediaQueryList(x)));
     if (p.kind !== 'bands') throw new Error(p.detail);
     // The review's root: 1400 px at DPR 3.5 is 400.0000305 css px, where both atoms hold (vector 11).
-    const k = rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS);
+    const k = rtBand.bandAtPx(bandTableOf(p), 1400, 1000, { ...bandEnvironmentOf(DESKTOP_DEVICE), dpr: 3.5 }, rtBand.NO_BAND_FAULTS);
     expect(p.bands[k]?.truth).toEqual([true, true]);
   });
   it('the (assignment, band) pairs of a native state table are capped at 64, as a diagnostic at the first @media', () => {

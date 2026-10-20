@@ -38,6 +38,9 @@ import type {
   LineBreak,
   LineHeightValue,
   LineStrut,
+  ListMarker,
+  MarkerKind,
+  MarkerSymbol,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -140,13 +143,16 @@ import type { ScriptStep, TransitionListing, TransitionState } from '../../layou
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
-import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
-import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors } from '../../layout/src/rt-animator.ts';
+import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, OriginTable, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
+import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
 import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
+import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature, BandKeyword, BandOp, BandTable } from '../../layout/src/rt-band.ts';
+import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import { symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
@@ -681,6 +687,7 @@ function trackBreadth(v: JsonValue, path: string): TrackBreadth {
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'fr') return { kind: 'fr', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'calc') return lengthCalc(v, path);
   obj(v, ['kind'], path);
   if (k === 'auto') return { kind: 'auto' };
   if (k === 'min-content') return { kind: 'min-content' };
@@ -698,6 +705,7 @@ function trackSize(v: JsonValue, path: string): TrackSize {
   if (k === 'fit-content') {
     const limit = field(obj(v, ['kind', 'limit'], path), 'limit', path);
     const lk = kindOf(limit, `${path}.limit`);
+    if (lk === 'calc') return { kind: 'fit-content', limit: lengthCalc(limit, `${path}.limit`) };
     const value = numField(obj(limit, ['kind', 'value'], `${path}.limit`), 'value', `${path}.limit`);
     if (lk === 'px') return { kind: 'fit-content', limit: { kind: 'px', value } };
     if (lk === 'percent') return { kind: 'fit-content', limit: { kind: 'percent', value } };
@@ -924,18 +932,20 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'marker', 'children'], path);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
   const strut = field(o, 'strut', path);
+  const marker = field(o, 'marker', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
     strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
+    marker: marker.kind === 'null' ? null : decodeMarker(marker, `${path}.marker`),
     children,
   };
 }
@@ -943,6 +953,20 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
 function decodeStrut(v: JsonValue, path: string): LineStrut {
   const o = obj(v, ['font', 'lineHeight'], path);
   return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeMarker(v: JsonValue, path: string): ListMarker {
+  const o = obj(v, ['id', 'kind', 'symbol', 'text', 'font', 'lineHeight'], path);
+  const symbol = field(o, 'symbol', path);
+  const text = field(o, 'text', path);
+  return {
+    id: str(field(o, 'id', path), `${path}.id`),
+    kind: lit(field(o, 'kind', path), ['symbol', 'text'], `${path}.kind`) as MarkerKind,
+    symbol: symbol.kind === 'null' ? null : (lit(symbol, ['disc', 'circle', 'square'], `${path}.symbol`) as MarkerSymbol),
+    text: text.kind === 'null' ? null : str(text, `${path}.text`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+  };
 }
 
 function decodeInline(o: JsonObj, path: string): InlineBox {
@@ -1021,7 +1045,7 @@ const FAULT_KEYS: readonly string[] = [
   'wordSpacingAtItemStart', 'wordSpacingSkipsNbsp',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
-  'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored',
+  'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
   'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
@@ -1109,6 +1133,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     breakAnywhereAlways: b('breakAnywhereAlways'),
     emergencyBreakBeforeOpportunity: b('emergencyBreakBeforeOpportunity'),
     wordBreakBreakWordIgnored: b('wordBreakBreakWordIgnored'),
+    breakAllIgnored: b('breakAllIgnored'),
     clampHeightIncludesHiddenLines: b('clampHeightIncludesHiddenLines'),
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
@@ -1594,6 +1619,8 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  // GEN-c: paint-marker.ts, a disc's or square's coverage over its device-px rect.
+  if (name === 'paint:marker:symbolCoverage') return numList(symbolCoverage(str(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)));
   if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
   if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
   if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
@@ -2016,6 +2043,12 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // interaction suite (SELD-R2, T064 R12): the interaction runtime over synthetic tables and an event script.
     case 'rt-interaction':
       return rtInteractionResult(a);
+    // band suite (MQ-R1, T067 R4): a stylesheet's band table looked up at root sizes in whole device px.
+    case 'rt-band':
+      return rtBandResult(a);
+    // pointer suite (MQ-R2, T067 R9): the Android pointer and hover readings of input devices' sources.
+    case 'rt-pointer':
+      return rtPointerResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -2464,15 +2497,33 @@ function anEasing(v: JsonValue, path: string): EasingCode {
 }
 
 function anValueKind(v: JsonValue, path: string): ValueKind {
-  const k = lit(v, ['color', 'length', 'none'], path);
+  const k = lit(v, ['color', 'length', 'transform', 'none'], path);
   if (k === 'color') return 'color';
   if (k === 'length') return 'length';
+  if (k === 'transform') return 'transform';
   return 'none';
 }
 
+/** A table length {kind, px, percent}. */
+function anLength(v: JsonValue, path: string): LengthValue {
+  const o = obj(v, ['kind', 'px', 'percent'], path);
+  const k = lit(field(o, 'kind', path), ['px', 'percent', 'calc'], `${path}.kind`);
+  const px = numField(o, 'px', path);
+  const percent = numField(o, 'percent', path);
+  if (k === 'px') return { kind: 'px', px, percent };
+  if (k === 'percent') return { kind: 'percent', px, percent };
+  return { kind: 'calc', px, percent };
+}
+
+/** A table transform function {fn, x, y, angle, sx, sy} (ANIM-b2). */
+function anOp(v: JsonValue, path: string): TransformOp {
+  const o = obj(v, ['fn', 'x', 'y', 'angle', 'sx', 'sy'], path);
+  return { fn: rtTransformFn(field(o, 'fn', path), `${path}.fn`), x: anLength(field(o, 'x', path), `${path}.x`), y: anLength(field(o, 'y', path), `${path}.y`), angle: numField(o, 'angle', path), sx: numField(o, 'sx', path), sy: numField(o, 'sy', path) };
+}
+
 function anValue(v: JsonValue, path: string): ValueCode {
-  const o = obj(v, ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc'], path);
-  return { kind: anValueKind(field(o, 'kind', path), `${path}.kind`), r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path), px: numField(o, 'px', path), percent: numField(o, 'percent', path), calc: bool(field(o, 'calc', path), `${path}.calc`) };
+  const o = obj(v, ['kind', 'r', 'g', 'b', 'alpha', 'px', 'percent', 'calc', 'ops'], path);
+  return { kind: anValueKind(field(o, 'kind', path), `${path}.kind`), r: numField(o, 'r', path), g: numField(o, 'g', path), b: numField(o, 'b', path), alpha: numField(o, 'alpha', path), px: numField(o, 'px', path), percent: numField(o, 'percent', path), calc: bool(field(o, 'calc', path), `${path}.calc`), ops: arr(field(o, 'ops', path), `${path}.ops`).map((x, i): TransformOp => anOp(x, `${path}.ops[${i}]`)) };
 }
 
 function anMode(v: JsonValue, path: string): ListingMode {
@@ -2483,7 +2534,10 @@ function anMode(v: JsonValue, path: string): ListingMode {
 }
 
 function anTrackKind(v: JsonValue, path: string): TrackKind {
-  return lit(v, ['length', 'color'], path) === 'length' ? 'length' : 'color';
+  const k = lit(v, ['length', 'color', 'transform'], path);
+  if (k === 'length') return 'length';
+  if (k === 'transform') return 'transform';
+  return 'color';
 }
 
 function anRange(v: JsonValue, path: string): ValueRange {
@@ -2575,8 +2629,19 @@ function anClosure(v: JsonValue, path: string): ClosureTable {
   return { source: anRef(field(o, 'source', path), `${path}.source`), writes: arr(field(o, 'writes', path), `${path}.writes`).map((x, i): TrackRef => anRef(x, `${path}.writes[${i}]`)) };
 }
 
+/** A node's transform-origin per assignment {node, values: [{x, y}]} (ANIM-b2). */
+function anOrigins(v: JsonValue, path: string): OriginTable {
+  const o = obj(v, ['node', 'values'], path);
+  const values = arr(field(o, 'values', path), `${path}.values`).map((x, i): TransformOrigin => {
+    const at = `${path}.values[${i}]`;
+    const p = obj(x, ['x', 'y'], at);
+    return { x: anLength(field(p, 'x', at), `${at}.x`), y: anLength(field(p, 'y', at), `${at}.y`) };
+  });
+  return { node: str(field(o, 'node', path), `${path}.node`), values };
+}
+
 function anTables(v: JsonValue, path: string): AnimTables {
-  const o = obj(v, ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure'], path);
+  const o = obj(v, ['assignments', 'slots', 'animations', 'keyframes', 'rendered', 'bases', 'closure', 'origins'], path);
   return {
     assignments: numField(o, 'assignments', path),
     slots: arr(field(o, 'slots', path), `${path}.slots`).map((x, i): SlotTable => anSlot(x, `${path}.slots[${i}]`)),
@@ -2585,13 +2650,14 @@ function anTables(v: JsonValue, path: string): AnimTables {
     rendered: arr(field(o, 'rendered', path), `${path}.rendered`).map((x, i): RenderedTable => anRendered(x, `${path}.rendered[${i}]`)),
     bases: arr(field(o, 'bases', path), `${path}.bases`).map((x, i): BaseTable => anBase(x, `${path}.bases[${i}]`)),
     closure: arr(field(o, 'closure', path), `${path}.closure`).map((x, i): ClosureTable => anClosure(x, `${path}.closure[${i}]`)),
+    origins: arr(field(o, 'origins', path), `${path}.origins`).map((x, i): OriginTable => anOrigins(x, `${path}.origins[${i}]`)),
   };
 }
 
 /**
  * An animator script: [op, tables, inputs, initial, steps]; inputs are every assignment's engine input resolved at DPR 1, steps
- * ["event", assignment], ["advance", ms] or ["dump"]. Each dump gives the frame (node, property and the serialised value) and the
- * colour writes with their closure as the device draws them.
+ * ["event", assignment], ["advance", ms] or ["dump"]. Each dump gives the frame (node, property and the serialised value), the
+ * colour writes with their closure as the device draws them, and the transform writes (ANIM-b2) the views' writer takes.
  */
 function rtAnimatorResult(a: readonly JsonValue[]): string {
   if (a.length !== 5) return fail('rt-animator: expected [op, tables, inputs, initial, steps]');
@@ -2612,7 +2678,15 @@ function rtAnimatorResult(a: readonly JsonValue[]): string {
       for (const e of frame) values += `${values === '' ? '' : ','}[${q(e.node)},${q(e.property)},${q(serializeValue(e.value, 0, 0, RT_TRIG))}]`;
       let colors = '';
       for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
-      out += `${out === '' ? '' : ','}[[${values}],[${colors}]]`;
+      // ANIM-b2: each transform write, its functions' fields and its origin as bits (lengths unresolved, as the views take them).
+      const len = (l: LengthValue): string => `[${q(l.kind)},${h(l.px)},${h(l.percent)}]`;
+      let transforms = '';
+      for (const w of frameTransforms(s, t, frame)) {
+        let ops = '';
+        for (const o of w.ops) ops += `${ops === '' ? '' : ','}[${q(o.fn)},${len(o.x)},${len(o.y)},${h(o.angle)},${h(o.sx)},${h(o.sy)}]`;
+        transforms += `${transforms === '' ? '' : ','}[${q(w.node)},[${ops}],${len(w.origin.x)},${len(w.origin.y)}]`;
+      }
+      out += `${out === '' ? '' : ','}[[${values}],[${colors}],[${transforms}]]`;
     } else fail(`${path}: unknown step ${op}`);
   });
   return `[${out}]`;
@@ -2724,4 +2798,85 @@ function rtInteractionResult(a: readonly JsonValue[]): string {
     out += `${out === '' ? '' : ','}[${iaElements(hoverMatches(t, s, IA_NO_FAULTS))},${iaElements(activeMatches(t, s, IA_NO_FAULTS))},${h(focusMatch(s))},${h(focusVisibleMatch(s))},${h(interactionCombo(t, s))},${h(interactionState(t, s))}]`;
   });
   return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- band suite (MQ-R1, T067 R4)
+
+function bandOp(v: JsonValue, path: string): BandOp {
+  const t = str(v, path);
+  if (t === 'lt' || t === 'le' || t === 'gt' || t === 'ge' || t === 'eq') return t;
+  return fail(`${path}: unknown band operator ${t}`);
+}
+
+function bandFeature(v: JsonValue, path: string): BandFeature {
+  const t = str(v, path);
+  if (t === 'width' || t === 'height' || t === 'orientation' || t === 'aspect-ratio' || t === 'resolution' || t === 'pointer' || t === 'any-pointer' || t === 'hover' || t === 'any-hover' || t === 'prefers-reduced-motion' || t === 'prefers-color-scheme') return t;
+  return fail(`${path}: unknown band feature ${t}`);
+}
+
+/** An atom [feature, keyword, [[op, value, num, den]...]], numbers as bits. */
+function bandAtom(v: JsonValue, path: string): BandAtom {
+  const a = arr(v, path);
+  if (a.length !== 3) return fail(`${path}: expected [feature, keyword, comparisons]`);
+  const kw = str(item(a, 1, path), `${path}[1]`);
+  let k: BandKeyword = 'none';
+  if (kw === 'portrait' || kw === 'landscape' || kw === 'none' || kw === 'any' || kw === 'coarse' || kw === 'fine' || kw === 'hover' || kw === 'no-preference' || kw === 'reduce' || kw === 'light' || kw === 'dark') k = kw;
+  else return fail(`${path}[1]: unknown keyword ${kw}`);
+  const comparisons: BandComparison[] = [];
+  arr(item(a, 2, path), `${path}[2]`).forEach((c, i) => {
+    const p = `${path}[2][${i.toString(16)}]`;
+    const g = arr(c, p);
+    if (g.length !== 4) fail(`${p}: expected [op, value, num, den]`);
+    comparisons.push({ op: bandOp(item(g, 0, p), p), value: arg(g, 1), num: arg(g, 2), den: arg(g, 3) });
+  });
+  return { feature: bandFeature(item(a, 0, path), `${path}[0]`), comparisons, keyword: k };
+}
+
+/**
+ * A band lookup: [op, [atoms, bands], sizes]; a size is [widthPx, heightPx, dpr] as bits, a band a list of truth values. Each size
+ * gives its media width and height and the band index, as bits.
+ */
+function rtBandResult(a: readonly JsonValue[]): string {
+  if (a.length !== 3) return fail('rt-band: expected [op, table, sizes]');
+  const t = arr(item(a, 1, '$'), '$[1]');
+  if (t.length !== 2) return fail('$[1]: expected [atoms, bands]');
+  const atoms: BandAtom[] = [];
+  arr(item(t, 0, '$[1]'), '$[1][0]').forEach((x, i) => atoms.push(bandAtom(x, `$[1][0][${i.toString(16)}]`)));
+  const bands: boolean[][] = [];
+  arr(item(t, 1, '$[1]'), '$[1][1]').forEach((x, i) => {
+    const row: boolean[] = [];
+    arr(x, `$[1][1][${i.toString(16)}]`).forEach((y, j) => row.push(bool(y, `$[1][1][${i.toString(16)}][${j.toString(16)}]`)));
+    bands.push(row);
+  });
+  const table: BandTable = { atoms, bands };
+  const noFaults: BandFaults = { bandBoundaryExclusive: false, primaryPointerFineFirst: false };
+  let out = '';
+  arr(item(a, 2, '$'), '$[2]').forEach((x, i) => {
+    const p = `$[2][${i.toString(16)}]`;
+    const g = arr(x, p);
+    if (g.length !== 4) fail(`${p}: expected [widthPx, heightPx, dpr, readings]`);
+    const w = arg(g, 0);
+    const hh = arg(g, 1);
+    const dpr = arg(g, 2);
+    // MQ-R2: the readings as [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme].
+    const r = arr(item(g, 3, p), `${p}[3]`);
+    if (r.length !== 7) fail(`${p}[3]: expected [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme]`);
+    const env: BandEnvironment = { dpr, pointer: str(item(r, 0, p), `${p}[3][0]`), hover: bool(item(r, 1, p), `${p}[3][1]`), anyCoarse: bool(item(r, 2, p), `${p}[3][2]`), anyFine: bool(item(r, 3, p), `${p}[3][3]`), anyHover: bool(item(r, 4, p), `${p}[3][4]`), reducedMotion: bool(item(r, 5, p), `${p}[3][5]`), darkScheme: bool(item(r, 6, p), `${p}[3][6]`) };
+    out += `${out === '' ? '' : ','}[${h(mediaSize(w, dpr))},${h(mediaSize(hh, dpr))},${h(bandAtPx(table, w, hh, env, noFaults))}]`;
+  });
+  return `[${out}]`;
+}
+
+/**
+ * The Android pointer readings: [op, devices]; a device is its getSources() as bits. The result is the primary pointer (0 none, 1
+ * coarse, 2 fine), then hover, anyCoarse, anyFine and anyHover as 0 or 1, as bits.
+ */
+function rtPointerResult(a: readonly JsonValue[]): string {
+  if (a.length !== 2) return fail('rt-pointer: expected [op, devices]');
+  const sources: number[] = [];
+  const devices = arr(item(a, 1, '$'), '$[1]');
+  for (let i = 0; i < devices.length; i++) sources.push(arg(devices, i));
+  const r = androidPointerReadings(sources, { bandBoundaryExclusive: false, primaryPointerFineFirst: false });
+  const b = (x: boolean): string => h(x ? 1 : 0);
+  return `[${h(r.pointer === 'coarse' ? 1 : r.pointer === 'fine' ? 2 : 0)},${b(r.hover)},${b(r.anyCoarse)},${b(r.anyFine)},${b(r.anyHover)}]`;
 }

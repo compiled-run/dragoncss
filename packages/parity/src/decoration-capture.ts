@@ -157,7 +157,7 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
   const analysis = appliedDecorationsOf(p.decorated, c.assignment, compilerFaults);
   if (analysis === null) throw new Error(`${c.id}: the decorated compile did not resolve`);
   if (analysis.unproven.length > 0) throw new Error(`${c.id}: decorations in an unproven context: ${JSON.stringify(analysis.unproven)}`);
-  const inkOf = resolvedTextColors(p.decorated, c.assignment);
+  const inkOf = resolvedTextColors(p.decorated, c.assignment, null, true);
   const rects: PaintedRect[] = [];
   for (const t of p.texts) {
     const list = analysis.applied.get(t.id) ?? [];

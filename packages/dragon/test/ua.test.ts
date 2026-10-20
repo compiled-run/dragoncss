@@ -118,6 +118,8 @@ describe('dependency boundaries', () => {
     const imports = [...text.matchAll(/^import .*$/gm)].map((m) => m[0]);
     expect(imports).toEqual([
       "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
+      // ::marker: a list item's resolved marker color, from the resolved tree alone.
+      "import { markerOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",
@@ -127,7 +129,7 @@ describe('dependency boundaries', () => {
       // TXT2-g: the line-clamp longhand names and the clamp container's authored display, from the resolved element alone.
       "import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';",
       // MASK-CLIP: the mask longhand names and their initial values, to leave initial masks unwritten.
-      "import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';",
+      "import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';",
       // MISC-PAINT: the border image longhand names and their initial values, to leave initial border images unwritten.
       "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
       "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",

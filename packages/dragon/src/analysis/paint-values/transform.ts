@@ -1,11 +1,11 @@
-// PNT2: the computed values of transform and transform-origin (lengths in px, as css-transforms-1 §5 and §7 compute them: em and
+// PNT2: the computed values of transform, translate and transform-origin (lengths in px, as css-transforms-1 §5 and §7 compute them: em and
 // rem against the element's font sizes, absolute units by their ratio), and the refusals that depend on where a transform sits in
 // the tree: a transform (or will-change: transform) makes its element the containing block of positioned descendants
 // (css-transforms-1 §3), which the layout engine does not model yet, so every case where that would move a box is refused.
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { TransformFnDecl, TransformLengthDecl, TransformOriginDecl } from '../../css/properties/transform.ts';
-import { inFloatRange, lengthText, originText, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
+import { individualTransformOf, INDIVIDUAL_TRANSFORM_TYPE, INDIVIDUAL_TRANSFORMS, inFloatRange, lengthText, originText, skewsBox, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
 import { lengthToPx } from '../../css/units.ts';
 import type { Diagnostic, Origin } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -41,6 +41,11 @@ export const TRANSFORM_VALUES: PaintValues = {
       const text = transformListText(transformFunctionsOf(t.value.text).map((f) => computedFunction(f, ctx)));
       props.set('transform', { ...t, value: { kind: 'other', type: TRANSFORM_LIST_TYPE, text } });
     }
+    const tr = props.get('translate');
+    if (tr !== undefined && tr.value.kind === 'other' && tr.value.type === INDIVIDUAL_TRANSFORM_TYPE) {
+      const f = individualTransformOf('translate', tr.value.text);
+      if (f.kind === 'translate') props.set('translate', { ...tr, value: { kind: 'other', type: INDIVIDUAL_TRANSFORM_TYPE, text: `${lengthText(toPx(f.x, ctx))} ${lengthText(toPx(f.y, ctx))}` } });
+    }
     const o = props.get('transform-origin');
     // The initial value parses as a two-token list ("50% 50%"); every origin gets the one canonical form.
     if (o !== undefined && o.value.kind === 'other') {
@@ -51,10 +56,18 @@ export const TRANSFORM_VALUES: PaintValues = {
   },
 };
 
-/** The computed transform functions of an element; [] for none. */
+/** The functions of an element's translate, rotate and scale, in that order (css-transforms-2 §4); [] where all are none. */
+export function elementIndividualTransforms(el: ResolvedElement): readonly TransformFnDecl[] {
+  return INDIVIDUAL_TRANSFORMS.flatMap((p) => {
+    const v = (el.props.get(p) as ResolvedValue).value;
+    return v.kind === 'other' && v.type === INDIVIDUAL_TRANSFORM_TYPE ? [individualTransformOf(p, v.text)] : [];
+  });
+}
+
+/** The computed transform functions of an element: translate, rotate and scale, then transform (css-transforms-2 §4); [] for none. */
 export function elementTransform(el: ResolvedElement): readonly TransformFnDecl[] {
   const v = (el.props.get('transform') as ResolvedValue).value;
-  return v.kind === 'other' && v.type === TRANSFORM_LIST_TYPE ? transformFunctionsOf(v.text) : [];
+  return [...elementIndividualTransforms(el), ...(v.kind === 'other' && v.type === TRANSFORM_LIST_TYPE ? transformFunctionsOf(v.text) : [])];
 }
 
 /** The computed transform origin of an element. */
@@ -81,15 +94,16 @@ export function transformsDescendants(el: ResolvedElement): boolean {
 
 /** Where to report a transform refusal: the transform declaration, else the will-change one, else the element. */
 function transformOrigin(el: ResolvedElement): Origin {
-  for (const p of ['transform', 'will-change'] as const) {
+  for (const p of ['transform', ...INDIVIDUAL_TRANSFORMS, 'will-change'] as const) {
     const v = el.props.get(p) as ResolvedValue;
-    if (v.declaration !== null && (p === 'will-change' ? elementWillChange(el).includes('transform') : elementTransform(el).length > 0)) return authored(v.declaration.valueSpan);
+    const set = p === 'will-change' ? elementWillChange(el).includes('transform') : !(v.value.kind === 'keyword' && v.value.value === 'none');
+    if (v.declaration !== null && set) return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;
 }
 
 /**
- * The refusals of transforms by where they sit, on every target: on html and body (the canvas background and the viewport are
+ * The refusals of transforms by where they sit, on every target: a box whose individual transforms and transform compose to a skew, on html and body (the canvas background and the viewport are
  * not transformed with them), on a box that is not block or flex (css-transforms-1: only transformable boxes), a static
  * transformed element that would become the containing block of an absolutely positioned descendant, and a fixed descendant of a
  * transformed element (POSX-f2). A transform extending a scroll container's scrollable overflow (PNT2-o) needs no check yet:
@@ -114,6 +128,8 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
     const address = el.element.address;
     if (own) {
       const tag = el.element.tag;
+      // The properties are each accepted alone; together a rotation after a non-uniform scale can skew the box (css/properties/transform.ts).
+      if (skewsBox(elementTransform(el))) refuse(el, 'skew', `the translate, rotate, scale and transform of ${address} compose to a rotation after a non-uniform scale, which skews the box: Android's View transform cannot express it (package PNT2-m)`, `Rotate ${address} before scaling it unevenly, or scale it evenly.`);
       if (tag === 'html' || tag === 'body') refuse(el, 'root', `a transform on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
       if (display !== 'block' && display !== 'flex') refuse(el, 'display', `a transform on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
       // A box with layout or paint containment is already the containing block, transformed or not (css-contain-2 §3.2).

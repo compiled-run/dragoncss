@@ -1,0 +1,19 @@
+{
+  "case": "mqr-rotate#0",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 98,
+  "gridSha256": "761128b199c5a77b6214bad721a7ab03ccced8cb34cc33cb5db6790426d200ec",
+  "ids": [
+    "frame",
+    "html",
+    "panel",
+    "sib"
+  ],
+  "runs": [[2,4],[0,5],[3,5],[0,2],[3,4],[0,2],[3,4],[0,2],[3,4],[0,18],[2,4],[0,4],[2,4],[0,4],[2,4],[0,4],[1,24]]
+}

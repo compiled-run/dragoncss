@@ -10,7 +10,9 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
+import type { FoldBases } from '../css/math.ts';
+import { foldableUnits, foldLength, mathContextFor, parseMath } from '../css/math.ts';
+import { FOLDED_MATH_PROPERTIES, isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
 import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
@@ -208,6 +210,16 @@ const SPEC_ABSOLUTE_SIZE_PX: { readonly [k: string]: number } = { 'xx-small': 9.
  * are already px. rem uses text scale 1 (docs/decisions.md, Text scale).
  */
 export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null, faults: TxtFsFaults = TXT_FS_FAULTS): void {
+  const foldMath = (p: Longhand, bases: FoldBases, f: TxtFsFaults): void => {
+    const v = props.get(p);
+    if (v === undefined || v.value.kind !== 'other' || v.value.type.startsWith(REFUSED_MATH_PREFIX) || !FOLDED_MATH_PROPERTIES.has(p)) return;
+    const context = mathContextFor(p);
+    if ('refused' in context) return;
+    const parsed = parseMath(v.value.text, context);
+    if (!parsed.ok || !foldableUnits(parsed.node)) return;
+    const px = foldLength(parsed.node, f.calcPercentOfRoot ? { ...bases, percent: bases.rem } : bases);
+    props.set(p, { ...v, value: { kind: 'length', value: Number.isNaN(px) || px < 0 ? 0 : px, unit: CANONICAL_LENGTH_UNIT } });
+  };
   const toPx = (p: Longhand, em: number | null, rem: number | null): void => {
     const v = props.get(p) as ResolvedValue;
     if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT) return;
@@ -230,8 +242,13 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   if (fs.value.kind === 'percentage' && of !== null) {
     props.set('font-size', { ...fs, value: { kind: 'length', value: (fs.value.value * of) / 100, unit: CANONICAL_LENGTH_UNIT } });
   }
+  // CALC-2: a font-size calculation reads em and % of the parent's size and rem of the root's (css-values-4 §6.1.1), clamped to its
+  // non-negative range (§10.10); kept in double, as every compiler length is (the engine stores font sizes as float32 on entry).
+  if (parentFontSize !== null) foldMath('font-size', { em: parentFontSize, rem: rootFontSize ?? parentFontSize, percent: parentFontSize }, faults);
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
+  // A line-height calculation reads em and % of the element's own size (ConvertLineHeight) and computes to an absolute length.
+  if (own !== null) foldMath('line-height', { em: own, rem: rootFontSize ?? own, percent: own }, faults);
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
 }

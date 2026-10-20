@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { Assignment, NativeProgram, ProgramNode, ScriptCase, StateCase, StateEmit, StateProgram } from 'dragon';
-import { applyDelta, ClockError, deriveStateProgram, emitNativeSupport, emitStatePrograms, MAX_STATE_TABLE_ASSIGNMENTS, NO_FAULTS, programAt, stateKey, StateProgramError, StateRuntime, StateValueError, typedSetters, VirtualClock, webStateModule, webStateProgram } from 'dragon';
+import { applyDelta, ClockError, deriveStateProgram, emitNativeSupport, emitStatePrograms, MAX_STATE_TABLE_ASSIGNMENTS, NO_FAULTS, pointerBits, programAt, stateKey, StateProgramError, StateRuntime, StateValueError, typedSetters, VirtualClock, webStateModule, webStateProgram } from 'dragon';
 
 const px = (value: number) => ({ kind: 'px', value });
 const auto = { kind: 'auto' };
@@ -16,7 +16,7 @@ const style = (width: number): LayoutBox['style'] => ({
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: auto, order: 0, justifyContent: 'flex-start', alignItems: 'stretch', alignSelf: 'auto', alignContent: 'normal',
   rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, grid: null, gridItem: null,
 }) as unknown as LayoutBox['style'];
-const box = (id: string, width: number, children: LayoutBox['children'] = []): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, children });
+const box = (id: string, width: number, children: LayoutBox['children'] = []): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, marker: null, children });
 
 const node = (id: string, parent: string | null, color: number): ProgramNode => ({
   id,
@@ -176,7 +176,8 @@ describe('the generated runtime', () => {
     const swift = emitStatePrograms('uikit', [emit]).map((f) => f.text).join('\n');
     expect(swift).toContain('public func set_doc_open(_ v: Bool) { machine.set(0, v ? 1 : 0) }');
     expect(swift).toContain('public enum DragonStates0_doc_side: Int { case v_start = 0; case v_end = 1 }');
-    expect(swift).toContain('private func dragonStates0Input2(_ dpr: Double) -> LayoutInput');
+    // MQ-R1: a layout variant takes the live viewport (the media root's size), not the case's fixed one.
+    expect(swift).toContain('private func dragonStates0Input2(_ dpr: Double, _ vw: Double, _ vh: Double) -> LayoutInput');
     expect(swift).toContain('steps: [.set(0, 1), .set(1, 1), .advance(16.0), .dump])');
     expect(swift).toContain('skipRelayout: false');
     expect(swift).toContain('public let dragonStateCaseList: [DragonStateScript] = [dragonStates0Script0]');
@@ -192,6 +193,73 @@ describe('the generated runtime', () => {
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'advance', ms: -1 }] }] }])).toThrow(/finite, non-negative/);
     expect(() => emitStatePrograms('uikit', [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'set', state: 'doc#open', value: 'x' }] }] }])).toThrow(/no value "x"/);
     expect(() => emitStatePrograms('uikit', [emit, emit])).toThrow(/share an id/);
+  });
+
+  it('MQ-R2: a pointers env step is env(2, bits), and both runtimes decode the bits into every pointer and hover reading', () => {
+    expect(pointerBits({ pointer: 'none', anyPointer: [], hover: 'none', anyHover: 'none' })).toBe(0);
+    expect(pointerBits({ pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'none', anyHover: 'hover' })).toBe(1 | 8 | 16 | 32);
+    expect(pointerBits({ pointer: 'fine', anyPointer: ['fine'], hover: 'hover', anyHover: 'hover' })).toBe(2 | 4 | 16 | 32);
+    // Readings no device gives are refused: a primary pointer that is not present, none with pointers present, hover without any.
+    expect(() => pointerBits({ pointer: 'fine', anyPointer: ['coarse'], hover: 'none', anyHover: 'none' })).toThrow(/primary pointer is not one of/);
+    expect(() => pointerBits({ pointer: 'none', anyPointer: ['coarse'], hover: 'none', anyHover: 'none' })).toThrow(/primary pointer is not one of/);
+    expect(() => pointerBits({ pointer: 'coarse', anyPointer: ['coarse'], hover: 'hover', anyHover: 'none' })).toThrow(/no pointer does/);
+    const value = { pointer: 'coarse', anyPointer: ['coarse', 'fine'], hover: 'hover', anyHover: 'hover' } as const;
+    const script = { ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'env', reading: 'pointers', value } as const, { kind: 'dump' } as const] };
+    expect(emitStatePrograms('uikit', [{ ...emit, scripts: [script] }]).map((f) => f.text).join('\n')).toContain(`.env(2, ${pointerBits(value)})`);
+    expect(emitStatePrograms('android-views', [{ ...emit, scripts: [script] }]).map((f) => f.text).join('\n')).toContain(`DragonScriptStep.Env(2, ${pointerBits(value)})`);
+    const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
+    expect(sw).toContain(': m.machine.readings.pointers(v))');
+    expect(sw).toContain('return DragonReadings(pointer: pointer, hover: bits & 4 != 0, anyCoarse: bits & 8 != 0, anyFine: bits & 16 != 0, anyHover: bits & 32 != 0, reducedMotion: reducedMotion, darkScheme: darkScheme)');
+    const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
+    expect(kt).toContain('else m.machine.readings.pointers(s.v))');
+    expect(kt).toContain('(bits and 4) != 0, (bits and 8) != 0, (bits and 16) != 0, (bits and 32) != 0, reducedMotion, darkScheme)');
+  });
+
+  it('MQ-R2: a motion env step is env(1, v) and a scheme step env(3, v), and both runtimes inject them, reading the scheme from the root view', () => {
+    const steps = (value: 'light' | 'dark') => [{ kind: 'env', reading: 'motion', value: 'reduce' } as const, { kind: 'env', reading: 'scheme', value } as const, { kind: 'dump' } as const];
+    const text = (backend: 'uikit' | 'android-views', value: 'light' | 'dark') => emitStatePrograms(backend, [{ ...emit, scripts: [{ ...(emit.scripts[0] as ScriptCase), steps: steps(value) }] }]).map((f) => f.text).join('\n');
+    expect(text('uikit', 'dark')).toContain('.env(1, 1), .env(3, 1), .dump');
+    expect(text('uikit', 'light')).toContain('.env(1, 1), .env(3, 0), .dump');
+    expect(text('android-views', 'dark')).toContain('DragonScriptStep.Env(1, 1), DragonScriptStep.Env(3, 1), DragonScriptStep.Dump');
+    const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
+    expect(sw).toContain(': reading == 3 ? m.machine.readings.scheme(dark: v == 1) :');
+    // iOS: the root view's trait collection, .dark alone dark, observed through traitCollectionDidChange; the mount's readings start there.
+    expect(sw).toContain('public func dragonDarkScheme(_ view: UIView) -> Bool { return view.traitCollection.userInterfaceStyle == .dark }');
+    expect(sw).toContain('if previous?.userInterfaceStyle != traitCollection.userInterfaceStyle { onStyle?() }');
+    expect(sw).toContain('machine.readings = DragonReadings.platform(media)');
+    expect(sw).toContain('BandEnvironment(scale, JsString(r.pointer), r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion, r.darkScheme)');
+    const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
+    expect(kt).toContain('else if (s.reading == 3) m.machine.readings.scheme(s.v == 1)');
+    // Android: the configuration's night bit, observed through onConfigurationChanged (the host handles uiMode itself).
+    expect(kt).toContain('(config.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES');
+    expect(kt).toContain('override fun onConfigurationChanged(newConfig: Configuration) {');
+    expect(kt).toContain('if (!injected) machine.setReadings(DragonReadings.platform(stage.context, c))');
+    expect(kt).toContain('BandEnvironment(scale, r.pointer, r.hover, r.anyCoarse, r.anyFine, r.anyHover, r.reducedMotion, r.darkScheme)');
+  });
+
+  it('emits an animated program with viewport-relative lengths and resize steps: a size change restyles the animator', () => {
+    const none = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false, ops: [] } as const;
+    const root = (emit.program.variants[0] as StateProgram['variants'][number]).root;
+    const anim = { assignments: emit.program.assignments.length, slots: [], animations: [], keyframes: [], rendered: [], bases: [{ node: root.id, property: 'width', kind: 'length' as const, range: 'all' as const, values: emit.program.assignments.map(() => none) }], closure: [], origins: [] };
+    const vw = { kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width', size: 'small' }, range: 'non-negative' };
+    const program = { ...emit.program, variants: emit.program.variants.map((v) => ({ ...v, root: { ...v.root, style: { ...v.root.style, width: vw } } })) } as StateProgram;
+    const resize = { ...(emit.scripts[0] as ScriptCase), steps: [{ kind: 'resize', width: 600, height: 300 } as const, { kind: 'dump' } as const] };
+    const swift = emitStatePrograms('uikit', [{ ...emit, anim, program, scripts: [resize] }]).map((f) => f.text).join('\n');
+    expect(swift).toContain('anim: dragonStates0AnimTables');
+    expect(swift).toContain('.resize(600.0, 300.0)');
+    const kotlin = emitStatePrograms('android-views', [{ ...emit, anim, program, scripts: [resize] }]).map((f) => f.text).join('\n');
+    expect(kotlin).toContain('DragonScriptStep.Resize(600.0, 300.0)');
+    // The machine: a size change stages every assignment's input at the new viewport, then raises one style change event, through
+    // env#band's setter when the band moves and in the current assignment when it does not.
+    const sw = emitNativeSupport('uikit', null).map((f) => f.text).join('\n');
+    expect(sw).toMatch(/let moved = css != viewport\n {4}viewport = css\n {4}if moved, let a = animator, let m = animatorMeasurer \{ a\.stage\(animatorInputs\(m\)\) \}\n {4}if let b = band \{/);
+    expect(sw).toMatch(/if moved \{ animator\?\.event\(current\) \}\n {4}onChange\?\(\)/);
+    expect(sw).toContain('variants[d.variant](1, viewport.0, viewport.1)');
+    const kt = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
+    expect(kt).toMatch(/val moved = css != viewport\n {4}viewport = css\n/);
+    expect(kt).toContain('if (moved && a != null && m != null) a.stage(animatorInputs(m))');
+    expect(kt).toMatch(/if \(moved\) animator\?\.event\(current\)\n {4}onChange\?\.invoke\(\)/);
+    expect(kt).toContain('variants[it.variant](1.0, viewport.first, viewport.second)');
   });
 
   it('the web attribute program writes each assignment\'s classes and validates before any mutation', async () => {
@@ -244,9 +312,10 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     // ANIM-b1 R4: the animator's style change event comes between the committed set and onChange.
     expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\(\)\n {2}\}/);
     expect(t).toMatch(/machine\.onChange = \{ \[weak self\] in\n {6}self\?\.render\(\)\n/);
-    expect(t).toMatch(/let t = DragonTree\(\)\n {4}machine\.build\(t\)\n {4}stage\.addSubview\(t\.root\)\n {4}do \{\n {6}try t\.apply\(machine\.input\(scale\)/);
+    expect(t).toMatch(/let t = DragonTree\(\)\n {4}machine\.build\(t\)\n {4}media\.addSubview\(t\.root\)\n {4}do \{\n {6}try t\.apply\(machine\.input\(scale\)/);
     expect(t).toMatch(/shown\.root\.removeFromSuperview\(\)\n {4}shown = t\n {4}renders \+= 1/);
-    expect(t).toContain('case .set(let a, let b): m.set(a, b)');
+    // MQ-R1: a script runs on the mount (its resize steps size the mount's media root), its setters on the mount's machine.
+    expect(t).toContain('case .set(let a, let b): m.machine.set(a, b)');
     expect(t).toContain('runs on a state mount, not as a layout case');
   });
 
@@ -254,9 +323,9 @@ describe('the generated state mount (Macroscope 4157246848)', () => {
     const t = support('android-views');
     expect(t).toMatch(/current = to\n {4}\/\/ ANIM-b1 R4: one style change event per setter call\.\n {4}animator\?\.event\(to\)\n {4}onChange\?\.invoke\(\)\n {2}\}/);
     expect(t).toMatch(/machine\.onChange = \{\n {6}render\(\)\n/);
-    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), bridge\.measurer, scale, bridge\)\n {4}stage\.addView\(t\.root/);
-    expect(t).toMatch(/stage\.removeView\(shown\.root\)\n {4}shown = t\n {4}renders\+\+/);
-    expect(t).toContain('is DragonScriptStep.Set -> m.set(s.s, s.v)');
+    expect(t).toMatch(/val t = DragonTree\(stage\.context\)\n {4}machine\.build\(t\)\n {4}t\.apply\(machine\.input\(scale\), bridge\.measurer, scale, bridge\)\n {4}media\.addView\(t\.root/);
+    expect(t).toMatch(/media\.removeView\(shown\.root\)\n {4}shown = t\n {4}renders\+\+/);
+    expect(t).toContain('is DragonScriptStep.Set -> m.machine.set(s.s, s.v)');
     expect(t).toContain('runs on a state mount, not as a layout case');
   });
 });

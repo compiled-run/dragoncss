@@ -1,0 +1,12 @@
+{
+  "case": "text-shadow-wrap",
+  "dpr": 3,
+  "texts": [
+    {"id":"inh:text0","lines":[[0,3],[3,5]]},
+    {"id":"hard:text0","lines":[[0,3],[3,5]]},
+    {"id":"soft:text0","lines":[[0,3],[3,5]]},
+    {"id":"two:text0","lines":[[0,3],[3,5]]},
+    {"id":"glow:text0","lines":[[0,3],[3,5]]},
+    {"id":"num:text0","lines":[[0,3],[3,5]]}
+  ]
+}

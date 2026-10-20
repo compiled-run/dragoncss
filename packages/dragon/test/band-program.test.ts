@@ -5,10 +5,14 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import { rtBand } from '@dragon/layout';
-import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
-import { BAND_KEY, bandAtom, bandOf, BandProgramError, bandStateProgram, bandTableOf, MAX_STATE_TABLE_ASSIGNMENTS, programAt, StateProgramError } from 'dragon';
+import type { Assignment, BandCase, MediaDevice, NativeProgram, ProgramNode } from 'dragon';
+import { BAND_KEY, bandAtom, bandEnvironmentOf, bandOf, BandProgramError, bandStateProgram, bandTableOf, DESKTOP_DEVICE, MAX_STATE_TABLE_ASSIGNMENTS, programAt, StateProgramError } from 'dragon';
 import { band, evaluateFeature, evaluateWithOracle, featuresOfList, parseMediaQueryList } from '../src/media/index.ts';
 import { CAPTURE as capture, CORPUS } from './media/corpus.ts';
+import { deviceOf } from './media/compare.ts';
+
+/** The captured corpus's own page: headless Chrome's desktop at DPR 1. */
+const DESK = bandEnvironmentOf(DESKTOP_DEVICE);
 
 const atomsOf = (q: string) => parseMediaQueryList(q);
 
@@ -20,7 +24,7 @@ describe('the band atoms against Chrome 145 matchMedia (the captured media corpu
       const list = atomsOf(q.query);
       const bits = q.matches['16'] as string;
       capture.points.forEach(([width, height], k) => {
-        const r = evaluateWithOracle(list, (f) => rtBand.atomHolds(bandAtom(f), width, height, rtBand.NO_BAND_FAULTS));
+        const r = evaluateWithOracle(list, (f) => rtBand.atomHolds(bandAtom(f), width, height, DESK, rtBand.NO_BAND_FAULTS));
         if (r.kind === 'refused') return;
         compared++;
         if (r.matches !== (bits[k] === '1')) mismatches.push(`${q.query} at ${width}x${height}: ${r.matches}`);
@@ -40,10 +44,39 @@ describe('the band atoms against Chrome 145 matchMedia (the captured media corpu
       capture.points.forEach(([width, height], k) => {
         const chrome = captured.conditions.flatMap((c, i) => (c.matches['16']?.[k] === '1' ? [i] : []));
         compared++;
-        expect([rtBand.bandIndex(table, width, height, rtBand.NO_BAND_FAULTS)], `${sheet.name} at ${width}x${height}`).toEqual(chrome);
+        expect([rtBand.bandIndex(table, width, height, DESK, rtBand.NO_BAND_FAULTS)], `${sheet.name} at ${width}x${height}`).toEqual(chrome);
       });
     }
     expect(compared).toBeGreaterThan(500);
+  });
+  it('MQ-R2: give Chrome\'s answer for every captured device row, and look up the band Chrome matches, on every captured device', () => {
+    const { devices } = capture.environment;
+    const mismatches: string[] = [];
+    let compared = 0;
+    for (const q of capture.environment.queries) {
+      const list = atomsOf(q.query);
+      devices.forEach((d, k) => {
+        const r = evaluateWithOracle(list, (f) => rtBand.atomHolds(bandAtom(f), 400, 300, bandEnvironmentOf(deviceOf(d)), rtBand.NO_BAND_FAULTS));
+        if (r.kind === 'refused') return;
+        compared++;
+        if (r.matches !== (q.matches[k] === '1')) mismatches.push(`${q.query} on ${d.join(' ')}: ${r.matches}`);
+      });
+    }
+    for (const captured of capture.environment.bands) {
+      const sheet = CORPUS.environment.bandSheets.find((s) => s.name === captured.sheet);
+      if (sheet === undefined) throw new Error(`unknown environment band sheet ${captured.sheet}`);
+      const p = band(sheet.queries.map(atomsOf));
+      if (p.kind !== 'bands') throw new Error(p.detail);
+      const table = bandTableOf(p);
+      devices.forEach((d, k) => {
+        compared++;
+        const chrome = captured.conditions.flatMap((c, i) => (c.matches[k] === '1' ? [i] : []));
+        const ours = [rtBand.bandIndex(table, 400, 300, bandEnvironmentOf(deviceOf(d)), rtBand.NO_BAND_FAULTS)];
+        if (JSON.stringify(ours) !== JSON.stringify(chrome)) mismatches.push(`${sheet.name} on ${d.join(' ')}: band ${ours.join()} != Chrome ${chrome.join()}`);
+      });
+    }
+    expect(mismatches.slice(0, 10)).toEqual([]);
+    expect(compared).toBeGreaterThan(3000);
   });
 });
 
@@ -62,8 +95,20 @@ describe('bandAtom', () => {
     expect(atom('(width)')).toEqual([{ feature: 'width', comparisons: [], keyword: 'none' }]);
   });
   it('refuses a feature it has no atom for, by name', () => {
-    const [hover] = atomsOf('(hover)').queries.flatMap((q) => (q.valid && q.condition !== null && q.condition.type === 'feature' ? [q.condition] : []));
-    expect(() => bandAtom(hover as Parameters<typeof bandAtom>[0])).toThrow(BandProgramError);
+    const [color] = atomsOf('(color)').queries.flatMap((q) => (q.valid && q.condition !== null && q.condition.type === 'feature' ? [q.condition] : []));
+    expect(() => bandAtom(color as Parameters<typeof bandAtom>[0])).toThrow(BandProgramError);
+  });
+  it('MQ-R2: writes resolution in float dppx (dpi and dpcm converted, dpcm marked for two decimals), -webkit-device-pixel-ratio as resolution, and a discrete feature by its keyword (any for the boolean form)', () => {
+    expect(atom('(min-resolution: 2dppx)')).toEqual([{ feature: 'resolution', comparisons: [{ op: 'ge', value: 2, num: 0, den: 0 }], keyword: 'none' }]);
+    expect(atom('(resolution: 252dpi)')).toEqual([{ feature: 'resolution', comparisons: [{ op: 'eq', value: 2.625, num: 0, den: 0 }], keyword: 'none' }]);
+    expect(atom('(max-resolution: 99.22dpcm)')).toEqual([{ feature: 'resolution', comparisons: [{ op: 'le', value: Math.fround(99.22 * (1 / (96 / 2.54))), num: 1, den: 0 }], keyword: 'none' }]);
+    expect(atom('(-webkit-max-device-pixel-ratio: 2.6)')).toEqual([{ feature: 'resolution', comparisons: [{ op: 'le', value: Math.fround(2.6), num: 0, den: 0 }], keyword: 'none' }]);
+    expect(atom('(resolution)')).toEqual([{ feature: 'resolution', comparisons: [], keyword: 'none' }]);
+    expect(atom('(pointer: coarse)')).toEqual([{ feature: 'pointer', comparisons: [], keyword: 'coarse' }]);
+    expect(atom('(any-hover)')).toEqual([{ feature: 'any-hover', comparisons: [], keyword: 'any' }]);
+    expect(atom('(prefers-reduced-motion: no-preference)')).toEqual([{ feature: 'prefers-reduced-motion', comparisons: [], keyword: 'no-preference' }]);
+    expect(atom('(prefers-color-scheme: dark)')).toEqual([{ feature: 'prefers-color-scheme', comparisons: [], keyword: 'dark' }]);
+    expect(atom('(prefers-color-scheme)')).toEqual([{ feature: 'prefers-color-scheme', comparisons: [], keyword: 'any' }]);
   });
 });
 
@@ -79,7 +124,7 @@ const style = (width: number): LayoutBox['style'] => ({
   rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto,
   verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, grid: null, gridItem: null,
 }) as unknown as LayoutBox['style'];
-const box = (id: string, width: number): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, children: [] });
+const box = (id: string, width: number): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, marker: null, children: [] });
 const node = (id: string, color: number): ProgramNode => ({
   id, parent: null, host: null, kind: 'element', native: 'DragonBoxView', clips: false, text: null,
   writes: [{ kind: 'background-color', color: { r: color, g: 0, b: 0, alpha: 255 }, key: 'backgroundColor', technique: 'native-property', detail: 'test', css: ['background-color'] }],
@@ -130,7 +175,7 @@ describe('one comparison rule: rt-band\'s atoms against MQ-R0\'s media evaluator
       for (const w of sizes) {
         for (const h of [300, 400.25, 400.75, w]) {
           compared++;
-          const a = rtBand.atomHolds(atom, w, h, rtBand.NO_BAND_FAULTS);
+          const a = rtBand.atomHolds(atom, w, h, DESK, rtBand.NO_BAND_FAULTS);
           const b = evaluateFeature(f, { width: w, height: h });
           if (a !== b) mismatches.push(`${f.name} at ${w}x${h}: rt-band ${a}, media ${b}`);
         }
@@ -138,5 +183,26 @@ describe('one comparison rule: rt-band\'s atoms against MQ-R0\'s media evaluator
     }
     expect(mismatches.slice(0, 10)).toEqual([]);
     expect(compared).toBeGreaterThan(50_000);
+  });
+  it('MQ-R2: agree on every environment corpus feature Dragon evaluates, on every pointer, hover, motion and colour-scheme reading', () => {
+    const features = CORPUS.environment.queries.flatMap((q) => featuresOfList(atomsOf(q))).filter((f) => f.refused === null && !['resolution', '-webkit-device-pixel-ratio'].includes(f.base));
+    expect(features.some((f) => f.base === 'prefers-color-scheme')).toBe(true);
+    const devices: MediaDevice[] = [];
+    for (const anyPointer of [[], ['coarse'], ['fine'], ['coarse', 'fine']] as ('coarse' | 'fine')[][]) {
+      for (const pointer of anyPointer.length === 0 ? (['none'] as const) : anyPointer) {
+        for (const [hover, anyHover] of [['none', 'none'], ['none', 'hover'], ['hover', 'hover']] as const) {
+          for (const reducedMotion of ['no-preference', 'reduce'] as const) for (const colorScheme of ['light', 'dark'] as const) devices.push({ dpr: 1, pointer, anyPointer, hover, anyHover, reducedMotion, colorScheme });
+        }
+      }
+    }
+    const mismatches: string[] = [];
+    for (const f of features) {
+      for (const d of devices) {
+        const a = rtBand.atomHolds(bandAtom(f), 400, 300, bandEnvironmentOf(d), rtBand.NO_BAND_FAULTS);
+        const b = evaluateFeature(f, { width: 400, height: 300, device: d });
+        if (a !== b) mismatches.push(`${f.name} on ${JSON.stringify(d)}: rt-band ${a}, media ${b}`);
+      }
+    }
+    expect(mismatches.slice(0, 10)).toEqual([]);
   });
 });

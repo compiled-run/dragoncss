@@ -1,0 +1,15 @@
+{
+  "case": "overflow-text-cards",
+  "dpr": 3,
+  "texts": [
+    {"id":"r1h:text0","lines":[[0,2]]},
+    {"id":"r1p:text0","lines":[[0,5]]},
+    {"id":"r2p:text0","lines":[[0,2]]},
+    {"id":"g1h:text0","lines":[[0,2]]},
+    {"id":"g1p:text0","lines":[[0,5]]},
+    {"id":"g2p:text0","lines":[[0,2]]},
+    {"id":"fh:text0","lines":[[0,2]]},
+    {"id":"fp:text0","lines":[[0,5]]},
+    {"id":"bl:text0","lines":[[0,3]]}
+  ]
+}

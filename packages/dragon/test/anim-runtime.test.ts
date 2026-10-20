@@ -30,8 +30,8 @@ function kotlinParams(cls: string): string[] {
 }
 
 const EASE = { kind: 'cubic-bezier', x1: 0.25, y1: 0.1, x2: 0.25, y2: 1, steps: 1, position: 'end' } as const;
-const NONE = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false } as const;
-const RED = { kind: 'color', r: 255, g: 0, b: 0, alpha: 1, px: 0, percent: 0, calc: false } as const;
+const NONE = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false, ops: [] } as const;
+const RED = { kind: 'color', r: 255, g: 0, b: 0, alpha: 1, px: 0, percent: 0, calc: false, ops: [] } as const;
 const TABLES: AnimTables = {
   assignments: 2,
   slots: [{ node: 'a', property: 'background-color', kind: 'color', range: 'all', values: [NONE, RED], listings: [{ present: true, mode: 'listed', delay: 0, duration: 0.3, easing: EASE }, { present: true, mode: 'listed', delay: -0.1, duration: 0.3, easing: EASE }] }],
@@ -40,6 +40,7 @@ const TABLES: AnimTables = {
   rendered: [{ node: 'a', values: [true, false] }],
   bases: [{ node: 'a', property: 'width', kind: 'length', range: 'non-negative', values: [NONE, NONE] }],
   closure: [{ source: { node: 'a', property: 'color' }, writes: [{ node: 'b', property: 'color' }] }],
+  origins: [],
 };
 
 describe('ANIM-b1: the animation tables as typed literals', () => {
@@ -61,9 +62,9 @@ describe('ANIM-b1: the animation tables as typed literals', () => {
     const all = [...swift.decls, swift.expr].join('\n');
     expect(all).toContain('EntryCode(JsString("spin \\"x\\""), true, false, 0.0, 20.0, Double.infinity, JsString("alternate"), JsString("both"), EasingCode(JsString("cubic-bezier"), 0.25, 0.1, 0.25, 1.0, 1.0, JsString("end")))');
     expect(all).toContain('ListingCode(true, JsString("listed"), -0.1, 0.3, ');
-    expect(all).toContain('ValueCode(JsString("length"), 0.0, 0.0, 0.0, 0.0, 10.0, 50.0, true)');
+    expect(all).toContain('ValueCode(JsString("length"), 0.0, 0.0, 0.0, 0.0, 10.0, 50.0, true, JsArray<TransformOp>([]))');
     expect(all).toContain('ClosureTable(TrackRef(JsString("a"), JsString("color")), JsArray<TrackRef>([TrackRef(JsString("b"), JsString("color"))]))');
-    expect(swift.expr).toBe('AnimTables(2.0, JsArray<SlotTable>([pSlot0]), JsArray<AnimationTable>([pAnimation0]), JsArray<KeyframesTable>([pKeyframes0]), JsArray<RenderedTable>([pRendered0]), JsArray<BaseTable>([pBase0]), JsArray<ClosureTable>([pClosure0]))');
+    expect(swift.expr).toBe('AnimTables(2.0, JsArray<SlotTable>([pSlot0]), JsArray<AnimationTable>([pAnimation0]), JsArray<KeyframesTable>([pKeyframes0]), JsArray<RenderedTable>([pRendered0]), JsArray<BaseTable>([pBase0]), JsArray<ClosureTable>([pClosure0]), JsArray<OriginTable>([]))');
     const kotlin = animTablesLit('kotlin', TABLES, 'p');
     const kall = [...kotlin.decls, kotlin.expr].join('\n');
     expect(kall).toContain('EntryCode("spin \\"x\\"", true, false, 0.0, 20.0, Double.POSITIVE_INFINITY, "alternate", "both", ');
@@ -99,10 +100,15 @@ describe('ANIM-b1: the state machine runs the animator', () => {
     for (const [lang, t] of [['swift', swift], ['kotlin', kotlin]] as const) {
       expect(t, lang).toContain('animator?.event(to)');
       expect(t, lang).toContain('machine.startAnimator(measurer)');
-      // A case script's advance moves the animator, not the bare clock.
-      expect(t, lang).toMatch(lang === 'swift' ? /case \.advance\(let ms\): m\.advance\(ms\)/ : /is DragonScriptStep\.Advance -> m\.advance\(s\.ms\)/);
+      // A case script's advance moves the animator, not the bare clock (MQ-R1: a script runs on the mount, so on its machine).
+      expect(t, lang).toMatch(lang === 'swift' ? /case \.advance\(let ms\): m\.machine\.advance\(ms\)/ : /is DragonScriptStep\.Advance -> m\.machine\.advance\(s\.ms\)/);
       expect(t, lang).not.toMatch(/m\.clock\.advance/);
       expect(t, lang).toContain('animator?.patch(i)');
+      // MQ-R1: every event reads the before-change style at the old inputs and the after-change style at the staged ones, so a size
+      // change of the media root re-resolves the animator's length endpoints (rt-animator animatorRestyle).
+      expect(t, lang).toContain('rtAnimator_animatorRestyle(state, tables, inputs, after, initial, ');
+      expect(t, lang).not.toContain('rtAnimator_animatorEvent(');
+      expect(t, lang).toMatch(lang === 'swift' ? /let after = staged \?\? inputs\n/ : /val after = staged \?: inputs\n/);
       expect(t, lang).toContain('dragonAnimatedSides(animator, n.id, ');
       expect(t, lang).toContain('animator?.color(n.id, "background-color")');
       // The frame colour goes through the paint writer (PNT1-radius rounded fill), never straight to the platform property.

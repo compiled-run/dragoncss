@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.stage { height: 240px; padding-top: 8px; background-color: rgb(235, 235, 245); }
+.box { width: 80px; height: 40px; }
+.b1 { backface-visibility: hidden; background-color: rgb(200, 40, 40); }
+.in { margin-inline-start: 40px; width: 20px; height: 40px; background-color: rgb(40, 40, 200); }
+.after { margin-top: -30px; background-color: rgb(40, 160, 40); }
+.wrap { margin-top: 16px; }
+.b2 { -webkit-backface-visibility: hidden; background-color: rgb(220, 180, 0); }
+.r { position: relative; margin-top: -30px; margin-inline-start: 30px; background-color: rgb(120, 40, 160); }
+.b3 { backface-visibility: HIDDEN; margin-top: -30px; margin-inline-start: 50px; background-color: rgb(0, 150, 150); }
+.neg { position: relative; z-index: -1; width: 40px; height: 20px; background-color: rgb(20, 20, 20); }
+.b4 { backface-visibility: hidden; margin-top: 16px; background-color: rgb(200, 100, 40); }
+.f { display: flex; margin-top: 16px; }
+.oa { order: 2; backface-visibility: hidden; width: 20px; height: 20px; background-color: rgb(160, 0, 100); }
+.ob { order: 1; backface-visibility: hidden; width: 20px; height: 20px; margin-inline-end: -10px; background-color: rgb(0, 100, 160); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="k-b1" class="box b1"><div data-dragon-id="k-in" class="in"></div></div>
+<div data-dragon-id="k-after" class="box after"></div>
+<div data-dragon-id="k-wrap" class="wrap"><div data-dragon-id="k-b2" class="box b2"></div></div>
+<div data-dragon-id="k-r" class="box r"></div>
+<div data-dragon-id="k-b3" class="box b3"></div>
+<div data-dragon-id="k-b4" class="box b4"><div data-dragon-id="k-neg" class="neg"></div></div>
+<div data-dragon-id="k-f" class="f"><div data-dragon-id="k-oa" class="oa"></div><div data-dragon-id="k-ob" class="ob"></div></div>
+</div>
+</body>
+</html>
