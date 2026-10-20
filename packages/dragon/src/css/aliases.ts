@@ -17,6 +17,8 @@
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { AnimLonghand } from './properties/animation.ts';
+import type { CssNode } from 'css-tree';
+import type { ParsedValue } from './stylesheet.ts';
 import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
 import { APPEARANCE_ALIASES } from './aliases/appearance.ts';
@@ -28,7 +30,7 @@ import { FILTER_ALIASES } from './aliases/filter.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { FONT_FEATURES_ALIASES } from './aliases/font-features.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
-import { MASK_ALIASES } from './aliases/mask.ts';
+import { MASK_ALIAS_PARSERS, MASK_ALIASES } from './aliases/mask.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
 import { SHADOW_ALIASES } from './aliases/shadow.ts';
@@ -61,6 +63,17 @@ if (ALIASES.size !== Object.values(ALIAS_FAMILIES).reduce((n, f) => n + Object.k
 for (const [alias, property] of ALIASES) {
   if (isLonghand(alias) || isShorthand(alias) || isAnimationProperty(alias)) throw new Error(`${alias} is both an alias and a property`);
   if (!isLonghand(property) && !isShorthand(property) && !isAnimationProperty(property)) throw new Error(`${alias} aliases ${property}, which is not a Dragon property`);
+}
+
+/** An alias's own value parser, for an alias Chrome parses unlike its property (UseAliasParsing); null defers to the property's parser. */
+export type AliasValueParser = (tokens: readonly CssNode[]) => ParsedValue | null;
+
+/** Each family's alias value parsers, one line per family. */
+const ALIAS_VALUE_PARSERS: ReadonlyMap<string, AliasValueParser> = new Map([...Object.entries(MASK_ALIAS_PARSERS)]);
+
+/** The value parser of a lower-cased alias Chrome parses unlike its property, or undefined. */
+export function aliasValueParser(alias: string): AliasValueParser | undefined {
+  return ALIAS_VALUE_PARSERS.get(alias);
 }
 
 /** The property a lower-cased property name stands for: its alias target, or the name itself. */

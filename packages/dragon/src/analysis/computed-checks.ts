@@ -56,7 +56,7 @@ import { checkScrollContainment } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
-import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { isAcceptedMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
 import type { BorderImageFaults } from '../faults/border-image.ts';
 import { BORDER_IMAGE_FAULTS } from '../faults/border-image.ts';
 import { checkBorderImage } from './border-image.ts';
@@ -1040,11 +1040,11 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
 }
 
 // MASK-CLIP (css-masking-1 §7): no target draws a mask yet, and a mask image can hide text, so a mask longhand other than its initial
-// value is refused for every target where it applies (none is inherited), once per element. With every longhand initial, mask-image
-// is none and Chrome applies no mask. Planted fault maskLayerAccepted accepts every value.
+// value (or -webkit-mask-composite's source-over) is refused for every target where it applies (none is inherited), once per element.
+// With every longhand accepted, mask-image is none and Chrome applies no mask. Planted fault maskLayerAccepted accepts every value.
 function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults): void {
   if (faults.maskLayerAccepted) return;
-  const p = MASK_LONGHANDS.find((q) => !isInitialMask(q, (el.props.get(q) as ResolvedValue).value));
+  const p = MASK_LONGHANDS.find((q) => !isAcceptedMask(q, (el.props.get(q) as ResolvedValue).value));
   if (p === undefined) return;
   const id = `mask|${el.element.address}`;
   if (reported.has(id)) return;
