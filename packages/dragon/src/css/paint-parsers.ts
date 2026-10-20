@@ -7,6 +7,7 @@ import type { Span } from '../types.ts';
 import { BORDER_IMAGE_VALUE_PARSERS } from './properties/border-image.ts';
 import { APPEARANCE_VALUE_PARSERS } from './properties/appearance.ts';
 import { USER_MODIFY_VALUE_PARSERS } from './properties/user-modify.ts';
+import { SPEAK_VALUE_PARSERS } from './properties/speak.ts';
 import { CLIP_PATH_VALUE_PARSERS } from './properties/clip-path.ts';
 import { CLIP_RECT_VALUE_PARSERS } from './properties/clip-rect.ts';
 import { EFFECTS_VALUE_PARSERS, parseOpacityValue } from './properties/effects.ts';
@@ -67,6 +68,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
   ...Object.entries(APPEARANCE_VALUE_PARSERS),
   ...Object.entries(USER_MODIFY_VALUE_PARSERS),
+  ...Object.entries(SPEAK_VALUE_PARSERS),
   ...Object.entries(CLIP_RECT_VALUE_PARSERS),
   ...Object.entries(CLIP_PATH_VALUE_PARSERS),
   ...Object.entries(ZOOM_VALUE_PARSERS),

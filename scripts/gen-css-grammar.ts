@@ -142,6 +142,8 @@ const SUBSET = [
   'border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout', 'border-spacing',
   // GEN-d1 and GEN-d2: the counter properties (css-lists-3 §4) and quotes (css-content-3 §3.1), after the table family, as LONGHANDS registers them.
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
+  // NA-NATIVE-2: speak, after the counters, as LONGHANDS registers it.
+  'speak',
 ] as const;
 
 /**
@@ -202,6 +204,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // webref has no -webkit-user-modify. Chrome 145 parses read-only, read-write and read-write-plaintext-only; Dragon accepts
   // read-only and refuses the other two (properties/user-modify.ts), so the grammar takes any value and the parser decides.
   '-webkit-user-modify': '<any-value>',
+  // Chrome 145 parses speak as its legacy keywords, not css-speech-1's auto | never | always (properties/speak.ts), so the grammar
+  // takes any value and the parser decides; pinned by packages/parity/test/speak-parse.test.ts.
+  speak: '<any-value>',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -298,6 +303,8 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
 const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
   '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
   '-webkit-user-modify': { initial: 'read-only', inherited: 'yes' },
+  // Chrome 145's speak (css_properties.json5): initial normal, inherited; webref has css-speech-1's initial auto.
+  speak: { initial: 'normal', inherited: 'yes' },
   '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
   // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
   // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).

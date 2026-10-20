@@ -239,7 +239,7 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
  * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
  * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-|speak-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -289,15 +289,30 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['font-optical-sizing', 'auto'], ['font-language-override', 'normal'], ['font-stretch', '100%'], ['font-feature-settings', 'normal'],
   ['font-variation-settings', 'normal'], ['-webkit-text-stroke-width', '0px'],
 ];
-/** The paint, transform and mask longhands added after the base, at their initial values (filter none, mask-image none and the like). */
+/** The paint, transform, mask and border-image longhands added after the base, at their initial values (filter none, mask-image none and the like). */
 const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['text-shadow', 'none'], ['filter', 'none'], ['backface-visibility', 'visible'], ['transform-style', 'flat'], ['transform-box', 'view-box'],
   ['clip', 'auto'], ['clip-path', 'none'], ['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'],
   ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'],
-  ['mask-mode', 'match-source'],
+  ['mask-mode', 'match-source'], ['border-image-source', 'none'], ['border-image-slice', '100%'], ['border-image-width', '1'],
+  ['border-image-outset', '0'], ['border-image-repeat', 'stretch'],
 ];
-const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
-const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
+/**
+ * The table, counters, zoom, perspective, scrolling and containment longhands added after the base, at their initial values
+ * (perspective-origin at any value: Chrome resolves its 50% 50% to pixels).
+ */
+const LAYOUT_SINCE_BASE: readonly (readonly [string, string])[] = [
+  ['table-layout', 'auto'], ['border-collapse', 'separate'], ['-webkit-border-horizontal-spacing', '0px'], ['-webkit-border-vertical-spacing', '0px'],
+  ['caption-side', 'top'], ['empty-cells', 'show'], ['quotes', 'auto'], ['counter-reset', 'none'], ['counter-set', 'none'],
+  ['counter-increment', 'none'], ['zoom', '1'], ['perspective', 'none'], ['perspective-origin', '[^"\\n;]*'],
+  ['overscroll-behavior-x', 'auto'], ['overscroll-behavior-y', 'auto'], ['overscroll-behavior-inline', 'auto'], ['overscroll-behavior-block', 'auto'],
+  ['overflow-anchor', 'auto'], ['scroll-padding-(?:top|right|bottom|left|inline-start|inline-end|block-start|block-end)', 'auto'],
+  ['scroll-margin-(?:top|right|bottom|left|inline-start|inline-end|block-start|block-end)', '0px'], ['scroll-snap-type', 'none'],
+  ['scroll-snap-align', 'none'], ['scroll-snap-stop', 'normal'], ['contain', 'none'], ['content-visibility', 'visible'],
+  ['contain-intrinsic-(?:width|height|inline-size|block-size)', 'none'], ['container-type', 'normal'], ['container-name', 'none'],
+];
+const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE, ...LAYOUT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
+const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE, ...LAYOUT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
 /** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
 const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
 const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
@@ -318,10 +333,10 @@ function withoutTextColors(json: string): string {
 const JSON_APPEARANCE = /,\n[ ]*"appearance": "none"/g;
 const CSS_APPEARANCE = /^[ ]*appearance: none;\n/gm;
 /**
- * caret-color and accent-color, also added after the base, at auto only (and -webkit-user-modify at read-only): in a capture caret-color's auto is the computed object's
+ * caret-color and accent-color, also added after the base, at auto only (-webkit-user-modify at read-only, speak at normal): in a capture caret-color's auto is the computed object's
  * color (Chrome resolves it), so a caret-color is removed there only where it equals that color. Any other value stays in the text.
  */
-const JSON_ACCENT = /,\n[ ]*"(?:accent-color": "auto|-webkit-user-modify": "read-only)"/g;
+const JSON_ACCENT = /,\n[ ]*"(?:accent-color": "auto|-webkit-user-modify": "read-only|speak": "normal)"/g;
 const CSS_UI_COLORS = /^[ ]*(?:caret-color|accent-color): auto;\n/gm;
 function withoutCaretColor(json: string): string {
   return json.replace(/"computed": \{[^{}]*\}/g, (block) => {

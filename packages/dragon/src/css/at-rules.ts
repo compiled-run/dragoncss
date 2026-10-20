@@ -1,5 +1,6 @@
 // The at-rule handler registry. @font-face is accepted (fonts/wire.ts), @media is conditional (MQ-a), @supports is decided at
-// build time (CASC), and @keyframes, @property and @layer have handlers in at-rules/ (ANIM-b1, CASC 2, CASC 3); every other
+// build time (CASC), @charset and @page are dropped as they change nothing on screen, and @keyframes, @property and @layer have
+// handlers in at-rules/ (ANIM-b1, CASC 2, CASC 3); every other
 // at-rule is refused: each registered name, and any name not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and
 // the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
 import { generate } from 'css-tree';
@@ -101,6 +102,12 @@ export const mediaAtRule: AtRuleHandler = (at) => {
   };
 };
 
+/**
+ * @page (css-page-3 §3): page margins, size and the margin boxes of paged media. Chrome 145 applies it only when it prints, never to
+ * a page on screen, and no target's output is ever printed, so it is accepted and dropped with its block, wherever it is written.
+ */
+export const pageAtRule: AtRuleHandler = () => ({ kind: 'drop' });
+
 /** The environment features notes/T067 R9 assigns to package MQ-R2; every other one waits for MQ-R3. */
 const MQ_R2_FEATURES: ReadonlySet<string> = new Set(['prefers-color-scheme', 'prefers-reduced-motion', 'hover', 'any-hover', 'pointer', 'any-pointer', 'resolution', '-webkit-device-pixel-ratio']);
 
@@ -122,7 +129,7 @@ export const AT_RULE_HANDLERS: { readonly [name: string]: AtRuleHandler } = {
   layer: layerAtRule,
   media: mediaAtRule,
   namespace: refuseAtRule,
-  page: refuseAtRule,
+  page: pageAtRule,
   'position-try': refuseAtRule,
   property: propertyAtRule,
   scope: refuseAtRule,

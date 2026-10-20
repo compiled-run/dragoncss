@@ -54,6 +54,7 @@ import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
+import { SPEAK } from './fixture-groups/speak.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
 import { TABLE } from './fixture-groups/table.ts';
@@ -194,6 +195,7 @@ export const GROUPS = {
   showcase: SHOWCASE,
   'sizing-keywords': SIZING_KEYWORDS,
   'sizing-ratio': SIZING,
+  speak: SPEAK,
   states: STATES,
   svg: SVG,
   table: TABLE,

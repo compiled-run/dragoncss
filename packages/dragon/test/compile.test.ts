@@ -70,8 +70,9 @@ describe('createProject().compile() and check()', () => {
     // line-clamp longhands, which are written only where one is not initial (TXT2-g), clip, written only where it is not auto, and
     // clip-path, written only where it is not none, and the mask longhands, written only where one is not initial (MASK-CLIP), as are
     // the border image longhands (MISC-PAINT), and appearance, written only where it is not none (FORM-a), caret-color and accent-color,
-    // written only where one is not auto (FORM-b), and -webkit-user-modify, never written (TOUCH).
-    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify'];
+    // written only where one is not auto (FORM-b), -webkit-user-modify, never written (TOUCH), and speak, written only where one is
+    // not normal (NA-NATIVE-2).
+    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', 'speak'];
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
