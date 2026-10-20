@@ -1128,7 +1128,7 @@ export function mathInvalidity(text: string, grammar: MathGrammar): string | nul
 // ---------------------------------------------------------------- lowering to the engine
 
 /** The font sizes em and rem read, in px: the element's specified size and the root's, at text scale 1. */
-export type MathFonts = { readonly em: number; readonly rem: number };
+export type MathFonts = { readonly em: number; readonly rem: number; readonly emSize?: CalcExpr };
 
 /** Whether a calculation reads the element's font size (em) or the root's (rem). */
 export function fontUnitsIn(n: MathNode): { readonly em: boolean; readonly rem: boolean } {
@@ -1144,7 +1144,7 @@ function lowerLeaf(n: MathLiteral, fonts: MathFonts, faults: MathFaults): CalcEx
   if (side !== null) return { kind: 'env', value: n.value, side: faults.envSideSwapped ? OPPOSITE[side] : side };
   if (n.unit === '') return n.inverseOf === null ? { kind: 'number', value: n.value } : { kind: 'invert', term: { kind: 'number', value: n.inverseOf } };
   if (n.unit === '%') return { kind: 'percent', value: n.value };
-  if (n.unit === 'em') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.em } };
+  if (n.unit === 'em') return { kind: 'em', value: n.value, fontSize: fonts.emSize ?? { kind: 'px', value: fonts.em } };
   if (n.unit === 'rem') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.rem } };
   if (n.unit === 'vw' || n.unit === 'vi') return { kind: 'viewport', value: n.value, axis: 'width', size: 'large' };
   if (n.unit === 'vh' || n.unit === 'vb') return { kind: 'viewport', value: n.value, axis: 'height', size: 'large' };
@@ -1246,6 +1246,19 @@ export type FoldBases = { readonly em: number; readonly rem: number; readonly pe
 export function foldableUnits(n: MathNode): boolean {
   if (!isLit(n)) return n.args.every(foldableUnits);
   return n.unit === '' || n.unit === '%' || n.unit === 'em' || n.unit === 'rem' || pxPer(n.unit) !== null;
+}
+
+const VIEWPORT_UNITS: ReadonlySet<string> = new Set(['vw', 'vh', 'vi', 'vb', 'vmin', 'vmax']);
+
+/** Whether a calculation reads the large viewport (vw, vh, vi, vb, vmin or vmax). */
+export function mathHasViewport(n: MathNode): boolean {
+  return isLit(n) ? VIEWPORT_UNITS.has(n.unit) : n.args.some(mathHasViewport);
+}
+
+/** CALC-2: the units a font-size calculation may hold: the foldable units and the large viewport units, which the engine resolves. */
+export function fontSizeUnits(n: MathNode): boolean {
+  if (!isLit(n)) return n.args.every(fontSizeUnits);
+  return VIEWPORT_UNITS.has(n.unit) || foldableUnits(n);
 }
 
 /**

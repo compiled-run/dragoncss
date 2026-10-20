@@ -11,7 +11,7 @@ import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import type { FoldBases } from '../css/math.ts';
-import { foldableUnits, foldLength, mathContextFor, parseMath } from '../css/math.ts';
+import { foldableUnits, foldLength, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import { FOLDED_MATH_PROPERTIES, isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
@@ -26,6 +26,7 @@ import type { LinkedElement } from './link.ts';
 import type { Substitution, VarScope } from './variables.ts';
 import { substituteWinner } from './variables.ts';
 import { computePaintValues } from './paint-values/index.ts';
+import { lineHeightPercentPx } from '../fonts/line-height-percent.ts';
 
 /** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
 /** presentational-hint: an HTML attribute mapped to a property (HTML §15.4.5), below author rules (css-cascade-5 §6.1). */
@@ -202,17 +203,26 @@ const SPEC_ABSOLUTE_SIZE_PX: { readonly [k: string]: number } = { 'xx-small': 9.
 export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null, faults: TxtFsFaults = TXT_FS_FAULTS): void {
   const foldMath = (p: Longhand, bases: FoldBases, f: TxtFsFaults): void => {
     const v = props.get(p);
-    if (v === undefined || v.value.kind !== 'other' || v.value.type.startsWith(REFUSED_MATH_PREFIX) || !FOLDED_MATH_PROPERTIES.has(p)) return;
+    if (v === undefined || v.origin === 'inherited' || v.value.kind !== 'other' || v.value.type.startsWith(REFUSED_MATH_PREFIX) || !FOLDED_MATH_PROPERTIES.has(p)) return;
     const context = mathContextFor(p);
     if ('refused' in context) return;
     const parsed = parseMath(v.value.text, context);
-    if (!parsed.ok || !foldableUnits(parsed.node)) return;
+    if (!parsed.ok) return;
+    if (!foldableUnits(parsed.node)) {
+      // A font-size calculation that reads the viewport stays a calculation the engine resolves on the device (CALC-2), with its em,
+      // rem and % made px here, as css-values-4 §6.1.1 and ConvertFontSize take them of the parent's and the root's sizes.
+      if (p === 'font-size' && mathHasViewport(parsed.node)) props.set(p, { ...v, value: { ...v.value, text: fontRelativeAsPx(v.value.text, f.calcPercentOfRoot ? { ...bases, percent: bases.rem } : bases) } });
+      return;
+    }
+    if (Number.isNaN(bases.em)) return;
     const px = foldLength(parsed.node, f.calcPercentOfRoot ? { ...bases, percent: bases.rem } : bases);
     props.set(p, { ...v, value: { kind: 'length', value: Number.isNaN(px) || px < 0 ? 0 : px, unit: CANONICAL_LENGTH_UNIT } });
   };
   const toPx = (p: Longhand, em: number | null, rem: number | null): void => {
     const v = props.get(p) as ResolvedValue;
-    if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT) return;
+    // An inherited length is the parent's computed value: one still relative was taken of a font size that follows the viewport,
+    // which analysis/computed-checks.ts checkViewportFont refuses where it reaches text, never this element's own size (CALC-2).
+    if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT || v.origin === 'inherited') return;
     const needs = v.value.unit === 'em' ? em : v.value.unit === 'rem' ? rem : 0;
     if (needs === null) return;
     const px = lengthToPx(v.value.value, v.value.unit, { em: em ?? 0, rem: rem ?? 0 });
@@ -235,12 +245,35 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   // CALC-2: a font-size calculation reads em and % of the parent's size and rem of the root's (css-values-4 §6.1.1), clamped to its
   // non-negative range (§10.10); kept in double, as every compiler length is (the engine stores font sizes as float32 on entry).
   if (parentFontSize !== null) foldMath('font-size', { em: parentFontSize, rem: rootFontSize ?? parentFontSize, percent: parentFontSize }, faults);
+  // Under a parent size that follows the viewport, only rem is known here: a viewport calculation's rem is made px, and one
+  // with em or % stays relative, which analysis/computed-checks.ts checkViewportFont refuses.
+  else if (rootFontSize !== null) foldMath('font-size', { em: Number.NaN, rem: rootFontSize, percent: Number.NaN }, faults);
+  if (faults.viewportFontReadsHeight) {
+    const v = props.get('font-size') as ResolvedValue;
+    if (v.value.kind === 'length' && v.value.unit === 'vw') props.set('font-size', { ...v, value: { ...v.value, unit: 'vh' } });
+    if (v.value.kind === 'other') props.set('font-size', { ...v, value: { ...v.value, text: v.value.text.replace(/(\d)vw\b/gi, '$1vh') } });
+  }
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
   // A line-height calculation reads em and % of the element's own size (ConvertLineHeight) and computes to an absolute length.
   if (own !== null) foldMath('line-height', { em: own, rem: rootFontSize ?? own, percent: own }, faults);
+  // A percentage line-height computes to that share of the element's own size (ConvertLineHeight), which its children inherit.
+  const lh = props.get('line-height');
+  // Blink stores float(computed * int(percent)) / 100.0 as a float (fonts/line-height-percent.ts).
+  if (own !== null && lh !== undefined && lh.origin !== 'inherited' && lh.value.kind === 'percentage') props.set('line-height', { ...lh, value: { kind: 'length', value: lineHeightPercentPx(own, lh.value.value), unit: CANONICAL_LENGTH_UNIT } });
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
+}
+
+const FONT_RELATIVE_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em|%)(?![\w-])/gi;
+
+/** A calculation's text with each em, rem and % leaf written as the px it reads (bases), for a calculation that stays one. */
+function fontRelativeAsPx(text: string, bases: FoldBases): string {
+  return text.replace(FONT_RELATIVE_IN_MATH, (all, before: string, n: string, unit: string) => {
+    const u = unit.toLowerCase();
+    const px = Number(n) * (u === 'em' ? bases.em : u === 'rem' ? bases.rem : bases.percent / 100);
+    return !Number.isFinite(px) || /e/i.test(String(px)) ? all : `${before}${String(px)}${CANONICAL_LENGTH_UNIT}`;
+  });
 }
 
 /** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */

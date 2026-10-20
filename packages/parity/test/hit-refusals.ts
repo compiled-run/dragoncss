@@ -21,8 +21,8 @@ export const INLINE_OUT: readonly string[] = [
   'text-stroke-ahem', 'text-stroke-ahem-rtl',
   // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
   'text-indent-ahem', 'text-indent-ahem-rtl',
-  // TXT-FONT's text-font-variant-ahem, text-font-variant-caps-ahem (sp), text-font-tuning-ahem, text-font-size-values-ahem and text-font-size-calc-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
-  'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-variant-caps-ahem', 'text-font-variant-caps-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-font-size-calc-ahem', 'text-font-size-calc-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
+  // TXT-FONT's text-font-variant-ahem, text-font-variant-caps-ahem (sp), text-font-tuning-ahem, text-font-size-values-ahem, text-font-size-calc-ahem and text-font-size-vw-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
+  'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-variant-caps-ahem', 'text-font-variant-caps-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-font-size-calc-ahem', 'text-font-size-calc-ahem-rtl', 'text-font-size-vw-ahem', 'text-font-size-vw-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
   // TXT-W's text-weight-bold-ahem holds inline boxes (b, strong).
   'text-weight-bold-ahem', 'text-weight-bold-ahem-rtl',
   // TXT2-d's text-word-break-ahem, TXT2-lb's text-line-break-ahem and TXT2-tal's text-align-last-ahem hold inline boxes (text-align-last-ahem also a <br>).

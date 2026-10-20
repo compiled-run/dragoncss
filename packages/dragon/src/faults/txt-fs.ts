@@ -9,6 +9,8 @@ export type TxtFsFaults = {
   readonly keywordMinimumUnchecked: boolean;
   /** CALC-2: a percentage in a font-size or line-height calculation is taken of the root's font-size. */
   readonly calcPercentOfRoot: boolean;
+  /** CALC-2: a font-size that follows the viewport reads its height where it names the width (vw as vh). */
+  readonly viewportFontReadsHeight: boolean;
 };
 
-export const TXT_FS_FAULTS: TxtFsFaults = { absoluteSizeSpecTable: false, fontSizePercentOfRoot: false, keywordMinimumUnchecked: false, calcPercentOfRoot: false };
+export const TXT_FS_FAULTS: TxtFsFaults = { absoluteSizeSpecTable: false, fontSizePercentOfRoot: false, keywordMinimumUnchecked: false, calcPercentOfRoot: false, viewportFontReadsHeight: false };

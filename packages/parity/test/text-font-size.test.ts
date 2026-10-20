@@ -1,7 +1,8 @@
 // TXT-FS (fixture-groups/text-font-size.ts): font-size percentages and <absolute-size> keywords over Ahem against Chrome 145. The
 // layout fixture passes both lanes in both directions and at every DPR, the reject is refused on every target, and each txt-fs plant
 // is caught: absoluteSizeSpecTable and fontSizePercentOfRoot by the layout fixture, keywordMinimumUnchecked by the reject, and
-// calcPercentOfRoot by text-font-size-calc-ahem (CALC-2: calculations in font-size and line-height).
+// calcPercentOfRoot by text-font-size-calc-ahem (CALC-2: calculations in font-size and line-height), and viewportFontReadsHeight
+// by text-font-size-vw-ahem and text-font-size-vw-boxes (font sizes that follow the viewport).
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
@@ -31,7 +32,7 @@ const specOf = (id: string) => {
   return f;
 };
 
-const LAYOUT = [['text-font-size-values-ahem', ['ltr', 'rtl']], ['text-font-size-calc-ahem', ['ltr', 'rtl']]] as const;
+const LAYOUT = [['text-font-size-values-ahem', ['ltr', 'rtl']], ['text-font-size-calc-ahem', ['ltr', 'rtl']], ['text-font-size-vw-ahem', ['ltr', 'rtl']], ['text-font-size-vw-boxes', ['ltr', 'rtl']]] as const;
 
 describe('the text-font-size fixtures', () => {
   // DRAGON_LIVE_AUTHORED=1 captures Chrome live instead of reading the committed capture (before the first regen of a new fixture).
@@ -60,6 +61,12 @@ describe('the text-font-size fixtures', () => {
     const out = await runFixture(specOf('text-font-size-calc-ahem'), browser, { authored: authored(), faults: { ...NO_FAULTS, calcPercentOfRoot: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' });
     expect(out.cases.map((c) => c.lanes['linux-dragon-layout'])).toEqual(['fail', 'fail']);
   }, 300_000);
+  for (const id of ['text-font-size-vw-ahem', 'text-font-size-vw-boxes']) {
+    it(`viewportFontReadsHeight fails ${id}`, async () => {
+      const out = await runFixture(specOf(id), browser, { authored: authored(), faults: { ...NO_FAULTS, viewportFontReadsHeight: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' });
+      expect(out.cases.map((c) => c.lanes['linux-dragon-layout'])).toEqual(['fail', 'fail']);
+    }, 300_000);
+  }
   it('keywordMinimumUnchecked lets reject-text-font-size-minimum through', async () => {
     const out = await runFixture(specOf('reject-text-font-size-minimum'), browser, { authored: authored(), faults: { ...NO_FAULTS, keywordMinimumUnchecked: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     expect(out.status).toBe('fail');
