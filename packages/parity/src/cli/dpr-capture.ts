@@ -5,6 +5,7 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { captureFixture, captureJson } from '../capture.ts';
 import { launchChrome } from '../chrome.ts';
+import { isScrollCase, launchOverlayChrome } from '../scroll-metrics.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { atDpr, DPRS, EXTRA_DPRS, expectedDprDir, expectedDprPath, layoutCases, zoomGuard } from '../dpr.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
@@ -35,23 +36,28 @@ for (const dpr of DPRS) {
   mkdirSync(dir, { recursive: true });
   for (const f of readdirSync(dir)) if (f.endsWith('.web.json')) rmSync(`${dir}/${f}`);
   const browser = await launchChrome(dpr);
+  // The scroll cases are captured with overlay scrollbars (the overlay-scrollbar rule, capture.ts), behind the same zoom guard.
+  const overlay = await launchOverlayChrome(dpr);
   try {
     const guard = await zoomGuard(browser, dpr);
+    await zoomGuard(overlay, dpr);
     const t = Date.now();
     // Each case in its own context (captureFixture), CHROME_PAGES at a time.
     const n = (
       await inOrder(all.flatMap((f) => f.cases), CHROME_PAGES, async (c) => {
-        const capture = await captureFixture(browser, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], c.authoredPrepare ?? undefined);
+        const capture = await captureFixture(isScrollCase(c.id) ? overlay : browser, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], c.authoredPrepare ?? undefined);
         if (capture.devicePixelRatio !== dpr) throw new Error(`${c.id}: captured at DPR ${capture.devicePixelRatio}, not ${dpr}`);
         writeFileSync(expectedDprPath(c.id, dpr, platform), captureJson(capture));
       })
     ).length;
     // The guard again after the last case: the launch never fell back to zoom 1.
     await zoomGuard(browser, dpr);
+    await zoomGuard(overlay, dpr);
     const written = readdirSync(dir).filter((f) => f.endsWith('.web.json')).length;
     if (written !== ids.length || n !== ids.length) throw new Error(`DPR ${dpr}: ${written} captures written, ${ids.length} cases`);
     console.log(`DPR ${dpr}: zoom guard 0.5px border -> ${guard}; devicePixelRatio ${dpr}; ${n} captures in ${((Date.now() - t) / 1000).toFixed(1)} s -> packages/parity/expected-dpr/${platform}/dpr-${dpr}`);
   } finally {
     await browser.close();
+    await overlay.close();
   }
 }

@@ -160,7 +160,8 @@ export function hitRefusal(n: NativeCase): string | null {
   const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset')).map((x) => x.id);
   if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
   // PNT1: a stacking context below the root paints its layer in z-order, which rt-hit.ts does not order yet.
-  const contexts = nodes.filter((x) => x.parent !== null && (x.facts['stacking'] as { readonly createsContext?: boolean } | undefined)?.createsContext === true).map((x) => x.id);
+  // A normal-flow layer (backface-visibility: hidden) paints after its host's flow, which rt-hit.ts does not order either.
+  const contexts = nodes.filter((x) => x.parent !== null && ((f) => f?.createsContext === true || f?.layer === 'normal-flow')(x.facts['stacking'] as { readonly createsContext?: boolean; readonly layer?: string } | undefined)).map((x) => x.id);
   if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;
   // T150a: Chrome's elementFromPoint passes over a box that is not visible (its visible descendants still hit), which the hit test
   // does not model yet.
@@ -288,6 +289,8 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['font-variant-east-asian', 'normal'], ['font-variant-position', 'normal'], ['font-variant-emoji', 'normal'], ['font-kerning', 'auto'],
   ['font-optical-sizing', 'auto'], ['font-language-override', 'normal'], ['font-stretch', '100%'], ['font-feature-settings', 'normal'],
   ['font-variation-settings', 'normal'], ['-webkit-text-stroke-width', '0px'],
+  // Batch 3: TXT2-lb's line-break, text-wrap-style, TXT2-tal's text-align-last, hyphens and tab-size.
+  ['line-break', 'auto'], ['text-wrap-style', 'auto'], ['text-align-last', 'auto'], ['hyphens', 'manual'], ['tab-size', '8'],
 ];
 /** The paint, transform and mask longhands added after the base, at their initial values (filter none, mask-image none and the like). */
 const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
@@ -295,6 +298,10 @@ const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['clip', 'auto'], ['clip-path', 'none'], ['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'],
   ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'],
   ['mask-mode', 'match-source'],
+  // Batch 3: #446's translate, rotate and scale, #459's background-blend-mode, #445's scrollbar longhands, #449's isolation,
+  // #458's box-decoration-break and #455's color-scheme.
+  ['translate', 'none'], ['rotate', 'none'], ['scale', 'none'], ['background-blend-mode', 'normal'], ['scrollbar-width', 'auto'],
+  ['scrollbar-gutter', 'auto'], ['isolation', 'auto'], ['box-decoration-break', 'slice'], ['color-scheme', 'normal'],
 ];
 const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
 const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
