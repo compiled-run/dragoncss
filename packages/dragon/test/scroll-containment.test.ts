@@ -1,6 +1,8 @@
-// The overscroll, scroll-snap, containment and container-query families are accepted at their initial values alone, on every
-// target; every other value is kept (the grammar takes any value, so Dragon never drops what Chrome keeps) and refused where it
-// applies. The Chrome cases are scroll-initial-longhands, containment-initial and the four reject-* cases of fixture-groups/scroll-containment.ts
+// The overscroll, containment and container-query families are accepted at their initial values alone, on every target; every
+// other value is kept (the grammar takes any value, so Dragon never drops what Chrome keeps) and refused where it applies. Scroll
+// snapping takes Chrome 145's parse and is accepted at every value wherever nothing snaps; an active snap pair (a scroll container
+// with a snap type and a snap area) is refused on iOS and Android, which snap nothing yet, and compiles on web. The Chrome cases are
+// scroll-initial-longhands, scroll-snap-values, containment-initial and the reject-* cases of fixture-groups/scroll-containment.ts
 // (packages/parity/fixtures); packages/parity/test/scroll-containment-parse.test.ts pins the parse against Chrome 145.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
@@ -9,12 +11,12 @@ import type { CompilerFaults } from '../src/faults.ts';
 import { valueToString } from '../src/analysis/computed.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE, UNADMITTED } from '../src/css/animation-kinds/kinds.ts';
-import { LONGHANDS, PROPERTY_ROLE } from '../src/css/properties.ts';
+import { isLonghand, isShorthand, LONGHANDS, PROPERTY_ROLE } from '../src/css/properties.ts';
 import { CONTAINER_QUERY_LONGHANDS } from '../src/css/properties/container-query.ts';
 import { CONTAINMENT_LONGHANDS } from '../src/css/properties/containment.ts';
 import { isInitialValue, NON_INITIAL_VALUE_TYPE, ZERO_LENGTH } from '../src/css/properties/initial-only.ts';
 import { OVERSCROLL_LONGHANDS } from '../src/css/properties/overscroll.ts';
-import { SCROLL_SNAP_LONGHANDS } from '../src/css/properties/scroll-snap.ts';
+import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../src/css/properties/scroll-snap.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
@@ -22,13 +24,13 @@ import { DOC, inputFor, staticClass, text } from './helpers.ts';
 const SOURCE = { uri: 'dragon-source://test/scroll-containment.css', revision: 'r1', hash: 'sha256:0' };
 const ALL = [...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS];
 
-/** The longhands one declaration sets as `property: value` (`?` marks a kept non-initial value), or its diagnostics' codes. */
+/** The longhands one declaration sets as `property: value` (`?` marks a kept non-initial value, [ltr] or [rtl] a direction), or its diagnostics' codes. */
 function parsed(decl: string): string[] {
   const css = `.a { ${decl}; }`;
   const diagnostics: Diagnostic[] = [];
   const rules = parseStylesheet(css, { source: SOURCE, start: 0, end: css.length }, { id: 's', owner: 'doc', scope: 'document' }, 0, diagnostics);
   if (diagnostics.length > 0) return diagnostics.map((d) => d.code);
-  return (rules[0]?.declarations[0]?.longhands ?? []).map((l) => `${l.property}: ${l.value.kind === 'other' && l.value.type === NON_INITIAL_VALUE_TYPE ? '?' : ''}${valueToString(l.value)}`);
+  return (rules[0]?.declarations[0]?.longhands ?? []).map((l) => `${l.property}${l.direction === undefined ? '' : `[${l.direction}]`}: ${l.value.kind === 'other' && l.value.type === NON_INITIAL_VALUE_TYPE ? '?' : ''}${valueToString(l.value)}`);
 }
 
 const project = (faults: CompilerFaults) =>
@@ -46,12 +48,31 @@ function errorsAt(decl: string, faults: CompilerFaults = NO_FAULTS, child = ''):
   return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
 }
 
+/**
+ * The errors, as `<target> <code>`, and their messages, for a tree under body: s (class s) holding i (class i) and n (class n), i
+ * holding k (class k), each with Ahem text, beside o (class o). html and body take the classes h and b.
+ */
+function snap(css: string, faults: CompilerFaults = NO_FAULTS): { readonly errors: string[]; readonly messages: string[] } {
+  const all = `.b { font-family: Ahem; font-size: 10px; margin: 0; } ${css}`;
+  const input = inputFor(all, (r) => [
+    el(r, 's', 'div', ['s'], [el(r, 'i', 'div', ['i'], [el(r, 'k', 'div', ['k'], [text(r, 'kt', 'XX')])]), el(r, 'n', 'div', ['n'], [text(r, 'nt', 'XX')])]),
+    el(r, 'o', 'div', ['o'], [text(r, 'ot', 'XX')]),
+  ]);
+  const tree = input.tree as NonNullable<typeof input.tree>;
+  const app = tree.components[0] as (typeof tree.components)[number];
+  const root = app.root[0] as ElementNode;
+  const classed = (e: ElementNode, name: string): ElementNode => ({ ...e, classes: [staticClass({ owner: DOC, sheet: 's', name }, e.origin)] });
+  const html: ElementNode = { ...classed(root, 'h'), children: [classed(root.children[0] as ElementNode, 'b')] };
+  const c = project(faults).compile({ ...input, tree: { ...tree, components: [{ ...app, root: [html] }] } });
+  const errors = c.diagnostics.filter((d) => d.severity === 'error');
+  return { errors: errors.map((d) => `${String(d.target)} ${d.code}`).sort(), messages: [...new Set(errors.map((d) => d.message.replace(` on ${String(d.target)} `, ' on <target> ')))].sort() };
+}
+
 const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
+const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+const SCROLLER = 'overflow: auto; height: 20px';
 const INITIAL_DECLS = [
   'overscroll-behavior: auto; overflow-anchor: auto; overscroll-behavior-inline: AUTO; overscroll-behavior-block: auto',
-  'scroll-padding: auto auto auto auto; scroll-padding-inline: auto; scroll-padding-block: Auto auto',
-  'scroll-margin: 0 0px; scroll-margin-inline: 0; scroll-margin-block: 0px 0; scroll-margin-top: -0',
-  'scroll-snap-type: none; scroll-snap-align: NONE; scroll-snap-stop: normal',
   'contain: none; content-visibility: visible; contain-intrinsic-size: none none; contain-intrinsic-inline-size: none; contain-intrinsic-block-size: none',
   'container: none / normal',
   'container: NONE; container-type: normal; container-name: none',
@@ -59,8 +80,8 @@ const INITIAL_DECLS = [
 
 describe('the initial-only scroll and containment families', () => {
   it('follow transform-extra and zoom in the registry, are paint-role rows, animate as Chrome 145 does and know their initial values', () => {
-    expect(LONGHANDS.slice(LONGHANDS.indexOf('zoom') + 1, LONGHANDS.indexOf('zoom') + 33)).toEqual(ALL);
-    expect(ALL).toHaveLength(32);
+    expect(LONGHANDS.slice(LONGHANDS.indexOf('zoom') + 1, LONGHANDS.indexOf('zoom') + 1 + ALL.length)).toEqual(ALL);
+    expect(ALL).toHaveLength(24);
     for (const p of ALL) expect(PROPERTY_ROLE[p], p).toBe('paint');
     for (const p of ALL) expect(ANIMATION_KINDS[p], p).toBe(p === 'contain-intrinsic-width' || p === 'contain-intrinsic-height' ? UNADMITTED : DISCRETE);
     expect(isInitialValue(ZERO_LENGTH, { kind: 'length', value: 0, unit: 'px' })).toBe(true);
@@ -74,12 +95,6 @@ describe('the initial-only scroll and containment families', () => {
     expect(parsed('overscroll-behavior: AUTO')).toEqual(['overscroll-behavior-x: auto', 'overscroll-behavior-y: auto']);
     expect(parsed('overscroll-behavior: auto contain')).toEqual(['overscroll-behavior-x: ?auto contain', 'overscroll-behavior-y: ?auto contain']);
     expect(parsed('overscroll-behavior: auto auto auto')).toEqual(['overscroll-behavior-x: ?auto auto auto', 'overscroll-behavior-y: ?auto auto auto']);
-    expect(parsed('scroll-padding: auto auto auto')).toEqual(['scroll-padding-top: auto', 'scroll-padding-right: auto', 'scroll-padding-bottom: auto', 'scroll-padding-left: auto']);
-    expect(parsed('scroll-padding-inline: auto 0')).toEqual(['scroll-padding-inline-start: ?auto 0', 'scroll-padding-inline-end: ?auto 0']);
-    expect(parsed('scroll-margin-block: 0PX')).toEqual(['scroll-margin-block-start: 0px', 'scroll-margin-block-end: 0px']);
-    expect(parsed('scroll-margin-left: 0em')).toEqual(['scroll-margin-left: ?0em']);
-    expect(parsed('scroll-margin: 0 0 0 0 0')[0]).toBe('scroll-margin-top: ?0 0 0 0 0');
-    expect(parsed('scroll-snap-type: x mandatory')).toEqual(['scroll-snap-type: ?x mandatory']);
     expect(parsed('contain: none none')).toEqual(['contain: ?none none']);
     expect(parsed('contain-intrinsic-size: none')).toEqual(['contain-intrinsic-width: none', 'contain-intrinsic-height: none']);
     expect(parsed('contain-intrinsic-size: auto none')).toEqual(['contain-intrinsic-width: ?auto none', 'contain-intrinsic-height: ?auto none']);
@@ -90,35 +105,24 @@ describe('the initial-only scroll and containment families', () => {
     expect(parsed('container-name: a b')).toEqual(['container-name: ?a b']);
     // Values webref lists though Chrome lacks them are kept and refused, never dropped.
     expect(parsed('overscroll-behavior-x: chain')).toEqual(['overscroll-behavior-x: ?chain']);
-    expect(parsed('scroll-snap-type: bogus')).toEqual(['scroll-snap-type: ?bogus']);
   });
 
   it('accept the initial values on every target, from any spelling and through the CSS-wide keywords', () => {
     for (const d of INITIAL_DECLS) expect(errorsAt(d), d).toEqual([]);
-    expect(errorsAt('contain: initial; scroll-margin: unset; container: revert; overscroll-behavior: initial', NO_FAULTS, 'contain: inherit; scroll-padding: inherit; container-type: inherit')).toEqual([]);
-    expect(errorsAt('overflow: auto; height: 5px; scroll-snap-type: none; overscroll-behavior: auto; overflow-anchor: auto')).toEqual([]);
+    expect(errorsAt('contain: initial; container: revert; overscroll-behavior: initial', NO_FAULTS, 'contain: inherit; container-type: inherit')).toEqual([]);
+    expect(errorsAt('overflow: auto; height: 5px; overscroll-behavior: auto; overflow-anchor: auto')).toEqual([]);
     // The later declaration wins between a shorthand and its longhand.
-    expect(errorsAt('scroll-snap-type: y mandatory; scroll-snap-type: none')).toEqual([]);
     expect(errorsAt('container: card / inline-size; container: none')).toEqual([]);
-    expect(errorsAt('--z: 0px; scroll-margin: var(--z)')).toEqual([]);
   });
 
   it('refuse every other value on every target, once per element and family, computed', () => {
-    for (const d of ['overscroll-behavior: contain', 'overscroll-behavior-y: none', 'overflow-anchor: none', 'scroll-padding-top: 4px', 'scroll-padding-inline-end: 10%', 'scroll-margin-left: 2px',
-      'scroll-margin-block: 0 1px', 'scroll-snap-type: x mandatory', 'scroll-snap-align: start', 'scroll-snap-stop: always', 'contain: paint', 'content-visibility: hidden', 'content-visibility: auto',
+    for (const d of ['overscroll-behavior: contain', 'overscroll-behavior-y: none', 'overflow-anchor: none', 'contain: paint', 'content-visibility: hidden', 'content-visibility: auto',
       'contain-intrinsic-size: 10px', 'contain-intrinsic-block-size: auto none', 'container-type: inline-size', 'container-name: card', 'container: card']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
     expect(errorsAt('contain: paint; content-visibility: hidden')).toEqual(REFUSED);
     expect(errorsAt('contain: paint; overflow-anchor: none')).toEqual([...REFUSED, ...REFUSED].sort());
     expect(errorsAt('--t: size; container-type: var(--t)')).toEqual(REFUSED);
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { scroll-snap-type: y mandatory; }';
-    const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
-    const errors = c.diagnostics.filter((x) => x.severity === 'error');
-    expect(errors).toHaveLength(3);
-    for (const d of errors) {
-      expect(d.message).toMatch(/^scroll-snap-type: y mandatory on <div> a is unsupported: Dragon implements no scroll snapping .*; only none is accepted$/);
-    }
   });
 
   it('refuse a value a child inherits explicitly, on the child too', () => {
@@ -130,9 +134,100 @@ describe('the initial-only scroll and containment families', () => {
 
   it('plant each family\'s fault: its non-initial value compiles, and only its own', () => {
     expect(errorsAt('overscroll-behavior: contain', { ...NO_FAULTS, overscrollAccepted: true })).toEqual([]);
-    expect(errorsAt('scroll-snap-align: center', { ...NO_FAULTS, scrollSnapAccepted: true })).toEqual([]);
     expect(errorsAt('content-visibility: hidden', { ...NO_FAULTS, containmentAccepted: true })).toEqual([]);
     expect(errorsAt('container-name: card', { ...NO_FAULTS, containerQueryAccepted: true })).toEqual([]);
     expect(errorsAt('container-name: card', { ...NO_FAULTS, containmentAccepted: true })).toEqual(REFUSED);
+    expect(errorsAt('container-name: card', { ...NO_FAULTS, scrollSnapAccepted: true })).toEqual(REFUSED);
+  });
+});
+
+describe('scroll snapping, scroll-padding and scroll-margin', () => {
+  it('register the physical longhands, and map the flow-relative names and the box shorthands onto them', () => {
+    expect(SCROLL_SNAP_LONGHANDS).toEqual(['scroll-padding-top', 'scroll-padding-right', 'scroll-padding-bottom', 'scroll-padding-left', 'scroll-margin-top', 'scroll-margin-right', 'scroll-margin-bottom', 'scroll-margin-left', 'scroll-snap-type', 'scroll-snap-align', 'scroll-snap-stop']);
+    for (const s of SCROLL_SNAP_SHORTHANDS) expect([isShorthand(s), isLonghand(s)], s).toEqual([true, false]);
+    expect(parsed('scroll-padding: 0 20px')).toEqual(['scroll-padding-top: 0px', 'scroll-padding-right: 20px', 'scroll-padding-bottom: 0px', 'scroll-padding-left: 20px']);
+    expect(parsed('scroll-padding: 1px 2px 3px')).toEqual(['scroll-padding-top: 1px', 'scroll-padding-right: 2px', 'scroll-padding-bottom: 3px', 'scroll-padding-left: 2px']);
+    expect(parsed('scroll-padding: auto 5%')).toEqual(['scroll-padding-top: auto', 'scroll-padding-right: 5%', 'scroll-padding-bottom: auto', 'scroll-padding-left: 5%']);
+    expect(parsed('scroll-margin: 1em -2px')).toEqual(['scroll-margin-top: 1em', 'scroll-margin-right: -2px', 'scroll-margin-bottom: 1em', 'scroll-margin-left: -2px']);
+    expect(parsed('scroll-padding-inline-start: 3px')).toEqual(['scroll-padding-left[ltr]: 3px', 'scroll-padding-right[rtl]: 3px']);
+    expect(parsed('scroll-margin-inline: 1px 2px')).toEqual(['scroll-margin-left[ltr]: 1px', 'scroll-margin-right[rtl]: 1px', 'scroll-margin-right[ltr]: 2px', 'scroll-margin-left[rtl]: 2px']);
+    expect(parsed('scroll-padding-block: auto 3px')).toEqual(['scroll-padding-top: auto', 'scroll-padding-bottom: 3px']);
+    expect(parsed('scroll-margin-block-end: 9px')).toEqual(['scroll-margin-bottom: 9px']);
+  });
+
+  it('parse as Chrome 145 does: keywords as one value, lengths, percentages for padding alone, and calculations', () => {
+    expect(parsed('scroll-snap-type: x proximity')).toEqual(['scroll-snap-type: x']);
+    expect(parsed('scroll-snap-type: Y MANDATORY')).toEqual(['scroll-snap-type: y mandatory']);
+    expect(parsed('scroll-snap-type: inline')).toEqual(['scroll-snap-type: inline']);
+    expect(parsed('scroll-snap-align: start start')).toEqual(['scroll-snap-align: start']);
+    expect(parsed('scroll-snap-align: none START')).toEqual(['scroll-snap-align: none start']);
+    expect(parsed('scroll-snap-stop: Always')).toEqual(['scroll-snap-stop: always']);
+    expect(parsed('scroll-padding-top: 0')).toEqual(['scroll-padding-top: 0px']);
+    expect(parsed('scroll-padding-top: calc(10% + 1em)')).toEqual(['scroll-padding-top: calc(10% + 1em)']);
+    expect(parsed('scroll-margin-top: calc(1em + 2px)')).toEqual(['scroll-margin-top: calc(1em + 2px)']);
+    for (const d of ['scroll-snap-type: pair', 'scroll-snap-type: none mandatory', 'scroll-snap-type: mandatory x', 'scroll-snap-align: left', 'scroll-snap-align: start end center', 'scroll-snap-stop: none',
+      'scroll-padding-top: -1px', 'scroll-padding-top: 5', 'scroll-padding: 1px 2px 3px 4px 5px', 'scroll-padding-inline: 1px 2px 3px', 'scroll-margin-top: 10%', 'scroll-margin-top: auto',
+      'scroll-margin-top: calc(10% + 1px)', 'scroll-margin-block: 0 0 0']) {
+      expect(parsed(d), d).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    }
+  });
+
+  it('accept every value on every target wherever nothing snaps', () => {
+    // scroll-padding, scroll-margin and scroll-snap-stop anywhere, on a snapping container and its areas too.
+    expect(snap(`.s { ${SCROLLER}; scroll-padding: 10px 5%; scroll-margin: 1em -2px; scroll-snap-stop: always; } .i { scroll-margin-top: 80px; scroll-padding-inline: 2rem 1px; scroll-snap-stop: always; }`).errors).toEqual([]);
+    // A snap type on a box that does not scroll, with an aligned child.
+    expect(snap('.s { scroll-snap-type: x mandatory; } .i { scroll-snap-align: start; }').errors).toEqual([]);
+    // A snap type on an inline box with overflow, which is no scroll container.
+    expect(snap('.s, .i, .k, .n { display: inline; } .s { overflow: auto; scroll-snap-type: y mandatory; } .i { scroll-snap-align: start; }').errors).toEqual([]);
+    // A scroll container with a snap type and no snap area.
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: both mandatory; } .i { scroll-snap-align: none; }`).errors).toEqual([]);
+    // Alignments with no snapping container: a scroller without a snap type, and the viewport with none.
+    expect(snap(`.s { ${SCROLLER}; } .i { scroll-snap-align: center end; } .o { scroll-snap-align: start; }`).errors).toEqual([]);
+    // An area whose box is not rendered.
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .i { display: none; scroll-snap-align: start; }`).errors).toEqual([]);
+    // A snap type of none from the cascade, a CSS-wide keyword or var().
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; scroll-snap-type: none; } .i { scroll-snap-align: start; }`).errors).toEqual([]);
+    expect(snap(`.s { ${SCROLLER}; --t: none; scroll-snap-type: var(--t); } .i { scroll-snap-align: start; scroll-snap-type: inherit; }`).errors).toEqual([]);
+  });
+
+  it('refuse an active snap pair once per container on iOS and Android, and compile it on web', () => {
+    const pair = snap(`.s { ${SCROLLER}; scroll-snap-type: x mandatory; } .i { scroll-snap-align: start; } .n { scroll-snap-align: end; }`);
+    expect(pair.errors).toEqual(NATIVE);
+    expect(pair.messages).toEqual(['scroll snapping in s (scroll-snap-type: x mandatory, with i aligned start) is not implemented on <target> yet (SCROLL-SNAP): Chrome snaps the scroll position even at rest']);
+    // proximity (Chrome may snap), overflow hidden and an area aligned on one axis only.
+    expect(snap('.s { overflow: hidden; height: 20px; scroll-snap-type: y; } .n { scroll-snap-align: none center; }').errors).toEqual(NATIVE);
+    // Through var() and inherit.
+    expect(snap(`.s { ${SCROLLER}; --t: y mandatory; scroll-snap-type: var(--t); } .i { --a: center; scroll-snap-align: var(--a); }`).errors).toEqual(NATIVE);
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: block; scroll-snap-align: end; } .i { scroll-snap-align: inherit; }`).errors).toEqual(NATIVE);
+    // The plant accepts it.
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: x mandatory; } .i { scroll-snap-align: start; }`, { ...NO_FAULTS, scrollSnapAccepted: true }).errors).toEqual([]);
+  });
+
+  it('pair an area with its nearest scroll container only, except a positioned area, which may snap any around it', () => {
+    // i scrolls and holds the area k: only i snaps it, so a snap type on s alone snaps nothing, and one on i does.
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .i { ${SCROLLER}; } .k { scroll-snap-align: start; }`).errors).toEqual([]);
+    const inner = snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .i { ${SCROLLER}; scroll-snap-type: x; } .k { scroll-snap-align: start; } .n { scroll-snap-align: end; }`);
+    expect(inner.errors).toEqual([...NATIVE, ...NATIVE].sort());
+    expect(inner.messages).toEqual([
+      'scroll snapping in i (scroll-snap-type: x, with k aligned start) is not implemented on <target> yet (SCROLL-SNAP): Chrome snaps the scroll position even at rest',
+      'scroll snapping in s (scroll-snap-type: y mandatory, with n aligned end) is not implemented on <target> yet (SCROLL-SNAP): Chrome snaps the scroll position even at rest',
+    ]);
+    // A box that does not scroll between the container and its area leaves them paired.
+    expect(snap(`.s { ${SCROLLER}; scroll-snap-type: y mandatory; } .k { scroll-snap-align: start; }`).errors).toEqual(NATIVE);
+    // An absolutely positioned area inside i may have a containing block outside it, so s may snap it.
+    expect(snap(`.s { ${SCROLLER}; position: relative; scroll-snap-type: y mandatory; } .i { ${SCROLLER}; } .k { position: absolute; scroll-snap-align: start; }`).errors).toEqual(NATIVE);
+  });
+
+  it('take the viewport\'s snap type from html alone, not from body', () => {
+    const html = snap('.h { scroll-snap-type: y mandatory; } .o { scroll-snap-align: start; }');
+    expect(html.errors).toEqual(NATIVE);
+    expect(html.messages).toEqual(['scroll snapping in the viewport (scroll-snap-type: y mandatory on html, with o aligned start) is not implemented on <target> yet (SCROLL-SNAP): Chrome snaps the scroll position even at rest']);
+    // body's snap type does not propagate to the viewport, and body is no scroll container while the viewport takes its overflow.
+    expect(snap('.b { scroll-snap-type: y mandatory; } .o { scroll-snap-align: start; }').errors).toEqual([]);
+    expect(snap('.b { overflow: auto; scroll-snap-type: y mandatory; } .o { scroll-snap-align: start; }').errors).toEqual([]);
+    // With html's overflow not visible, body's own overflow makes it a scroll container, which snaps.
+    expect(snap('.h { overflow: hidden; } .b { overflow: auto; height: 50px; scroll-snap-type: y mandatory; } .o { scroll-snap-align: start; }').errors).toEqual(NATIVE);
+    // An area inside an element scroller is not the viewport's.
+    expect(snap(`.h { scroll-snap-type: y mandatory; } .s { ${SCROLLER}; } .i { scroll-snap-align: start; }`).errors).toEqual([]);
   });
 });

@@ -674,8 +674,10 @@ const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
 // and y and the corner radii rx and ry (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
 const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
- * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), and the table spacings (CSS2 §17.6.1 border-spacing). */
-const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing']);
+ * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), the table spacings (CSS2 §17.6.1
+ * border-spacing), and every scroll-margin property (css-scroll-snap-1 §6, Blink ScrollMargin* ConsumeLength). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing',
+  ...['', '-top', '-right', '-bottom', '-left', '-inline', '-block', '-inline-start', '-inline-end', '-block-start', '-block-end'].map((s) => `scroll-margin${s}`)]);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
