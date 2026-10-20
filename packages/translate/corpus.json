@@ -31,7 +31,8 @@
     "rt": 55362,
     "hit": 3064,
     "animator": 27,
-    "interaction": 21
+    "interaction": 21,
+    "select": 5
   },
   "engineSplit": {
     "ok": 14257,
@@ -48,7 +49,8 @@
     "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
     "hit": "e7fb14d198e60ef16ac86bacdf3014c007869360184ea3a4640851d142a5053f",
     "animator": "609a3087cb43387d23586ff7482a207a77a0f8a0333d75a6d81af61da3b7a491",
-    "interaction": "f97585c89a98da73b70b9c08ccb5fd9d912b204367bd75e5f6ccdf1987b9e662"
+    "interaction": "f97585c89a98da73b70b9c08ccb5fd9d912b204367bd75e5f6ccdf1987b9e662",
+    "select": "039e7c84713bde709441193a49da00845eef11b364bd5978ec2a2d6562255670"
   },
-  "digest": "bfb7cca022d82c9f2b7c7ef94a57fc17ecb064f2e9f80cb4ef38bae271372a04"
+  "digest": "e130d2fd108b7a0e89719e3848c7fd9276708bdb843ce4366a1281b7e5bb53dd"
 }

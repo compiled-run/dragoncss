@@ -96,6 +96,8 @@ const LEGACY_STEPS: readonly Step[] = [
   { name: 'anim-capture', argv: pnpm('parity:anim-capture'), outputs: ['packages/parity/expected-frames/**'], reads: [FIXTURES, FONTS] },
   // ANIM-b1 3b: the animator suite's vectors (every frame case's tables, resolved inputs and script); native-gen reads them.
   { name: 'anim-vectors', argv: pnpm('parity:anim-vectors'), outputs: ['packages/layout/rt-vectors/animator/**'], reads: [FIXTURES, FONTS] },
+  // T154 slice 2a: the select suite's vectors (the selection documents' inputs, facts, points and drags); native-gen reads them.
+  { name: 'select-vectors', argv: pnpm('parity:select-vectors'), outputs: ['packages/layout/rt-vectors/select/**'], reads: [FONTS, 'packages/parity/src/select-cases.ts'] },
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
   { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'], reads: ['packages/layout/paint-vectors/**', ...ENGINE_SOURCES], imports: ['packages/translate/src/generate.ts', 'packages/translate/harness/harness.ts'] },
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'], reads: [...ENGINE_SOURCES, 'packages/layout/vectors/**', 'packages/layout/rt-vectors/**', 'packages/translate/corpus-m1-cases.json', 'packages/translate/package.json'] },

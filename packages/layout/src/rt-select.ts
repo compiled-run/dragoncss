@@ -522,3 +522,44 @@ export function selectedText(t: SelectTable, anchor: Caret, focus: Caret): strin
     i = next;
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The encoded answers (the translate corpus's select suite and the device lane read these).
+
+function caretCode(c: Caret | null): string {
+  if (c === null) return '-';
+  return `${c.node.toString(16)}.${c.offset.toString(16)}`;
+}
+
+/** The number of code points in text. */
+function codePointCount(text: string): number {
+  let n = 0;
+  for (const ch of text) if ((ch.codePointAt(0) as number) >= 0) n++;
+  return n;
+}
+
+/**
+ * The answers to a list of points and drags, all in LU: for each point (x, y pairs) its anchor and focus carets, with the anchor's
+ * rect when it is in text; then for each drag (anchor x, y, focus x, y) the selected text, prefixed by its code point count.
+ */
+export function selectAnswers(t: SelectTable, points: readonly number[], drags: readonly number[]): string {
+  let out = '';
+  for (let i = 0; i + 1 < points.length; i += 2) {
+    const x = points[i] as number;
+    const y = points[i + 1] as number;
+    const a = anchorAt(t, x, y);
+    out = `${out}${caretCode(a)} ${caretCode(focusAt(t, x, y))}`;
+    if (a !== null && (t.nodes[a.node] as SelectNode).kind === 'text') {
+      const r = caretRect(t, a);
+      out = `${out} ${r.x.toString(16)},${r.y.toString(16)},${r.height.toString(16)}`;
+    }
+    out = `${out};`;
+  }
+  for (let i = 0; i + 3 < drags.length; i += 4) {
+    const a = anchorAt(t, drags[i] as number, drags[i + 1] as number);
+    const f = focusAt(t, drags[i + 2] as number, drags[i + 3] as number);
+    const text = a === null || f === null ? '' : selectedText(t, a, f);
+    out = `${out}${codePointCount(text).toString(16)}:${text};`;
+  }
+  return out;
+}
