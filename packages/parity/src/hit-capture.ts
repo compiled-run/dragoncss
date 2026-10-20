@@ -153,7 +153,7 @@ export function hitRefusal(n: NativeCase): string | null {
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
   // MASK-CLIP: Chrome's elementFromPoint passes over a box its empty clip rect hides, and over its descendants, which the hit test
   // does not model yet.
-  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty')).map((x) => x.id);
+  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty' || w.kind === 'clip-rect-label')).map((x) => x.id);
   if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
   // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
   // hit test does not model yet.

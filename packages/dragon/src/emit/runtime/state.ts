@@ -798,6 +798,7 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
         throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
       case 'clip-rect-empty':
+      case 'clip-rect-label':
         // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.
         throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'clip-path-inset':
