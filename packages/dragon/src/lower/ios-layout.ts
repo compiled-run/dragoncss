@@ -54,6 +54,7 @@ import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
+import { videoLoads } from '../videos/compile.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
 import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
@@ -576,6 +577,12 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
     const src = el.element.attributes.get('src');
     const size = src === undefined ? undefined : images.get(src);
     if (size === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);
+    natural = { kind: 'image', width: size.width, height: size.height };
+  } else if (el.element.tag === 'video' && videoLoads(el)) {
+    // MEDIA-EL: Chrome sizes a video it loads by its stream (videos/compile.ts reads the src into the same map); one without a src,
+    // or with preload none, keeps the default object size.
+    const size = images.get(el.element.attributes.get('src') as string);
+    if (size === undefined) throw new LoweringError(id, 'src', `<video> ${id} has no stream the build read`);
     natural = { kind: 'image', width: size.width, height: size.height };
   }
   const position = raw('object-position');

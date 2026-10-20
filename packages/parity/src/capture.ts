@@ -6,7 +6,7 @@
 import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
-import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
+import { CHROME_VERSION, injectHarness, launchArgsOf, openPage, videosReady } from './chrome.ts';
 import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import { BROWSER_FLAVOUR, hostPlatform, REFERENCE_PLATFORM } from './platform.ts';
@@ -170,6 +170,7 @@ export async function captureFixtureInFrame(browser: Browser, fixture: string, h
     const child = await handle.contentFrame();
     if (child === null) throw new Error(`${fixture}: no iframe document`);
     await child.setContent(injectHarness(html, env));
+    await child.evaluate(videosReady);
     const failed = await child.evaluate(async (qs: string[]) => {
       await document.fonts.load('10px Ahem');
       await document.fonts.ready;

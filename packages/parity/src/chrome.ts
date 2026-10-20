@@ -98,7 +98,20 @@ export function injectHarness(html: string, env: PageEnvironment): string {
   return injected;
 }
 
-/** Opens a page in the case environment, loads the HTML with the harness style injected, and waits for fonts and two frames. */
+/**
+ * MEDIA-EL: resolves once every video that loads its stream (a src, and preload not none) has its first frame
+ * (HAVE_CURRENT_DATA) or has failed, so Chrome has laid it out at its stream's natural size and painted the frame; it runs in the
+ * page, so it closes over nothing.
+ */
+export async function videosReady(): Promise<void> {
+  const loading = [...document.querySelectorAll('video')].filter((v) => v.getAttribute('src') !== null && (v.getAttribute('preload') ?? '').toLowerCase() !== 'none');
+  await Promise.all(loading.map((v) => (v.readyState >= 2 || v.error !== null ? null : new Promise<void>((r) => {
+    v.addEventListener('loadeddata', () => r(), { once: true });
+    v.addEventListener('error', () => r(), { once: true });
+  }))));
+}
+
+/** Opens a page in the case environment, loads the HTML with the harness style injected, and waits for fonts, videos and two frames. */
 export async function openPage(browser: Browser, html: string, env: PageEnvironment): Promise<Page> {
   const context = await browser.newContext({
     viewport: { width: env.viewport.width, height: env.viewport.height },
@@ -107,6 +120,7 @@ export async function openPage(browser: Browser, html: string, env: PageEnvironm
   const page = await context.newPage();
   const injected = injectHarness(html, env);
   await page.setContent(injected);
+  await page.evaluate(videosReady);
   await page.evaluate(async () => {
     await document.fonts.load('10px Ahem');
     await document.fonts.ready;
@@ -134,6 +148,7 @@ export async function openFrozenPage(browser: Browser, html: string, env: PageEn
   const injected = injectHarness(html, env);
   await page.route(FROZEN_URL, (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: injected }));
   await page.goto(FROZEN_URL);
+  await page.evaluate(videosReady);
   await page.evaluate(async () => {
     await document.fonts.load('10px Ahem');
     await document.fonts.ready;

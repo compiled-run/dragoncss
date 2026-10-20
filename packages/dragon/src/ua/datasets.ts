@@ -35,7 +35,7 @@ export type UaDataset = {
    * href is unvisited: :visited never matches): the declared colour per direction and the decoration line.
    */
   readonly anyLink: { readonly color: { readonly ltr: string; readonly rtl: string }; readonly line: string };
-  /** REPL-0: the replaced keys (iframe, img with a src), in tables of their own; uaRows reads them. */
+  /** REPL-0: the replaced keys (iframe, img with a src, video), in tables of their own; uaRows reads them. */
   readonly replacedKeyComputed: { readonly [K in ReplacedKey]: { readonly [property: string]: string } };
   readonly replacedKeyLonghands: { readonly [K in ReplacedKey]: readonly string[] };
   readonly replacedKeyDeclared: { readonly [K in ReplacedKey]: DirRows };
@@ -62,7 +62,7 @@ export type UaRows = {
 const NO_FORCED: DirRows = { ltr: {}, rtl: {} };
 
 function isReplacedKey(key: UaKey): key is ReplacedKey {
-  return key === 'iframe' || key === 'img[src]' || key === 'svg' || key === 'path' || key === 'rect' || key === 'circle';
+  return key === 'iframe' || key === 'img[src]' || key === 'svg' || key === 'path' || key === 'rect' || key === 'circle' || key === 'video';
 }
 
 /** The UA rows of a key, from the element tables or the replaced-key tables. */

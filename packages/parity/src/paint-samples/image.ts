@@ -86,14 +86,15 @@ function uniform(img: RgbaImage, x0: number, y0: number, x1: number, y1: number)
 }
 
 /**
- * The replaced boxes with neither an image nor a foreign view (an <svg>): every base rule with a pixel inside one is dropped, as
- * the box's base points assume no content there; the svg's own points (svgPointsOf) sample its shapes instead.
+ * The replaced boxes with neither an image nor a foreign view (an <svg>, or a video without a stream): every base rule with a
+ * pixel inside one is dropped, as the box's base points assume no content there; the svg's own points (svgPointsOf) sample its
+ * shapes instead. A video player is masked by the foreign-view module over its drawn rect only.
  */
 function undrawnReplaced(ctx: PaintSampleContext): readonly { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }[] {
   const byId = new Map(ctx.program.nodes.map((n) => [n.id, n]));
   const ids = new Set<string>();
   const walk = (b: { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] }): void => {
-    if (b.kind === 'replaced' && !(byId.get(b.id)?.writes ?? []).some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view')) ids.add(b.id);
+    if (b.kind === 'replaced' && !(byId.get(b.id)?.writes ?? []).some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'video-view')) ids.add(b.id);
     for (const c of b.children ?? []) walk(c as { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] });
   };
   walk(ctx.program.root as unknown as { readonly kind: string; readonly id: string; readonly children?: readonly unknown[] });

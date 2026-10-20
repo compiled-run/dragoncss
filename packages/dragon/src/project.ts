@@ -6,6 +6,7 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
+import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
 import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
@@ -1281,7 +1282,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       // REPL-a: the images every band's resolved cases reference, read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
-      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]))), config.images, assetBytes, diagnostics);
+      const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])));
+      const read = compileImages(roots, config.images, assetBytes, diagnostics);
+      // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
+      const videos = compileVideos(roots, diagnostics);
+      images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       // MQ-R1: native runs every band, so every other band's analysis reports too (each diagnostic once).

@@ -18,6 +18,8 @@ import type { PaintSampleContext } from './types.ts';
 export type ReplacedSamplesBox = {
   readonly paint: ReplacedPaint;
   readonly image: RgbaImage | null;
+  /** MEDIA-EL: whether the box holds a video player, which covers its drawn rect only (foreign-view.ts maskedAt). */
+  readonly video: boolean;
   readonly later: readonly SnappedRect[];
   /** The later boxes that hide whatever is under them: an opaque background-color over the border box, and no clipping ancestor. */
   readonly cover: readonly SnappedRect[];
@@ -34,8 +36,8 @@ const cache = new WeakMap<PaintSampleContext, ReadonlyMap<string, ReplacedSample
 export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, ReplacedSamplesBox> {
   const hit = cache.get(ctx);
   if (hit !== undefined) return hit;
-  // A case with no image and no foreign view needs no geometry, and runs no layout for it.
-  if (!ctx.program.nodes.some((n) => n.writes.some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'svg-shapes'))) {
+  // A case with no image, foreign view or video player needs no geometry, and runs no layout for it.
+  if (!ctx.program.nodes.some((n) => n.writes.some((w) => w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'video-view' || w.kind === 'svg-shapes'))) {
     const none = new Map<string, ReplacedSamplesBox>();
     cache.set(ctx, none);
     return none;
@@ -67,7 +69,7 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
     const image = w === undefined || w.kind !== 'replaced-image' ? null : decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d)));
     const at = order.get(n.id) as number;
     const later = snapped.slice(at + 1);
-    boxes.set(n.id, { paint, image, later, cover: later.filter((r) => opaque(r.id)), clip: imageClip(ctx, n.id, snapped[at] as SnappedRect, out.boxes[at] as { width: number; height: number }, borders.get(n.id) ?? [0, 0, 0, 0]) });
+    boxes.set(n.id, { paint, image, video: n.writes.some((x) => x.kind === 'video-view'), later, cover: later.filter((r) => opaque(r.id)), clip: imageClip(ctx, n.id, snapped[at] as SnappedRect, out.boxes[at] as { width: number; height: number }, borders.get(n.id) ?? [0, 0, 0, 0]) });
   }
   cache.set(ctx, boxes);
   return boxes;
