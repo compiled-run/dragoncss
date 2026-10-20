@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { hitFacts, programInput, svgScenes } from 'dragon';
+import type { LayoutBox } from '../../layout/src/input.ts';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
@@ -145,7 +146,8 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
  * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
  * mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not
- * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP).
+ * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP), and one with an outside text
+ * ::marker (GEN-c), through whose box Chrome hits its list item.
  */
 export function hitRefusal(n: NativeCase): string | null {
   const nodes = n.programs.uikit.nodes;
@@ -173,8 +175,19 @@ export function hitRefusal(n: NativeCase): string | null {
   // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
   const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
   if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
+  const input = programInput(n.programs.uikit, n.case.environment.viewport, 1);
+  // GEN-c: Chrome hits a list item through its outside text ::marker box (beside the item's border box), which the hit test does not
+  // model yet; Chrome hits no outside symbol marker at any captured point (list-markers-pseudo's disc and square items).
+  const marked = textMarkerItems(input.root);
+  if (marked.length > 0) return `outside text marker on ${marked.join(', ')}: Chrome hits a list item through its outside ::marker box, which rt-hit.ts does not model yet (GEN-c)`;
   // INL1a: hitTableOf refuses an inline box or a <br> by name (rt-hit.ts), so such a case is left out with that reason.
-  return inputHitRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1));
+  return inputHitRefusal(input);
+}
+
+/** The ids of the boxes under root, in tree order, that carry an outside text marker. */
+function textMarkerItems(root: LayoutBox): string[] {
+  const own = root.marker?.kind === 'text' ? [root.id] : [];
+  return [...own, ...root.children.flatMap((c) => (c.kind === 'box' ? textMarkerItems(c) : []))];
 }
 
 /** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */
