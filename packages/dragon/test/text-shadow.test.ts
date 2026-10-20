@@ -107,23 +107,36 @@ describe('text-shadow', () => {
     expect(errorsIn(`${shadow} .g { height: 10px; background-color: red; }`, earlier)).toEqual([]);
   });
 
-  it('accepts on iOS and Android a wrapping text whose lines are far enough apart that no line\'s shadow reaches the line above', () => {
+  it('accepts on iOS and Android a wrapping text whose lines are far enough apart that no line\'s shadow reaches the line above or the next line\'s shadow', () => {
     expect([TEXT_SHADOW_MIN_DEVICE_SCALE, TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX]).toEqual([0.75, 3.5, 1]);
     const wrap = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX XX')])];
     const at = (lh: string, list: string): string[] => errorsIn(`.s { line-height: ${lh}; text-shadow: ${list}; }`, wrap);
     // 10px Ahem: the gap is line-height less 10px; it must hold y less 1.5 blur over 3.5 / 0.75 px, or 4.5 / 0.75 = 6px when blurred.
     expect(at('30px', '0 1px 2px rgba(0, 0, 0, 0.5)')).toEqual([]);
     expect(at('12px', '0 1px 2px rgba(0, 0, 0, 0.5)')).toEqual(NATIVE_REFUSED);
-    expect(at('12px', '0 3px 0 red')).toEqual([]);
-    expect(at('12px', '0 2px 0 red')).toEqual(NATIVE_REFUSED);
+    expect(at('15px', '0 0 0 red')).toEqual([]);
+    expect(at('14.5px', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     expect(at('1.5', '0 0 0 red')).toEqual([]);
     expect(at('1.4', '0 0 0 red')).toEqual(NATIVE_REFUSED);
+    expect(at('150%', '0 0 0 red')).toEqual([]);
+    expect(at('140%', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     expect(at('normal', '0 0 0 red')).toEqual(NATIVE_REFUSED);
     // A negative y reaches further up; every shadow of the list must keep the bound, a transparent one excepted.
     expect(at('20px', '0 -5px 0 red')).toEqual([]);
     expect(at('20px', '0 -6px 0 red')).toEqual(NATIVE_REFUSED);
-    expect(at('12px', '0 3px 0 red, 0 0 4px blue')).toEqual(NATIVE_REFUSED);
-    expect(at('12px', '0 3px 0 red, 0 0 4px transparent')).toEqual([]);
+    expect(at('15px', '0 3px 0 red, 0 0 4px blue')).toEqual(NATIVE_REFUSED);
+    expect(at('15px', '0 3px 0 red, 0 0 4px transparent')).toEqual([]);
+    // No two lines' shadows may meet: the gap less the lowest reach below a line and the highest above the next keeps the same slack,
+    // one blur slack per blurred end (each line's layer is encoded over the backdrop alone).
+    expect(at('40px', '0 8px 16px rgba(0, 0, 0, 0.5)')).toEqual(NATIVE_REFUSED);
+    expect(at('30px', '0 3px 0 red, 0 20px 0 blue')).toEqual(NATIVE_REFUSED);
+    expect(at('30px', '0 3px 0 red, 0 10px 0 blue')).toEqual([]);
+    expect(at('30px', '0 0 4px red')).toEqual([]);
+    expect(at('25px', '0 0 4px red')).toEqual(NATIVE_REFUSED);
+    const meet = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .s { line-height: 40px; text-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); }', wrap)).diagnostics.find((d) => d.target === 'ios');
+    expect(meet?.message).toBe(
+      'text-shadow: rgba(0, 0, 0, 0.5) 0px 8px 16px on <div> a is unsupported on ios: text a:text0 may wrap onto several lines, and the shadows of one line may meet the next line\'s, whose layer the device composites over the first instead of over the backdrop it is encoded against (line-height less font-size, less how far the shadows reach below a line, 32px, and above the next, 16px, is -18px, under 7.333333333333333px)',
+    );
     // overflow-wrap: anywhere wraps a word too.
     expect(errorsIn('.s { line-height: 30px; overflow-wrap: anywhere; text-shadow: 0 1px 2px red; }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])).toEqual([]);
     const msg = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; font-size: 10px; } .s { line-height: 12px; text-shadow: 0 2px 0 red; }', wrap)).diagnostics.find((d) => d.target === 'ios');

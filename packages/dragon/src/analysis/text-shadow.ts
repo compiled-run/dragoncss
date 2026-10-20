@@ -155,6 +155,7 @@ export function wrapGap(t: ResolvedText): number | null {
   if (v.kind === 'keyword' && v.value === 'normal') return -1;
   if (v.kind === 'number') return v.value * size - size;
   if (v.kind === 'length' && v.unit === 'px') return v.value - size;
+  if (v.kind === 'percentage') return (v.value * size) / 100 - size;
   return null;
 }
 
@@ -162,12 +163,12 @@ export function wrapGap(t: ResolvedText): number | null {
  * Why the native targets refuse shadows on text that may wrap, or null. The device draws each line's shadow as its own layer, the
  * lines' layers in line order beneath the text view (emit/paint/text-shadow.ts), and Chrome paints each line's shadows and then its
  * text, so the two agree unless a later line's shadow reaches the ink of a line above it, which Chrome paints over and the device
- * under. Dragon lays out horizontal-tb only, so lines stack downward. Any inline box holding the text lies inside its line box, so two of its lines' ink are at least wrapGap apart; a shadow
+ * under, or two lines' shadows meet (each layer is encoded over the backdrop alone). Dragon lays out horizontal-tb only, so lines stack downward. Any inline box holding the text lies inside its line box, so two of its lines' ink are at least wrapGap apart; a shadow
  * reaches up by its blur's 3 sigma (1.5 * blur) less its y offset, and the bound keeps the slack above at every device scale.
  */
 function wrapRefusal(shadows: readonly Shadow[], text: ResolvedText): string | null {
   const gap = wrapGap(text);
-  if (gap === null) return 'its line height is not normal, a number or a px length';
+  if (gap === null) return 'its line height is not normal, a number, a percentage or a px length';
   for (const sh of shadows) {
     if (sh.color !== 'currentcolor' && sh.color.alpha === 0) continue;
     const blurred = sh.blur.value > 0;
@@ -175,6 +176,17 @@ function wrapRefusal(shadows: readonly Shadow[], text: ResolvedText): string | n
     const need = (TEXT_SHADOW_WRAP_SLACK_DEVICE_PX + (blurred ? TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX : 0)) / TEXT_SHADOW_MIN_DEVICE_SCALE;
     if (reach < need) return `the shadow at ${sh.x.value}px ${sh.y.value}px blurred ${sh.blur.value}px of a line may reach the glyphs of the line above, which Chrome paints the shadow over (line-height less font-size, plus the y offset, less 1.5 times the blur, is ${reach}px, under ${need}px)`;
   }
+  // Each line's layer is encoded over the backdrop alone (textShadowLayerOver), so no two lines' shadows may meet: a line's shadows
+  // reach below its ink by y plus 1.5 blur, and the next line's above its ink by 1.5 blur less y.
+  const painted = shadows.filter((sh) => sh.color === 'currentcolor' || sh.color.alpha !== 0);
+  if (painted.length === 0) return null;
+  const extent = (sh: Shadow, sign: 1 | -1): { readonly v: number; readonly blurred: boolean } => ({ v: sign * sh.y.value + 1.5 * sh.blur.value, blurred: sh.blur.value > 0 });
+  const most = (sign: 1 | -1) => painted.map((sh) => extent(sh, sign)).reduce((a, b) => (b.v > a.v || (b.v === a.v && b.blurred) ? b : a));
+  const down = most(1);
+  const up = most(-1);
+  const apart = gap - down.v - up.v;
+  const need = (TEXT_SHADOW_WRAP_SLACK_DEVICE_PX + (down.blurred ? TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX : 0) + (up.blurred ? TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX : 0)) / TEXT_SHADOW_MIN_DEVICE_SCALE;
+  if (apart < need) return `the shadows of one line may meet the next line's, whose layer the device composites over the first instead of over the backdrop it is encoded against (line-height less font-size, less how far the shadows reach below a line, ${down.v}px, and above the next, ${up.v}px, is ${apart}px, under ${need}px)`;
   return null;
 }
 
