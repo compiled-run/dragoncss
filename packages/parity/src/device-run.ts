@@ -73,8 +73,9 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'dash-gap-unfitted': ['border-dash-fit', 'border-dot-fit'],
   // PNT1b: radius-double's border points sit in the gap between the two rings, which the plant fills with the border colour.
   'double-solid': ['radius-double'],
-  // MASK-CLIP: clip-rect-basic's clipped boxes (ids cut-*) paint their backgrounds when the writer is ignored.
-  'clip-rect-ignored': ['clip-rect-basic'],
+  // MASK-CLIP: the clipped boxes (ids cut-*) of clip-rect-basic and, through the clip label writer, of clip-rect-sr-only paint
+  // their backgrounds when the writer is ignored.
+  'clip-rect-ignored': ['clip-rect-basic', 'clip-rect-sr-only'],
   // MASK-CLIP: clip-path-basic's clip edges (rule clip:<id>:path-*) show the box's paint outside the inset rect when the writer is ignored.
   'clip-path-ignored': ['clip-path-basic'],
   'radius-square': ['radius-basic'],
