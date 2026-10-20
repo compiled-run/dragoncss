@@ -27,6 +27,11 @@ export type CompiledImages = {
   readonly naturals: ImageNaturals;
   /** The bytes of each drawable image src, which the native image paint embeds (lower/paint/image.ts). */
   readonly bytes: ReadonlyMap<string, Uint8Array>;
+  /**
+   * The data: URL web writes for each mapped background url() src: dragon.css is not where the document is, so the authored relative
+   * src would resolve against the stylesheet's own URL there.
+   */
+  readonly webUrls: ReadonlyMap<string, string>;
   /** The value the compilation digest takes under images, or null when the project has no images and no images option. */
   readonly digestInput: unknown;
 };
@@ -64,27 +69,32 @@ function urlSpan(span: Span, src: string, sourceText: (uri: string) => string | 
 
 function imgUses(roots: readonly ResolvedElement[], sourceText: (uri: string) => string | undefined): ImgUse[] {
   const out: ImgUse[] = [];
-  const walk = (el: ResolvedElement): void => {
+  // inherited: the parent's url() bases by src, which background-image: inherit takes, since Chrome resolves the url() at the parent.
+  const walk = (el: ResolvedElement, inherited: ReadonlyMap<string, UrlBase>): void => {
     if (el.element.tag === 'img') out.push({ kind: 'img', el, src: el.element.attributes.get('src') ?? null });
     const v = el.props.get('background-image');
+    const bases = new Map<string, UrlBase>();
     // A length compute could not fold is refused at the element (CALC-p) before the layers are read.
     if (v !== undefined && unfoldedLength(v.value) === null && !(v.value.kind === 'keyword')) {
       const doc = el.element.node.origin.kind === 'authored' ? el.element.node.origin.span.source.uri : null;
       const spans = [v.span, v.declaration?.valueSpan ?? null].filter((x): x is Span => x !== null);
       const foreign = spans.find((sp) => sp.source.uri !== doc);
+      const inherits = v.substitution === undefined && v.declared?.kind === 'keyword' && v.declared.value === 'inherit';
       for (const item of valueItems(v.value)) {
         const i = imageItem(item);
         if (!i.ok || i.value.kind !== 'url') continue;
         const src = i.value.url;
         const at = v.declaration?.valueSpan ?? spans[0];
         const origin = at === undefined ? el.element.node.origin : authored(urlSpan(at, src, sourceText));
-        const base: UrlBase = v.substitution !== undefined ? { kind: 'var' } : spans.length === 0 || doc === null ? { kind: 'unknown' } : foreign !== undefined ? { kind: 'stylesheet', uri: foreign.source.uri } : { kind: 'document' };
+        const own: UrlBase = v.substitution !== undefined ? { kind: 'var' } : spans.length === 0 || doc === null ? { kind: 'unknown' } : foreign !== undefined ? { kind: 'stylesheet', uri: foreign.source.uri } : { kind: 'document' };
+        const base = inherits ? (inherited.get(src) ?? { kind: 'unknown' }) : own;
+        bases.set(src, base);
         out.push({ kind: 'background', el, src, origin, base });
       }
     }
-    for (const c of el.children) if (c.kind === 'element') walk(c);
+    for (const c of el.children) if (c.kind === 'element') walk(c, bases);
   };
-  for (const r of roots) walk(r);
+  for (const r of roots) walk(r, new Map());
   return out;
 }
 
@@ -129,6 +139,7 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
   };
   const naturals = new Map<string, NaturalSize>();
   const bytes = new Map<string, Uint8Array>();
+  const webUrls = new Map<string, string>();
   for (const u of uses) {
     const where = u.kind === 'img' ? `<img> ${u.el.element.address}` : `background-image on ${u.el.element.address}`;
     const what = u.kind === 'img' ? 'src' : 'url()';
@@ -162,10 +173,14 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
     const resolved = resolveImageSource(u.src, usable, read);
     if (resolved.kind !== 'data' && resolved.kind !== 'mapped') throw new Error(`${where}: an accepted src no longer resolves`);
     bytes.set(u.src, resolved.bytes);
+    if (u.kind === 'background' && resolved.kind === 'mapped') {
+      if (e.format !== 'png' && e.format !== 'jpeg') throw new Error(`${where}: an accepted image is ${e.format ?? 'of no format'}`);
+      webUrls.set(u.src, `data:image/${e.format};base64,${base64Encode(resolved.bytes)}`);
+    }
   }
   const used = [...entries.values()].sort((a, b) => (a.src < b.src ? -1 : a.src > b.src ? 1 : 0));
   const digestInput = used.length === 0 && images === undefined ? null : { map: Object.fromEntries(Object.entries(map).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))), manifest: manifestDigestInput({ version: 1, images: used }) };
-  return { naturals, bytes, digestInput };
+  return { naturals, bytes, webUrls, digestInput };
 }
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

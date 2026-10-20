@@ -15,7 +15,7 @@ import { lowerUrlLayer } from '../src/lower/paint/bg-image.ts';
 import { GRADIENT_LOWERING } from '../src/lower/paint/gradient.ts';
 import { ProgramError } from '../src/lower/paint/types.ts';
 import type { FrontEndResult, SourceRef, Targets, TreeNode } from '../src/types.ts';
-import { div, explainOne, expectCatalogued, inputFor, spanTextOf } from './helpers.ts';
+import { DOC, div, explainOne, expectCatalogued, inputFor, spanTextOf, staticClass } from './helpers.ts';
 
 const ALL: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
 const WEB: Targets = { web: {} };
@@ -90,6 +90,16 @@ describe('the image source is read at build time (images/compile.ts)', () => {
   it('a src the images option maps compiles where the base is the document', () => {
     expect(codes(compile('.a { background-image: url(a.png); }', { images: { 'a.png': 'img/a.png' } }))).toEqual([]);
   });
+  it('web writes a mapped src as its data: URL, since dragon.css does not share the document base (landing review of #475)', () => {
+    const images = { 'a.png': 'img/a.png', 'fonts/b.png': 'img/a.png' };
+    const css = webCss(compile(`.a { background: red; } .a:hover { background: url("fonts/b.png") no-repeat 4px 25% red; } .b { background-image: url(a.png); } @media (min-width: 9000px) { .b { background-image: none; } .a { background-image: url(a.png); } }`, { images }));
+    expect(css).toContain(`background-image: url("${PNG}")`);
+    expect(css).not.toMatch(/url\("?(fonts\/b|a)\.png/);
+    expect(css.match(/url\(/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(css.match(/url\(/g)?.length).toBe(css.match(/url\("data:image\/png;base64,/g)?.length);
+    // The resolved value is the authored src; only the web text is rewritten.
+    expect(explainOne(compile('.a { background-image: url(a.png); }', { images }), 'web', 'a', 'background-image').value).toBe('url("a.png")');
+  });
   const remote = (c: ReturnType<typeof compile>, input: FrontEndResult, span: string, part: string): void => {
     const d = errors(c).find((x) => x.code === 'DRAGON_REMOTE_IMAGE');
     expect(d, codes(c).join(', ')).toBeDefined();
@@ -112,6 +122,28 @@ describe('the image source is read at build time (images/compile.ts)', () => {
   it('a mapped src in a linked stylesheet is DRAGON_REMOTE_IMAGE naming the stylesheet, whose base is not the document', () => {
     const input = withAsset(external(inputFor(`${BASE}.a { background-image: url(a.png); }`, tree)));
     remote(compileInput(input, { images: { 'a.png': 'img/a.png' } }), input, 'url(a.png)', 'it is in the stylesheet dragon-source://test/theme.css, whose base is not the document');
+  });
+  it('inherit in a linked stylesheet takes the url() base of the parent, where Chrome resolves it (landing review of #475)', () => {
+    // .a's url() is in the document's <style>; .b's rule is in the linked sheet theme.css.
+    const linked = (child: string): FrontEndResult => {
+      const input = inputFor(`${BASE}.a { background-image: url(a.png); }`, (r) => [div(r, 'a', ['a'], [{ ...div(r, 'b', []), classes: [staticClass({ owner: DOC, sheet: 's2', name: 'b' }, { kind: 'authored', span: { source: r, start: 0, end: 0 } })] }])]);
+      const tree = input.tree;
+      const doc = tree?.documents?.[0];
+      if (tree === null || doc === undefined) throw new Error('no tree');
+      const ref: SourceRef = { uri: 'dragon-source://test/theme.css', revision: 'r1', hash: `sha256:${createHash('sha256').update(child).digest('hex')}` };
+      return {
+        ...input,
+        snapshot: { ...input.snapshot, sources: [...input.snapshot.sources, { ref, text: child, displayPath: 'theme.css' }] },
+        tree: { ...tree, documents: [{ ...doc, styles: [...doc.styles, 's2'] }], styles: [...tree.styles, { id: 's2', css: { source: ref, start: 0, end: child.length }, scope: { kind: 'document' } }] },
+      };
+    };
+    const images = { 'a.png': 'img/a.png' };
+    const ok = compileInput(withAsset(linked('.b { width: 10px; height: 10px; background-image: inherit; }')), { images });
+    expect(codes(ok)).toEqual([]);
+    expect(explainOne(ok, 'web', 'b', 'background-image').value).toBe('url("a.png")');
+    // The same src declared in the linked sheet itself is still refused there.
+    const own = compileInput(withAsset(linked('.b { width: 10px; height: 10px; background-image: url(a.png); }')), { images });
+    expect(errors(own).map((d) => d.message)).toEqual([expect.stringContaining('background-image on b: url() a.png is not read: it is in the stylesheet dragon-source://test/theme.css')]);
   });
   it('a mapped src through var() is DRAGON_REMOTE_IMAGE: the custom property sheet decides the base', () => {
     const c = compile('.a { --i: url(a.png); background-image: var(--i); }', { images: { 'a.png': 'img/a.png' } });
