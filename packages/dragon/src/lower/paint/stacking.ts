@@ -25,7 +25,7 @@ import { ProgramError } from './types.ts';
 /** One box of the stacking tree: its positioning, z-index (null for auto or where it has no effect), opacity and clip. */
 export type StackNode = {
   readonly id: string;
-  /** fixed (POSX-f) and sticky (from the resolved tree only; the engine refuses it) always make a stacking context. */
+  /** fixed (POSX-f) and sticky (POSX-s) always make a stacking context. */
   readonly position: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
   /** The z-index when it applies (a positioned box, or a flex or grid item: Blink StyleAdjuster), else null. */
   readonly z: number | null;

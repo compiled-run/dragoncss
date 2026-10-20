@@ -1,22 +1,22 @@
 // Entry point: lays out a validated LayoutInput and returns boxes relative to the parent border box, in LU: the in-flow boxes in
 // preorder, then each absolutely positioned box (after its parent and containing block) with its subtree.
-import type { LayoutBox, LayoutInput } from './input.ts';
+import type { InsetValue, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
-import { add, fromCssPx, sub, ZERO } from './units.ts';
+import { add, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
-import { resolveBorder } from './box.ts';
+import { hasPercent, isScrollContainer, resolveBorder, resolveLength, resolveMarginWith, resolvePaddingWith } from './box.ts';
 import type { EnvironmentDependencies } from './environment.ts';
 import { applyEnvironment, environmentDependencies, resolveEnvironment } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import type { GridFaults } from './grid.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
-import type { ContainingBlock } from './position.ts';
+import type { ContainingBlock, RelativeOffset } from './position.ts';
 import { layoutAbsolute, relativeOffsetWith } from './position.ts';
 import type { TextMeasurer } from './text.ts';
 import { ahemMeasurerWith } from './text.ts';
 import type { LayoutUnsupported } from './unsupported.ts';
-import { UnsupportedSignal } from './unsupported.ts';
+import { unsupported, UnsupportedSignal } from './unsupported.ts';
 
 /** A box, text leaf or line fragment (<leaf>:line<j>), relative to its parent's border box; parent is null for the root. */
 export type LayoutRect = { readonly id: string; readonly parent: string | null; readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
@@ -38,7 +38,19 @@ type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly orig
 /** A border box in absolute LU. */
 type AbsoluteRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
-type Placement = { readonly boxes: LayoutRect[]; readonly absolute: Map<string, AbsoluteRect>; readonly pending: Pending[]; readonly inflow: InflowBounds[] };
+/** A sticky box and its parent, whose content box is its containing block (css-position-3 §3.4). */
+type Sticky = { readonly box: LayoutNode; readonly parent: LayoutBox };
+
+/** The sticky boxes by id, with the layout context and the viewport, their scrollport at scroll offset 0. */
+type StickyIndex = { readonly ctx: Ctx; readonly boxes: Map<string, Sticky>; readonly width: LU; readonly height: LU };
+
+type Placement = {
+  readonly boxes: LayoutRect[];
+  readonly absolute: Map<string, AbsoluteRect>;
+  readonly pending: Pending[];
+  readonly inflow: InflowBounds[];
+  readonly sticky: StickyIndex;
+};
 
 /** A grid scroll container's inflow bounds (Frag.inflow) in its border box; overflow.ts reads them for its scrollable overflow. */
 export type InflowBounds = { readonly id: string; readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
@@ -78,7 +90,10 @@ export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, fau
       bfcLineOffset: ZERO,
     });
     const offset = relativeOffsetWith(root, icbWidth, { kind: 'definite', value: icbHeight }, icbDirection, ctx.faults);
-    const out: Placement = { boxes: [], absolute: new Map(), pending: [], inflow: [] };
+    if (root.style.position === 'sticky') unsupported('sticky', root.id, 'css-position-3 §3.4', `the root box ${root.id} has no containing block to stick in`);
+    const sticky = new Map<string, Sticky>();
+    collectSticky(root, null, null, sticky);
+    const out: Placement = { boxes: [], absolute: new Map(), pending: [], inflow: [], sticky: { ctx, boxes: sticky, width: icbWidth, height: icbHeight } };
     flatten(r.frag, null, add(inline.x, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
     placeOutOfFlow(ctx, input, out, { x: ZERO, y: ZERO, width: icbWidth, height: icbHeight, direction: icbDirection });
     return { result: { kind: 'ok', boxes: out.boxes, dependencies: environmentDependencies(given) }, inflow: out.inflow };
@@ -88,7 +103,15 @@ export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, fau
   }
 }
 
-function flatten(frag: Frag, parent: string | null, x: LU, y: LU, parentX: LU, parentY: LU, out: Placement): void {
+function flatten(frag: Frag, parent: string | null, inFlowX: LU, inFlowY: LU, parentX: LU, parentY: LU, out: Placement): void {
+  let x = inFlowX;
+  let y = inFlowY;
+  const st = out.sticky.boxes.get(frag.id);
+  if (st !== undefined) {
+    const shift = stickyOffset(out.sticky, st, add(parentX, x), add(parentY, y), frag.width, frag.height, out);
+    x = add(x, shift.dx);
+    y = add(y, shift.dy);
+  }
   const absX = add(parentX, x);
   const absY = add(parentY, y);
   out.boxes.push({ id: frag.id, parent, x, y, width: frag.width, height: frag.height });
@@ -96,6 +119,81 @@ function flatten(frag: Frag, parent: string | null, x: LU, y: LU, parentX: LU, p
   if (frag.inflow !== null) out.inflow.push({ id: frag.id, x: frag.inflow.x, y: frag.inflow.y, width: frag.inflow.width, height: frag.inflow.height });
   for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY });
   for (const c of frag.children) flatten(c.frag, frag.id, c.x, c.y, absX, absY, out);
+}
+
+/**
+ * The sticky boxes under b by id. The engine offsets a sticky box against the viewport only: one inside a scroll container (whose
+ * scroll offset would move it) or inside another sticky box is refused, and so are an inline-level one (placed by a line box) and
+ * a percentage padding on its parent (its containing block, resolved after layout here).
+ */
+function collectSticky(b: LayoutBox, scroller: string | null, within: string | null, out: Map<string, Sticky>): void {
+  for (const c of b.children) {
+    if (c.kind !== 'box' && c.kind !== 'replaced') continue;
+    let sticky = within;
+    if (c.style.position === 'sticky') {
+      const spec = 'css-position-3 §3.4';
+      if (scroller !== null) unsupported('sticky', c.id, spec, `the sticky ${c.id} inside the scroll container ${scroller} would follow its scroll offset`);
+      if (within !== null) unsupported('sticky', c.id, spec, `the sticky ${c.id} inside the sticky ${within}`);
+      if (c.style.display !== 'block' && c.style.display !== 'flex' && c.style.display !== 'grid') unsupported('sticky', c.id, spec, `the sticky ${c.id} in the inline formatting context of ${b.id}`);
+      const s = b.style;
+      if (hasPercent(s.paddingTop) || hasPercent(s.paddingRight) || hasPercent(s.paddingBottom) || hasPercent(s.paddingLeft)) {
+        unsupported('sticky', c.id, spec, `a percentage padding on ${b.id}, the containing block of the sticky ${c.id}`);
+      }
+      out.set(c.id, { box: c, parent: b });
+      sticky = c.id;
+    }
+    if (c.kind === 'box') collectSticky(c, isScrollContainer(c.style) ? c.id : scroller, sticky, out);
+  }
+}
+
+function stickyInset(v: InsetValue, basis: LU, ctx: Ctx): LU | null {
+  return v.kind === 'auto' ? null : resolveLength(v, basis, ctx.faults);
+}
+
+/**
+ * css-position-3 §3.4 at scroll offset 0 (Blink StickyPositionScrollingConstraints::ComputeStickyOffset, measured against Chrome
+ * 145 in fixture group sticky): the shift that keeps a sticky border box (at x, y in absolute LU, in flow) inside the viewport less
+ * its insets (percentages of the viewport), as far as its containing block, the parent's content box less the box's own margins
+ * (auto as 0, percentages of that content box's width), lets it go. right then left, bottom then top, each against the in-flow box.
+ */
+function stickyOffset(st: StickyIndex, s: Sticky, x: LU, y: LU, width: LU, height: LU, out: Placement): RelativeOffset {
+  const ctx = st.ctx;
+  const r = out.absolute.get(s.parent.id);
+  if (r === undefined) throw new Error(`containing block ${s.parent.id} of the sticky ${s.box.id} is not placed yet`);
+  const ps = s.parent.style;
+  const bor = resolveBorder(ps, ctx.devicePixelRatio);
+  const pad = resolvePaddingWith(ps, ZERO, ctx.faults);
+  const contentLeft = add(add(r.x, bor.left), pad.left);
+  const contentRight = sub(sub(add(r.x, r.width), bor.right), pad.right);
+  const contentWidth = sub(contentRight, contentLeft);
+  const bs = s.box.style;
+  const cbLeft = add(contentLeft, resolveMarginWith(bs.marginLeft, contentWidth, ctx.faults).value);
+  const cbRight = sub(contentRight, resolveMarginWith(bs.marginRight, contentWidth, ctx.faults).value);
+  const cbTop = add(add(add(r.y, bor.top), pad.top), resolveMarginWith(bs.marginTop, contentWidth, ctx.faults).value);
+  const cbBottom = sub(sub(sub(add(r.y, r.height), bor.bottom), pad.bottom), resolveMarginWith(bs.marginBottom, contentWidth, ctx.faults).value);
+  const right = stickyInset(bs.right, st.width, ctx);
+  const left = stickyInset(bs.left, st.width, ctx);
+  const bottom = stickyInset(bs.bottom, st.height, ctx);
+  const top = stickyInset(bs.top, st.height, ctx);
+  let dx = ZERO;
+  let dy = ZERO;
+  if (right !== null) {
+    const delta = max(sub(sub(st.width, right), add(x, width)), sub(cbLeft, x));
+    if (delta < 0) dx = add(dx, delta);
+  }
+  if (left !== null) {
+    const delta = min(sub(left, x), sub(cbRight, add(x, width)));
+    if (delta > 0) dx = add(dx, delta);
+  }
+  if (bottom !== null) {
+    const delta = max(sub(sub(st.height, bottom), add(y, height)), sub(cbTop, y));
+    if (delta < 0) dy = add(dy, delta);
+  }
+  if (top !== null) {
+    const delta = min(sub(top, y), sub(cbBottom, add(y, height)));
+    if (delta > 0) dy = add(dy, delta);
+  }
+  return { dx, dy };
 }
 
 /** Every box's parent in the input tree. */

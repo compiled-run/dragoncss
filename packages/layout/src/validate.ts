@@ -121,7 +121,7 @@ const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto',
 
 export const styleSchema = obj({
   display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
-  position: lit('static', 'relative', 'absolute', 'fixed'),
+  position: lit('static', 'relative', 'absolute', 'fixed', 'sticky'),
   float: lit('none', 'left', 'right'),
   top: inset,
   right: inset,
@@ -971,6 +971,10 @@ export function validateLayoutInput(json: unknown): ValidationResult {
     // CSS2 §10.1: the root box is laid out in the initial containing block; the engine places it in flow.
     if (isRecord(root) && isRecord(root['style']) && (root['style']['position'] === 'absolute' || root['style']['position'] === 'fixed')) {
       errors.push({ path: '$.root.style.position', code: 'bad-value', message: 'the root box cannot be absolutely positioned' });
+    }
+    // css-position-3 §3.4: the root box has no containing block to stick in (POSX-s).
+    if (isRecord(root) && isRecord(root['style']) && root['style']['position'] === 'sticky') {
+      errors.push({ path: '$.root.style.position', code: 'bad-value', message: 'the root box cannot be sticky' });
     }
   }
   if (errors.length > 0) return { ok: false, errors };

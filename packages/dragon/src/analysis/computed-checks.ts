@@ -686,6 +686,46 @@ function checkFixedContainingBlocks(root: ResolvedElement, propagated: ResolvedE
   walk(root, null, null);
 }
 
+// POSX-s (css-position-3 §3.4): the engine offsets a sticky box after layout against the viewport at scroll offset 0, inside its
+// parent's content box (packages/layout/src/layout.ts stickyOffset). It refuses a sticky root, an inline-level sticky box (placed by
+// a line box), a sticky box inside another, and a percentage padding on the parent (its containing block): refused here on every
+// target. A sticky box inside a hidden, auto or scroll container follows that container's scroll
+// offset, which the engine does not model: refused on ios and android (Chrome sticks it on the web). All at the position declaration.
+function checkSticky(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (el: ResolvedElement, on: readonly string[], what: string, message: string, manual: string): void => {
+    const v = el.props.get('position') as ResolvedValue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of on) {
+      const id = `${t}|sticky-${what}|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const isSticky = (el: ResolvedElement): boolean => keywordOf(el.props.get('position') as ResolvedValue) === 'sticky';
+  if (displayKeyword(root) !== 'none' && isSticky(root)) refuse(root, targets, 'root', `position: sticky on the root element ${root.element.address} is not supported (css-position-3 §3.4; package POSX-s)`, `Make a descendant of ${root.element.address} sticky instead.`);
+  const walk = (el: ResolvedElement, sticky: ResolvedElement | null, scroller: ResolvedElement | null): void => {
+    const percentPadding = (['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const).find((p) => hasPercentage(el.props.get(p) as ResolvedValue));
+    for (const c of el.children) {
+      if (c.kind !== 'element' || displayKeyword(c) === 'none') continue;
+      let within = sticky;
+      if (isSticky(c)) {
+        const address = c.element.address;
+        const d = displayKeyword(c);
+        if (d !== 'block' && d !== 'flex' && d !== 'grid' && d !== 'list-item') refuse(c, targets, 'inline', `position: sticky on the ${d} box ${address} is not supported yet: Dragon sticks only block-level boxes (css-position-3 §3.4; package POSX-s)`, `Set display: block on ${address}, or make a block wrapper sticky.`);
+        if (sticky !== null) refuse(c, targets, 'nested', `position: sticky on ${address} inside the sticky ${sticky.element.address} is not supported yet (css-position-3 §3.4; package POSX-s)`, `Make only one of ${sticky.element.address} and ${address} sticky.`);
+        if (percentPadding !== undefined) refuse(c, targets, 'padding', `a percentage ${percentPadding} on ${el.element.address}, the containing block of the sticky ${address}, is not supported yet (css-position-3 §3.4; package POSX-s)`, `Use a length for ${percentPadding} on ${el.element.address}.`);
+        if (scroller !== null) refuse(c, native, 'scroller', `the sticky ${address} inside the scroll container ${scroller.element.address} would not follow its scroll offset on native, where Chrome keeps it stuck (package POSX-s)`, `Move ${address} outside ${scroller.element.address}, or make it static there.`);
+        within = c;
+      }
+      const scrolls = c !== propagated && (['overflow-x', 'overflow-y'] as const).some((p) => ['hidden', 'auto', 'scroll'].includes(keywordOf(c.props.get(p) as ResolvedValue)));
+      walk(c, within, scrolls ? c : scroller);
+    }
+  };
+  walk(root, null, null);
+}
+
 const RATIO_BLOCK_SIZES: readonly Longhand[] = ['height', 'min-height', 'max-height'];
 
 /** css-sizing-3 §3.2 and css-sizing-4 §3.1: the inline-size keywords the engine resolves only on a block-level box without a ratio. */
@@ -1182,6 +1222,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkFloats(root, propagated, targets, diagnostics, reported);
   // POSX-f2: fixed boxes whose containing block a filter would make (checkFixedContainingBlocks).
   checkFixedContainingBlocks(root, propagated, targets, diagnostics, reported);
+  // POSX-s: sticky boxes the engine does not offset (checkSticky).
+  checkSticky(root, propagated, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

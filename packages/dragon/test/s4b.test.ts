@@ -174,12 +174,11 @@ describe('positioning in the compiler', () => {
     // The same box beside elements only is laid out.
     expect(project('ltr', 'derive').compile(inputFor(`${FONT} .p { position: relative; } .a { position: absolute; }`, (r) => [div(r, 'p', ['p'], [div(r, 'k', [], [text(r, 't', 'XX')]), div(r, 'a', ['a'])])])).diagnostics).toEqual([]);
   });
-  it('position: sticky has no profile row: DRAGON_UNSUPPORTED_VALUE on ios and web; the lowering has no mapping for it', () => {
-    const input = inputFor(`${FONT} .a { position: sticky; top: 1px; }`, (r) => [div(r, 'a', ['a'])]);
-    const c = project('ltr', 'enforce').compile(input);
-    const hits = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(hits.map((d) => [d.target, spanTextOf(input, d)]).sort()).toEqual([['ios', 'sticky'], ['web', 'sticky']]);
-    expect(project('ltr', 'derive').compile(input).diagnostics.map((d) => d.code)).toEqual(['DRAGON_LOWERING_FAILED']);
+  it('POSX-s: position: sticky lowers, and on the root it is refused on ios and web at its declaration', () => {
+    expect(project('ltr', 'derive').compile(inputFor(`${FONT} .a { position: sticky; top: 1px; }`, (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
+    const root = inputFor(`${FONT} html { position: sticky; }`, (r) => [div(r, 'a', ['a'])]);
+    const hits = project('ltr', 'derive').compile(root).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
+    expect(hits.map((d) => [d.target, spanTextOf(root, d)]).sort()).toEqual([['ios', 'sticky'], ['web', 'sticky']]);
   });
   it('POSX-f: position: fixed lowers, and on the root it is refused on ios and web at its declaration', () => {
     expect(project('ltr', 'derive').compile(inputFor(`${FONT} .a { position: fixed; top: 1px; }`, (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);

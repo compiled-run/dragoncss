@@ -617,7 +617,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
     else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
-    else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position === 'fixed') throw new HitError(fixedRefusal(c.id));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && (c.style.position === 'fixed' || c.style.position === 'sticky')) throw new HitError(fixedRefusal(c.id, c.style.position));
     else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) throw new HitError(floatRefusal(c.id));
     else kids++;
   }
@@ -668,8 +668,9 @@ function isAtomicInline(b: LayoutBox | ReplacedLeaf): boolean {
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
-function fixedRefusal(id: string): string {
-  return `${id} is position: fixed, a stacking context against the viewport, which the hit table does not model yet (POSX-f; no Chrome hit capture)`;
+function fixedRefusal(id: string, position: string): string {
+  const pkg = position === 'fixed' ? 'POSX-f' : 'POSX-s';
+  return `${id} is position: ${position}, a stacking context placed against the viewport, which the hit table does not model yet (${pkg}; no Chrome hit capture)`;
 }
 
 function floatRefusal(id: string): string {
@@ -695,7 +696,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'replaced' && isAtomicInline(c)) return atomicRefusal(c.id);
-    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position === 'fixed') return fixedRefusal(c.id);
+    if ((c.kind === 'box' || c.kind === 'replaced') && (c.style.position === 'fixed' || c.style.position === 'sticky')) return fixedRefusal(c.id, c.style.position);
     if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) return floatRefusal(c.id);
     if (c.kind === 'box') {
       if (c.style.lineClamp > 0) return clampRefusal(c.id);

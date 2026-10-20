@@ -329,7 +329,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
     display: displayOfStyle(id, get, lineClamp),
-    position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute', 'fixed']),
+    position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute', 'fixed', 'sticky']),
     float: floatOf(id, get),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
