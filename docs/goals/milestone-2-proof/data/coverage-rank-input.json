@@ -189,7 +189,7 @@
     "font-variant-numeric": { "values": ["tabular-nums"] },
     "font-variation-settings": { "values": ["\"wght\" 500"] },
     "resize": { "values": ["none", "vertical"] },
-    "zoom": { "values": ["1.5"] },
+    "zoom": { "values": ["1", "1.5"] },
     "object-position": { "values": ["center", "50% 50%"] },
     "backface-visibility": { "values": ["hidden"] },
     "perspective": { "values": ["1000px"] },
@@ -226,6 +226,21 @@
     "stroke-linejoin": { "values": ["round", "bevel"] },
     "stroke-miterlimit": { "values": ["10"] },
     "fill-rule": { "values": ["evenodd"] },
+    "stroke-dasharray": { "values": ["4 2"] },
+    "stroke-dashoffset": { "values": ["2"] },
+    "cx": { "values": ["12"] },
+    "cy": { "values": ["12px"] },
+    "r": { "values": ["8"] },
+    "x": { "values": ["4px"] },
+    "y": { "values": ["2"] },
+    "paint-order": { "values": ["stroke"] },
+    "rx": { "values": ["4px"] },
+    "ry": { "values": ["2"] },
+    "vector-effect": { "values": ["non-scaling-stroke"] },
+    "clip-rule": { "values": ["evenodd"] },
+    "marker-start": { "values": ["none"] },
+    "marker-mid": { "values": ["none"] },
+    "marker-end": { "values": ["none"] },
     "fill-opacity": { "values": ["0.5"] },
     "stroke-opacity": { "values": ["0.5"] },
     "content": { "values": ["\"\"", "\"x\"", "none"] },
@@ -293,12 +308,23 @@
     "-webkit-writing-mode": "writing-mode"
   },
   "naNative": {
+    "approved": {
+      "about": "Owner-approved NA-NATIVE entries (Jack, decision card in the project chat, 2026-10-19). Left out of the native denominator while the compiler reports them not applicable on iOS and Android.",
+      "items": {
+        "cursor": "a pointer cursor has no meaning on touch-native",
+        "-webkit-tap-highlight-color": "the browser's tap flash; native views have none to style",
+        "-webkit-font-smoothing": "macOS-only subpixel/greyscale switch; no effect on iOS or Android",
+        "-webkit-text-size-adjust": "mobile-browser text autosizing; native apps have none",
+        "text-rendering": "a shaping hint; owner-approved although optimizeSpeed turns off kerning and ligatures in Chrome",
+        "text-size-adjust": "mobile-browser text autosizing; native apps have none",
+        "forced-color-adjust": "Windows forced-colours mode only",
+        "scrollbar-color": "native scroll indicators are not styleable this way; owner-approved although transparent colours hide Chrome's scrollbar"
+      }
+    },
     "proposed": {
       "about": "The PM's proposed NA-NATIVE list (notes/PM-2026-10-04.md); the NA-NATIVE lane confirms each against the code. Counted outside the denominator in the headline's second figure only.",
       "items": {
-        "cursor": "a pointer cursor has no meaning on touch-native",
         "will-change": "a compositor hint; no visible or behavioural effect",
-        "scrollbar-color": "native scroll indicators are not styleable this way",
         "selector:::-webkit-scrollbar": "web scrollbar styling; native draws its own scroll indicators",
         "selector:::-webkit-scrollbar-thumb": "web scrollbar styling; native draws its own scroll indicators",
         "selector:::-webkit-scrollbar-track": "web scrollbar styling; native draws its own scroll indicators"
@@ -307,13 +333,7 @@
     "candidates": {
       "about": "Further candidates found by COVERAGE-RANK. Not reviewed: each needs the owner's per-entry yes before it counts as not applicable. Shown, never subtracted from the headline.",
       "items": {
-        "-webkit-tap-highlight-color": "the browser's tap flash; native views have none to style",
-        "-webkit-font-smoothing": "macOS-only subpixel/greyscale switch; no effect on iOS or Android",
         "-moz-osx-font-smoothing": "macOS Firefox only",
-        "text-rendering": "a shaping-speed hint; Dragon shapes with HarfBuzz regardless (check optimizeLegibility kerning before accepting)",
-        "-webkit-text-size-adjust": "mobile-browser text autosizing; native apps have none",
-        "text-size-adjust": "mobile-browser text autosizing; native apps have none",
-        "forced-color-adjust": "Windows forced-colours mode only",
         "-webkit-print-color-adjust": "printing only",
         "print-color-adjust": "printing only",
         "at-rule:@charset": "stylesheet encoding; Dragon reads UTF-8 source text, so accepting it is the whole job",
@@ -420,8 +440,8 @@
     { "id": "element:br", "lane": "INL1a", "usage": null, "probes": [{ "css": ".u{color: red}", "html": "<p class=\"u\">Hi<br>there</p>" }] }
   ],
   "lanes": [
-    { "id": "NA-NATIVE", "title": "Not-applicable-on-native verdict and the PM's proposed list", "size": "S", "status": "planned (PM 2026-10-04)", "depends": "none", "properties": ["cursor", "will-change", "scrollbar-color"] },
-    { "id": "NA-NATIVE-2", "title": "Second NA-NATIVE list (candidates; owner per-entry review)", "size": "S", "status": "new; after NA-NATIVE", "depends": "NA-NATIVE", "properties": ["-webkit-tap-highlight-color", "-webkit-font-smoothing", "-moz-osx-font-smoothing", "text-rendering", "-webkit-text-size-adjust", "text-size-adjust", "forced-color-adjust", "-webkit-print-color-adjust", "print-color-adjust", "-webkit-user-drag", "speak", "size", "re:^(page-break-|break-(before|after|inside)$|orphans$|widows$)"] },
+    { "id": "NA-NATIVE", "title": "Not-applicable-on-native verdict and the PM's proposed list", "size": "S", "status": "planned (PM 2026-10-04)", "depends": "none", "properties": ["will-change"] },
+    { "id": "NA-NATIVE-2", "title": "Second NA-NATIVE list (candidates; owner per-entry review)", "size": "S", "status": "new; after NA-NATIVE", "depends": "NA-NATIVE", "properties": ["-moz-osx-font-smoothing", "-webkit-print-color-adjust", "print-color-adjust", "-webkit-user-drag", "speak", "size", "re:^(page-break-|break-(before|after|inside)$|orphans$|widows$)"] },
     { "id": "ALIAS", "title": "-webkit- and legacy aliases of properties already supported", "size": "S", "status": "new", "depends": "none (each alias counts only while its standard property is supported on native)", "properties": [] },
     { "id": "PNT1-radius", "title": "border-radius (PNT1 1-2/8)", "size": "M", "status": "parked: #80, #81", "depends": "none on master; the parked branches need a catch-up", "properties": ["border-radius", "re:^border-(top|bottom)-(left|right)-radius$", "re:^border-(start|end)-(start|end)-radius$", "-webkit-border-radius"] },
     { "id": "PNT1-shadow", "title": "box-shadow (PNT1 3/8, PNT1-S2 T114)", "size": "M", "status": "parked: #82", "depends": "PNT1-radius (shadows follow the radius)", "properties": ["box-shadow", "-webkit-box-shadow"] },

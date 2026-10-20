@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 60px; height: 30px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.c { contain: none; content-visibility: visible; contain-intrinsic-size: none; container: none; }
+.C { CONTAIN: NONE; CONTENT-VISIBILITY: VISIBLE; CONTAIN-INTRINSIC-SIZE: NONE NONE; CONTAINER: NONE / NORMAL; }
+.l { contain-intrinsic-width: none; contain-intrinsic-height: none; contain-intrinsic-inline-size: none; contain-intrinsic-block-size: none; container-name: none; container-type: normal; }
+.k { contain: initial; content-visibility: unset; contain-intrinsic-size: initial; container: revert; }
+.i { contain: inherit; content-visibility: inherit; contain-intrinsic-width: inherit; container-type: inherit; container-name: inherit; }
+.row { display: flex; width: 180px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="box c">XX XX</div>
+<div data-dragon-id="s2" class="box C"><div data-dragon-id="s2c" class="i">XXX</div></div>
+<div data-dragon-id="s3" class="box l">XX</div>
+<div data-dragon-id="s4" class="box k">XX</div>
+<div data-dragon-id="row" class="row c"><div data-dragon-id="ra" class="box l">XX XX</div><div data-dragon-id="rb" class="box C">XX</div></div>
+</body>
+</html>

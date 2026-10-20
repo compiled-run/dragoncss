@@ -2,7 +2,7 @@
 // Deterministic and small (layers of a few hundred pixels): the spread shapes of square and rounded boxes, the supersampled
 // coverage and SkRRect type of each shape kind, a blurred coverage on each Skia path (plain, nine-patch rect, nine-patch rrect,
 // path blur of an oval), outer and inset layers with one and two shadows, each planted fault on a case it changes, and the device
-// layers over a backdrop with the backdrop, composite and encoding they use.
+// layers over a backdrop with the backdrop, composite and encoding they use, and text shadows on a line of Ahem.
 // Run: node scripts/gen-paint-inputs-shadow.ts (a pnpm regen step)
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -82,5 +82,16 @@ out.push(line('outerShadowLayerOver', [4, 4, 16, 12, ...SQUARE, 1, 1, ...one, 2,
 out.push(line('insetShadowLayerOver', [2, 2, 16, 12, 1, 2, 1, 2, ...SQUARE, 2, ...ins, 2, ...NO, 2, ...stage, ...fill(2, 2, 16, 12, SQUARE, 58, 110, 165, 255)]));
 out.push(line('insetShadowLayerOver', [2, 2, 26, 20, 1, 1, 1, 1, 5, 3, 5, 3, 4, 2, 4, 2, 1, ...shadow(true, 1, 1, 3, 0.5, 0, 0, 0, 180), 2.625, ...NO, 1, ...fill(2, 2, 26, 20, [6, 4, 6, 4, 5, 3, 5, 3], 58, 110, 165, 200)]));
 out.push(line('insetShadowLayerOver', [2, 2, 16, 12, 0, 0, 0, 0, ...SQUARE, 2, ...ins, 2, 1, 0, 0, 1, ...stage]));
+// Text shadows (TXT-FX) on a line of Ahem: X, p (Ahem's descender box), a space and É, at quarter-pixel pens, blurred and not,
+// one and two shadows, over a backdrop, with the half-blur fault, at 2 and 2.625.
+const glyphs = (cps: readonly number[], xs: readonly number[]): number[] => [cps.length, ...cps, ...xs];
+const line1 = glyphs([88, 112, 32, 201], [2, 10.3, 18.6, 26.9]);
+const soft = shadow(false, 0, 1, 2, 0, 0, 0, 0, 128);
+const pair = [...shadow(false, 1.5, 3, 4, 0, 200, 0, 0, 255), ...shadow(false, -1, 0.5, 0, 0, 20, 40, 200, 77)];
+out.push(line('textShadowLayerOver', [...line1, 8, 12.4, 1, ...soft, 2, ...NO, 0]));
+out.push(line('textShadowLayerOver', [...line1, 8, 12.4, 1, ...soft, 2, ...NO, 1, ...stage]));
+out.push(line('textShadowLayerOver', [...line1, 8, 12.4, 2, ...pair, 2.625, ...NO, 2, ...stage, ...tint]));
+out.push(line('textShadowLayerOver', [...line1, 8, 12.4, 1, ...soft, 2, 0, 1, 0, 1, ...stage]));
+out.push(line('textShadowLayerOver', [...glyphs([32], [4]), 8, 12, 1, ...soft, 2, ...NO, 0]));
 writeFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'layout', 'paint-vectors', 'shadow', 'inputs.jsonl'), `${out.join('\n')}\n`);
 console.log(`shadow inputs: ${out.length} cases`);

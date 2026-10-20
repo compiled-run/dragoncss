@@ -31,6 +31,14 @@ import { FONT_FEATURES_LONGHANDS } from '../../dragon/src/css/properties/font-fe
 import { FONT_STRETCH_LONGHANDS } from '../../dragon/src/css/properties/font-stretch.ts';
 import { TEXT_FILL_STROKE_LONGHANDS } from '../../dragon/src/css/properties/text-fill-stroke.ts';
 import { TEXT_SHADOW_LONGHANDS } from '../../dragon/src/css/properties/text-shadow.ts';
+import { MASK_LONGHANDS } from '../../dragon/src/css/properties/mask.ts';
+import { BORDER_IMAGE_LONGHANDS } from '../../dragon/src/css/properties/border-image.ts';
+import { COUNTERS_LONGHANDS } from '../../dragon/src/css/properties/counters.ts';
+import { TABLE_LONGHANDS } from '../../dragon/src/css/properties/table.ts';
+import { OVERSCROLL_LONGHANDS } from '../../dragon/src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_LONGHANDS } from '../../dragon/src/css/properties/scroll-snap.ts';
+import { CONTAINMENT_LONGHANDS } from '../../dragon/src/css/properties/containment.ts';
+import { CONTAINER_QUERY_LONGHANDS } from '../../dragon/src/css/properties/container-query.ts';
 import { repoPath } from '../src/paths.ts';
 
 const SOURCE = { uri: 'dragon-source://test/font.css', revision: 'r1', hash: 'sha256:0' };
@@ -126,8 +134,7 @@ describe('the font and font-synthesis shorthands expand as Chrome 145 expands th
     SHORTHAND_FAULTS.forEach((fault, i) => expect(judge(plantSets[i] as Item[], plantSeen[i] as Seen[]).length, fault).toBeGreaterThan(0));
     const refused = real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE').map((it) => `${it.code as string} ${it.property}: ${it.value}`);
     expect(refused).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE font: oblique 2turn 12px x', 'DRAGON_UNSUPPORTED_VALUE font: small-caps 12px x',
-      'DRAGON_UNSUPPORTED_VALUE font: normal small-caps 12px x',
+      'DRAGON_UNSUPPORTED_VALUE font: oblique 2turn 12px x',
       'DRAGON_UNSUPPORTED_VALUE font: caption', 'DRAGON_UNSUPPORTED_VALUE font: menu', 'DRAGON_UNSUPPORTED_VALUE font: icon', 'DRAGON_UNSUPPORTED_VALUE font: message-box',
       'DRAGON_UNSUPPORTED_VALUE font: small-caption', 'DRAGON_UNSUPPORTED_VALUE font: status-bar', 'DRAGON_UNSUPPORTED_VALUE font: oblique calc(20deg) 12px x',
     ]);
@@ -139,14 +146,18 @@ describe('font-synthesis on native', () => {
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, web: {} } },
     { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr' },
   ).compile(htmlInput(css));
-  it('Ahem bold or italic with synthesis off is drawn unsynthesized, so ios accepts it; with synthesis on it is refused', () => {
+  it('Ahem bold or italic is drawn synthesized or unsynthesized as Chrome draws it, so ios accepts it; bold and italic synthesized together are refused', () => {
     const fonts = (css: string): string[] => compile(css).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_FONT').map((d) => `${String(d.target)} ${d.message.split(';')[0]}`);
-    expect(fonts('.a { font: bold 10px Ahem; }')).toEqual(["ios text d:text0 inherits font-weight: 700 from the author's style on <div> d"]);
+    // TXT-W: Ahem's synthetic bold (text-weight-bold-ahem) and oblique (text-style-ahem) are each drawn natively, so either with synthesis
+    // on is accepted since then; Chrome strokes the sheared outline where both apply, which no fixture proves.
+    expect(fonts('.a { font: bold 10px Ahem; }')).toEqual([]);
+    expect(fonts('.a { font: italic 10px Ahem; }')).toEqual([]);
+    expect(fonts('.a { font: bold italic 10px Ahem; }')).toEqual(["ios text d:text0 inherits font-weight: 700 from the author's style on <div> d, and font-style: italic from the author's style on <div> d"]);
     expect(fonts('.a { font: bold italic 10px Ahem; font-synthesis: none; }')).toEqual([]);
     expect(fonts('.a { font: italic 10px Ahem; font-synthesis: weight; }')).toEqual([]);
     expect(fonts('.a { font: bold 10px Ahem; font-synthesis-weight: none; }')).toEqual([]);
     expect(fonts('.a { font: bold 10px Ahem; font-synthesis: style; }')).toEqual([]);
-    expect(fonts('.a { font: bold 10px Ahem; font-synthesis: weight; }')).toEqual(["ios text d:text0 inherits font-weight: 700 from the author's style on <div> d"]);
+    expect(fonts('.a { font: bold 10px Ahem; font-synthesis: weight; }')).toEqual([]);
   });
 });
 
@@ -157,14 +168,16 @@ describe('the font-shorthand group', () => {
   // Retaken on master 285ce07960: #340 added an inherited-currentcolor shadow to the BASE fixture shadow-cascade (its 8 captures), the
   // only BASE capture that changed once the keys below are stripped and the later groups left out. Retaken again on the landing of #370,
   // which adds -webkit-opacity rows to the BASE fixture opacity-cascade (its 8 captures).
-  const BASE_CAPTURES = { files: 3164, digest: 'ec8955ba043db575a4aa2c9c35f981ad79127ec588fcb962d95914ea80cb4899' };
+  // Retaken on batch landing #457: TABLE (#443) adds a disc list-style-type case to list-style-values and TOUCH (#444) adds
+  // touch-action cases to touch-action-values; their captures are the only ones that changed.
+  const BASE_CAPTURES = { files: 3164, digest: '2e6eea5f6bb6532a02338a3f3493fb70671bfae3a79de6c7aefcd32594c51a1e' };
   // TDEC-a adds the decoration longhands after TXT-W2; BASE has neither, so stripping both leaves BASE's digest.
   // The keys added since BASE: TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2's spacing, text-indent,
   // text-transform, text-overflow, overflow-wrap, word-break and line-clamp, INL's vertical-align, float and clear, user-select, resize
   // SVG-a's paint and touch-action; BASE has none of them, so stripping them leaves BASE's captures.
-  const ADDED = ['font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', 'touch-action', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...TEXT_FILL_STROKE_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter'];
+  const ADDED = [...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS, 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'text-transform', 'text-overflow', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'vertical-align', 'float', 'clear', 'user-select', 'resize', 'fill', 'stroke', 'stroke-width', 'touch-action', ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...TEXT_FILL_STROKE_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end'];
   // The groups that landed after BASE and add files and layout cases only (each prefix matches no BASE case or capture).
-  const LATER = /(^|\/)(grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|clip-rect-|filter-none|bg-position-|clip-path-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-shadow-none|text-fill-stroke-|alias-background|shadow-webkit-alias)/;
+  const LATER = /(^|\/)(gen-|table-properties|appearance-values|ui-colors-values|user-modify-values|grid-abspos|grid-baseline|atomic-inline-|legacy-box-inert|stacking-grid-items|vertical-align-inert|float-clear-inert|line-clamp-|outline-dashed|outline-3d|outline-web|overflow-grid|radius-replaced|radius-double|resize-values|user-select-none|sizing-keywords-|svg-|clip-rect-|filter-none|bg-position-|clip-path-|text-break-|text-decoration-|text-indent-|text-justify-|text-overflow-lines|text-overflow-fonts|text-overflow-blocks|text-spacing-|text-word-spacing-|text-transform-keywords|text-transform-text|visibility-outline|white-space-|text-font-variant-|text-font-tuning-|text-font-size-|text-font-stretch-|text-font-features-|text-weight-ahem|text-weight-bold-ahem|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-shadow-none|text-fill-stroke-|alias-background|shadow-webkit-alias|text-style-ahem|alias-font|mask-initial|text-shadow-|transform-extra-|scroll-initial-longhands|containment-initial|zoom-|border-image-initial|grid-item-)/;
   it('every capture of BASE is unchanged but for the keys added since, which every node has', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])

@@ -1,8 +1,9 @@
 // Fixture group text-weight (TXT-W1, T147 part 1, notes/T147J-txt-weight.md): font-weight and font-style over the reference font
 // map's real faces, Dragon Sans (Inter 300, 400, 700, italic and bold italic) and Lato (400, 700), reached through numbers, keywords,
-// bolder and lighter across every band edge, html.css's bold, bolder and italic (nesting included), and oblique angles. None is
-// synthesized, so native lays every case out; Chrome must draw each listed element's text with the named face. Synthesized text is
-// in the web-only lane (fonts-weight-synthetic, fonts.ts); the rejects are values every target refuses.
+// bolder and lighter across every band edge, html.css's bold, bolder and italic (nesting included), and oblique angles. None of
+// those is synthesized, so native lays every case out; Chrome must draw each listed element's text with the named face. Synthesized
+// real faces are in the web-only lane (fonts-weight-synthetic, fonts.ts), Ahem's synthetic bold in text-weight-bold-ahem; the
+// rejects are values every target refuses.
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
 
@@ -24,6 +25,10 @@ export const TEXT_WEIGHT: readonly FixtureSpec[] = [
   layout('text-weight-contexts', ['ltr', 'rtl']),
   // Ahem at weights Chrome draws with its one regular face (below 600, and lighter): every target lays it out, native included.
   layout('text-weight-ahem', ['ltr', 'rtl']),
+  // TXT-W: Ahem from weight 600 (bold, bolder, numbers, b and strong) at 10px to 96px, which Chrome draws in Skia's fake bold (the
+  // outline stroked and filled at a size-dependent width, advances unchanged) unless font-synthesis-weight is none; native strokes it
+  // the same way (native-program.ts synthetic-bold), which text-weight-bold-ahem.test proves against the committed Chrome pixels.
+  layout('text-weight-bold-ahem', ['ltr', 'rtl']),
   reject('reject-text-weight-style-left', 'DRAGON_CSS_INVALID_VALUE', 'left', '"left" is not a valid value for font-style: Chrome 145 does not parse font-style: left'),
   reject('reject-text-weight-zero', 'DRAGON_CSS_INVALID_VALUE', '0', '"0" is not a valid value for font-weight'),
   reject('reject-text-weight-oblique-range', 'DRAGON_CSS_INVALID_VALUE', 'oblique 91deg', '"oblique 91deg" is not a valid value for font-style: Chrome parses an oblique angle only when its number is in [-90, 90]'),

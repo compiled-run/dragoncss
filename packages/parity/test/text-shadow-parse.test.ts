@@ -1,6 +1,6 @@
 // The text-shadow grammar against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES, Blink TextShadow::ParseSingleValue): Dragon
-// takes a value as valid exactly when Chrome parses it, and none computes alike. A shadow list parses and is then refused (TXT-FX,
-// computed-checks.ts checkTextShadow), so only its validity is compared here. Each planted reading must be caught.
+// takes a value as valid exactly when Chrome parses it, and none computes alike. A shadow list parses and is then checked per target (TXT-FX,
+// analysis/text-shadow.ts checkTextShadows), so only its validity is compared here. Each planted reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';

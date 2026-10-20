@@ -133,26 +133,26 @@
   "contextProbe": {
    "rounds": 2,
    "blankedRules": 4,
-   "blankedDeclarations": 8,
+   "blankedDeclarations": 5,
    "residualTargetless": 0
   }
  },
  "summary": {
-  "diagnostics": 154,
-  "errors": 149,
+  "diagnostics": 148,
+  "errors": 141,
   "byCode": {
-   "DRAGON_NOT_APPLICABLE_NATIVE [android]": 2,
-   "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 2,
+   "DRAGON_NOT_APPLICABLE_NATIVE [android]": 3,
+   "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 3,
    "DRAGON_SELECTOR_DROPPED": 1,
    "DRAGON_UNPROVEN_CONTEXT [android]": 4,
    "DRAGON_UNPROVEN_CONTEXT [ios]": 4,
    "DRAGON_UNPROVEN_CONTEXT [web]": 2,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
    "DRAGON_UNSUPPORTED_ELEMENT": 8,
-   "DRAGON_UNSUPPORTED_FONT [android]": 25,
-   "DRAGON_UNSUPPORTED_FONT [ios]": 25,
-   "DRAGON_UNSUPPORTED_PROPERTY": 5,
-   "DRAGON_UNSUPPORTED_PROPERTY [web]": 2,
+   "DRAGON_UNSUPPORTED_FONT [android]": 22,
+   "DRAGON_UNSUPPORTED_FONT [ios]": 22,
+   "DRAGON_UNSUPPORTED_PROPERTY": 2,
+   "DRAGON_UNSUPPORTED_PROPERTY [web]": 3,
    "DRAGON_UNSUPPORTED_SELECTOR": 4,
    "DRAGON_UNSUPPORTED_SELECTOR [android]": 5,
    "DRAGON_UNSUPPORTED_SELECTOR [ios]": 5,
@@ -166,7 +166,7 @@
      "DRAGON_UNPROVEN_CONTEXT": 2,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_PROPERTY": 7,
+     "DRAGON_UNSUPPORTED_PROPERTY": 5,
      "DRAGON_UNSUPPORTED_SELECTOR": 4,
      "DRAGON_UNSUPPORTED_VALUE": 4
     },
@@ -180,8 +180,8 @@
      "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_FONT": 25,
-     "DRAGON_UNSUPPORTED_PROPERTY": 5,
+     "DRAGON_UNSUPPORTED_FONT": 22,
+     "DRAGON_UNSUPPORTED_PROPERTY": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 20
     },
@@ -189,7 +189,7 @@
      "DRAGON_SELECTOR_DROPPED": 1
     },
     "infos": {
-     "DRAGON_NOT_APPLICABLE_NATIVE": 2
+     "DRAGON_NOT_APPLICABLE_NATIVE": 3
     }
    },
    "android": {
@@ -197,8 +197,8 @@
      "DRAGON_UNPROVEN_CONTEXT": 4,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 16,
      "DRAGON_UNSUPPORTED_ELEMENT": 8,
-     "DRAGON_UNSUPPORTED_FONT": 25,
-     "DRAGON_UNSUPPORTED_PROPERTY": 5,
+     "DRAGON_UNSUPPORTED_FONT": 22,
+     "DRAGON_UNSUPPORTED_PROPERTY": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 9,
      "DRAGON_UNSUPPORTED_VALUE": 20
     },
@@ -206,20 +206,20 @@
      "DRAGON_SELECTOR_DROPPED": 1
     },
     "infos": {
-     "DRAGON_NOT_APPLICABLE_NATIVE": 2
+     "DRAGON_NOT_APPLICABLE_NATIVE": 3
     }
    }
   },
   "declarations": 291,
-  "notApplicableNative": 2,
-  "notApplicableIos": 2,
-  "notApplicableAndroid": 2,
-  "applicableDeclarations": 289,
-  "supportedBothTargets": 255,
-  "supportedWeb": 274,
-  "supportedIos": 255,
-  "supportedAndroid": 255,
-  "supportPercent": 88.2,
+  "notApplicableNative": 3,
+  "notApplicableIos": 3,
+  "notApplicableAndroid": 3,
+  "applicableDeclarations": 288,
+  "supportedBothTargets": 256,
+  "supportedWeb": 275,
+  "supportedIos": 256,
+  "supportedAndroid": 256,
+  "supportPercent": 88.9,
   "elements": 62,
   "supportedElements": 51,
   "tags": {
@@ -304,7 +304,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 58,
    "B-unwrapped": 58,
-   "C-context": 113
+   "C-context": 110
   }
  },
  "features": {
@@ -2242,12 +2242,10 @@
    "atRule": null,
    "property": "-webkit-appearance",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 148,
@@ -2542,7 +2540,6 @@
    "ios": "blocked",
    "android": "blocked",
    "codes": [
-    "DRAGON_UNSUPPORTED_PROPERTY",
     "DRAGON_UNSUPPORTED_SELECTOR"
    ]
   },
@@ -3600,8 +3597,8 @@
    "property": "scrollbar-color",
    "value": "rgba(155, 155, 155, 0.5) transparent",
    "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
+   "ios": "not-applicable",
+   "android": "not-applicable",
    "codes": [
     "DRAGON_UNSUPPORTED_PROPERTY"
    ]
@@ -4230,26 +4227,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@4840-4864|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 4840,
-    "end": 4864,
-    "line": 271,
-    "column": 2,
-    "text": "-webkit-appearance: none"
-   },
-   "message": "-webkit-appearance is not supported in milestone 1",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
    "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@4893-4908|cursor has no effect on android: it sets the mouse pointer shape, and a touch screen has no pointer; the android output leaves it out",
    "code": "DRAGON_NOT_APPLICABLE_NATIVE",
    "severity": "info",
@@ -4368,26 +4345,6 @@
     "text": "::-webkit-slider-thumb"
    },
    "message": "pseudo-element ::-webkit-slider-thumb is not supported: pseudo-elements generate boxes Dragon does not build yet (the form-control package FORM-a)",
-   "viaRelated": false,
-   "passes": [
-    "A-authored",
-    "B-unwrapped"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@5479-5503|-webkit-appearance is not supported in milestone 1",
-   "code": "DRAGON_UNSUPPORTED_PROPERTY",
-   "severity": "error",
-   "target": null,
-   "location": {
-    "kind": "css",
-    "start": 5479,
-    "end": 5503,
-    "line": 310,
-    "column": 2,
-    "text": "-webkit-appearance: none"
-   },
-   "message": "-webkit-appearance is not supported in milestone 1",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4602,10 +4559,52 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_PROPERTY|*|css@8034-8087|scrollbar-color is not supported in milestone 1",
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|android|css@8034-8087|scrollbar-color is left out on android by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the android output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "android",
+   "location": {
+    "kind": "css",
+    "start": 8034,
+    "end": 8087,
+    "line": 470,
+    "column": 2,
+    "text": "scrollbar-color: rgba(155, 155, 155, 0.5) transparent"
+   },
+   "message": "scrollbar-color is left out on android by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the android output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_NOT_APPLICABLE_NATIVE|ios|css@8034-8087|scrollbar-color is left out on ios by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the ios output leaves it out",
+   "code": "DRAGON_NOT_APPLICABLE_NATIVE",
+   "severity": "info",
+   "target": "ios",
+   "location": {
+    "kind": "css",
+    "start": 8034,
+    "end": 8087,
+    "line": 470,
+    "column": 2,
+    "text": "scrollbar-color: rgba(155, 155, 155, 0.5) transparent"
+   },
+   "message": "scrollbar-color is left out on ios by owner ruling: it colours the browser scrollbar (a transparent colour hides it in Chrome), but native scroll indicators keep the platform colours; the ios output leaves it out",
+   "viaRelated": false,
+   "passes": [
+    "A-authored",
+    "B-unwrapped",
+    "C-context"
+   ]
+  },
+  {
+   "key": "DRAGON_UNSUPPORTED_PROPERTY|web|css@8034-8087|scrollbar-color is not supported in milestone 1",
    "code": "DRAGON_UNSUPPORTED_PROPERTY",
    "severity": "error",
-   "target": null,
+   "target": "web",
    "location": {
     "kind": "css",
     "start": 8034,
@@ -4618,7 +4617,8 @@
    "viaRelated": false,
    "passes": [
     "A-authored",
-    "B-unwrapped"
+    "B-unwrapped",
+    "C-context"
    ]
   },
   {
@@ -6000,22 +6000,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Library.tsrx",
-    "text": "Library"
-   },
-   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/LibrarySong.tsrx:{song.artist} - YouTube|font-family: \"Lato\" , sans-serif on page/library-call/song-1/song-artist:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6176,22 +6160,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Nav.tsrx",
-    "text": "Waves"
-   },
-   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Player.tsrx:0:00|font-family: \"Lato\" , sans-serif on page/player-call/time-current:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6320,22 +6288,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Song.tsrx",
-    "text": "{currentSong.name}"
-   },
-   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; android draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|android|src@examples/music-player/tree/src/pages/index.tsrx:Demo music streams from the visible YouTube embed. This app does not bundle,\n\t\t\t\tdownload, or redistribute audio.|font-family: \"Lato\" , sans-serif on page/disclosure-text:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6394,22 +6346,6 @@
     "text": "Library"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/library-call/library-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Library.tsrx:Library|text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Library.tsrx",
-    "text": "Library"
-   },
-   "message": "text page/library-call/library-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/library-call/library-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -6576,22 +6512,6 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Nav.tsrx:Waves|text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Nav.tsrx",
-    "text": "Waves"
-   },
-   "message": "text page/nav-call/nav-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h1> page/nav-call/nav-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
    "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Player.tsrx:0:00|font-family: \"Lato\" , sans-serif on page/player-call/time-current:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
    "code": "DRAGON_UNSUPPORTED_FONT",
    "severity": "error",
@@ -6714,22 +6634,6 @@
     "text": "{currentSong.name}"
    },
    "message": "font-family: \"Lato\" , sans-serif on page/song-call/song-title:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNSUPPORTED_FONT|ios|src@examples/music-player/tree/src/components/Song.tsrx:{currentSong.name}|text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
-   "code": "DRAGON_UNSUPPORTED_FONT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "source",
-    "file": "examples/music-player/tree/src/components/Song.tsrx",
-    "text": "{currentSong.name}"
-   },
-   "message": "text page/song-call/song-title:text0 inherits font-weight: 700 from Chrome's user-agent stylesheet on <h2> page/song-call/song-title; ios draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)",
    "viaRelated": false,
    "passes": [
     "C-context"

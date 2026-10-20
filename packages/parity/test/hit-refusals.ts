@@ -3,6 +3,8 @@
 // hitRefusal) and the SVG-a1 svg cases (hit-capture.ts hitRefusal). Shared by hit-report.test.ts and lanes.test.ts so both judge
 // the same exact union.
 export const INLINE_OUT: readonly string[] = [
+  // GEN and TABLE (#443): an inline ::before or ::after box, and table-properties' inline boxes.
+  'gen-inline-text', 'gen-inline-text-rtl', 'gen-inline-empty', 'gen-cascade', 'gen-cascade-rtl', 'gen-hr-li', 'gen-hr-li-rtl', 'gen-counters-quotes', 'gen-counters-quotes-rtl', 'table-properties', 'table-properties-rtl',
   'inline-mixed-sizes', 'inline-mixed-sizes-rtl', 'inline-empty-boxes', 'inline-empty-boxes-rtl', 'inline-br', 'inline-br-rtl', 'inline-box-boundaries',
   'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
   // #266's float-clear-inert holds an inline box.
@@ -17,10 +19,14 @@ export const INLINE_OUT: readonly string[] = [
   'text-justify-ahem', 'text-justify-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl',
   // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
   'text-indent-ahem', 'text-indent-ahem-rtl',
-  // TXT-FONT's text-font-variant-ahem, text-font-tuning-ahem and text-font-size-values-ahem hold inline boxes.
-  'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl',
+  // TXT-FONT's text-font-variant-ahem, text-font-variant-caps-ahem (sp), text-font-tuning-ahem and text-font-size-values-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
+  'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-variant-caps-ahem', 'text-font-variant-caps-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
+  // TXT-W's text-weight-bold-ahem holds inline boxes (b, strong).
+  'text-weight-bold-ahem', 'text-weight-bold-ahem-rtl',
   // TDEC-c's text-decoration-native holds an inline box (n7s, the inline box's underline).
   'text-decoration-native', 'text-decoration-native-rtl',
+  // TDEC-c's text-decoration-native-styles holds an inline box (s6s, the inline box's double underline).
+  'text-decoration-native-styles', 'text-decoration-native-styles-rtl',
   // resize-values holds an inline box (sp, resize on an inline span).
   'resize-values', 'resize-values-rtl',
   // touch-action-values holds an inline box (sp, touch-action none on an inline span).
@@ -44,7 +50,7 @@ export const STACKING_OUT: readonly string[] = [
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
 // VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
-export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl'];
+export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl'];
 export const SVG_REASON = /^<svg> .+: hit testing an svg's shapes comes with SVG-a2$/;
 
 // TXT1a-2 phase R: the device lanes run the shaped cases (targets.ts deviceCaseIds), but the hit lane keeps them out until real-face hit

@@ -18,6 +18,7 @@ import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { TxtFvFaults } from '../faults/txt-fv.ts';
 import { TXT_FV_FAULTS } from '../faults/txt-fv.ts';
 import { checkFontVariant } from './font-variant.ts';
+import { checkSmallCaps } from './small-caps.ts';
 import type { TxtFtFaults } from '../faults/txt-ft.ts';
 import { TXT_FT_FAULTS } from '../faults/txt-ft.ts';
 import { checkFontTuning } from './font-tuning.ts';
@@ -34,27 +35,42 @@ import type { TxtFxFaults } from '../faults/txt-fx.ts';
 import { TXT_FX_FAULTS } from '../faults/txt-fx.ts';
 import type { TxtWFaults } from '../faults/txt-w.ts';
 import { TXT_W_FAULTS } from '../faults/txt-w.ts';
+import type { TransformExtraFaults } from '../faults/transform-extra.ts';
+import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
+import { checkTransformExtra } from './transform-extra.ts';
+import { checkZoom } from './zoom.ts';
+import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
+import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
+import { checkScrollContainment } from './scroll-containment.ts';
+import type { MaskFaults } from '../faults/mask.ts';
+import { MASK_FAULTS } from '../faults/mask.ts';
+import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import type { BorderImageFaults } from '../faults/border-image.ts';
+import { BORDER_IMAGE_FAULTS } from '../faults/border-image.ts';
+import { checkBorderImage } from './border-image.ts';
 import type { Diagnostic } from '../types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
-import { isSvgShapeTag, shapeOf, svgPaintRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
-import { isRefusedMath, synthesisAllowedOf, textFontOfProps } from './computed.ts';
+import { checkTextShadows } from './text-shadow.ts';
+import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } from './computed.ts';
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { environmentOf, valueToString } from './resolve.ts';
+import { environmentOf, generatedPseudoOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
-import { checkLineClamp } from './line-clamp.ts';
+import { checkLineClamp, lineClampOf } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
-import { checkTouchAction } from './touch-action.ts';
+import { checkTouchAction, nativePanner, type NativePanner } from './touch-action.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
 /** css-text-3 §8.1: whether a computed word-spacing adds space, anything but normal and 0px. */
@@ -429,26 +445,6 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   }
 }
 
-// TXT-FX (css-text-decor-4 §4): no target draws a text shadow yet, so a text-shadow other than none is refused for every target where
-// it is declared (its descendants inherit the same declaration). Planted fault textShadowListAccepted accepts it.
-function checkTextShadow(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: TxtFxFaults): void {
-  const v = el.props.get('text-shadow') as ResolvedValue;
-  if (faults.textShadowListAccepted || v.origin === 'inherited' || (v.value.kind === 'keyword' && v.value.value === 'none')) return;
-  const id = `text-shadow|${el.element.address}`;
-  if (reported.has(id)) return;
-  reported.add(id);
-  const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
-  for (const t of targets) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-      origin,
-      target: t,
-      message: `text-shadow: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no text shadow yet (TXT-FX); only none is accepted`,
-      manual: `Remove the text-shadow from ${el.element.address}, or set text-shadow: none.`,
-      basis: 'computed-value',
-    }));
-  }
-}
-
 // FX (filter-effects-1 §5): no target draws a filter yet, and a filter such as opacity(0) or brightness(0) can hide text, so a filter
 // other than none is refused for every target where it applies (filter is not inherited). Planted fault filterListAccepted accepts it.
 function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: FxFaults): void {
@@ -469,6 +465,16 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
   }
 }
 
+/**
+ * TXT2-f: whether text-overflow on el applies to its own lines: el is a block container (not an inline box, where text-overflow does
+ * nothing, and not a flex or grid container, whose text is an anonymous item Chrome does not truncate, its parent being no block
+ * container) that clips its overflow and is not the element whose overflow the viewport takes.
+ */
+function truncatesOwnLines(el: ResolvedElement, propagated: ResolvedElement | null): boolean {
+  if (el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
+  return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible');
+}
+
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
 // (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
 // context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
@@ -476,9 +482,7 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
 // from the block's, since the native view draws the ellipsis with the text it follows while Chrome paints it in the block's style.
 function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const value = el.props.get('text-overflow') as ResolvedValue;
-  // A flex or grid container's text is an anonymous item, which Chrome does not truncate (its parent is no block container).
-  if (keywordOf(value) !== 'ellipsis' || el === propagated || isInlineBox(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return;
-  if (['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) return;
+  if (keywordOf(value) !== 'ellipsis' || !truncatesOwnLines(el, propagated)) return;
   const runs = inlineContexts(el, () => {});
   if (runs.length === 0) return;
   const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
@@ -579,8 +583,8 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
     refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
-      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination`
-      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out`);
+      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)`
+      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
   }
 }
 
@@ -636,9 +640,10 @@ const PARENT_RELATIVE_FONT_UNITS: ReadonlySet<string> = new Set(['em', 'ex', 're
 
 // css-cascade-5 §6.3: Chrome's UA defaults that the captured tables do not model. A tag inside an ancestor a UA rule keys on
 // (nested lists), display: list-item (its ::marker box), UA border styles without a proof (hr's inset), a UA font size Chrome's
-// minimum logical font size clamps, and text without a real bundled face whose computed font-weight or font-style Chrome draws
-// synthesized (Ahem under a heading, b, strong, em, i or address, or an author weight of 600 and up).
+// minimum logical font size clamps, and text without a real bundled face that Chrome draws in synthetic bold and oblique together
+// (Ahem under b in em, or an author weight of 600 and up with italic), or whose synthetic bold sits in a line that may end in an ellipsis.
 function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[], ua: UaDataset, diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFsFaults): void {
+  const propagated = propagatedFrom(root);
   const once = (id: string, push: () => void): void => {
     if (reported.has(id)) return;
     reported.add(id);
@@ -707,7 +712,42 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         }
       }
     }
-    const synthetic = here ? [] : syntheticTextFont(el, faults);
+    const synthetic = here ? [] : syntheticTextFont(el);
+    // TXT-W: native draws Ahem's synthetic bold (native-program.ts synthetic-bold) but for a line-ending ellipsis, which Chrome draws in
+    // the block container's font while native draws it in the text's own paint.
+    const ellipsisBlock = here || synthetic.length > 0 ? undefined : ellipsisBlockOf([...ancestors, el], propagated);
+    if (ellipsisBlock !== undefined && (synthesizesBold(el.props) || synthesizesBold(ellipsisBlock.props))) {
+      for (const c of el.children) {
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is inside <${ellipsisBlock.element.tag}> ${ellipsisBlock.element.address} (font-weight ${serializeFontWeight(textFontOfProps(ellipsisBlock.props).weight)}), whose lines may end in an ellipsis, and Chrome draws one of them in synthetic bold; Chrome draws the ellipsis in the block's own font, ${t} in the text's paint, and no fixture proves a synthetic-bold ellipsis`,
+            manual: `Give ${c.node.address} and ${ellipsisBlock.element.address} a font-weight below 600, or remove text-overflow: ellipsis and -webkit-line-clamp from ${ellipsisBlock.element.address}.`,
+          })));
+        }
+      }
+    }
+    // TXT-W: Chrome composites each fake-bold glyph on its own (Skia draws a glyph mask per glyph), so where a translucent colour's
+    // emboldened glyphs overlap the overlap is darker; the iOS view composites the whole run in one transparency layer, and no fixture
+    // proves a translucent synthetic bold on either target.
+    if (!here && synthetic.length === 0 && synthesizesBold(el.props)) {
+      for (const c of el.children) {
+        if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
+        const color = c.props.get('color') as ResolvedValue;
+        const alpha = color.value.kind === 'color' ? color.value.value.alpha : 255;
+        if (alpha === 0 || alpha === 255) continue;
+        for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+          once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
+            origin: c.node.node.origin,
+            target: t,
+            message: `text ${c.node.address} (font-weight ${serializeFontWeight(textFontOfProps(el.props).weight)}) is drawn in synthetic bold in the translucent colour ${valueToString(color.value)}; Chrome composites each emboldened glyph on its own, so overlapping glyphs blend darker, and no fixture proves a translucent synthetic bold on ${t}`,
+            manual: `Give ${c.node.address} an opaque colour, or a font-weight below 600.`,
+          })));
+        }
+      }
+    }
     if (synthetic.length > 0) {
       const chain = [...ancestors, el];
       const sources = synthetic.map(({ property, text }) => {
@@ -719,13 +759,13 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
       for (const c of el.children) {
         // TXT1a-2: a real bundled face at the computed weight and style draws it (synthesis is refused as DRAGON_SYNTHETIC_FONT_STYLE).
         if (c.kind !== 'text' || realFaceAt(c.node.address)) continue;
-        // Web synthesizes the bold or oblique itself; every configured native target draws the regular face.
+        // Web synthesizes both itself; native draws each alone, and Skia strokes the sheared outline when both apply.
         for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
           once(`${t}|ua-font|${c.node.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_FONT', {
             origin: c.node.node.origin,
             target: t,
-            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} draws this text in its one regular face, where Chrome synthesizes the bold or oblique (Ahem's synthetic bold and oblique keep every glyph advance, so only the glyphs differ)`,
-            manual: `Give ${c.node.address} a font-weight below 600 and a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
+            message: `text ${c.node.address} inherits ${sources.join(', and ')}; ${t} cannot draw this text, where Chrome synthesizes the bold and the oblique together, stroking the sheared outline, which no fixture proves on ${t}`,
+            manual: `Give ${c.node.address} a font-weight below 600 or a font-style below oblique 14deg, or a font family with a bundled face of that weight and style.`,
           })));
         }
       }
@@ -735,15 +775,31 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
   walk(root, [], false, false);
 }
 
-/** The computed font-weight and font-style Chrome synthesizes over a single regular face (600 and up, slope 14 and up), where font-synthesis allows it. */
-function syntheticTextFont(el: ResolvedElement, faults: TxtWFaults): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
-  const out: { property: 'font-weight' | 'font-style'; text: string }[] = [];
+/**
+ * The computed font-weight and font-style when Chrome synthesizes both the bold (600 and up) and the oblique (slope 14 and up) over a
+ * single regular face, where font-synthesis allows them. Each alone is drawn natively (native-program.ts synthetic-bold and
+ * synthetic-oblique); Skia strokes the sheared outline, which no fixture proves yet.
+ */
+function syntheticTextFont(el: ResolvedElement): { readonly property: 'font-weight' | 'font-style'; readonly text: string }[] {
   const font = textFontOfProps(el.props);
   const allowed = synthesisAllowedOf(el.props);
-  if (allowed.weight && font.weight >= (faults.ahemSyntheticBoldFrom700 ? 700 : 600)) out.push({ property: 'font-weight', text: serializeFontWeight(font.weight) });
   const slope = font.style.kind === 'italic' ? 14 : font.style.kind === 'oblique' ? font.style.degrees : 0;
-  if (allowed.style && slope >= 14) out.push({ property: 'font-style', text: serializeFontStyle(font.style) });
-  return out;
+  if (!allowed.style || slope < 14 || !synthesizesBold(el.props)) return [];
+  return [{ property: 'font-weight', text: serializeFontWeight(font.weight) }, { property: 'font-style', text: serializeFontStyle(font.style) }];
+}
+
+/**
+ * The block whose ellipsis may end a line of el's own text, given [...ancestors, el]: the block container whose inline formatting
+ * context lays the text out (el, or its nearest ancestor that is no inline box or display: contents) when its text-overflow is not
+ * clip and it truncates its own lines (truncatesOwnLines, checkTextOverflow's rule), or under a -webkit-line-clamp container, which
+ * may clamp a line of that block. Chrome draws the ellipsis in that block's font.
+ */
+function ellipsisBlockOf(chain: readonly ResolvedElement[], propagated: ResolvedElement | null): ResolvedElement | undefined {
+  const outward = [...chain].reverse();
+  const container = outward.find((e) => !isInlineBox(e) && displayKeyword(e) !== 'contents');
+  if (container !== undefined && valueToString((container.props.get('text-overflow') as ResolvedValue).value) !== 'clip' && truncatesOwnLines(container, propagated)) return container;
+  // A line-clamp ellipsis ends a line of whichever block holds it, in that block's font.
+  return outward.some((e) => lineClampOf(e) > 0) ? container : undefined;
 }
 
 /** The support profile each target is checked against, or null when the profiles are not enforced. */
@@ -822,7 +878,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
  * SVG-a1: an <svg> with a viewBox and an auto width or height is sized from the viewBox ratio and the available width, which the
  * engine does not do for a replaced box without a natural size yet (package SVG-ratio). A shape's geometry comes from its
  * attributes only: a CSS width, height or transform on it, which Chrome would apply as a geometry property, is refused, and so is
- * a percentage stroke-width (relative to the viewport diagonal).
+ * a percentage stroke-width, stroke-dasharray or stroke-dashoffset (relative to the viewport diagonal).
  */
 function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const refuse = (what: string, origin: Diagnostic['origin'], message: string, manual: string, on: readonly string[] = targets): void => {
@@ -840,9 +896,17 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     const why = svgPaintRefusal(p, v.value);
     if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} a colour or none.`);
   }
+  // SVG-inert: a shape draws no marker, so only marker none compiles; markers are inherited, so the shape's own value is checked.
+  for (const p of ['marker-start', 'marker-mid', 'marker-end'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPaintRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} none.`);
+  }
   const sw = el.props.get('stroke-width') as ResolvedValue;
-  if (sw.value.kind === 'percentage') {
-    refuse('stroke-width', sw.declaration === null ? el.element.node.origin : authored(sw.declaration.valueSpan), `stroke-width: ${valueToString(sw.value)} on <${tag}> ${el.element.address} is unsupported: a percentage stroke-width is relative to the viewport diagonal, which is not built yet (package SVG-units)`, 'Give stroke-width in px or as a number.');
+  for (const p of ['stroke-width', 'stroke-dasharray', 'stroke-dashoffset'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const why = svgPercentageRefusal(p, v.value);
+    if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as numbers.`);
   }
   if (tag === 'svg') {
     const auto = (['width', 'height'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) === 'auto');
@@ -883,9 +947,37 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   // SVG 2 §13.6.6 says; native orients it by its own rules, so a stroked shape with one is refused there.
   const cap = el.props.get('stroke-linecap') as ResolvedValue;
   const stroked = keywordOf(el.props.get('stroke') as ResolvedValue) !== 'none' && !((sw.value.kind === 'length' || sw.value.kind === 'number') && sw.value.value === 0);
-  const shape = shapeOf(tag, el.element.attributes);
+  const shape = shapeOf(el);
   if (keywordOf(cap) !== 'butt' && stroked && shape !== null && svgZeroLengthSubpath(shape)) {
     refuse('zero-length-cap', cap.declaration === null ? el.element.node.origin : authored(cap.declaration.valueSpan), `stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address}, whose path has a zero-length subpath, is not supported on native: Chrome draws its cap as a dot or square that native does not orient the same way yet`, `Give <${tag}> ${el.element.address} stroke-linecap: butt, or draw the dot as a <circle>.`, native);
+  }
+  // SVG-dash: a calculated stroke-dashoffset keeps its text (values.ts), which the shape's dash phase cannot use yet.
+  const dashOffset = el.props.get('stroke-dashoffset') as ResolvedValue;
+  if (dashOffset.value.kind === 'other') {
+    refuse('dashoffset-calc', dashOffset.declaration === null ? el.element.node.origin : authored(dashOffset.declaration.valueSpan), `stroke-dashoffset: ${valueToString(dashOffset.value)} on <${tag}> ${el.element.address} is unsupported: a calculated stroke-dashoffset is not resolved yet (package SVG-units)`, 'Give stroke-dashoffset in px or as a number.');
+  }
+  // SVG-dash: a dashed stroke starts at the shape's first point and runs in its direction. A circle's is Skia's oval start in
+  // Chrome and the platform's ellipse start on native, which nothing proves the same yet; and a zero-length dash with a round or
+  // square cap is a dot or square, which native orients by its own rules (as a zero-length subpath's, above).
+  const dashValue = el.props.get('stroke-dasharray') as ResolvedValue;
+  const dashes = dashArrayOf(dashValue.value);
+  const dashed = stroked && dashes !== 'percentage' && dashes.reduce((a, b) => a + b, 0) > 0;
+  const dashOrigin = dashValue.declaration === null ? el.element.node.origin : authored(dashValue.declaration.valueSpan);
+  if (dashed && tag === 'circle') {
+    refuse('dash-circle', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} on <circle> ${el.element.address} is not supported on native: where the dashes of a circle start is not proven against Chrome yet`, `Draw the circle as a <path> to dash it, or remove stroke-dasharray from <circle> ${el.element.address}.`, native);
+  }
+  if (dashed && keywordOf(cap) !== 'butt' && (dashes as readonly number[]).includes(0)) {
+    refuse('dash-zero-cap', dashOrigin, `stroke-dasharray: ${valueToString(dashValue.value)} with stroke-linecap: ${valueToString(cap.value)} on <${tag}> ${el.element.address} is not supported on native: a zero-length dash is a dot or square that native does not orient the same way yet`, `Give every dash a length, or give <${tag}> ${el.element.address} stroke-linecap: butt.`, native);
+  }
+  // SVG-geometry: a rect's x and y and a circle's cx, cy and r draw the shape (elements/svg.ts shapeOf) when they are user units; a
+  // percentage of the viewport and a calculation (whose text values.ts keeps) are not resolved yet; nor are they for SVG-rrect's rx and ry.
+  const geometry: readonly SvgGeometryProperty[] = tag === 'rect' ? ['x', 'y', 'rx', 'ry'] : tag === 'circle' ? ['cx', 'cy', 'r'] : [];
+  for (const p of geometry) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (svgGeometryOf(el, p) !== null) continue;
+    const of = p === 'cx' || p === 'x' || p === 'rx' ? 'the viewport width' : p === 'cy' || p === 'y' || p === 'ry' ? 'the viewport height' : 'the normalized viewport diagonal';
+    const why = v.value.kind === 'percentage' ? `a percentage ${p} is relative to ${of}, which is not built yet (package SVG-units)` : `a calculated ${p} is not resolved yet (package SVG-units)`;
+    refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as a number.`);
   }
   for (const p of ['width', 'height', 'transform'] as const) {
     const v = el.props.get(p) as ResolvedValue;
@@ -894,13 +986,43 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS }): void {
+// MASK-CLIP (css-masking-1 §7): no target draws a mask yet, and a mask image can hide text, so a mask longhand other than its initial
+// value is refused for every target where it applies (none is inherited), once per element. With every longhand initial, mask-image
+// is none and Chrome applies no mask. Planted fault maskLayerAccepted accepts every value.
+function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults): void {
+  if (faults.maskLayerAccepted) return;
+  const p = MASK_LONGHANDS.find((q) => !isInitialMask(q, (el.props.get(q) as ResolvedValue).value));
+  if (p === undefined) return;
+  const id = `mask|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  const v = el.props.get(p) as ResolvedValue;
+  const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin,
+      target: t,
+      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted`,
+      manual: `Remove the mask from ${el.element.address}, or set mask: none.`,
+      basis: 'computed-value',
+    }));
+  }
+}
+
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null): void => {
-    // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes only the SVG checks.
+  // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[]): void => {
+    // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
+    // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
       checkSvg(el, targets, diagnostics, reported);
+      checkFilter(el, targets, diagnostics, reported, faults);
+      checkMask(el, targets, diagnostics, reported, faults);
+      checkTransformExtra(el, targets, diagnostics, reported, faults);
+      checkZoom(el, targets, diagnostics, reported);
+      checkScrollContainment(el, targets, diagnostics, reported, faults);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
@@ -910,11 +1032,17 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-    if (!here) checkTouchAction(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    const self = nativePanner(el, propagated);
+    const panners = self === null ? around : [...around, self];
+    if (!here) checkTouchAction(el, panners, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkAppearance(el, targets, diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
-    checkTextShadow(el, targets, diagnostics, reported, faults);
     checkFilter(el, targets, diagnostics, reported, faults);
+    checkTransformExtra(el, targets, diagnostics, reported, faults);
+    checkZoom(el, targets, diagnostics, reported);
+    // The overscroll, scroll-snap, containment and container-query families, initial values only (analysis/scroll-containment.ts).
+    checkScrollContainment(el, targets, diagnostics, reported, faults);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
@@ -932,21 +1060,63 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
       checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
+    checkMask(el, targets, diagnostics, reported, faults);
+    checkBorderImage(el, targets, diagnostics, reported, faults);
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
+    checkGeneratedContent(el, targets, diagnostics, reported);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners);
   };
-  walk(root, false, 'viewport');
+  walk(root, false, 'viewport', []);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
+  // TXT-FONTFEAT: synthesized small caps beside what no Chrome case proves (analysis/small-caps.ts).
+  checkSmallCaps(root, targets, diagnostics, reported, shapedAt);
+  // TXT-FX: text shadows a target does not draw as Chrome does (analysis/text-shadow.ts).
+  checkTextShadows(root, targets, diagnostics, reported, realFaceAt, faults);
   // TXT2-e: transformed text native targets refuse (analysis/text-transform.ts).
   checkTextTransform(root, targets, diagnostics, reported);
+}
+
+const GENERATED_DISPLAY_OWNER: readonly (readonly [RegExp, string])[] = [
+  [/list-item/, 'the ::marker package GEN-d6'],
+  [/^table|^inline-table$/, 'the table package TBL'],
+  [/^contents$/, 'the generated-content package GEN-d'],
+  [/^ruby/, 'the generated-content package GEN-d'],
+];
+
+// GEN-a (notes/T151-gen-spec.md R4, R6, R8): the ::before and ::after boxes resolve.ts refused on their host (a replaced element, a
+// form control or the root), a generated box whose display is a list item, a table part, contents or ruby, and a direction declared
+// on a generated box, which takes its host's direction. Each is refused on every target at the declaration.
+function checkGeneratedContent(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (v: ResolvedValue, at: string, what: string, message: string, manual: string): void => {
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|gen-${what}|${JSON.stringify(origin)}|${at}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  for (const r of refusedGenerationOf(el)) {
+    const at = `${el.element.address}::${r.pseudo}`;
+    refuse(r.content, at, 'host', `content: ${valueToString(r.content.value)} on ${at} is not supported yet: ${r.reason}`, `Remove the ::${r.pseudo} rule's content for <${el.element.tag}> ${el.element.address}, or put the content in a real element beside it.`);
+  }
+  const info = generatedPseudoOf(el);
+  if (info === undefined) return;
+  const at = el.element.address;
+  const display = el.props.get('display') as ResolvedValue;
+  const shown = valueToString(display.value);
+  const owner = GENERATED_DISPLAY_OWNER.find(([re]) => re.test(shown));
+  if (owner !== undefined) refuse(display, at, 'display', `display: ${shown} on ${at} is not supported yet on a generated box (${owner[1]})`, `Give ${at} display: inline or block.`);
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (direction.origin === 'author') refuse(direction, at, 'direction', `direction on ${at} is not supported: a generated box takes its host ${info.host.element.address}'s direction (notes/T151-gen-spec.md R6)`, `Set direction on ${info.host.element.address} instead.`);
 }
 
 // TXT-FONTFEAT (css-fonts-4 §2.4): font-stretch selects a face by width and is never synthesized, so it leaves Chrome's glyphs alone
@@ -970,6 +1140,32 @@ function checkFontStretch(el: ResolvedElement, targets: readonly string[], diagn
         basis: 'computed-value',
       }));
     }
+  }
+}
+
+// FORM-a (css-ui-4 §7.1): Chrome 145 adjusts the display of a box whose appearance is not none before it looks at the element's type
+// (StyleAdjuster::AdjustStyleForHTMLElement): inline and inline-table become inline-block, list-item and table become block, and
+// every other display is kept. Dragon does not model the adjustment, so a non-none appearance on a box of those four displays is
+// refused for every target; on any other display appearance changes nothing Dragon lays out or paints.
+const APPEARANCE_ADJUSTED: { readonly [display: string]: string } = { inline: 'inline-block', 'inline-table': 'inline-block', 'list-item': 'block', table: 'block' };
+function checkAppearance(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const v = el.props.get('appearance') as ResolvedValue;
+  const k = keywordOf(v);
+  if (k === '' || k === 'none') return;
+  const display = keywordOf(el.props.get('display') as ResolvedValue);
+  const adjusted = APPEARANCE_ADJUSTED[display];
+  if (adjusted === undefined) return;
+  const id = `appearance|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+      origin: v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan),
+      target: t,
+      message: `${el.element.address} has appearance ${k} on display ${display}, which Chrome turns into display ${adjusted}; Dragon does not model that adjustment (FORM-a)`,
+      manual: `Set appearance: none on ${el.element.address}, or give it display: ${adjusted}.`,
+      basis: 'computed-value',
+    }));
   }
 }
 
@@ -1025,16 +1221,20 @@ export function skipInkThicknessProven(thickness: CssValue, boxSize: number): bo
 /** Whether the device takes a thickness or underline offset: auto, a px length or a percentage (lower/paint/text-decoration.ts). */
 const nativeDecorationLength = (v: CssValue): boolean => (v.kind === 'keyword' && v.value === 'auto') || (v.kind === 'length' && v.unit === 'px' && Number.isFinite(v.value)) || (v.kind === 'percentage' && Number.isFinite(v.value));
 
+/** The text-decoration-style values every target draws (TDEC-c: double as two snapped rects); a drawn dotted, dashed or wavy line is refused. */
+export const DRAWN_DECORATION_STYLES: readonly string[] = ['solid', 'double'];
+
 /**
- * TDEC-a: web draws every accepted decoration. TDEC-b: ios and android draw solid decorations (the value table refuses every other
- * style on every target) and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
- * auto, px or a percentage; a decorated text that is not visible; an overline with skip-ink auto, or an underline with skip-ink auto
- * on a real face or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
+ * TDEC-a: web draws every accepted decoration. A decorated text whose line is dotted, dashed or wavy is refused on every target
+ * (TDEC-c draws solid and double only); the style itself is accepted wherever it draws nothing. TDEC-b: ios and android draw solid
+ * and double decorations and refuse, per decorated text, what the device does not reproduce: a thickness or offset that is not
+ * auto, px or a percentage; a decorated text that is not visible; an overline or a double line with skip-ink auto, or an underline with skip-ink auto
+ * on a real face, in synthetic bold, or thicker than skipInkThicknessProven allows (skip-ink-intercepts: TDEC-d clips Ahem glyphs within that bound). A child of a
  * decorated element in a formatting context no Chrome case proves propagation for is refused on every target.
  */
 function checkDecorations(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
   const { applied, unproven } = analyzeDecorations(root);
-  const byAddress = new Map<string, { readonly text: ResolvedText; readonly containerSize: number; readonly visibility: string }>();
+  const byAddress = new Map<string, { readonly text: ResolvedText; readonly owner: ResolvedElement; readonly containerSize: number; readonly visibility: string }>();
   const sizeOf = (props: ReadonlyMap<Longhand, ResolvedValue>): number => {
     const v = props.get('font-size')?.value;
     return v !== undefined && v.kind === 'length' && v.unit === 'px' ? v.value : Number.NaN;
@@ -1045,7 +1245,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     const here = inline ? containerSize : sizeOf(el.props);
     for (const c of el.children) {
       // A text's visibility is its parent element's (an inherited property).
-      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
+      if (c.kind === 'text') byAddress.set(c.node.address, { text: c, owner: el, containerSize: here, visibility: valueToString((el.props.get('visibility') as ResolvedValue).value) });
       else index(c, here);
     }
   };
@@ -1056,19 +1256,47 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
     for (const c of el.children) if (c.kind === 'element') inlines(c);
   };
   inlines(root);
+  const elements = new Map<string, ResolvedElement>();
+  const collect = (el: ResolvedElement): void => {
+    elements.set(el.element.address, el);
+    for (const c of el.children) if (c.kind === 'element') collect(c);
+  };
+  collect(root);
   for (const [address, list] of applied) {
     const hit = byAddress.get(address);
     if (hit === undefined) throw new Error(`${address}: a decorated text leaf that is not in the tree`);
-    const { text, containerSize, visibility } = hit;
+    const { text, owner, containerSize, visibility } = hit;
+    // TDEC-c: a line drawn in a style no target draws is refused on every target, at the decorating box's style declaration.
+    for (const d of list.filter((x) => !DRAWN_DECORATION_STYLES.includes(x.style))) {
+      const style = elements.get(d.box)?.props.get('text-decoration-style');
+      if (style === undefined) throw new Error(`${address}: the decorating box ${d.box} is not in the tree`);
+      for (const t of targets) {
+        const id = `${t}|decoration-style|${address}|${d.box}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+          origin: style.origin !== 'inherited' && style.declaration !== null ? authored(style.declaration.valueSpan) : text.node.node.origin,
+          target: t,
+          message: `text-decoration-style: ${d.style} draws the ${d.lines.join(' ')} of ${d.box} over text ${address}, and TDEC-c draws solid and double lines only`,
+          manual: `Set text-decoration-style to solid or double on ${d.box}, or text-decoration-line: none.`,
+          basis: 'computed-value',
+        }));
+      }
+    }
     const reasons: string[] = [];
     let intercepts = false;
     if (visibility !== 'visible') reasons.push(`it is ${visibility}, and its decoration views do not follow visibility`);
-    for (const d of list) {
+    for (const d of list.filter((x) => DRAWN_DECORATION_STYLES.includes(x.style))) {
       if (!nativeDecorationLength(d.thickness)) reasons.push(`the text-decoration-thickness of ${d.box} is ${valueToString(d.thickness)}, not auto, a px length or a percentage`);
       if (!nativeDecorationLength(d.underlineOffset)) reasons.push(`the text-underline-offset of ${d.box} is ${valueToString(d.underlineOffset)}, not auto, a px length or a percentage`);
+      // text-decoration-skip-ink is inherited, and Chrome may read it from the painted text's own style while the native views take
+      // the decorating box's; no Chrome case proves which, so a text whose value differs from its box's is refused.
+      const ownSkipInk = valueToString((owner.props.get('text-decoration-skip-ink') as ResolvedValue).value);
+      if ((d.lines.includes('underline') || d.lines.includes('overline')) && ownSkipInk !== d.skipInk) reasons.push(`its text-decoration-skip-ink is ${ownSkipInk} and that of ${d.box}, which draws its ${d.lines.join(' ')}, is ${d.skipInk}, and no Chrome case proves which of the two clips the line`);
       if (d.skipInk !== 'auto') continue;
-      // TDEC-d clips Ahem glyphs only, for an underline (the capture's skip-ink probe), as thick as a capture proves.
-      if (d.lines.includes('overline') || (d.lines.includes('underline') && (realFaceAt(address) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
+      // TDEC-d clips Ahem glyphs only, for a solid underline (the capture's skip-ink probe), as thick as a capture proves. TXT-W: Skia
+      // takes the intercepts of a synthetic-bold glyph from its emboldened outline, which the native views' upright Ahem boxes miss.
+      if (d.lines.includes('overline') || (d.style === 'double' && d.lines.includes('underline')) || (d.lines.includes('underline') && (realFaceAt(address) || synthesizesBold(owner.props) || !skipInkThicknessProven(d.thickness, inlineAt.has(d.box) ? d.font.size : containerSize)))) intercepts = true;
     }
     if (intercepts) reasons.push('skip-ink-intercepts: glyph ink may cross the skip-ink band of an under or overline from ' + list.filter((d) => d.skipInk === 'auto').map((d) => d.box).join(', ') + ', which the intercepts of TDEC-d clip');
     if (reasons.length === 0) continue;
@@ -1081,7 +1309,7 @@ function checkDecorations(root: ResolvedElement, targets: readonly string[], dia
         origin: text.node.node.origin,
         target: t,
         message: `text ${address} draws text-decoration (${what}) that ${t} does not draw: ${reasons.join('; ')}`,
-        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines and real faces come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
+        manual: intercepts ? 'Set text-decoration-skip-ink: none on the decorating box, or build for web; skip-ink intercepts on overlines, real faces and synthetic bold come with later TDEC-d slices.' : 'Set text-decoration: none on the decorating box, or build for web.',
         basis: 'computed-value',
       }));
     }

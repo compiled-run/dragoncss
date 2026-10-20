@@ -280,6 +280,8 @@ public struct DragonLineSpec {
   public let ellipsisGlyphs: [CGGlyph]
   public let ellipsisXs: [Double]
   public let ellipsisSize: Double
+  /// Small caps (font-variant-caps): each glyph's instance size in device px, 0 for the view's font; empty when every glyph is in it.
+  public let sizes: [Double]
 }
 
 /// Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink.
@@ -317,6 +319,10 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
   public private(set) var dragonTextColor: UIColor? = nil
   public private(set) var dragonFont: UIFont? = nil
+  /// TXT-W: Skia's fake-bold (size, scale) keys and values when Chrome draws this text in synthetic bold, else nil.
+  public private(set) var dragonSyntheticBold: (keys: [Double], values: [Double])? = nil
+  /// TXT-W: the synthetic oblique's shear (x per unit of height above the baseline), 0 for upright glyphs; Chrome's is Skia's skewX(-1/4).
+  public private(set) var dragonGlyphShear: Double = 0
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
   private let glyphLayer = DragonGlyphLayer()
@@ -345,6 +351,29 @@ public final class DragonTextView: UIView, DragonNodeView {
     accessibilityLabel = text
   }
 
+  /// The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's.
+  public func dragonSetGlyphShear(_ shear: Double) {
+    dragonGlyphShear = shear
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// The synthetic bold from the program: every glyph outline is stroked and filled; advances are the face's.
+  public func dragonSetSyntheticBold(keys: [Double], values: [Double]) {
+    dragonSyntheticBold = (keys, values)
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// Skia's fake-bold stroke width in device px at a size in device px (SkFloatInterpFunc, then size * scale, in Float); 0 when upright.
+  func dragonBoldStroke(_ size: Double) -> Double {
+    guard let b = dragonSyntheticBold, b.keys.count == 2, b.values.count == 2 else { return 0 }
+    let s = Float(size), k0 = Float(b.keys[0]), k1 = Float(b.keys[1]), v0 = Float(b.values[0]), v1 = Float(b.values[1])
+    let f: Float
+    if s <= k0 { f = v0 } else if s > k1 { f = v1 } else { let t: Float = (s - k0) / (k1 - k0); let d: Float = (v1 - v0) * t; f = v0 + d }
+    return Double(s * f)
+  }
+
   /// The engine's data at the device scale: the instance font and the placed lines.
   public func dragonConfigure(font: UIFont, lines: [DragonLineSpec], scale: Double) {
     dragonFont = font
@@ -366,7 +395,10 @@ public final class DragonTextView: UIView, DragonNodeView {
   func dragonInkFrame() -> CGRect {
     var r = bounds
     if let font = dragonFont {
-      let box = CTFontGetBoundingBox(font as CTFont)
+      // A sheared glyph's ink reaches shear times its height above (right) and below (left) the baseline.
+      let upright = CTFontGetBoundingBox(font as CTFont)
+      let k = CGFloat(dragonGlyphShear)
+      let box = CGRect(x: upright.minX + min(k * upright.minY, k * upright.maxY), y: upright.minY, width: upright.width + abs(k) * upright.height, height: upright.height)
       func y(_ l: DragonLineSpec) -> CGFloat { return CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale) }
       func ink(_ xs: [Double], _ y: CGFloat, _ b: CGRect) {
         guard let lo = xs.min(), let hi = xs.max() else { return }
@@ -374,10 +406,15 @@ public final class DragonTextView: UIView, DragonNodeView {
         let x1 = CGFloat((hi + dragonGlyphPlantDevicePx) / scale) + b.maxX
         r = r.union(CGRect(x: x0, y: y - b.maxY, width: x1 - x0, height: b.height))
       }
+      // A fake-bold stroke reaches past the outline by at most its miter limit (4) times half its width.
+      func grown(_ b: CGRect, _ sizeDevicePx: Double) -> CGRect {
+        let h = CGFloat(2 * dragonBoldStroke(sizeDevicePx) / scale)
+        return b.insetBy(dx: -h, dy: -h)
+      }
       for l in specs {
-        ink(l.xs, y(l), box)
+        ink(l.xs, y(l), grown(box, Double(font.pointSize) * scale))
         let k = CGFloat(l.ellipsisSize / scale) / font.pointSize
-        ink(l.ellipsisXs, y(l), CGRect(x: box.minX * k, y: box.minY * k, width: box.width * k, height: box.height * k))
+        ink(l.ellipsisXs, y(l), grown(CGRect(x: box.minX * k, y: box.minY * k, width: box.width * k, height: box.height * k), l.ellipsisSize))
       }
     }
     let s = CGFloat(scale)
@@ -395,27 +432,79 @@ public final class DragonTextView: UIView, DragonNodeView {
     ctx.setAllowsFontSubpixelPositioning(true)
     ctx.setShouldSubpixelPositionFonts(true)
     ctx.setShouldSubpixelQuantizeFonts(false)
-    ctx.setFillColor(color.cgColor)
+    // TXT-W: Skia strokes and fills a fake-bold outline as one path, so a translucent colour is drawn opaque in a layer at its alpha. One
+    // layer covers the run while Chrome composites each glyph alone, so the compiler refuses a translucent synthetic bold
+    // (computed-checks.ts); the layer keeps stroke and fill from blending twice.
+    let bold = dragonSyntheticBold != nil
+    let alpha = color.cgColor.alpha
+    let paint = bold ? (color.cgColor.copy(alpha: 1) ?? color.cgColor) : color.cgColor
+    if bold && alpha < 1 {
+      ctx.setAlpha(alpha)
+      ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+    }
+    ctx.setFillColor(paint)
+    ctx.setStrokeColor(paint)
+    // y is up from the baseline here: a fake-bold run is each glyph's outline at its origin, stroked with a miter join and filled.
+    func drawRun(_ f: CTFont, _ glyphs: [CGGlyph], _ at: [CGPoint], _ sizeDevicePx: Double) {
+      let w = dragonBoldStroke(sizeDevicePx)
+      if w <= 0 {
+        CTFontDrawGlyphs(f, glyphs, at, glyphs.count, ctx)
+        return
+      }
+      let outline = CGMutablePath()
+      for (g, p) in zip(glyphs, at) {
+        var move = CGAffineTransform(translationX: p.x, y: p.y)
+        if let path = CTFontCreatePathForGlyph(f, g, &move) { outline.addPath(path) }
+      }
+      ctx.addPath(outline)
+      ctx.setLineWidth(CGFloat(w / scale))
+      ctx.setLineJoin(.miter)
+      ctx.setMiterLimit(4)
+      ctx.drawPath(using: .fillStroke)
+    }
     for l in specs {
       ctx.saveGState()
       ctx.textMatrix = .identity
       ctx.translateBy(x: 0, y: CGFloat((l.baseline + dragonGlyphPlantYDevicePx) / scale))
       ctx.scaleBy(x: 1, y: -1)
+      // y is up from the baseline here and every glyph origin is at y 0, so the shear moves only the outlines.
+      if dragonGlyphShear != 0 { ctx.concatenate(CGAffineTransform(a: 1, b: 0, c: CGFloat(dragonGlyphShear), d: 1, tx: 0, ty: 0)) }
       let positions = l.xs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-      if !l.glyphs.isEmpty { CTFontDrawGlyphs(ct, l.glyphs, positions, l.glyphs.count, ctx) }
+      if !l.sizes.isEmpty {
+        dragonDrawSized(ct, l, positions, ctx)
+        ctx.restoreGState()
+        continue
+      }
+      if !l.glyphs.isEmpty { drawRun(ct, l.glyphs, positions, Double(font.pointSize) * scale) }
       if !l.ellipsisGlyphs.isEmpty {
         let dots = l.ellipsisXs.map { CGPoint(x: CGFloat(($0 + dragonGlyphPlantDevicePx) / scale), y: 0) }
-        CTFontDrawGlyphs(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisGlyphs.count, ctx)
+        drawRun(CTFontCreateCopyWithAttributes(ct, CGFloat(l.ellipsisSize / scale), nil, nil), l.ellipsisGlyphs, dots, l.ellipsisSize)
       }
       ctx.restoreGState()
+    }
+    if bold && alpha < 1 { ctx.endTransparencyLayer() }
+  }
+
+  /// Small caps: each run of glyphs at one instance size is drawn with the font at that size (the compiler refuses an ellipsis with it).
+  func dragonDrawSized(_ ct: CTFont, _ l: DragonLineSpec, _ positions: [CGPoint], _ ctx: CGContext) {
+    var k = 0
+    while k < l.glyphs.count {
+      var e = k + 1
+      while e < l.glyphs.count && l.sizes[e] == l.sizes[k] { e += 1 }
+      let f = l.sizes[k] == 0 ? ct : CTFontCreateCopyWithAttributes(ct, CGFloat(l.sizes[k] / scale), nil, nil)
+      CTFontDrawGlyphs(f, Array(l.glyphs[k..<e]), Array(positions[k..<e]), e - k, ctx)
+      k = e
     }
   }
 
   public func dragonApplied() -> DumpJsonObject {
-    return [
+    var out: DumpJsonObject = [
       ("font", dragonFont.map { DumpJson.object([("name", .string($0.fontName)), ("pointSize", .number(Double($0.pointSize)))]) } ?? .null),
       ("foregroundColor", dragonColorJson(dragonTextColor)),
     ]
+    if dragonGlyphShear != 0 { out.append(("glyphShear", .number(dragonGlyphShear))) }
+    if let b = dragonSyntheticBold { out.append(("syntheticBold", .object([("keys", .array(b.keys.map { DumpJson.number($0) })), ("values", .array(b.values.map { DumpJson.number($0) }))]))) }
+    return out
   }
 }
 `;
@@ -803,16 +892,31 @@ public final class DragonTree {
           // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
           let spacing16 = try units_textRunLayoutUnit(font.letterSpacing)
           let word16 = try units_textRunLayoutUnit(font.wordSpacing)
+          // Small caps: a lowercase letter is drawn uppercased at the small-caps size (text.ts smallCapsCodePoint and smallCapsFontSize).
+          let smallSize = try font.smallCaps ? text_smallCapsFontSize(font.size) : runSize
           var pen: Float = 0
           for (n, sc) in Array(text.description.unicodeScalars)[Int(from)..<Int(to)].enumerated() {
-            let gid = bridge.glyph(Int(sc.value))
+            let drawn = try font.smallCaps ? text_smallCapsCodePoint(Double(sc.value)) : Double(sc.value)
+            let gid = bridge.glyph(dragonCheckedInt(drawn, "\(id) small-caps code point"))
             glyphs.append(CGGlyph(gid))
             xs.append(x + Double(pen) + shift(n))
             let spacing = try text_letterSpacingAfter(Double(sc.value), spacing16) + text_wordSpacingAfter(Double(sc.value), word16)
-            pen = pen + Float(runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
+            pen = pen + Float((drawn == Double(sc.value) ? runSize : smallSize) * bridge.advanceUnits(gid) / bridge.data.unitsPerEm) + Float(spacing / 65536)
           }
         }
         return (glyphs, xs)
+      }
+      // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
+      func glyphSizes(_ text: JsString, _ font: TextFont, _ from: Double, _ to: Double, _ what: String) throws -> [Double] {
+        if !font.smallCaps || from >= to { return [] }
+        let runSize = try units_platformFontSize(font.size)
+        if bridge.shaped {
+          let pg = try shaping_pieceGlyphs(measurer, text, font, from, to)
+          guard let g = pg as? PieceGlyphs_okTrue else { fatalError("dragon: \(id) \(what): the shaped measurer refused its text: \((pg as! PieceGlyphs_okFalse).reason)") }
+          return g.sizes.items.map { $0 == runSize ? 0 : $0 }
+        }
+        let small = try text_smallCapsFontSize(font.size)
+        return try Array(text.description.unicodeScalars)[Int(from)..<Int(to)].map { try text_smallCapsCodePoint(Double($0.value)) == Double($0.value) ? 0 : small }
       }
       let leafFont = try inline_leafFontOf(leaves[li])
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
@@ -853,7 +957,7 @@ public final class DragonTree {
             geometryCps.append(shown.map { Double($0.value) })
             geometryPens.append(run.xs.map { $0 + e[0] })
           }
-          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize))
+          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize, sizes: try glyphSizes(leaves[li].text, leafFont, piece.start, paintEnd, "line \(k)")))
         }
         }
       }
@@ -1244,7 +1348,7 @@ ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonCli
  * baseline in device px from the view's top, and the UTF-16 offsets of the line in the node's text. A truncated line (TXT2-f) also
  * carries its ellipsis glyphs and their origins, drawn at the ellipsis font's instance size in device px (0 when it has none).
  */
-class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int, val ellipsisGlyphs: IntArray, val ellipsisXs: DoubleArray, val ellipsisSize: Double)
+class DragonLineSpec(val text: String, val glyphs: IntArray, val xs: DoubleArray, val xLU: Double, val widthLU: Double, val top: Int, val baseline: Int, val start: Int, val end: Int, val ellipsisGlyphs: IntArray, val ellipsisXs: DoubleArray, val ellipsisSize: Double, val sizes: DoubleArray = DoubleArray(0))
 
 /** Device px added to every glyph x; 0 except in the glyph-offset-1 raster plant build (P5), which proves the pixel lane sees ink. */
 const val DRAGON_GLYPH_PLANT_DEVICE_PX = 0.0
@@ -1268,6 +1372,13 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var specs: List<DragonLineSpec> = emptyList()
     private set
+  /** TXT-W: the synthetic oblique's shear (x per unit of height above the baseline), 0 for upright glyphs; Chrome's is Skia's skewX(-1/4). */
+  var dragonGlyphShear = 0.0
+  /** TXT-W: Skia's fake-bold (size, scale) keys and values when Chrome draws this text in synthetic bold, else null. */
+  var dragonBoldKeys: DoubleArray? = null
+    private set
+  var dragonBoldValues: DoubleArray? = null
+    private set
   private var font: android.graphics.fonts.Font? = null
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
@@ -1276,6 +1387,52 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     dragonFamily = family
     dragonColor = color
     contentDescription = text
+  }
+
+  /** The synthetic oblique from the program: every glyph is sheared about its baseline origin; advances are the upright face's. */
+  fun dragonSetGlyphShear(shear: Double) {
+    dragonGlyphShear = shear
+    invalidate()
+  }
+
+  /** The synthetic bold from the program: every glyph outline is stroked and filled; advances are the face's. */
+  fun dragonSetSyntheticBold(keys: DoubleArray, values: DoubleArray) {
+    dragonBoldKeys = keys
+    dragonBoldValues = values
+    dragonBoldPaints.clear()
+    invalidate()
+  }
+
+  /** Skia's fake-bold stroke width in device px at a text size in device px (SkFloatInterpFunc, then size * scale, in Float); 0 when upright. */
+  fun dragonBoldStroke(size: Float): Float {
+    val k = dragonBoldKeys ?: return 0f
+    val v = dragonBoldValues ?: return 0f
+    if (k.size != 2 || v.size != 2) return 0f
+    val k0 = k[0].toFloat()
+    val k1 = k[1].toFloat()
+    val v0 = v[0].toFloat()
+    val v1 = v[1].toFloat()
+    val f = if (size <= k0) v0 else if (size > k1) v1 else { val t: Float = (size - k0) / (k1 - k0); val d: Float = (v1 - v0) * t; v0 + d }
+    return size * f
+  }
+
+  /** The fake-bold paints made so far, by text size, so a frame draws without allocating one per run. */
+  private val dragonBoldPaints = HashMap<Float, Paint>()
+
+  /** The paint a run is drawn with: a fake-bold run strokes and fills its outlines as one path with a miter join, as Skia's fake bold. */
+  private fun dragonRunPaint(p: Paint): Paint {
+    val w = dragonBoldStroke(p.textSize)
+    if (w <= 0f) return p
+    val cached = dragonBoldPaints[p.textSize]
+    if (cached != null && cached.color == p.color && cached.typeface == p.typeface) return cached
+    val made = Paint(p).apply {
+      style = Paint.Style.FILL_AND_STROKE
+      strokeWidth = w
+      strokeJoin = Paint.Join.MITER
+      strokeMiter = 4f
+    }
+    dragonBoldPaints[p.textSize] = made
+    return made
   }
 
   /** The engine's data at the device scale: the instance text size and the placed lines. */
@@ -1297,9 +1454,26 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
         val positions = FloatArray(2 * glyphs.size)
         for (k in glyphs.indices) {
           positions[2 * k] = (xs[k] + DRAGON_GLYPH_PLANT_DEVICE_PX).toFloat()
-          positions[2 * k + 1] = y
+          positions[2 * k + 1] = 0f
         }
-        canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, p)
+        // The origin is on the baseline (y down), so the shear moves only the outlines: x - shear * y, Skia's skewX(-shear).
+        canvas.save()
+        canvas.translate(0f, y)
+        if (dragonGlyphShear != 0.0) canvas.skew((-dragonGlyphShear).toFloat(), 0f)
+        canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, dragonRunPaint(p))
+        canvas.restore()
+      }
+      // Small caps (font-variant-caps): each run of glyphs at one instance size (0 for the view's) is drawn at that text size; the
+      // compiler refuses an ellipsis with it.
+      if (l.sizes.isNotEmpty()) {
+        var k = 0
+        while (k < l.glyphs.size) {
+          var e = k + 1
+          while (e < l.glyphs.size && l.sizes[e] == l.sizes[k]) e++
+          draw(l.glyphs.copyOfRange(k, e), l.xs.copyOfRange(k, e), if (l.sizes[k] == 0.0) paint else TextPaint(paint).apply { textSize = l.sizes[k].toFloat() })
+          k = e
+        }
+        continue
       }
       draw(l.glyphs, l.xs, paint)
       if (l.ellipsisGlyphs.isNotEmpty()) draw(l.ellipsisGlyphs, l.ellipsisXs, TextPaint(paint).apply { textSize = l.ellipsisSize.toFloat() })
@@ -1311,7 +1485,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     return listOf(
       Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typeface) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
       Pair("textPaint.color", dragonColorJson(paint.color)),
-    )
+    ) + (if (dragonGlyphShear != 0.0) listOf(Pair("glyphShear", DumpJson.Num(dragonGlyphShear))) else emptyList()) + (if (dragonBoldKeys != null && dragonBoldValues != null) listOf(Pair("syntheticBold", DumpJson.Obj(listOf(Pair("keys", DumpJson.Arr(dragonBoldKeys!!.map { DumpJson.Num(it) })), Pair("values", DumpJson.Arr(dragonBoldValues!!.map { DumpJson.Num(it) })))))) else emptyList())
   }
 }
 `;
@@ -1488,6 +1662,8 @@ import dev.dragon.layout.ScrollRangesResult_refused
 import dev.dragon.layout.shaping_pieceGlyphs
 import dev.dragon.layout.snap_snapEdges
 import dev.dragon.layout.text_letterSpacingAfter
+import dev.dragon.layout.text_smallCapsCodePoint
+import dev.dragon.layout.text_smallCapsFontSize
 import dev.dragon.layout.text_wordSpacingAfter
 import dev.dragon.layout.units_LU_PER_PX
 import dev.dragon.layout.units_fromCssPx
@@ -1780,14 +1956,30 @@ class DragonTree(val context: Context) {
         // Letter and word spacing follow each glyph as the engine adds them (text.ts letterSpacingAfter and wordSpacingAfter, 16.16).
         val spacing16 = units_textRunLayoutUnit(font.letterSpacing)
         val word16 = units_textRunLayoutUnit(font.wordSpacing)
+        // Small caps: a lowercase letter is drawn uppercased at the small-caps size (text.ts smallCapsCodePoint and smallCapsFontSize).
+        val smallSize = if (font.smallCaps) text_smallCapsFontSize(font.size) else runSize
         var pen = 0f
         for ((n, cp) in cps.withIndex()) {
-          val gid = bridge.glyph(cp)
+          val drawn = if (font.smallCaps) dragonCheckedInt(text_smallCapsCodePoint(cp.toDouble()), id + " small-caps code point") else cp
+          val gid = bridge.glyph(drawn)
           glyphs[n] = gid
           xs[n] = x + pen.toDouble() + shift(n)
-          pen = pen + (runSize * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + ((text_letterSpacingAfter(cp.toDouble(), spacing16) + text_wordSpacingAfter(cp.toDouble(), word16)) / 65536).toFloat()
+          pen = pen + ((if (drawn == cp) runSize else smallSize) * bridge.advanceUnits(gid) / bridge.data.unitsPerEm).toFloat() + ((text_letterSpacingAfter(cp.toDouble(), spacing16) + text_wordSpacingAfter(cp.toDouble(), word16)) / 65536).toFloat()
         }
         return Pair(glyphs, xs)
+      }
+      // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
+      fun glyphSizes(text: String, font: TextFont, from: Double, to: Double, what: String): DoubleArray {
+        if (!font.smallCaps || from >= to) return DoubleArray(0)
+        val runSize = units_platformFontSize(font.size)
+        if (bridge.shaped) {
+          val pg = shaping_pieceGlyphs(measurer, text, font, from, to)
+          val g = pg as? PieceGlyphs_okTrue ?: throw IllegalStateException("dragon: " + id + " " + what + ": the shaped measurer refused its text: " + (pg as PieceGlyphs_okFalse).reason)
+          return DoubleArray(g.sizes.size) { if (g.sizes[it] == runSize) 0.0 else g.sizes[it] }
+        }
+        val small = text_smallCapsFontSize(font.size)
+        val cps = text.codePoints().toArray().copyOfRange(from.toInt(), to.toInt())
+        return DoubleArray(cps.size) { if (text_smallCapsCodePoint(cps[it].toDouble()) == cps[it].toDouble()) 0.0 else small }
       }
       val leafFont = inline_leafFontOf(leaves[li])
       // Preserved text (TXT2-c) can give a leaf several pieces on one line: its text, its hanging spaces and its line feeds.
@@ -1832,7 +2024,7 @@ class DragonTree(val context: Context) {
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
             geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
           }
-          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize))
+          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize, glyphSizes(leafText, leafFont, piece.start, paintEnd, "line " + k)))
         }
       }
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
@@ -2409,7 +2601,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);
   const inline = (c: import('@dragon/layout').InlineChild): string => {
-    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)})`;
+    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)}, ${String(c.smallCaps)})`;
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };

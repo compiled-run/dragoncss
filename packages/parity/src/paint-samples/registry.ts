@@ -17,6 +17,7 @@ import { SCROLLBAR_SAMPLES } from './scrollbar.ts';
 import { SHADOW_SAMPLES } from './shadow.ts';
 import { STACKING_SAMPLES } from './stacking.ts';
 import { TEXT_DECORATION_SAMPLES } from './text-decoration.ts';
+import { TEXT_SHADOW_SAMPLES } from './text-shadow.ts';
 import { TRANSFORM_SAMPLES } from './transform.ts';
 import { VISIBILITY_SAMPLES } from './visibility.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
@@ -44,6 +45,7 @@ export const PAINT_SAMPLES: readonly PaintSamples[] = [
   CONTROL_SAMPLES,
   VISIBILITY_SAMPLES,
   TEXT_DECORATION_SAMPLES,
+  TEXT_SHADOW_SAMPLES,
 ];
 
 if (PAINT_SAMPLES.map((m) => m.name).join() !== PAINT_SAMPLE_MODULES.join()) throw new Error('the paint-samples registry is not in PAINT_SAMPLE_MODULES order');

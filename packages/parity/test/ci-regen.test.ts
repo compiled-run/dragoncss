@@ -6,7 +6,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, LANDING_YIELD_S, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, REGEN_BRANCH_SLOTS, type Run, runTitle, SLOT_POLL_S } from '../../../scripts/ci-regen.ts';
+import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, DEVICE_YIELD_S, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, REGEN_BRANCH_SLOTS, type Run, runTitle, SLOT_POLL_S } from '../../../scripts/ci-regen.ts';
 import { regenTitle } from '../../../scripts/land-devices-ci.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -148,47 +148,54 @@ describe('pnpm ci:regen finding the run', () => {
 describe('pnpm ci:regen waiting for a slot before it dispatches', () => {
   const other = (id: number, o: object = {}) => rawRun({ id, display_title: runTitle(`lane/o${id}`, NEW, NONCE), status: 'in_progress', conclusion: null, ...o });
   const posted = (calls: string[]) => calls.some((c) => c.includes('/dispatches'));
-  it('dispatches at once when no landing runs and a branch slot is free', () => {
-    const f = fake({ listed: [other(1), other(2, { status: 'completed', conclusion: 'success' })], states: [{ status: 'queued', conclusion: null }] });
+  const deviceRun = rawRun({ id: 3, path: '.github/workflows/device-lanes.yml', display_title: 'device lanes', status: 'in_progress', conclusion: null });
+  it('dispatches at once when no device lanes run and a branch slot is free', () => {
+    const f = fake({ listed: [other(1), other(2), other(3, { status: 'completed', conclusion: 'success' })], states: [{ status: 'queued', conclusion: null }] });
     expect(f.run([BR, '--once'])).toBe(EXIT.pending);
     expect(posted(f.calls)).toBe(true);
     expect(f.logs.some((l) => l.startsWith('waiting to dispatch'))).toBe(false);
   });
   it('with --once does not dispatch while every slot is taken, and says to poll again', () => {
-    const f = fake({ listed: [other(1), other(2, { status: 'queued' })] });
+    const f = fake({ listed: [other(1), other(2), other(3, { status: 'queued' })] });
     expect(f.run([BR, '--once'])).toBe(EXIT.pending);
     expect(posted(f.calls)).toBe(false);
-    expect(f.logs.at(-1)).toBe(`PENDING (not dispatched): 2 branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once); run the same command again (it dispatches anyway ${LANDING_YIELD_S / 60} minutes after the first wait)`);
+    expect(f.logs.at(-1)).toBe(`PENDING (not dispatched): 3 branch regens are queued or running (${REGEN_BRANCH_SLOTS} at once); run the same command again (it dispatches anyway ${DEVICE_YIELD_S / 60} minutes after the first wait)`);
   });
-  it('waits while a landing run (a label run, a patch-mode regen or a device lanes run) is queued or running, then dispatches', () => {
-    for (const landing of [{ listed: [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })] }, { listed: [rawRun({ id: 3, display_title: `regen of ${NEW}`, status: 'queued', conclusion: null })] }, { devices: [rawRun({ id: 3, path: '.github/workflows/device-lanes.yml', display_title: 'device lanes', status: 'in_progress', conclusion: null })] }]) {
-      const f = fake({ ...landing, states: [{ status: 'queued', conclusion: null }] });
-      let polls = 0;
-      const gh = f.deps.gh;
-      const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?') && ++polls > 18 ? JSON.stringify({ workflow_runs: [] }) : gh(a)) };
-      expect(main([BR, '--once'], { ...deps }, () => REPO)).toBe(EXIT.pending);
-      expect(posted(f.calls)).toBe(false);
-      expect(main([BR], deps, () => REPO)).not.toBe(EXIT.error);
-      expect(f.logs).toContain('waiting to dispatch: 1 landing run(s) are queued or running');
+  it('waits while a device lanes run is queued or running, then dispatches', () => {
+    const f = fake({ devices: [deviceRun], states: [{ status: 'queued', conclusion: null }] });
+    let polls = 0;
+    const gh = f.deps.gh;
+    const deps: Deps = { ...f.deps, gh: (a) => (a[1]?.includes('/runs?') && ++polls > 18 ? JSON.stringify({ workflow_runs: [] }) : gh(a)) };
+    expect(main([BR, '--once'], { ...deps }, () => REPO)).toBe(EXIT.pending);
+    expect(posted(f.calls)).toBe(false);
+    expect(main([BR], deps, () => REPO)).not.toBe(EXIT.error);
+    expect(f.logs).toContain('waiting to dispatch: 1 device lanes run(s) are queued or running');
+    expect(posted(f.calls)).toBe(true);
+    expect(f.deps.now()).toBeGreaterThanOrEqual(SLOT_POLL_S * 1000);
+  });
+  it('dispatches at once beside the landing\'s regens (a label run, a patch-mode regen) while a slot is free', () => {
+    for (const run of [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null }), rawRun({ id: 3, display_title: `regen of ${NEW}`, status: 'queued', conclusion: null })]) {
+      const f = fake({ listed: [run, other(4), other(5)], states: [{ status: 'queued', conclusion: null }] });
+      expect(f.run([BR, '--once'])).toBe(EXIT.pending);
       expect(posted(f.calls)).toBe(true);
-      expect(f.deps.now()).toBeGreaterThanOrEqual(SLOT_POLL_S * 1000);
+      expect(f.logs.some((l) => l.startsWith('waiting to dispatch') || l.startsWith('PENDING (not dispatched)'))).toBe(false);
     }
   });
-  it('stops waiting for a landing after LANDING_YIELD_S and dispatches; the run waits for its slot itself', () => {
-    const f = fake({ listed: [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })], states: [{ status: 'completed', conclusion: 'success' }] });
+  it('stops waiting for device lanes after DEVICE_YIELD_S and dispatches; the run waits for its slot itself', () => {
+    const f = fake({ devices: [deviceRun], states: [{ status: 'completed', conclusion: 'success' }] });
     f.run([BR]);
     expect(posted(f.calls)).toBe(true);
-    expect(f.deps.now()).toBeGreaterThanOrEqual(LANDING_YIELD_S * 1000);
+    expect(f.deps.now()).toBeGreaterThanOrEqual(DEVICE_YIELD_S * 1000);
   });
-  it('with --once dispatches anyway once LANDING_YIELD_S has passed since the first wait for this head', () => {
-    const f = fake({ listed: [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })], states: [{ status: 'queued', conclusion: null }] });
+  it('with --once dispatches anyway once DEVICE_YIELD_S has passed since the first wait for this head', () => {
+    const f = fake({ devices: [deviceRun], states: [{ status: 'queued', conclusion: null }] });
     const first = new Map<string, number>();
     const since = (k: string) => first.get(k) ?? (first.set(k, f.deps.now()), f.deps.now());
     const forget = (k: string) => void first.delete(k);
     expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
     expect(posted(f.calls)).toBe(false);
     expect([...first.keys()]).toEqual([`${BR}@${HEAD}`]);
-    f.deps.sleep(LANDING_YIELD_S * 1000);
+    f.deps.sleep(DEVICE_YIELD_S * 1000);
     expect(main([BR, '--once'], { ...f.deps, since, forget }, () => REPO)).toBe(EXIT.pending);
     expect(posted(f.calls)).toBe(true);
     expect([...first.keys()]).toEqual([]);
@@ -205,7 +212,7 @@ describe('pnpm ci:regen waiting for a slot before it dispatches', () => {
     let polls = 0;
     let heads = 0;
     const gh = f.deps.gh;
-    const busy = [rawRun({ id: 3, event: 'pull_request', display_title: 'Land #1', status: 'in_progress', conclusion: null })];
+    const busy = [other(1), other(2), other(3)];
     const deps: Deps = {
       ...f.deps,
       gh: (a) => {
@@ -227,10 +234,11 @@ describe('pnpm ci:regen waiting for a slot before it dispatches', () => {
     expect(posted(f.calls)).toBe(true);
     expect(f.logs[0]).toMatch(/^listing the queued and running regens failed \(HTTP 502\); dispatching/);
   });
-  it('uses regen-on-ci.yml\'s own slot count and landing yield', () => {
+  it('uses regen-on-ci.yml\'s own slot count and device lanes yield', () => {
     const yml = readFileSync(repoPath('.github/workflows/regen-on-ci.yml'), 'utf8');
+    expect(REGEN_BRANCH_SLOTS).toBe(3);
     expect(yml).toContain(`REGEN_BRANCH_SLOTS: '${REGEN_BRANCH_SLOTS}'`);
-    expect(yml).toContain(`LANDING_YIELD_SECONDS: '${LANDING_YIELD_S}'`);
+    expect(yml).toContain(`DEVICE_YIELD_SECONDS: '${DEVICE_YIELD_S}'`);
   });
 });
 
@@ -391,12 +399,12 @@ case "$2" in
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
-    // LANDING_YIELD_SECONDS 0: the landing's runs (a label run, patch mode) no longer hold it back, only the slots do.
-    const env = { GITHUB_RUN_ID: '7', REGEN_BRANCH_SLOTS: '2', LANDING_YIELD_SECONDS: '0', POLL_SECONDS: '0' };
+    // The landing's own regens (runs 3 and 4: a label run, patch mode) never hold it back, only the slots do.
+    const env = { GITHUB_RUN_ID: '7', REGEN_BRANCH_SLOTS: '2', DEVICE_YIELD_SECONDS: '5400', POLL_SECONDS: '0' };
     const waits = runStep(gate, env, stub([...older, ...newer], [older[1]!, older[2]!, older[3]!, ...newer]));
     expect(waits.status, waits.stderr).toBe(0);
     expect(waits.stdout).toContain('2 older branch regens are queued or running; waiting for one of 2 slots');
-    expect(waits.stdout).not.toContain('landing run');
+    expect(waits.stdout).not.toContain('device lanes run');
     expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('17');
     rmSync(join(d, 'calls'));
     // Newer branch regens never hold it back.
@@ -405,7 +413,7 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(free.stdout).not.toContain('waiting for one');
     expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
     rmSync(join(d, 'calls'));
-    // While the landing runs, a free slot waits too: a label run, a patch-mode regen or a device lanes run, until it ends.
+    // While a device lanes run is queued or running, a free slot waits too, until it ends; a label run or a patch-mode regen does not hold it.
     const landingStub = (regen: object[], devices: object[]) => `
 n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
 case "$2" in
@@ -417,31 +425,37 @@ case "$2" in
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
-    const landing = { ...env, LANDING_YIELD_SECONDS: '5400' };
-    for (const [regen, devices] of [[[older[2]!], []], [[older[3]!], []], [[], [{ id: 50, event: 'workflow_dispatch', display_title: `device lanes of ${HEAD}` }]]] as [object[], object[]][]) {
-      const held = runStep(gate, landing, landingStub([...regen, ...newer], devices));
-      expect(held.status, held.stderr).toBe(0);
-      expect(held.stdout).toContain('1 landing run(s) are queued or running; waiting until they end (at most 5400 s)');
-      expect(held.stdout).not.toContain('waiting for one');
-      expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('17');
+    const held = runStep(gate, env, landingStub(newer, [{ id: 50, event: 'workflow_dispatch', display_title: `device lanes of ${HEAD}` }]));
+    expect(held.status, held.stderr).toBe(0);
+    expect(held.stdout).toContain('1 device lanes run(s) are queued or running; waiting until they end (at most 5400 s)');
+    expect(held.stdout).not.toContain('waiting for one');
+    expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('17');
+    rmSync(join(d, 'calls'));
+    for (const regen of [older[2]!, older[3]!]) {
+      const beside = runStep(gate, env, landingStub([regen, ...newer], []));
+      expect(beside.status, beside.stderr).toBe(0);
+      expect(beside.stdout).not.toContain('waiting until they end');
+      expect(beside.stdout).toContain('started after waiting 0 s');
+      expect(readFileSync(join(d, 'calls'), 'utf8').trim()).toBe('9');
       rmSync(join(d, 'calls'));
     }
-    // Past LANDING_YIELD_SECONDS it stops yielding to the landing and takes the free slot.
+    // Past DEVICE_YIELD_SECONDS it stops yielding to device lanes and takes the free slot.
     const always = `
 case "$2" in
   repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;
+  *device-lanes.yml*status=in_progress*) body='${JSON.stringify({ workflow_runs: [{ id: 50 }, { id: 51 }] })}' ;;
   *device-lanes.yml*) body='{"workflow_runs":[]}' ;;
   *status=in_progress*) body='${JSON.stringify({ workflow_runs: [older[2]!, older[3]!] })}' ;;
   *status=*) body='{"workflow_runs":[]}' ;;
   *) echo "unexpected gh $*" >&2; exit 9 ;;
 esac
 if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
-    const capped = runStep(gate, { ...landing, LANDING_YIELD_SECONDS: '1', POLL_SECONDS: '1' }, always);
+    const capped = runStep(gate, { ...env, DEVICE_YIELD_SECONDS: '1', POLL_SECONDS: '1' }, always);
     expect(capped.status, capped.stderr).toBe(0);
-    expect(capped.stdout).toContain('2 landing run(s) are queued or running; waiting until they end (at most 1 s)');
+    expect(capped.stdout).toContain('2 device lanes run(s) are queued or running; waiting until they end (at most 1 s)');
     expect(capped.stdout).toContain('started after waiting 1 s');
     // A failed list (a rate limit) waits a poll instead of failing the run.
-    const limited = runStep(gate, landing, `
+    const limited = runStep(gate, env, `
 n=$(( $(cat ${d}/calls 2>/dev/null || echo 0) + 1 )); echo $n > ${d}/calls
 case "$2" in
   repos/${REPO}/actions/runs/7) body='{"created_at":"2026-10-14T02:20:00Z"}' ;;

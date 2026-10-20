@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 60px; height: 30px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.v { backface-visibility: visible; transform-style: flat; transform-box: view-box; perspective: none; perspective-origin: 50% 50%; }
+.U { BACKFACE-VISIBILITY: VISIBLE; TRANSFORM-STYLE: FLAT; TRANSFORM-BOX: VIEW-BOX; PERSPECTIVE: NONE; PERSPECTIVE-ORIGIN: CENTER; }
+.w { -webkit-backface-visibility: visible; -webkit-transform-style: flat; -webkit-perspective: none; -webkit-perspective-origin: center center; }
+.r { transform: rotate(30deg); backface-visibility: visible; perspective-origin: left 50% top 50%; }
+.m { transform: scale(-1, 1); transform-style: flat; background-color: #1f6feb; perspective: none; perspective-origin: 50%; }
+.t { transform: translate(6px, 2px); transform-box: view-box; -webkit-backface-visibility: visible; -webkit-perspective: NONE; -webkit-perspective-origin: 50% center; }
+.k { backface-visibility: initial; transform-style: unset; transform-box: initial; perspective: initial; perspective-origin: unset; }
+.i { backface-visibility: inherit; transform-style: inherit; transform-box: inherit; perspective: inherit; perspective-origin: inherit; }
+.row { display: flex; width: 200px; perspective-origin: center 50%; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="box v">XX XX</div>
+<div data-dragon-id="s2" class="box U"><div data-dragon-id="s2c" class="i">XXX</div></div>
+<div data-dragon-id="s3" class="box w">XX</div>
+<div data-dragon-id="s4" class="box r">XX</div>
+<div data-dragon-id="s5" class="box m">XX</div>
+<div data-dragon-id="s6" class="box t">XX</div>
+<div data-dragon-id="s7" class="box k">XX</div>
+<div data-dragon-id="row" class="row v"><div data-dragon-id="ra" class="box w">XX XX</div><div data-dragon-id="rb" class="box r">XX</div></div>
+</body>
+</html>

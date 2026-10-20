@@ -10,7 +10,7 @@
 import { textDecoration as td } from '@dragon/layout';
 import { glyphLines } from '../pixel-reference.ts';
 import type { GlyphBox, SamplePoint } from '../samples.ts';
-import { glyphClearance, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
+import { glyphClearance, glyphSpanAt, ruleKind, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
 import type { PlacedDecoration } from './decoration-rects.ts';
 import { placedDecorations } from './decoration-rects.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
@@ -63,8 +63,9 @@ function scanlinesNearDecorations(ctx: PaintSampleContext): ReadonlySet<string> 
   return out;
 }
 
-/** Whether a pixel lies inside a glyph box by at least the inset (0 outside every box: the caller checks the clearance). */
-const insideGlyph = (x: number, y: number, glyphs: readonly GlyphBox[]): boolean => glyphs.some((g) => x >= g.left && x + 1 <= g.right && y >= g.top && y + 1 <= g.bottom);
+/** Whether a pixel lies inside a glyph's ink (0 outside every glyph: the caller checks the clearance); a sheared glyph's on its rows. */
+const insideGlyph = (x: number, y: number, glyphs: readonly GlyphBox[]): boolean =>
+  glyphs.some((g) => y >= g.top && y + 1 <= g.bottom && [y, y + 1].every((r) => x >= glyphSpanAt(g, r)[0] && x + 1 <= glyphSpanAt(g, r)[1]));
 
 /** The decoration points of a case: per rect, the middle column of every eligible run, on its rows and the clear rows beside them. */
 export function decorationPoints(ctx: PaintSampleContext): SamplePoint[] {

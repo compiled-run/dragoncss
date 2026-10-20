@@ -205,7 +205,8 @@ function computeBounds(segments: readonly SvgSegment[]): SvgBounds | null {
 // Shapes and the viewport.
 
 export type SvgPathShape = { readonly kind: 'path'; readonly segments: readonly SvgSegment[] };
-export type SvgRectShape = { readonly kind: 'rect'; readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+/** rx and ry: SVG-rrect's used corner radii, both positive and at most half the width and height; absent on a square rect. */
+export type SvgRectShape = { readonly kind: 'rect'; readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly rx?: number; readonly ry?: number };
 export type SvgCircleShape = { readonly kind: 'circle'; readonly cx: number; readonly cy: number; readonly r: number };
 
 /** A shape's geometry in user units (float32): a path, an axis-aligned rect, or a circle. */

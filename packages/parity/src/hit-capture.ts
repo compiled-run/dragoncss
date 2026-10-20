@@ -125,7 +125,8 @@ export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO
   const chrome = capturedIds(c);
   const prepared = prepareHit(t.nodes, faults);
   grid.forEach(([x, y], i) => {
-    const dragon = t.ids[hitAt(prepared, x, y)] as string;
+    // Chrome's elementFromPoint names a ::before or ::after box's originating element (GEN), which is also the node a tap there targets.
+    const dragon = (t.ids[hitAt(prepared, x, y)] as string).replace(/::(before|after)$/, '');
     if (dragon !== chrome[i]) mismatches.push({ case: n.case.id, x, y, chrome: chrome[i] as string, dragon });
   });
   return { points: c.points, mismatches, stale };
@@ -241,7 +242,7 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
  * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
  * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -286,12 +287,52 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['vertical-align', 'baseline'], ['float', 'none'], ['clear', 'none'], ['letter-spacing', 'normal'], ['word-spacing', '0px'],
   ['text-overflow', 'clip'], ['text-transform', 'none'], ['text-indent', '0px'], ['overflow-wrap', 'normal'], ['word-break', 'normal'],
   ['-webkit-box-orient', 'horizontal'], ['-webkit-line-clamp', 'none'],
+  ['font-variant-ligatures', 'normal'], ['font-variant-caps', 'normal'], ['font-variant-alternates', 'normal'], ['font-variant-numeric', 'normal'],
+  ['font-variant-east-asian', 'normal'], ['font-variant-position', 'normal'], ['font-variant-emoji', 'normal'], ['font-kerning', 'auto'],
+  ['font-optical-sizing', 'auto'], ['font-language-override', 'normal'], ['font-stretch', '100%'], ['font-feature-settings', 'normal'],
+  ['font-variation-settings', 'normal'], ['-webkit-text-stroke-width', '0px'],
 ];
-const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
-const CSS_TEXT = new RegExp(`^[ ]*(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
+/** The paint, transform and mask longhands added after the base, at their initial values (filter none, mask-image none and the like). */
+const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
+  ['text-shadow', 'none'], ['filter', 'none'], ['backface-visibility', 'visible'], ['transform-style', 'flat'], ['transform-box', 'view-box'],
+  ['clip', 'auto'], ['clip-path', 'none'], ['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'],
+  ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'],
+  ['mask-mode', 'match-source'],
+];
+const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
+const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
 /** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
 const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
 const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
+/**
+ * The text fill and stroke colours, also added after the base, only where they draw what color draws: currentcolor in emitted CSS,
+ * and in a capture's computed object the object's own color (Chrome resolves currentcolor). Any other colour stays in the text.
+ */
+const CSS_TEXT_COLORS = /^[ ]*-webkit-text-(?:fill|stroke)-color: currentcolor;\n/gm;
+function withoutTextColors(json: string): string {
+  return json.replace(/"computed": \{[^{}]*\}/g, (block) => {
+    const color = /"color": "([^"]*)"/.exec(block)?.[1];
+    if (color === undefined) return block;
+    const own = color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return block.replace(new RegExp(`,\\n[ ]*"-webkit-text-(?:fill|stroke)-color": "${own}"`, 'g'), '');
+  });
+}
+/** appearance, also added after the base, at its initial none only: any other value stays in the text. */
+const JSON_APPEARANCE = /,\n[ ]*"appearance": "none"/g;
+const CSS_APPEARANCE = /^[ ]*appearance: none;\n/gm;
+/**
+ * caret-color and accent-color, also added after the base, at auto only (and -webkit-user-modify at read-only): in a capture caret-color's auto is the computed object's
+ * color (Chrome resolves it), so a caret-color is removed there only where it equals that color. Any other value stays in the text.
+ */
+const JSON_ACCENT = /,\n[ ]*"(?:accent-color": "auto|-webkit-user-modify": "read-only)"/g;
+const CSS_UI_COLORS = /^[ ]*(?:caret-color|accent-color): auto;\n/gm;
+function withoutCaretColor(json: string): string {
+  return json.replace(/"computed": \{[^{}]*\}/g, (block) => {
+    const color = /"color": "([^"]*)"/.exec(block)?.[1];
+    if (color === undefined) return block;
+    return block.replace(new RegExp(`,\\n[ ]*"caret-color": "${color.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g'), '');
+  });
+}
 
 /**
  * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
@@ -301,12 +342,14 @@ const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
 const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
 /**
  * SVG-a1's svg family (fill, stroke, stroke-width, SVG-opacity's fill-opacity and stroke-opacity, and SVG-stroke's stroke-linecap,
- * stroke-linejoin, stroke-miterlimit and fill-rule), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * stroke-linejoin, stroke-miterlimit and fill-rule, SVG-dash's stroke-dasharray and stroke-dashoffset, SVG-geometry's cx, cy, r, x
+ * and y, SVG-paint-order's paint-order, SVG-rrect's rx and ry, SVG-vector-effect's vector-effect, and SVG-inert's clip-rule,
+ * marker-start, marker-mid and marker-end), also added after the identity base, at its initial values only, in LONGHANDS order:
  * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
  * family's own values).
  */
-const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero")?)?/g;
-const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n)?)?/gm;
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero"(?:,\n[ ]*"stroke-dasharray": "none",\n[ ]*"stroke-dashoffset": "0px"(?:,\n[ ]*"cx": "0px",\n[ ]*"cy": "0px",\n[ ]*"r": "0px",\n[ ]*"x": "0px",\n[ ]*"y": "0px"(?:,\n[ ]*"paint-order": "normal"(?:,\n[ ]*"rx": "auto",\n[ ]*"ry": "auto"(?:,\n[ ]*"vector-effect": "none"(?:,\n[ ]*"clip-rule": "nonzero",\n[ ]*"marker-start": "none",\n[ ]*"marker-mid": "none",\n[ ]*"marker-end": "none")?)?)?)?)?)?)?)?/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n(?:[ ]*stroke-dasharray: none;\n[ ]*stroke-dashoffset: 0px;\n(?:[ ]*cx: 0px;\n[ ]*cy: 0px;\n[ ]*r: 0px;\n[ ]*x: 0px;\n[ ]*y: 0px;\n(?:[ ]*paint-order: normal;\n(?:[ ]*rx: auto;\n[ ]*ry: auto;\n(?:[ ]*vector-effect: none;\n(?:[ ]*clip-rule: nonzero;\n[ ]*marker-start: none;\n[ ]*marker-mid: none;\n[ ]*marker-end: none;\n)?)?)?)?)?)?)?)?/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**
@@ -337,12 +380,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(genB, '').replace(SVG_JSON, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TOUCH_ACTION, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TEXT_COLORS, '').replace(CSS_TOUCH_ACTION, '').replace(CSS_APPEARANCE, '').replace(CSS_UI_COLORS, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

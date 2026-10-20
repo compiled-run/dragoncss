@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; color: rgb(30, 30, 30); --c: rgb(0, 128, 0); }
+.box { width: 80px; height: 10px; background-color: rgb(40, 90, 200); }
+.au { caret-color: auto; accent-color: AUTO; }
+.nm { caret-color: red; accent-color: blue; }
+.hx { caret-color: #abc; accent-color: #12345678; }
+.rg { caret-color: rgb(1 2 3 / 50%); accent-color: rgba(200, 100, 0, 0.25); }
+.hs { caret-color: hsl(120 50% 50%); accent-color: hsla(300, 40%, 60%, 0.5); }
+.cc { color: rgb(200, 0, 0); caret-color: currentcolor; accent-color: currentColor; }
+.tr { caret-color: transparent; accent-color: transparent; }
+.v { caret-color: var(--c); accent-color: var(--c); }
+.par { caret-color: rgb(255, 0, 255); accent-color: rgb(0, 255, 255); width: 120px; height: 20px; background-color: rgb(200, 60, 40); }
+.inh { caret-color: inherit; accent-color: inherit; width: 60px; height: 10px; }
+.ini { caret-color: initial; accent-color: initial; width: 60px; height: 10px; }
+.uns { caret-color: unset; accent-color: unset; width: 60px; height: 10px; }
+.back { caret-color: auto; accent-color: auto; width: 60px; height: 10px; }
+.f { display: flex; width: 200px; height: 20px; caret-color: green; }
+.fi { width: 60px; height: 20px; accent-color: orange; background-color: rgb(20, 160, 80); }
+.rel { position: relative; width: 60px; height: 20px; caret-color: navy; }
+.abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; accent-color: teal; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="au" class="box au">X</div>
+<div data-dragon-id="nm" class="box nm">X</div>
+<div data-dragon-id="hx" class="box hx">X</div>
+<div data-dragon-id="rg" class="box rg">X</div>
+<div data-dragon-id="hs" class="box hs">X</div>
+<div data-dragon-id="cc" class="box cc">X</div>
+<div data-dragon-id="tr" class="box tr">X</div>
+<div data-dragon-id="v" class="box v">X</div>
+<div data-dragon-id="par" class="par"><div data-dragon-id="inh" class="inh">XX</div><div data-dragon-id="ini" class="ini">X</div></div>
+<div data-dragon-id="par2" class="par"><div data-dragon-id="uns" class="uns">X</div><div data-dragon-id="back" class="back">X</div></div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
+</body>
+</html>

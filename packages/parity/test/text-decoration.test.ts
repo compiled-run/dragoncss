@@ -69,9 +69,8 @@ describe('the text-decoration grammar tables against Chrome 145', () => {
     expect(problems).toEqual([]);
     expect(items.filter((it) => it.code === 'DRAGON_UNSUPPORTED_VALUE').map((it) => `${it.property}: ${it.value}`)).toEqual([
       'text-decoration-line: blink', 'text-decoration-line: underline blink', 'text-decoration-line: spelling-error', 'text-decoration-line: grammar-error',
-      'text-decoration-style: double', 'text-decoration-style: dotted', 'text-decoration-style: dashed', 'text-decoration-style: wavy',
       'text-decoration-thickness: from-font', 'text-underline-position: under', 'text-underline-position: from-font', 'text-underline-position: left',
-      'text-underline-position: right', 'text-underline-position: under left', 'text-decoration: red underline wavy', 'text-decoration: underline from-font', 'text-decoration: blink',
+      'text-underline-position: right', 'text-underline-position: under left', 'text-decoration: underline from-font', 'text-decoration: blink',
     ]);
   }, 300_000);
 

@@ -65,6 +65,7 @@ type Input = {
   readonly samples: ReadonlyMap<string, Sample>;
   readonly sampleRules: readonly { readonly re: RegExp; readonly sample: Sample }[];
   readonly aliases: ReadonlyMap<string, string>;
+  readonly naApproved: ReadonlyMap<string, string>;
   readonly naProposed: ReadonlyMap<string, string>;
   readonly naCandidates: ReadonlyMap<string, string>;
   readonly features: readonly FeatureSpec[];
@@ -161,6 +162,7 @@ function readInput(path: string): Input {
     pseudoProperties: new Set(strings(probe.pseudoProperties, 'probe.pseudoProperties')),
     samples, sampleRules,
     aliases: stringMap(o.aliases, 'aliases'),
+    naApproved: stringMap(obj(na.approved, 'naNative.approved').items, 'naNative.approved.items'),
     naProposed: stringMap(obj(na.proposed, 'naNative.proposed').items, 'naNative.proposed.items'),
     naCandidates: stringMap(obj(na.candidates, 'naNative.candidates').items, 'naNative.candidates.items'),
     features, lanes, twGroups,
@@ -264,8 +266,8 @@ type Row = {
   readonly usageNote: string;
   readonly probes: readonly { readonly probe: Probe; readonly lane: string; readonly verdict: { readonly [T in Target]: Verdict } }[];
   readonly lane: string;
-  readonly na: 'proposed' | 'candidate' | null;
-  readonly sampled: 'curated' | 'initial value';
+  readonly na: 'approved' | 'proposed' | 'candidate' | null;
+  readonly sampled: 'curated' | 'alias target samples' | 'initial value';
   readonly alias: string | null;
 };
 
@@ -338,9 +340,14 @@ function main(): void {
     if (name.endsWith(' (obsolete)') || (name !== '--*' && descriptors.has(name) && !initial.has(name))) continue;
     if (rows.some((x) => x.id === name)) continue;
     const lane = laneOfProperty(input.lanes, name);
-    const sample = input.samples.get(name) ?? input.sampleRules.find((x) => x.re.test(name))?.sample;
+    const alias = input.aliases.get(name) ?? (r.name.startsWith('alias-webkit-') ? r.name.slice('alias-webkit-'.length) : null);
+    // Chrome resolves an alias to its property at parse time, so an alias with no samples of its own is probed with its target's
+    // values, written under the alias name; Dragon still compiles the alias declaration itself.
+    const own = input.samples.get(name) ?? input.sampleRules.find((x) => x.re.test(name))?.sample;
+    const target = own === undefined && alias !== null ? (input.samples.get(alias) ?? input.sampleRules.find((x) => x.re.test(alias))?.sample) : undefined;
+    const sample = own ?? (target !== undefined && 'values' in target ? target : undefined);
     const probes: Probe[] = [];
-    let sampled: Row['sampled'] = 'curated';
+    let sampled: Row['sampled'] = own === undefined && sample !== undefined ? 'alias target samples' : 'curated';
     const decl = (value: string): string => (input.pseudoProperties.has(name) ? `.u::before{${name}: ${value}}` : `.u{${name}: ${value}}`);
     if (sample !== undefined && 'probes' in sample) probes.push(...sample.probes);
     else if (sample !== undefined) for (const v of sample.values) probes.push({ css: `${sample.ctx === null ? '' : input.contexts[sample.ctx]}\n${decl(v.v)}`, html: null, lane: v.lane });
@@ -352,8 +359,7 @@ function main(): void {
     if (sampled === 'initial value' && verdicts.some((v) => TARGETS.some((t) => v.verdict[t].kind !== 'refused' || (v.verdict[t] as { code: string }).code !== 'DRAGON_UNSUPPORTED_PROPERTY'))) {
       warnings.push(`${name}: Dragon accepts the property, but it has no curated samples (probed with its initial value only)`);
     }
-    const alias = input.aliases.get(name) ?? (r.name.startsWith('alias-webkit-') ? r.name.slice('alias-webkit-'.length) : null);
-    const na = input.naProposed.has(name) ? 'proposed' : input.naCandidates.has(name) ? 'candidate' : null;
+    const na = input.naApproved.has(name) ? 'approved' : input.naProposed.has(name) ? 'proposed' : input.naCandidates.has(name) ? 'candidate' : null;
     const base = lane ?? (r.share < input.tailBelow ? 'TAIL' : 'UNASSIGNED');
     rows.push({
       id: name, kind: 'property', usage: r.share, usageNote: 'chromestatus', sampled, alias, na,
@@ -387,7 +393,7 @@ function main(): void {
       usage = f.usage.value;
       usageNote = `Web Almanac ${f.usage.ref}`;
     }
-    const na = input.naProposed.has(f.id) ? 'proposed' : input.naCandidates.has(f.id) ? 'candidate' : null;
+    const na = input.naApproved.has(f.id) ? 'approved' : input.naProposed.has(f.id) ? 'proposed' : input.naCandidates.has(f.id) ? 'candidate' : null;
     rows.push({ id: f.id, kind, usage, usageNote, sampled: 'curated', alias: null, na, lane: f.lane, probes: f.probes.map((p) => ({ probe: p, lane: p.lane ?? f.lane, verdict: runProbe(p, input.body) })) });
   }
   for (const r of rows) if (r.probes.some((p) => p.lane === 'UNASSIGNED' && !(p.verdict.ios.kind === 'ok' && p.verdict.android.kind === 'ok'))) warnings.push(`${r.id} (${pct(r.usage)}): a probe that fails on native has no lane`);
@@ -423,12 +429,17 @@ function main(): void {
     const den = rs.reduce((a, r) => a + (r.usage ?? 0), 0);
     return rs.reduce((a, r) => a + (r.usage ?? 0) * share(r), 0) / den;
   };
-  const notProposedNa = props.filter((r) => r.na !== 'proposed');
+  // An owner-approved NA-NATIVE row leaves the native denominator once the compiler reports every probe not applicable on both
+  // native targets; web keeps it, since web still refuses it. An approved row the compiler does not yet mark stays and is warned.
+  const naOnNative = (r: Row): boolean => r.probes.every((p) => p.verdict.ios.kind === 'na' && p.verdict.android.kind === 'na');
+  for (const r of rows) if (r.na === 'approved' && !naOnNative(r)) warnings.push(`${r.id}: owner-approved NA-NATIVE, but the compiler does not report every probe not applicable on iOS and Android, so it stays in the native denominator`);
+  const onNative = props.filter((r) => !(r.na === 'approved' && naOnNative(r)));
+  const notProposedNa = onNative.filter((r) => r.na !== 'proposed');
   const headline = {
     web: weighted(props, (r) => supportedShare(r, 'web')),
-    ios: weighted(props, (r) => supportedShare(r, 'ios')),
-    android: weighted(props, (r) => supportedShare(r, 'android')),
-    native: weighted(props, nativeShare),
+    ios: weighted(onNative, (r) => supportedShare(r, 'ios')),
+    android: weighted(onNative, (r) => supportedShare(r, 'android')),
+    native: weighted(onNative, nativeShare),
     nativeNa: weighted(notProposedNa, nativeShare),
   };
   const top = props.filter((r) => (r.usage ?? 0) >= input.tailBelow);
@@ -438,6 +449,8 @@ function main(): void {
   type LaneRank = { lane: LaneSpec; reach: number; tw: number; ns: number; items: { id: string; gain: number }[]; score: number };
   const ranks = new Map<string, LaneRank>(input.lanes.map((l) => [l.id, { lane: l, reach: 0, tw: 0, ns: 0, items: [], score: 0 }]));
   for (const r of rows) {
+    // An owner-approved NA-NATIVE row the compiler reports not applicable has left the native denominator: no lane can move it.
+    if (r.na === 'approved' && naOnNative(r)) continue;
     const inLane = new Map<string, number>();
     for (const p of r.probes) {
       const native = p.verdict.ios.kind === 'ok' && p.verdict.android.kind === 'ok';
@@ -516,19 +529,19 @@ function render(a: RenderArgs): string {
   L.push('## Headline');
   L.push('');
   L.push(`- **About ${(h.native * 100).toFixed(0)}% of real-world CSS property usage compiles on native today** (iOS ${pct(h.ios)}, Android ${pct(h.android)}; web ${pct(h.web)}).`);
-  L.push(`- With the PM's proposed NA-NATIVE entries left out of the denominator: ${pct(h.nativeNa)}.`);
+  L.push(`- With the PM's proposed NA-NATIVE entries also left out of the denominator: ${pct(h.nativeNa)}.`);
   L.push(`- Of the ${a.top.length} properties used on at least ${pct(a.input.tailBelow)} of page loads, ${full} compile on native for every probed value, ${part} for some values, and ${a.top.length - full - part} for none.`);
   L.push(`- Music player (north star): ${a.nsNative} of ${a.nsTotal} declarations compile on both native targets.`);
   L.push('');
-  L.push('How the headline is computed: for every CSS property chromestatus reports (current counters only), its share of page loads times the share of its probe declarations that compile with no error on the target, summed and divided by the summed shares. Native is the lower of iOS and Android. A property used on 90% of pages that compiles for 3 of its 4 probed values adds 0.9 x 3/4. Shares overlap (one page uses many properties), so this is a usage-weighted average, not a share of pages.');
+  L.push('How the headline is computed: for every CSS property chromestatus reports (current counters only), its share of page loads times the share of its probe declarations that compile with no error on the target, summed and divided by the summed shares. On iOS and Android, an owner-approved NA-NATIVE property the compiler reports not applicable on both is left out of the sums. Native is the lower of iOS and Android. A property used on 90% of pages that compiles for 3 of its 4 probed values adds 0.9 x 3/4. Shares overlap (one page uses many properties), so this is a usage-weighted average, not a share of pages.');
   L.push('');
   L.push('## Method');
   L.push('');
   L.push(`- **Usage.** Chrome's UseCounter data from chromestatus: CSS properties (${a.css.source}, fetched ${a.css.fetched}) and features such as selectors, at-rules and value functions (${a.feat.source}, fetched ${a.feat.fetched}), as the share of page loads. Counters whose last report predates ${a.input.currentSince} are dropped as retired. Where chromestatus has no counter (calc(), :hover, elements), the share is a Web Almanac figure, cited per row; these are 2022/2024 crawls, so treat them as rough. Rows used on under ${pct(a.input.tailBelow)} of page loads are tail.`);
-  L.push('- **Dragon status.** Every row has one or more probe declarations (common real-world values, curated in data/coverage-rank-input.json), each compiled through the public compiler for web, iOS and Android in the parity environment, with support profiles enforced. A probe is supported on a target when it compiles there with no error. Properties without curated samples are probed with their webref initial value, which is sound only because Dragon refuses an unknown property whatever its value; the script warns when that assumption breaks. Nothing here restates a status: rerun the script and the table follows the code.');
+  L.push('- **Dragon status.** Every row has one or more probe declarations (common real-world values, curated in data/coverage-rank-input.json), each compiled through the public compiler for web, iOS and Android in the parity environment, with support profiles enforced. A probe is supported on a target when it compiles there with no error. An alias without curated samples is probed with its target property\'s samples, written under the alias name (Chrome resolves an alias at parse time). Other properties without curated samples are probed with their webref initial value, which is sound only because Dragon refuses an unknown property whatever its value; the script warns when that assumption breaks. Nothing here restates a status: rerun the script and the table follows the code.');
   L.push('- **Status codes.** `yes` = every probe compiles; `k/n` = k of n probes do; `no CODE` = none, with the first blocking diagnostic; `UNPROVEN_CONTEXT` means the value exists in the profile but not in the probe\'s context; `n/a` = an info-level not-applicable-on-native verdict.');
   L.push('- **Lanes.** Each row (or each probe value) is assigned to one candidate lane. A lane\'s **reach** is the usage it would move to supported on native: the summed share of every row, times the share of that row\'s probes that fail on native and belong to the lane. **Size** is S (one PR, about a day), M (2 PRs) or L (4 or more), weighted 1, 2 and 4; **score** = reach / weight. TW is the number of Tailwind 4.3.3 utilities whose first iOS blocker falls in the lane (packages/tailwind-sweep/snapshot); NS counts the north-star declarations it would unblock on native. Lane sizes, dependencies and assignments are judgement and live in the input file.');
-  L.push('- **NA-NATIVE.** Rows on the PM\'s proposed list are marked `NA (proposed)`; the further candidates found here are `NA? (candidate)` and need the owner\'s per-entry review. Neither counts as supported, and only the proposed list leaves the denominator, in the second headline figure.');
+  L.push('- **NA-NATIVE.** Rows the owner approved are marked `NA (owner-approved)` and leave the native denominator of every native figure while the compiler reports them not applicable on both native targets. Rows on the PM\'s proposed list are marked `NA (proposed)`; the further candidates found here are `NA? (candidate)` and need the owner\'s per-entry review. Neither counts as supported, and only the proposed list also leaves the denominator, in the second headline figure.');
   L.push('');
   L.push('## Ranked lanes');
   L.push('');
@@ -555,7 +568,7 @@ function render(a: RenderArgs): string {
   L.push('');
   L.push('| property | usage | web | ios | android | lane | TW | NS | note |');
   L.push('|---|---:|---|---|---|---|---:|---:|---|');
-  const note = (r: Row): string => [r.na === 'proposed' ? 'NA (proposed)' : r.na === 'candidate' ? 'NA? (candidate)' : '', r.alias === null ? '' : `alias of ${r.alias}`, r.sampled === 'initial value' ? 'initial value probe' : ''].filter((s) => s !== '').join('; ');
+  const note = (r: Row): string => [r.na === 'approved' ? 'NA (owner-approved)' : r.na === 'proposed' ? 'NA (proposed)' : r.na === 'candidate' ? 'NA? (candidate)' : '', r.alias === null ? '' : `alias of ${r.alias}`, r.sampled === 'initial value' ? 'initial value probe' : r.sampled === 'alias target samples' ? `probed with ${r.alias}'s samples` : ''].filter((s) => s !== '').join('; ');
   for (const r of a.rows.filter((x) => x.kind === 'property')) {
     if ((r.usage ?? 0) < 0.001) continue;
     L.push(`| ${r.id} | ${pct(r.usage)} | ${cell(r, 'web')} | ${cell(r, 'ios')} | ${cell(r, 'android')} | ${laneCell(r)} | ${a.twByRow.get(r.id) ?? ''} | ${a.nsByRow.get(r.id) ?? ''} | ${note(r)} |`);

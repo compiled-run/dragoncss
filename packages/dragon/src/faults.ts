@@ -2,6 +2,7 @@
 // Each feature owns faults/<feature>.ts: its fault type (one documented field per fault) and its all-off defaults, and one line in
 // FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
 import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
+import { BORDER_IMAGE_FAULTS } from './faults/border-image.ts';
 import { CASC_FAULTS } from './faults/casc.ts';
 import { CASC_LAYER_FAULTS } from './faults/casc-layer.ts';
 import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
@@ -9,17 +10,21 @@ import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
 import { FX_FAULTS } from './faults/fx.ts';
+import { GEN_A_FAULTS } from './faults/gen-a.ts';
 import { GEN_B_FAULTS } from './faults/gen-b.ts';
 import { GEN_C_FAULTS } from './faults/gen-c.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
 import { INL2A_FAULTS } from './faults/inl2a.ts';
+import { MASK_FAULTS } from './faults/mask.ts';
 import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
+import { SCROLL_CONTAINMENT_FAULTS } from './faults/scroll-containment.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
+import { TRANSFORM_EXTRA_FAULTS } from './faults/transform-extra.ts';
 import { TXT_FF_FAULTS } from './faults/txt-ff.ts';
 import { TXT_FILL_FAULTS } from './faults/txt-fill.ts';
 import { TXT_FS_FAULTS } from './faults/txt-fs.ts';
@@ -36,6 +41,7 @@ import { VALUES_FAULTS } from './faults/values.ts';
 
 export const FAULT_GROUPS = {
   blockify: BLOCKIFY_FAULTS,
+  'border-image': BORDER_IMAGE_FAULTS,
   casc: CASC_FAULTS,
   'casc-layer': CASC_LAYER_FAULTS,
   'casc-property': CASC_PROPERTY_FAULTS,
@@ -43,17 +49,21 @@ export const FAULT_GROUPS = {
   'env-safe': ENV_SAFE_FAULTS,
   fonts: FONTS_FAULTS,
   fx: FX_FAULTS,
+  'gen-a': GEN_A_FAULTS,
   'gen-b': GEN_B_FAULTS,
   'gen-c': GEN_C_FAULTS,
   inl1a: INL1A_FAULTS,
   inl2a: INL2A_FAULTS,
+  mask: MASK_FAULTS,
   media: MEDIA_FAULTS,
   'milestone-1': MILESTONE_1_FAULTS,
   'mq-r0': MQ_R0_FAULTS,
   ovfl: OVFL_FAULTS,
+  'scroll-containment': SCROLL_CONTAINMENT_FAULTS,
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,
+  'transform-extra': TRANSFORM_EXTRA_FAULTS,
   'txt-ff': TXT_FF_FAULTS,
   'txt-fill': TXT_FILL_FAULTS,
   'txt-fs': TXT_FS_FAULTS,

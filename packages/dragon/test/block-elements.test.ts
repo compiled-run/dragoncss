@@ -86,24 +86,24 @@ describe('declared UA values', () => {
 
 describe('refusals of UA defaults Dragon does not model', () => {
   const codes = (input: ReturnType<typeof inputFor>) => project().compile(input).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
-  it('heading and address text: ios only, since Chrome draws the UA font-weight and font-style on web', () => {
+  it('heading and address text compile on ios since TXT-W: the UA bold is emboldened and the UA italic sheared natively', () => {
+    // Both were refused (DRAGON_UNSUPPORTED_FONT on ios) until TXT-W drew Ahem's synthetic bold and oblique (text-weight-bold-ahem, text-style-ahem).
     const c = project().compile(inputFor(FONT, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')]), el(r, 'a', 'address', [], [el(r, 'ad', 'div', [], [text(r, 'u', 'X')])])]));
-    expect(c.diagnostics.map((d) => [d.code, d.target, d.message.split(' from ')[0]])).toEqual([
-      ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text h2:text0 inherits font-weight: 700'],
-      ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text ad:text0 inherits font-style: italic'],
-    ]);
+    expect(c.diagnostics.map((d) => [d.code, d.target, d.message.split(' from ')[0]])).toEqual([]);
     expect(c.outputs.web.kind).toBe('ready');
-    expect(c.outputs.ios.kind).toBe('blocked');
+    expect(c.outputs.ios.kind).not.toBe('blocked');
   });
-  it('heading text is refused for each configured native target: android as ios, and only the configured ones', () => {
-    const input = inputFor(FONT, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')])]);
+  it('heading text in an ellipsis block is refused for each configured native target: android as ios, and only the configured ones', () => {
+    // Was bare heading text until TXT-W drew Ahem's synthetic bold natively; the UA bold stays refused where a line may end in an ellipsis.
+    // An ellipsis needs a clipping block (text-overflow on a block with overflow visible draws none, and is accepted).
+    const input = inputFor(`${FONT} h2 { text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }`, (r) => [el(r, 'h2', 'h2', [], [text(r, 't', 'XX')])]);
     const run = (targets: Parameters<typeof createProjectWith>[0]['targets']) => createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     const all = run({ ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
-    expect(all.diagnostics.map((d) => [d.code, d.target, d.message.split(' from ')[0]]).sort()).toEqual([
-      ['DRAGON_UNSUPPORTED_FONT', 'android', 'text h2:text0 inherits font-weight: 700'],
-      ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text h2:text0 inherits font-weight: 700'],
+    expect(all.diagnostics.map((d) => [d.code, d.target, d.message.split(', whose')[0]]).sort()).toEqual([
+      ['DRAGON_UNSUPPORTED_FONT', 'android', 'text h2:text0 (font-weight 700) is inside <h2> h2 (font-weight 700)'],
+      ['DRAGON_UNSUPPORTED_FONT', 'ios', 'text h2:text0 (font-weight 700) is inside <h2> h2 (font-weight 700)'],
     ]);
-    expect(all.diagnostics.find((d) => d.target === 'android')?.message).toMatch(/android draws this text in its one regular face/);
+    expect(all.diagnostics.find((d) => d.target === 'android')?.message).toMatch(/android in the text's paint/);
     expect([all.outputs.ios.kind, all.outputs.android.kind, all.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
     const android = run({ android: { minSdk: 31 }, web: {} });
     expect(android.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_FONT', 'android']]);

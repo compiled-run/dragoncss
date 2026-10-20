@@ -10,7 +10,7 @@ import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
 import type { CssValue, Declaration } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
+import { isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
 import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
@@ -65,7 +65,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   const children = (node['children'] as { toArray(): CssNode[] }).toArray().filter((n) => n.type !== 'WhiteSpace');
   let v: CssValue;
   const only = children[0];
-  const ratio = property === 'aspect-ratio' ? ratioValue(children) : property === 'object-position' ? positionValue(children) : null;
+  const ratio = property === 'aspect-ratio' ? ratioValue(children) : isPositionProperty(property) ? positionValue(children, property) : null;
   const isColor = (COLOR_LONGHANDS as readonly string[]).includes(property) || property === 'fill' || property === 'stroke';
   const color = isColor && only !== undefined && children.length === 1 ? parseColorNode(only) : null;
   if (ratio !== null && ratio !== 'invalid' && !('token' in ratio)) v = ratio;
@@ -76,7 +76,7 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   else if (only.type === 'Percentage') v = { kind: 'percentage', value: Number(only['value']) };
   else if (only.type === 'Number') {
     const n = Number(only['value']);
-    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
+    v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight', 'border-image-outset'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
   } else v = { kind: 'other', type: only.type, text };
   valueCache.set(key, v);
   return v;
@@ -227,7 +227,7 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
 }
 
 /** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */
-const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset', 'text-indent'];
+const INHERITED_MATH_LENGTHS: readonly Longhand[] = ['text-underline-offset', 'text-indent', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing'];
 const EM_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em)(?![\w-])/gi;
 
 /**
@@ -331,11 +331,46 @@ export function textFontOfProps(props: ReadonlyMap<Longhand, ResolvedValue>): Te
   return { weight: weightOf(props.get('font-weight') as ResolvedValue), style };
 }
 
+/**
+ * Whether Chrome draws an element's text over a face without a slope range (Ahem's one regular face) in synthetic oblique:
+ * font-synthesis-style allows it and the computed slope is 14deg or more (css_segmented_font_face.cc, fonts/weight.ts synthesisOf).
+ */
+export function synthesizesOblique(props: ReadonlyMap<Longhand, ResolvedValue>): boolean {
+  const style = textFontOfProps(props).style;
+  const slope = style.kind === 'italic' ? 14 : style.kind === 'oblique' ? style.degrees : 0;
+  return synthesisAllowedOf(props).style && slope >= 14;
+}
+
+/**
+ * Whether Chrome draws an element's text over a face without smcp (Ahem) in synthesized small capitals: font-variant-caps is
+ * small-caps and font-synthesis-small-caps allows it (open_type_caps_support.cc OpenTypeCapsSupport::SyntheticSmallCapsAllowed, and
+ * DetermineFontSupport's kLowerToSmallCaps where the face has no smcp). Lowercase runs are then
+ * uppercased at 70% of the size (text.ts smallCapsFontSize); a real face may have smcp, which the analysis refuses.
+ */
+export function synthesizesSmallCaps(props: ReadonlyMap<Longhand, ResolvedValue>): boolean {
+  const caps = props.get('font-variant-caps') as ResolvedValue;
+  return valueToString(caps.value) === 'small-caps' && valueToString((props.get('font-synthesis-small-caps') as ResolvedValue).value) !== 'none';
+}
+
+/**
+ * The shear Chrome draws a synthetic oblique with, in x per unit of height above the baseline: Skia's SkFont::setSkewX(-1/4) in
+ * y-down glyph space (font_platform_data_mac.mm CreateSkFont, line 256), the same at every angle.
+ */
+export const SYNTHETIC_OBLIQUE_SHEAR = 0.25;
+
 /** A computed font-weight's number; a refused calculation counts as the initial weight, since its declaration is refused. */
 export function weightOf(v: ResolvedValue): number {
   if (isRefusedMath(v.value)) return INITIAL_TEXT_FONT.weight;
   if (v.value.kind !== 'number') throw new Error(`font-weight ${valueToString(v.value)} is not computed`);
   return v.value.value;
+}
+
+/**
+ * Whether Chrome draws an element's text over a face below weight 600 (Ahem's one regular face) in synthetic bold: font-synthesis-weight
+ * allows it and the computed weight is 600 or more (fonts/weight.ts synthesisOf, kBoldThreshold).
+ */
+export function synthesizesBold(props: ReadonlyMap<Longhand, ResolvedValue>, from = 600): boolean {
+  return synthesisAllowedOf(props).weight && textFontOfProps(props).weight >= from;
 }
 
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).

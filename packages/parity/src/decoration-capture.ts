@@ -126,12 +126,12 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
   const fonts = new Map<string, TextFont>();
   const inline = (k: InlineChild): void => {
     if (k.kind === 'inline') {
-      fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0 });
+      fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
       for (const x of k.children) inline(x);
     }
   };
   const walk = (b: LayoutBox): void => {
-    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0 });
+    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
     for (const k of b.children) {
       if (k.kind === 'box') walk(k);
       // A replaced leaf (REPL-a) holds no text, so it has no decoration font.
@@ -165,6 +165,7 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
     const textFont = p.metricsOf(t.textFont);
     const ink = inkOf?.get(t.id);
     for (const d of list) {
+      if (d.style !== 'solid' && d.style !== 'double') throw new Error(`${c.id}: ${t.id} is decorated ${d.style}, which the engine does not draw (TDEC-c)`);
       // A block's decoration uses the root inline box of the text's line (its IFC root's strut); an inline box's, its own font.
       const boxFont = d.box !== t.container && !isBlock(p.root, d.box) ? p.fonts.get(d.box) : p.fonts.get(t.container);
       if (boxFont === undefined) throw new Error(`${c.id}: no font for the decorating box ${d.box}`);
@@ -174,11 +175,13 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
         const baseline = textTop + textFont.ascent;
         const input: td.DecorationInput = {
           lines: d.lines, thickness: decorationLength(d.thickness, dpr), underlineOffset: decorationLength(d.underlineOffset, dpr),
-          font, textFont, left: line.rect.x / 64, width: line.rect.width / 64, textTop, decoratingTop: baseline - font.ascent,
+          font, textFont, left: line.rect.x / 64, width: line.rect.width / 64, textTop, decoratingTop: baseline - font.ascent, double: d.style === 'double',
         };
         for (const r of td.decorationRects(input, faults)) {
           let clips: number[] = [];
           if (r.line !== 'line-through' && d.skipInk === 'auto') {
+            // A double line's skip-ink band spans both of its lines (DecorationLinePainter::Bounds), which skipInkClips does not model.
+            if (input.double) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} double ${r.line} at DPR ${dpr}: skip-ink auto over a double line (TDEC-d)` };
             if (t.font.family === 'Ahem') {
               // TDEC-d for Ahem: each glyph's ink box at its pen x (the line's shaped glyphs), clipped out dilated by the thickness.
               const shown = String.fromCodePoint(...line.cps);

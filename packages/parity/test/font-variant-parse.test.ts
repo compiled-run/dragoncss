@@ -40,8 +40,10 @@ const VALUES: readonly (readonly [string, string])[] = [
   ...['normal', 'sub', 'super', 'none', 'sub super'].map((v) => ['font-variant-position', v] as const),
   ...['normal', 'emoji', 'text', 'unicode', 'none', 'auto'].map((v) => ['font-variant-emoji', v] as const),
   ...['normal', 'none', 'common-ligatures', 'no-contextual tabular-nums', 'jis04 historical-forms slashed-zero', 'full-width ruby oldstyle-nums discretionary-ligatures',
-    // refused: caps, position, emoji, an alternates function
-    'small-caps', 'tabular-nums sub', 'emoji', 'styleset(a)',
+    // small-caps, which Dragon synthesizes over Ahem
+    'small-caps', 'small-caps slashed-zero',
+    // refused: other caps, position, emoji, an alternates function
+    'all-small-caps', 'tabular-nums sub', 'emoji', 'styleset(a)',
     // dropped
     'none tabular-nums', 'normal ruby', 'tabular-nums tabular-nums', 'common-ligatures no-common-ligatures', 'bold'].map((v) => ['font-variant', v] as const),
 ];

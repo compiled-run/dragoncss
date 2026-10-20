@@ -441,7 +441,7 @@ public func block_blockLevelInlineSize(_ ctx: Ctx, _ box: LayoutBox, _ cbInline:
     }
     // ts: packages/layout/src/block.ts:493
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s560, jsConcat(k, S.s123))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s568, jsConcat(k, S.s128))
     }
     let minC: Double = try units_add(intrinsic_intrinsicContentInlineSize(ctx, box, S.s_min), hbp)
     // ts: packages/layout/src/block.ts:495
@@ -545,7 +545,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   if try jsSome(kids, { (k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((k.kind != S.s_box) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s182))
+    throw JsError(message: jsConcat(box.id, S.s189))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Placed> = JsArray<Placed>([])
@@ -564,12 +564,12 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   // ts: packages/layout/src/block.ts:648
   do {
     var k: Double = 0.0
-    loop20: while (k < jsLength(kids)) {
-      loop20_body: do {
+    loop22: while (k < jsLength(kids)) {
+      loop22_body: do {
         let child: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = try jsUnwrap(jsAt(kids, k))
         // ts: packages/layout/src/block.ts:650
         if ((child.kind != S.s_box) && ((child as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
-          break loop20_body
+          break loop22_body
         }
         var kid: any U_LayoutBox_ReplacedLeaf = (child as! any U_LayoutBox_ReplacedLeaf)
         // ts: packages/layout/src/block.ts:652
@@ -577,7 +577,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
           let rtl: Bool = ((direction == S.s_rtl) && (!ctx.faults.staticPosLtr))
           let sy: Double = try (((!seen) && a.canCollapseTop) ? units_ZERO : units_add(cursor, block_collapsed(strut)))
           _ = try jsPush(outOfFlow, OutOfFlow((kid as! LayoutBox), (rtl ? StaticAxis(units_add(a.origin.x, a.contentWidth), S.s_far) : StaticAxis(a.origin.x, S.s_near)), StaticAxis(units_add(a.origin.y, sy), S.s_near), nil))
-          break loop20_body
+          break loop22_body
         }
         var inline: BlockLevelInline
         var c: ContentsResult

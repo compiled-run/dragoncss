@@ -36,8 +36,8 @@ describe('values group registration (fixture-groups/values.ts)', () => {
     // TXT-W2's one Ahem case (font: inherit over Ahem, the native proof of font-size and line-height inherit) is plain: its vector
     // sorts among the earlier vectors, before the values group's (corpus-dpr.ts m2VectorCases).
     const shaped = shapedCaseIds();
-    // TXT-W's Ahem case (text-weight-ahem, weights below 600) is plain the same way.
-    const AHEM = ['font-shorthand-inherit', 'text-weight-ahem'];
+    // TXT-W's Ahem cases (text-weight-ahem, weights below 600, and text-weight-bold-ahem, synthetic bold) are plain the same way.
+    const AHEM = ['font-shorthand-inherit', 'text-weight-ahem', 'text-weight-bold-ahem'];
     for (const g of FIXTURE_GROUPS.filter((x) => ['text-latin', 'text-calibration', 'inline-tags', 'text-weight', 'font-shorthand'].includes(x.id))) for (const f of g.fixtures) for (const id of layoutCaseIds().filter((x) => x === f.id || x === `${f.id}-rtl`)) expect(shaped.has(id), id).toBe(!AHEM.includes(f.id));
     for (const f of VALUES) expect(f.id.startsWith('values-'), f.id).toBe(true);
     for (const f of LAYOUT) expect(f.kind === 'layout' && f.environments, f.id).toEqual(['ltr', 'rtl']);

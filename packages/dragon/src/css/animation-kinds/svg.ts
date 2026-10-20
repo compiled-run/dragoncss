@@ -16,4 +16,25 @@ export const SVG_ANIMATION: { readonly [P in (typeof SVG_LONGHANDS)[number]]: An
   'stroke-linejoin': DISCRETE,
   'stroke-miterlimit': UNADMITTED,
   'fill-rule': DISCRETE,
+  // SVG-dash: both interpolate in Chrome (css_properties.json5 interpolable); no animation package admits them yet.
+  'stroke-dasharray': UNADMITTED,
+  'stroke-dashoffset': UNADMITTED,
+  // SVG-geometry: all five interpolate in Chrome (css_properties.json5 interpolable); no animation package admits them yet.
+  cx: UNADMITTED,
+  cy: UNADMITTED,
+  r: UNADMITTED,
+  x: UNADMITTED,
+  y: UNADMITTED,
+  // SVG-paint-order: a keyword list, discrete in Chrome (css_properties.json5 has no interpolable).
+  'paint-order': DISCRETE,
+  // SVG-rrect: both interpolate in Chrome (css_properties.json5 interpolable); no animation package admits them yet.
+  rx: UNADMITTED,
+  ry: UNADMITTED,
+  // SVG-vector-effect: a keyword, discrete in Chrome (css_properties.json5 has no interpolable).
+  'vector-effect': DISCRETE,
+  // SVG-inert: all four are keywords or url references, discrete in Chrome (css_properties.json5 has no interpolable).
+  'clip-rule': DISCRETE,
+  'marker-start': DISCRETE,
+  'marker-mid': DISCRETE,
+  'marker-end': DISCRETE,
 };

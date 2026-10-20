@@ -13,7 +13,7 @@ import { DPRS } from '../src/dpr.ts';
 import { pixelAt } from '../src/native-compare.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { casePoints, committedPixels } from '../src/pixel-reference.ts';
-import { strokeFeatures, svgOutline } from '../src/paint-samples/image.ts';
+import { strokeFeatures, svgDashPieces, svgOutline } from '../src/paint-samples/image.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import type { SvgFaults } from '../src/svg-compare.ts';
 import { chromeViewBoxTransform, compareSvg, NO_SVG_FAULTS, shapeClientRect } from '../src/svg-compare.ts';
@@ -90,7 +90,7 @@ describe('the svg fixtures against their committed Chrome captures', () => {
     return out;
   };
   it('every shape of every case equals Chrome as doubles', async () => {
-    expect(runs.length).toBe(16);
+    expect(runs.length).toBe(28);
     expect(await problems(NO_SVG_FAULTS)).toEqual([]);
   });
   it('no SVG shape records inline line fragments: its computed display is inline, but SVG lays it out (capture.ts)', async () => {
@@ -178,6 +178,26 @@ describe('the svg sample points (SVG-a2) against the committed Chrome pixels', (
     const atLimit = joins('miter', Math.SQRT2);
     expect([atLimit.edges, atLimit.discs.map((d) => [d.at, Math.round(d.reach * 1000) / 1000])]).toEqual([[], [[P(50, 50), 14.142]]]);
   });
+  it('SVG-dash: the stroke centreline cut into dashes, the pattern restarted at each subpath, a dash run across a corner, and discs where a dash end or a closed start is unmodelled', () => {
+    const id = (x: number, y: number) => ({ x, y });
+    const runs = (d: ReturnType<typeof svgDashPieces>) => d.pieces.map((run) => run.map(([a, b]) => [a.x, a.y, b.x, b.y]));
+    // The phase skips 5 of the first dash; two subpaths each restart the pattern there.
+    const two = svgDashPieces([0, 0, 0, 1, 100, 0, 0, 0, 10, 1, 40, 10], id, [20, 10], 5, 2, 'miter', 4);
+    expect(runs(two)).toEqual([[[0, 0, 15, 0]], [[25, 0, 45, 0]], [[55, 0, 75, 0]], [[85, 0, 100, 0]], [[0, 10, 15, 10]], [[25, 10, 40, 10]]]);
+    expect(two.discs).toEqual([]);
+    // A dash across a corner is one run of two segments, which strokeFeatures joins.
+    const corner = svgDashPieces([0, 0, 0, 1, 10, 0, 1, 10, 10], id, [15, 5], 0, 2, 'miter', 4);
+    expect(runs(corner)).toEqual([[[0, 0, 10, 0], [10, 0, 10, 5]]]);
+    expect(strokeFeatures(corner.pieces.flat(), 2, 'butt', 'miter', 4).edges.length).toBe(4);
+    // A closed square whose first and last dashes both cover its start: Skia joins them, which is not proven on native.
+    const square = svgDashPieces([0, 0, 0, 1, 10, 0, 1, 10, 10, 1, 0, 10, 4], id, [12, 4], 0, 2, 'bevel', 4);
+    expect(square.pieces.length).toBe(3);
+    expect(square.discs).toEqual([{ at: id(0, 0), reach: 2 * Math.SQRT2 }]);
+    // A dash end on a curve gets a disc that grows with the arc length before it.
+    const curve = svgDashPieces([0, 0, 0, 2, 50, 50, 100, 0], id, [30, 30], 0, 2, 'miter', 4);
+    expect(curve.discs.length).toBeGreaterThan(1);
+    expect((curve.discs[1] as { readonly reach: number }).reach).toBeGreaterThan((curve.discs[0] as { readonly reach: number }).reach);
+  });
   it('an svg-shapes write on a box with no replaced geometry throws instead of sampling nothing', () => {
     const n = svgCases[0];
     if (n === undefined) throw new Error('no svg case');
@@ -189,7 +209,7 @@ describe('the svg sample points (SVG-a2) against the committed Chrome pixels', (
     expect(() => casePoints(broken, n.case.environment.viewport, 2)).toThrow(/^wrap: an svg-shapes write on a box with no replaced paint geometry at DPR 2$/);
   });
   it('every svg point at every DPR sits in one solid colour in Chrome: its 3x3 neighbourhood is one pixel value', () => {
-    expect(svgCases.length).toBe(16);
+    expect(svgCases.length).toBe(28);
     for (const n of svgCases) {
       for (const dpr of DPRS) {
         const img = committedPixels(n.case.id, dpr);
