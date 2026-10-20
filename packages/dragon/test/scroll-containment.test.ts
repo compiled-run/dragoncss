@@ -148,7 +148,7 @@ describe('the initial-only scroll and containment families', () => {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
     expect(errorsAt('contain: paint; content-visibility: hidden')).toEqual(REFUSED);
-    expect(errorsAt('contain: paint; container-type: inline-size')).toEqual([...REFUSED, ...REFUSED].sort());
+    expect(errorsAt('contain: paint; container-type: size')).toEqual([...REFUSED, ...REFUSED].sort());
     expect(errorsAt('--t: size; container-type: var(--t)')).toEqual(REFUSED);
   });
 
