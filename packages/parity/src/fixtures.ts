@@ -24,6 +24,7 @@ import { ENV } from './fixture-groups/env.ts';
 import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { FX } from './fixture-groups/fx.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
@@ -158,6 +159,7 @@ export const GROUPS = {
   filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
+  fx: FX,
   gradients: GRADIENTS,
   grid: GRID,
   'inert-layout': INERT_LAYOUT,

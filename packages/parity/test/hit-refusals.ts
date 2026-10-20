@@ -46,6 +46,9 @@ export const STACKING_OUT: readonly string[] = [
   'stacking-grid-items-rtl',
   // isolation-values and isolation-stacking: isolation: isolate makes a stacking context below the root.
   'isolation-values', 'isolation-values-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
+  // fx-backdrop-* and fx-blend-*: a backdrop-filter or a mix-blend-mode makes a stacking context below the root.
+  'fx-backdrop-canvas', 'fx-backdrop-canvas-rtl', 'fx-backdrop-white', 'fx-backdrop-white-rtl', 'fx-blend-multiply', 'fx-blend-multiply-rtl',
+  'fx-blend-darken', 'fx-blend-darken-rtl',
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in

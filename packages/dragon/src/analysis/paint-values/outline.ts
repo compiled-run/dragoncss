@@ -4,6 +4,7 @@ import type { Rgba8 } from '../../css/color.ts';
 import { serializeColor } from '../../css/color.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
 import { isIsolate } from '../../css/properties/isolation.ts';
+import { blendModeOf } from '../../css/properties/fx.ts';
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from '../../lower/paint/colors.ts';
@@ -88,8 +89,8 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
 
 /**
  * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex or grid item with a z-index, a box with
- * opacity below 1, a transform, will-change: transform or opacity, a clip-path or isolation: isolate) paints in a layer of its own
- * rather than in its context's flow.
+ * opacity below 1, a transform, will-change: transform or opacity, a clip-path, isolation: isolate, a backdrop-filter or a
+ * mix-blend-mode) paints in a layer of its own rather than in its context's flow.
  */
 function layerReason(el: ResolvedElement): string {
   const position = keywordOf(el, 'position');
@@ -100,6 +101,8 @@ function layerReason(el: ResolvedElement): string {
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
   if (isIsolate(el.props.get('isolation')?.value)) return 'isolation: isolate';
+  const mode = blendModeOf(el.props.get('mix-blend-mode')?.value);
+  if (mode !== 'normal') return `mix-blend-mode: ${mode}`;
   // A static box's z-index makes it a layer item only as a flex or grid item (resolvedStackTree), the one reason left.
   const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
   if (z !== null) return `z-index: ${z} on a flex or grid item`;

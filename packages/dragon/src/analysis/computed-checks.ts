@@ -65,6 +65,7 @@ import { checkTransformContexts, elementWillChange } from './paint-values/transf
 import { opacityOf } from '../css/properties/effects.ts';
 import { isIsolate } from '../css/properties/isolation.ts';
 import { checkTextTransform } from './text-transform.ts';
+import { checkFx } from './fx.ts';
 import { checkLineClamp, lineClampOf } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
 import { checkTouchAction } from './touch-action.ts';
@@ -1055,6 +1056,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
+  // FX-0: backdrop-filter and mix-blend-mode on native only where Chrome changes no pixel (analysis/fx.ts).
+  checkFx(root, propagated, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);

@@ -20,6 +20,7 @@ import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
 import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
 import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
+import { FX_ANIMATION } from './animation-kinds/fx.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
 import { ISOLATION_ANIMATION } from './animation-kinds/isolation.ts';
@@ -70,6 +71,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_STRETCH_ANIMATION,
   ...FONT_TUNING_ANIMATION,
   ...FONT_VARIANT_ANIMATION,
+  ...FX_ANIMATION,
   ...GRID_ANIMATION,
   ...INLINE_ANIMATION,
   ...ISOLATION_ANIMATION,

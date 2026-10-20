@@ -95,14 +95,18 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'border-image-repeat': ['stretch', 'STRETCH'],
       perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
       // isolation, accepted at every value, which makes a stacking context and moves no box.
-      isolation: ['auto', 'isolate'] };
+      isolation: ['auto', 'isolate'],
+      // FX: backdrop-filter and mix-blend-mode, which make a stacking context and move no box.
+      'backdrop-filter': ['none', 'blur(2px)'], 'mix-blend-mode': ['normal', 'multiply'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const position = p === 'box-shadow' ? 'static' : 'relative';
-      // A clip-path over text is refused natively (the accessibility rule), so its boxes hold an empty block instead of text.
-      const inner = (r: SourceRef, id: string): TreeNode => (p === 'clip-path' ? div(r, id, []) : text(r, id, 'XX XX'));
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [inner(r, 'at')]), div(r, 'b', ['x', 'b'], [inner(r, 'bt')])]);
+      // A clip-path over text is refused natively (the accessibility rule), so its boxes hold an empty block instead of text; native
+      // draws an FX value only where nothing else paints (analysis/fx.ts), so its boxes are empty and unbordered.
+      const fx = p === 'backdrop-filter' || p === 'mix-blend-mode';
+      const inner = (r: SourceRef, id: string): TreeNode => (p === 'clip-path' || fx ? div(r, id, []) : text(r, id, 'XX XX'));
+      const input = inputFor(`${FONT} .x { width: 30px; ${fx ? 'height: 10px;' : 'border: 2px solid;'} position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [inner(r, 'at')]), div(r, 'b', ['x', 'b'], [inner(r, 'bt')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);

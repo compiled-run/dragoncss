@@ -120,6 +120,8 @@ const SUBSET = [
   ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
   // compositing-1 §3.3: isolation, after the border image longhands, as LONGHANDS registers it.
   'isolation',
+  // FX: backdrop-filter (filter-effects-2 §3) and mix-blend-mode (compositing-1 §3.2), after isolation, as LONGHANDS registers them.
+  'backdrop-filter', 'mix-blend-mode',
 ] as const;
 
 /**
@@ -200,6 +202,12 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // <filter-value-list> misses is refused, never dropped where Chrome would apply it. Pinned against Chrome by
   // packages/parity/test/filter-parse.test.ts.
   filter: 'none | <any-value>',
+  // Blink BackdropFilter::ParseSingleValue is ConsumeFilterFunctionList (css_parsing_utils.cc): none, or url()s and filter functions,
+  // each ConsumeFilterFunction's: blur takes a non-negative <length>, hue-rotate an <angle> or a unitless zero, drop-shadow a
+  // shadow with no inset or spread, and the rest a non-negative <percentage> or <number>; every argument but drop-shadow's may be
+  // left out. webref's <filter-value-list> takes negative amounts and spreads, which Chrome drops. Pinned against Chrome by
+  // packages/parity/test/fx-parse.test.ts.
+  'backdrop-filter': `none | [ <url> | blur( <length [0,∞]>? ) | hue-rotate( [ <angle> | <zero> ]? ) | drop-shadow( <color>? && [ <length>{2} <length [0,∞]>? ] ) | ${['brightness', 'contrast', 'grayscale', 'invert', 'opacity', 'saturate', 'sepia'].map((f) => `${f}( [ <percentage [0,∞]> | <number [0,∞]> ]? )`).join(' | ')} ]+`,
   display: [
     '[ block | inline ] || [ flow | flow-root | table | flex | grid | ruby | math ]',
     '[ block | inline ]? && [ flow | flow-root ]? && list-item',

@@ -289,6 +289,9 @@ const CSS_TEXT = new RegExp(`^[ ]*(?:${TEXT_SINCE_BASE.map(([k, v]) => `${k}: ${
 /** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
 const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
 const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
+/** FX's backdrop-filter and mix-blend-mode, also added after the base, at their initial values only, in LONGHANDS order. */
+const JSON_FX = /,\n[ ]*"backdrop-filter": "none",\n[ ]*"mix-blend-mode": "normal"/g;
+const CSS_FX = /^[ ]*backdrop-filter: none;\n[ ]*mix-blend-mode: normal;\n/gm;
 
 /**
  * GEN-b's longhands (content, list-style-type, -position, -image), also added after the identity base, at their neutral values in
@@ -335,12 +338,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = text.replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_FX, '').replace(genB, '').replace(SVG_JSON, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TOUCH_ACTION, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TOUCH_ACTION, '').replace(CSS_FX, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

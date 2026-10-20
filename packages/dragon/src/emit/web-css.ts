@@ -20,6 +20,7 @@ import { OUTLINE_LONGHANDS } from '../css/properties/outline.ts';
 import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';
 import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';
+import { blendModeOf, FX_LONGHANDS, hasBackdropFilter } from '../css/properties/fx.ts';
 import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { familyListText } from '../css/values.ts';
@@ -50,6 +51,11 @@ function writesInsets(el: ResolvedElement): boolean {
 function writesClip(el: ResolvedElement): boolean {
   const v = (el.props.get('clip') as ResolvedValue).value;
   return !(v.kind === 'keyword' && v.value === 'auto');
+}
+
+/** FX: whether an element's backdrop-filter or mix-blend-mode is not initial (both are written, or neither). */
+function writesFx(el: ResolvedElement): boolean {
+  return hasBackdropFilter(el.props.get('backdrop-filter')?.value) || blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal';
 }
 
 /** Whether an element's clip-path is not none, its initial value. */
@@ -252,9 +258,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       // MASK-CLIP: clip is written for every resolution of the element or none.
       const clip = resolutions.some(writesClip);
       const clipPath = resolutions.some(writesClipPath);
+      const fx = resolutions.some(writesFx);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).

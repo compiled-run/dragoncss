@@ -6,6 +6,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { TransformFnDecl, TransformLengthDecl, TransformOriginDecl } from '../../css/properties/transform.ts';
 import { inFloatRange, lengthText, originText, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
+import { hasBackdropFilter } from '../../css/properties/fx.ts';
 import { lengthToPx } from '../../css/units.ts';
 import type { Diagnostic, Origin } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -83,21 +84,27 @@ export function hasPerspective(el: ResolvedElement): boolean {
   return v !== undefined && !(v.kind === 'keyword' && v.value === 'none');
 }
 
-/** Whether an element's transform, perspective or will-change makes it a containing block for positioned descendants (css-transforms-1 §3). */
-/** What makes el transform its descendants, as the messages name it: a transform, or a perspective alone. */
+/** What makes el transform its descendants, as the messages name it: a transform, or a perspective or backdrop-filter alone. */
 export function transformWord(el: ResolvedElement): string {
-  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || !hasPerspective(el) ? 'a transform' : 'a perspective';
+  if (elementTransform(el).length > 0 || elementWillChange(el).includes('transform')) return 'a transform';
+  if (hasPerspective(el)) return 'a perspective';
+  return hasBackdropFilter(el.props.get('backdrop-filter')?.value) ? 'a backdrop-filter' : 'a transform';
 }
 
+/**
+ * Whether an element's transform, perspective, will-change or backdrop-filter makes it a containing block for positioned
+ * descendants (css-transforms-1 §3, filter-effects-2 §3: a backdrop-filter other than none does, as a filter does).
+ */
 export function transformsDescendants(el: ResolvedElement): boolean {
-  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || hasPerspective(el);
+  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || hasPerspective(el) || hasBackdropFilter(el.props.get('backdrop-filter')?.value);
 }
 
-/** Where to report a transform refusal: the transform declaration, else the will-change one, else the element. */
+/** Where to report a transform refusal: the transform declaration, else the will-change, perspective or backdrop-filter one, else the element. */
 function transformOrigin(el: ResolvedElement): Origin {
-  for (const p of ['transform', 'will-change', 'perspective'] as const) {
-    const v = el.props.get(p) as ResolvedValue;
-    const applies = p === 'will-change' ? elementWillChange(el).includes('transform') : p === 'perspective' ? hasPerspective(el) : elementTransform(el).length > 0;
+  for (const p of ['transform', 'will-change', 'perspective', 'backdrop-filter'] as const) {
+    const v = el.props.get(p) as ResolvedValue | undefined;
+    if (v === undefined) continue;
+    const applies = p === 'will-change' ? elementWillChange(el).includes('transform') : p === 'perspective' ? hasPerspective(el) : p === 'backdrop-filter' ? hasBackdropFilter(v.value) : elementTransform(el).length > 0;
     if (v.declaration !== null && applies) return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;
