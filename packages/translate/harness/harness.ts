@@ -82,6 +82,7 @@ import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
+import { groupComposite, groupPack, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -1583,6 +1584,13 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const faults: DashFaults = { phase1: flagAt(a, 11), gapUnfitted: flagAt(a, 12) };
     return `["ok",[${commaList(outlinePaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), str(item(a, 6, '$'), '$[6]'), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10), faults).map(borderOpJson))}]]`;
   }
+  // PNT1-opacity-b: paint-group.ts.
+  if (name === 'paint:group:groupComposite') return `["ok",${h(groupComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10) !== 0))}]`;
+  if (name === 'paint:group:groupPack') return `["ok",${h(groupPack(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:group:groupTileSize') return `["ok",${h(groupTileSize(arg(a, 1)))}]`;
+  if (name === 'paint:group:groupTileIndex') return `["ok",${h(groupTileIndex(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupTileSpan') return numList(groupTileSpan(arg(a, 1), arg(a, 2)));
+  if (name === 'paint:group:groupTileFolds') return `["ok",${groupTileFolds(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)) ? 'true' : 'false'}]`;
   // PNT2: paint-transform.ts.
   if (name === 'paint:transform:resolveTransformOrigin') {
     const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));

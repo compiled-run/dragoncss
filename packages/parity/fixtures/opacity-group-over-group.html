@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 16px; line-height: 16px; }
+.stage { display: flex; flex-direction: column; row-gap: 12px; padding: 8px 16px; background-color: rgb(40, 60, 80); }
+.row { display: flex; }
+.col { display: flex; flex-direction: column; width: 32px; }
+.s16 { width: 16px; }
+.s8 { width: 8px; }
+.first { height: 32px; }
+.second { height: 32px; margin-top: -16px; }
+.a { background-color: rgb(240, 240, 240); color: rgb(200, 30, 90); opacity: 0.5; }
+.b { box-sizing: border-box; background-color: rgb(20, 120, 60); border: 2px solid rgb(250, 220, 60); opacity: 0.6; }
+.c { color: rgb(250, 250, 250); opacity: 0.4; }
+.d { background-color: rgb(230, 80, 40); opacity: 0.8; }
+.e { background-color: rgb(90, 200, 230); opacity: 0.3; }
+.f { background-color: rgb(0, 0, 0); color: rgb(255, 255, 255); opacity: 0.75; }
+.kid { width: 16px; height: 16px; background-color: rgb(60, 90, 230); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="col1" class="col"><div data-dragon-id="og-a" class="first a">X</div><div data-dragon-id="og-b" class="second b"></div></div>
+<div data-dragon-id="sp1a" class="s16"></div>
+<div data-dragon-id="col2" class="col"><div data-dragon-id="og-c" class="first c">XX</div><div data-dragon-id="og-d" class="second d"><div data-dragon-id="og-d-kid" class="kid"></div></div></div>
+<div data-dragon-id="sp1b" class="s8"></div>
+<div data-dragon-id="col3" class="col"><div data-dragon-id="og-e" class="first e"><div data-dragon-id="og-e-kid" class="kid"></div></div><div data-dragon-id="og-f" class="second f">XX</div></div>
+</div>
+</div>
+</body>
+</html>

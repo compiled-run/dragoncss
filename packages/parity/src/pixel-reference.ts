@@ -459,7 +459,9 @@ export function caseBoxes(p: NativeProgram, viewport: { readonly width: number; 
  * The points the device pixel lanes compare: casePoints, without those of a translucent paint native refuses (translucentPaintKept)
  * and those a translucent group (an opacity write strictly between 0 and 1) paints. Native refuses such a group (dragon analysis/paint-values/effects.ts, PNT1-opacity-b), and only a lane-only case reaches
  * a device with one: its pixels are proven against Chrome on the host (pnt1-effects.test), and the platforms composite it with
- * their own rounding. A point is the group's when its rule names a node of the group's subtree or it lies in a snapped box of one.
+ * their own rounding. A group native pre-composites itself (an opacity-group write: layout paint-group.ts, the bytes Chrome
+ * gives) keeps its points, so the device lanes compare its interior. A point is the group's when its rule names a node of the
+ * group's subtree or it lies in a snapped box of one.
  */
 export function devicePoints(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): SamplePoint[] {
   const points = translucentPaintKept(p, casePoints(p, viewport, dpr));

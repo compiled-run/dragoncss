@@ -18,7 +18,8 @@ const vectors = (f: string): Vectors => JSON.parse(readFileSync(join(ROOT, 'pack
 
 describe('paint roots (EMS)', () => {
   it('names paint.ts and the seven paint seam files, each an engine file', () => {
-    expect(PAINT_ROOT_FILES).toEqual(['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts', 'paint-marker.ts']);
+    // PNT1-opacity-b adds paint-group.ts, the group composite the device presents.
+    expect(PAINT_ROOT_FILES).toEqual(['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts', 'paint-group.ts', 'paint-marker.ts']);
     const files = engineFiles();
     for (const f of PAINT_ROOT_FILES) expect(files, f).toContain(join(LAYOUT_SRC, f));
   });

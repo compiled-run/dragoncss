@@ -898,7 +898,8 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         // PNT2 integration: a state record holds no transform write; a transformed node of a state program is refused here, by name.
         throw new StateEmitError(`${n.id}: a transform in a state program has no state-node write (PNT2 writes transforms on the static program only)`);
       case 'opacity':
-        // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet.
+      case 'opacity-group':
+        // PNT1 writes opacity on the static program only; the state runtime has no opacity writer yet (nor a group overlay).
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'scroll-container':
       case 'scroll-indicators-hidden':
