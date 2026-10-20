@@ -26,7 +26,7 @@ export const SCROLL_LOWERING: PaintLowering<ScrollWrite> = {
     },
     'android-views': {
       'scroll-container': { key: 'dragonScroll.range', technique: 'native-property', detail: 'a DragonScrollView (a clip view scrolled with View.scrollTo, OverScroller flings) over the padding box hosts the children; its clamp range [minX, maxX, minY, maxY] in device px, a locked axis [0, 0]' },
-      'scroll-indicators-hidden': { key: 'dragonScroll.indicators', technique: 'native-property', detail: 'the DragonScrollView never enables its overlay scrollbars at a touch; read back false from its indicators field' },
+      'scroll-indicators-hidden': { key: 'dragonScroll.indicators', technique: 'native-property', detail: 'the DragonScrollView enables no overlay scrollbar at a touch (barsOnTouch false on every axis); read back false from the same predicate' },
       'scroll-bounce': { key: 'dragonScroll.bounce', technique: 'native-property', detail: 'the DragonScrollView draws no overscroll effect on any axis, so the flags are kept and read back [x, y] only' },
     },
   },

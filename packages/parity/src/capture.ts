@@ -7,9 +7,9 @@ import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
-import { assertOverlayScrollbars, SCROLL_FIXTURE_PREFIXES } from './scroll-metrics.ts';
+import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
-import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
+import { BROWSER_FLAVOUR, hostPlatform, REFERENCE_PLATFORM } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
 
 export type CapturedNode = {
@@ -90,7 +90,7 @@ const collectNodes = (props: string[]): CapturedNode[] => {
  * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
  */
 export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
-  // A prepare script is code the memo key cannot see, and a browser launchChrome did not start has flags it cannot see.
+  // A prepare script is code the memo key cannot see, and a browser with no recorded launch flags has flags it cannot see.
   const args = launchArgsOf(browser);
   if (prepare !== undefined || args === null) return captureFixtureLive(browser, fixture, html, env, extra, prepare);
   const parts = { html: injectHarness(html, env), env, args, properties: [...LONGHANDS, ...extra], flavour: BROWSER_FLAVOUR };
@@ -119,8 +119,10 @@ async function captureFixtureLive(browser: Browser, fixture: string, html: strin
   try {
     if (prepare !== undefined) await prepare(page);
     // The overlay-scrollbar rule (T078 R2): a scroll case's layout depends on the scrollbar environment (scrollbar-gutter: stable
-    // reserves a classic gutter), so its capture, at every DPR, is taken only where a stable gutter reserves nothing.
-    if (SCROLL_FIXTURE_PREFIXES.some((p) => fixture.startsWith(p))) await assertOverlayScrollbars(page);
+    // reserves a classic gutter), so on the reference platform its capture, at every DPR, is taken only where a stable gutter
+    // reserves nothing (the capture CLIs launch scroll cases with launchOverlayChrome there). Elsewhere Chrome keeps classic
+    // scrollbars even with --hide-scrollbars, and those captures are not the reference.
+    if (hostPlatform() === REFERENCE_PLATFORM && isScrollCase(fixture)) await assertOverlayScrollbars(page);
     // PNT2 case-kind registration (RT-13 style): a page with a transformed element is captured through the transform twin.
     const twin = await applyTransformTwin(page, [...LONGHANDS, ...extra]);
     const nodes = await page.evaluate(collectNodes, [...LONGHANDS, ...extra]);
