@@ -132,6 +132,10 @@ describe('FX-0: backdrop-filter and mix-blend-mode', () => {
       [`${CARD} .x { backdrop-filter: blur(4px); } .k { position: relative; }`, /position relative/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); } .k { mix-blend-mode: darken; }`, /of its own/, card],
       [`${CARD} .x { backdrop-filter: blur(4px); overflow: hidden; }`, /overflow-x: hidden/, card],
+      // Review of #514 at 6bc79528: the individual transforms move the box or a member as transform does.
+      [`${CARD} .x { mix-blend-mode: multiply; rotate: 30deg; }`, /x has rotate/, card],
+      [`${CARD} .x { backdrop-filter: blur(4px); } .k { translate: 0.5px 0.3px; }`, /k has translate/, card],
+      [`${CARD} .x { mix-blend-mode: multiply; scale: 2; }`, /x has scale/, card],
       // The backdrop: an earlier or later box painting, an ancestor's own colour or layer.
       ['.c { background-color: #fff; } .c1 { backdrop-filter: blur(4px); }', /<div> c2 paints text outside it/, (r: SourceRef) => [div(r, 'p', ['p'], [div(r, 'u', ['u'], [div(r, 'c1', ['c', 'c1']), div(r, 'c2', ['c'], [text(r, 't2', 'Hi')])])])]],
       [`${BOXES} .c { background-color: #fff; } .u { backdrop-filter: blur(4px); } .p { border-top: 1px solid red; }`, /<div> p paints a border outside it/, boxes],

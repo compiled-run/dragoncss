@@ -108,8 +108,8 @@ function ancestorProblem(el: ResolvedElement, propagated: ResolvedElement | null
 /** Longhands that must hold these values on the FX box and every box in it: anything else paints translucently, composites or moves. */
 const MEMBER_KEYWORDS: readonly (readonly [string, readonly string[]])[] = [
   ['box-shadow', ['none']], ['background-image', ['none']], ['filter', ['none']], ['clip-path', ['none']], ['clip', ['auto']],
-  ['transform', ['none']], ['perspective', ['none']], ['will-change', ['auto']], ['isolation', ['auto']], ['float', ['none']],
-  ['overflow-x', ['visible']], ['overflow-y', ['visible']], ['visibility', ['visible']], ['text-shadow', ['none']],
+  ['transform', ['none']], ['translate', ['none']], ['rotate', ['none']], ['scale', ['none']], ['perspective', ['none']],
+  ['will-change', ['auto']], ['isolation', ['auto']], ['float', ['none']], ['overflow-x', ['visible']], ['overflow-y', ['visible']], ['visibility', ['visible']], ['text-shadow', ['none']],
   ['text-decoration-line', ['none']], ['-webkit-text-fill-color', ['currentcolor']],
 ];
 
