@@ -127,7 +127,7 @@ function judge(caseId: string, compiled: Compiled<'ios' | 'android'>, p: NativeP
             const d = c - (start[k] as number);
             const t = tile[k] as number;
             const u = repeat[k] === true ? d - Math.floor(d / t) * t : d;
-            if (repeat[k] !== true && (u < -MARGIN || u > t + MARGIN)) return null;
+            if (repeat[k] !== true && (u <= -MARGIN || u >= t + MARGIN)) return null;
             if ([0, t / 2, t].some((e) => Math.abs(u - e) < MARGIN)) return 'near' as const;
             return u;
           });
