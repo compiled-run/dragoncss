@@ -58,8 +58,8 @@
         {
           "lane": "layout-vectors-host",
           "where": "host",
-          "state": "not run",
-          "reason": "run pnpm run parity:lanes -- --run-host",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 1,
@@ -110,7 +110,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 3192
+              "cases": 3196
             },
             {
               "corpus": "p1",
@@ -183,9 +183,171 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "98481353d894ddeb5e64f10d39908c35c0981eb36409a7ec0730b34f4bd65675",
-          "totalCases": 634370,
-          "run": null,
+          "caseListSha256": "f1324afb0109a0d291c8f187ee0c41a4ec209139f94495ef5782409a72dd2f64",
+          "totalCases": 634374,
+          "run": {
+            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+            "suites": [
+              {
+                "corpus": "p1",
+                "suite": "vectors",
+                "declared": 258,
+                "total": 258,
+                "pass": 258
+              },
+              {
+                "corpus": "p1",
+                "suite": "units",
+                "declared": 320000,
+                "total": 320000,
+                "pass": 320000
+              },
+              {
+                "corpus": "p1",
+                "suite": "engine",
+                "declared": 20258,
+                "total": 20258,
+                "pass": 20258
+              },
+              {
+                "corpus": "p1",
+                "suite": "library",
+                "declared": 22000,
+                "total": 22000,
+                "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 55362,
+                "total": 55362,
+                "pass": 55362
+              },
+              {
+                "corpus": "p1",
+                "suite": "hit",
+                "declared": 3196,
+                "total": 3196,
+                "pass": 3196
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 30,
+                "total": 30,
+                "pass": 30
+              },
+              {
+                "corpus": "p1",
+                "suite": "interaction",
+                "declared": 21,
+                "total": 21,
+                "pass": 21
+              },
+              {
+                "corpus": "p1",
+                "suite": "band",
+                "declared": 27,
+                "total": 27,
+                "pass": 27
+              },
+              {
+                "corpus": "p1",
+                "suite": "pointer",
+                "declared": 1537,
+                "total": 1537,
+                "pass": 1537
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-m2",
+                "declared": 763,
+                "total": 763,
+                "pass": 763
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-dpr",
+                "declared": 3063,
+                "total": 3063,
+                "pass": 3063
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-dpr",
+                "declared": 3063,
+                "total": 3063,
+                "pass": 3063
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-m2",
+                "declared": 120000,
+                "total": 120000,
+                "pass": 120000
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap",
+                "declared": 22847,
+                "total": 22847,
+                "pass": 22847
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap-values",
+                "declared": 216,
+                "total": 216,
+                "pass": 216
+              },
+              {
+                "corpus": "extended",
+                "suite": "calc-goldens",
+                "declared": 17,
+                "total": 17,
+                "pass": 17
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-calc",
+                "declared": 4000,
+                "total": 4000,
+                "pass": 4000
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-calc",
+                "declared": 50000,
+                "total": 50000,
+                "pass": 50000
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-inline",
+                "declared": 4500,
+                "total": 4500,
+                "pass": 4500
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-overflow",
+                "declared": 3000,
+                "total": 3000,
+                "pass": 3000
+              },
+              {
+                "corpus": "extended",
+                "suite": "text-latin",
+                "declared": 160,
+                "total": 160,
+                "pass": 160
+              }
+            ],
+            "digests": {
+              "p1": "6d746b7db424d3f63a377ce110a9ea130702b7513c5de7684f94ed36b015320f",
+              "extended": "f83b1b4cf38146ba1701b9ff02927db7294bb3fa158e9b1de6acf4f1b6dfd096"
+            }
+          },
           "device": null,
           "evidence": null
         },
@@ -2365,8 +2527,8 @@
         {
           "lane": "layout-vectors-host",
           "where": "host",
-          "state": "not run",
-          "reason": "run pnpm run parity:lanes -- --run-host",
+          "state": "pass",
+          "reason": null,
           "sets": [
             {
               "dpr": 1,
@@ -2417,7 +2579,7 @@
             {
               "corpus": "p1",
               "suite": "hit",
-              "cases": 3192
+              "cases": 3196
             },
             {
               "corpus": "p1",
@@ -2490,9 +2652,171 @@
               "cases": 160
             }
           ],
-          "caseListSha256": "98481353d894ddeb5e64f10d39908c35c0981eb36409a7ec0730b34f4bd65675",
-          "totalCases": 634370,
-          "run": null,
+          "caseListSha256": "f1324afb0109a0d291c8f187ee0c41a4ec209139f94495ef5782409a72dd2f64",
+          "totalCases": 634374,
+          "run": {
+            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
+            "suites": [
+              {
+                "corpus": "p1",
+                "suite": "vectors",
+                "declared": 258,
+                "total": 258,
+                "pass": 258
+              },
+              {
+                "corpus": "p1",
+                "suite": "units",
+                "declared": 320000,
+                "total": 320000,
+                "pass": 320000
+              },
+              {
+                "corpus": "p1",
+                "suite": "engine",
+                "declared": 20258,
+                "total": 20258,
+                "pass": 20258
+              },
+              {
+                "corpus": "p1",
+                "suite": "library",
+                "declared": 22000,
+                "total": 22000,
+                "pass": 22000
+              },
+              {
+                "corpus": "p1",
+                "suite": "rt",
+                "declared": 55362,
+                "total": 55362,
+                "pass": 55362
+              },
+              {
+                "corpus": "p1",
+                "suite": "hit",
+                "declared": 3196,
+                "total": 3196,
+                "pass": 3196
+              },
+              {
+                "corpus": "p1",
+                "suite": "animator",
+                "declared": 30,
+                "total": 30,
+                "pass": 30
+              },
+              {
+                "corpus": "p1",
+                "suite": "interaction",
+                "declared": 21,
+                "total": 21,
+                "pass": 21
+              },
+              {
+                "corpus": "p1",
+                "suite": "band",
+                "declared": 27,
+                "total": 27,
+                "pass": 27
+              },
+              {
+                "corpus": "p1",
+                "suite": "pointer",
+                "declared": 1537,
+                "total": 1537,
+                "pass": 1537
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-m2",
+                "declared": 763,
+                "total": 763,
+                "pass": 763
+              },
+              {
+                "corpus": "extended",
+                "suite": "vectors-dpr",
+                "declared": 3063,
+                "total": 3063,
+                "pass": 3063
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-dpr",
+                "declared": 3063,
+                "total": 3063,
+                "pass": 3063
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-m2",
+                "declared": 120000,
+                "total": 120000,
+                "pass": 120000
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap",
+                "declared": 22847,
+                "total": 22847,
+                "pass": 22847
+              },
+              {
+                "corpus": "extended",
+                "suite": "snap-values",
+                "declared": 216,
+                "total": 216,
+                "pass": 216
+              },
+              {
+                "corpus": "extended",
+                "suite": "calc-goldens",
+                "declared": 17,
+                "total": 17,
+                "pass": 17
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-calc",
+                "declared": 4000,
+                "total": 4000,
+                "pass": 4000
+              },
+              {
+                "corpus": "extended",
+                "suite": "units-calc",
+                "declared": 50000,
+                "total": 50000,
+                "pass": 50000
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-inline",
+                "declared": 4500,
+                "total": 4500,
+                "pass": 4500
+              },
+              {
+                "corpus": "extended",
+                "suite": "engine-overflow",
+                "declared": 3000,
+                "total": 3000,
+                "pass": 3000
+              },
+              {
+                "corpus": "extended",
+                "suite": "text-latin",
+                "declared": 160,
+                "total": 160,
+                "pass": 160
+              }
+            ],
+            "digests": {
+              "p1": "6d746b7db424d3f63a377ce110a9ea130702b7513c5de7684f94ed36b015320f",
+              "extended": "f83b1b4cf38146ba1701b9ff02927db7294bb3fa158e9b1de6acf4f1b6dfd096"
+            }
+          },
           "device": null,
           "evidence": null
         },
