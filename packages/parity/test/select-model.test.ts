@@ -96,11 +96,13 @@ describe('selection model (T154 slice 2a): carets, caret rects and selected text
     for (const d of SELECT_DOCS) expect(selectCase(d).table.lines.length, d.id).toBeGreaterThan(0);
   });
 
-  it('refuses text whose visibility is hidden and lines that overflow a fixed height, which Chrome hits differently', () => {
+  it('refuses text whose visibility is hidden, floats, and lines that overflow a fixed height, which Chrome hits differently', () => {
     const hidden = { id: 'hidden', css: '.h { visibility: hidden; }', body: '<div data-dragon-id="a">AAAA</div><div data-dragon-id="b" class="h">BBBB</div><div data-dragon-id="c">CCCC</div>', paragraphs: [] };
     expect(() => selectCase(hidden)).toThrow(/b has visibility hidden or collapse/);
     const overflow = { id: 'overflow', css: '.a { height: 20px; } .b { margin-top: 30px; }', body: '<div data-dragon-id="a" class="a">AAAA AAAA</div><div data-dragon-id="b" class="b">BBBB</div>', paragraphs: [] };
     expect(() => selectCase(overflow)).toThrow(/a's content overflows its border box/);
+    const float = { id: 'float', css: '.f { float: left; width: 20px; }', body: '<div data-dragon-id="f" class="f">FF</div><div data-dragon-id="a">AAAA AAAA</div>', paragraphs: [] };
+    expect(() => selectCase(float)).toThrow(/float/);
   });
 
   it('places every caret and selects every string where Chrome does', async () => {

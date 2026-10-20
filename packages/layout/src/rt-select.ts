@@ -21,7 +21,7 @@
 // Not modelled yet, and refused by name (selectionRefusal, or selectionTableOf for what only layout or the facts show): what the
 // hit table refuses (inline boxes, <br>, atomic inlines, line-clamp), flex, grid and positioned boxes, replaced elements, rtl,
 // justified and truncated lines, preserved white space, percentage padding, content that overflows its block's border box, boxes
-// whose visibility is hidden or collapse, and any face but Ahem (a real face needs grapheme clusters and ligature carets). The compiler gives the
+// whose visibility is hidden or collapse, floats, and any face but Ahem (a real face needs grapheme clusters and ligature carets). The compiler gives the
 // elements whose used user-select is none (SelectFacts); text, and none below it, is all native compiles (slice 1).
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
@@ -51,9 +51,15 @@ export class SelectError extends Error {
  * What the compiler knows of the elements that layout does not: the body's id, the ids of the p elements, the ids of the
  * elements whose used user-select is none (css-ui-4 §6.1; on native, everything under such an element is none too), and the ids
  * of the elements whose used visibility is hidden or collapse (their visibility writes), whose text Chrome neither hits nor
- * copies, which the model refuses.
+ * copies, and of the elements whose used float is not none, which a point does not reach in tree order; the model refuses both.
  */
-export type SelectFacts = { readonly body: string; readonly paragraphs: readonly string[]; readonly unselectable: readonly string[]; readonly hidden: readonly string[] };
+export type SelectFacts = {
+  readonly body: string;
+  readonly paragraphs: readonly string[];
+  readonly unselectable: readonly string[];
+  readonly hidden: readonly string[];
+  readonly floats: readonly string[];
+};
 
 /**
  * A DOM node the selected text walks, in tree order: a block element or a text node. A text node's text is its leaf's, after
@@ -231,6 +237,7 @@ function blockOf(s: SelectState, b: LayoutBox, parent: number): number {
   let node = -1;
   if (b.boxType === 'element') {
     if (listed(s.facts.hidden, b.id)) throw new SelectError(`${b.id} has visibility hidden or collapse, whose text the selection model does not skip yet`);
+    if (listed(s.facts.floats, b.id)) throw new SelectError(`${b.id} is a float, whose selection the model does not measure yet`);
     node = s.nodes.length;
     s.nodes.push({ kind: 'element', id: b.id, parent, end: -1, block: b.id !== s.facts.body, paragraph: listed(s.facts.paragraphs, b.id), selectable: selectableUnder(s, parent, b.id, true), text: '', from: 0, to: 0, pieces: 0 });
   }

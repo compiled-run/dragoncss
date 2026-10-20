@@ -53,6 +53,10 @@ export const selectHtml = (d: SelectDoc): string => `<!DOCTYPE html><html data-d
 /** A document compiled for native: its engine input, its facts and its selection table. */
 export type SelectCase = { readonly input: LayoutInput; readonly facts: SelectFacts; readonly table: SelectTable };
 
+function floatsOn(r: { readonly kind: string; readonly cases?: readonly { readonly value: string }[] }): boolean {
+  return r.kind === 'found' && (r.cases ?? []).some((c) => c.value !== 'none');
+}
+
 export function selectCase(d: SelectDoc): SelectCase {
   const project = createProjectWith(
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } },
@@ -68,7 +72,9 @@ export function selectCase(d: SelectDoc): SelectCase {
   if (refused !== null) throw new Error(`${d.id}: the selection model refuses it: ${refused}`);
   // The program's visibility writes name every box whose used visibility is hidden or collapse (lower/paint/visibility.ts).
   const hidden = p.programs.uikit.nodes.filter((n) => n.writes.some((w) => w.kind === 'visibility')).map((n) => n.id);
-  const facts: SelectFacts = { body: 'body', paragraphs: d.paragraphs, unselectable: d.unselectable ?? [], hidden };
+  // The used float of each element, as the compiler resolved it for iOS.
+  const floats = p.programs.uikit.nodes.filter((n) => n.kind === 'element' && floatsOn(compiled.explain({ target: 'ios', at: { node: n.id, instance: 'doc' }, property: 'float' }))).map((n) => n.id);
+  const facts: SelectFacts = { body: 'body', paragraphs: d.paragraphs, unselectable: d.unselectable ?? [], hidden, floats };
   return { input, facts, table: selectionTableOf(input, referenceMeasurer(), facts) };
 }
 
@@ -102,7 +108,7 @@ export function selectVectorsJson(): string {
       id: d.id,
       platform: 'darwin-arm64',
       input: c.input,
-      facts: [c.facts.body, c.facts.paragraphs, c.facts.unselectable, c.facts.hidden],
+      facts: [c.facts.body, c.facts.paragraphs, c.facts.unselectable, c.facts.hidden, c.facts.floats],
       points: p.clicks.flatMap(([x, y]) => [Math.floor(x * 64), Math.floor(y * 64)]),
       drags: p.drags.flatMap((g) => g.map((v) => Math.floor(v * 64))),
     };
