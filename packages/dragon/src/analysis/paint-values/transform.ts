@@ -87,16 +87,31 @@ const keywordOf = (el: ResolvedElement, p: Longhand): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
-/** Whether an element's transform or will-change makes it a containing block for positioned descendants (css-transforms-1 §3). */
+/**
+ * Whether an element's perspective is not none. With Dragon's 2D transforms below it, a perspective projects nothing (a point of the
+ * z = 0 plane keeps w = 1), so it acts as an identity transform: a stacking context and a containing block, measured pixel-identical
+ * to transform: translateX(0) in Chrome 145 with rotated, scaled and translated children at DPR 1 and 2.625 (css-transforms-2 §5).
+ */
+export function hasPerspective(el: ResolvedElement): boolean {
+  const v = el.props.get('perspective')?.value;
+  return v !== undefined && !(v.kind === 'keyword' && v.value === 'none');
+}
+
+/** What makes el transform its descendants, as the messages name it: a transform, or a perspective alone. */
+export function transformWord(el: ResolvedElement): string {
+  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || !hasPerspective(el) ? 'a transform' : 'a perspective';
+}
+
+/** Whether an element's transform, perspective or will-change makes it a containing block for positioned descendants (css-transforms-1 §3). */
 export function transformsDescendants(el: ResolvedElement): boolean {
-  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform');
+  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || hasPerspective(el);
 }
 
 /** Where to report a transform refusal: the transform declaration, else the will-change one, else the element. */
 function transformOrigin(el: ResolvedElement): Origin {
-  for (const p of ['transform', ...INDIVIDUAL_TRANSFORMS, 'will-change'] as const) {
+  for (const p of ['transform', ...INDIVIDUAL_TRANSFORMS, 'will-change', 'perspective'] as const) {
     const v = el.props.get(p) as ResolvedValue;
-    const set = p === 'will-change' ? elementWillChange(el).includes('transform') : !(v.value.kind === 'keyword' && v.value.value === 'none');
+    const set = p === 'will-change' ? elementWillChange(el).includes('transform') : p === 'perspective' ? hasPerspective(el) : !(v.value.kind === 'keyword' && v.value.value === 'none');
     if (v.declaration !== null && set) return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;
@@ -125,21 +140,22 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
     const position = keywordOf(el, 'position');
     const own = transformsDescendants(el);
     // A filter other than none makes its box the containing block of absolute and fixed descendants too (filter-effects-1, the filter property).
-    const creator = own ? 'a transform' : filtered(el) ? 'a filter' : null;
+    const creator = own ? transformWord(el) : filtered(el) ? 'a filter' : null;
     const address = el.element.address;
     if (own) {
+      const what = transformWord(el);
       const tag = el.element.tag;
       // The properties are each accepted alone; together a rotation after a non-uniform scale can skew the box (css/properties/transform.ts).
       if (skewsBox(elementTransform(el))) refuse(el, 'skew', `the translate, rotate, scale and transform of ${address} compose to a rotation after a non-uniform scale, which skews the box: Android's View transform cannot express it (package PNT2-m)`, `Rotate ${address} before scaling it unevenly, or scale it evenly.`);
-      if (tag === 'html' || tag === 'body') refuse(el, 'root', `a transform on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
-      if (display !== 'block' && display !== 'flex') refuse(el, 'display', `a transform on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
+      if (tag === 'html' || tag === 'body') refuse(el, 'root', `${what} on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
+      if (display !== 'block' && display !== 'flex') refuse(el, 'display', `${what} on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
     }
     if (creator !== null && position === 'static') {
       const cb = absoluteDescendant(el);
       if (cb !== null) refuse(el, 'containing-block', `${creator} on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (${creator === 'a filter' ? 'filter-effects-1, the filter property' : 'css-transforms-1 §3'}), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the ${creator.slice(2)}.`, own ? transformOrigin(el) : filterOrigin(el));
     }
     if (position === 'fixed' && transformed !== null) {
-      const what = transformsDescendants(transformed) ? 'a transform' : 'a filter';
+      const what = transformsDescendants(transformed) ? transformWord(transformed) : 'a filter';
       refuse(transformed, 'fixed', `${what} on ${transformed.element.address} makes it the containing block of the fixed ${address} (${what === 'a filter' ? 'filter-effects-1, the filter property' : 'css-transforms-1 §3'}; package POSX-f2)`, `Move ${address} outside ${transformed.element.address}.`, what === 'a filter' ? filterOrigin(transformed) : transformOrigin(transformed));
     }
     for (const c of el.children) if (c.kind === 'element') walk(c, creator !== null ? el : transformed);
