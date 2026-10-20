@@ -203,7 +203,7 @@ describe('E2 seams: every at-rule but @media, @container, @keyframes, @supports,
     // 1397573c… too. CASC 3 orders @layer, so layer left the list and the enclosing at-rule became @unknown-thing (never registered, so always refused): master before
     // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged. container left with CQ
     // without it the commit before CQ (f5bd030d8e) gives 0a87ea72… too.
-    // and page with NA-NATIVE-2 (dropped, it only applies when printing).
+    // page left with NA-NATIVE-2 (dropped, it only applies when printing): without both, the batch 4a landing (a5feb6dd) gives c094d926… too.
     const pinned = ['color-profile', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
@@ -220,7 +220,7 @@ describe('E2 seams: every at-rule but @media, @container, @keyframes, @supports,
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('0a87ea72a3f19a643739d5065ca5a064cfd9d9b01e44f86c30e30b4ae817479b');
+    expect(sha(strip(runs))).toBe('c094d92685032b3691d4afddb2cc996c76a4df005e492c0c44c5da96344c9072');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });
