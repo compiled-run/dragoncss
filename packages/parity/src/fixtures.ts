@@ -35,6 +35,7 @@ import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { LINE_CLAMP } from './fixture-groups/line-clamp.ts';
+import { LINK_PSEUDOS } from './fixture-groups/link-pseudos.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LIST_MARKERS } from './fixture-groups/list-markers.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
@@ -177,6 +178,7 @@ export const GROUPS = {
   'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
   'line-clamp': LINE_CLAMP,
+  'link-pseudos': LINK_PSEUDOS,
   'list-items': LIST_ITEMS,
   'list-markers': LIST_MARKERS,
   'logical-props': LOGICAL_PROPS,

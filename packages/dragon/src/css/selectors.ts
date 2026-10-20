@@ -27,7 +27,11 @@ export type PseudoClass =
   | { readonly kind: 'is'; readonly where: boolean; readonly selectors: readonly Selector[] }
   | { readonly kind: 'not'; readonly selectors: readonly Selector[] }
   | { readonly kind: 'has'; readonly selectors: readonly Selector[] }
-  | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo };
+  | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo }
+  | { readonly kind: 'link'; readonly state: LinkState };
+
+/** :link (an unvisited hyperlink), :visited, or :any-link (either). */
+export type LinkState = 'unvisited' | 'visited' | 'any';
 
 /** The interaction pseudo-classes Dragon compiles as interaction states (SELD-R2, analysis/interaction.ts). */
 export type InteractionPseudo = 'hover' | 'active' | 'focus' | 'focus-visible';
@@ -72,7 +76,7 @@ export type Selector = {
 
 const SELECTOR_FIX =
   'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
-const INTERACTIVE = new Set(['focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
+const INTERACTIVE = new Set(['focus-within', 'target', 'checked', 'disabled', 'enabled']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const LEGACY_GENERATED: ReadonlySet<string> = new Set(GENERATED_PSEUDOS);
 const ZERO: Specificity = [0, 0, 0];
@@ -199,6 +203,12 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
     refuse(part, `${text} inside a selector argument is not supported: it matches nothing here, but its specificity would still count`);
     return null;
   }
+  // Selectors-4 §8.1 and §8.2: :any-link matches a hyperlink (an a with an href, analysis/match.ts isAnyLink), :link an unvisited
+  // one and :visited a visited one. Dragon styles every link as unvisited: a native app keeps no visit history, and Chrome before
+  // any visit (the parity capture's fresh profile) does the same. stylesheet.ts refuses on the web what a visit would change there.
+  if (name === 'link' && args === null) return { kind: 'link', state: 'unvisited' };
+  if (name === 'visited' && args === null) return { kind: 'link', state: 'visited' };
+  if (name === 'any-link' && args === null) return { kind: 'link', state: 'any' };
   if (INTERACTIVE.has(name)) {
     refuse(part, `${text} depends on user interaction or document state, which a later package models as runtime state`, 'Model the state as a component state and select it with a class or a [ui-*] attribute.');
     return null;
@@ -428,4 +438,13 @@ export function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, d
   }
   diagnostics.push(...refusals);
   return ok ? out : null;
+}
+
+/** Whether a selector tests :link or :visited anywhere, arguments included: what it matches then depends on visit history. */
+export function testsVisitState(sel: Selector): boolean {
+  return sel.parts.some(({ compound }) =>
+    compound.pseudos.some((p) =>
+      p.kind === 'link' ? p.state !== 'any' : p.kind === 'is' || p.kind === 'not' || p.kind === 'has' ? p.selectors.some(testsVisitState) : p.kind === 'nth' && p.of !== null && p.of.some(testsVisitState),
+    ),
+  );
 }

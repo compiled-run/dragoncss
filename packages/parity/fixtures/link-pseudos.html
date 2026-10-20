@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
+a:link { font-size: 12px; }
+a:visited { font-size: 30px; }
+.any:any-link { color: rgb(30, 30, 200); text-decoration: none; }
+.pad:link { font-size: 15px; }
+a:not(:link) { font-size: 18px; }
+a:any-link:not(.any) { color: rgb(200, 30, 30); }
+.box :any-link { font-size: 20px; }
+.w { width: 200px; }
+.blk:link { display: block; width: 100px; height: 20px; }
+.blk:any-link { background-color: rgb(250, 220, 0); }
+#strong:link { font-size: 14px; }
+.c:link, .c { line-height: 20px; }
+.c:any-link { color: rgb(90, 0, 90); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="p" class="w">a <a data-dragon-id="a1" href="x">XX</a> b</div>
+<div data-dragon-id="q" class="w"><a data-dragon-id="a2" class="any" href="x">XX</a> and <a data-dragon-id="a3" class="pad" href="x">YY</a></div>
+<div data-dragon-id="r" class="w"><a data-dragon-id="a4">no href</a></div>
+<div data-dragon-id="box" class="w box"><a data-dragon-id="a5" href="x">ZZ</a></div>
+<div data-dragon-id="s" class="w"><a data-dragon-id="a6" class="blk" href="x">B</a></div>
+<div data-dragon-id="t" class="w"><a data-dragon-id="strong" class="any" href="x">ID</a> and <a data-dragon-id="a7" class="c" href="x">C</a></div>
+</body>
+</html>
