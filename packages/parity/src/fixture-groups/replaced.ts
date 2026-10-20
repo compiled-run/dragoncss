@@ -3,8 +3,9 @@
 // directions, with object-fit and object-position as computed values and as drawn (the fit grid, inside the viewport). The
 // images are 8-bit sRGB PNG data: URLs with four flat quadrants; iframes load nothing. The rejects name what REPL-a refuses.
 // MEDIA-EL: videos without a stream (no src, or preload none) as block-level boxes and flex items at the default object size, with
-// width and height hints, padding, a border and max-width; the rejects name what MEDIA-EL refuses. A video with a stream is refused
-// on iOS and Android until a lane proves its first frame (videos/compile.ts), so no layout fixture holds one yet.
+// width and height hints, padding, a border and max-width; the rejects name what MEDIA-EL refuses. MEDIA-EL slice 2: videos with a
+// stream, sized by it, scaled, letterboxed, covered, positioned, stretched and boxed, whose first frames the lanes sample against
+// Chrome's; the streams are the two-tone ones of videos/two-tone.ts, so every frame point is compared strictly.
 import { readFileSync } from 'node:fs';
 import type { FixtureSpec } from '../fixtures.ts';
 import { repoPath } from '../paths.ts';
@@ -38,6 +39,7 @@ export const REPLACED: readonly FixtureSpec[] = [
   // engine's empty-natural-size path is reachable only from a hand-written layout input (replaced.test.ts pins it there).
   reject('reject-replaced-zero-size', 'DRAGON_UNSUPPORTED_IMAGE', imgTag('reject-replaced-zero-size'), '<img> a: the PNG does not parse: zero image size'),
   both('replaced-video'),
+  both('replaced-video-frame'),
   reject('reject-video-remote', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-remote', 'video'), 'attribute src on a is not supported: its src https://example.com/a.mp4 is not a data: URL'),
   reject('reject-video-webm', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-webm', 'video'), 'attribute src on a is not supported: its src is a data: URL of type video/webm'),
   reject('reject-video-rotated', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-rotated', 'video'), 'attribute src on a is not supported: its src does not compile: its video track has a rotation'),

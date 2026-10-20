@@ -1,6 +1,7 @@
 // REPL-a Phase B: the replaced paint on the host. The image paint's sample points (image-flat and the destination-rect edges)
 // are proven against the committed Chrome screenshots: at every image-flat point Chrome shows exactly the source colour the
-// engine's destination rect maps there, at DPR 2, 3 and 2.625. Iframes are masked: no point inside a web view's content box.
+// engine's destination rect maps there, at DPR 2, 3 and 2.625; a video's image is its stream's first frame (MEDIA-EL slice 2,
+// replaced-video-frame). Iframes are masked: no point inside a web view's content box.
 // The expected dumps carry each image's destination rect and each web view's frame from the same engine geometry.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -31,7 +32,7 @@ function contextOf(n: (typeof cases)[number], dpr: number) {
 
 describe('REPL-a replaced paint against the committed Chrome pixels', () => {
   it('covers the replaced fixtures at every device DPR', () => {
-    expect(cases.length).toBe(14);
+    expect(cases.length).toBe(16);
     expect(DPRS).toEqual([2, 2.625, 3]);
   });
 
@@ -103,7 +104,7 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
           if (p.x < 0 || p.y < 0) off.push(`${n.case.id}@${dpr} ${p.rule}: outside the raster at (${p.x}, ${p.y})`);
           for (const [id, b] of boxes) {
             // maskedAt and dropsBaseAt leave a point a later opaque box hides: it shows that box.
-            if (b.image === null && maskedAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: inside the ${b.video ? 'video player' : 'web view'} ${id}`);
+            if (b.image === null && maskedAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: inside the web view ${id}`);
             if (b.image !== null && base(p.rule) && dropsBaseAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: on non-flat content of ${id}`);
             if (p.rule.startsWith(`image-flat:${id}:`) && !flatAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: an image-flat point not on flat content of ${id}`);
           }

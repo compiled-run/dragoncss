@@ -1,6 +1,5 @@
 // MEDIA-EL: <video> on web, iOS and Android. The natural size Chrome 145 reads from an MP4's H.264 stream (videos/mp4.ts), the src
-// rules (videos/compile.ts, iOS and Android refusing a stream until a lane proves its first frame), the attribute and hint rules,
-// and the emission of the platform player. The streams (ffmpeg 6.1 libx264, one frame) are a 64x48 Baseline stream and a 66x50 High
+// rules (videos/compile.ts), the attribute and hint rules, and the lowering and emission of the platform player. The streams (ffmpeg 6.1 libx264, one frame) are a 64x48 Baseline stream and a 66x50 High
 // stream whose SPS crops 80x64 macroblocks; Chrome 145 gives them those sizes, and the patched ones the sizes the cases name.
 import { describe, expect, it } from 'vitest';
 import { presentationalHints } from '../src/analysis/elements/replaced.ts';
@@ -8,9 +7,9 @@ import { attributeRefusal } from '../src/attributes.ts';
 import { streamLit } from '../src/emit/paint/foreign-view.ts';
 import { emitNativeSupport } from '../src/emit/native-support.ts';
 import type { ElementNode } from '../src/internal.ts';
-import { createProjectWith, nativePrograms, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, emitAndroidViewsCases, emitUikitCases, nativePrograms, NO_FAULTS } from '../src/internal.ts';
 import { parseMp4, parseSps } from '../src/videos/mp4.ts';
-import { NATIVE_FRAME_UNPROVEN, readVideoSource } from '../src/videos/compile.ts';
+import { readVideoSource } from '../src/videos/compile.ts';
 import { always, div, inputFor } from './helpers.ts';
 
 const B64_64X48 = [
@@ -221,14 +220,14 @@ describe('MEDIA-EL: the platform player', () => {
     return p.programs;
   };
 
-  it('refuses a stream on iOS and Android until a lane proves the first frame, and keeps web ready', () => {
-    const c = compile({ src: SRC_64 });
-    expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => [d.code, d.target, d.message])).toEqual(['ios', 'android'].map((t) => [
-      'DRAGON_UNSUPPORTED_ATTRIBUTE', t, `attribute src on v is not supported on ${t}: ${NATIVE_FRAME_UNPROVEN}`,
-    ]));
-    expect(c.outputs.web.kind).toBe('ready');
-    expect(c.outputs.ios.kind).toBe('blocked');
-    expect(c.outputs.android.kind).toBe('blocked');
+  it('lowers a stream to a video-view write with its bytes and natural size, and emits dragonSetVideoView with them', () => {
+    const p = programs({ src: SRC_64 });
+    for (const b of ['uikit', 'android-views'] as const) {
+      expect(p[b].nodes.find((n) => n.id === 'v')?.writes.find((w) => w.kind === 'video-view'), b).toEqual({ kind: 'video-view', data: B64_64X48, width: 64, height: 48, key: 'dragonVideoView', technique: 'native-property', detail: expect.any(String), css: ['object-fit', 'object-position'] });
+    }
+    const one = { id: 'video', fixture: 'video', direction: 'ltr' as const, compilerDigest: 'd', viewport: { width: 400, height: 300 }, expectedDigests: [] };
+    expect(emitUikitCases([{ ...one, program: p.uikit }]).map((f) => f.text).join('\n')).toMatch(new RegExp(`dragonSetVideoView\\(v\\d+, "${B64_64X48.replace(/[+/]/g, '\\$&')}"\\)`));
+    expect(emitAndroidViewsCases([{ ...one, program: p['android-views'] }]).map((f) => f.text).join('\n')).toMatch(new RegExp(`dragonSetVideoView\\(v\\d+, "${B64_64X48.replace(/[+/]/g, '\\$&')}"\\)`));
   });
 
   it('gives a video without a stream no player: no src, or preload none (ASCII case-insensitive) with any src', () => {
@@ -253,15 +252,19 @@ describe('MEDIA-EL: the platform player', () => {
     expect(() => streamLit('a"b', 'uikit')).toThrow('video data is not base64');
   });
 
-  it('opens the stream in a production build: only a lane host clears dragonVideoViewLoadsStream', () => {
+  it('opens the stream unless planted, removes the iOS temporary file with its view, reads the Android stream from memory and releases its surface', () => {
     const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
     const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
-    expect(swift.match(/dragonVideoViewLoadsStream\s*=/g)).toEqual(['dragonVideoViewLoadsStream =']);
-    expect(kotlin.match(/dragonVideoViewLoadsStream\s*=/g)).toEqual(['dragonVideoViewLoadsStream =']);
-    expect(swift).toContain('\npublic var dragonVideoViewLoadsStream = true\n');
-    expect(kotlin).toContain('\nvar dragonVideoViewLoadsStream = true\n');
+    expect(swift).toContain('\npublic let dragonVideoPlantUnloaded = false\n');
+    expect(kotlin).toContain('\nconst val DRAGON_VIDEO_PLANT_UNLOADED = false\n');
     expect(swift).toContain('video.playerLayer.videoGravity = .resize');
     expect(swift).toContain('video.playerLayer.player = AVPlayer(url: url)');
-    expect(kotlin).toContain('player.setDataSource(file.path)');
+    expect(swift).toContain('if let f = dragonStreamFile { try? FileManager.default.removeItem(at: f) }');
+    expect(kotlin).toContain('player.setDataSource(DragonVideoStream(bytes))');
+    expect(kotlin).not.toMatch(/createTempFile|cacheDir/);
+    expect(kotlin).toContain('host.dragonSurface?.release()');
+    // A capture waits on dragonVideoFramesPending: AVPlayerLayer.isReadyForDisplay, a frame drawn into the TextureView.
+    expect(swift).toContain('!video.playerLayer.isReadyForDisplay');
+    expect(kotlin).toContain('host.dragonFrameShown = true');
   });
 });

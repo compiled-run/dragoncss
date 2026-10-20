@@ -5,8 +5,9 @@
 // MEDIA-EL: a video's slot holds a clipping view over the content box (Chrome clips a video to it) and, inside it, the player's
 // view at the engine's destination rect, which is pixel-snapped as Chrome's VideoPainter snaps it: an AVPlayerLayer-backed view
 // (videoGravity resize, as the rect already has the stream's ratio) on UIKit, a TextureView a MediaPlayer renders into on
-// Android. The stream is written to a temporary file the player opens; lane and test builds never open it. The readback is the
-// classes, the gravity and both frames.
+// Android. AVPlayer reads the stream from a temporary file the player view removes with itself; the MediaPlayer reads it from
+// memory. dragonVideoFramesPending names the players whose first frame has not shown yet, which the lane hosts wait for before a
+// capture (MEDIA-EL slice 2). The readback is the classes, the gravity and both frames.
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 
@@ -41,18 +42,22 @@ public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {
   web.load(URLRequest(url: url))
 }
 
-/// MEDIA-EL: a view whose layer is an AVPlayerLayer.
+/// MEDIA-EL: a view whose layer is an AVPlayerLayer, and the temporary file its player reads the stream from, removed with the view.
 public final class DragonVideoPlayerView: UIView {
   public override class var layerClass: AnyClass { AVPlayerLayer.self }
   public var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+  var dragonStreamFile: URL? = nil
+  deinit {
+    if let f = dragonStreamFile { try? FileManager.default.removeItem(at: f) }
+  }
 }
 
-/// Whether a video's player opens its stream (MEDIA-EL). The parity lane and test hosts set it false at launch, as they do for
-/// web views: what they prove is the player's frame and gravity.
-public var dragonVideoViewLoadsStream = true
+/// Whether a player leaves its stream unopened: false except in the video-unloaded raster plant build, which proves the pixel
+/// lane sees the first frame.
+public let dragonVideoPlantUnloaded = false
 
 /// The slot's player: a clipping view holding an AVPlayerLayer view that stretches the stream over its frame; it opens the MP4
-/// bytes from a temporary file, or nothing in a lane or test host.
+/// bytes from a temporary file and shows the first frame once the item is ready, as Chrome shows a video it does not play.
 public func dragonSetVideoView(_ v: DragonBoxView, _ base64: String) {
   let clip = UIView(frame: .zero)
   clip.clipsToBounds = true
@@ -63,12 +68,25 @@ public func dragonSetVideoView(_ v: DragonBoxView, _ base64: String) {
   v.addSubview(clip)
   v.dragonVideoClip = clip
   v.dragonVideoView = video
-  guard dragonVideoViewLoadsStream else { return }
+  if dragonVideoPlantUnloaded { return }
   guard let data = Data(base64Encoded: base64) else { fatalError("dragon: \(v.dragonId): the video stream is not base64") }
   let url = FileManager.default.temporaryDirectory.appendingPathComponent("dragon-video-\(UUID().uuidString).mp4")
   // A stream that cannot be written leaves the player empty, as Chrome leaves a video whose stream fails to load.
   guard (try? data.write(to: url)) != nil else { return }
+  video.dragonStreamFile = url
   video.playerLayer.player = AVPlayer(url: url)
+}
+
+/// Whether every video player in a view tree shows its stream's first frame (AVPlayerLayer.isReadyForDisplay), the ids of those that
+/// do not yet otherwise; a player without a stream shows nothing and waits for nothing.
+public func dragonVideoFramesPending(_ root: UIView) -> [String] {
+  var out: [String] = []
+  func walk(_ view: UIView) {
+    if let box = view as? DragonBoxView, let video = box.dragonVideoView, video.playerLayer.player != nil, !video.playerLayer.isReadyForDisplay { out.append(box.dragonId) }
+    for s in view.subviews { walk(s) }
+  }
+  walk(root)
+  return out
 }
 
 /// After every layout: the web view over the content box, and a video's clip over it with the player at the destination rect,
@@ -120,6 +138,7 @@ const KOTLIN = String.raw`package dev.dragon.views
 
 import android.content.Context
 import android.graphics.SurfaceTexture
+import android.media.MediaDataSource
 import android.media.MediaPlayer
 import android.util.Base64
 import android.view.Surface
@@ -191,6 +210,10 @@ class DragonVideoHost(ctx: Context) : DragonGroup(ctx) {
   /** The player's rect: left, top, right, bottom in device px relative to this group. */
   val dragonPlayerFrame = IntArray(4)
   var dragonPlayer: MediaPlayer? = null
+  var dragonSurface: Surface? = null
+  /** Whether the player opens a stream, and whether a frame of it has reached the texture. */
+  var dragonStreamed = false
+  var dragonFrameShown = false
   init {
     clipChildren = true
   }
@@ -206,15 +229,27 @@ class DragonVideoHost(ctx: Context) : DragonGroup(ctx) {
 }
 
 /**
- * Whether a video's player opens its stream (MEDIA-EL). The parity lane and test hosts set it false at launch, as they do for web
- * views: what they prove is the player's frame.
+ * Whether a player leaves its stream unopened: false except in the video-unloaded raster plant build, which proves the pixel lane
+ * sees the first frame.
  */
-var dragonVideoViewLoadsStream = true
+const val DRAGON_VIDEO_PLANT_UNLOADED = false
+
+/** The MP4 bytes as a MediaPlayer data source, read from memory: no file outlives the player. */
+class DragonVideoStream(private val bytes: ByteArray) : MediaDataSource() {
+  override fun readAt(position: Long, buffer: ByteArray, offset: Int, size: Int): Int {
+    if (position >= bytes.size) return -1
+    val n = minOf(size.toLong(), bytes.size - position).toInt()
+    System.arraycopy(bytes, position.toInt(), buffer, offset, n)
+    return n
+  }
+  override fun getSize(): Long = bytes.size.toLong()
+  override fun close() {}
+}
 
 /**
- * The slot's player: a clipping group holding a TextureView; once its surface exists a MediaPlayer opens the MP4 bytes from a cache
- * file and, prepared, seeks to the start so the first frame shows, as Chrome shows a video it does not play. A lane or test host
- * opens nothing.
+ * The slot's player: a clipping group holding a TextureView; once its surface exists a MediaPlayer opens the MP4 bytes from memory
+ * and, prepared, seeks to the start so the first frame shows, as Chrome shows a video it does not play. The surface and the player
+ * are released with the texture's surface; a new surface opens them again.
  */
 fun dragonSetVideoView(v: DragonBoxView, base64: String) {
   val host = DragonVideoHost(v.context)
@@ -222,26 +257,47 @@ fun dragonSetVideoView(v: DragonBoxView, base64: String) {
   host.addView(texture)
   v.addView(host)
   v.dragonVideoView = host
-  if (!dragonVideoViewLoadsStream) return
-  val file = java.io.File.createTempFile("dragon-video", ".mp4", v.context.cacheDir)
-  file.writeBytes(Base64.decode(base64, Base64.DEFAULT))
+  if (DRAGON_VIDEO_PLANT_UNLOADED) return
+  val bytes = Base64.decode(base64, Base64.DEFAULT)
+  host.dragonStreamed = true
   texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
     override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
+      val surface = Surface(st)
       val player = MediaPlayer()
-      player.setDataSource(file.path)
-      player.setSurface(Surface(st))
+      player.setDataSource(DragonVideoStream(bytes))
+      player.setSurface(surface)
       player.setOnPreparedListener { it.seekTo(0) }
       player.prepareAsync()
       host.dragonPlayer = player
+      host.dragonSurface = surface
     }
     override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) {}
     override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
       host.dragonPlayer?.release()
       host.dragonPlayer = null
+      host.dragonSurface?.release()
+      host.dragonSurface = null
+      host.dragonFrameShown = false
       return true
     }
-    override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
+    override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
+      host.dragonFrameShown = true
+    }
   }
+}
+
+/**
+ * The ids of the video players in a view tree that open a stream and have not yet had a frame of it drawn into their texture; a
+ * player without a stream shows nothing and waits for nothing.
+ */
+fun dragonVideoFramesPending(root: android.view.View): List<String> {
+  val out = ArrayList<String>()
+  fun walk(view: android.view.View) {
+    if (view is DragonBoxView) view.dragonVideoView?.let { if (it.dragonStreamed && !it.dragonFrameShown) out.add(view.dragonId) }
+    if (view is android.view.ViewGroup) for (i in 0 until view.childCount) walk(view.getChildAt(i))
+  }
+  walk(root)
+  return out
 }
 
 /** The readback of the foreign-view module: the web view's class, its settings and its host frame, and a video's player class, clip frame and player frame, in device px. */
@@ -300,7 +356,7 @@ export const streamLit = (s: string, backend: 'uikit' | 'android-views'): string
   return backend === 'uikit' ? `[${chunks.join(', ')}].joined()` : `arrayOf(${chunks.join(', ')}).joinToString("")`;
 };
 
-export const FOREIGN_VIEW_EMITTER: PaintEmitter<'foreign-view' | 'video-view'> = {
+export const FOREIGN_VIEW_EMITTER: PaintEmitter<'foreign-view' | 'video-view', 'video-unloaded'> = {
   name: 'foreign-view',
   kinds: ['foreign-view', 'video-view'],
   lines: {
@@ -324,5 +380,13 @@ export const FOREIGN_VIEW_EMITTER: PaintEmitter<'foreign-view' | 'video-view'> =
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, afterLayout: 'dragonAfterLayoutForeignView', applied: 'dragonAppliedForeignView' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutForeignView', applied: 'dragonAppliedForeignView' },
   },
-  plants: [],
+  plants: [
+    {
+      name: 'video-unloaded',
+      replace: {
+        uikit: ['public let dragonVideoPlantUnloaded = false', 'public let dragonVideoPlantUnloaded = true'],
+        'android-views': ['const val DRAGON_VIDEO_PLANT_UNLOADED = false', 'const val DRAGON_VIDEO_PLANT_UNLOADED = true'],
+      },
+    },
+  ],
 };

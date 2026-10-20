@@ -210,8 +210,6 @@ func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
   // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
   dragonForeignViewLoadsSrc = false
-  // MEDIA-EL: nor open a video stream; the players' frames and gravity are what the lanes prove.
-  dragonVideoViewLoadsStream = false
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
   // --dragon-cases wins over a run file left in the container by an earlier run.
@@ -313,28 +311,41 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   stage.layoutIfNeeded()
   tree.root.layoutIfNeeded()
   CATransaction.flush()
-  let t1 = CACurrentMediaTime()
-  let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
-  if let warm = dragonWarmSha[id], warm != pixels.sha256 { dragonWarmDiffers.append(id) }
-  let t2 = CACurrentMediaTime()
-  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
-  dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
-  // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
-  if let facts = dragonHitFactsTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".hit", dragonHitRuns(c, facts, scale: scale, measurer: bridge.measurer)) }
-  let next = {
-    tree.root.removeFromSuperview()
-    dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+  // MEDIA-EL slice 2: a video's player shows its stream's first frame before the capture, as Chrome's capture waits for it.
+  dragonAwaitVideoFrames(tree.root, id) {
+    CATransaction.flush()
+    let t1 = CACurrentMediaTime()
+    let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
+    if let warm = dragonWarmSha[id], warm != pixels.sha256 { dragonWarmDiffers.append(id) }
+    let t2 = CACurrentMediaTime()
+    let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
+    dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
+    // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
+    if let facts = dragonHitFactsTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".hit", dragonHitRuns(c, facts, scale: scale, measurer: bridge.measurer)) }
+    let next = {
+      tree.root.removeFromSuperview()
+      dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+    }
+    if !run.hold {
+      DispatchQueue.main.async(execute: next)
+      return
+    }
+    // The capture-trust probe: the case stays on screen until the host has taken the OS screenshot.
+    dragonWrite(out + "/hold-" + id, "ok")
+    func wait() {
+      if FileManager.default.fileExists(atPath: out + "/release-" + id) { next() } else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { wait() } }
+    }
+    wait()
   }
-  if !run.hold {
-    DispatchQueue.main.async(execute: next)
-    return
-  }
-  // The capture-trust probe: the case stays on screen until the host has taken the OS screenshot.
-  dragonWrite(out + "/hold-" + id, "ok")
-  func wait() {
-    if FileManager.default.fileExists(atPath: out + "/release-" + id) { next() } else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { wait() } }
-  }
-  wait()
+}
+
+/// MEDIA-EL slice 2: runs then once every video player of the tree shows its first frame (dragonVideoFramesPending), polling every
+/// 10 ms; a player that shows none within 30 s fails the run, naming its box.
+func dragonAwaitVideoFrames(_ root: UIView, _ id: String, polls: Int = 0, then: @escaping () -> Void) {
+  let pending = dragonVideoFramesPending(root)
+  if pending.isEmpty { then(); return }
+  if polls >= 3000 { fatalError("dragon host: \(id): the video \(pending.joined(separator: ", ")) showed no frame of its stream in 30 s") }
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { dragonAwaitVideoFrames(root, id, polls: polls + 1, then: then) }
 }
 
 _ = UIApplicationMain(CommandLine.argc, CommandLine.unsafeArgv, nil, NSStringFromClass(DragonAppDelegate.self))
@@ -401,7 +412,7 @@ import dev.dragon.views.DragonTree
 import dev.dragon.views.dragonForeignViewLoadsSrc
 import dev.dragon.views.dragonReadRun
 import dev.dragon.views.dragonSamples
-import dev.dragon.views.dragonVideoViewLoadsStream
+import dev.dragon.views.dragonVideoFramesPending
 import java.io.File
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -424,8 +435,6 @@ class DragonActivity : Activity() {
     super.onCreate(savedInstanceState)
     // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
     dragonForeignViewLoadsSrc = false
-    // MEDIA-EL: nor open a video stream; the players' frames are what the lanes prove.
-    dragonVideoViewLoadsStream = false
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     frame.setBackgroundColor(0xffffffff.toInt())
     frame.setOnApplyWindowInsetsListener { v, insets ->
@@ -607,9 +616,11 @@ class DragonActivity : Activity() {
     var drawnAt = -1
     fun settle(frames: Int) {
       Choreographer.getInstance().postFrameCallback {
-        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
+        // MEDIA-EL slice 2: a video's player shows its stream's first frame before the capture, as Chrome's capture waits for it.
+        val videos = dragonVideoFramesPending(tree.root)
+        if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty && videos.isEmpty()) drawnAt = frames
         if (drawnAt < 0 || frames < drawnAt + 2) {
-          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
+          if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ", videos without a frame " + videos + ")")
           settle(frames + 1)
           return@postFrameCallback
         }

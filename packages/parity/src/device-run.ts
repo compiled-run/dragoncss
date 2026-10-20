@@ -97,6 +97,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // MEDIA-EL slice 2: replaced-video-frame's frame points show the box's background, not the stream, when no player opens it.
+  'video-unloaded': ['replaced-video-frame'],
   // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
   // are filled and stroked in distinct colours with strokes wide enough to sample.
   'svg-stroke-first': ['svg-paint', 'svg-basic'],
@@ -147,6 +149,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  // An unopened stream leaves the drawn rect transparent: its frame points show the box's background, not black or white.
+  'video-unloaded': /^image-flat:f\d+:/,
   'svg-stroke-first': /^svg:/,
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,
