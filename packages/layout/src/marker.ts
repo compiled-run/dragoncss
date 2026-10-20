@@ -4,7 +4,7 @@
 // and the 7 and 1 px paddings are taken in device px, as Chrome does (docs/research/gen-spike/blink-notes.md R14).
 import type { Direction, ListMarker } from './input.ts';
 import type { LU } from './units.ts';
-import { add, floorToInt, fromWholePx, intDiv, neg, sub, ZERO } from './units.ts';
+import { add, floorToInt, fromWholePx, intDiv, neg, snapEdge, sub, ZERO } from './units.ts';
 import type { Ctx } from './block.ts';
 import { fontMetricsOf, fontOf, metricsOf } from './inline.ts';
 import { unsupported } from './unsupported.ts';
@@ -60,4 +60,24 @@ export function alignMarker(marker: MarkerBox, contentTop: LU, baseline: LU): Ma
   const adjust = sub(baseline, add(contentTop, marker.ascent));
   if (adjust >= ZERO) return { y: add(contentTop, adjust), push: ZERO };
   return { y: contentTop, push: neg(adjust) };
+}
+
+/** A symbol's paint rect in whole device px from the root: left, top, right, bottom (empty at a zero side). */
+export type SymbolRect = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+
+/**
+ * text_fragment_painter.cc PaintSymbol: list_marker.cc RelativeSymbolMarkerRect (x 1, y 3 * (a - a * 2 / 3) / 2, side
+ * (a * 2 / 3 + 1) / 2 in int arithmetic on the rounded ascent a) moved by the marker text's origin and pixel-snapped. The marker box
+ * is at (x, y) in LU from the root; its text sits on the box's baseline, so the text top is the baseline less the font's ascent.
+ */
+export function symbolPaintRect(ctx: Ctx, m: ListMarker, x: LU, y: LU): SymbolRect {
+  const font = fontMetricsOf(ctx, m.id, m.font);
+  const line = metricsOf(ctx, m.id, m.font, m.lineHeight, false);
+  const a = floorToInt(font.ascent);
+  const third = intDiv(a * 2, 3);
+  const side = intDiv(third + 1, 2);
+  const textTop = sub(add(y, line.above), font.ascent);
+  const top = add(textTop, fromWholePx(intDiv(3 * (a - third), 2)));
+  const left = add(x, fromWholePx(1));
+  return { left: snapEdge(left), top: snapEdge(top), right: snapEdge(add(left, fromWholePx(side))), bottom: snapEdge(add(top, fromWholePx(side))) };
 }

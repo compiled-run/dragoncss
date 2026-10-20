@@ -244,7 +244,7 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
     const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal' } as const;
     const width = { kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 2, font, lineHeight: lhCalc } } as const;
     // INL1a: the container's strut has the leaf's font and line-height (validate.ts leaf-font), so it is a third LineHeightCalc.
-    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, children: [leaf] } as const;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, marker: null, children: [leaf] } as const;
     for (const lang of ['swift', 'kotlin'] as const) {
       const src = inputFunctions(lang, root as never, 't').decls.join('\n');
       const q = lang === 'swift' ? (s: string) => `JsString("${s}")` : (s: string) => `"${s}"`;
@@ -254,7 +254,7 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
   });
   it('refuses a style without its grid fields instead of building it (they are null where unused)', () => {
     const { grid: _grid, ...rest } = nativeRoot().style;
-    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, strut: null, children: [] } as const;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, strut: null, marker: null, children: [] } as const;
     for (const lang of ['swift', 'kotlin'] as const) expect(() => inputFunctions(lang, root as never, 't'), lang).toThrow('LayoutStyle.grid is missing');
   });
 });

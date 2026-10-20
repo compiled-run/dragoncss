@@ -371,7 +371,7 @@ describe('the stack tree of inline content (INL1a, as the native tree places it)
     const el1 = (): ResolvedElement => ({ props: new Map<string, unknown>([['z-index', { value: { kind: 'keyword', value: 'auto' } }], ['opacity', { value: { kind: 'number', value: 1 } }], ['transform', { value: { kind: 'keyword', value: 'none' } }], ['will-change', { value: { kind: 'keyword', value: 'auto' } }]]) }) as unknown as ResolvedElement;
     const inner = { kind: 'inline', id: 'i', style: style({ display: 'inline', overflowX: 'hidden' }), children: [{ kind: 'text', id: 'i:t' }] };
     const outer = { kind: 'inline', id: 'o', style: style({ display: 'inline' }), children: [inner, { kind: 'br', id: 'b' }] };
-    const root = { kind: 'box', id: 'root', boxType: 'element', style: style({}), strut: null, children: [outer] } as unknown as LayoutBox;
+    const root = { kind: 'box', id: 'root', boxType: 'element', style: style({}), strut: null, marker: null, children: [outer] } as unknown as LayoutBox;
     const tree = layoutStackTree(root, new Map([['root', el1()], ['o', el1()], ['i', el1()]]));
     expect(tree.children.map((c) => [c.id, c.text, c.clips, c.children.length])).toEqual([['o', false, false, 0], ['i', false, false, 0], ['i:t', true, false, 0], ['b', true, false, 0]]);
   });

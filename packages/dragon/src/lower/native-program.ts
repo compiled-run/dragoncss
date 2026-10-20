@@ -3,7 +3,7 @@
 // resolved paint values. A program holds generated node ids, kinds and parents, the typed engine input, every property write in
 // backend vocabulary with its technique and the CSS longhands it realises, and the text runs. The emitters and the expected-dump
 // projection read only the program; nothing downstream re-resolves CSS.
-import type { FontSpec, InlineChild, LayoutBox, LayoutNode, TextLeaf } from '@dragon/layout';
+import type { FontSpec, InlineChild, LayoutBox, LayoutNode, ListMarker, TextLeaf } from '@dragon/layout';
 import { rootFontSizeOf } from './ios-layout.ts';
 import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
@@ -21,7 +21,9 @@ import { borderWrites } from './paint/border.ts';
 import { clipsChildren } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
 import { lowerBoxPaint, paintVocabulary, paintWriteCss } from './paint/registry.ts';
-import { inlineStackingFacts } from './paint/stacking.ts';
+import { listMarkerWrite } from './paint/list-marker.ts';
+import { inlineStackingFacts, markerStackingFacts } from './paint/stacking.ts';
+import { visibilityWrites } from './paint/visibility.ts';
 import type { NativeBackend, Technique, VocabularyEntry } from './paint/types.ts';
 import { ProgramError } from './paint/types.ts';
 
@@ -177,6 +179,19 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
       }
       inline(c, b.id);
     }
+    if (b.kind === 'box' && b.marker !== null) marker(b.marker, b.id, el);
+  };
+  // GEN-c: a list item's outside marker is the last child of its view, as the engine places its rect after the item's content. The dump
+  // schema knows element nodes, so it is one: a box view with a transparent background, no borders (currentcolor ones of zero width,
+  // as an anonymous box's), the item's visibility (the marker inherits it) and the marker write in the item's color.
+  const marker = (m: ListMarker, item: string, el: ResolvedElement | null): void => {
+    if (el === null) throw new ProgramError(`${m.id}: the list item ${item} has no resolved element`);
+    const color = usedColors(el).color;
+    const hidden = visibilityWrites(el);
+    const facts: Record<string, unknown> = { stacking: markerStackingFacts(m) };
+    for (const w of hidden) facts['visibility'] = { visible: false, value: w.value };
+    const writes: PaintWrite[] = [{ kind: 'background-color', color: TRANSPARENT }, ...borderWrites(m.id, null, color), ...hidden, listMarkerWrite(m, color)];
+    out.push({ id: m.id, parent: item, kind: 'element', clips: false, text: null, writes, facts });
   };
   // T044 R3: the text views, inline box views and <br> views of an inline formatting context are all flat children of its block
   // container's view, in tree order. Inline boxes are unpainted (their decorations are INL1b) and a <br> draws nothing.

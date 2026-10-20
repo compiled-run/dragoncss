@@ -680,6 +680,8 @@ public final class DragonTree {
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
     var zParent: [String: String] = [:]
+    // GEN-c: each list item's zoomed marker, by its rect id.
+    var zMarkers: [String: ListMarker] = [:]
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
     var inlineIds = Set<String>()
@@ -694,6 +696,7 @@ public final class DragonTree {
     func walk(_ b: LayoutBox) {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
+      if let m = b.marker { zMarkers[m.id.description] = m }
       for c in b.children.items {
         if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
@@ -792,10 +795,10 @@ public final class DragonTree {
       v.frame = frame
       if let bv = v as? DragonBoxView {
         // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
-        // paddings a background reads (the compiler refuses gradients on inline boxes).
+        // paddings a background reads (the compiler refuses gradients on inline boxes); nor has a list marker's box (GEN-c).
         let px: [Double]
         let padding: [Double]
-        if inlineIds.contains(id) { px = [0, 0, 0, 0]; padding = [0, 0, 0, 0] } else {
+        if inlineIds.contains(id) || zMarkers[id] != nil { px = [0, 0, 0, 0]; padding = [0, 0, 0, 0] } else {
           guard let zs = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
           let be = try box_resolveBorder(zs, zoomed.devicePixelRatio)
           px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
@@ -810,6 +813,12 @@ public final class DragonTree {
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu], lu: [a.x, a.y, a.width, a.height], padding: padding, rootX: rootX)
         bv.dragonScrollRange = scrollRanges[id]
         bv.dragonScrollRefusal = scrollRefusals[id]
+        // GEN-c: a symbol marker's paint rect and coverage from the translated paint-marker.ts, at its box's absolute LU origin.
+        if let m = zMarkers[id], m.kind.description == "symbol" {
+          let mp = try paintMarker_markerSymbolPaint(Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS), m, a.x, a.y)
+          bv.dragonMarkerRect = [mp.left - e.left, mp.top - e.top, mp.right - mp.left, mp.bottom - mp.top]
+          bv.dragonMarkerCoverage = mp.coverage.items
+        }
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -1586,11 +1595,13 @@ import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
+import dev.dragon.layout.ListMarker
 import dev.dragon.layout.ObjectRect
 import dev.dragon.layout.PieceGlyphs_okFalse
 import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
+import dev.dragon.layout.paintMarker_markerSymbolPaint
 import dev.dragon.layout.paint_replacedPaint
 import dev.dragon.layout.TextFont
 import dev.dragon.layout.TextLeaf
@@ -1705,6 +1716,8 @@ class DragonTree(val context: Context) {
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()
     val zParent = HashMap<String, String>()
+    // GEN-c: each list item's zoomed marker, by its rect id.
+    val zMarkers = HashMap<String, ListMarker>()
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
     val inlineIds = HashSet<String>()
@@ -1719,6 +1732,8 @@ class DragonTree(val context: Context) {
     fun walk(b: LayoutBox) {
       zBoxes[b.id] = b
       zStyles[b.id] = b.style
+      val m = b.marker
+      if (m != null) zMarkers[m.id] = m
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
@@ -1826,8 +1841,9 @@ class DragonTree(val context: Context) {
       setFrame(dragonFrameOf(v), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id)
       if (v is DragonBoxView) {
         // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
-        // paddings a background reads (the compiler refuses gradients on inline boxes).
-        val inline = inlineIds.contains(id)
+        // paddings a background reads (the compiler refuses gradients on inline boxes); nor has a list marker's box (GEN-c).
+        val marker = zMarkers[id]
+        val inline = inlineIds.contains(id) || marker != null
         val zs = if (inline) null else zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
         val px = if (zs == null) doubleArrayOf(0.0, 0.0, 0.0, 0.0) else {
           val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
@@ -1840,6 +1856,12 @@ class DragonTree(val context: Context) {
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu), doubleArrayOf(a.x, a.y, a.width, a.height), padding, rootX)
         v.dragonScrollRange = scrollRanges[id]
         v.dragonScrollRefusal = scrollRefusals[id]
+        // GEN-c: a symbol marker's paint rect and coverage from the translated paint-marker.ts, at its box's absolute LU origin.
+        if (marker != null && marker.kind == "symbol") {
+          val mp = paintMarker_markerSymbolPaint(Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS), marker, a.x, a.y)
+          v.dragonMarkerRect = intArrayOf(dragonCheckedInt(mp.left - e.left, id + " marker x"), dragonCheckedInt(mp.top - e.top, id + " marker y"), dragonCheckedInt(mp.right - mp.left, id + " marker width"), dragonCheckedInt(mp.bottom - mp.top, id + " marker height"))
+          v.dragonMarkerCoverage = mp.coverage.toList()
+        }
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
@@ -2541,11 +2563,15 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };
+  const none = lang === 'swift' ? 'nil' : 'null';
+  // GEN-c: a list item's marker in the translated ListMarker's field order (input.ts): id, kind, symbol, text, font, lineHeight.
+  const marker = (m: import('@dragon/layout').ListMarker | null): string =>
+    m === null ? none : `ListMarker(${str(m.id)}, ${str(m.kind)}, ${m.symbol === null ? none : str(m.symbol)}, ${m.text === null ? none : str(m.text)}, ${fontSpecValue(lang, m.font)}, ${lineHeightValue(lang, m.lineHeight)})`;
   const visit = (b: import('@dragon/layout').LayoutBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
     const strut = b.strut === null ? (lang === 'swift' ? 'nil' : 'null') : `LineStrut(${fontSpecValue(lang, b.strut.font)}, ${lineHeightValue(lang, b.strut.lineHeight)})`;
-    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
+    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${marker(b.marker)}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
     decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);
     return name;
   };

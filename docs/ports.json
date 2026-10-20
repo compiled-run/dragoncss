@@ -2045,7 +2045,9 @@
       "dragon": [
         { "file": "packages/dragon/src/emit/paint/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/lower/paint/text-decoration.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "symbolPaintRect", "use": "port" },
+        { "file": "packages/layout/src/paint-marker.ts", "symbol": "symbolCoverage", "use": "port" }
       ]
     },
     {
@@ -3691,7 +3693,10 @@
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "listMarkerOf", "use": "reference" },
         { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "COUNTER_STYLES", "use": "reference" },
         { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "markerText", "use": "port" },
-        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" }
+        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" },
+        { "file": "packages/layout/src/input.ts", "symbol": "ListMarker", "use": "reference" },
+        { "file": "packages/layout/src/marker.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/marker.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
