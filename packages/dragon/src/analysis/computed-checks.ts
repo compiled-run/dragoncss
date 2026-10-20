@@ -4,7 +4,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { radiusLengths, roundsAnyCorner } from '../lower/paint/radius.ts';
 import { ProgramError } from '../lower/paint/types.ts';
-import { fontLoweringGap } from '../lower/ios-layout.ts';
+import { fontLoweringGap, viewportFontSize } from '../lower/ios-layout.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -109,23 +109,46 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
 /**
  * CALC-2: a font size the native targets cannot lower (lower/ios-layout.ts fontLoweringGap): one Chrome takes of a parent font-size
  * that follows the viewport, or a line-height on text whose em or % was taken of one. The line-height is checked only where the
- * element lays out text (a text child, or an inline box), as lowerFont reads it only there.
+ * element lays out text (a text child, or an inline box), as lowerFont reads it only there. staleLineHeight: the element inherits
+ * an em or % line-height through an element (itself included) with its own font size, so the size it was taken of is not this one.
+ * Under such a size, an em the native paint programs read (radius, shadow, outline, transform) or the text and border lowering
+ * reads (spacing, border widths) stays relative too, and is refused here.
  */
-function checkViewportFont(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkViewportFont(el: ResolvedElement, staleLineHeight: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (targets.length === 0) return;
   const get = (p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
+  const push = (key: string, message: string, manual: string): void => {
+    for (const t of targets) {
+      const id = `${t}|viewport-font|${key}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: el.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
   // A refused calculation is reported where it is declared.
   if (isRefusedMath(get('font-size')) || isRefusedMath(get('line-height'))) return;
-  const gap = fontLoweringGap(get('font-size'), get('line-height'), (el.props.get('line-height') as ResolvedValue).origin === 'inherited' && (el.props.get('font-size') as ResolvedValue).origin !== 'inherited');
-  if (gap === null) return;
-  if (gap.property === 'line-height' && !el.children.some((c) => c.kind === 'text') && keywordOf(el.props.get('display') as ResolvedValue) !== 'inline') return;
-  const message = `${gap.property}: ${valueToString(get(gap.property))} on <${el.element.tag}> ${el.element.address} is not resolved on the device: ${gap.reason}`;
-  for (const t of targets) {
-    const id = `${t}|viewport-font|${el.element.address}`;
-    if (reported.has(id)) continue;
-    reported.add(id);
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: el.element.node.origin, target: t, message, manual: `Set a px or vw ${gap.property} on <${el.element.tag}> ${el.element.address}.`, basis: 'computed-value' }));
+  const gap = fontLoweringGap(get('font-size'), get('line-height'), staleLineHeight);
+  const laysOutText = el.children.some((c) => c.kind === 'text') || keywordOf(el.props.get('display') as ResolvedValue) === 'inline';
+  if (gap !== null && (gap.property === 'font-size' || laysOutText)) {
+    push('font', `${gap.property}: ${valueToString(get(gap.property))} on <${el.element.tag}> ${el.element.address} is not resolved on the device: ${gap.reason}`, `Set a px or vw ${gap.property} on <${el.element.tag}> ${el.element.address}.`);
+  }
+  if (gap?.property === 'font-size' || viewportFontSize(get('font-size')) === null) return;
+  const relative = EM_UNDER_VIEWPORT_FONT.filter((p) => EM_IN_VALUE.test(valueToString(get(p))));
+  if (relative.length > 0) {
+    push('em', `${relative.join(', ')} on <${el.element.tag}> ${el.element.address} ${relative.length === 1 ? 'reads' : 'read'} em of a font-size that follows the viewport, which the native ${relative.length === 1 ? 'target does' : 'targets do'} not resolve there yet`, `Use px or vw for ${relative.join(', ')} on <${el.element.tag}> ${el.element.address}.`);
   }
 }
+
+/** CALC-2: the lengths whose em the native lowering needs as px (paint programs, text spacing, border widths). */
+const EM_UNDER_VIEWPORT_FONT: readonly Longhand[] = [
+  ...RADIUS_LONGHANDS,
+  'box-shadow', 'outline-width', 'outline-offset', 'transform', 'transform-origin', 'letter-spacing', 'word-spacing',
+  'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing',
+];
+const EM_IN_VALUE = /\dem(?![\w-])/i;
+
+/** An em, % or calculated line-height, which an element computes against its own font size only when that is px (CALC-2). */
+const relativeLineHeight = (v: CssValue): boolean => !((v.kind === 'keyword' && v.value === 'normal') || v.kind === 'number' || (v.kind === 'length' && v.unit === 'px'));
 
 const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' || k === 'scroll';
 
@@ -1045,7 +1068,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[]): void => {
+  // staleLh: an ancestor inherits an em or % line-height over its own font size (checkViewportFont).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], staleLh: boolean): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1059,6 +1083,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
+    const lh = el.props.get('line-height') as ResolvedValue;
+    const stale = lh.origin === 'inherited' && relativeLineHeight(lh.value) && (staleLh || (el.props.get('font-size') as ResolvedValue).origin !== 'inherited');
     checkOverflow(el, targets, diagnostics, reported);
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
@@ -1081,7 +1107,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
-      checkViewportFont(el, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+      checkViewportFont(el, stale, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
@@ -1100,9 +1126,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkGeneratedContent(el, targets, diagnostics, reported);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, stale);
   };
-  walk(root, false, 'viewport', []);
+  walk(root, false, 'viewport', [], false);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

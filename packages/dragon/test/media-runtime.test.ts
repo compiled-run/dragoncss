@@ -70,6 +70,11 @@ describe('R8: transitions a size change would start are refused on native until 
     expect(compile('.a { width: 50vw; height: 5px; transition: width 1s; }').refusals.map((r) => r[1])).toEqual(['ios', 'android']);
     expect(compile('.a { width: 10px; margin-right: clamp(20px, 22vw, 1000px); height: 5px; transition: margin-right 1s; }').refusals.map((r) => r[1])).toEqual(['ios', 'android']);
   });
+  it('an em length or a % line-height under a font size that reads the viewport (CALC-2, PR #521 review)', () => {
+    expect(compile('.a { font-size: 4vw; width: 10em; height: 5px; transition: width 1s; }').refusals.map((r) => r[1])).toEqual(['ios', 'android']);
+    expect(compile('.a { font-size: 4vw; line-height: 150%; height: 5px; transition: line-height 1s; }').refusals.map((r) => r[1])).toEqual(['ios', 'android']);
+    expect(compile('.a { font-size: 16px; width: 10em; height: 5px; transition: width 1s; }').refusals).toEqual([]);
+  });
   it('not a % value, which stays a percentage at computed time, nor a property no band changes, nor a zero duration', () => {
     expect(compile('.a { width: 50%; height: 5px; transition: width 1s; } @media (max-width: 320px) { .b { width: 20px; } }').refusals).toEqual([]);
     expect(compile('.a { width: 10px; height: 5px; transition: height 1s; } @media (max-width: 320px) { .a { width: 20px; } }').refusals).toEqual([]);

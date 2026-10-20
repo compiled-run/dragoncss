@@ -93,6 +93,8 @@ describe('calculations in font-size and line-height', () => {
 
   it('computes a percentage line-height to px of the element own size, and makes px only the rem of a viewport size under one', () => {
     expect([computedLineHeight('150%', 20), computedLineHeight('0%', 20), computedLineHeight('1.5em', 20)]).toEqual(['30px', '0px', '30px']);
+    // ConvertLineHeight: float(size * int(percent)) / 100 as a float, so 155.5% is 155% (PR #521 review).
+    expect([computedLineHeight('155.5%', 17), computedLineHeight('150%', 13.3)]).toEqual([`${Math.fround(26.35)}px`, `${Math.fround(Math.fround(Math.fround(13.3) * 150) / 100)}px`]);
     const underViewport = (declared: string): string => {
       const value = declaredValue('font-size', declared);
       const props = new Map<Longhand, ResolvedValue>([['font-size', { value, origin: 'author', span: null, declaration: null, declared: value } as unknown as ResolvedValue]]);
@@ -129,6 +131,13 @@ const body = (r: SourceRef): TreeNode[] => [el(r, 'a', 'div', ['k'], [el(r, 'b',
 function errors(bodyRule: string, k: string, q: string, faults: CompilerFaults = NO_FAULTS): string[] {
   const css = `body { font-family: Ahem; ${bodyRule} } .k { font-size: ${k}; } .q { font-size: ${q}; }`;
   return project(faults).compile(inputFor(css, body)).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
+}
+
+const nestedBody = (r: SourceRef): TreeNode[] => [el(r, 'a', 'div', ['k'], [el(r, 'm', 'div', ['m'], [el(r, 'c', 'div', [], [text(r, 't', 'XX')])])])];
+
+/** Each error as `<target> <code>` for Ahem text in a classless div under .m under .k. */
+function nestedErrors(css: string): string[] {
+  return project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; } ${css}`, nestedBody)).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
 }
 
 const CLAMPED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
@@ -173,6 +182,24 @@ describe("the minimum logical font size Chrome clamps a relative size to", () =>
     expect(errors('font-size: 2vw; line-height: 150%;', '3vw', '3vw')).toEqual(NATIVE);
     expect(errors('line-height: 150%;', '2vw', '3vw')).toEqual([]);
     expect(errors('line-height: 150%;', '12px', '14px')).toEqual([]);
+  });
+
+  it('refuses on iOS and Android an em or % line-height inherited through a text-less box with its own size (PR #521 review)', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    // Chrome computes 150% of 4vw on .k, and the text inherits that; the device would take it of the 2vw between.
+    expect(errors('', '4vw; line-height: 150%', '2vw')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 4vw; line-height: 150%; } .m { font-size: 2vw; }')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 4vw; line-height: 1.5em; } .m { font-size: 2vw; }')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 4vw; line-height: 150%; }')).toEqual([]);
+  });
+
+  it('refuses on iOS and Android an em the paint programs, spacing or border widths read under a viewport size (PR #521 review)', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    for (const d of ['border-radius: 1em', 'box-shadow: 1em 1em red', 'outline: 0.1em solid red', 'transform: translateX(1em)', 'letter-spacing: 0.1em', 'border: 0.1em solid red']) {
+      expect(errors('', '12px', `2vw; ${d}`), d).toEqual(NATIVE);
+      expect(errors('', '12px', `20px; ${d}`), d).toEqual([]);
+    }
+    expect(errors('', '12px', '2vw; width: 10em; padding: 1em')).toEqual([]);
   });
 
   it('treats a calculation whose type is a percentage alone as a percentage, and any other calculation as absolute', () => {

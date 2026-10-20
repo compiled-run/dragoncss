@@ -26,6 +26,7 @@ import type { LinkedElement } from './link.ts';
 import type { Substitution, VarScope } from './variables.ts';
 import { substituteWinner } from './variables.ts';
 import { computePaintValues } from './paint-values/index.ts';
+import { lineHeightPercentPx } from '../fonts/line-height-percent.ts';
 
 /** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
 /** presentational-hint: an HTML attribute mapped to a property (HTML §15.4.5), below author rules (css-cascade-5 §6.1). */
@@ -258,7 +259,8 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   if (own !== null) foldMath('line-height', { em: own, rem: rootFontSize ?? own, percent: own }, faults);
   // A percentage line-height computes to that share of the element's own size (ConvertLineHeight), which its children inherit.
   const lh = props.get('line-height');
-  if (own !== null && lh !== undefined && lh.origin !== 'inherited' && lh.value.kind === 'percentage') props.set('line-height', { ...lh, value: { kind: 'length', value: (own * lh.value.value) / 100, unit: CANONICAL_LENGTH_UNIT } });
+  // Blink stores float(computed * int(percent)) / 100.0 as a float (fonts/line-height-percent.ts).
+  if (own !== null && lh !== undefined && lh.origin !== 'inherited' && lh.value.kind === 'percentage') props.set('line-height', { ...lh, value: { kind: 'length', value: lineHeightPercentPx(own, lh.value.value), unit: CANONICAL_LENGTH_UNIT } });
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
 }
