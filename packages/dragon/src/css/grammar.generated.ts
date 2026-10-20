@@ -254,7 +254,7 @@ export const properties: { readonly [name: string]: PropertyGrammar } = {
   "outline-style": { syntax: "auto | <outline-line-style>", initial: "none", inherited: "no" },
   "outline-width": { syntax: "<line-width>", initial: "medium", inherited: "no" },
   "overflow": { syntax: "<'overflow-block'>{1,2}", initial: "visible", inherited: "no" },
-  "overflow-anchor": { syntax: "auto | none", initial: "auto", inherited: "no" },
+  "overflow-anchor": { syntax: "auto | none | visible", initial: "auto", inherited: "no" },
   "overflow-block": { syntax: "visible | hidden | clip | scroll | auto", initial: "visible", inherited: "no" },
   "overflow-wrap": { syntax: "normal | break-word | anywhere", initial: "normal", inherited: "yes" },
   "overflow-x": { syntax: "visible | hidden | clip | scroll | auto", initial: "visible", inherited: "no" },

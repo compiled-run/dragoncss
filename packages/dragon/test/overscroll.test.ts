@@ -31,10 +31,10 @@ function compile(css: string, targets: Targets = { web: {} }) {
 const errors = (c: ReturnType<typeof compile>): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error');
 
 describe('overscroll: grammar and parse', () => {
-  it('has Chrome 145 keywords: auto, contain and none, with no chain; overflow-anchor auto or none', () => {
+  it('has Chrome 145 keywords: auto, contain and none, with no chain; overflow-anchor auto, none or visible', () => {
     expect(grammar['overscroll-behavior']?.syntax).toBe('[ auto | contain | none ]{1,2}');
     for (const p of ['overscroll-behavior-x', 'overscroll-behavior-y', 'overscroll-behavior-inline', 'overscroll-behavior-block']) expect(grammar[p]?.syntax, p).toBe('auto | contain | none');
-    expect(grammar['overflow-anchor']?.syntax).toBe('auto | none');
+    expect(grammar['overflow-anchor']?.syntax).toBe('auto | none | visible');
   });
 
   it('the shorthand sets x then y, one value both, each with its logical pair', () => {
@@ -43,6 +43,7 @@ describe('overscroll: grammar and parse', () => {
     expect(parse('overscroll-behavior-block', 'contain').longhands).toEqual(['overscroll-behavior-block: contain', 'overscroll-behavior-y: contain']);
     expect(parse('overscroll-behavior-x', 'none').longhands).toEqual(['overscroll-behavior-x: none', 'overscroll-behavior-inline: none']);
     expect(parse('overflow-anchor', 'NONE').longhands).toEqual(['overflow-anchor: none']);
+    expect(parse('overflow-anchor', 'Visible').longhands).toEqual(['overflow-anchor: visible']);
   });
 
   it('drops what Chrome drops', () => {

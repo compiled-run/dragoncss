@@ -1,7 +1,7 @@
 // css-overscroll-1 §2 and css-scroll-anchoring-1 §2: overscroll-behavior-x, -y, -inline and -block, the overscroll-behavior
 // shorthand, and overflow-anchor, all initial auto and not inherited (Chrome 145 css_properties.json5). Chrome parses auto, contain
-// and none for each overscroll longhand (one or two of them for the shorthand, x then y) and auto or none for overflow-anchor; it
-// has no chain. They change only how a user's scrolling chains to outer scrollers and whether a scroller follows content that moves
+// and none for each overscroll longhand (one or two of them for the shorthand, x then y) and auto, none or visible (a legacy keyword
+// that anchors as auto does) for overflow-anchor; it has no chain. They change only how a user's scrolling chains to outer scrollers and whether a scroller follows content that moves
 // above it, so no layout lane reads them. On native a Dragon scroll view never hands a drag to an outer one and never anchors, as
 // contain and overflow-anchor: none ask; none also turns off an iOS scroll view's bounce on that axis (lower/paint/scroll.ts).
 //
@@ -77,8 +77,8 @@ const shorthand: InitialOnlyParser = (tokens) => {
 };
 
 const anchor: InitialOnlyParser = (tokens) => {
-  const k = tokens.length === 1 ? keyword(tokens[0], new Set(['auto', 'none'])) : null;
-  return k === null ? { kind: 'invalid', reason: 'overflow-anchor takes auto or none' } : { kind: 'ok', longhands: set(['overflow-anchor'], k) };
+  const k = tokens.length === 1 ? keyword(tokens[0], new Set(['auto', 'none', 'visible'])) : null;
+  return k === null ? { kind: 'invalid', reason: 'overflow-anchor takes auto, none or visible' } : { kind: 'ok', longhands: set(['overflow-anchor'], k) };
 };
 
 export const OVERSCROLL_VALUE_PARSERS: { readonly [P in OverscrollLonghand | (typeof OVERSCROLL_SHORTHANDS)[number]]: InitialOnlyParser } = {

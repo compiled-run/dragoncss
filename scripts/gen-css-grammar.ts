@@ -198,7 +198,7 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // css-overscroll-1 adds and Chrome 145 does not parse. Pinned against Chrome by packages/parity/test/overscroll-parse.test.ts.
   'overscroll-behavior': '[ auto | contain | none ]{1,2}',
   ...Object.fromEntries(['overscroll-behavior-x', 'overscroll-behavior-y', 'overscroll-behavior-inline', 'overscroll-behavior-block'].map((p) => [p, 'auto | contain | none'])),
-  'overflow-anchor': 'auto | none',
+  'overflow-anchor': 'auto | none | visible',
   // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
   // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
   // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.

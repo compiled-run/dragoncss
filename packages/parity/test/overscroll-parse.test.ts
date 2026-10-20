@@ -28,14 +28,14 @@ const VALUES: readonly (readonly [string, string])[] = [
   ...['none', 'contain'].map((v) => ['overscroll-behavior-y', v] as const),
   ...['contain', 'none'].map((v) => ['overscroll-behavior-inline', v] as const),
   ...['none', 'auto'].map((v) => ['overscroll-behavior-block', v] as const),
-  ...['auto', 'none', 'NONE'].map((v) => ['overflow-anchor', v] as const),
+  ...['auto', 'none', 'NONE', 'visible', 'Visible'].map((v) => ['overflow-anchor', v] as const),
   // Chrome 145 drops chain (css-overscroll-1 adds it), a third value, a second value on a longhand, lengths and other keywords.
   ...['chain', 'auto auto auto', 'contain chain', '0'].map((v) => ['overscroll-behavior', v] as const),
   ...['chain', 'auto auto', 'contain none', '1px'].map((v) => ['overscroll-behavior-x', v] as const),
   ['overscroll-behavior-y', 'visible'],
   ['overscroll-behavior-inline', 'chain'],
   ['overscroll-behavior-block', 'none none'],
-  ...['visible', 'auto none', 'contain', 'chain'].map((v) => ['overflow-anchor', v] as const),
+  ...['auto none', 'contain', 'chain', 'hidden'].map((v) => ['overflow-anchor', v] as const),
 ];
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
@@ -85,8 +85,8 @@ describe('overscroll-behavior and overflow-anchor: Chrome 145 parsing', () => {
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    expect(real.filter((it) => it.code === null).length).toBe(21);
+    expect(real.filter((it) => it.code === null).length).toBe(23);
     expect(real.filter((it) => it.code === 'DRAGON_CSS_INVALID_VALUE').length).toBe(15);
-    planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
+    planted.forEach((p, i) => expect(p.items.filter((it, j) => judge([it], [(seen[i + 1] as Seen[])[j] as Seen]).length === 0), p.name).toEqual([]));
   }, 120_000);
 });
