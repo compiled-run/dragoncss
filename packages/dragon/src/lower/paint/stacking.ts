@@ -13,7 +13,7 @@
 // then differs from Appendix E's against some node, is refused (analysis/paint-values/stacking.ts), and so is a box a native
 // ancestor's clip view would clip although the clip is not in its containing-block chain. Every layer item
 // gets a write; flow boxes get none.
-import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak } from '@dragon/layout';
+import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, ListMarker } from '@dragon/layout';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
@@ -368,11 +368,13 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
     };
   };
   const content = (c: InlineChild): StackNode[] => (c.kind === 'inline' ? [own(c, elementOf(c), false, []), ...c.children.flatMap(content)] : [leaf(c.id)]);
+  // GEN-c: a list item's marker is a static box view after the item's content (native-program.ts), never a layer item.
+  const marker = (m: ListMarker): StackNode => ({ id: m.id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: false, children: [] });
   const node = (b: LayoutNode, item: boolean): StackNode => {
     const el = elementOf(b);
     const container = FLEX_OR_GRID.includes(b.style.display);
     const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
-    return own(b, el, item, children);
+    return own(b, el, item, b.kind === 'box' && b.marker !== null ? [...children, marker(b.marker)] : children);
   };
   return node(root, false);
 }
@@ -380,12 +382,13 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
 export type StackingWrite = { readonly kind: 'paint-order'; readonly host: string; readonly bucket: number; readonly rank: number; readonly index: number };
 
 /** The stacking of the case being lowered: computed at its root box, which the lowering visits first, with that tree's nodes. */
-let current: { readonly nodes: WeakSet<LayoutNode | InlineBox | LineBreak>; readonly stacking: Stacking } | null = null;
+let current: { readonly nodes: WeakSet<LayoutNode | InlineBox | LineBreak | ListMarker>; readonly stacking: Stacking } | null = null;
 
-const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak> => {
-  const out = new WeakSet<LayoutNode | InlineBox | LineBreak>();
+const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak | ListMarker> => {
+  const out = new WeakSet<LayoutNode | InlineBox | LineBreak | ListMarker>();
   const walk = (b: LayoutNode | InlineBox | LineBreak): void => {
     out.add(b);
+    if (b.kind === 'box' && b.marker !== null) out.add(b.marker);
     if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
   };
   walk(root);
@@ -398,6 +401,13 @@ export function inlineStackingFacts(c: InlineBox | LineBreak): StackingFacts {
   if (current === null || facts === undefined) throw new ProgramError(`${c.id}: the stacking lowering did not see this inline box's root first`);
   // A layer item's write has nowhere to go on an inline view; checkInline refuses an inline stacking context on native.
   if (current.stacking.writes.has(c.id)) throw new ProgramError(`${c.id}: an inline box is a stacking layer item, which the native targets do not place`);
+  return facts;
+}
+
+/** The stacking facts of a list item's marker of the case being lowered (native-program.ts places it after the item's content). */
+export function markerStackingFacts(m: ListMarker): StackingFacts {
+  const facts = current !== null && current.nodes.has(m) ? current.stacking.facts.get(m.id) : undefined;
+  if (current === null || facts === undefined) throw new ProgramError(`${m.id}: the stacking lowering did not see this marker's root first`);
   return facts;
 }
 

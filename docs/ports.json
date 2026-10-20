@@ -1401,7 +1401,8 @@
         { "lines": "453-472", "symbol": "ShouldBreakShapingBeforeText", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/inline.ts", "symbol": "checkShapedText", "use": "port" }
+        { "file": "packages/layout/src/inline.ts", "symbol": "checkShapedText", "use": "port" },
+        { "file": "packages/layout/src/block.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2043,7 +2044,9 @@
       "dragon": [
         { "file": "packages/dragon/src/emit/paint/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/lower/paint/text-decoration.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "symbolPaintRect", "use": "port" },
+        { "file": "packages/layout/src/paint-marker.ts", "symbol": "symbolCoverage", "use": "port" }
       ]
     },
     {
@@ -3682,7 +3685,28 @@
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "listMarkerOf", "use": "reference" },
         { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "COUNTER_STYLES", "use": "reference" },
         { "file": "packages/dragon/src/css/counter-styles.ts", "symbol": "markerText", "use": "port" },
-        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" }
+        { "file": "packages/dragon/src/analysis/markers.ts", "symbol": "ListItemMarker", "use": "reference" },
+        { "file": "packages/layout/src/input.ts", "symbol": "ListMarker", "use": "reference" },
+        { "file": "packages/layout/src/marker.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/marker.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/list/unpositioned_list_marker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "9f8cb9c2080c34aad9f2e84b414c9fb2a3a8d2289d8c3ddd1c24e10b6df7e2de",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "28-37", "symbol": "UnpositionedListMarker::InlineOffset", "source": "located" },
+        { "lines": "81-123", "symbol": "UnpositionedListMarker::AddToBox", "source": "located" },
+        { "lines": "125-157", "symbol": "UnpositionedListMarker::AddToBoxWithoutLineBoxes", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/marker.ts", "symbol": "markerX", "use": "port" }
       ]
     },
     {

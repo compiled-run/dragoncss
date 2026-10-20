@@ -147,6 +147,7 @@ import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, f
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import { symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
@@ -1590,6 +1591,8 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  // GEN-c: paint-marker.ts, a disc's or square's coverage over its device-px rect.
+  if (name === 'paint:marker:symbolCoverage') return numList(symbolCoverage(str(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)));
   if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
   if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
   if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
