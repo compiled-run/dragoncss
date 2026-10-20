@@ -50,6 +50,7 @@ import { SCROLL_SNAP_ANIMATION } from './animation-kinds/scroll-snap.ts';
 import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
+import { SPEAK_ANIMATION } from './animation-kinds/speak.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
 import { TAB_SIZE_ANIMATION } from './animation-kinds/tab-size.ts';
 import { TABLE_ANIMATION } from './animation-kinds/table.ts';
@@ -121,6 +122,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SCROLLBAR_ANIMATION,
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
+  ...SPEAK_ANIMATION,
   ...SVG_ANIMATION,
   ...TAB_SIZE_ANIMATION,
   ...TABLE_ANIMATION,

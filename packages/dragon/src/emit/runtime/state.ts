@@ -1006,8 +1006,13 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.
         throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'clip-path-inset':
-        // MASK-CLIP: a state record holds no clip-path write; the inset clip is drawn on the static program only.
+      case 'clip-path-shape':
+      case 'clip-text':
+        // MASK-CLIP: a state record holds no clip-path write; the clip is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a clip-path in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
+      case 'mask-layer':
+        // MASK-CLIP: a state record holds no mask write; the gradient mask is drawn on the static program only.
+        throw new StateEmitError(`${n.id}: a gradient mask in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'list-marker':
         // GEN-c: a state record holds no marker write; the marker is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a list marker in a state program has no state-node write (GEN-c draws markers on the static program only)`);

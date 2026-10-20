@@ -25,6 +25,7 @@ import { APPEARANCE_ALIASES } from './aliases/appearance.ts';
 import { BACKGROUND_LAYERS_ALIASES, legacyBackgroundValue } from './aliases/background-layers.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
 import { BOX_DECORATION_ALIASES } from './aliases/box-decoration.ts';
+import { CLIP_PATH_ALIASES } from './aliases/clip-path.ts';
 import { EFFECTS_ALIASES } from './aliases/effects.ts';
 import { FILTER_ALIASES } from './aliases/filter.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
@@ -45,6 +46,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   'background-layers': BACKGROUND_LAYERS_ALIASES,
   box: BOX_ALIASES,
   'box-decoration': BOX_DECORATION_ALIASES,
+  'clip-path': CLIP_PATH_ALIASES,
   effects: EFFECTS_ALIASES,
   filter: FILTER_ALIASES,
   flex: FLEX_ALIASES,

@@ -4,6 +4,7 @@ import type { Rgba8 } from '../../css/color.ts';
 import { serializeColor } from '../../css/color.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
 import { containsDescendants, paintContained } from '../containment.ts';
+import { elementMaskGradient } from '../mask.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
 import { isolates } from '../../css/properties/isolation.ts';
 import { blendModeOf } from '../../css/properties/fx.ts';
@@ -92,8 +93,8 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
 
 /**
  * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex or grid item with a z-index, a box with
- * opacity below 1, a transform, will-change: transform or opacity, a clip-path, isolation: isolate, backface-visibility: hidden, a
- * backdrop-filter or a mix-blend-mode) paints in a layer of its own rather than in its context's flow.
+ * opacity below 1, a transform, will-change: transform or opacity, a clip-path, a mask image, isolation: isolate, backface-visibility:
+ * hidden, a backdrop-filter or a mix-blend-mode) paints in a layer of its own rather than in its context's flow.
  */
 function layerReason(el: ResolvedElement): string {
   const position = keywordOf(el, 'position');
@@ -104,6 +105,7 @@ function layerReason(el: ResolvedElement): string {
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
   if (containsDescendants(el)) return `contain: ${keywordOf(el, 'contain')}`;
+  if (elementMaskGradient(el) !== null) return 'a mask-image';
   if (isolates(el)) return 'isolation: isolate';
   if (backfaceHidden(el)) return 'backface-visibility: hidden';
   const mode = blendModeOf(el.props.get('mix-blend-mode')?.value);

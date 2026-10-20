@@ -6,11 +6,12 @@
 // Chrome's UA :focus-visible rule (outline: auto 1px -webkit-focus-ring-color) draws the focus ring an explicit none would hide.
 // The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
 // clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
-// So are the mask longhands, written only where one is not initial (of those MASK-CLIP accepts, only -webkit-mask-composite: source-over),
-// and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none (no Chrome UA rule
-// sets it on a supported tag), and caret-color and accent-color, written on every element of a case where any element's is not auto
-// (FORM-b). -webkit-user-modify is never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag
-// changes (TOUCH).
+// So are the mask longhands, written only where one is not initial (a gradient mask-image MASK-CLIP draws, or -webkit-mask-composite:
+// source-over), and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none (no
+// Chrome UA rule sets it on a supported tag), and caret-color and accent-color, written on every element of a case where any
+// element's is not auto (FORM-b). -webkit-user-modify is never written: Dragon accepts only its initial read-only, which no Chrome UA
+// rule on a supported tag changes (TOUCH).
+// speak, like caret-color, is written on every element of a case where any element's is not normal (NA-NATIVE-2).
 // break-before, break-after and break-inside are written only where one is not auto, and orphans and widows, inherited, on every
 // element of a case where any element's is not 2: their initial values, which no Chrome UA rule sets (css-break-3).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
@@ -69,6 +70,12 @@ function writesFx(el: ResolvedElement): boolean {
 function writesClipPath(el: ResolvedElement): boolean {
   const v = (el.props.get('clip-path') as ResolvedValue).value;
   return !(v.kind === 'keyword' && v.value === 'none');
+}
+
+/** Whether an element's speak is not normal, its initial value. */
+function writesSpeak(el: ResolvedElement): boolean {
+  const v = (el.props.get('speak') as ResolvedValue).value;
+  return !(v.kind === 'keyword' && v.value === 'normal');
 }
 
 /** Whether an element's caret-color or accent-color is not auto, their initial value. */
@@ -311,6 +318,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     // FORM-b: caret-color and accent-color are inherited, so they are written on every element of the case or none: an auto left out
     // under a written colour would inherit it.
     const uiColors = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesUiColors));
+    // NA-NATIVE-2: speak is inherited too, so it is written on every element of the case or none.
+    const speak = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesSpeak));
     // css-break-3: orphans and widows are inherited too, so they are written on every element of the case or none.
     const orphansWidows = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesOrphansWidows));
     // One part: an element, or one of its ::before and ::after boxes (GEN-a R7), whose rule is the element's class with the
@@ -334,7 +343,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
       const appearance = resolutions.some(writesAppearance);
       const breaks = resolutions.some(writesBreaks);
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p))).map((p) => declLine(el, p, under));
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p)) && (speak || p !== 'speak')).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).
