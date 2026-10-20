@@ -119,7 +119,8 @@ export function deriveMediaRows(target: ProfileTarget, passing: readonly { reado
 /**
  * MQ-R2 (T067 R9): the media rows a target answers with a caveat. iOS reports reduced motion as UIAccessibility's setting, whose
  * simulator toggle (device-env) has no passing device run yet, so the row stays caveat (R9); and an iPad's pointer and hover readings
- * (a touch screen with a mouse) have no Chrome on iOS to match. Every other row is exact: Android's readings are Chromium's own rules
+ * (a touch screen with a mouse) have no Chrome on iOS to match; any-pointer also leaves out a paired Apple Pencil, which WebKit
+ * counts (hasStylusDevice) and the iOS reading does not. Every other row is exact: Android's readings are Chromium's own rules
  * (vectors and device-env).
  */
 export const MEDIA_CAVEATS: { readonly [T in ProfileTarget]: readonly string[] } = {

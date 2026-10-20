@@ -16,7 +16,7 @@ import { GATE_CHANNEL_DELTA } from './compare.ts';
 import type { AppRun, DeviceHandle, DeviceRecord, DeviceSpec } from './device-run.ts';
 import type { EarlyBoots } from './device-jobs.ts';
 import { runDevicesInChildren } from './device-jobs.ts';
-import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, runApp, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
+import { boot, DEVICE_MATRIX, deviceProfile, deviceRecord, MatrixMismatch, recordProblems, release, restoreMatrixMotion, runApp, setReducedMotion, TRUST_CASES, VECTOR_DEVICES } from './device-run.ts';
 import { deviceEvidence } from './device-evidence.ts';
 import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
@@ -807,10 +807,13 @@ export const ALL_PARTS: ReadonlySet<DevicePart> = new Set(DEVICE_PARTS);
 
 /**
  * The device-env launch: the env phases; MQ-R2's motion phases hold for the host to turn the OS's reduced-motion setting on, then
- * off (setReducedMotion), and the setting is turned off whatever the run does.
+ * off (setReducedMotion). The launch starts with the setting off, which the phases before the motion ones expect: a matrix AVD boots
+ * with animator_duration_scale 0 (device-run.ts prepareAvd), which is Chromium's reduced-motion signal. Whatever the run does, the
+ * device is put back as the matrix boots it (restoreMatrixMotion), so the parts after this one see the device they always saw.
  */
 export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTarget, outDir: string): Promise<AppRun> {
   const ids = envIds(target);
+  setReducedMotion(h, false);
   try {
     return await runApp(h, artifact, {
       runFile: runFileText(ids.map((id) => ({ id, points: [] })), false),
@@ -823,7 +826,7 @@ export async function runEnv(h: DeviceHandle, artifact: string, target: NativeTa
       },
     });
   } finally {
-    setReducedMotion(h, false);
+    restoreMatrixMotion(h);
   }
 }
 

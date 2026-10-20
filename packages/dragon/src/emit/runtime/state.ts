@@ -746,7 +746,10 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     machine.setReadings(r)
   }
 
-  /** Stops observing the platform readings, when the mount leaves the screen. */
+  /**
+   * Stops observing the platform readings (the animator duration scale's ContentObserver and the InputDeviceListener). The app owns
+   * the mount's lifetime: it calls close() when it removes the mount from its view tree, or the observers stay registered.
+   */
   fun close() {
     observer?.close()
     observer = null
