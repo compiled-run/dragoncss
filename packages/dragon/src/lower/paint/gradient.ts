@@ -55,6 +55,7 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite> = {
     const layers = resolvedLayers(el);
     if (!layers.some((l) => l.image.kind === 'gradient')) return [];
     const id = el.element.address;
+    if (layers.some((l) => l.clipsToText === true)) throw new ProgramError(`${id}: a gradient box clips a layer to text, which every target refuses (background-clip-text.ts)`);
     const colors = usedColors(el);
     const lowered: LoweredLayer[] = [];
     for (const l of layers) {

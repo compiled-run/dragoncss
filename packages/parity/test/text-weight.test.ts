@@ -23,6 +23,11 @@ import { layout } from '../src/fixture-groups/define.ts';
 import { FONT_FIXTURES, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { TEXT_WEIGHT } from '../src/fixture-groups/text-weight.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
+import { LINE_BREAK_LONGHANDS } from '../../dragon/src/css/properties/line-break.ts';
+import { HYPHENS_LONGHANDS } from '../../dragon/src/css/properties/hyphens.ts';
+import { TEXT_WRAP_LONGHANDS } from '../../dragon/src/css/properties/text-wrap.ts';
+import { TAB_SIZE_LONGHANDS } from '../../dragon/src/css/properties/tab-size.ts';
+import { TEXT_ALIGN_LAST_LONGHANDS } from '../../dragon/src/css/properties/text-align-last.ts';
 import { FONT_VARIANT_LONGHANDS } from '../../dragon/src/css/properties/font-variant.ts';
 import { FONT_TUNING_LONGHANDS } from '../../dragon/src/css/properties/font-tuning.ts';
 import { FONT_STRETCH_LONGHANDS } from '../../dragon/src/css/properties/font-stretch.ts';
@@ -31,6 +36,12 @@ import { TEXT_FILL_STROKE_LONGHANDS } from '../../dragon/src/css/properties/text
 import { TEXT_SHADOW_LONGHANDS } from '../../dragon/src/css/properties/text-shadow.ts';
 import { MASK_LONGHANDS } from '../../dragon/src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS } from '../../dragon/src/css/properties/border-image.ts';
+import { COUNTERS_LONGHANDS } from '../../dragon/src/css/properties/counters.ts';
+import { TABLE_LONGHANDS } from '../../dragon/src/css/properties/table.ts';
+import { OVERSCROLL_LONGHANDS } from '../../dragon/src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_LONGHANDS } from '../../dragon/src/css/properties/scroll-snap.ts';
+import { CONTAINMENT_LONGHANDS } from '../../dragon/src/css/properties/containment.ts';
+import { CONTAINER_QUERY_LONGHANDS } from '../../dragon/src/css/properties/container-query.ts';
 import { WHITE_SPACE } from '../src/fixture-groups/white-space.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
@@ -64,8 +75,9 @@ function withoutWrapKeys(v: unknown): unknown {
  * digests are retaken on that landing's regenerated head. The landing of #370 does the same: it adds -webkit-opacity rows to the BASE
  * fixture opacity-cascade, which changes its vectors, pixels and captures (and its -rtl twin) and nothing else.
  */
-const BASE_OUTPUTS = { files: 13143, digest: '5e7fe7b3a00581dad1178b58e59061a6ccca82fe36b90dc043d2dde36a7d9a7b' };
-const BASE_CAPTURES = { files: 3354, digest: 'f480435bce4d3a70e0dd6ef1d580071ad684a9f0c313ed3690fbf6e996caa95a' };
+// Retaken on batch landing #457: TABLE (#443) changes list-style-values and TOUCH (#444) touch-action-values, the only BASE files that moved.
+const BASE_OUTPUTS = { files: 13143, digest: '2005c2806308eb30542addd828505363789fbfb2e87ec4046130ce0b9b840f97' };
+const BASE_CAPTURES = { files: 3354, digest: 'fa16f2e53e319bd858e47eb3663d0c860c4e18d72bd24ac51dd06f9b27b917b1' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -234,7 +246,7 @@ describe('the native refusals', () => {
 });
 
 /** Case id prefixes of the groups that landed after BASE beside those named in the filter below (see own). */
-const LATER_PREFIXES = ['border-image-initial', 'clip-path-', 'svg-stroke', 'svg-dash', 'svg-geometry', 'bg-position-', 'clip-rect-', 'filter-none', 'atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-font-variant-', 'text-font-tuning-', 'text-font-stretch-', 'text-font-features-', 'text-font-size-', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units', 'text-decoration-native-values', 'text-fill-stroke-', 'text-shadow-', 'alias-background', 'shadow-webkit-alias', 'svg-opacity', 'text-style-ahem', 'text-decoration-native-styles', 'alias-font', 'mask-initial', 'svg-paint-order', 'text-shadow-none', 'svg-rrect', 'transform-extra-', 'transform-perspective', 'transform-indiv-', 'svg-vector-effect', 'grid-item-'];
+const LATER_PREFIXES = ['border-image-initial', 'clip-path-', 'svg-stroke', 'svg-dash', 'svg-geometry', 'bg-position-', 'clip-rect-', 'filter-none', 'atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-font-variant-', 'text-font-tuning-', 'text-font-stretch-', 'text-font-features-', 'text-font-size-', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units', 'text-decoration-native-values', 'text-fill-stroke-', 'text-shadow-', 'alias-background', 'shadow-webkit-alias', 'svg-opacity', 'text-style-ahem', 'text-decoration-native-styles', 'alias-font', 'mask-initial', 'svg-paint-order', 'text-shadow-none', 'svg-rrect', 'transform-extra-', 'transform-perspective', 'transform-indiv-', 'svg-vector-effect', 'grid-item-', 'opacity-fold', 'background-blend-', 'grid-track-math', 'bg-clip-text', 'box-decoration-', 'text-word-break-', 'text-line-break-', 'text-hyphens-', 'text-wrap-ahem', 'text-tab-size-', 'text-align-last-', 'scroll-scrollbar-', 'color-scheme-', 'transform-individual', 'stacking-isolation', 'stacking-backface', 'appearance-values', 'ui-colors-values', 'user-modify-values', 'scroll-initial-longhands', 'containment-initial', 'zoom-', 'svg-inert', 'gen-', 'table-properties', 'text-stroke-'];
 
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
@@ -248,7 +260,7 @@ describe('BASE pins', () => {
   // The groups that landed after BASE and add files only: G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web,
   // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current, TXT2-g's line-clamp cases, PNT1's stacking-grid-items cases and touch-action-values. (PNT1's change to
   // three BASE fixtures is retaken in BASE_OUTPUTS and BASE_CAPTURES, not left out.)
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|clip-rect-|filter-none|bg-position-|svg-stroke|svg-dash|svg-geometry|clip-path-|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-font-variant-|text-font-tuning-|text-font-stretch-|text-font-features-|text-font-size-|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-fill-stroke-|text-shadow-|alias-background|shadow-webkit-alias|svg-opacity|text-style-ahem|alias-font|mask-initial|svg-paint-order|text-shadow-none|svg-rrect|transform-extra-|border-image-initial|svg-vector-effect|grid-item-)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|clip-rect-|filter-none|bg-position-|svg-stroke|svg-dash|svg-geometry|clip-path-|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-font-variant-|text-font-tuning-|text-font-stretch-|text-font-features-|text-font-size-|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-fill-stroke-|text-shadow-|alias-background|shadow-webkit-alias|svg-opacity|text-style-ahem|alias-font|mask-initial|svg-paint-order|text-shadow-none|svg-rrect|transform-extra-|border-image-initial|background-blend-|svg-vector-effect|grid-item-|opacity-fold|grid-track-math|bg-clip-text|box-decoration-|text-word-break-|text-line-break-|text-hyphens-|text-wrap-ahem|text-tab-size-|text-align-last-|scroll-scrollbar-|color-scheme-|transform-individual|stacking-isolation|stacking-backface|appearance-values|ui-colors-values|user-modify-values|scroll-initial-longhands|containment-initial|zoom-|svg-inert|gen-|table-properties|text-stroke-)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -280,7 +292,7 @@ describe('BASE pins', () => {
     expect(withoutWrapKeys({ kind: 'text', smallCaps: false })).toEqual({ kind: 'text' });
   });
   /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize, touch-action-values' touch-action, TXT-FX's text fill, stroke and shadow, the font-variant, font-tuning, font-stretch and font-features longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'vector-effect'];
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'background-blend-mode', 'vector-effect', 'box-decoration-break', ...LINE_BREAK_LONGHANDS, ...HYPHENS_LONGHANDS, ...TEXT_WRAP_LONGHANDS, ...TAB_SIZE_LONGHANDS, ...TEXT_ALIGN_LAST_LONGHANDS, 'scrollbar-width', 'scrollbar-gutter', 'color-scheme', 'translate', 'rotate', 'scale', 'isolation', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', ...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));

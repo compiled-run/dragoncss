@@ -1,4 +1,4 @@
-// PNT2 (css-transforms-2 §4): the individual transforms translate, rotate and scale. They parse and compute as Chrome 145 does
+// PNT2 (css-transforms-2 §4): the individual transforms translate, rotate and scale. They parse as Chrome 145 does and compute alike
 // (packages/parity/test/transform-indiv-parse.test.ts pins that against Chrome), their 2D parts compose before transform about
 // transform-origin into the one native transform write, a z translation, another rotation axis and a z scale are refused naming
 // PNT2-m, a composition that skews is refused, and each makes a stacking context and a containing block as transform does. The Chrome
@@ -62,16 +62,16 @@ describe('translate, rotate and scale: the registry and the parse', () => {
     for (const p of ['translate', 'rotate', 'scale'] as const) expect(ANIMATION_KINDS[p], p).toBe(UNADMITTED);
   });
 
-  it('parse as Chrome 145 does: a zero y or z translation, a z axis and a y scale equal to x are dropped, a percentage scale is a number', () => {
+  it('parse as Chrome 145 does and compute to x and y: a zero z translation and a z axis are dropped, a percentage scale is a number', () => {
     const want: [string, string][] = [
-      ['translate: none', 'none'], ['translate: NONE', 'none'], ['translate: 10px', '10px'], ['translate: 10px 20px', '10px 20px'], ['translate: 10px 0', '10px'],
-      ['translate: 10px 0%', '10px 0%'], ['translate: 0 0', '0px'], ['translate: 10px 20px 0', '10px 20px'], ['translate: 0px 0px 0px', '0px'], ['translate: 50% 25%', '50% 25%'],
-      ['translate: 1em 2rem', '1em 2rem'], ['translate: -0px', '0px'], ['translate: 1e3px', '1000px'],
+      ['translate: none', 'none'], ['translate: NONE', 'none'], ['translate: 10px', '10px 0px'], ['translate: 10px 20px', '10px 20px'], ['translate: 10px 0', '10px 0px'],
+      ['translate: 10px 0%', '10px 0%'], ['translate: 0 0', '0px 0px'], ['translate: 10px 20px 0', '10px 20px'], ['translate: 0px 0px 0px', '0px 0px'], ['translate: 50% 25%', '50% 25%'],
+      ['translate: 1em 2rem', '1em 2rem'], ['translate: -0px', '0px 0px'], ['translate: 1e3px', '1000px 0px'],
       ['rotate: none', 'none'], ['rotate: 45deg', '45deg'], ['rotate: 0deg', '0deg'], ['rotate: 1turn', '360deg'], ['rotate: 100grad', '90deg'], ['rotate: z 45deg', '45deg'],
       ['rotate: 45deg z', '45deg'], ['rotate: Z 45DEG', '45deg'], ['rotate: 0 0 1 45deg', '45deg'], ['rotate: 0 0 2 45deg', '45deg'], ['rotate: 45deg 0 0 1', '45deg'], ['rotate: -90deg', '-90deg'],
       ['rotate: 0 0 0.5 30deg', '30deg'],
-      ['scale: none', 'none'], ['scale: 2', '2'], ['scale: 2 3', '2 3'], ['scale: 2 2', '2'], ['scale: 2 2 1', '2'], ['scale: 2 3 1', '2 3'], ['scale: 50%', '0.5'],
-      ['scale: 50% 200%', '0.5 2'], ['scale: 200% 2', '2'], ['scale: 0', '0'], ['scale: -1 1', '-1 1'], ['scale: 1 1 1', '1'], ['scale: 50% 50% 100%', '0.5'],
+      ['scale: none', 'none'], ['scale: 2', '2 2'], ['scale: 2 3', '2 3'], ['scale: 2 2', '2 2'], ['scale: 2 2 1', '2 2'], ['scale: 2 3 1', '2 3'], ['scale: 50%', '0.5 0.5'],
+      ['scale: 50% 200%', '0.5 2'], ['scale: 200% 2', '2 2'], ['scale: 0', '0 0'], ['scale: -1 1', '-1 1'], ['scale: 1 1 1', '1 1'], ['scale: 50% 50% 100%', '0.5 0.5'],
     ];
     for (const [d, v] of want) expect(parsed(d), d).toBe(v);
     expect(parsed('rotate: 0.5rad')).toBe(`${0.5 * (180 / Math.PI)}deg`);
@@ -86,9 +86,9 @@ describe('translate, rotate and scale: the registry and the parse', () => {
   it('refuse a z translation, a rotation about another axis and a z scale naming PNT2-m, and the forms transform functions refuse', () => {
     const refused: [string, string][] = [
       ['translate: 10px 20px 5px', 'a z translation moves the box off the plane'], ['translate: 10px 0 1em', 'a z translation'],
-      ['rotate: x 45deg', 'only a rotation about the z axis'], ['rotate: 45deg y', 'only a rotation about the z axis'], ['rotate: 1 0 0 45deg', 'only a rotation about the z axis'],
-      ['rotate: 0 0 -1 45deg', 'only a rotation about the z axis'], ['rotate: 0 0 0 45deg', 'only a rotation about the z axis'], ['rotate: x 0deg', 'only a rotation about the z axis'],
-      ['scale: 2 3 4', 'a z scale other than 1'], ['scale: 1 1 2', 'a z scale other than 1'],
+      ['rotate: x 45deg', 'a rotation axis other than z'], ['rotate: 45deg y', 'a rotation axis other than z'], ['rotate: 1 0 0 45deg', 'a rotation axis other than z'],
+      ['rotate: 0 0 -1 45deg', 'a rotation axis other than z'], ['rotate: 0 0 0 45deg', 'a rotation axis other than z'], ['rotate: x 0deg', 'a rotation axis other than z'],
+      ['scale: 2 3 4', 'a z scale is a 3D transform'], ['scale: 1 1 2', 'a z scale is a 3D transform'],
     ];
     for (const [d, m] of refused) {
       expect(parsed(d), d).toContain(m);
@@ -104,7 +104,7 @@ describe('translate, rotate and scale: the registry and the parse', () => {
   it('locate a refusal at the 3D part, once for every target as it parses', () => {
     const at = (css: string): string[] => errors(compile(css)).map((e) => /^\S+ \S+ "[^"]*"/.exec(e)?.[0] ?? e);
     expect(at('.a { translate: 1px 2px 3px; }')).toEqual(['null DRAGON_UNSUPPORTED_VALUE "3px"']);
-    expect(at('.a { rotate: 1 1 0 9deg; }')).toEqual(['null DRAGON_UNSUPPORTED_VALUE "1 1 0"']);
+    expect(at('.a { rotate: 1 1 0 9deg; }')).toEqual(['null DRAGON_UNSUPPORTED_VALUE "1"']);
     expect(at('.a { scale: 1 2 3; }')).toEqual(['null DRAGON_UNSUPPORTED_VALUE "3"']);
   });
 });
@@ -136,7 +136,7 @@ describe('translate, rotate and scale: the effective transform', () => {
     expect(errors(r)).toEqual([]);
     const n = uikit(r, 'a');
     const w = n.writes.find((x) => x.kind === 'transform') as unknown as { ops: TransformOp[]; css: string[]; origin: unknown };
-    expect(w.css).toEqual(['transform', 'transform-origin', 'translate', 'rotate', 'scale']);
+    expect(w.css).toEqual(['transform', 'translate', 'rotate', 'scale', 'transform-origin']);
     expect(w.ops).toMatchObject([
       { fn: 'translate', x: pct(-50), y: px(4) },
       { fn: 'rotate', angle: 90 },
@@ -159,7 +159,7 @@ describe('translate, rotate and scale: the effective transform', () => {
     for (const css of ['scale: 2 1; transform: rotate(30deg)', 'scale: 2 1; rotate: 0deg; transform: rotate(45deg)']) {
       const e = errors(compile(`.a { ${css}; }`));
       expect(e, css).toHaveLength(3);
-      expect(e[0], css).toContain('compose a rotation after a non-uniform scale');
+      expect(e[0], css).toContain('compose to a rotation after a non-uniform scale');
     }
     for (const css of ['rotate: 30deg; scale: 2 1', 'scale: 2 1; transform: rotate(90deg)', 'scale: 2; transform: rotate(30deg)', 'translate: 3px; scale: 2 1; transform: translate(1px)']) {
       expect(errors(compile(`.a { ${css}; }`)), css).toEqual([]);

@@ -1,9 +1,9 @@
-// PNT2 (notes/T046-paint-spec.md §2): Chrome's transform geometry. An element is transformed when its transform, translate, rotate
-// or scale is not none. The transform twin: in a page with a transformed element, the
-// computed values are read on the untouched page, then every transformed element gets all four none and will-change: transform
+// PNT2 (notes/T046-paint-spec.md §2): Chrome's transform geometry. An element is transformed when its transform, translate, rotate or
+// scale is not none (css-transforms-2 §4). The transform twin: in a page with a transformed element, the
+// computed values are read on the untouched page, then every transformed element gets none for all four and will-change: transform
 // (which keeps it the containing block and stacking context, so layout is unchanged) before the boxes are read, so the committed
-// boxes are the untransformed layout boxes the engine produces. The quads capture: the effective transform string (the computed
-// transform of translate, rotate, scale and transform written as one list) and the
+// boxes are the untransformed layout boxes the engine produces. The quads capture: the computed transform string (and the computed
+// translate, rotate and scale where one is not none) and the
 // DOM.getContentQuads border-box quad (CSS px, viewport coordinates) of every transformed element on the untouched page, at DPR
 // 1, 2, 3 and 2.625, committed under packages/parity/expected-quads/<platform>/dpr-<N>/<case>.json for pnt2-quads.test.ts by
 // pnpm run parity:quads-capture (cli/quads-capture.ts).
@@ -24,15 +24,28 @@ export const QUAD_DPRS: readonly number[] = [1, 2, 3, 2.625];
 // capture.ts imports this module, and dpr.ts reaches capture.ts, so dpr.ts is imported where it is used, never at the top.
 export const dprLabel = (dpr: number): string => `dpr-${dpr}`;
 
+/** The properties that make an element transformed (css-transforms-2 §4): the twin sets each to none. */
+export const TRANSFORM_PROPERTIES: readonly string[] = ['transform', 'translate', 'rotate', 'scale'];
+
+/**
+ * The data-dragon-id of every element of the page whose transform, translate, rotate or scale is not none, in document order: the
+ * elements the transform twin restyles. frame-capture.ts refuses a sample with one, since the twin would restyle the running script.
+ */
+export async function transformedIds(page: Pick<Page, 'evaluate'>): Promise<string[]> {
+  return page.evaluate((ps) => Array.from(document.querySelectorAll('[data-dragon-id]'))
+    .filter((el) => ps.some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none'))
+    .map((el) => el.getAttribute('data-dragon-id') as string), [...TRANSFORM_PROPERTIES]);
+}
+
 /**
  * The twin step of captureFixture (capture.ts): when an element's computed transform is not none, returns every element's computed
  * values for props read on the untouched page and applies the twin; returns null (and changes nothing) when no element is transformed.
  */
 export async function applyTransformTwin(page: Page, props: readonly string[]): Promise<ReadonlyMap<string, { readonly [p: string]: string }> | null> {
-  const computed = await page.evaluate((ps) => {
+  const computed = await page.evaluate(({ ps, moving }) => {
     const els = Array.from(document.querySelectorAll('[data-dragon-id]')) as HTMLElement[];
-    const moves = (el: Element): boolean => ['transform', 'translate', 'rotate', 'scale'].some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none');
-    const transformed = els.filter(moves);
+    const moved = (el: Element): boolean => moving.some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none');
+    const transformed = els.filter(moved);
     if (transformed.length === 0) return null;
     const out: [string, Record<string, string>][] = [];
     for (const el of els) {
@@ -42,19 +55,22 @@ export async function applyTransformTwin(page: Page, props: readonly string[]): 
       out.push([el.getAttribute('data-dragon-id') as string, values]);
     }
     for (const el of transformed) {
-      for (const p of ['transform', 'translate', 'rotate', 'scale']) el.style.setProperty(p, 'none', 'important');
+      for (const p of moving) el.style.setProperty(p, 'none', 'important');
       el.style.setProperty('will-change', 'transform', 'important');
     }
     return out;
-  }, [...props]);
+  }, { ps: [...props], moving: [...TRANSFORM_PROPERTIES] });
   if (computed === null) return null;
-  const twin = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => ['transform', 'translate', 'rotate', 'scale'].some((p) => getComputedStyle(el).getPropertyValue(p) !== 'none')).map((el) => el.getAttribute('data-dragon-id')));
+  const twin = await transformedIds(page);
   if (twin.length > 0) throw new Error(`the transform twin left ${twin.join(', ')} transformed`);
   return new Map(computed);
 }
 
-/** One transformed element as Chrome reports it: its computed transform and its border-box quad (four corners, CSS px). */
-export type CapturedQuad = { readonly id: string; readonly transform: string; readonly quad: readonly number[] };
+/** The computed individual transforms of an element, recorded only when one is not none (css-transforms-2 §4). */
+export type CapturedIndividual = { readonly translate: string; readonly rotate: string; readonly scale: string };
+
+/** One transformed element as Chrome reports it: its computed transform (and individual transforms) and its border-box quad (four corners, CSS px). */
+export type CapturedQuad = { readonly id: string; readonly transform: string; readonly individual?: CapturedIndividual; readonly quad: readonly number[] };
 
 export type QuadCapture = {
   readonly case: string;
@@ -64,58 +80,33 @@ export type QuadCapture = {
   readonly nodes: readonly CapturedQuad[];
 };
 
-/**
- * The effective transform and content quad of every transformed element of the untouched page, in document order. The effective
- * transform is Chrome's computed transform once translate, rotate, scale and transform are written as one list on the element
- * (css-transforms-2 §4), read after the quads; an element whose translate, rotate and scale are none keeps its computed transform.
- */
+/** The computed transform and content quad of every transformed element of the untouched page, in document order. */
 export async function captureTransformQuads(page: Page): Promise<CapturedQuad[]> {
   const transforms = await page.evaluate(() => Array.from(document.querySelectorAll('[data-dragon-id]')).map((el) => {
     const cs = getComputedStyle(el);
-    return [el.getAttribute('data-dragon-id') as string, ['transform', 'translate', 'rotate', 'scale'].some((p) => cs.getPropertyValue(p) !== 'none')] as const;
+    const individual = { translate: cs.getPropertyValue('translate'), rotate: cs.getPropertyValue('rotate'), scale: cs.getPropertyValue('scale') };
+    return [el.getAttribute('data-dragon-id') as string, cs.transform, Object.values(individual).every((v) => v === 'none') ? null : individual] as const;
   }));
   const cdp = await page.context().newCDPSession(page);
-  const out: CapturedQuad[] = [];
   try {
     const doc = await cdp.send('DOM.getDocument', { depth: -1 });
     const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: doc.root.nodeId, selector: '[data-dragon-id]' });
     if (nodeIds.length !== transforms.length) throw new Error(`CDP found ${nodeIds.length} elements, the page ${transforms.length}`);
+    const out: CapturedQuad[] = [];
     for (const [i, nodeId] of nodeIds.entries()) {
-      const [id, moved] = transforms[i] as readonly [string, boolean];
+      const [id, transform, individual] = transforms[i] as readonly [string, string, CapturedIndividual | null];
       const attrs = (await cdp.send('DOM.getAttributes', { nodeId })).attributes;
       const k = attrs.indexOf('data-dragon-id');
       if (k < 0 || attrs[k + 1] !== id) throw new Error(`CDP node ${i} is not ${id}`);
-      if (!moved) continue;
+      if (transform === 'none' && individual === null) continue;
       const { quads } = await cdp.send('DOM.getContentQuads', { nodeId });
       if (quads.length !== 1 || quads[0]?.length !== 8) throw new Error(`${id}: expected one border-box quad, got ${JSON.stringify(quads)}`);
-      out.push({ id, transform: '', quad: quads[0] });
+      out.push(individual === null ? { id, transform, quad: quads[0] } : { id, transform, individual, quad: quads[0] });
     }
+    return out;
   } finally {
     await cdp.detach();
   }
-  const effective = await page.evaluate(() => {
-    const els = Array.from(document.querySelectorAll('[data-dragon-id]')) as HTMLElement[];
-    const lists = els.map((el) => {
-      const cs = getComputedStyle(el);
-      const [t, r, s] = ['translate', 'rotate', 'scale'].map((p) => cs.getPropertyValue(p)) as [string, string, string];
-      if (t === 'none' && r === 'none' && s === 'none') return null;
-      const words = (v: string): string[] => v.split(' ');
-      const fill = (v: string, rest: readonly string[]): string => [...words(v), ...rest.slice(words(v).length - 1)].join(', ');
-      const rw = words(r);
-      const rotate = rw.length === 1 ? `rotate(${r})` : rw.length === 2 ? `rotate${(rw[0] as string).toUpperCase()}(${rw[1] as string})` : `rotate3d(${rw.join(', ')})`;
-      return [t === 'none' ? '' : `translate3d(${fill(t, ['0px', '0px'])})`, r === 'none' ? '' : rotate, s === 'none' ? '' : `scale3d(${fill(s, [words(s)[0] as string, '1'])})`, cs.transform === 'none' ? '' : cs.transform].filter((x) => x !== '').join(' ');
-    });
-    // Written after every list is read: an element's computed transform resolves against its own box, which no transform moves.
-    lists.forEach((list, i) => {
-      if (list === null) return;
-      const el = els[i] as HTMLElement;
-      for (const p of ['translate', 'rotate', 'scale']) el.style.setProperty(p, 'none', 'important');
-      el.style.setProperty('transform', list, 'important');
-    });
-    return els.map((el) => [el.getAttribute('data-dragon-id') as string, getComputedStyle(el).transform] as const);
-  });
-  const byId = new Map(effective);
-  return out.map((q) => ({ ...q, transform: byId.get(q.id) as string }));
 }
 
 export const quadsDir = (dpr: number, platform: string = REFERENCE_PLATFORM): string => repoPath(`packages/parity/expected-quads/${platform}/${dprLabel(dpr)}`);
@@ -133,6 +124,10 @@ export function parseQuads(json: unknown, caseId: string, dpr: number): QuadCapt
   for (const [i, n] of (o['nodes'] as unknown[]).entries()) {
     const x = n as { readonly [k: string]: unknown } | null;
     if (typeof x !== 'object' || x === null || typeof x['id'] !== 'string' || typeof x['transform'] !== 'string') throw new Error(`${where}: node ${i} has no id or transform`);
+    const ind = x['individual'] as { readonly [k: string]: unknown } | null | undefined;
+    if (ind !== undefined && (typeof ind !== 'object' || ind === null || Array.isArray(ind) || Object.keys(ind).sort().join() !== 'rotate,scale,translate' || !Object.values(ind).every((v) => typeof v === 'string') || Object.values(ind).every((v) => v === 'none'))) {
+      throw new Error(`${where}: node ${x['id']} has individual transforms that are not translate, rotate and scale strings, one of them not none`);
+    }
     const q = x['quad'];
     if (!Array.isArray(q) || q.length !== 8 || !q.every((v) => typeof v === 'number' && Number.isFinite(v))) throw new Error(`${where}: node ${x['id']} has no quad of eight finite numbers`);
   }

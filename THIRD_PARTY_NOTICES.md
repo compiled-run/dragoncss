@@ -20,7 +20,6 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/animation/timing.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/counter_style.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/css/counter_style.h`: Copyright 2020 The Chromium Authors
-- `third_party/blink/renderer/core/css/css_axis_value.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_length_resolver.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/css/css_math_function_value.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.cc`: Copyright 2017 The Chromium Authors

@@ -112,7 +112,7 @@ describe('R3: the web overflow claims carry the overlay-scrollbar environment li
     for (const r of scrolling) expect(r.note, `${r.feature}@${r.context}`).toBe(PROFILE_NOTES.overlayScrollbars);
     for (const r of web.filter((x) => !scrolling.includes(x))) expect(r.note, `${r.feature}@${r.context}`).toBeUndefined();
     expect(PROFILE_NOTES.overlayScrollbars).toContain('15px');
-    for (const r of [...iosProfile.rows, ...webProfile.rows.filter((x) => !/^overflow-[xy]:/.test(x.feature))]) expect(r.note, `${r.feature}@${r.context}`).toBeUndefined();
+    for (const r of [...iosProfile.rows, ...webProfile.rows.filter((x) => !/^(overflow-[xy]|scrollbar-width|scrollbar-gutter):/.test(x.feature))]) expect(r.note, `${r.feature}@${r.context}`).toBeUndefined();
   });
 
   it('explain and querySupport state the note on web, and not on ios', () => {

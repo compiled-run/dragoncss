@@ -1,0 +1,2 @@
+.toggle::after { content: '+'; }
+.toggle[ui-open]::after { content: '-'; }

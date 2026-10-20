@@ -6,7 +6,7 @@ import { nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { animSampleIds } from './anim-samples.ts';
-import { DUMP_FAULTS } from './native-compare.ts';
+import { DUMP_FAULTS } from './dump-faults.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
 import { shapedCaseIds } from './text-latin-run.ts';

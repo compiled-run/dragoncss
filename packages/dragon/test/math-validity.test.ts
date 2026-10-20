@@ -105,6 +105,8 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
   it('font-weight takes a number calculation and font-style an angle one (TXT-W1): each valid kind passes, any other kind is dropped', () => {
     expect(mathGrammarFor('font-weight')).toBe('number');
     expect(mathGrammarFor('font-style')).toBe('angle');
+    expect(mathGrammarFor('rotate')).toBe('angle');
+    expect(mathGrammarFor('scale')).toBe('number-or-length-percentage');
     expect(mathInvalidity('calc(250 + 0.3)', 'number')).toBeNull();
     expect(mathInvalidity('calc(10deg + 5deg)', 'angle')).toBeNull();
     expect(mathInvalidity('calc(10px)', 'number')).toBe('it resolves to a length, and the property takes a number');
@@ -128,15 +130,14 @@ describe('math functions Chrome rejects are invalid CSS (T131)', () => {
       if (GRID_VALUE_PROPERTIES.has(p)) continue;
       // font is checked above: its parts take a number, a length-percentage or an angle, which this syntax walk does not see.
       if (p === 'font') continue;
+      // rotate takes an <angle> beside its axis numbers, which this syntax walk does not see; a math function in it is the angle.
+      if (p === 'rotate') continue;
       const s = expand(properties[p]?.syntax ?? '', 6).replace(/[a-z-]+\([^)]*\)/g, '');
       const number = /<(number|integer)\b/.test(s);
       const percent = /<(length-percentage|percentage)\b/.test(s);
       const length = percent || /<length\b/.test(s);
       if (!number && !length) continue;
-      // rotate's axis takes numbers and its angle an angle; scale's factors are numbers or percentages, never lengths (Blink
-      // Rotate and Scale ::ParseSingleValue), which this walk, reading <percentage> as a length-percentage, cannot tell.
-      const own: { readonly [p: string]: string } = { rotate: 'number-or-angle', scale: 'number-or-percentage' };
-      const expected = own[p] ?? (number ? (length ? 'number-or-length-percentage' : 'number') : percent ? 'length-percentage' : 'length');
+      const expected = number ? (length ? 'number-or-length-percentage' : 'number') : percent ? 'length-percentage' : 'length';
       if (mathGrammarFor(p) !== expected) problems.push(`${p}: ${mathGrammarFor(p)}, its syntax gives ${expected}`);
     }
     expect(problems).toEqual([]);

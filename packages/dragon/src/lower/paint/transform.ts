@@ -1,5 +1,4 @@
-// css-transforms-1 and -2 (PNT2): a box's effective transform (translate, rotate, scale, then transform), resolved by Dragon and set
-// as the native view transform. The write carries the
+// css-transforms-1 (PNT2): a box's transform, resolved by Dragon and set as the native view transform. The write carries the
 // typed function list and origin (lengths in px or percent of the border box); the device resolves them at the box size after
 // every layout with the translated paint-transform.ts and the platform's sin and cos. The node's facts publish the same list,
 // origin and will-change features for the runtime helpers (hit testing, RT-9; SOV and ANIM-b writes).
@@ -28,7 +27,7 @@ function length(l: TransformLengthDecl, at: string): TransformLength {
 }
 
 /** The engine functions of one declared function; matrix() is translate · rotate · scale (css/properties/transform.ts). */
-function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
+export function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
   switch (f.kind) {
     case 'translate':
       return [{ fn: f.fn, x: length(f.x, at), y: length(f.y, at), angle: 0, sx: 1, sy: 1 }];
@@ -90,7 +89,7 @@ export const TRANSFORM_LOWERING: PaintLowering<TransformWrite> = {
     uikit: { transform: { key: 'dragonTransform', technique: 'native-property', detail: 'layer.setAffineTransform of the paint-transform.ts matrix at the box size (platform sin and cos), about the bounds centre with the origin compensated; layer.allowsEdgeAntialiasing = true' } },
     'android-views': { transform: { key: 'dragonTransform', technique: 'native-property', detail: 'the paint-transform.ts functions matrix at the box size (platform sin and cos) as View pivotX/Y (the origin), translationX/Y, rotation and scaleX/Y, in device px' } },
   },
-  css: { transform: ['transform', 'transform-origin', 'translate', 'rotate', 'scale'] },
+  css: { transform: ['transform', 'translate', 'rotate', 'scale', 'transform-origin'] },
   lower: ({ el, facts }) => {
     // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transform none.
     if (el === null) return [];

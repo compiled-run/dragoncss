@@ -61,20 +61,20 @@ public final class Fit {
 
 // ts: packages/layout/src/truncate.ts:34
 public func truncate_ellipsisOf(_ ctx: Ctx, _ nodeId: JsString, _ font: TextFont) throws -> EllipsisRun {
-  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s997, font)
+  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s1006, font)
   // ts: packages/layout/src/truncate.ts:36
   if one.ok {
-    return EllipsisRun(S.s997, (one as! MeasureResult_okTrue).measure.width)
+    return EllipsisRun(S.s1006, (one as! MeasureResult_okTrue).measure.width)
   }
   // ts: packages/layout/src/truncate.ts:37
   if ((one as! MeasureResult_okFalse).code != S.s_text_glyph) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s564, (one as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s569, (one as! MeasureResult_okFalse).reason)
   }
-  let dots: JsString = (ctx.faults.noDotsFallback ? S.s167 : S.s168)
+  let dots: JsString = (ctx.faults.noDotsFallback ? S.s169 : S.s170)
   let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(dots, font)
   // ts: packages/layout/src/truncate.ts:41
   if (!m.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s564, (m as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s569, (m as! MeasureResult_okFalse).reason)
   }
   return EllipsisRun(dots, (m as! MeasureResult_okTrue).measure.width)
 }
@@ -85,11 +85,11 @@ public func truncate_codePoints(_ text: JsString, _ start: Double, _ end: Double
   var k: Double = 0.0
   // ts: packages/layout/src/truncate.ts:49
   do {
-    let _a317 = jsCodePoints(text)
-    var _i317 = 0
-    while _i317 < _a317.items.count {
-      let ch: JsString = _a317.items[_i317]
-      _i317 += 1
+    let _a324 = jsCodePoints(text)
+    var _i324 = 0
+    while _i324 < _a324.items.count {
+      let ch: JsString = _a324.items[_i324]
+      _i324 += 1
       // ts: packages/layout/src/truncate.ts:50
       if ((k >= start) && (k < end)) {
         out += ch
@@ -117,7 +117,7 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
         let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(truncate_codePoints(s.text, s.start, (s.start + k)), s.font)
         // ts: packages/layout/src/truncate.ts:70
         if (!m.ok) {
-          try unsupported_unsupported(S.s_text_glyph, nodeId, S.s564, (m as! MeasureResult_okFalse).reason)
+          try unsupported_unsupported(S.s_text_glyph, nodeId, S.s569, (m as! MeasureResult_okFalse).reason)
         }
         // ts: packages/layout/src/truncate.ts:71
         if ((m as! MeasureResult_okTrue).measure.width > target) {
@@ -132,7 +132,7 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   let item: any U_ShapedItem_okFalse_ShapedItem_okTrue = try ctx.measurer.shaped(s.text, s.font)
   // ts: packages/layout/src/truncate.ts:77
   if (!item.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s564, (item as! ShapedItem_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s569, (item as! ShapedItem_okFalse).reason)
   }
   let result: ShapeResult = (item as! ShapedItem_okTrue).result
   let limit: Double = try units_toFloat(target)
@@ -142,18 +142,18 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   var clusterEnd: Double = 0.0
   // ts: packages/layout/src/truncate.ts:85
   do {
-    let _a318 = result.runs
-    var _i318 = 0
-    while _i318 < _a318.items.count {
-      let run: ShapingRun = _a318.items[_i318]
-      _i318 += 1
+    let _a325 = result.runs
+    var _i325 = 0
+    while _i325 < _a325.items.count {
+      let run: ShapingRun = _a325.items[_i325]
+      _i325 += 1
       // ts: packages/layout/src/truncate.ts:86
       do {
-        let _a319 = run.glyphs
-        var _i319 = 0
-        while _i319 < _a319.items.count {
-          let g: ShapingGlyph = _a319.items[_i319]
-          _i319 += 1
+        let _a326 = run.glyphs
+        var _i326 = 0
+        while _i326 < _a326.items.count {
+          let g: ShapingGlyph = _a326.items[_i326]
+          _i326 += 1
           let at: Double = (run.start + g.ci)
           // ts: packages/layout/src/truncate.ts:88
           if ((at < s.start) || (at >= s.end)) {
@@ -204,14 +204,14 @@ public func truncate_truncatedWidth(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSo
     let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(truncate_codePoints(s.text, s.start, (s.start + count)), s.font)
     // ts: packages/layout/src/truncate.ts:115
     if (!m.ok) {
-      try unsupported_unsupported(S.s_text_glyph, nodeId, S.s564, (m as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_glyph, nodeId, S.s569, (m as! MeasureResult_okFalse).reason)
     }
     return (m as! MeasureResult_okTrue).measure.width
   }
   let item: any U_ShapedItem_okFalse_ShapedItem_okTrue = try ctx.measurer.shaped(s.text, s.font)
   // ts: packages/layout/src/truncate.ts:119
   if (!item.ok) {
-    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s564, (item as! ShapedItem_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, nodeId, S.s569, (item as! ShapedItem_okFalse).reason)
   }
   return try shaping_viewSnappedWidth((item as! ShapedItem_okTrue).item, shaping_subView(shaping_wholeView((item as! ShapedItem_okTrue).result), s.start, (s.start + count)))
 }

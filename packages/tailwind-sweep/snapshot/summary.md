@@ -4,30 +4,30 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 4705 (20.2%) | 18580 (79.8%) | 1 | 0 | 0 |
-| ios | 4685 (20.1%) | 18560 (79.7%) | 1 | 0 | 40 |
-| android | 4685 (20.1%) | 18560 (79.7%) | 1 | 0 | 40 |
+| web | 5184 (22.3%) | 18100 (77.7%) | 1 | 1 | 0 |
+| ios | 5164 (22.2%) | 17499 (75.1%) | 1 | 0 | 622 |
+| android | 5164 (22.2%) | 17499 (75.1%) | 1 | 0 | 622 |
 
-As published (before the shell pre-pass), the sheet compiles for web 4396, ios 4417 and android 4417 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 4776, ios 4795 and android 4795 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1448 / 103 / 0 / 0 / 0 | 1448 / 103 / 0 / 0 / 0 | 1448 / 103 / 0 / 0 / 0 |
+| layout | 1551 | 1457 / 94 / 0 / 0 / 0 | 1457 / 94 / 0 / 0 / 0 | 1457 / 94 / 0 / 0 / 0 |
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
 | sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
-| typography | 261 | 181 / 80 / 0 / 0 / 0 | 181 / 80 / 0 / 0 / 0 | 181 / 80 / 0 / 0 / 0 |
-| colours | 14842 | 101 / 14741 / 0 / 0 / 0 | 101 / 14741 / 0 / 0 / 0 | 101 / 14741 / 0 / 0 / 0 |
-| backgrounds | 151 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 | 24 / 127 / 0 / 0 / 0 |
+| typography | 261 | 189 / 72 / 0 / 0 / 0 | 189 / 72 / 0 / 0 / 0 | 189 / 72 / 0 / 0 / 0 |
+| colours | 14842 | 402 / 14440 / 0 / 0 / 0 | 402 / 13858 / 0 / 0 / 582 | 402 / 13858 / 0 / 0 / 582 |
+| backgrounds | 151 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 |
 | borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
-| effects | 1178 | 62 / 1116 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 | 43 / 1135 / 0 / 0 / 0 |
+| effects | 1178 | 63 / 1115 / 0 / 0 / 0 | 44 / 1134 / 0 / 0 / 0 | 44 / 1134 / 0 / 0 / 0 |
 | filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
-| tables | 111 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 | 0 / 111 / 0 / 0 / 0 |
-| transitions-animation | 36 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
-| transforms | 680 | 15 / 665 / 0 / 0 / 0 | 15 / 665 / 0 / 0 / 0 | 15 / 665 / 0 / 0 / 0 |
-| interactivity | 1246 | 12 / 1234 / 0 / 0 / 0 | 11 / 1197 / 0 / 0 / 38 | 11 / 1197 / 0 / 0 / 38 |
+| tables | 111 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 |
+| transitions-animation | 36 | 31 / 4 / 0 / 1 / 0 | 30 / 6 / 0 / 0 / 0 | 30 / 6 / 0 / 0 / 0 |
+| transforms | 680 | 87 / 593 / 0 / 0 / 0 | 87 / 593 / 0 / 0 / 0 | 87 / 593 / 0 / 0 / 0 |
+| interactivity | 1246 | 53 / 1193 / 0 / 0 / 0 | 53 / 1155 / 0 / 0 / 38 | 53 / 1155 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
 | accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
 
@@ -35,43 +35,43 @@ As published (before the shell pre-pass), the sheet compiles for web 4396, ios 4
 
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
+| `value oklch()` | 6292 | 6292 | 6292 | 22 |
 | `profile mask-composite:intersect` | 6280 | 6280 | 6280 | 38 |
-| `value oklch()` | 5720 | 5720 | 5720 | 20 |
 | `at-rule @supports` | 1192 | 1192 | 1192 | 6 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
-| `property scrollbar-color` | 582 | 582 | 582 | 2 |
-| `property translate` | 444 | 444 | 444 | 24 |
+| `property scrollbar-color` | 582 | 0 | 0 | 2 |
+| `value calc()` | 521 | 521 | 521 | 17 |
 | `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
-| `property accent-color` | 292 | 292 | 292 | 2 |
-| `property caret-color` | 291 | 291 | 291 | 1 |
-| `selector pseudo-element ::placeholder` | 291 | 291 | 291 | 1 |
-| `property border-spacing` | 105 | 105 | 105 | 6 |
-| `property scale` | 90 | 90 | 90 | 10 |
+| `profile scroll-margin-block-start:<non-initial-value>` | 132 | 132 | 132 | 4 |
+| `profile scroll-margin-inline-start:<non-initial-value>` | 132 | 132 | 132 | 4 |
+| `profile scroll-margin-top:<non-initial-value>` | 132 | 132 | 132 | 4 |
 | `value transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-` | 90 | 90 | 90 | 12 |
 | `property -webkit-backdrop-filter` | 74 | 74 | 74 | 9 |
-| `property scroll-margin` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-block` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-block-end` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-block-start` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-bottom` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-inline` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-inline-end` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-inline-start` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-left` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-right` | 70 | 70 | 70 | 4 |
-| `property scroll-margin-top` | 70 | 70 | 70 | 4 |
+| `profile scroll-margin-block-end:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile scroll-margin-bottom:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile scroll-margin-inline-end:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile scroll-margin-left:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile scroll-margin-right:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile scroll-padding-block-start:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile scroll-padding-inline-start:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile scroll-padding-top:<non-initial-value>` | 66 | 66 | 66 | 2 |
+| `profile -webkit-border-vertical-spacing:<calc()>` | 64 | 64 | 64 | 2 |
 | `profile filter:<filter-value-list>` | 59 | 59 | 59 | 9 |
-| `value calc()` | 52 | 52 | 52 | 4 |
 | `profile line-height:<refused calc()>` | 40 | 40 | 40 | 2 |
 | `property cursor` | 36 | 0 | 0 | 36 |
-| `property scroll-padding` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-block` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-block-end` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-block-start` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-bottom` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-inline` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-inline-end` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-inline-start` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-left` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-right` | 35 | 35 | 35 | 2 |
-| `property scroll-padding-top` | 35 | 35 | 35 | 2 |
+| `profile scroll-padding-block-end:<non-initial-value>` | 33 | 33 | 33 | 1 |
+| `profile scroll-padding-bottom:<non-initial-value>` | 33 | 33 | 33 | 1 |
+| `profile scroll-padding-inline-end:<non-initial-value>` | 33 | 33 | 33 | 1 |
+| `profile scroll-padding-left:<non-initial-value>` | 33 | 33 | 33 | 1 |
+| `profile scroll-padding-right:<non-initial-value>` | 33 | 33 | 33 | 1 |
+| `profile background-image:unset` | 26 | 26 | 26 | 3 |
+| `property columns` | 26 | 26 | 26 | 1 |
+| `property mix-blend-mode` | 18 | 18 | 18 | 18 |
+| `unproven context grid-column-start:<span-integer>` | 12 | 12 | 12 | 1 |
+| `unproven context grid-row-end:<span-integer>` | 12 | 12 | 12 | 1 |
+| `value scale: var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z) substitutes to "1 1` | 10 | 10 | 10 | 1 |
+| `property break-after` | 8 | 8 | 8 | 8 |
+| `property break-before` | 8 | 8 | 8 | 8 |
+| `profile letter-spacing:<calc()>` | 6 | 6 | 6 | 1 |
+| `value used line height` | 6 | 6 | 6 | 6 |
+| `profile contain:<non-initial-value>` | 5 | 5 | 5 | 5 |

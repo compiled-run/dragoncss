@@ -7,9 +7,12 @@ import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
+import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
-import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
+import { BROWSER_FLAVOUR, hostPlatform, REFERENCE_PLATFORM } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
+import { capturePseudoElements, NO_PSEUDO_CAPTURE_FAULTS, pageHasGeneratedContent } from './pseudo-capture.ts';
+import type { PseudoCaptureFaults } from './pseudo-capture.ts';
 
 export type CapturedNode = {
   readonly id: string;
@@ -88,17 +91,18 @@ const collectNodes = (props: string[]): CapturedNode[] => {
  * extra: properties captured after LONGHANDS (a fixture's computedExtra); none for every fixture that predates them. prepare: a
  * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
  */
-export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
-  // A prepare script is code the memo key cannot see, and a browser launchChrome did not start has flags it cannot see.
+export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>, faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): Promise<WebCapture> {
+  // A prepare script is code the memo key cannot see, and a browser with no recorded launch flags has flags it cannot see.
   const args = launchArgsOf(browser);
-  if (prepare !== undefined || args === null) return captureFixtureLive(browser, fixture, html, env, extra, prepare);
+  // A planted pseudo-capture fault changes the capture without changing the page, so it is never remembered.
+  if (prepare !== undefined || args === null || faults !== NO_PSEUDO_CAPTURE_FAULTS) return captureFixtureLive(browser, fixture, html, env, extra, prepare, faults);
   const parts = { html: injectHarness(html, env), env, args, properties: [...LONGHANDS, ...extra], flavour: BROWSER_FLAVOUR };
   const nodes = await memoizedJson('capture', parts, CAPTURE_CODE, CAPTURE_MEMO, async () => (await captureFixtureLive(browser, fixture, html, env, extra)).nodes);
   return captureOf(fixture, env, nodes);
 }
 
 /** The code that decides a capture's nodes beside the page itself: the page setup, the in-page collector and the transform twin. */
-const CAPTURE_CODE = ['packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/transform-capture.ts'];
+const CAPTURE_CODE = ['packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/transform-capture.ts', 'packages/parity/src/pseudo-capture.ts'];
 /** Remembered and fresh captures of this process (chrome-memo.ts). */
 export const CAPTURE_MEMO: MemoStats = { hits: 0, misses: 0 };
 
@@ -113,13 +117,23 @@ const captureOf = (fixture: string, env: Environment, nodes: readonly CapturedNo
   nodes,
 });
 
-async function captureFixtureLive(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>): Promise<WebCapture> {
+async function captureFixtureLive(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>, faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): Promise<WebCapture> {
   const page = await openPage(browser, html, env);
   try {
     if (prepare !== undefined) await prepare(page);
+    // The overlay-scrollbar rule (T078 R2): a scroll case's layout depends on the scrollbar environment (scrollbar-gutter: stable
+    // reserves a classic gutter), so on the reference platform its capture, at every DPR, is taken only where a stable gutter
+    // reserves nothing (the capture CLIs launch scroll cases with launchOverlayChrome there). Elsewhere Chrome keeps classic
+    // scrollbars even with --hide-scrollbars, and those captures are not the reference.
+    if (hostPlatform() === REFERENCE_PLATFORM && isScrollCase(fixture)) await assertOverlayScrollbars(page);
     // PNT2 case-kind registration (RT-13 style): a page with a transformed element is captured through the transform twin.
     const twin = await applyTransformTwin(page, [...LONGHANDS, ...extra]);
     const nodes = await page.evaluate(collectNodes, [...LONGHANDS, ...extra]);
+    // GEN-a R9: the ::before and ::after boxes and their text, through CDP; a page without one opens no CDP session.
+    if (await pageHasGeneratedContent(page)) {
+      if (twin !== null) throw new Error(`${fixture}: a page with a transformed element and a generated box is not captured (the transform twin restyles the page)`);
+      nodes.push(...(await capturePseudoElements(page, [...LONGHANDS, ...extra], faults)));
+    }
     if (twin !== null) {
       for (const [i, n] of nodes.entries()) {
         if (n.kind !== 'element') continue;
@@ -165,6 +179,9 @@ export async function captureFixtureInFrame(browser: Browser, fixture: string, h
     if (failed.length > 0) throw new Error(`${fixture}: the ${frame.widthPx}x${frame.heightPx} device px frame at zoom ${frame.zoom} fails ${failed.join(', ')}`);
     const dpr = await child.evaluate(() => window.devicePixelRatio);
     if (dpr !== frame.zoom) throw new Error(`${fixture}: the frame's device pixel ratio is ${dpr}, not ${frame.zoom}`);
+    if (await child.evaluate(() => Array.from(document.querySelectorAll('*')).some((el) => ['::before', '::after'].some((p) => getComputedStyle(el, p).content !== 'none')))) {
+      throw new Error(`${fixture}: a zoomed frame with a generated box is not captured (GEN-a R9 reads generated boxes through the page's CDP session)`);
+    }
     const nodes = await child.evaluate(collectNodes, [...LONGHANDS]);
     return {
       fixture,
