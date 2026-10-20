@@ -52,7 +52,7 @@ export function rankLayers(rules: readonly Rule[], declared: readonly string[], 
       if (diagnostics !== null && isRevertLayer(d) && !rollsBack(d)) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
           origin: authored(d.valueSpan),
-          message: `${d.alias ?? d.property}: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction`,
+          message: `${d.alias ?? d.property}: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain revert-layer that is not !important, not reached through var(), and not on a custom property, all, direction, a transition or an animation`,
         }));
       }
     }

@@ -42,7 +42,14 @@ describe.sequential('CASC 3 planted compiler faults', () => {
       expect(clean.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual([['ltr', 'pass', 'pass'], ['rtl', 'pass', 'pass']]);
     });
   }
-  for (const [fault, id, moved] of [['layersIgnored', 'casc-layer', ['b1', 'n', 'd']], ['layerImportantNotReversed', 'casc-layer', ['imp']], ['revertLayerAsRevert', 'casc-layer-revert', ['r1', 'r4', 'r10', 'r11']]] as const) {
+  // The boxes each fault moves, per direction: in rtl a fixed-width block is over-constrained and ignores margin-left (CSS2 §10.3.3),
+  // so revertLayerAsRevert moves only r12, whose margin-top it also rolls back.
+  const plants: readonly (readonly [string, string, { readonly ltr: readonly string[]; readonly rtl: readonly string[] }])[] = [
+    ['layersIgnored', 'casc-layer', { ltr: ['b1', 'n', 'd'], rtl: ['b1', 'n', 'd'] }],
+    ['layerImportantNotReversed', 'casc-layer', { ltr: ['imp'], rtl: ['imp'] }],
+    ['revertLayerAsRevert', 'casc-layer-revert', { ltr: ['r1', 'r4', 'r10', 'r11', 'r12'], rtl: ['r12'] }],
+  ];
+  for (const [fault, id, moved] of plants) {
     it(`${fault}: ${id} fails chrome-dual in both directions on the boxes it moves`, async () => {
       const faulty = await run(id, { ...NO_FAULTS, [fault]: true });
       expect(faulty.status).toBe('fail');
@@ -50,7 +57,7 @@ describe.sequential('CASC 3 planted compiler faults', () => {
       for (const c of faulty.cases) {
         expect(c.status, c.id).toBe('fail');
         expect(c.lanes['chrome-dual'], c.id).toBe('fail');
-        expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id), c.id).toEqual(expect.arrayContaining([...moved]));
+        expect(c.comparison?.nodes.filter((n) => !n.pass).map((n) => n.id), c.id).toEqual(expect.arrayContaining([...moved[c.direction]]));
       }
     });
   }

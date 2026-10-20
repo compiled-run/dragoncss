@@ -1,6 +1,7 @@
 // CASC 3: cascade layers (css-cascade-5 §6.4) and :host outside a shadow tree. Every expectation here was read from Chrome
 // 145.0.7632.6 on the same CSS; the parity fixture casc-layer (packages/parity/src/fixture-groups/casc-layer.ts) proves them.
 import { readFileSync } from 'node:fs';
+import { parse as stockParse } from 'css-tree';
 import { describe, expect, it } from 'vitest';
 import type { LinkedElement } from '../src/analysis/link.ts';
 import { rankLayers } from '../src/analysis/layers.ts';
@@ -9,6 +10,7 @@ import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { atRuleHandler } from '../src/css/at-rules.ts';
 import { layerAtRule, layerRanks } from '../src/css/at-rules/layer.ts';
 import type { Longhand } from '../src/css/properties.ts';
+import { parseCss } from '../src/css/parser.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { NO_FAULTS } from '../src/faults.ts';
@@ -97,16 +99,16 @@ describe('CASC 3: refusals', () => {
     expect(messages('.x { @layer a { width: 1px; } }')).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer a in a rule block is not supported: @layer nested in a style rule is not built yet']);
     // A plain, normal revert-layer rolls back (rollBackLayers); !important, a custom property, direction and transitions do not.
     expect(messages('@layer a { .x { width: revert-layer; --y: revert-layer; height: revert-layer !important; direction: revert-layer; transition: revert-layer; } } .z { width: revert-layer; margin: REVERT-LAYER; }')).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE: --y: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
-      'DRAGON_UNSUPPORTED_VALUE: height: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
-      'DRAGON_UNSUPPORTED_VALUE: direction: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
-      'DRAGON_UNSUPPORTED_VALUE: transition: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
+      'DRAGON_UNSUPPORTED_VALUE: --y: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain revert-layer that is not !important, not reached through var(), and not on a custom property, all, direction, a transition or an animation',
+      'DRAGON_UNSUPPORTED_VALUE: height: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain revert-layer that is not !important, not reached through var(), and not on a custom property, all, direction, a transition or an animation',
+      'DRAGON_UNSUPPORTED_VALUE: direction: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain revert-layer that is not !important, not reached through var(), and not on a custom property, all, direction, a transition or an animation',
+      'DRAGON_UNSUPPORTED_VALUE: transition: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain revert-layer that is not !important, not reached through var(), and not on a custom property, all, direction, a transition or an animation',
     ]);
     // revert-layer reaching a value through var() (a fallback, or a custom property's value) is refused too; an escaped keyword is
     // the keyword once escapes are read (css-syntax-3 §4.3.7), so it rolls back.
     expect(messages('@layer a; .z { width: var(--u, revert-layer); --v: var(--w, REVERT-LAYER); height: var(--v); margin: r\\65vert-layer; }')).toEqual([
-      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
-      'DRAGON_UNSUPPORTED_VALUE: --v: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain, normal revert-layer on a longhand other than direction',
+      'DRAGON_UNSUPPORTED_VALUE: width: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain revert-layer that is not !important, not reached through var(), and not on a custom property, all, direction, a transition or an animation',
+      'DRAGON_UNSUPPORTED_VALUE: --v: revert-layer in a document with cascade layers is unsupported here: Dragon rolls back only a plain revert-layer that is not !important, not reached through var(), and not on a custom property, all, direction, a transition or an animation',
     ]);
     // Not a revert-layer identifier: a string, or a longer name.
     expect(messages('@layer a; .z { font-family: "revert-layer", revert-layers; }')).toEqual([]);
@@ -189,5 +191,37 @@ describe('CASC 3: revert-layer rolls back to the layers below', () => {
     const [container, layer] = c.diagnostics as [Diagnostic, Diagnostic];
     expect(container.related.map((r) => r.message.split(':')[0])).toEqual(['DRAGON_UNSUPPORTED_VALUE [ios]', 'DRAGON_UNSUPPORTED_VALUE [web]']);
     expect(layer.related.map((r) => r.message.split(':')[0])).toEqual(['DRAGON_UNPROVEN_CONTEXT [ios]', 'DRAGON_UNPROVEN_CONTEXT [web]']);
+  });
+});
+
+describe('CASC 3: revert-layer and presentational hints; the css-tree fork', () => {
+  const imgWidth = (css: string): string => {
+    const { rules, diagnostics } = parse(css);
+    expect(diagnostics.map((d) => d.message)).toEqual([]);
+    const img: LinkedElement = { ...el('img', [], [], 'img'), attributes: new Map([['width', '50']]) };
+    const root = resolveTree(el('html', [], [el('body', [], [img], 'body')], 'html'), rules, NO_FAULTS, { direction: 'ltr', rootFont: 'ahem', ua: referenceDataset() });
+    const found = ((root.children[0] as ResolvedElement).children[0] as ResolvedElement).props.get('width') as { value: Parameters<typeof valueToString>[0] };
+    return valueToString(found.value);
+  };
+  it('revert-layer with no author layer below takes the presentational hint, below every layer; revert drops it', () => {
+    expect(imgWidth('img { width: revert-layer; }')).toBe('50px');
+    expect(imgWidth('@layer b { img { width: revert-layer; } }')).toBe('50px');
+    expect(imgWidth('@layer a, b; @layer a { img { width: 30px; } } @layer b { img { width: revert-layer; } }')).toBe('30px');
+    expect(imgWidth('img { width: revert; }')).not.toBe('50px');
+  });
+  it('a nested @layer holding a style rule gets only its refusal, with what it holds as a related entry', () => {
+    const { diagnostics } = parse('.x { @layer a { .y { width: 1px; } } }');
+    expect(diagnostics.map((d) => `${d.code}: ${d.message}`)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE: @layer a in a rule block is not supported: @layer nested in a style rule is not built yet']);
+  });
+  it('parses every other sheet exactly as stock css-tree 3.2.1 does (a pin against a css-tree upgrade)', () => {
+    const sheets = [SHEET, REVERT, '@layer a, b.c; @layer { .x { width: 1px; } } @layer a { @layer d { .y { color: red; } } }', '.x { @media (min-width: 1px) { width: 1px; } @supports (display: flex) { height: 1px; } }', '@layer a .b { }', '@layer a { width: 1px; }'];
+    for (const css of sheets) {
+      const run = (f: typeof parseCss): string => {
+        const errors: unknown[] = [];
+        const ast = f(css, { positions: true, parseValue: true, onParseError: (e) => errors.push([e.message, e.offset]) });
+        return JSON.stringify([ast, errors]);
+      };
+      expect(run(parseCss), css).toBe(run(stockParse));
+    }
   });
 });
