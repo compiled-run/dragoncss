@@ -1,12 +1,13 @@
 // Fixture group container-query (CQ): container-type: inline-size in Ahem, both directions. container-inline-size puts it on a block
-// whose child's margins no longer collapse through it, inline-blocks (one with a width), an absolutely positioned box (whose own
-// absolutely positioned child still takes the outer containing block), flex items, grid items in auto tracks, a min-content width,
-// nested containers and a flex container, through the container shorthand, var() and another ASCII case, with container-name beside
-// it. cq-rules has @container rules on a named container that follows the viewport (with an @media rule that moves it) and on an
-// unnamed one clamped by max-width inside it, a rule on an element outside every container and on a container itself, which is not
-// its own query container; its resize script (media-runtime.ts RESIZE_SCRIPTS) crosses every width they query. The rejects: size
-// containment, inline-size on an inline box, a query on height, and a query container behind a left border (whose width Chrome
-// rounds to device pixels).
+// whose child's margins no longer collapse through it, inline-blocks (one with a width), an absolutely positioned box (the containing
+// block of its own absolutely positioned child), a static container, which is no containing block for an absolutely positioned
+// child, flex items, grid items in auto tracks, grids that keep their explicit tracks, a min-content width, nested containers and a
+// flex container, through the container shorthand, var() and another ASCII case, with container-name beside it. cq-rules has
+// @container rules on a named container that follows the viewport (with an @media rule that moves it) and on an unnamed one clamped
+// by max-width inside it, a rule on an element outside every container and on a container itself, which is not its own query
+// container; its resize script (media-runtime.ts RESIZE_SCRIPTS) crosses every width they query. The rejects: size containment,
+// inline-size on an inline box, a query on height, and a query container behind a left border (whose width Chrome rounds to device
+// pixels).
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
