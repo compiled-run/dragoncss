@@ -1,11 +1,16 @@
 // The mask layer longhands (css-masking-1 §7) as Chrome 145 registers them (css_properties.json5: the mask shorthand's longhands, in
 // its order), the mask shorthand and mask-position, which Chrome makes a shorthand of -webkit-mask-position-x and -y. None is
-// inherited. Dragon draws no mask yet (coverage-rank lane MASK-CLIP), so it accepts each longhand only at its initial value, where
-// Chrome paints nothing for it: with mask-image none no layer has an image, so no mask applies (ComputedStyle::HasMask). Every other
-// value is kept and refused where it applies on every target (computed-checks.ts checkMask), since a mask image can hide text.
+// inherited. Dragon accepts each longhand at its initial value, where Chrome paints nothing for it: with mask-image none no layer has
+// an image, so no mask applies (ComputedStyle::HasMask). mask-image (and the mask shorthand) also takes one gradient (MASK-CLIP
+// gradient masks): a linear or radial gradient Dragon draws as a background layer (analysis/paint-values/gradient.ts), with every
+// length in px or an absolute unit, so the computed value needs no font size. With the other longhands initial, Chrome paints it
+// as one border-box layer whose alpha masks the box (mask-mode match-source on a gradient is alpha). Every other value is kept and
+// refused where it applies on every target (computed-checks.ts checkMask), since a mask image can hide text.
 // The grammar takes any value (scripts/gen-css-grammar.ts), so Dragon never drops a declaration Chrome keeps.
 import type { CssNode } from 'css-tree';
 import { generate } from 'css-tree';
+import type { GradientSpec } from '../../analysis/paint-values/gradient.ts';
+import { imageItem, valueItems } from '../../analysis/paint-values/gradient.ts';
 import type { Span } from '../../types.ts';
 import { asciiLower } from '../escapes.ts';
 import type { PropertyAspect } from '../properties.ts';
@@ -55,6 +60,43 @@ export function isInitialMask(property: MaskLonghand, v: CssValue): boolean {
   return v.kind === 'percentage' && v.value === 0;
 }
 
+/** The gradient functions a mask image takes; conic gradients are refused like a background's (BG2-c). */
+const MASK_GRADIENTS = new Set(['linear-gradient', 'radial-gradient', 'repeating-linear-gradient', 'repeating-radial-gradient']);
+
+/** Whether a node or one inside it is a length in a font-relative or other unit that only computes to px later, or a calculation. */
+function needsCompute(n: CssNode): boolean {
+  if (n.type === 'Dimension') {
+    const unit = asciiLower(String(n['unit']));
+    if (unit !== 'px' && unit !== 'deg' && unit !== 'grad' && unit !== 'rad' && unit !== 'turn' && unit !== 'cm' && unit !== 'mm' && unit !== 'q' && unit !== 'in' && unit !== 'pt' && unit !== 'pc') return true;
+  }
+  if (n.type === 'Function' && !MASK_GRADIENTS.has(asciiLower(String(n['name']))) && !['rgb', 'rgba', 'hsl', 'hsla', 'hwb'].includes(asciiLower(String(n['name'])))) return true;
+  const kids = (n as { children?: { toArray(): CssNode[] } | null }).children;
+  return kids !== undefined && kids !== null && kids.toArray().some(needsCompute);
+}
+
+/** The value of a mask image Dragon draws: one gradient function it parses, with no length left to compute; else null. */
+function gradientValue(tokens: readonly CssNode[]): CssValue | null {
+  const t = tokens[0];
+  if (tokens.length !== 1 || t === undefined || t.type !== 'Function') return null;
+  const name = asciiLower(String(t['name']));
+  if (!MASK_GRADIENTS.has(name) || needsCompute(t) || !imageItem([t]).ok) return null;
+  return { kind: 'other', type: `${name}()`, text: generate(t) };
+}
+
+/** The gradient of a computed mask-image Dragon draws (gradientValue), or null for none or any other value. */
+export function maskGradientOf(v: CssValue): GradientSpec | null {
+  if (v.kind !== 'other' || !MASK_GRADIENTS.has(v.type.slice(0, -2))) return null;
+  const items = valueItems(v);
+  if (items.length !== 1) return null;
+  const item = imageItem(items[0] as CssNode[]);
+  return item.ok && item.value.kind === 'gradient' ? item.value.gradient : null;
+}
+
+/** Whether a computed mask longhand holds a value Dragon draws: its initial value, or a gradient mask-image. */
+export function isDrawnMask(property: MaskLonghand, v: CssValue): boolean {
+  return isInitialMask(property, v) || (property === 'mask-image' && maskGradientOf(v) !== null);
+}
+
 const other = (tokens: readonly CssNode[]): CssValue => ({ kind: 'other', type: MASK_LAYER_VALUE_TYPE, text: tokens.map((t) => generate(t)).join(' ') });
 
 /** The initial spelling a longhand accepts: its one keyword in any ASCII case, or 0% (unsigned) for the position axes. */
@@ -69,7 +111,7 @@ function isInitialSpelling(property: MaskLonghand, t: CssNode | undefined): bool
 function parseLonghand(property: MaskLonghand): (tokens: readonly CssNode[], base: Span) => ParsedValue {
   return (tokens) => {
     if (tokens.length === 0) return { kind: 'invalid', reason: `${property} needs a value` };
-    const value = tokens.length === 1 && isInitialSpelling(property, tokens[0]) ? MASK_INITIAL[property] : other(tokens);
+    const value = tokens.length === 1 && isInitialSpelling(property, tokens[0]) ? MASK_INITIAL[property] : ((property === 'mask-image' ? gradientValue(tokens) : null) ?? other(tokens));
     return { kind: 'ok', longhands: [{ property, value, explicit: true }] };
   };
 }
@@ -82,13 +124,17 @@ export function parseMaskPosition(tokens: readonly CssNode[], _base: Span): Pars
   return { kind: 'ok', longhands: [axis('-webkit-mask-position-x'), axis('-webkit-mask-position-y')] };
 }
 
-/** mask: none sets mask-image none and every other longhand to its initial value, as Chrome expands it; anything else is kept on mask-image and refused. */
+/**
+ * mask: none, or one gradient alone, sets mask-image to it and every other longhand to its initial value, as Chrome expands it;
+ * anything else is kept on mask-image and refused.
+ */
 export function parseMask(tokens: readonly CssNode[], _base: Span): ParsedValue {
   if (tokens.length === 0) return { kind: 'invalid', reason: 'mask needs a value' };
   const none = tokens.length === 1 && isInitialSpelling('mask-image', tokens[0]);
+  const image = none ? MASK_INITIAL['mask-image'] : (gradientValue(tokens) ?? other(tokens));
   return {
     kind: 'ok',
-    longhands: MASK_LONGHANDS.map((p): LonghandValue => (p === 'mask-image' ? { property: p, value: none ? MASK_INITIAL[p] : other(tokens), explicit: true } : { property: p, value: MASK_INITIAL[p], explicit: false })),
+    longhands: MASK_LONGHANDS.map((p): LonghandValue => (p === 'mask-image' ? { property: p, value: image, explicit: true } : { property: p, value: MASK_INITIAL[p], explicit: false })),
   };
 }
 

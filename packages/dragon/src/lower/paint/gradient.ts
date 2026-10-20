@@ -2,9 +2,13 @@
 // write holding its background colour, the colour's clip and every gradient layer (geometry and gradient, currentcolor resolved,
 // each linear slope folded from the measured libm table, R3), top first, and the origin of the composited layer it rasters in
 // (R4); the device rasterises them with the translated paint-gradient.ts at every layout. Nothing on the device parses CSS.
+// A box with a gradient mask (MASK-CLIP, analysis/mask.ts) gets one mask-layer write: the gradient as one border-box layer at
+// size auto that repeats, as Chrome paints the mask's fill layer, rasterised over transparent; the device masks the box view
+// with the raster's alpha.
 import type { BoxItem, GradientSpec, LayerGeometrySpec, Obscures } from '../../analysis/paint-values/gradient.ts';
 import { bleedAvoidanceOf, compositesSubtree, linearSlope, obscuresOf, resolvedLayers } from '../../analysis/paint-values/gradient.ts';
-import type { ResolvedValue } from '../../analysis/resolve.ts';
+import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
+import { elementMaskGradient } from '../../analysis/mask.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { ColorLonghand, Longhand } from '../../css/properties.ts';
 import { SIDES } from '../../css/properties.ts';
@@ -19,7 +23,7 @@ export type LoweredGradient = Omit<GradientSpec, 'stops'> & { readonly slope: nu
 /** A layer the native raster draws: its repeats are repeat or no-repeat (space and round are refused natively, BG2-t). */
 export type LoweredLayer = { readonly geometry: LayerGeometrySpec & { readonly repeatX: 'repeat' | 'no-repeat'; readonly repeatY: 'repeat' | 'no-repeat' }; readonly gradient: LoweredGradient };
 
-export type GradientWrite = {
+export type BackgroundLayersWrite = {
   readonly kind: 'background-layers';
   /** The used background-color, composited under the layers inside the colour's clip. */
   readonly color: Rgba8;
@@ -38,6 +42,34 @@ export type GradientWrite = {
   readonly layerOrigin: readonly [number, number];
 };
 
+/** A gradient mask (MASK-CLIP): its one layer, and the origin of the composited layer it rasters in (R4), as background-layers'. */
+export type MaskLayerWrite = { readonly kind: 'mask-layer'; readonly layer: LoweredLayer; readonly layerOrigin: readonly [number, number] };
+
+export type GradientWrite = BackgroundLayersWrite | MaskLayerWrite;
+
+/** The mask's fill layer with every mask longhand but mask-image initial: size auto, position 0% 0%, repeat, border-box. */
+const MASK_GEOMETRY: LoweredLayer['geometry'] = {
+  sizeKind: 'length', sizeX: { unit: 'auto', value: 0 }, sizeY: { unit: 'auto', value: 0 }, positionX: { unit: 'percent', value: 0 }, positionY: { unit: 'percent', value: 0 },
+  repeatX: 'repeat', repeatY: 'repeat', origin: 'border-box', clip: 'border-box',
+};
+
+/** A gradient as the engine takes it, with currentcolor resolved and the slope folded (R3). */
+function lowerGradient(g: GradientSpec, current: Rgba8, id: string): LoweredGradient {
+  const slope = !g.radial && g.direction === 'angle' ? linearSlope(g.angleDeg) : 0;
+  if (slope === null) throw new ProgramError(`${id}: the angle ${g.angleDeg}deg is off the measured grid, which the native check refuses (BG2b)`);
+  const stops = g.stops.map((s): LoweredStop => ({ color: s.color.kind === 'currentcolor' ? current : s.color.value, unit: s.unit, value: s.value }));
+  return { ...g, slope, stops };
+}
+
+/** The mask-layer write of a box with a gradient mask, or none. */
+function lowerMask(el: ResolvedElement, current: Rgba8): MaskLayerWrite[] {
+  const g = elementMaskGradient(el);
+  if (g === null) return [];
+  const id = el.element.address;
+  if (compositesSubtree(el)) throw new ProgramError(`${id}: a gradient mask in a composited layer the native check refuses (MASK-CLIP)`);
+  return [{ kind: 'mask-layer', layer: { geometry: MASK_GEOMETRY, gradient: lowerGradient(g, current, id) }, layerOrigin: [0, 0] }];
+}
+
 const repeat = (r: string, id: string): 'repeat' | 'no-repeat' => {
   if (r === 'repeat' || r === 'no-repeat') return r;
   throw new ProgramError(`${id}: background-repeat ${r} reached the native lowering, which refuses it (BG2-t)`);
@@ -46,24 +78,27 @@ const repeat = (r: string, id: string): 'repeat' | 'no-repeat' => {
 export const GRADIENT_LOWERING: PaintLowering<GradientWrite> = {
   name: 'gradient',
   vocabulary: {
-    uikit: { 'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel CGImage at every layout, drawn 1:1 with no interpolation in the background-layers stage, clipped to the rounded box' } },
-    'android-views': { 'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel Bitmap (copyPixelsFromBuffer) at every layout, drawn 1:1 with a null Paint in the background-layers stage, clipped to the rounded box' } },
+    uikit: {
+      'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel CGImage at every layout, drawn 1:1 with no interpolation in the background-layers stage, clipped to the rounded box' },
+      'mask-layer': { key: 'dragonMaskLayer', technique: 'dragon-owned-paint', detail: "the translated paint-gradient.ts rasterises the mask's layer into premultiplied device-pixel CGImage strips at every layout, the contents of the view layer's mask (nearest filtering, contentsScale the device scale), so the box and every view inside it keep the raster's alpha" },
+    },
+    'android-views': {
+      'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel Bitmap (copyPixelsFromBuffer) at every layout, drawn 1:1 with a null Paint in the background-layers stage, clipped to the rounded box' },
+      'mask-layer': { key: 'dragonMaskLayer', technique: 'dragon-owned-paint', detail: "the translated paint-gradient.ts rasterises the mask's layer into premultiplied device-pixel Bitmaps at every layout; the view's draw runs in a saveLayer clipped to the raster, and the Bitmaps are drawn over it 1:1 with PorterDuff DST_IN, so the box and every view inside it keep the raster's alpha" },
+    },
   },
-  css: { 'background-layers': ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'] },
+  css: { 'background-layers': ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'], 'mask-layer': ['mask-image'] },
   lower: ({ el }) => {
     if (el === null) return [];
-    const layers = resolvedLayers(el);
-    if (!layers.some((l) => l.image.kind === 'gradient')) return [];
-    const id = el.element.address;
     const colors = usedColors(el);
+    const masks = lowerMask(el, colors.color);
+    const layers = resolvedLayers(el);
+    if (!layers.some((l) => l.image.kind === 'gradient')) return masks;
+    const id = el.element.address;
     const lowered: LoweredLayer[] = [];
     for (const l of layers) {
       if (l.image.kind !== 'gradient') continue;
-      const g = l.image.gradient;
-      const slope = !g.radial && g.direction === 'angle' ? linearSlope(g.angleDeg) : 0;
-      if (slope === null) throw new ProgramError(`${id}: the angle ${g.angleDeg}deg is off the measured grid, which the native check refuses (BG2b)`);
-      const stops = g.stops.map((s): LoweredStop => ({ color: s.color.kind === 'currentcolor' ? colors.color : s.color.value, unit: s.unit, value: s.value }));
-      lowered.push({ geometry: { ...l.geometry, repeatX: repeat(l.geometry.repeatX, id), repeatY: repeat(l.geometry.repeatY, id) }, gradient: { ...g, slope, stops } });
+      lowered.push({ geometry: { ...l.geometry, repeatX: repeat(l.geometry.repeatX, id), repeatY: repeat(l.geometry.repeatY, id) }, gradient: lowerGradient(l.image.gradient, colors.color, id) });
     }
     const bottom = layers[layers.length - 1];
     if (bottom === undefined) throw new ProgramError(`${id}: background layers without a bottom layer`);
@@ -74,6 +109,6 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite> = {
     if (compositesSubtree(el)) throw new ProgramError(`${id}: a gradient box in a composited layer the native check refuses (BG2c)`);
     const bleed = bleedAvoidanceOf(el);
     if (bleed === 'layer') throw new ProgramError(`${id}: a rounded box whose background Chrome paints into a bleed-avoidance layer, which the native check refuses (BG2c)`);
-    return [{ kind: 'background-layers', color: colors['background-color'], colorClip: bottom.geometry.clip, obscures, layers: lowered, lastIsBottom: bottom.image.kind === 'gradient' && bleed !== 'shrink', layerOrigin: [0, 0] }];
+    return [{ kind: 'background-layers', color: colors['background-color'], colorClip: bottom.geometry.clip, obscures, layers: lowered, lastIsBottom: bottom.image.kind === 'gradient' && bleed !== 'shrink', layerOrigin: [0, 0] }, ...masks];
   },
 };

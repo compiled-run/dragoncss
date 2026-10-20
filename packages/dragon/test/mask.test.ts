@@ -1,6 +1,6 @@
-// MASK-CLIP: the mask layer longhands, mask and mask-position are accepted at their initial values alone, on every target, through
-// the -webkit-mask-* aliases too; every other value is kept and refused where it applies, since no target draws masks yet and a mask
-// image can hide text. The Chrome cases are mask-initial and reject-mask-image (packages/parity/fixtures);
+// MASK-CLIP: the mask layer longhands, mask and mask-position are accepted at their initial values, on every target, through
+// the -webkit-mask-* aliases too; every other value but a gradient mask image (mask-gradient.test.ts) is kept and refused where it
+// applies, since no target draws it and a mask image can hide text. The Chrome cases are mask-initial and reject-mask-image (packages/parity/fixtures);
 // packages/parity/test/mask-parse.test.ts pins the parse against Chrome.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
@@ -96,7 +96,7 @@ describe('mask', () => {
   });
 
   it('refuses every other value on every target, once where it applies', () => {
-    for (const d of ['mask-image: linear-gradient(transparent, transparent)', 'mask-image: url(m.svg)', 'mask-repeat: no-repeat', 'mask-size: 10px', 'mask-origin: content-box', 'mask-clip: no-clip', 'mask-mode: alpha', 'mask-composite: exclude', '-webkit-mask-position-y: 50%', 'mask-position: center', 'mask: url(m.svg) no-repeat center / contain', '-webkit-mask-image: linear-gradient(black, transparent)']) {
+    for (const d of ['mask-image: conic-gradient(transparent, transparent)', 'mask-image: url(m.svg)', 'mask-repeat: no-repeat', 'mask-size: 10px', 'mask-origin: content-box', 'mask-clip: no-clip', 'mask-mode: alpha', 'mask-composite: exclude', '-webkit-mask-position-y: 50%', 'mask-position: center', 'mask: url(m.svg) no-repeat center / contain', '-webkit-mask-image: linear-gradient(black 1em, transparent)']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
     expect(errorsAt('mask-image: url(a.svg); mask-repeat: no-repeat; mask-size: cover')).toEqual(REFUSED);
@@ -109,8 +109,8 @@ describe('mask', () => {
     expect(errors).toHaveLength(3);
     for (const d of errors) expect(d.message).toMatch(/^mask-repeat: space on <div> a is unsupported: /);
     // The reject-mask-image fixture's message (packages/parity/src/fixture-groups/mask.ts).
-    const hidden = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; } .s { mask-image: linear-gradient(transparent, transparent); }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
-    for (const d of hidden.diagnostics.filter((x) => x.severity === 'error')) expect(d.message).toMatch(/^mask-image: linear-gradient\(transparent,transparent\) on <div> a is unsupported: /);
+    const hidden = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; } .s { mask-image: conic-gradient(transparent, transparent); }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
+    for (const d of hidden.diagnostics.filter((x) => x.severity === 'error')) expect(d.message).toMatch(/^mask-image: conic-gradient\(transparent,transparent\) on <div> a is unsupported: /);
   });
 
   it('refuses a mask that a child inherits explicitly, on the child too', () => {

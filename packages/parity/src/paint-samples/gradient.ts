@@ -5,6 +5,10 @@
 // that differs is a device fault. backgroundPlans is the same plan the device builds, for the host reference test. Both keep to the
 // pixels the background alone decides (backgroundOnly): the raster runs under borders and past rounded corners, where the border
 // stage and the rounded clip decide the pixel.
+// MASK-CLIP gradient masks: maskPlans is the plan of each mask-layer write, as the device builds it, and maskPoints a grid of points
+// inside each masked box that holds no text, with rule gradient:<box>:mask, each two device px clear of every box edge and rounded
+// corner. Chrome's pixel there is the box's paint times the raster's alpha byte over the canvas, which the native mask keeps exactly
+// over a canvas whose every channel is 0 or 255 (dragon analysis/mask.ts; packages/parity/test/mask-gradient.test.ts).
 import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, GradientFaults, GradientImage, LayoutBox, LayoutRect } from '@dragon/layout';
 import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
@@ -21,8 +25,11 @@ type LoweredLayer = {
 };
 /** The gradient module's write, as the program holds it (dragon lower/paint/gradient.ts GradientWrite). */
 type GradientWrite = { readonly kind: 'background-layers'; readonly color: Rgba; readonly colorClip: BackgroundPaint['colorClip']; readonly obscures: readonly string[]; readonly layers: readonly LoweredLayer[]; readonly lastIsBottom: boolean; readonly layerOrigin: readonly [number, number] };
+/** The gradient module's mask write (dragon lower/paint/gradient.ts MaskLayerWrite). */
+type MaskWrite = { readonly kind: 'mask-layer'; readonly layer: LoweredLayer; readonly layerOrigin: readonly [number, number] };
 
 const stopColor = (c: Rgba): BackgroundPaint['color'] => ({ r: c.r, g: c.g, b: c.b, alpha: c.alpha });
+const layerOf = (l: LoweredLayer): BackgroundLayer => ({ geometry: l.geometry, image: { ...l.gradient, stops: l.gradient.stops.map((s) => ({ color: stopColor(s.color), unit: s.unit, value: s.value })) } });
 
 /** One node's background plan at a DPR: the node id and the plan the device builds from the same write and engine geometry. */
 export type NodePlan = { readonly id: string; readonly plan: BackgroundPlan };
@@ -104,6 +111,44 @@ export function caseRootX(p: NativeProgram, viewport: { readonly width: number; 
 export function backgroundPlans(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, borders: ReadonlyMap<string, readonly [number, number, number, number]>, faults: GradientFaults = NO_GRADIENT_FAULTS): NodePlan[] {
   const writes = p.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'background-layers').map((w) => ({ id: n.id, w: w as unknown as GradientWrite })));
   if (writes.length === 0) return [];
+  const g = engineGeometry(p, viewport, dpr);
+  return writes.map(({ id, w }) => {
+    const { box, b } = g.box(id, borders);
+    const obscures = w.obscures.map((o, k) => o === 'always' || (o === 'double' && (b[k] as number) < 3));
+    const paint: BackgroundPaint = {
+      box: { ...box, obscures },
+      color: stopColor(w.color),
+      colorClip: w.colorClip,
+      layers: w.layers.map(layerOf),
+      lastIsBottom: w.lastIsBottom,
+      zoom: dpr,
+      tileSize: referenceTileSize(dpr),
+      layerX: w.layerOrigin[0] + g.rootX,
+      layerY: w.layerOrigin[1],
+    };
+    const plan = planBackground(paint, faults);
+    // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw (a
+    // planted fault may leave a layer unmodelled on purpose).
+    if (!plan.modelled && !Object.values(faults).some((v) => v === true)) throw new Error(`${id}: the background plan at ${dpr}x is not modelled (layer origin ${paint.layerX}, ${paint.layerY})`);
+    return { id, plan };
+  });
+}
+
+/** The plan of every mask-layer write of a program at a DPR: its one layer over transparent, as DragonPaintGradient builds it. */
+export function maskPlans(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, borders: ReadonlyMap<string, readonly [number, number, number, number]>): NodePlan[] {
+  const writes = p.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'mask-layer').map((w) => ({ id: n.id, w: w as unknown as MaskWrite })));
+  if (writes.length === 0) return [];
+  const g = engineGeometry(p, viewport, dpr);
+  return writes.map(({ id, w }) => {
+    const { box } = g.box(id, borders);
+    const plan = planBackground({ box: { ...box, obscures: [false, false, false, false] }, color: { r: 0, g: 0, b: 0, alpha: 0 }, colorClip: 'border-box', layers: [layerOf(w.layer)], lastIsBottom: true, zoom: dpr, tileSize: referenceTileSize(dpr), layerX: w.layerOrigin[0] + g.rootX, layerY: w.layerOrigin[1] }, NO_GRADIENT_FAULTS);
+    if (!plan.modelled) throw new Error(`${id}: the mask plan at ${dpr}x is not modelled`);
+    return { id, plan };
+  });
+}
+
+/** The engine geometry fill-layer plans take: each box's unsnapped border box, device-px borders as LU and paddings, and the root scroll origin. */
+function engineGeometry(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): { readonly rootX: number; readonly box: (id: string, borders: ReadonlyMap<string, readonly [number, number, number, number]>) => { readonly box: Omit<BackgroundPaint['box'], 'obscures'>; readonly b: readonly number[] } } {
   const m = measurerFor(REFERENCE_PLATFORM);
   if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
   const input = programInput(p, viewport, dpr);
@@ -114,29 +159,16 @@ export function backgroundPlans(p: NativeProgram, viewport: { readonly width: nu
   const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
   const pads = paddings(zoomed.root, rects, zoomed.viewport.width, zoomed.devicePixelRatio);
   const rootX = programRootX(p, out.boxes, abs, zoomed.root.style.direction === 'rtl');
-  return writes.map(({ id, w }) => {
-    const r = abs.get(id) as LayoutRect | undefined;
-    const b = borders.get(id);
-    const pad = pads.get(id);
-    if (r === undefined || b === undefined || pad === undefined) throw new Error(`${id}: no engine geometry for a gradient box`);
-    const obscures = w.obscures.map((o, k) => o === 'always' || (o === 'double' && (b[k] as number) < 3));
-    const paint: BackgroundPaint = {
-      box: { x: r.x, y: r.y, width: r.width, height: r.height, borders: b.map((v) => v * 64), padding: pad, obscures },
-      color: stopColor(w.color),
-      colorClip: w.colorClip,
-      layers: w.layers.map((l) => ({ geometry: l.geometry, image: { ...l.gradient, stops: l.gradient.stops.map((s) => ({ color: stopColor(s.color), unit: s.unit, value: s.value })) } })),
-      lastIsBottom: w.lastIsBottom,
-      zoom: dpr,
-      tileSize: referenceTileSize(dpr),
-      layerX: w.layerOrigin[0] + rootX,
-      layerY: w.layerOrigin[1],
-    };
-    const plan = planBackground(paint, faults);
-    // The checks refuse every background the plan does not model, so one here is a compiler fault, never an empty draw (a
-    // planted fault may leave a layer unmodelled on purpose).
-    if (!plan.modelled && !Object.values(faults).some((v) => v === true)) throw new Error(`${id}: the background plan at ${dpr}x is not modelled (layer origin ${paint.layerX}, ${paint.layerY})`);
-    return { id, plan };
-  });
+  return {
+    rootX,
+    box: (id, borders) => {
+      const r = abs.get(id) as LayoutRect | undefined;
+      const b = borders.get(id);
+      const pad = pads.get(id);
+      if (r === undefined || b === undefined || pad === undefined) throw new Error(`${id}: no engine geometry for a gradient box`);
+      return { box: { x: r.x, y: r.y, width: r.width, height: r.height, borders: b.map((v) => v * 64), padding: pad }, b };
+    },
+  };
 }
 
 /**
@@ -218,4 +250,55 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
   return out;
 }
 
-export const GRADIENT_SAMPLES: PaintSamples = { name: 'gradient', keep: () => true, points: gradientPoints };
+/**
+ * The mask points of a case: per masked box without text inside it, the GRID points of its raster whose (2 * INSET + 1)^2
+ * neighbourhood lies inside the box's padding box, clear of every other box's edges and of every rounded box's arcs.
+ */
+export function maskPoints(ctx: PaintSampleContext): SamplePoint[] {
+  const borders = new Map(ctx.boxes.map((b) => [b.id, [b.border.top, b.border.right, b.border.bottom, b.border.left] as [number, number, number, number]]));
+  const plans = maskPlans(ctx.program, ctx.viewport, ctx.dpr, borders);
+  if (plans.length === 0) return [];
+  const parent = new Map(ctx.program.nodes.map((n) => [n.id, n.parent] as const));
+  const inside = (id: string, root: string): boolean => {
+    for (let p: string | null = id; p !== null; p = parent.get(p) ?? null) if (p === root) return true;
+    return false;
+  };
+  const rounded = ctx.boxes.flatMap((b) => {
+    const r = boxRadii(ctx.program, b, ctx.dpr);
+    if (r === null) return [];
+    const il = b.left + b.border.left;
+    const it = b.top + b.border.top;
+    return [...rectArcs(b.left, b.top, b.right, b.bottom, r.slice(0, 8)), ...rectArcs(il, it, Math.max(il, b.right - b.border.right), Math.max(it, b.bottom - b.border.bottom), r.slice(8, 16))];
+  });
+  const nearEdge = (b: SampleBox, x: number, y: number): boolean => {
+    const inX = x >= b.left - INSET && x < b.right + INSET;
+    const inY = y >= b.top - INSET && y < b.bottom + INSET;
+    const edges = [b.left, b.right, b.left + b.border.left, b.right - b.border.right].some((e) => Math.abs(x - e) <= INSET || Math.abs(x + 1 - e) <= INSET);
+    const rows = [b.top, b.bottom, b.top + b.border.top, b.bottom - b.border.bottom].some((e) => Math.abs(y - e) <= INSET || Math.abs(y + 1 - e) <= INSET);
+    return (inY && edges) || (inX && rows);
+  };
+  const out: SamplePoint[] = [];
+  for (const { id, plan } of plans) {
+    if (ctx.program.nodes.some((n) => n.kind === 'text' && inside(n.id, id))) continue;
+    const box = ctx.boxes.find((b) => b.id === id);
+    if (box === undefined) continue;
+    const ok = (x: number, y: number): boolean =>
+      x >= box.left + box.border.left && x < box.right - box.border.right && y >= box.top + box.border.top && y < box.bottom - box.border.bottom
+      && x >= plan.left && x < plan.right && y >= plan.top && y < plan.bottom
+      && !ctx.boxes.some((b) => b.id !== id && nearEdge(b, x, y)) && !rounded.some((a) => nearArc(a, x, y, 1));
+    const [cols, rowsN] = GRID;
+    for (let j = 0; j < rowsN; j++) {
+      for (let i = 0; i < cols; i++) {
+        const x = Math.floor(plan.left + ((plan.right - plan.left) * (2 * i + 1)) / (2 * cols));
+        const y = Math.floor(plan.top + ((plan.bottom - plan.top) * (2 * j + 1)) / (2 * rowsN));
+        if (x < 0 || y < 0 || x >= ctx.size.width || y >= ctx.size.height) continue;
+        let clear = true;
+        for (let dy = -INSET; dy <= INSET && clear; dy++) for (let dx = -INSET; dx <= INSET && clear; dx++) if (!ok(x + dx, y + dy)) clear = false;
+        if (clear) out.push({ x, y, rule: `gradient:${id}:mask` });
+      }
+    }
+  }
+  return out;
+}
+
+export const GRADIENT_SAMPLES: PaintSamples = { name: 'gradient', keep: () => true, points: (ctx) => [...gradientPoints(ctx), ...maskPoints(ctx)] };

@@ -649,6 +649,9 @@ export function nodeLit(lang: Lang, n: ProgramNode): string {
       case 'clip-path-shape':
         // MASK-CLIP: a state record holds no clip-path write; the clip is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a clip-path in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
+      case 'mask-layer':
+        // MASK-CLIP: a state record holds no mask write; the gradient mask is drawn on the static program only.
+        throw new StateEmitError(`${n.id}: a gradient mask in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       default: {
         // A write kind added to the program but not here would otherwise vanish from the generated record without a word.
         const unknown: never = w;

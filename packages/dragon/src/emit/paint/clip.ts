@@ -215,6 +215,11 @@ const KOTLIN_MEMBERS = String.raw`  /** The view the children are hosted in over
   override fun draw(canvas: Canvas) {
     val r = dragonClipPathRect
     val p = dragonClipShapePath
+    // A gradient mask (gradient module) masks the whole draw: the box's own paint and every view inside it.
+    if (dragonMaskLayer != null) {
+      dragonDrawMasked(this, canvas, dragonShape) { super.draw(canvas) }
+      return
+    }
     if (r == null && p == null) {
       super.draw(canvas)
       return

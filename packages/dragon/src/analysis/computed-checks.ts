@@ -44,7 +44,9 @@ import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkScrollContainment } from './scroll-containment.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
-import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { isDrawnMask, isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { elementMaskGradient, maskBackdropRefusals, maskRefusal, masksInside } from './mask.ts';
+import { compositesSubtree, transformsSubtree } from './paint-values/gradient.ts';
 import type { BorderImageFaults } from '../faults/border-image.ts';
 import { BORDER_IMAGE_FAULTS } from '../faults/border-image.ts';
 import { checkBorderImage } from './border-image.ts';
@@ -986,31 +988,74 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-// MASK-CLIP (css-masking-1 §7): no target draws a mask yet, and a mask image can hide text, so a mask longhand other than its initial
-// value is refused for every target where it applies (none is inherited), once per element. With every longhand initial, mask-image
-// is none and Chrome applies no mask. Planted fault maskLayerAccepted accepts every value.
-function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults): void {
+// MASK-CLIP (css-masking-1 §7): Dragon draws a gradient mask-image with every other mask longhand initial (css/properties/mask.ts);
+// any other value is refused for every target where it applies (none is inherited), once per element. With every longhand initial,
+// mask-image is none and Chrome applies no mask. A drawn gradient mask is refused on the native targets where the device mask would
+// differ from Chrome's (analysis/mask.ts maskRefusal), and inside a box whose transform or composited layer moves its raster
+// (masksInside). Planted fault maskLayerAccepted accepts every value.
+function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults, propagated: ResolvedElement | null, svg: boolean): void {
   if (faults.maskLayerAccepted) return;
-  const p = MASK_LONGHANDS.find((q) => !isInitialMask(q, (el.props.get(q) as ResolvedValue).value));
-  if (p === undefined) return;
-  const id = `mask|${el.element.address}`;
-  if (reported.has(id)) return;
-  reported.add(id);
-  const v = el.props.get(p) as ResolvedValue;
+  // No target draws a mask on an SVG shape, which has no box view (its <svg> draws it), so a shape takes initial values only.
+  const p = MASK_LONGHANDS.find((q) => !(svg ? isInitialMask : isDrawnMask)(q, (el.props.get(q) as ResolvedValue).value));
+  if (p !== undefined) {
+    const id = `mask|${el.element.address}`;
+    if (reported.has(id)) return;
+    reported.add(id);
+    const v = el.props.get(p) as ResolvedValue;
+    const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin,
+        target: t,
+        message: svg
+          ? `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no mask on an SVG shape (MASK-CLIP); only the initial value is accepted`
+          : `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws only a mask-image of one linear or radial gradient with lengths in px or absolute units (MASK-CLIP), with every other mask longhand at its initial value`,
+        manual: `Remove the mask from ${el.element.address}, or set mask-image to one gradient and leave the other mask longhands initial.`,
+        basis: 'computed-value',
+      }));
+    }
+    return;
+  }
+  const g = elementMaskGradient(el);
+  if (g === null) return;
+  const refusal = maskRefusal(el, g, propagated);
+  if (refusal !== null) refuseMask(el, targets, diagnostics, reported, refusal);
+}
+
+/** A native refusal of the gradient mask of el, once per target. */
+function refuseMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, refusal: { readonly fact: string; readonly manual: string }): void {
+  const v = el.props.get('mask-image') as ResolvedValue;
   const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
   for (const t of targets) {
+    if (t === 'web') continue;
+    const id = `${t}|mask-gradient|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted`,
-      manual: `Remove the mask from ${el.element.address}, or set mask: none.`,
+      message: `mask-image: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported on ${t}: ${refusal.fact}; ${t} masks the box view and the views inside it with a raster of the gradient`,
+      manual: refusal.manual,
       basis: 'computed-value',
     }));
   }
 }
 
+/** The masked boxes inside a box whose transform or composited layer moves the raster origin of every mask under it (R4, R13). */
+function checkMasksInside(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults, propagated: ResolvedElement | null): void {
+  if (faults.maskLayerAccepted) return;
+  const transformed = transformsSubtree(el);
+  if (!transformed && !compositesSubtree(el, propagated)) return;
+  for (const m of masksInside(el)) {
+    refuseMask(m, targets, diagnostics, reported, transformed
+      ? { fact: `it is inside ${el.element.address}, whose transform is not the identity; Chrome rasterises the mask with the transform in the shader matrix, and the native targets would resample the raster`, manual: `Remove the transform from ${el.element.address}, or move the masked box out of it.` }
+      : { fact: `it rasters in the composited layer of ${el.element.address} (will-change, or a scroll container), whose origin starts the dither, which Dragon does not model`, manual: `Remove will-change: transform and opacity, and overflow auto and scroll, from ${el.element.address}, or move the masked box out of it.` });
+  }
+}
+
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS }): void {
   const propagated = propagatedFrom(root);
+  if (!faults.maskLayerAccepted) for (const m of maskBackdropRefusals(root)) refuseMask(m.el, targets, diagnostics, reported, m.refusal);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[]): void => {
@@ -1019,7 +1064,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (isSvgShapeTag(el.element.tag)) {
       checkSvg(el, targets, diagnostics, reported);
       checkFilter(el, targets, diagnostics, reported, faults);
-      checkMask(el, targets, diagnostics, reported, faults);
+      checkMask(el, targets, diagnostics, reported, faults, propagated, true);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
       checkZoom(el, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
@@ -1060,7 +1105,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
       checkTextFillStroke(el, targets, diagnostics, reported, faults);
     }
-    checkMask(el, targets, diagnostics, reported, faults);
+    checkMask(el, targets, diagnostics, reported, faults, propagated, false);
+    if (!here) checkMasksInside(el, targets, diagnostics, reported, faults, propagated);
     checkBorderImage(el, targets, diagnostics, reported, faults);
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
