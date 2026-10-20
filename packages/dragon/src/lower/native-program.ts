@@ -21,6 +21,7 @@ import type { Rgba8 } from '../css/color.ts';
 import { TRANSPARENT } from '../css/color.ts';
 import type { Longhand } from '../css/properties.ts';
 import { colorChannels, glyphFill, usedColors } from './paint/colors.ts';
+import { provableFoldBackdrops } from './paint/fold-backdrop.ts';
 import { borderWrites } from './paint/border.ts';
 import { hostsClipView } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
@@ -172,6 +173,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   const decorations = analyzeDecorations(resolved).applied;
   // TXT-FX: the shadows each text leaf draws, which the text-shadow module writes on the leaf's container box.
   const textShadows = nativeTextShadows(resolved);
+  const foldBackdrops = provableFoldBackdrops(resolved, movingTransforms);
   const out: NodePaint[] = [];
   const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean): void => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
@@ -180,7 +182,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, decorations, textShadows });
+    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows });
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;

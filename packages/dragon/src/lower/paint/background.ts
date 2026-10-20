@@ -1,6 +1,8 @@
 // background-color: a native property filling the border box (UIView.backgroundColor, a ColorDrawable). PNT1-opacity-b (first
 // part): a box whose opacity folds (analysis/paint-values/effects.ts opacityFolds) has its opaque fill written with Chrome's
 // opacity alpha byte (paint.ts opacityAlpha8), as Chrome folds the group's alpha into its one draw; effects.ts then writes no alpha.
+// Such a translucent fill is marked folded: native draws it as Chrome's opaque bytes over its backdrop (emit/paint/background.ts),
+// as the platform's own blend of a translucent colour is one off Chrome's blit in a channel.
 import { opacityFolds } from '../../analysis/paint-values/effects.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import { opacityAlpha8, TRANSPARENT } from '../../css/color.ts';
@@ -11,7 +13,7 @@ import { usedColors } from './colors.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
-export type BackgroundWrite = { readonly kind: 'background-color'; readonly color: Rgba8 };
+export type BackgroundWrite = { readonly kind: 'background-color'; readonly color: Rgba8; readonly folded?: true };
 
 export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   name: 'background',
@@ -22,7 +24,7 @@ export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   css: { 'background-color': ['background-color'] },
   // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transparent. A colour clipped to
   // text is drawn by the box's glyphs instead (native-program.ts textPaint).
-  lower: ({ el }) => [{ kind: 'background-color', color: el === null || textClipFillOf(el) !== null ? TRANSPARENT : foldedBackground(el) }],
+  lower: ({ el, foldBackdrops }) => [el === null || textClipFillOf(el) !== null ? { kind: 'background-color', color: TRANSPARENT } : foldedBackground(el, foldBackdrops)],
 };
 
 /** The fractional opacity of an element whose group folds into its fill, or null. */
@@ -34,8 +36,13 @@ export function foldedOpacity(el: ResolvedElement): number | null {
   return o > 0 && o < 1 && opacityFolds(el) ? o : null;
 }
 
-function foldedBackground(el: ResolvedElement): Rgba8 {
+function foldedBackground(el: ResolvedElement, foldBackdrops: ReadonlySet<string>): BackgroundWrite {
   const c = usedColors(el)['background-color'];
   const o = foldedOpacity(el);
-  return o === null || c.alpha === 0 ? c : { ...c, alpha: opacityAlpha8(o) };
+  if (o === null || c.alpha === 0) return { kind: 'background-color', color: c };
+  const color = { ...c, alpha: opacityAlpha8(o) };
+  // Alpha 0 paints nothing and 255 is the colour itself, which the platform draws exactly. The folded bytes are modelled over the
+  // ancestors' background colours alone, so a box whose backdrop may hold other paint (fold-backdrop.ts) keeps the platform blend.
+  return color.alpha === 0 || color.alpha === 255 || !foldBackdrops.has(el.element.address) ? { kind: 'background-color', color } : { kind: 'background-color', color, folded: true };
 }
+

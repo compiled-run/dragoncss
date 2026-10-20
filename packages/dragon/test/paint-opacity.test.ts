@@ -8,9 +8,11 @@ import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { EFFECTS_EMITTER } from '../src/emit/paint/effects.ts';
+import { BACKGROUND_EMITTER } from '../src/emit/paint/background.ts';
+import { nodeLit, StateEmitError } from '../src/emit/runtime/state.ts';
 import { opacityAlpha8 as foldAlpha8 } from '../src/css/color.ts';
 import type { Targets } from '../src/types.ts';
-import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not } from './helpers.ts';
+import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/opacity.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -150,6 +152,55 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     const t = nativePrograms(compile('.b { height: 5px; opacity: 0.3; }', { ios: { minimum: '15.0' }, android: { minSdk: 31 } }), []);
     if (t.kind !== 'ready') throw new Error(t.reason);
     expect(t.programs.uikit.nodes.find((n) => n.id === 'b')?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 0, g: 0, b: 0, alpha: 0 } })]);
+  });
+  it('marks a translucent folded fill, which native draws as Chrome\'s opaque bytes; bytes 0 and 255 and plain colours stay unmarked', () => {
+    const bg = (decl: string) => {
+      const p = nativePrograms(compile(`.b { ${decl} }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 } }), []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const n = p.programs.uikit.nodes.find((x) => x.id === 'b');
+      const w = n?.writes.find((x) => x.kind === 'background-color');
+      if (n === undefined || w === undefined || w.kind !== 'background-color') throw new Error(`${decl}: no background write`);
+      return { n, w };
+    };
+    const plain = bg('height: 5px; background-color: rgba(10, 20, 30, 0.3);');
+    expect([`${leaf} opacity: 0.3;`, `${leaf} opacity: 0.999;`, `${leaf} opacity: 0.00196;`].map((d) => [bg(d).w.color.alpha, bg(d).w.folded])).toEqual([[77, true], [255, undefined], [0, undefined]]);
+    expect(plain.w.folded).toBeUndefined();
+    const { n, w } = bg(`${leaf} opacity: 0.3;`);
+    expect(BACKGROUND_EMITTER.lines.uikit('v0', n, w)).toEqual(['  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded: true)']);
+    expect(BACKGROUND_EMITTER.lines['android-views']('v0', n, w)).toEqual(['  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded = true)']);
+    expect(BACKGROUND_EMITTER.lines.uikit('v0', plain.n, plain.w)).toEqual([`  dragonBackground(v0, DragonRGBA8(10, 20, 30, ${plain.w.color.alpha}))`]);
+    // The state runtime has no folded writer, as it has no opacity writer: such a node is refused by name.
+    expect(() => nodeLit('swift', n)).toThrow(StateEmitError);
+    expect(() => nodeLit('kotlin', n)).toThrow(/folded into the fill has no state-node write/);
+  });
+  it('keeps the platform blend for a folded fill whose backdrop may hold more than the ancestors\' background colours', () => {
+    type Tree = Parameters<typeof inputFor>[1];
+    const sibling: Tree = (r) => [div(r, 'a', ['a'], [div(r, 's', ['s']), div(r, 'b', ['b'])])];
+    const folded = (css: string, tree: Tree = sibling) => {
+      const input = inputFor(`body { margin: 0; } .s { height: 5px; background-color: rgb(200, 0, 0); } .b { ${leaf} opacity: 0.3; } ${css}`, tree);
+      const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input), []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const w = p.programs.uikit.nodes.find((x) => x.id === 'b')?.writes.find((x) => x.kind === 'background-color');
+      if (w === undefined || w.kind !== 'background-color') throw new Error(`${css}: no background write`);
+      return w.folded === true;
+    };
+    const lone: Tree = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])];
+    // Nothing but the box and its ancestors paints: the backdrop is their colours wherever layout puts the box.
+    expect(folded('', lone)).toBe(true);
+    expect(folded('.a { background-color: rgb(40, 60, 80); padding: 4px; } .b { position: relative; top: -5px; }', lone)).toBe(true);
+    expect(folded('.s { background-color: transparent; }')).toBe(true);
+    // 1-3: an ancestor's gradient, border or inset shadow can lie under the fill.
+    expect(folded('.a { background-image: linear-gradient(rgb(255, 0, 0), rgb(0, 0, 255)); }', lone)).toBe(false);
+    expect(folded('.a { border: 4px solid rgb(0, 0, 0); } .b { margin-top: -4px; }', lone)).toBe(false);
+    expect(folded('.a { box-shadow: inset 0 0 4px rgb(255, 0, 0); }', lone)).toBe(false);
+    // 4: any other box that paints may lie under it, however flow, a margin, an offset, a wrap or a shrink places them.
+    expect(folded('')).toBe(false);
+    expect(folded('.b { margin-top: -5px; }')).toBe(false);
+    expect(folded('.b { position: relative; top: -5px; }')).toBe(false);
+    expect(folded('.b { position: absolute; top: 0; }')).toBe(false);
+    expect(folded('.a { display: flex; flex-direction: column; flex-wrap: wrap; height: 10px; width: 100px; } .s { width: 80px; } .b { height: 10px; }')).toBe(false);
+    // A sibling's text paints too.
+    expect(folded('.a { font-family: Ahem; font-size: 16px; line-height: 16px; }', (r) => [div(r, 'a', ['a'], [div(r, 't', [], [text(r, 'tx', 'X')]), div(r, 'b', ['b'])])])).toBe(false);
   });
   it("the lowering's alpha byte is @dragon/layout's opacityAlpha8", () => {
     const vals: number[] = [];

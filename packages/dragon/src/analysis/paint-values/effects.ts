@@ -7,8 +7,9 @@
 // alpha of a group of one draw into that draw's paint alpha (cc PlaybackFoldingIterator), so such a box paints as
 // its background colour with alpha opacityAlpha8(opacity) and no group: measured in Chrome 145 equal on every pixel for opaque
 // fills over 765 opacities around each byte boundary, at DPR 1 and 3 (rounded fills too, not yet admitted); a fill with a border
-// or text in the group, or a translucent fill, differs. The lowering folds such a box (lower/paint/background.ts, effects.ts) and native draws it as it
-// draws any translucent background.
+// or text in the group, or a translucent fill, differs. The lowering folds such a box (lower/paint/background.ts, effects.ts), and
+// native draws the folded fill as Chrome's opaque bytes over its backdrop (emit/paint/background.ts): drawn as a translucent colour,
+// the platform blend was one off Chrome's blit (device batch 3, of-a 97,66,68 for Chrome's 96,65,67).
 import { opacityOf } from '../../css/properties/effects.ts';
 import { SIDES } from '../../css/properties.ts';
 import { usedColors } from '../../lower/paint/colors.ts';

@@ -3459,7 +3459,8 @@
         { "lines": "243-270", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-shadow.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
