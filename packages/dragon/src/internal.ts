@@ -25,6 +25,7 @@ export { createProjectWith, COMPILER_VERSION } from './project.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
 export { NO_FAULTS } from './faults.ts';
+export { NATIVE_DEVICE_DPRS } from './analysis/paint-values/gradient-phase.ts';
 export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';

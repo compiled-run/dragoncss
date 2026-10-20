@@ -2,6 +2,7 @@
 // Each feature owns faults/<feature>.ts: its fault type (one documented field per fault) and its all-off defaults, and one line in
 // FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
 import { BACKGROUND_BLEND_FAULTS } from './faults/background-blend.ts';
+import { BG2_PHASE_FAULTS } from './faults/bg2-phase.ts';
 import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
 import { BORDER_IMAGE_FAULTS } from './faults/border-image.ts';
 import { BOX_DECORATION_FAULTS } from './faults/box-decoration.ts';
@@ -47,6 +48,7 @@ import { VALUES_FAULTS } from './faults/values.ts';
 
 export const FAULT_GROUPS = {
   'background-blend': BACKGROUND_BLEND_FAULTS,
+  'bg2-phase': BG2_PHASE_FAULTS,
   blockify: BLOCKIFY_FAULTS,
   'border-image': BORDER_IMAGE_FAULTS,
   'box-decoration': BOX_DECORATION_FAULTS,

@@ -2,7 +2,7 @@
 // layout cases, SHARED_DPRS and EXTRA_DPRS, and the committed corpus manifests. Tolerances, sample rules, dump faults and the
 // layout projection are imported, so no target can hold a weaker copy.
 import { readdirSync, readFileSync } from 'node:fs';
-import { nativeLayoutProjection } from 'dragon';
+import { NATIVE_DEVICE_DPRS, nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { animSampleIds } from './anim-samples.ts';
@@ -89,6 +89,9 @@ function dprSet(dpr: number, ids: readonly string[]): CaseSet {
 export function deviceDprs(target: NativeTarget): readonly number[] {
   return [...SHARED_DPRS, ...EXTRA_DPRS.filter((e) => e.platform === target).map((e) => e.dpr)];
 }
+
+// The compiler's BG2-t phase check names a refused layer's device scale from its own copy of these (gradient-phase.ts).
+for (const t of ['ios', 'android'] as const) if (deviceDprs(t).join() !== NATIVE_DEVICE_DPRS[t].join()) throw new Error(`dragon NATIVE_DEVICE_DPRS.${t} (${NATIVE_DEVICE_DPRS[t].join(', ')}) is not deviceDprs('${t}') (${deviceDprs(t).join(', ')})`);
 
 /** The corpus suites beside the vectors, counted from the manifests' own parameters. */
 export function corpusSuites(): readonly CorpusSuite[] {
