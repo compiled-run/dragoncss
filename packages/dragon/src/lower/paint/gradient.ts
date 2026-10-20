@@ -38,6 +38,9 @@ export type GradientWrite = {
   readonly layerOrigin: readonly [number, number];
 };
 
+/** The gradient module's facts (facts.gradient): a url() layer the lanes lower that no native write draws (BG2-u part 1). */
+export type GradientFacts = { readonly undrawnImage: true };
+
 const repeat = (r: string, id: string): 'repeat' | 'no-repeat' => {
   if (r === 'repeat' || r === 'no-repeat') return r;
   throw new ProgramError(`${id}: background-repeat ${r} reached the native lowering, which refuses it (BG2-t)`);
@@ -50,11 +53,18 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite> = {
     'android-views': { 'background-layers': { key: 'dragonBackgroundLayers', technique: 'dragon-owned-paint', detail: 'the translated paint-gradient.ts rasterises the colour and the gradient layers into one premultiplied device-pixel Bitmap (copyPixelsFromBuffer) at every layout, drawn 1:1 with a null Paint in the background-layers stage, clipped to the rounded box' } },
   },
   css: { 'background-layers': ['background-image', 'background-position-x', 'background-position-y', 'background-size', 'background-repeat', 'background-attachment', 'background-origin', 'background-clip'] },
-  lower: ({ el }) => {
+  lower: ({ el, facts }) => {
     if (el === null) return [];
     const layers = resolvedLayers(el);
-    if (!layers.some((l) => l.image.kind === 'gradient')) return [];
     const id = el.element.address;
+    if (layers.some((l) => l.image.kind === 'url')) {
+      // BG2-u part 1: only the parity lanes lower a url() layer (lane-only; a user's compile refuses it natively): nothing draws it.
+      if (layers.length !== 1) throw new ProgramError(`${id}: a url() layer beside other layers reached the native lowering, which every target refuses (BG2-u)`);
+      facts['gradient'] = { undrawnImage: true } satisfies GradientFacts;
+      return [];
+    }
+    if (!layers.some((l) => l.image.kind === 'gradient')) return [];
+    if (layers.some((l) => l.clipsToText === true)) throw new ProgramError(`${id}: a gradient box clips a layer to text, which every target refuses (background-clip-text.ts)`);
     const colors = usedColors(el);
     const lowered: LoweredLayer[] = [];
     for (const l of layers) {
