@@ -12,8 +12,19 @@ import { unsupported } from './unsupported.ts';
 /** list_marker.cc kCMarkerPaddingPx: the gap between a symbol marker and the list item's border box. */
 export const MARKER_PADDING_PX = 7;
 
+/**
+ * A text marker's text fragment in its marker box, as a text leaf's piece on its line: at x 0, the marker's width, its top the line's
+ * baseline less the font's ascent and its height the font's ascent plus descent. id is "<list item>::marker:text0".
+ */
+export type MarkerText = { readonly id: string; readonly top: LU; readonly height: LU };
+
 /** A laid-out marker box: its inline-block size and its baseline from its top (its own line's ascent with half-leading). */
-export type MarkerBox = { readonly id: string; readonly width: LU; readonly height: LU; readonly ascent: LU; readonly marginStart: LU };
+export type MarkerBox = { readonly id: string; readonly width: LU; readonly height: LU; readonly ascent: LU; readonly marginStart: LU; readonly text: MarkerText | null };
+
+/** The id of a text marker's text fragment ("<list item>::marker:text0"), and of its one line ("...:text0:line0"). */
+export function markerTextId(markerId: string): string {
+  return `${markerId}:text0`;
+}
 
 /** list_marker.cc WidthOfSymbol: (ascent * 2 / 3 + 1) / 2 + 2 in int arithmetic on the rounded ascent; 0 at a zero font size. */
 export function symbolWidthPx(ascentPx: number, fontSize: number): number {
@@ -32,7 +43,7 @@ export function layoutMarker(ctx: Ctx, m: ListMarker): MarkerBox {
   const height = add(line.above, line.below);
   if (m.kind === 'symbol') {
     const ascentPx = floorToInt(fontMetricsOf(ctx, m.id, m.font).ascent);
-    return { id: m.id, width: fromWholePx(symbolWidthPx(ascentPx, m.font.size)), height, ascent: line.above, marginStart: fromWholePx(symbolMarginStartPx(ascentPx)) };
+    return { id: m.id, width: fromWholePx(symbolWidthPx(ascentPx, m.font.size)), height, ascent: line.above, marginStart: fromWholePx(symbolMarginStartPx(ascentPx)), text: null };
   }
   const text = m.text === null ? '' : m.text;
   const r = ctx.measurer.measure(text, fontOf(m.font));
@@ -40,7 +51,9 @@ export function layoutMarker(ctx: Ctx, m: ListMarker): MarkerBox {
     if (r.code === 'text-script') unsupported('text-script', m.id, 'notes/T056-txt1a-spec.md R4', r.reason);
     unsupported('text-glyph', m.id, 'css-fonts-4 §5', r.reason);
   }
-  return { id: m.id, width: r.measure.width, height, ascent: line.above, marginStart: neg(r.measure.width) };
+  const font = fontMetricsOf(ctx, m.id, m.font);
+  const own: MarkerText = { id: markerTextId(m.id), top: sub(line.above, font.ascent), height: add(font.ascent, font.descent) };
+  return { id: m.id, width: r.measure.width, height, ascent: line.above, marginStart: neg(r.measure.width), text: own };
 }
 
 /**

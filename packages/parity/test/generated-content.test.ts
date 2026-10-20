@@ -37,28 +37,30 @@ describe('unionRects (getBoundingClientRect of fragments)', () => {
 
 describe('snapshotGeneratedText (R9)', () => {
   const page: Rect4[][] = [[[0, 32, 16, 16]]];
+  const NONE: ReadonlySet<string> = new Set();
   it('divides the snapshot text boxes by the DPR and names them by the host\'s data-dragon-id', () => {
-    const r = snapshotGeneratedText(snapshot(), 2, page);
+    const r = snapshotGeneratedText(snapshot(), 2, page, NONE);
     expect(r.texts).toEqual([{ host: 'd', type: 'before', text: 'aa bb', boxes: [{ rect: [0, 0, 32, 16], start: 0, length: 2 }, { rect: [0, 16, 32, 16], start: 3, length: 2 }] }]);
     expect([r.lines, r.worst]).toEqual([1, 0]);
   });
   it('fails loud when a real text box differs from its Range rect, as the plant snapshotTextNotScaled makes it at DPR 2', () => {
-    expect(() => snapshotGeneratedText(snapshot(), 2, page, { ...NO_PSEUDO_CAPTURE_FAULTS, snapshotTextNotScaled: true })).toThrow(/R9 cross-check: a snapshot text box divided by the DPR differs/);
-    expect(() => snapshotGeneratedText(snapshot(), 2, [])).toThrow(/1 light-DOM text nodes, the page 0/);
-    expect(() => snapshotGeneratedText(snapshot(), 2, [[[0, 32, 16, 16], [0, 0, 1, 1]]])).toThrow(/1 snapshot text boxes and 2 Range client rects/);
+    expect(() => snapshotGeneratedText(snapshot(), 2, page, NONE, { ...NO_PSEUDO_CAPTURE_FAULTS, snapshotTextNotScaled: true })).toThrow(/R9 cross-check: a snapshot text box divided by the DPR differs/);
+    expect(() => snapshotGeneratedText(snapshot(), 2, [], NONE)).toThrow(/1 light-DOM text nodes, the page 0/);
+    expect(() => snapshotGeneratedText(snapshot(), 2, [[[0, 32, 16, 16], [0, 0, 1, 1]]], NONE)).toThrow(/1 snapshot text boxes and 2 Range client rects/);
   });
   it('fails loud on a host without data-dragon-id and on text of another pseudo-element', () => {
     const noId = snapshot();
     (noId.documents[0]?.nodes.attributes as number[][])[3] = [];
-    expect(() => snapshotGeneratedText(noId, 2, page)).toThrow(/host has no data-dragon-id/);
+    expect(() => snapshotGeneratedText(noId, 2, page, NONE)).toThrow(/host has no data-dragon-id/);
     const other = { ...snapshot(), strings: [...snapshot().strings.slice(0, 5), 'first-letter', ...snapshot().strings.slice(6)] };
-    expect(() => snapshotGeneratedText(other, 2, page)).toThrow(/text in a ::first-letter pseudo-element/);
+    expect(() => snapshotGeneratedText(other, 2, page, NONE)).toThrow(/text in a ::first-letter pseudo-element/);
   });
-  it('skips a ::marker\'s text (Dragon has no marker text node) but still requires its host\'s data-dragon-id', () => {
+  it('keeps a text ::marker\'s text, skips a symbol ::marker\'s (Dragon draws a symbol without a text node), and requires its host\'s data-dragon-id', () => {
     const marker = { ...snapshot(), strings: [...snapshot().strings.slice(0, 5), 'marker', ...snapshot().strings.slice(6)] };
-    expect(snapshotGeneratedText(marker, 2, page).texts).toEqual([]);
+    expect(snapshotGeneratedText(marker, 2, page, NONE).texts).toEqual([{ host: 'd', type: 'marker', text: 'aa bb', boxes: [{ rect: [0, 0, 32, 16], start: 0, length: 2 }, { rect: [0, 16, 32, 16], start: 3, length: 2 }] }]);
+    expect(snapshotGeneratedText(marker, 2, page, new Set(['d'])).texts).toEqual([]);
     (marker.documents[0]?.nodes.attributes as number[][])[3] = [];
-    expect(() => snapshotGeneratedText(marker, 2, page)).toThrow(/a ::marker box's host has no data-dragon-id/);
+    expect(() => snapshotGeneratedText(marker, 2, page, NONE)).toThrow(/a ::marker box's host has no data-dragon-id/);
   });
 });
 

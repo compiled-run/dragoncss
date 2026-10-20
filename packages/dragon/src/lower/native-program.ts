@@ -21,7 +21,7 @@ import { borderWrites } from './paint/border.ts';
 import { clipsChildren } from './paint/clip.ts';
 import type { PaintWrite } from './paint/registry.ts';
 import { lowerBoxPaint, paintVocabulary, paintWriteCss } from './paint/registry.ts';
-import { listMarkerWrite } from './paint/list-marker.ts';
+import { listMarkerWrite, markerTextId } from './paint/list-marker.ts';
 import { inlineStackingFacts, markerStackingFacts } from './paint/stacking.ts';
 import { visibilityWrites } from './paint/visibility.ts';
 import type { NativeBackend, Technique, VocabularyEntry } from './paint/types.ts';
@@ -183,15 +183,18 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   };
   // GEN-c: a list item's outside marker is the last child of its view, as the engine places its rect after the item's content. The dump
   // schema knows element nodes, so it is one: a box view with a transparent background, no borders (currentcolor ones of zero width,
-  // as an anonymous box's), the item's visibility (the marker inherits it) and the marker write in the item's color.
+  // as an anonymous box's), the item's visibility (the marker inherits it) and, for a symbol, the marker write in the item's color.
+  // A text marker's box holds a text node at the engine's text fragment ("<marker>:text0"), drawn as a text leaf in the item's font.
   const marker = (m: ListMarker, item: string, el: ResolvedElement | null): void => {
     if (el === null) throw new ProgramError(`${m.id}: the list item ${item} has no resolved element`);
     const color = usedColors(el).color;
     const hidden = visibilityWrites(el);
     const facts: Record<string, unknown> = { stacking: markerStackingFacts(m) };
     for (const w of hidden) facts['visibility'] = { visible: false, value: w.value };
-    const writes: PaintWrite[] = [{ kind: 'background-color', color: TRANSPARENT }, ...borderWrites(m.id, null, color), ...hidden, listMarkerWrite(m, color)];
+    const symbol = m.kind === 'symbol' ? [listMarkerWrite(m, color)] : [];
+    const writes: PaintWrite[] = [{ kind: 'background-color', color: TRANSPARENT }, ...borderWrites(m.id, null, color), ...hidden, ...symbol];
     out.push({ id: m.id, parent: item, kind: 'element', clips: false, text: null, writes, facts });
+    if (m.kind === 'text') out.push(markerTextPaint(m, el, color, plants));
   };
   // T044 R3: the text views, inline box views and <br> views of an inline formatting context are all flat children of its block
   // container's view, in tree order. Inline boxes are unpainted (their decorations are INL1b) and a <br> draws nothing.
@@ -225,12 +228,23 @@ function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, Owned
   if (owned === undefined) throw new ProgramError(`${t.id}: no resolved text for the text leaf`);
   const color = owned.text.props.get('color');
   if (color === undefined) throw new ProgramError(`${t.id}: color did not resolve`);
-  const writes: WriteKind[] = [{ kind: 'font', font: t.font }, { kind: 'text-color', color: colorChannels(color.value, t.id) }];
+  return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes: textWrites(t.font, colorChannels(color.value, t.id), owned.owner, plants), facts: {} };
+}
+
+/** A text marker's text node: its compile-time text in the list item's font and used color, parented to the marker's box. */
+function markerTextPaint(m: ListMarker, item: ResolvedElement, color: Rgba8, plants: TextPlants): NodePaint {
+  if (m.text === null) throw new ProgramError(`${m.id}: a text marker has no text`);
+  return { id: markerTextId(m.id), parent: m.id, kind: 'text', clips: false, text: m.text, writes: textWrites(m.font, color, item, plants), facts: {} };
+}
+
+/** A text run's writes: its font and color, and Ahem's synthetic oblique and bold from the element whose computed font it is drawn in. */
+function textWrites(font: FontSpec, color: Rgba8, owner: ResolvedElement, plants: TextPlants): WriteKind[] {
+  const writes: WriteKind[] = [{ kind: 'font', font }, { kind: 'text-color', color }];
   // Native draws only Ahem (a real face is refused on native), whose one regular face Chrome shears for a slope of 14deg and up
   // and emboldens from weight 600 (both together are refused, computed-checks.ts syntheticTextFont).
-  if (t.font.family === 'Ahem' && synthesizesOblique(owned.owner.props) && !plants.ahemObliqueUnsheared) writes.push({ kind: 'synthetic-oblique', shear: SYNTHETIC_OBLIQUE_SHEAR });
-  if (t.font.family === 'Ahem' && synthesizesBold(owned.owner.props, plants.ahemSyntheticBoldFrom700 ? 700 : 600) && !plants.ahemBoldUnstroked) writes.push({ kind: 'synthetic-bold', keys: SYNTHETIC_BOLD_KEYS, values: SYNTHETIC_BOLD_VALUES });
-  return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes, facts: {} };
+  if (font.family === 'Ahem' && synthesizesOblique(owner.props) && !plants.ahemObliqueUnsheared) writes.push({ kind: 'synthetic-oblique', shear: SYNTHETIC_OBLIQUE_SHEAR });
+  if (font.family === 'Ahem' && synthesizesBold(owner.props, plants.ahemSyntheticBoldFrom700 ? 700 : 600) && !plants.ahemBoldUnstroked) writes.push({ kind: 'synthetic-bold', keys: SYNTHETIC_BOLD_KEYS, values: SYNTHETIC_BOLD_VALUES });
+  return writes;
 }
 
 function toBackend(backend: NativeBackend, root: LayoutBox, rootFontSize: number, paint: readonly NodePaint[]): NativeProgram {

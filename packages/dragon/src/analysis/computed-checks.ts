@@ -631,24 +631,42 @@ function listMarkerOf(el: ResolvedElement): string | null {
 /**
  * T151 R14: why GEN-c does not draw a list item's marker for a target, or null when it does. The web keeps Chrome's own marker for
  * every R14 type; iOS and Android draw outside disc and square symbols (paint-aa's oval and rect fills, proven pixel-exact by the
- * GEN-P oracle). Email keeps the GEN-b refusal.
+ * GEN-P oracle) and text markers as a text view in the marker box. Email keeps the GEN-b refusal.
  */
-function markerRefusal(el: ResolvedElement, target: string): string | null {
+function markerRefusal(el: ResolvedElement, ancestors: readonly ResolvedElement[], target: string): string | null {
   const type = markerTypeOf((el.props.get('list-style-type') as ResolvedValue).value);
   if (type.kind === 'refused') return type.reason;
   if (target === 'email') return 'Dragon draws markers from the GEN-c package on the web, iOS and Android only';
   if (keywordOf(el.props.get('list-style-position') as ResolvedValue) !== 'outside') return 'an inside marker is not supported yet (::marker and inside markers, GEN-d6)';
   if (target === 'web' || type.kind !== 'type') return null;
+  if (type.type.kind === 'style' && type.type.name === 'circle') return 'a circle marker is a 1 device px hairline (Skia SkScan_Antihair), which Dragon does not draw on iOS and Android yet';
   if (type.type.kind !== 'style' || (type.type.name !== 'disc' && type.type.name !== 'square')) {
-    return type.type.kind === 'style' && type.type.name === 'circle'
-      ? 'a circle marker is a 1 device px hairline (Skia SkScan_Antihair), which Dragon does not draw on iOS and Android yet'
-      : 'a text marker is not drawn on iOS and Android yet (GEN-c draws disc and square)';
+    const why = textMarkerRefusal(el, ancestors);
+    if (why !== null) return why;
   }
   const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
   const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
   if (ox !== 'visible' || oy !== 'visible') return `overflow: ${ox} ${oy} on a list item clips its outside marker in a way Dragon has not proven on iOS and Android`;
   const first = el.children.find((c): c is ResolvedElement => c.kind === 'element' && keywordOf(c.props.get('display') as ResolvedValue) !== 'none' && keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute');
   if (first !== undefined && ['grid', 'inline-grid'].includes(keywordOf(first.props.get('display') as ResolvedValue))) return `its first child ${first.element.address} is a grid container, whose first baseline the marker would align with (GEN-c2 after G1)`;
+  return null;
+}
+
+/**
+ * Why iOS and Android do not draw a list item's text marker ("1. ", "a. ", a string) as an Ahem text view in its marker box
+ * (native-program.ts), or null. The marker text inherits the item's text properties; those the view would not draw are refused.
+ */
+function textMarkerRefusal(el: ResolvedElement, ancestors: readonly ResolvedElement[]): string | null {
+  const v = (p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
+  if (keywordOf(v('direction')) === 'rtl') return 'a text marker in a right-to-left list item is reordered by the bidi algorithm (UAX #9), which Dragon does not draw on iOS and Android yet';
+  const family = v('font-family').value;
+  if (!(family.kind === 'family' && family.value === 'Ahem')) return `its text marker is in font-family: ${valueToString(family)}, and iOS and Android draw marker text in Ahem only`;
+  for (const p of ['letter-spacing', 'word-spacing'] as const) if (wordSpaced(v(p))) return `${p}: ${valueToString(v(p).value)} reaches its text marker, which the engine lays out without spacing`;
+  if (valueToString(v('text-shadow').value) !== 'none') return `text-shadow: ${valueToString(v('text-shadow').value)} reaches its text marker, which Dragon does not draw on iOS and Android`;
+  if (keywordOf(v('-webkit-text-fill-color')) !== 'currentcolor') return `-webkit-text-fill-color: ${valueToString(v('-webkit-text-fill-color').value)} reaches its text marker, which Dragon paints in color`;
+  if (!isZeroLength(v('-webkit-text-stroke-width').value)) return `-webkit-text-stroke-width: ${valueToString(v('-webkit-text-stroke-width').value)} reaches its text marker, which Dragon does not stroke`;
+  const decorated = [...ancestors, el].find((a) => valueToString((a.props.get('text-decoration-line') as ResolvedValue).value) !== 'none');
+  if (decorated !== undefined) return `text-decoration-line on ${decorated.element.address} may decorate its text marker, which no Chrome case proves on iOS and Android`;
   return null;
 }
 
@@ -699,7 +717,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
         }
         if (marker !== null && !faults.listItemDiscAccepted) {
           for (const t of targets) {
-            const why = markerRefusal(el, t);
+            const why = markerRefusal(el, ancestors, t);
             if (why === null) continue;
             once(`${t}|ua-list-item|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: el.element.node.origin, target: t, message: `display: list-item on <${tag}> ${el.element.address} generates a ${marker} marker (::marker, css-lists-3 §3): ${why}`, manual: `Set list-style: none on ${el.element.address} or its list, or set display: block.`, basis: 'computed-value' })));
           }

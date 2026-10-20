@@ -14,6 +14,7 @@
 // ancestor's clip view would clip although the clip is not in its containing-block chain. Every layer item
 // gets a write; flow boxes get none.
 import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, ListMarker } from '@dragon/layout';
+import { markerTextId } from './list-marker.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
@@ -368,8 +369,9 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
     };
   };
   const content = (c: InlineChild): StackNode[] => (c.kind === 'inline' ? [own(c, elementOf(c), false, []), ...c.children.flatMap(content)] : [leaf(c.id)]);
-  // GEN-c: a list item's marker is a static box view after the item's content (native-program.ts), never a layer item.
-  const marker = (m: ListMarker): StackNode => ({ id: m.id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: false, children: [] });
+  // GEN-c: a list item's marker is a static box view after the item's content (native-program.ts), never a layer item; a text
+  // marker's text view is its one child.
+  const marker = (m: ListMarker): StackNode => ({ id: m.id, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: false, children: m.kind === 'text' ? [leaf(markerTextId(m.id))] : [] });
   const node = (b: LayoutNode, item: boolean): StackNode => {
     const el = elementOf(b);
     const container = FLEX_OR_GRID.includes(b.style.display);

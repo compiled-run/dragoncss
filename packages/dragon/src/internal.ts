@@ -13,7 +13,7 @@ import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
-import { rootFontSizeOf } from './lower/ios-layout.ts';
+import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
 import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
@@ -265,7 +265,9 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, Rgba8>();
+  const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
+    elements.set(el.element.address, el);
     for (const ch of el.children) {
       if (ch.kind === 'element') walk(ch);
       else {
@@ -276,6 +278,12 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
     }
   };
   walk(c.resolved);
+  // GEN-c: a text marker's text ("<item>::marker:text0") is drawn in its item's color, which the ::marker inherits.
+  for (const m of listItemMarkers(c.resolved)) {
+    const item = elements.get(m.address);
+    if (m.type.kind !== 'type' || isSymbolMarker(m.type.type) || item === undefined) continue;
+    out.set(markerTextId(`${m.address}::marker`), usedColors(item).color);
+  }
   return out;
 }
 
@@ -372,6 +380,7 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
 // GEN-c (T151 R14): the compile-time ordinal and marker text of every list item in one case (analysis/markers.ts).
 export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
 import { listItemMarkers } from './analysis/markers.ts';
+import { markerTextId } from './lower/paint/list-marker.ts';
 import type { GenCFaults } from './faults/gen-c.ts';
 
 /** The list items of one case in tree order, with their ordinals and marker text; null without a resolved case. */

@@ -626,8 +626,15 @@ type FlowResult = {
 };
 
 /** The marker's fragment as a child of the list item, at its InlineOffset and its aligned (or top) block offset. */
+// A text marker's box holds its text fragment, which holds its one line ("<text>:line0"), as a text leaf's rects do (inline.ts fragmentOf).
 function markerPlaced(marker: MarkerBox, y: LU | null, borderBoxWidth: LU, direction: Direction): Placed {
-  return { frag: { id: marker.id, width: marker.width, height: marker.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: markerX(marker, borderBoxWidth, direction), y: y === null ? ZERO : y };
+  const t = marker.text;
+  const children: Placed[] = [];
+  if (t !== null) {
+    const line: Placed = { frag: { id: `${t.id}:line0`, width: marker.width, height: t.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: ZERO, y: ZERO };
+    children.push({ frag: { id: t.id, width: marker.width, height: t.height, baseline: null, children: [line], outOfFlow: [], inflow: null }, x: ZERO, y: t.top });
+  }
+  return { frag: { id: marker.id, width: marker.width, height: marker.height, baseline: null, children, outOfFlow: [], inflow: null }, x: markerX(marker, borderBoxWidth, direction), y: y === null ? ZERO : y };
 }
 
 // CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins. css-align-3 §9.1: the first

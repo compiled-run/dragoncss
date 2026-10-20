@@ -3,7 +3,8 @@
 // values from getComputedStyle(host, '::before'), and their text from DOMSnapshot.captureSnapshot text boxes divided by the DPR.
 // Every capture cross-checks the snapshot against the Range rects of the page's real text, and fails loud on anything it cannot
 // name. A page without a generated box opens no CDP session (pageHasGeneratedContent), so every other capture is unchanged.
-// GEN-c R14: a list item's ::marker box is captured the same way, without its text (Dragon lays out no text node for a marker).
+// GEN-c R14: a list item's ::marker box is captured the same way; a text marker's text too ("1. ", as Dragon's "<li>::marker:text0"),
+// but not a symbol marker's ("• "), which Dragon draws without a text node.
 import type { CDPSession, Page } from 'playwright';
 import type { CapturedNode } from './capture.ts';
 
@@ -90,9 +91,9 @@ function attrOf(strings: readonly string[], attrs: readonly number[] | undefined
  * The generated texts of a snapshot, and the R9 cross-check: every light-DOM text node's snapshot boxes, divided by the DPR, must
  * equal its Range client rects (pageTextRects, one list per text node of the document in tree order) within CROSS_CHECK_CSS_PX.
  * Throws on a failed cross-check, on a generated box whose host has no data-dragon-id, and on text of any other pseudo-element.
- * A ::marker's text ("• ", "1. ") is not returned: Dragon's marker has no text node.
+ * The text of a symbol ::marker ("• ") is not returned, its host being in symbolMarkers: Dragon's symbol marker has no text node.
  */
-export function snapshotGeneratedText(snap: Snapshot, dpr: number, pageTextRects: readonly (readonly Rect4[])[], faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): { readonly texts: GeneratedText[]; readonly lines: number; readonly worst: number } {
+export function snapshotGeneratedText(snap: Snapshot, dpr: number, pageTextRects: readonly (readonly Rect4[])[], symbolMarkers: ReadonlySet<string>, faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): { readonly texts: GeneratedText[]; readonly lines: number; readonly worst: number } {
   const d = snap.documents[0];
   if (d === undefined) throw new Error('DOMSnapshot has no document');
   const S = snap.strings;
@@ -142,7 +143,8 @@ export function snapshotGeneratedText(snap: Snapshot, dpr: number, pageTextRects
     }
     const host = attrOf(S, n.attributes[n.parentIndex[i] as number], 'data-dragon-id');
     if (host === undefined) throw new Error(`a ::${type} box's host has no data-dragon-id`);
-    if (boxes.length === 0 || type === 'marker') continue;
+    if (boxes.length === 0) continue;
+    if (type === 'marker' && symbolMarkers.has(host)) continue;
     texts.push({ host, type, text: layoutText.get(i) ?? '', boxes: boxes.map((b) => ({ rect: [fr(b.rect[0]), fr(b.rect[1]), fr(b.rect[2]), fr(b.rect[3])] as const, start: b.start, length: b.length })) });
   }
   return { texts, lines, worst };
@@ -176,12 +178,20 @@ const pageTextRects = (): [number, number, number, number][][] => {
   return out;
 };
 
+/** css-lists-3 §3.3: the list-style-type values Chrome draws as a symbol (list_marker.cc kSymbol), not as marker text. */
+const SYMBOL_TYPES: readonly string[] = ['disc', 'circle', 'square', 'disclosure-open', 'disclosure-closed'];
+
+/** Runs in the page: the data-dragon-id of every element whose list-style-type Chrome draws as a symbol marker. */
+const pageSymbolMarkerHosts = (types: readonly string[]): string[] =>
+  Array.from(document.querySelectorAll('[data-dragon-id]')).filter((el) => types.includes(getComputedStyle(el).listStyleType)).map((el) => el.getAttribute('data-dragon-id') as string);
+
 /** The snapshot's generated texts and the cross-check, on an open CDP session of the page. */
 async function generatedTexts(page: Page, cdp: CDPSession, faults: PseudoCaptureFaults): Promise<GeneratedText[]> {
   const rects = await page.evaluate(pageTextRects);
+  const symbols = new Set(await page.evaluate(pageSymbolMarkerHosts, SYMBOL_TYPES));
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   const snap = (await cdp.send('DOMSnapshot.captureSnapshot', { computedStyles: [], includeDOMRects: true })) as unknown as Snapshot;
-  return snapshotGeneratedText(snap, dpr, rects, faults).texts;
+  return snapshotGeneratedText(snap, dpr, rects, symbols, faults).texts;
 }
 
 /** Every generated text of the page; empty, with no CDP session, when the page has no generated box (line-breaks.ts). */

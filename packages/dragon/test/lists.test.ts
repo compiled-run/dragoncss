@@ -116,17 +116,33 @@ describe('list items (display: list-item) whose marker generates no box', () => 
       el(r, 'fl', 'ul', ['f', 'n'], [el(r, 'fi', 'li', [], [text(r, 'v', 'X')])]),
     ])).toEqual([]);
   });
-  it('GEN-c: outside disc and square markers compile on every target; iOS refuses circle, text and string markers; inside markers are refused everywhere', () => {
+  it('GEN-c: outside disc, square, text and string markers compile on every target; iOS refuses circle; inside markers are refused everywhere', () => {
     const msg = (target: string, type: string, why: string) => `DRAGON_UNSUPPORTED_VALUE ${target} display: list-item on <li> li generates a ${type} marker (::marker, css-lists-3 §3): ${why}`;
     const list = (css: string) => messages(NO_FAULTS, `${FONT} ${css}`, (r) => [el(r, 'ul', 'ul', ['s'], [el(r, 'li', 'li')])]);
     expect(list('')).toEqual([]);
     expect(list('.s { list-style-type: square; }')).toEqual([]);
     expect(list('.s { list-style-type: circle; }')).toEqual([msg('ios', 'circle', 'a circle marker is a 1 device px hairline (Skia SkScan_Antihair), which Dragon does not draw on iOS and Android yet')]);
-    expect(list(".s { list-style: '>> '; }")).toEqual([msg('ios', '">> "', 'a text marker is not drawn on iOS and Android yet (GEN-c draws disc and square)')]);
-    expect(list('.s { list-style-type: upper-roman; }')).toEqual([msg('ios', 'upper-roman', 'a text marker is not drawn on iOS and Android yet (GEN-c draws disc and square)')]);
+    expect(list(".s { list-style: '>> '; }")).toEqual([]);
+    expect(list('.s { list-style-type: upper-roman; }')).toEqual([]);
+    expect(list('.s { list-style-type: decimal; }')).toEqual([]);
+    expect(list('.s { list-style-type: lower-alpha; }')).toEqual([]);
     const inside = 'an inside marker is not supported yet (::marker and inside markers, GEN-d6)';
     expect(list('.s { list-style: square inside; }')).toEqual([msg('ios', 'square', inside), msg('web', 'square', inside)]);
     expect(list('.s { list-style-type: hebrew; }')).toHaveLength(2);
+  });
+  it('GEN-c on iOS: a text marker whose inherited text properties the text view would not draw is refused', () => {
+    const msg = (why: string) => `DRAGON_UNSUPPORTED_VALUE ios display: list-item on <li> li generates a decimal marker (::marker, css-lists-3 §3): ${why}`;
+    const list = (css: string, li: string[] = []) => messages(NO_FAULTS, `${FONT} .s { list-style-type: decimal; } ${css}`, (r) => [el(r, 'ul', 'ul', ['s'], [el(r, 'li', 'li', li)])]);
+    expect(list('.r { direction: rtl; }', ['r'])).toEqual([msg('a text marker in a right-to-left list item is reordered by the bidi algorithm (UAX #9), which Dragon does not draw on iOS and Android yet')]);
+    expect(list('.l { letter-spacing: 2px; }', ['l'])).toEqual([msg('letter-spacing: 2px reaches its text marker, which the engine lays out without spacing')]);
+    expect(list('.w { word-spacing: 3px; }', ['w'])).toEqual([msg('word-spacing: 3px reaches its text marker, which the engine lays out without spacing')]);
+    expect(list('.t { text-shadow: 1px 1px red; }', ['t'])).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE ios .*: text-shadow: .* reaches its text marker, which Dragon does not draw on iOS and Android$/)]);
+    expect(list('.k { -webkit-text-fill-color: red; }', ['k'])).toEqual([expect.stringMatching(/: -webkit-text-fill-color: .* reaches its text marker, which Dragon paints in color$/)]);
+    expect(list('.k { -webkit-text-stroke-width: 1px; }', ['k'])).toEqual([msg('-webkit-text-stroke-width: 1px reaches its text marker, which Dragon does not stroke')]);
+    expect(list('.u { text-decoration-line: underline; }', ['u'])).toEqual([msg('text-decoration-line on li may decorate its text marker, which no Chrome case proves on iOS and Android')]);
+    expect(list('.s { text-decoration-line: underline; }').filter((m) => m.includes('marker'))).toEqual([msg('text-decoration-line on ul may decorate its text marker, which no Chrome case proves on iOS and Android')]);
+    // A symbol marker draws no text, so the same properties leave it drawn.
+    expect(messages(NO_FAULTS, `${FONT} .l { letter-spacing: 2px; direction: rtl; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', ['l'])])])).toEqual([]);
   });
   it('GEN-c on iOS: a list item that clips, or whose first child is a grid container, keeps its marker refused', () => {
     expect(messages(NO_FAULTS, `${FONT} .o { overflow: hidden; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', ['o'])])]).map((m) => m.split(' ')[1])).toEqual(['ios']);

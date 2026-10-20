@@ -114,9 +114,9 @@ describe('refusals of UA defaults Dragon does not model', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'h1', 'h1'), el(r, 'h6', 'h6'), el(r, 'p', 'p', [], [text(r, 't', 'XX')])]))).toEqual([]);
   });
   // GEN-b (T151 R13): the UA list item keeps its disc marker and stays refused; list-style: none leaves it no marker box.
-  it('display: list-item from the UA sheet compiles with its disc marker (GEN-c); the ol decimal marker is refused on iOS only', () => {
+  it('display: list-item from the UA sheet compiles with its disc marker and the ol decimal marker (GEN-c)', () => {
     expect(codes(inputFor(FONT, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li')])]))).toEqual([]);
-    expect(codes(inputFor(FONT, (r) => [el(r, 'ol', 'ol', [], [el(r, 'li', 'li')])]))).toEqual(['DRAGON_UNSUPPORTED_VALUE ios']);
+    expect(codes(inputFor(FONT, (r) => [el(r, 'ol', 'ol', [], [el(r, 'li', 'li')])]))).toEqual([]);
     expect(codes(inputFor(`${FONT} .b { display: block; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', ['b'])])]))).toEqual([]);
     expect(codes(inputFor(`${FONT} .n { list-style: none; }`, (r) => [el(r, 'ul', 'ul', ['n'], [el(r, 'li', 'li')])]))).toEqual([]);
   });

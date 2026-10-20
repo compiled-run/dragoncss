@@ -2,6 +2,6 @@
 // flex and an inline-block first child, a taller marker that pushes block content down, empty items, items without line boxes, a
 // bordered item and a flex list (the family6-alignment cases), and the Tailwind list shapes, in both directions.
 import type { FixtureSpec } from '../fixtures.ts';
-import { both } from './define.ts';
+import { both, layout } from './define.ts';
 
-export const LIST_MARKERS: readonly FixtureSpec[] = [both('list-markers-disc'), both('list-markers-tailwind')];
+export const LIST_MARKERS: readonly FixtureSpec[] = [both('list-markers-disc'), both('list-markers-tailwind'), layout('list-markers-text')];

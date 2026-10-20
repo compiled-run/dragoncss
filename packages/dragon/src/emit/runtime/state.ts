@@ -576,6 +576,8 @@ const rgba = (c: Rgba8): string => `DragonRGBA8(${c.r}, ${c.g}, ${c.b}, ${c.alph
 /** A node record as a DragonStateNode literal (the interaction runtime emits its deltas with it too). */
 export function nodeLit(lang: Lang, n: ProgramNode): string {
   const q = (s: string): string => stringLit(lang, s);
+  // GEN-c: a text marker's text node (native-program.ts), like a symbol's marker write, is drawn on the static program only.
+  if (n.kind === 'text' && n.parent !== null && n.parent.endsWith('::marker')) throw new StateEmitError(`${n.id}: a list marker in a state program has no state-node write (GEN-c draws markers on the static program only)`);
   const writes: string[] = [];
   for (const w of n.writes) {
     switch (w.kind) {

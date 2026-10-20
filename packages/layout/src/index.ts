@@ -38,6 +38,7 @@ export { platformFontSize, snapEdge, textRunLayoutUnit, zoomFontSize } from './u
 export type { LinePiece, PlacedLine } from './inline.ts';
 export { inlineBoxes, inlineBreaks, inlineLeaves, leafFontOf, placeLines } from './inline.ts';
 export { clampedInput } from './line-clamp.ts';
+export { markerTextId } from './marker.ts';
 export type { Ctx } from './block.ts';
 export { resolvePadding } from './box.ts';
 export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';

@@ -57,6 +57,18 @@ describe('marker placement (family6-alignment)', () => {
     expect(css(m, 'b')).toEqual([50, 16, 300, 16]);
   });
 
+  it('a text marker holds its text fragment and one line at its baseline less the ascent; a symbol holds none', () => {
+    const lh: LineHeightValue = { kind: 'px', value: 40 };
+    const tall: ListMarker = { ...decimal('c', '2. '), lineHeight: lh };
+    const m = run(page([li('a', disc('a'), [t16('a:text0', 'c')]), li('b', decimal('b', '1. '), [t16('b:text0', 'd')]), li('c', tall, [text('c:text0', 'e', { font: ahemFont(16), lineHeight: lh })])]));
+    expect([...m.keys()].filter((id) => id.startsWith('a::marker'))).toEqual(['a::marker']);
+    expect(css(m, 'b::marker:text0')).toEqual([2, 16, 48, 16]);
+    expect(css(m, 'b::marker:text0:line0')).toEqual([2, 16, 48, 16]);
+    // Line height 40: half-leading 12 above the 13px ascent puts the text top 12px into the 40px marker box.
+    expect(css(m, 'c::marker')).toEqual([2, 32, 48, 40]);
+    expect(css(m, 'c::marker:text0')).toEqual([2, 44, 48, 16]);
+  });
+
   it('nested-block: the marker aligns with the text two padded blocks down (y 13)', () => {
     const deep = box('deep', { paddingTop: px(3) }, [t16('deep:text0', 'xx')]);
     const m = run(page([li('a', disc('a'), [box('inner', { paddingTop: px(10) }, [deep])])]));

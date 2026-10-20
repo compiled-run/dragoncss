@@ -1,4 +1,5 @@
 // Stage 2 of docs/api.md §4.1 for ios: resolved CSS to Dragon's layout engine input, with every field set explicitly.
+import type { ListStyleType } from '../css/counter-styles.ts';
 import type {
   AlignContent,
   AspectRatioValue,
@@ -670,6 +671,9 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
 
 const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];
 
+/** Whether a list-style-type GEN-c writes is drawn as a symbol (disc, circle, square) rather than as its marker text. */
+export const isSymbolMarker = (t: ListStyleType): boolean => t.kind === 'style' && SYMBOLS.includes(t.name);
+
 /**
  * T151 R14: a list item's outside marker in its own font and line-height, a symbol for disc, circle and square and otherwise its
  * compile-time counter text (analysis/markers.ts); null for list-style-type none. computed-checks.ts refuses what GEN-c does not draw.
@@ -682,6 +686,6 @@ function markerOf(el: ResolvedElement, l: Lowerer): ListMarker | null {
   if (m.type.kind === 'refused') throw new LoweringError(id, 'list-style-type', m.type.reason);
   const { font, lineHeight } = lowerFont(id, (p) => (el.props.get(p) as ResolvedValue).value, l.mode);
   const t = m.type.type;
-  if (t.kind === 'style' && SYMBOLS.includes(t.name)) return { id: `${id}::marker`, kind: 'symbol', symbol: t.name as ListMarker['symbol'], text: null, font, lineHeight };
+  if (t.kind === 'style' && isSymbolMarker(t)) return { id: `${id}::marker`, kind: 'symbol', symbol: t.name as ListMarker['symbol'], text: null, font, lineHeight };
   return { id: `${id}::marker`, kind: 'text', symbol: null, text: m.text, font, lineHeight };
 }
