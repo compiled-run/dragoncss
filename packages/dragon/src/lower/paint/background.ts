@@ -3,7 +3,7 @@
 // opacity alpha byte (paint.ts opacityAlpha8), as Chrome folds the group's alpha into its one draw; effects.ts then writes no alpha.
 import { opacityFolds } from '../../analysis/paint-values/effects.ts';
 import type { Rgba8 } from '../../css/color.ts';
-import { TRANSPARENT } from '../../css/color.ts';
+import { opacityAlpha8, TRANSPARENT } from '../../css/color.ts';
 import { opacityOf } from '../../css/properties/effects.ts';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
 import { usedColors } from './colors.ts';
@@ -21,12 +21,6 @@ export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   css: { 'background-color': ['background-color'] },
   // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transparent.
   lower: ({ el }) => [{ kind: 'background-color', color: el === null ? TRANSPARENT : foldedBackground(el) }],
-};
-
-/** Chrome's paint alpha byte of an opacity: @dragon/layout paint.ts opacityAlpha8 (Skia's getAlpha, in float), pinned equal by test. */
-export const opacityAlpha8 = (opacity: number): number => {
-  const o = Math.fround(opacity < 0 ? 0 : opacity > 1 ? 1 : opacity);
-  return Math.floor(Math.fround(Math.fround(o * 255) + 0.5));
 };
 
 /** The fractional opacity of an element whose group folds into its fill, or null. */

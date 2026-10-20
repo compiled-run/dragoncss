@@ -8,7 +8,7 @@ import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { EFFECTS_EMITTER } from '../src/emit/paint/effects.ts';
-import { opacityAlpha8 as foldAlpha8 } from '../src/lower/paint/background.ts';
+import { opacityAlpha8 as foldAlpha8 } from '../src/css/color.ts';
 import type { Targets } from '../src/types.ts';
 import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
 
