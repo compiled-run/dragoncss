@@ -14,7 +14,7 @@ import { atDpr, committedDprCapture, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS 
 import { spawnChild } from './device-exec.ts';
 import type { ExecResult } from './device-exec.ts';
 import { checkAgainstChrome, checkAgainstEngine, DUMP_FAULTS, referenceDump } from './native-compare.ts';
-import { caseCount, LANES_JSON, laneRecord, ranFits, ranIds, ranOf, readLanesFile, sha256, staleCovers, staleLanes } from './lanes-file.ts';
+import { carriedDeviceRecord, caseCount, DEVICE_NOT_RUN, LANES_JSON, laneRecord, ranFits, ranIds, readLanesFile, sha256, staleCovers, staleLanes } from './lanes-file.ts';
 import { validateNativeDump } from './native-dump.ts';
 import { committedPixelManifestProblems } from './pixel-reference.ts';
 import { repoPath } from './paths.ts';
@@ -34,7 +34,7 @@ import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
 import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest, vectorCaseIds } from './targets.ts';
 
-export { caseCount, LANES_JSON, ranIds, ranOf, readLanesFile, staleCovers, staleLanes } from './lanes-file.ts';
+export { caseCount, DEVICE_NOT_RUN, LANES_JSON, ranIds, ranOf, readLanesFile, staleCovers, staleLanes } from './lanes-file.ts';
 
 export type LaneState = 'pass' | 'fail' | 'blocked (owner tooling)' | 'not run';
 
@@ -526,7 +526,6 @@ export type LanesFile = {
   readonly caseLists?: Readonly<Record<string, readonly string[]>>;
 };
 
-export const DEVICE_NOT_RUN = 'run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked';
 
 /** A device check lane's record from the run: pass only with a dump for every case at every declared DPR and no failure. */
 /** Every declared DPR's device must have run the capture-trust probe, over every trust case in order. */
@@ -628,9 +627,7 @@ function lanesFileTargets(targets: readonly TargetConfig[], problems: readonly s
         // Async device lanes: a device lane's record is carried as the last device evidence until the scheduled device run on master
         // (device-refresh.yml) replaces it. It keeps the evidence stamp it was run with, so evidenceBehind names the records a
         // tree's sources have moved past; only a change to the lane's configured cases (staleLanes) drops it.
-        // A record from before RanCases whose case list is the configured one ran exactly the configured cases.
-        if (keep) return { ...kept, device: kept.device ?? null, ...(kept.ran === undefined && kept.caseListSha256 === laneRecord(l, 'not run', null, null).caseListSha256 ? { ran: ranOf(l) } : {}) };
-        return laneRecord(l, 'not run', DEVICE_NOT_RUN, null);
+        return carriedDeviceRecord(l, kept, keep);
       }),
       referenceProof: reference?.find((r) => r.target === t.target)?.rows.map(({ failures: _f, ...row }) => row) ?? carried?.targets.find((x) => x.target === t.target)?.referenceProof ?? null,
       dumpFaults: faultRecords(device.get(t.target)) ?? carried?.targets.find((x) => x.target === t.target)?.dumpFaults ?? null,
