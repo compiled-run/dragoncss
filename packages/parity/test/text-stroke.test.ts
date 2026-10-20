@@ -90,6 +90,16 @@ const rgbAt = (img: RgbaImage, x: number, y: number): Rgb => {
 };
 const same = (a: Rgb, b: Rgb): boolean => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 
+/**
+ * Whether (x, y) is at least MARGIN clear of every edge of ring k: well outside it, well inside its fill, or well inside a ring of
+ * the same colour. Chrome strokes each glyph on its own, so where one glyph's anti-aliased stroke edge falls on another's opaque
+ * ring the source-over rounding leaves the pixel a unit off the stroke colour; the model does not judge those edge pixels.
+ */
+function clearOfEdges(x: number, y: number, k: Ink, colour: Rgb): boolean {
+  if (!meets(x, y, k.outer, MARGIN) || inside(x, y, k.inner, MARGIN)) return true;
+  return inside(x, y, k.outer, MARGIN) && !meets(x, y, k.inner, MARGIN) && same(k.stroke as Rgb, colour);
+}
+
 /** Every pixel the model judges against Chrome's: the mismatches, and the judged stroke and fill pixels of each text and of the page. */
 function judge(chrome: RgbaImage, glyphs: readonly Ink[], page: readonly Box[]): { readonly mismatches: string[]; readonly stroke: Map<string, number>; readonly fill: Map<string, number>; readonly background: number } {
   const mismatches: string[] = [];
@@ -104,6 +114,7 @@ function judge(chrome: RgbaImage, glyphs: readonly Ink[], page: readonly Box[]):
       let what = '';
       const ring = rings.find((g) => inside(x, y, g.outer, MARGIN) && !meets(x, y, g.inner, MARGIN));
       if (ring !== undefined) {
+        if (!rings.every((k) => k === ring || clearOfEdges(x, y, k, ring.stroke as Rgb))) continue;
         want = ring.stroke as Rgb;
         what = `${ring.line} stroke`;
         stroke.set(ring.text, (stroke.get(ring.text) ?? 0) + 1);
