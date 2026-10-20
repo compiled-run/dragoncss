@@ -4,6 +4,7 @@
 // CSS-wide keyword.
 import type { CssNode } from 'css-tree';
 import type { Span } from '../types.ts';
+import { BACKGROUND_BLEND_VALUE_PARSERS } from './properties/background-blend.ts';
 import { BORDER_IMAGE_VALUE_PARSERS } from './properties/border-image.ts';
 import { APPEARANCE_VALUE_PARSERS } from './properties/appearance.ts';
 import { USER_MODIFY_VALUE_PARSERS } from './properties/user-modify.ts';
@@ -87,4 +88,5 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
   ...Object.entries(COUNTERS_VALUE_PARSERS),
   ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),
+  ...Object.entries(BACKGROUND_BLEND_VALUE_PARSERS),
 ]);

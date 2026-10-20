@@ -106,7 +106,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // PNT2: the individual transforms (css-transforms-2 §4).
       translate: ['5px', '10% 2px'], rotate: ['30deg', '-0.25turn'], scale: ['2', '50% 1.5'],
       // css-break-4 §5.4: box-decoration-break, which accepts slice alone, at slice in two ASCII cases.
-      'box-decoration-break': ['slice', 'SLICE'] };
+      'box-decoration-break': ['slice', 'SLICE'],
+      // BG2: background-blend-mode, which accepts normal alone, at normal in two ASCII cases.
+      'background-blend-mode': ['normal', 'NORMAL'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
