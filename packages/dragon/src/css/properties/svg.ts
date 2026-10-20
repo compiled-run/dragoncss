@@ -12,16 +12,17 @@
 // inside a <clipPath>, and a marker other than none waits for SVG-b (elements/svg.ts svgPaintRefusal), and (SVG-inert-b)
 // stop-color, stop-opacity, flood-color, flood-opacity, lighting-color, mask-type and alignment-baseline, not inherited, and
 // text-anchor and dominant-baseline, inherited, which act only on <stop>, filter primitives, <mask> and SVG text, none of which
-// Dragon builds (Chrome moves no HTML box for the baselines or text-anchor). fill and stroke take a <color> or none; paint servers and the context-* keywords wait for SVG-paint, and a
+// Dragon builds (Chrome moves no HTML box for the baselines or text-anchor), and (SVG-d) d, not inherited, a <path>'s path data
+// (svg-d.ts parses it; the d attribute is its presentation hint). fill and stroke take a <color> or none; paint servers and the context-* keywords wait for SVG-paint, and a
 // stroke-width other than a px length or a unitless number (Chrome's SVG quirk) waits for SVG-units.
 import type { PropertyAspect } from '../properties.ts';
 
-export const SVG_LONGHANDS = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', 'stop-color', 'stop-opacity', 'flood-color', 'flood-opacity', 'lighting-color', 'mask-type', 'text-anchor', 'dominant-baseline', 'alignment-baseline'] as const;
+export const SVG_LONGHANDS = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', 'stop-color', 'stop-opacity', 'flood-color', 'flood-opacity', 'lighting-color', 'mask-type', 'text-anchor', 'dominant-baseline', 'alignment-baseline', 'd'] as const;
 export const SVG_SHORTHANDS = [] as const;
 /** The SVG geometry properties: a shape's position and size, which no element inherits. */
 export const SVG_GEOMETRY_PROPERTIES = ['cx', 'cy', 'r', 'x', 'y', 'rx', 'ry'] as const;
 /** SVG-inert-b: the inert longhands that are not inherited (css-masking-1, filter-effects-1, SVG 2 §13.4, css-inline-3). */
-const SVG_NOT_INHERITED_INERT: readonly string[] = ['stop-color', 'stop-opacity', 'flood-color', 'flood-opacity', 'lighting-color', 'mask-type', 'alignment-baseline'];
+const SVG_NOT_INHERITED_INERT: readonly string[] = ['stop-color', 'stop-opacity', 'flood-color', 'flood-opacity', 'lighting-color', 'mask-type', 'alignment-baseline', 'd'];
 export const SVG_INHERITED: readonly (typeof SVG_LONGHANDS)[number][] = SVG_LONGHANDS.filter((p) => !(SVG_GEOMETRY_PROPERTIES as readonly string[]).includes(p) && p !== 'vector-effect' && !SVG_NOT_INHERITED_INERT.includes(p));
 export const SVG_CONTAINER: readonly (typeof SVG_LONGHANDS)[number][] = [];
 export const SVG_TEXT_ROLE: readonly (typeof SVG_LONGHANDS)[number][] = [];
@@ -60,6 +61,7 @@ export const SVG_ASPECTS: { readonly [P in (typeof SVG_LONGHANDS)[number]]: Prop
   'text-anchor': { layout: false, paint: false },
   'dominant-baseline': { layout: false, paint: false },
   'alignment-baseline': { layout: false, paint: false },
+  d: { layout: false, paint: true },
 };
 
 /** The SVG paint properties whose value is a <color> or none. */

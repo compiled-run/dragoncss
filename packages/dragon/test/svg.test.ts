@@ -604,6 +604,28 @@ describe('the svg model in a compile', () => {
     expect(svgAttributeRefusal('rect', 'lighting-color', 'red')).toBeNull();
     expect(svgAttributeRefusal('rect', 'mask-type', 'bogus')).not.toBeNull();
   });
+  it('SVG-d: CSS d replaces a path\'s d attribute and none empties it; a rect ignores it; bad path data is invalid and an arc refuses', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'p', 'path', [['d', 'M0 0 H4 V4 Z']]), shape(o, 'q', 'path', []), shape(o, 'r', 'rect', [['width', '4'], ['height', '4']])];
+    const geometry = (css: string) => {
+      const c = compile(svgTree(css, shapes), false);
+      expect(errors(c), css).toEqual([]);
+      return svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.shape]);
+    };
+    const base = geometry('');
+    const empty = { kind: 'path', segments: [] };
+    expect(base?.[1]).toEqual(['q', empty]);
+    expect(geometry('path:first-child { d: path("M0 0 H4 V4 Z"); } rect { d: path("M1 1 H2"); }')).toEqual(base);
+    // Relative commands and PATH() in any case resolve to the same absolute segments; the attribute's path moves to q.
+    const moved = geometry('path:nth-child(2) { d: path("M0 0 H4 V4 Z"); }');
+    expect(moved?.[1]).toEqual(['q', base?.[0]?.[1]]);
+    expect(geometry('path:nth-child(2) { d: PATH("m0 0 h4 v4 z"); }')).toEqual(moved);
+    expect(geometry('path:first-child { d: none; }')?.[0]).toEqual(['p', empty]);
+    expect(geometry('path:first-child { d: path(""); }')?.[0]).toEqual(['p', empty]);
+    expect(geometry('path:first-child { d: path("M0 0 H1"); }')?.[0]).not.toEqual(base?.[0]);
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
+    for (const v of ['path("M0 0 L 10")', 'path(evenodd, "M0 0 H4")', '"M0 0 H4"', 'path("M0 0") path("M1 1")', 'path(M0)']) expect(refused(`path:first-child { d: ${v}; }`)[0], v).toContain('DRAGON_CSS_INVALID_VALUE');
+    expect(refused('path:first-child { d: path("M0 0 A5 5 0 0 1 4 4"); }')).toEqual(['DRAGON_UNSUPPORTED_VALUE * d: path("M0 0 A5 5 0 0 1 4 4") is unsupported: elliptical arc commands are not built yet (package SVG-arc)']);
+  });
   it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect; a negative in CSS is invalid', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];
     const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();

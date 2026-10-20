@@ -296,6 +296,8 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   'dominant-baseline': 'auto | alphabetic | ideographic | middle | central | mathematical | hanging | text-before-edge | text-after-edge | use-script | no-change | reset-size',
   // webref's stop-color is css-color's legacy alias entry without fields; Blink parses one <color> (css_properties.json5).
   'stop-color': '<color>',
+  // SVG-d: Blink D::ParseSingleValue takes none or path() of one string; webref's <string> alone does not parse in Chrome.
+  d: 'none | path( <string> )',
 };
 
 /**
