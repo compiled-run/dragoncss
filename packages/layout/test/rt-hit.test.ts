@@ -381,4 +381,35 @@ describe('the hit test at a device scale', () => {
     expect(ask(367.484375)).toBe('g 1;');
     expect(ask(367.5)).toBe('html 1;');
   });
+
+  // Chrome 145's elementFromPoint at every grid point of these pages (body font: 20px/40px Ahem, margin 0; s overlays g's lines),
+  // the same at DPR 1, 2 and 3, where Ahem's em is whole device px; hitRuns' encoding. Only the engine's own hangs flag tells
+  // pre-wrap's hanging spaces from a paragraph's leading ones (a fragment of their own too) and finds hanging spaces that start
+  // their own text node.
+  const LEADING = 'g 4;s 9;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 9;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g 4;s 9;g 4;s 9;html 27;';
+  const AFTER_BREAK = 'g 4;s 9;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 7;s 3;g 1;s c;g 1;s c;g 4;s 9;g 9;s 9;g e;s 6;g 10;s 9;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g 4;s 9;g 4;s 9;html 4a;';
+  const HANG = 'g 5;s 9;g 7;s 9;g 7;s 9;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g d;s 3;g 7;s 9;g 7;s 9;g 7;s 9;g 8;s 5;g 8;s 5;g 8;s 5;g b;s 8;g 4;s 3;g 1;s d;g 1;s 6;g 4;s f;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s 3;g 4;s a;g 4;s a;html 4d;';
+  const pages: readonly { readonly name: string; readonly width: number; readonly texts: readonly string[]; readonly lines: number; readonly chrome: string }[] = [
+    { name: 'leading spaces: <div g style="width:200px;white-space:pre-wrap">  XX</div>', width: 200, texts: ['  XX'], lines: 1, chrome: LEADING },
+    { name: 'leading spaces after a preserved line feed: XX\\n  XX', width: 200, texts: ['XX\n  XX'], lines: 2, chrome: AFTER_BREAK },
+    { name: 'hanging spaces that start their own text node: XXXXXXXXX<!---->  XX at 190px', width: 190, texts: ['XXXXXXXXX', '  XX'], lines: 2, chrome: HANG },
+    { name: 'hanging spaces at a soft wrap: XXXXXXXXX  XX at 190px', width: 190, texts: ['XXXXXXXXX  XX'], lines: 2, chrome: HANG },
+  ];
+  for (const page of pages) {
+    it(`names Chrome's element at every grid point of ${page.name} at DPR 1, 2 and 3`, async () => {
+      const { hitGrid, hitRuns, hitTableOf } = await import('../src/rt-hit.ts');
+      const { ahemMeasurer } = await import('../src/index.ts');
+      const { ahemFont, box: lbox, neutralEnvironment, px, text } = await import('./helpers.ts');
+      const style = { font: ahemFont(20), lineHeight: { kind: 'px', value: 40 }, whiteSpaceCollapse: 'preserve' } as const;
+      const g = lbox('g', { width: px(page.width) }, page.texts.map((v, i) => text(`t${i}`, v, style)));
+      const s = lbox('s', { height: px(40 * page.lines), marginTop: px(-40 * page.lines) });
+      const root = lbox('html', {}, [g, s]);
+      const facts = new Map(['html', 'g', 's'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+      for (const dpr of [1, 2, 3]) {
+        const viewport = { width: 400, height: 300 };
+        const t = hitTableOf({ viewport, devicePixelRatio: dpr, ...neutralEnvironment(viewport), root }, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+        expect(hitRuns(t, hitGrid(t, 400 * dpr * PX, 300 * dpr * PX), NO_HIT_FAULTS), `DPR ${dpr}`).toBe(page.chrome);
+      }
+    });
+  }
 });

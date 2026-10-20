@@ -11,9 +11,9 @@
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
-import { isScrollContainer, resolveBorder } from './box.ts';
+import { hasPercent, isScrollContainer, resolveBorder, resolvePadding } from './box.ts';
 import { placeLines } from './inline.ts';
-import { fromRaw } from './units.ts';
+import { fromRaw, ZERO } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
@@ -510,10 +510,58 @@ type LineMetrics = { readonly lineHeight: number; readonly halfLeading: number; 
 const LINE_PROBE_WIDTH = fromRaw(1073741824);
 
 /**
- * A text piece, whether its leaf inks the whole em box, and whether it shows no glyph: a leaf's second text result on one line is
- * pre-wrap's hanging spaces (inline.ts, TXT2-c), whose ink overflow is its own rect.
+ * A text piece, whether its leaf inks the whole em box, whether it hangs (pre-wrap's hanging spaces, TXT2-c: outside the line box)
+ * and whether it shows no glyph (its text is all spaces, so its ink overflow is its own rect).
  */
-type HitPiece = { readonly rect: LayoutRect; readonly full: boolean; readonly inkless: boolean };
+type HitPiece = { readonly rect: LayoutRect; readonly full: boolean; readonly hangs: boolean; readonly inkless: boolean };
+
+/** What the fragment rects do not carry about one engine line piece: whether it hangs and whether it shows no glyph. */
+type PieceFlags = { readonly x: number; readonly width: number; readonly hangs: boolean; readonly inkless: boolean };
+
+/** Whether code points [start, end) of a text are all spaces (U+0020). */
+function allSpaces(text: string, start: number, end: number): boolean {
+  let i = 0;
+  for (const ch of text) {
+    if (i >= end) break;
+    const cp = ch.codePointAt(0);
+    if (cp === undefined) continue;
+    if (i >= start && cp !== 0x20) return false;
+    i++;
+  }
+  return true;
+}
+
+/**
+ * Each leaf's piece flags in the order the engine lays out its <leaf>:line<j> fragments (inline.ts collectFragments: line by line,
+ * a truncated piece twice), from the engine's own lines at the block's content width. Only preserved text has hanging or
+ * spaces-only fragments of their own; any other run gets no flags (every list empty) and keeps the glyph ink model.
+ */
+function pieceFlags(s: TableState, b: LayoutBox, zb: LayoutBox, zLeaves: readonly TextLeaf[]): PieceFlags[][] {
+  const out: PieceFlags[][] = zLeaves.map((): PieceFlags[] => []);
+  let preserved = false;
+  for (const l of zLeaves) {
+    if (l.whiteSpaceCollapse !== 'collapse') preserved = true;
+  }
+  if (!preserved) return out;
+  const st = zb.style;
+  if (hasPercent(st.paddingLeft) || hasPercent(st.paddingRight)) throw new HitError(`${b.id}: preserved text in a box with percentage inline padding, whose content width the hit table does not resolve`);
+  const border = resolveBorder(st, s.ctx.devicePixelRatio);
+  const padding = resolvePadding(st, ZERO);
+  const r = rectOf(s, b.id);
+  const inset = border.left + padding.left;
+  const content = r.width - inset - border.right - padding.right;
+  for (const line of placeLines(s.ctx, zb, fromRaw(content > 0 ? content : 0))) {
+    for (const p of line.pieces) {
+      const own = out[p.leaf];
+      const leaf = zLeaves[p.leaf];
+      if (own === undefined || leaf === undefined) throw new HitError(`${b.id}: a line piece of no leaf ${p.leaf}`);
+      const inkless = allSpaces(leaf.text, p.start, p.end);
+      own.push({ x: r.x + inset + p.x, width: p.width, hangs: p.hangs, inkless });
+      if (p.truncated) own.push({ x: r.x + inset + p.x, width: p.truncatedWidth, hangs: p.hangs, inkless });
+    }
+  }
+  return out;
+}
 
 function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[]): void {
   const zb = zoomedBox(s, b.id);
@@ -534,18 +582,35 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
   for (const l of zLeaves) {
     if (l.font.size !== size) throw new HitError(`${b.id}: text leaves of two font sizes; one inline formatting context holds one font`);
   }
-  // The line pieces (<leaf>:line<j>), grouped into lines by their top; a line box starts half-leading above its text.
+  // The line pieces (<leaf>:line<j>), grouped into lines by their top; a line box starts half-leading above its text. Each takes
+  // its engine piece's flags, which must be the same pieces (one per fragment, of its width).
+  const flags = pieceFlags(s, b, zb, zLeaves);
+  let flagged = false;
+  for (const f of flags) {
+    if (f.length > 0) flagged = true;
+  }
   const pieces: HitPiece[] = [];
-  for (const leaf of leaves) {
+  for (let li = 0; li < leaves.length; li++) {
+    const leaf = leaves[li];
+    const own = flags[li];
+    if (leaf === undefined || own === undefined) throw new HitError(`${b.id}: no leaf ${li}`);
     const full = inkAbove(leaf);
     let j = 0;
-    let prevTop = 0;
     while (s.abs.has(`${leaf.id}:line${j}`)) {
       const rect = rectOf(s, `${leaf.id}:line${j}`);
-      pieces.push({ rect, full, inkless: j > 0 && rect.y === prevTop });
-      prevTop = rect.y;
+      let hangs = false;
+      let inkless = false;
+      if (flagged) {
+        const f = own[j];
+        if (f === undefined) throw new HitError(`${leaf.id}: fragment ${j} has no engine line piece`);
+        if (f.x !== rect.x || f.width !== rect.width) throw new HitError(`${leaf.id}: fragment ${j} at ${rect.x} is ${rect.width} wide, its engine line piece at ${f.x} ${f.width}`);
+        hangs = f.hangs;
+        inkless = f.inkless;
+      }
+      pieces.push({ rect, full, hangs, inkless });
       j++;
     }
+    if (flagged && own.length !== j) throw new HitError(`${leaf.id}: ${j} fragments, ${own.length} engine line pieces`);
     if (hasPartialInk(leaf) && full && j > 1) throw new HitError(`${leaf.id}: Ahem p glyphs mixed with full glyphs over several lines give each line its own ink, which the hit table does not model`);
   }
   // Grouped by top with one stable sort (piece order within a line), so the table is not quadratic in the pieces.
@@ -578,7 +643,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
   let x0 = firstPiece.rect.x;
   let x1 = x0 + firstPiece.rect.width;
   for (const p of own) {
-    if (p.inkless) continue;
+    if (p.hangs) continue;
     if (p.rect.x < x0) x0 = p.rect.x;
     if (p.rect.x + p.rect.width > x1) x1 = p.rect.x + p.rect.width;
   }

@@ -156,6 +156,8 @@ export type LinePiece = {
   readonly paintEnd: number;
   readonly truncated: boolean;
   readonly truncatedWidth: LU;
+  /** TXT2-c: pre-wrap's hanging spaces, a fragment of their own outside the line box's inline size (preservedFragments). */
+  readonly hangs: boolean;
 };
 
 /**
@@ -1817,7 +1819,7 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
       const visibleEnd = it.at + (i - from);
-      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd, end: it.at + (through - from), x: penAt(ctx, ifc, adv, line, offset, from), width: spanWidth(ctx, ifc, adv, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: shiftsOf(line, from, i), paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO });
+      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd, end: it.at + (through - from), x: penAt(ctx, ifc, adv, line, offset, from), width: spanWidth(ctx, ifc, adv, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: shiftsOf(line, from, i), paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO, hangs: false });
     }
     const clamp = clampsLine(ctx, box, n, broken.length);
     const cut = clamp || truncates(ctx, box) ? truncatePieces(ctx, box, ifc, available, on, baseline, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd), pieces, clamp && !ctx.faults.clampEllipsisMissingWhenLineFits) : null;
@@ -1934,7 +1936,7 @@ function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: r
   const out: LinePiece[] = [];
   for (let k = 0; k < pieces.length; k++) {
     const p = pieces[k] as LinePiece;
-    out.push({ leaf: p.leaf, start: p.start, visibleEnd: p.visibleEnd, end: p.end, x: p.x, width: p.width, top: p.top, ascent: p.ascent, descent: p.descent, shifts: p.shifts, paintEnd: r.paintEnds[k] as number, truncated: r.truncated[k] as boolean, truncatedWidth: r.truncatedWidths[k] as LU });
+    out.push({ leaf: p.leaf, start: p.start, visibleEnd: p.visibleEnd, end: p.end, x: p.x, width: p.width, top: p.top, ascent: p.ascent, descent: p.descent, shifts: p.shifts, paintEnd: r.paintEnds[k] as number, truncated: r.truncated[k] as boolean, truncatedWidth: r.truncatedWidths[k] as LU, hangs: p.hangs });
   }
   if (r.ellipsized < 0) return { pieces: out, ellipsis: null };
   const m = ctx.measurer.metrics(r.font);
@@ -2031,7 +2033,7 @@ function placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU
     const m = fontMetricsOf(ctx, t.id, t.font);
     const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
     const visibleEnd = first.at + (f.visibleTo - f.from);
-    pieces.push({ leaf: first.leaf, start: first.at, visibleEnd, end: first.at + (f.to - f.from), x, width: f.width, top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: [], paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO });
+    pieces.push({ leaf: first.leaf, start: first.at, visibleEnd, end: first.at + (f.to - f.from), x, width: f.width, top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: [], paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO, hangs: f.hangs });
     x = add(x, f.width);
   }
   // TXT2-c with TXT2-f: Blink truncates a preserved line by its own items (control items, hanging spaces), which no Chrome case covers yet.
