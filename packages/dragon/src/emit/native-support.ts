@@ -1390,7 +1390,9 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var dragonBoldValues: DoubleArray? = null
     private set
-  private var font: android.graphics.fonts.Font? = null
+  /** The bridge's font the glyphs are drawn in (a group's ink extent reads it, PNT1-opacity-b). */
+  var font: android.graphics.fonts.Font? = null
+    private set
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
   fun dragonSetText(text: String, family: String, color: DragonRGBA8) {

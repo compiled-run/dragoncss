@@ -8,7 +8,9 @@
 // which Chrome folds into the fill (0.3, 45%, calc(1 / 3), 0.5 over a light row, 0.00196 at a byte's rounding edge, 0.999 (byte 255),
 // 0.7 white, an empty 0.4 that paints nothing and 0.62549 with a zero-width border). The opacity-group fixtures hold groups native
 // pre-composites itself (PNT1-opacity-b, analysis paint-values/effects.ts opacityGroupPlans; layout paint-group.ts): text groups
-// (opacity-group-text), groups with solid one-colour borders and opaque children (-border), groups over earlier flow rects
+// (opacity-group-text), groups with solid one-colour borders and opaque children (-border), border-only groups, whose one draw op cc
+// folds when the border is four solid sides in one colour or a lone side, and does not with two sides, a child or text
+// (-border-only), groups over earlier flow rects
 // (-over-rects), a group over an earlier group (-over-group), and groups clipped by an opaque overflow: hidden backdrop
 // (-clipped). Every group sits clear of the cc raster tile seams at DPR 2, 3
 // and 2.625 in both directions (x in 16-48, 64-96 or 104-136 css px, y below 168). opacity-web holds the fractional cases (0.3,
@@ -36,6 +38,7 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-fold'),
   both('opacity-group-text'),
   both('opacity-group-border'),
+  both('opacity-group-border-only'),
   both('opacity-group-over-rects'),
   both('opacity-group-over-group'),
   both('opacity-group-clipped'),

@@ -48,10 +48,12 @@
       "fileSha256": "f4b4142ce5d6a4655c7c47ebd7b6884a812b318cb65c8e6d5251afbda073d24d",
       "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
       "ranges": [
-        { "lines": "13-146", "symbol": null, "source": "cited" }
+        { "lines": "13-146", "symbol": null, "source": "cited" },
+        { "lines": "13-38", "symbol": "SupportsFoldingAlpha", "source": "cited" },
+        { "lines": "96-146", "symbol": "FindNextOp", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/paint-group.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFolds", "use": "reference" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
       ]
     },
@@ -1792,6 +1794,7 @@
       "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
       "ranges": [
         { "lines": "80-95", "symbol": "BorderStyleHasUnmatchedColorsAtCorner", "source": "cited" },
+        { "lines": "261-279", "symbol": "DrawSolidBorderRect", "source": "cited" },
         { "lines": "116-134", "symbol": "BorderStylesRequireMiter", "source": "cited" },
         { "lines": "354-365", "symbol": "kStylePriority", "source": "cited" },
         { "lines": "369-374", "symbol": null, "source": "cited" },
@@ -1821,10 +1824,13 @@
       "dragon": [
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedElement", "use": "reference" },
         { "file": "packages/dragon/src/css/color.ts", "symbol": "insetOutsetTones", "use": "port" },
+        { "file": "packages/dragon/src/emit/paint/effects.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-dash.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFolds", "use": "reference" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "borderDoubleRings", "use": "port" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
-        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -3047,6 +3053,25 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-aa.ts", "symbol": "blend", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkBlitter_ARGB32.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "2cb79bde4289dc979029782cb50f83fb4664d077e97d48398615ca71f8062687",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "1450-1456", "symbol": "SkARGB32_Blitter", "source": "cited" },
+        { "lines": "1463-1468", "symbol": "blitH", "source": "cited" },
+        { "lines": "1470-1494", "symbol": "blitAntiH", "source": "cited" },
+        { "lines": "1647-1665", "symbol": "blitV", "source": "cited" },
+        { "lines": "1667-1685", "symbol": "blitRect", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupComposite", "use": "reference" }
       ]
     },
     {

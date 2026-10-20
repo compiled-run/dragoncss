@@ -174,13 +174,25 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
 
 const inside = (x: number, y: number, l: number, t: number, r: number, b: number): boolean => x >= l && x < r && y >= t && y < b;
 
-/** The drawing ops of a box (a background rect, border sides); a box with both is one display item of several ops. */
+/**
+ * The draw ops of a box's display item: a background rect, then its border: four solid sides in one colour are one op (Blink
+ * box_border_painter.cc:1255-1278 PaintBorderFastPath: a stroked rect or FillDRRect), and any other set of solid sides one FillRect
+ * each (:1696-1751, 841-866). cc folds a group's alpha into a lone op of any kind but text (paint_op_buffer_iterator.cc:13-38), so a
+ * display item of one op folds.
+ */
 function boxOps(b: Box): { readonly count: number; readonly foldable: boolean } {
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
   const hasBg = bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0;
   const styles = b.node.writes.find((w) => w.kind === 'border-styles');
-  const borders = styles !== undefined && styles.kind === 'border-styles' ? styles.styles.filter((s, k) => s !== 'none' && s !== 'hidden' && (b.border[k] as number) > 0).length : 0;
-  return { count: (hasBg ? 1 : 0) + borders, foldable: hasBg && borders === 0 };
+  const colours = b.node.writes.find((w) => w.kind === 'border-colors');
+  const shown = styles !== undefined && styles.kind === 'border-styles' ? [0, 1, 2, 3].filter((k) => styles.styles[k] !== 'none' && styles.styles[k] !== 'hidden' && (b.border[k] as number) > 0) : [];
+  const key = (k: number): string => {
+    const c = colours !== undefined && colours.kind === 'border-colors' ? colours.colors[k] : undefined;
+    return styles !== undefined && styles.kind === 'border-styles' && c !== undefined ? `${styles.styles[k]} ${c.r},${c.g},${c.b},${c.alpha}` : '';
+  };
+  const uniform = shown.length === 4 && new Set(shown.map(key)).size === 1 && key(0).startsWith('solid ');
+  const count = (hasBg ? 1 : 0) + (uniform ? 1 : shown.length);
+  return { count, foldable: count === 1 };
 }
 
 type Tile = { l: number; t: number; r: number; b: number };
@@ -240,7 +252,7 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
   return s32aBlend(dst, layer, it.alpha8);
 }
 
-/** A box's background and solid border sides at a pixel centre, the background at a folded alpha when alpha is below 255. */
+/** A box's background and solid border sides at a pixel centre, the box's one op at a folded alpha when alpha is below 255. */
 function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, alpha: number): Px {
   if (clippedOut(b.node, byId, cx, cy) || !inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
   let out = dst;
@@ -258,7 +270,9 @@ function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<str
   const side = cy < b.t + bt ? 0 : cy >= b.b - bb ? 2 : cx < b.l + bl ? 3 : 1;
   if (styles.styles[side] !== 'solid') throw new Error(`${b.node.id}: the model paints solid borders only`);
   const c = colours.colors[side] as { r: number; g: number; b: number; alpha: number };
-  return color32(out, c, c.alpha);
+  // A folded border is the box's one op (boxOps): its opaque colour at the group's alpha.
+  if (alpha !== 255 && c.alpha !== 255) throw new Error(`${b.node.id}: the model folds opaque borders only`);
+  return color32(out, c, alpha === 255 ? c.alpha : alpha);
 }
 
 /** The model's colour at the centre of pixel (x, y). */
@@ -420,7 +434,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity, stacking and filter fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -575,10 +589,37 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
     }
     expect(FILTER_CELLS.length).toBe(192);
   });
+  it('folds a border-only group whose border is one op: four solid sides in one colour or a lone side, and no text group', () => {
+    const spec = FIXTURES.find((f) => f.id === 'opacity-group-border-only');
+    if (spec === undefined) throw new Error('no opacity-group-border-only fixture');
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      for (const dpr of DPRS) {
+        // Each group lies inside one raster tile (above), so its box stands for the tile.
+        const folds: Record<string, boolean> = {};
+        for (const g of paintItems(r.programs.uikit, c.environment.viewport, dpr)) {
+          if (g.kind === 'group') folds[g.box.node.id] = groupTileFolds(groupDraws(g.items), g.box.l, g.box.t, g.box.r, g.box.b);
+        }
+        expect(folds, `${c.id} @${dpr}`).toEqual({ 'ob-a': true, 'ob-b': true, 'ob-d': true, 'ob-e': false, 'ob-f': false, 'ob-g': false });
+      }
+    }
+    // cc never folds a DrawTextBlob (paint_op_buffer_iterator.cc:20-25): a text-only group composites as a layer.
+    const text = FIXTURES.find((f) => f.id === 'opacity-group-text');
+    if (text === undefined) throw new Error('no opacity-group-text fixture');
+    const c = casesOf(text, fixtureInput(text))[0];
+    if (c === undefined) throw new Error('no opacity-group-text case');
+    const r = nativePrograms(nativeCompile(text, c.environment.direction), c.assignment);
+    if (r.kind !== 'ready') throw new Error(r.reason);
+    for (const it of paintItems(r.programs.uikit, c.environment.viewport, 2)) {
+      if (it.kind !== 'group' || !['og-b', 'og-f'].includes(it.box.node.id)) continue;
+      expect(groupTileFolds(groupDraws(it.items), it.box.l, it.box.t, it.box.r, it.box.b), it.box.node.id).toBe(false);
+    }
+  });
   const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
   const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
   it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(7);
+    expect(groupFixtures.length).toBe(8);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);
