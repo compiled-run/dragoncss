@@ -18,10 +18,12 @@ import type { TextMeasurer } from '../../layout/src/text.ts';
 import { sub, ZERO } from '../../layout/src/units.ts';
 
 /**
- * One line's accessibility element: the text node it is a line of, its name, and its frame in CSS px from the root; or, for a
- * truncated leaf, the leaf's one element (whole) with its text, framed on the text view.
+/**
+ * One line's accessibility element: the text node it is a line of, its name, its frame in CSS px from the root, and the level of the
+ * heading it is read under (0 for none); or, for a truncated leaf, the leaf's one element (whole) with its text, framed on the text
+ * view.
  */
-export type AxLine = { readonly leaf: string; readonly name: string; readonly rect: readonly [number, number, number, number]; readonly whole?: true };
+export type AxLine = { readonly leaf: string; readonly name: string; readonly rect: readonly [number, number, number, number]; readonly heading: number; readonly whole?: true };
 
 const LU_PX = 64;
 
@@ -47,8 +49,10 @@ function ownersOf(b: LayoutBox, owner: string, out: Map<string, string>): void {
 /**
  * The lines native exposes for an engine input, in tree order: each text leaf's pieces, line by line. A text view whose element's
  * used visibility is hidden or collapse (hidden, from the program's visibility writes) is hidden, so the platform exposes none of it.
+ * A line's heading is its text node's nearest heading in the DOM (headingOf, from the program's heading writes, as DragonTree's
+ * headingOf reads them).
  */
-export function axLinesOf(input: LayoutInput, measurer: TextMeasurer, hidden: readonly string[]): AxLine[] {
+export function axLinesOf(input: LayoutInput, measurer: TextMeasurer, hidden: readonly string[], headingOf: (leaf: string) => number): AxLine[] {
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new Error(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const abs = absoluteRects(out.boxes);
@@ -90,14 +94,14 @@ export function axLinesOf(input: LayoutInput, measurer: TextMeasurer, hidden: re
         // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
         const end = line.breaks.length > 0 && p === last ? p.visibleEnd : p.end;
         const name = [...leaf.text].slice(p.start, end).join('');
-        (named[p.leaf] as AxLine[]).push({ leaf: leaf.id, name, rect: [f.x / LU_PX, f.y / LU_PX, f.width / LU_PX, f.height / LU_PX] });
+        (named[p.leaf] as AxLine[]).push({ leaf: leaf.id, name, rect: [f.x / LU_PX, f.y / LU_PX, f.width / LU_PX, f.height / LU_PX], heading: headingOf(leaf.id) });
       }
     }
     for (const i of truncated) {
       const leaf = ifc.leaves[i];
       const f = leaf === undefined ? undefined : abs.get(leaf.id);
       if (leaf === undefined || f === undefined) throw new Error(`${b.id}: no text view for leaf ${i}`);
-      (named[i] as AxLine[]).push({ leaf: leaf.id, name: leaf.text, rect: [f.x / LU_PX, f.y / LU_PX, f.width / LU_PX, f.height / LU_PX], whole: true });
+      (named[i] as AxLine[]).push({ leaf: leaf.id, name: leaf.text, rect: [f.x / LU_PX, f.y / LU_PX, f.width / LU_PX, f.height / LU_PX], heading: headingOf(leaf.id), whole: true });
     }
     ifc.leaves.forEach((leaf, i) => {
       if (!hidden.includes(owners.get(leaf.id) ?? '')) lines.push(...(named[i] as AxLine[]));
@@ -110,13 +114,14 @@ export function axLinesOf(input: LayoutInput, measurer: TextMeasurer, hidden: re
 // In the page, on a text node: its leaf's name.
 const LEAF_NAME = 'function () { const p = this.parentNode; return p.getAttribute("data-dragon-id") + ":text" + [...p.childNodes].filter((c) => c.nodeType === 3).indexOf(this); }';
 
-type AxNode = { readonly nodeId: string; readonly role?: { readonly value: string }; readonly name?: { readonly value: string }; readonly childIds?: readonly string[]; readonly backendDOMNodeId?: number; readonly ignored: boolean };
+type AxNode = { readonly nodeId: string; readonly role?: { readonly value: string }; readonly name?: { readonly value: string }; readonly childIds?: readonly string[]; readonly backendDOMNodeId?: number; readonly ignored: boolean; readonly properties?: readonly { readonly name: string; readonly value: { readonly value: unknown } }[] };
 
 /**
  * Chrome's lines for the page, in tree order: each StaticText's InlineTextBoxes (Accessibility.getFullAXTree, walked from the root)
  * with the text node's fragment rects (DOMSnapshot.captureSnapshot's text boxes), which must be as many. A text node is named as the
- * compiler names its leaf, <element>:text<k> for the parent's k-th text child. A leaf in whole is read as its StaticText alone, named
- * and with no frame (the model's whole lines, which a comparison reads by name).
+ * compiler names its leaf, <element>:text<k> for the parent's k-th text child. A line's heading is the level of its nearest heading
+ * ancestor in the tree (role heading, its level property). A leaf in whole is read as its StaticText alone, named and with no frame
+ * (the model's whole lines, which a comparison reads by name).
  */
 export async function chromeAxLines(page: Page, whole: ReadonlySet<string> = new Set()): Promise<AxLine[]> {
   const cdp: CDPSession = await page.context().newCDPSession(page);
@@ -137,14 +142,14 @@ export async function chromeAxLines(page: Page, whole: ReadonlySet<string> = new
     const lines: AxLine[] = [];
     const root = tree.nodes[0];
     if (root === undefined) throw new Error('an empty accessibility tree');
-    const visit = async (n: AxNode): Promise<void> => {
+    const visit = async (n: AxNode, heading: number): Promise<void> => {
       if (n.role?.value === 'StaticText' && !n.ignored) {
         if (n.backendDOMNodeId === undefined) throw new Error(`StaticText ${n.nodeId} has no DOM node`);
         const node = (await cdp.send('DOM.resolveNode', { backendNodeId: n.backendDOMNodeId })) as unknown as { readonly object: { readonly objectId: string } };
         const named = (await cdp.send('Runtime.callFunctionOn', { objectId: node.object.objectId, functionDeclaration: LEAF_NAME, returnByValue: true })) as unknown as { readonly result: { readonly value: string } };
         const leaf = named.result.value;
         if (whole.has(leaf)) {
-          lines.push({ leaf, name: n.name?.value ?? '', rect: [0, 0, 0, 0], whole: true });
+          lines.push({ leaf, name: n.name?.value ?? '', rect: [0, 0, 0, 0], heading, whole: true });
           return;
         }
         const rects = boxes.get(n.backendDOMNodeId) ?? [];
@@ -152,16 +157,22 @@ export async function chromeAxLines(page: Page, whole: ReadonlySet<string> = new
         if (kids.length !== rects.length) throw new Error(`${leaf}: ${kids.length} InlineTextBoxes but ${rects.length} text boxes`);
         kids.forEach((k, i) => {
           const b = rects[i] as readonly number[];
-          lines.push({ leaf, name: k.name?.value ?? '', rect: [b[0] as number, b[1] as number, b[2] as number, b[3] as number] });
+          lines.push({ leaf, name: k.name?.value ?? '', rect: [b[0] as number, b[1] as number, b[2] as number, b[3] as number], heading });
         });
         return;
       }
+      let under = heading;
+      if (n.role?.value === 'heading') {
+        const level = n.properties?.find((p) => p.name === 'level')?.value.value;
+        if (typeof level !== 'number') throw new Error(`heading ${n.nodeId} has no level`);
+        under = level;
+      }
       for (const c of n.childIds ?? []) {
         const k = byId.get(c);
-        if (k !== undefined) await visit(k);
+        if (k !== undefined) await visit(k, under);
       }
     };
-    await visit(root);
+    await visit(root, 0);
     return lines;
   } finally {
     await cdp.detach();

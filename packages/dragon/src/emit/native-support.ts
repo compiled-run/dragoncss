@@ -369,13 +369,14 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonAccessibleLines: [UIAccessibilityElement] = []
 
   /// P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
-  /// it) and frame (its fragment, in device px from the view's top-left) as a static text element in the view's space.
-  public func dragonSetAccessibleLines(names: [String], rects: [[Double]], scale: Double) {
+  /// it) and frame (its fragment, in device px from the view's top-left) as a static text element in the view's space; under a
+  /// heading (heading, its level, else 0) each is a header too.
+  public func dragonSetAccessibleLines(names: [String], rects: [[Double]], scale: Double, heading: Int) {
     let s = CGFloat(scale)
     dragonAccessibleLines = zip(names, rects).map { name, r in
       let e = UIAccessibilityElement(accessibilityContainer: self)
       e.accessibilityLabel = name
-      e.accessibilityTraits = .staticText
+      e.accessibilityTraits = heading > 0 ? [.staticText, .header] : .staticText
       e.accessibilityFrameInContainerSpace = CGRect(x: CGFloat(r[0]) / s, y: CGFloat(r[1]) / s, width: CGFloat(r[2]) / s, height: CGFloat(r[3]) / s)
       return e
     }
@@ -386,11 +387,12 @@ public final class DragonTextView: UIView, DragonNodeView {
 
   /// P6b: the view as one static text element named with its text, for a leaf text-overflow truncates (for now): Chrome's
   /// InlineTextBoxes there are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text.
-  public func dragonSetAccessibleWhole(_ text: String) {
+  /// Under a heading it is a header too.
+  public func dragonSetAccessibleWhole(_ text: String, heading: Int) {
     dragonAccessibleLines = []
     accessibilityElements = nil
     isAccessibilityElement = true
-    accessibilityTraits = .staticText
+    accessibilityTraits = heading > 0 ? [.staticText, .header] : .staticText
     accessibilityLabel = text
   }
 
@@ -883,6 +885,16 @@ public final class DragonTree {
     return v
   }
 
+  /// The level of the nearest heading over a node in the DOM (the role module's dragonHeading), or 0.
+  private func headingOf(_ id: String) -> Int {
+    var at = views[id]?.dragonParent
+    while let p = at, let b = views[p] as? DragonBoxView {
+      if b.dragonHeadingLevel > 0 { return b.dragonHeadingLevel }
+      at = b.dragonParent
+    }
+    return 0
+  }
+
   private static func isLine(_ r: LayoutRect) -> Bool {
     guard let p = r.parent else { return false }
     return r.id.description.hasPrefix(p.description + ":line")
@@ -1216,7 +1228,7 @@ public final class DragonTree {
       textMetrics[id] = viewMetrics
       // The leaf's face (Ahem or a bundled real face, as the measurer laid it out) at the instance size in points.
       tv.dragonConfigure(font: bridge.font(face: leafFont.family.description, pointSize: CGFloat(size / s)), face: leafFont.family.description, lines: specs, scale: s)
-      if elided { tv.dragonSetAccessibleWhole(leaves[li].text.description) } else { tv.dragonSetAccessibleLines(names: axNames, rects: axRects, scale: s) }
+      if elided { tv.dragonSetAccessibleWhole(leaves[li].text.description, heading: headingOf(id)) } else { tv.dragonSetAccessibleLines(names: axNames, rects: axRects, scale: s, heading: headingOf(id)) }
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
@@ -1675,6 +1687,9 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var dragonAccessibleRects: List<DoubleArray> = emptyList()
     private set
+  /** The level of the heading the lines are under, or 0. */
+  var dragonAccessibleHeading = 0
+    private set
   /** The line holding accessibility focus, or -1. */
   private var dragonAccessibleFocus = -1
   /** The line under the hover pointer, or -1. */
@@ -1682,24 +1697,29 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
 
   /**
    * P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
-   * it) and frame (its fragment, in device px from the view's top-left), each a virtual child of the view's node provider.
+   * it) and frame (its fragment, in device px from the view's top-left), each a virtual child of the view's node provider; under a
+   * heading (heading, its level, else 0) each is a heading too.
    */
-  fun dragonSetAccessibleLines(names: List<String>, rects: List<DoubleArray>) {
+  fun dragonSetAccessibleLines(names: List<String>, rects: List<DoubleArray>, heading: Int) {
     dragonAccessibleNames = names
     dragonAccessibleRects = rects
+    dragonAccessibleHeading = heading
     dragonAccessibleFocus = -1
     dragonAccessibleHover = -1
     contentDescription = null
+    isAccessibilityHeading = false
     importantForAccessibility = if (names.isEmpty()) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_YES
   }
 
   /**
    * P6b: the view as one element named with its text, for a leaf text-overflow truncates (for now): Chrome's InlineTextBoxes there
-   * are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text.
+   * are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text. Under a heading it is a
+   * heading too.
    */
-  fun dragonSetAccessibleWhole(text: String) {
-    dragonSetAccessibleLines(emptyList(), emptyList())
+  fun dragonSetAccessibleWhole(text: String, heading: Int) {
+    dragonSetAccessibleLines(emptyList(), emptyList(), heading)
     contentDescription = text
+    isAccessibilityHeading = heading > 0
     importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
   }
 
@@ -1743,6 +1763,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
       info.packageName = host.context.packageName
       info.className = "android.widget.TextView"
       info.text = dragonAccessibleNames[virtualViewId]
+      info.isHeading = dragonAccessibleHeading > 0
       val b = dragonLineBounds(virtualViewId)
       @Suppress("DEPRECATION")
       info.setBoundsInParent(b)
@@ -2302,6 +2323,17 @@ class DragonTree(val context: Context) {
     return v
   }
 
+  /** The level of the nearest heading over a node in the DOM (the role module's dragonHeading), or 0. */
+  private fun headingOf(id: String): Int {
+    var at = views[id]?.dragonParent
+    while (at != null) {
+      val b = views[at] as? DragonBoxView ?: return 0
+      if (b.dragonHeadingLevel > 0) return b.dragonHeadingLevel
+      at = b.dragonParent
+    }
+    return 0
+  }
+
   private fun isLine(r: LayoutRect): Boolean {
     val p = r.parent ?: return false
     return r.id.startsWith(p + ":line")
@@ -2655,7 +2687,7 @@ class DragonTree(val context: Context) {
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       // The leaf's face (Ahem or a bundled real face, as the measurer laid it out).
       tv.dragonConfigure(bridge, leafFont.family, size.toFloat(), specs, scale)
-      if (elided) tv.dragonSetAccessibleWhole(leafText) else tv.dragonSetAccessibleLines(axNames, axRects)
+      if (elided) tv.dragonSetAccessibleWhole(leafText, headingOf(id)) else tv.dragonSetAccessibleLines(axNames, axRects, headingOf(id))
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView

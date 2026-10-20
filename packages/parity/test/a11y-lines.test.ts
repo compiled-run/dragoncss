@@ -43,6 +43,12 @@ const AX_DOCS: readonly AxDoc[] = [
     body: '<div data-dragon-id="a">AAAA AAAA</div><div data-dragon-id="b" class="n">BBBB BBBB<div data-dragon-id="c">CC</div></div><div data-dragon-id="d">DD DD</div><div data-dragon-id="e" class="n">EEEE</div>',
   },
   { id: 'inline', css: '', body: '<div data-dragon-id="a">AA <span data-dragon-id="s">BB BB</span> CC CC</div><div data-dragon-id="b">D<b data-dragon-id="e">EE</b>DD DDDD</div>' },
+  // Headings of every level, text in an inline box and in a block under one, and text after one.
+  {
+    id: 'headings',
+    css: 'h1, h2, h3, h4, h5, h6 { font-size: 10px; margin: 0; font-weight: normal; }',
+    body: '<h1 data-dragon-id="a">AA <b data-dragon-id="b">BB</b></h1><h2 data-dragon-id="c">CC</h2><h3 data-dragon-id="d">DD<div data-dragon-id="e">EE EE</div></h3><h4 data-dragon-id="f">FF</h4><h5 data-dragon-id="g">GG</h5><h6 data-dragon-id="h">HH</h6><div data-dragon-id="i">II</div>',
+  },
   {
     id: 'hidden',
     css: '.h { visibility: hidden; } .v { visibility: visible; }',
@@ -60,7 +66,7 @@ const AX_DOCS: readonly AxDoc[] = [
   },
 ];
 
-function nativeInput(d: AxDoc): { readonly input: LayoutInput; readonly hidden: readonly string[] } {
+function nativeInput(d: AxDoc): { readonly input: LayoutInput; readonly hidden: readonly string[]; readonly headingOf: (leaf: string) => number } {
   const project = createProjectWith(
     { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } },
     { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport },
@@ -71,11 +77,20 @@ function nativeInput(d: AxDoc): { readonly input: LayoutInput; readonly hidden: 
   const p = nativePrograms(compiled, []);
   if (p.kind !== 'ready') throw new Error(`${d.id}: no native programs: ${p.reason}`);
   const hidden = p.programs.uikit.nodes.filter((n) => n.writes.some((w) => w.kind === 'visibility')).map((n) => n.id);
-  return { input: programInput(p.programs.uikit, ENVIRONMENT.viewport, 1), hidden };
+  // A text node's heading: its nearest ancestor with a heading write (the role module, lower/paint/role.ts).
+  const nodes = new Map(p.programs.uikit.nodes.map((n) => [n.id, n]));
+  const headingOf = (leaf: string): number => {
+    for (let at = nodes.get(leaf)?.parent ?? null; at !== null; at = nodes.get(at)?.parent ?? null) {
+      const w = nodes.get(at)?.writes.find((x) => x.kind === 'heading');
+      if (w !== undefined && w.kind === 'heading') return w.level;
+    }
+    return 0;
+  };
+  return { input: programInput(p.programs.uikit, ENVIRONMENT.viewport, 1), hidden, headingOf };
 }
 
 // A whole line (a truncated leaf, exposed as one element) compares by name: Chrome's StaticText has no fragment of its own.
-const show = (l: AxLine): string => `${l.leaf} ${JSON.stringify(l.name)} ${l.whole === true ? 'whole' : l.rect.join(',')}`;
+const show = (l: AxLine): string => `${l.leaf} ${JSON.stringify(l.name)} ${l.whole === true ? 'whole' : l.rect.join(',')}${l.heading > 0 ? ` h${l.heading}` : ''}`;
 
 describe('per-line accessibility (P6b): native lines against Chrome InlineTextBoxes', () => {
   it('names and frames every line as Chrome does', async () => {
@@ -85,7 +100,7 @@ describe('per-line accessibility (P6b): native lines against Chrome InlineTextBo
     try {
       for (const d of AX_DOCS) {
         const n = nativeInput(d);
-        const modelLines = axLinesOf(n.input, referenceMeasurer(), n.hidden);
+        const modelLines = axLinesOf(n.input, referenceMeasurer(), n.hidden, n.headingOf);
         const whole = new Set(modelLines.filter((l) => l.whole === true).map((l) => l.leaf));
         const model = modelLines.map(show);
         const chrome = (await chromeAxLines(await openPage(browser, axHtml(d), ENVIRONMENT), whole)).map(show);

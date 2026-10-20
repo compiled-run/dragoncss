@@ -13,6 +13,7 @@ import { IMAGE_LOWERING } from './image.ts';
 import { LIST_MARKER_LOWERING } from './list-marker.ts';
 import { OUTLINE_LOWERING } from './outline.ts';
 import { RADIUS_LOWERING } from './radius.ts';
+import { ROLE_LOWERING } from './role.ts';
 import { SCROLL_LOWERING } from './scroll.ts';
 import { SCROLLBAR_LOWERING } from './scrollbar.ts';
 import { SHADOW_LOWERING } from './shadow.ts';
@@ -46,6 +47,7 @@ const LOWERINGS = [
   TEXT_DECORATION_LOWERING,
   TEXT_SHADOW_LOWERING,
   LIST_MARKER_LOWERING,
+  ROLE_LOWERING,
 ] as const;
 
 type WriteOf<L> = L extends PaintLowering<infer W> ? W : never;
