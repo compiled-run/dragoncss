@@ -325,6 +325,8 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonGlyphShear: Double = 0
   /// TXT-FX: the -webkit-text-stroke width (css px, points here) and opaque colour each line's outlines are stroked in after the fill, else nil.
   public private(set) var dragonTextStroke: (width: Double, color: DragonRGBA8)? = nil
+  /// TXT-FX: the stroke width in device px the layer draws at its scale (Chrome's width * device pixel ratio), which the dump reads.
+  var dragonStrokeDeviceWidth: Double { return (dragonTextStroke?.width ?? 0) * scale }
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
   private let glyphLayer = DragonGlyphLayer()
@@ -478,7 +480,7 @@ public final class DragonTextView: UIView, DragonNodeView {
       if let s = dragonTextStroke {
         ctx.saveGState()
         ctx.addPath(outline(f, glyphs, at))
-        ctx.setLineWidth(CGFloat(s.width))
+        ctx.setLineWidth(CGFloat(dragonStrokeDeviceWidth / scale))
         ctx.setLineJoin(.miter)
         ctx.setMiterLimit(4)
         ctx.setStrokeColor(dragonUIColor(s.color).cgColor)
@@ -528,7 +530,7 @@ public final class DragonTextView: UIView, DragonNodeView {
     ]
     if dragonGlyphShear != 0 { out.append(("glyphShear", .number(dragonGlyphShear))) }
     if let b = dragonSyntheticBold { out.append(("syntheticBold", .object([("keys", .array(b.keys.map { DumpJson.number($0) })), ("values", .array(b.values.map { DumpJson.number($0) }))]))) }
-    if let s = dragonTextStroke { out.append(("textStroke", .object([("width", .number(s.width)), ("color", dragonRGBAJson(s.color))]))) }
+    if let s = dragonTextStroke { out.append(("textStroke", .object([("deviceWidth", .number(dragonStrokeDeviceWidth)), ("color", dragonRGBAJson(s.color))]))) }
     return out
   }
 }
@@ -1538,7 +1540,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     return listOf(
       Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typeface) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
       Pair("textPaint.color", dragonColorJson(paint.color)),
-    ) + (if (dragonGlyphShear != 0.0) listOf(Pair("glyphShear", DumpJson.Num(dragonGlyphShear))) else emptyList()) + (if (dragonBoldKeys != null && dragonBoldValues != null) listOf(Pair("syntheticBold", DumpJson.Obj(listOf(Pair("keys", DumpJson.Arr(dragonBoldKeys!!.map { DumpJson.Num(it) })), Pair("values", DumpJson.Arr(dragonBoldValues!!.map { DumpJson.Num(it) })))))) else emptyList()) + (dragonStrokeColor?.let { listOf(Pair("textStroke", DumpJson.Obj(listOf(Pair("width", DumpJson.Num(dragonStrokeWidth)), Pair("color", dragonRGBAJson(it)))))) } ?: emptyList())
+    ) + (if (dragonGlyphShear != 0.0) listOf(Pair("glyphShear", DumpJson.Num(dragonGlyphShear))) else emptyList()) + (if (dragonBoldKeys != null && dragonBoldValues != null) listOf(Pair("syntheticBold", DumpJson.Obj(listOf(Pair("keys", DumpJson.Arr(dragonBoldKeys!!.map { DumpJson.Num(it) })), Pair("values", DumpJson.Arr(dragonBoldValues!!.map { DumpJson.Num(it) })))))) else emptyList()) + (dragonStrokeColor?.let { listOf(Pair("textStroke", DumpJson.Obj(listOf(Pair("deviceWidth", DumpJson.Num(dragonStrokePaint(paint)!!.strokeWidth.toDouble())), Pair("color", dragonRGBAJson(it)))))) } ?: emptyList())
   }
 }
 `;
@@ -2083,7 +2085,7 @@ class DragonTree(val context: Context) {
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
       val vm = viewMetrics
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
-      tv.dragonConfigure(bridge, size.toFloat(), specs, zoomed.devicePixelRatio)
+      tv.dragonConfigure(bridge, size.toFloat(), specs, scale)
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView

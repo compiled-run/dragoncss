@@ -4,7 +4,7 @@
 // (packages/parity/test/text-stroke.test.ts).
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic, SourceRef, TreeNode } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { appliedValue, createProjectWith, emitNativeSupport, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { NativeProgram } from '../src/internal.ts';
 import type { Assignment, Targets } from '../src/types.ts';
 import type { StateEmit } from 'dragon';
@@ -55,6 +55,12 @@ describe('-webkit-text-stroke on the native targets', () => {
     }
     // A zero width draws nothing and writes nothing.
     for (const prog of programs(compile('.s { -webkit-text-stroke: 0 red; }'))) expect(strokeOf(prog, 'a:text0')).toBeNull();
+    // A transparent stroke draws nothing in Chrome: it compiles on every target, at any width, and writes nothing.
+    for (const css of ['.s { -webkit-text-stroke: 2px transparent; }', '.s { -webkit-text-stroke: 12px rgba(1, 2, 3, 0); }']) {
+      const c = compile(css);
+      expect(errors(c), css).toEqual([]);
+      for (const prog of programs(c)) expect(strokeOf(prog, 'a:text0'), css).toBeNull();
+    }
   });
 
   it('emits the stroke on both backends', () => {
@@ -64,6 +70,20 @@ describe('-webkit-text-stroke on the native targets', () => {
     const kotlin = emitAndroidViewsCases([emitCase(android)]).map((f) => f.text).join('\n');
     expect(swift).toContain('.dragonSetTextStroke(width: 2.5, color: DragonRGBA8(1, 2, 3, 255))');
     expect(kotlin).toContain('.dragonSetTextStroke(2.5, DragonRGBA8(1, 2, 3, 255))');
+    // The expected dump has each view stroke at the css width * device pixel ratio in device px, which each device dumps from its
+    // own stroke (the layer's scale on iOS, the stroke Paint's width on Android), so a view stroking at another width fails its dump.
+    const engine = { float32: Math.fround } as unknown as Parameters<typeof appliedValue>[0];
+    const geometry = { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 }, size: [0, 0], fontSize: null, replaced: null, scroll: null } as unknown as Parameters<typeof appliedValue>[4];
+    for (const [prog, dpr, want] of [[uikit, 3, 7.5], [android, 2.625, Math.fround(6.5625)], [android, 1, 2.5]] as const) {
+      const w = prog.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'text-stroke');
+      if (w === undefined) throw new Error('no text-stroke write');
+      expect(appliedValue(engine, prog.backend, w, dpr, geometry)).toEqual({ deviceWidth: want, color: [1, 2, 3, 255] });
+    }
+    const support = emitNativeSupport('android-views', null).map((f) => f.text).join('\n');
+    expect(support).toContain('Pair("deviceWidth", DumpJson.Num(dragonStrokePaint(paint)!!.strokeWidth.toDouble()))');
+    expect(support).toContain('strokeWidth = (dragonStrokeWidth * scale).toFloat()');
+    // The text view's scale is the device scale apply() runs at, not the zoomed input's devicePixelRatio (always 1).
+    expect(support).toContain('tv.dragonConfigure(bridge, size.toFloat(), specs, scale)');
   });
 
   it('refuses on iOS and Android what the native view would stroke otherwise than Chrome, and leaves it to Chrome on web', () => {
@@ -99,11 +119,34 @@ describe('-webkit-text-stroke on the native targets', () => {
 
   it('refuses on iOS and Android an animation of color that a currentcolor stroke follows, and not one an explicit stroke ignores', () => {
     const anim = '@keyframes k { to { color: blue; } }';
-    expect(codes(`.s { -webkit-text-stroke: 2px; animation: k 1s; } ${anim}`)).toEqual(NATIVE);
-    expect(codes(`.s { -webkit-text-stroke: 2px red; animation: k 1s; } ${anim}`)).toEqual([]);
+    // Animated, the document is a state program too, which refuses any drawn stroke (below); the currentcolor refusal comes first.
+    const ios = (css: string): string[] => errors(compile(css)).filter((d) => d.target === 'ios').map((d) => d.message);
+    const followed = ios(`.s { -webkit-text-stroke: 2px; animation: k 1s; } ${anim}`);
+    expect(followed[0]).toMatch(/currentcolor/);
+    expect(followed[0]).not.toMatch(/state program/);
+    expect(ios(`.s { -webkit-text-stroke: 2px red; animation: k 1s; } ${anim}`).some((m) => /currentcolor/.test(m))).toBe(false);
   });
 
-  it('refuses a stroked text in a state program by name, whose state runtime draws no stroke (as a synthetic bold)', () => {
+  it('refuses on iOS and Android at compile time a drawn stroke in a document native builds as a state program', () => {
+    const why = (css: string): string | undefined => errors(compile(css)).find((d) => d.target === 'ios' && d.message.startsWith('-webkit-text-stroke'))?.message;
+    const head = '-webkit-text-stroke-width: 2px over text a:text0 is unsupported on ios: the document has';
+    const tail = 'so native builds a state program, whose text records carry no stroke (TXT-FX)';
+    // An animation the stroke does not follow and a transition each make the output a state program.
+    for (const [css, kind] of [
+      ['.s { -webkit-text-stroke: 2px red; animation: k 1s; } @keyframes k { to { color: blue; } }', 'transitions or animations'],
+      ['.s { -webkit-text-stroke: 2px red; transition: color 1s; }', 'transitions or animations'],
+    ] as const) {
+      expect(codes(css), css).toEqual(NATIVE);
+      expect(why(css), css).toBe(`${head} ${kind}, ${tail}`);
+    }
+    // An interaction state too (native refuses :hover outside the lanes as well, by its own diagnostic).
+    expect(why('.s { -webkit-text-stroke: 2px red; } .s:hover { color: blue; }')).toBe(`${head} interaction states, ${tail}`);
+    // A transparent stroke draws nothing, so it compiles there; so does the same stroke in a static document.
+    expect(codes('.s { -webkit-text-stroke: 2px transparent; transition: color 1s; }')).toEqual([]);
+    expect(codes('.s { -webkit-text-stroke: 2px red; }')).toEqual([]);
+  });
+
+  it('the state emitter still names a stroked text that reaches it, whose state runtime draws no stroke (as a synthetic bold)', () => {
     const [uikit] = programs(compile('.s { -webkit-text-stroke: 2px red; }')) as [NativeProgram];
     const sp = deriveStateProgram('uikit', [{ assignment: [], isInitial: true, program: uikit }]);
     const emit: StateEmit = { id: 'v', fixture: 'v', direction: 'ltr', compilerDigest: 'sha256:0', viewport: { width: 400, height: 300 }, program: sp, scripts: [] };

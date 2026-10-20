@@ -3,9 +3,10 @@
 // -webkit-text-stroke-color. The web target leaves it to Chrome. The native text view strokes each line's Ahem outlines the same
 // way after filling them (native-program.ts text-stroke). It draws what Chrome draws only where checkTextStrokes finds nothing in
 // the way: a px width up to TEXT_STROKE_MAX_PX, an opaque stroke colour (Chrome composites each glyph's stroke on its own, the
-// device one path per line), upright regular Ahem text without small caps, decoration, text shadow, ellipsis or line clamp, the
-// fill painted first, and no box after it in tree order painting a background, border or box shadow (Chrome paints a stacking
-// context's text over its block backgrounds; the native views of later boxes are above the stroke that reaches past the glyphs).
+// device one path per line; a transparent stroke draws nothing and takes no write), upright regular Ahem text without small caps,
+// decoration, text shadow, ellipsis or line clamp, the fill painted first, and no box after it in tree order painting a
+// background, border or box shadow (Chrome paints a stacking context's text over its block backgrounds; the native views of later
+// boxes are above the stroke that reaches past the glyphs).
 // Planted fault textStrokeAccepted accepts every stroke on every target and draws none.
 import type { Rgba8 } from '../css/color.ts';
 import { paintsStrokeFirst } from '../css/properties/svg-paint-order.ts';
@@ -86,8 +87,10 @@ function allRefusal(el: ResolvedElement): string | null {
 function nativeRefusal(s: Stroked, painters: readonly number[], decorated: ReadonlySet<string>, realFaceAt: (address: string) => boolean): string | null {
   const { text, parent, container, clamped, order } = s;
   const width = strokeWidthOf(parent) as number;
-  if (width > TEXT_STROKE_MAX_PX) return `a stroke ${width}px wide is over the ${TEXT_STROKE_MAX_PX}px the native stroke draws`;
-  if (strokeColorOf(parent).alpha !== 255) return 'the stroke colour is not opaque: Chrome composites each glyph\'s stroke on its own, the native view one path per line';
+  // A transparent stroke draws nothing in Chrome and takes no write (native-program.ts), at any width.
+  const alpha = strokeColorOf(parent).alpha;
+  if (alpha !== 0 && width > TEXT_STROKE_MAX_PX) return `a stroke ${width}px wide is over the ${TEXT_STROKE_MAX_PX}px the native stroke draws`;
+  if (alpha !== 255 && alpha !== 0) return 'the stroke colour is not opaque: Chrome composites each glyph\'s stroke on its own, the native view one path per line';
   if (realFaceAt(text.node.address)) return 'the text is in a real face; the native stroke is drawn over Ahem only';
   if (synthesizesBold(parent.props)) return 'the text is drawn in synthetic bold, whose stroke the native view does not combine with this one';
   if (synthesizesOblique(parent.props)) return 'the text is drawn in synthetic oblique, which shears the native stroke with the outline';
@@ -125,6 +128,36 @@ export function checkTextStrokes(root: ResolvedElement, targets: readonly string
         manual: all !== null ? 'Give -webkit-text-stroke-width in px.' : `Remove the stroke from the text of ${s.parent.element.address}, or build for web.`,
         basis: 'computed-value',
       }));
+    }
+  }
+}
+
+/**
+ * Refuses on native every stroke the native view would draw (a width over 0 in a visible colour) in a document whose native
+ * output is a state program: app states, interaction states, transitions or animations, or media bands. The state runtime's text
+ * record carries no stroke (emit/runtime/state.ts), so such a stroke is refused here rather than at emit. stateful names why the
+ * output is a state program, or is null. A text another check already refused on a target is not reported again there.
+ */
+export function refuseStatefulStrokes(stateful: string | null, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], faults: TxtFillFaults): void {
+  if (stateful === null || nativeTargets.length === 0 || faults.textStrokeAccepted) return;
+  const reported = new Set<string>();
+  for (const root of roots) {
+    for (const s of survey(root).stroked) {
+      const width = strokeWidthOf(s.parent);
+      if (width === null || strokeColorOf(s.parent).alpha === 0) continue;
+      const v = prop(s.parent, '-webkit-text-stroke-width');
+      for (const t of nativeTargets) {
+        const head = `-webkit-text-stroke-width: ${valueToString(v.value)} over text ${s.text.node.address} is unsupported on ${t}: `;
+        if (reported.has(`${t}|${s.text.node.address}`) || diagnostics.some((d) => d.target === t && d.message.startsWith(head))) continue;
+        reported.add(`${t}|${s.text.node.address}`);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+          origin: v.declaration !== null ? authored(v.declaration.valueSpan) : s.text.node.node.origin,
+          target: t,
+          message: `${head}the document has ${stateful}, so native builds a state program, whose text records carry no stroke (TXT-FX)`,
+          manual: `Remove the stroke from the text of ${s.parent.element.address}, or build for web.`,
+          basis: 'computed-value',
+        }));
+      }
     }
   }
 }

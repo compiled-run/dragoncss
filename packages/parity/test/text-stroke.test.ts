@@ -2,13 +2,15 @@
 // (chrome.ts launch and page, CDP Page.captureScreenshot, the raster size rule), so the proof needs no regen. Chrome fills each line
 // fragment and then strokes its glyph outlines with a miter join (GraphicsContext::DrawTextPasses); the native view does the same
 // with the program's text-stroke write (dragon emit/native-support.ts DragonTextView). The model is each Ahem box (glyphLines less
-// the stroke it grows by), its ring from half the zoomed width outside to half inside in the stroke colour, the rest of the box in
+// the stroke it grows by), its ring from half the device width outside to half inside in the stroke colour (the width the expected
+// dump has each view stroke at, which the devices dump from their own stroke), the rest of the box in
 // the fill, and the paint model's page around it. Every pixel at least MARGIN device px inside a ring must be the stroke colour,
 // inside a box and clear of every ring the fill, clear of every box and ring the page; each text's outer edge through a glyph's
-// middle must sit within half a device px of the model's. The textStrokeAccepted plant (no stroke drawn) must fail.
+// middle must sit within half a device px of the model's. The textStrokeAccepted plant (no stroke drawn) must fail. The pl text's
+// transparent stroke draws nothing: it is judged as fill and page.
 import { describe, expect, it } from 'vitest';
 import type { CompilerFaults, NativeProgram } from 'dragon';
-import { createProjectWith, nativePrograms, NO_FAULTS } from 'dragon';
+import { appliedValue, createProjectWith, nativePrograms, NO_FAULTS } from 'dragon';
 import type { ParityCase } from '../src/cases.ts';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { launchChrome, openPage } from '../src/chrome.ts';
@@ -17,7 +19,7 @@ import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import type { RgbaImage } from '../src/native-compare.ts';
-import { NATIVE_CONFIG } from '../src/native-host.ts';
+import { expectedEngine, NATIVE_CONFIG } from '../src/native-host.ts';
 import { decodePng, glyphLines, glyphStrokes, rasterSize } from '../src/pixel-reference.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import type { Box } from './paint-model.ts';
@@ -62,9 +64,28 @@ const inside = (x: number, y: number, r: Rect, m: number): boolean => x >= r.lef
 /** Whether pixel (x, y) grown by m meets r (an empty r meets nothing). */
 const meets = (x: number, y: number, r: Rect, m: number): boolean => r.left < r.right && r.top < r.bottom && x - m < r.right && x + 1 + m > r.left && y - m < r.bottom && y + 1 + m > r.top;
 
+/**
+ * Each stroked text's width in device px at a DPR as the expected dump has both views stroke it (appliedValue's deviceWidth, which
+ * the device dumps from its own stroke paint and layer scale): the model's ring is this wide, so a view that strokes at another
+ * width fails the device dump and this width fails Chrome's pixels.
+ */
+function deviceStrokes(p: NativeProgram, dpr: number): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const n of p.nodes) {
+    for (const w of n.writes) {
+      if (w.kind !== 'text-stroke') continue;
+      const at = (backend: 'uikit' | 'android-views'): number => (appliedValue(expectedEngine(), backend, w, dpr, NO_GEOMETRY) as { deviceWidth: number }).deviceWidth;
+      if (at('uikit') !== at('android-views')) throw new Error(`${n.id}@${dpr}: uikit strokes ${at('uikit')} device px, android-views ${at('android-views')}`);
+      out.set(n.id, at('uikit'));
+    }
+  }
+  return out;
+}
+const NO_GEOMETRY = { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 }, size: [0, 0], fontSize: null, replaced: null, scroll: null } as unknown as Parameters<typeof appliedValue>[4];
+
 /** The glyphs of a program at a DPR, with each text's fill and stroke from its writes. */
 function inks(p: NativeProgram, dpr: number): Ink[] {
-  const strokes = glyphStrokes(p);
+  const strokes = deviceStrokes(p, dpr);
   const colours = new Map<string, { fill: Rgb; stroke: Rgb | null }>();
   for (const n of p.nodes) {
     const fill = n.writes.find((w) => w.kind === 'text-color');
@@ -76,10 +97,13 @@ function inks(p: NativeProgram, dpr: number): Ink[] {
     const text = l.id.slice(0, l.id.lastIndexOf(':line'));
     const c = colours.get(text);
     if (c === undefined) throw new Error(`${text}: no text colour`);
-    const h = ((strokes.get(text) ?? 0) * dpr) / 2;
+    const h = (strokes.get(text) ?? 0) / 2;
+    // glyphLines grows each Ahem box by half the css width * DPR; the model's box is that less half the device width.
+    const grown = ((glyphStrokes(p).get(text) ?? 0) * dpr) / 2;
     return l.glyphs.map((g) => {
-      const box = grow(g, -h);
-      return { text, line: l.id, box, outer: g, inner: grow(box, -h), fill: c.fill, stroke: c.stroke };
+      const box = grow(g, -grown);
+      const outer = grow(box, h);
+      return { text, line: l.id, box, outer, inner: grow(box, -h), fill: c.fill, stroke: c.stroke };
     });
   });
 }

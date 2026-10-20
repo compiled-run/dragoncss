@@ -228,7 +228,9 @@ function textPaint(t: TextLeaf, parent: string, texts: ReadonlyMap<string, Owned
   // TXT-FX: a stroke the checks accept (analysis/text-stroke.ts); the textStrokeAccepted plant accepts every stroke and draws none.
   const stroke = strokeWidthOf(owned.owner);
   if (stroke === null && !plants.textStrokeAccepted) throw new ProgramError(`${t.id}: a stroke width the checks refuse reached the native program`);
-  if (stroke !== null && stroke > 0 && !plants.textStrokeAccepted) writes.push({ kind: 'text-stroke', width: stroke, color: strokeColorOf(owned.owner) });
+  // A transparent stroke draws nothing in Chrome, so it takes no write.
+  const strokeColor = strokeColorOf(owned.owner);
+  if (stroke !== null && stroke > 0 && strokeColor.alpha !== 0 && !plants.textStrokeAccepted) writes.push({ kind: 'text-stroke', width: stroke, color: strokeColor });
   return { id: t.id, parent, kind: 'text', clips: false, text: t.text, writes, facts: {} };
 }
 

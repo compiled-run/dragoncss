@@ -10,6 +10,7 @@ body { margin: 0; display: flex; flex-wrap: wrap; align-items: flex-start; font-
 .s8 { margin-top: 8px; margin-bottom: 48px; line-height: normal; -webkit-text-stroke: 8px #f80; }
 .s1 { -webkit-text-stroke: 1px #00c; }
 .cur { color: rgb(120, 60, 0); -webkit-text-stroke: 2px; }
+.tr { -webkit-text-stroke: 2px transparent; }
 .sp { -webkit-text-stroke: 3px rgb(0, 128, 128); }
 </style>
 </head>
@@ -19,6 +20,6 @@ body { margin: 0; display: flex; flex-wrap: wrap; align-items: flex-start; font-
 <div data-dragon-id="s4" class="w s4">XX XX</div>
 <div data-dragon-id="s8" class="w s8">XX XX</div>
 <div data-dragon-id="s1" class="w s1">XX <span data-dragon-id="cur" class="cur">XX</span></div>
-<div data-dragon-id="pl" class="w">XX <span data-dragon-id="sp" class="sp">XX</span></div>
+<div data-dragon-id="pl" class="w tr">XX <span data-dragon-id="sp" class="sp">XX</span></div>
 </body>
 </html>
