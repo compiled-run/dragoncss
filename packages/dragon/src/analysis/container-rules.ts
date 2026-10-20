@@ -57,7 +57,8 @@ export function containerBand(b: Band | null, refusals: ContainerRefusals, units
 }
 
 /** A cqw or cqi leaf of a calculation's text, as computed.ts EM_IN_MATH finds em leaves. */
-const CQ_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(cq[wi])(?![\w-])/gi;
+// The sign belongs to the number, so a negative leaf (calc(-5cqw + 100px), max(-5cqw, 2px)) becomes (-5 * (...)), not -(5 * (...)).
+const CQ_IN_MATH = /(^|[\s(*/+,-])([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(cq[wi])(?![\w-])/gi;
 
 const isMathText = (v: CssValue): boolean => v.kind === 'other' && V1_MATH_FUNCTIONS.has(v.type.replace('()', ''));
 
@@ -67,12 +68,19 @@ export function hasContainerUnits(v: CssValue): boolean {
   return isMathText(v) && new RegExp(CQ_IN_MATH.source, 'i').test((v as { text: string }).text);
 }
 
-/** Whether any declaration of the sheet holds a cqw or cqi length. */
+/** A cqw or cqi length anywhere in a declaration's text, including a custom property's value and a var() fallback. */
+const CQ_IN_TEXT = /(?:\d|\.)cq[wi](?![\w-])/i;
+
+/**
+ * Whether any declaration of the sheet may hold a cqw or cqi length once var() is substituted: a parsed longhand that holds one, or
+ * any declaration (a custom property's value, a var() fallback) whose text mentions one.
+ */
 export function usesContainerUnits(rules: readonly Rule[]): boolean {
-  return rules.some((r) => r.declarations.some((d) => d.longhands.some((l) => hasContainerUnits(l.value))));
+  return rules.some((r) => r.declarations.some((d) => CQ_IN_TEXT.test(d.text) || d.longhands.some((l) => hasContainerUnits(l.value))));
 }
 
 /** A container's width as calculation text: a px constant, or the viewport less the shift, clamped. */
+// 100vw is the viewport less no scrollbar: Dragon assumes overlay scrollbars on web as on native, as cq-rules does (decisions.md).
 function widthText(w: ContainerWidth, faults: ScrollContainmentFaults): string {
   if (w.lo === w.hi) return `${String(w.lo)}px`;
   const v = `100vw - ${String(w.shift)}px`;
@@ -87,12 +95,19 @@ function widthText(w: ContainerWidth, faults: ScrollContainmentFaults): string {
  * is refused and left as it is.
  */
 function resolveContainerUnits(root: ResolvedElement, found: ReadonlyMap<LinkedElement, QueryContainer>, refusals: ContainerUnitRefusals, faults: ScrollContainmentFaults): ResolvedElement {
-  const visit = (el: ResolvedElement, container: QueryContainer | null): void => {
+  const visit = (el: ResolvedElement, container: QueryContainer | null, parent: ResolvedElement | null): void => {
     // resolveTree builds each element's props as a Map, and the tree is keyed by identity (resolve.ts environmentOf), so the
     // values are replaced in place, as computed.ts replaces em leaves while it builds them.
     const props = el.props as Map<Longhand, ResolvedValue>;
     for (const [p, v] of el.props) {
-      if (v.origin === 'inherited' || !hasContainerUnits(v.value)) continue;
+      if (!hasContainerUnits(v.value)) continue;
+      if (v.origin === 'inherited') {
+        // An inherited property's unit is refused where it is declared. An explicit inherit takes the parent's computed value, where
+        // the unit already resolved against the parent's container (css-contain-3 §6.1: the units are absolute at computed-value time).
+        const pv = INHERITED.has(p) ? undefined : parent?.props.get(p);
+        if (pv !== undefined && !hasContainerUnits(pv.value)) props.set(p, { ...v, value: pv.value });
+        continue;
+      }
       const text = valueToString(v.value);
       const refuse = (reason: string): void => {
         const span = v.declaration?.valueSpan ?? v.span;
@@ -123,9 +138,9 @@ function resolveContainerUnits(root: ResolvedElement, found: ReadonlyMap<LinkedE
       props.set(p, { ...v, value });
     }
     const inner = found.get(el.element) ?? container;
-    for (const c of el.children) if (c.kind === 'element') visit(c, inner);
+    for (const c of el.children) if (c.kind === 'element') visit(c, inner, el);
   };
-  visit(root, null);
+  visit(root, null, null);
   return root;
 }
 

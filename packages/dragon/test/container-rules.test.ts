@@ -70,6 +70,23 @@ describe('CQ: @container rules', () => {
     expect(widthIn(planted, 0, [0, 0, 0])).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'viewport', value: 50, axis: 'width', size: 'large' }, px(-20)] }, range: 'non-negative' });
   });
 
+  it('resolves cq units under inherit, behind var() with no @container rule, and with a negative sign in math', () => {
+    // <div.q><div.a><div.b></div></div></div>: q is 300px wide, so 1cqw is 3px.
+    const nested = (r: SourceRef): TreeNode[] => [div(r, 'q', ['q'], [div(r, 'a', ['a'], [div(r, 'b', ['b'])])])];
+    const at = (css: string): unknown[] => {
+      const c = compile(`.q { container-type: inline-size; width: 300px; } ${css}`, nested);
+      expect(errors(c)).toEqual([]);
+      // A calc() that folds to a constant stays a calc() node around its px value.
+      const value = (w: unknown): unknown => ((w as { kind: string }).kind === 'calc' ? (w as { expr: unknown }).expr : w);
+      return [value(widthIn(c, 0, [0, 0, 0])), value(widthIn(c, 0, [0, 0, 0, 0]))];
+    };
+    // An explicit inherit takes the parent's computed value, as Chrome does.
+    expect(at('.a { width: calc(10cqw + 1px); } .b { width: inherit; }')).toEqual([px(31), px(31)]);
+    expect(at('.a { width: 50cqw; } .b { width: inherit; }')).toEqual([px(150), px(150)]);
+    expect(at('.a { --w: calc(10cqw + 1px); width: var(--w); } .b { width: var(--nope, 50cqw); }')).toEqual([px(31), px(150)]);
+    expect(at('.a { width: calc(-5cqw + 100px); } .b { width: max(-5cqw, 2px); }')).toEqual([px(85), px(2)]);
+  });
+
   it('refuses a container query unit with no query container, on an unreadable one, on an inherited property and on the block axis', () => {
     const inside = (r: SourceRef): TreeNode[] => [div(r, 'q', ['q'], [div(r, 'a', ['a'])])];
     const refusal = (css: string): string[] => errors(compile(`.q { container-type: inline-size; } ${css}`, inside)).filter((m) => /cq/.test(m));
