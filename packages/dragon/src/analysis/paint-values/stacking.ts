@@ -5,6 +5,7 @@
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import type { StackNode } from '../../lower/paint/stacking.ts';
 import { FLEX_OR_GRID, stackingOf, transformedForStacking, unorderedItems } from '../../lower/paint/stacking.ts';
+import { backfaceHidden } from '../../css/properties/transform-extra.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
@@ -38,6 +39,7 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
       ...(item && position !== 'absolute' && position !== 'fixed' && order.kind === 'number' ? { order: order.value } : {}),
       opacity,
       transformed: transformedForStacking(el),
+      ...(backfaceHidden(el) ? { layered: true } : {}),
       clips: el !== propagated && keyword(el, 'display') !== 'inline' && keyword(el, 'overflow-x') !== 'visible',
       text: false,
       children: el.children.flatMap((c): StackNode[] => {
@@ -51,11 +53,13 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
 
 /** Where to report a stacking refusal: the declaration that makes the box a layer item (z-index, position, opacity, transform). */
 function itemOrigin(el: ResolvedElement): ReturnType<typeof authored> | ResolvedElement['element']['node']['origin'] {
-  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change'] as const) {
+  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change', 'isolation', 'clip-path', 'backface-visibility'] as const) {
     const v = el.props.get(p) as ResolvedValue | undefined;
     if (v === undefined || v.declaration === null) continue;
     if (p === 'z-index' && zIndexOf(v.value) === null) continue;
     if (p === 'position' && v.value.kind === 'keyword' && v.value.value === 'static') continue;
+    if ((p === 'isolation' || p === 'clip-path') && v.value.kind === 'keyword' && (v.value.value === 'auto' || v.value.value === 'none')) continue;
+    if (p === 'backface-visibility' && !backfaceHidden(el)) continue;
     return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;

@@ -100,7 +100,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
       // The overscroll, scroll-snap, containment and container-query longhands, which accept their initial values alone, at those
       // values in two spellings.
-      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])) };
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])),
+      // isolation, whose isolate makes a stacking context and so changes paint order alone, at auto and isolate.
+      isolation: ['auto', 'isolate'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);

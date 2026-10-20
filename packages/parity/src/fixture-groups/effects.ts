@@ -16,7 +16,15 @@
 // later z-index 20 and 30 overlays, and transformed and will-change: opacity boxes, which paint in the z-index 0 layer.
 // stacking-grid-items: a static z-index applies to every flex and grid item (Blink StyleAdjuster): a grid item with z-index 1 over a
 // later sibling pulled under it, a z-index -1 grid item sharing a cell with an earlier flow item, inline-grid and inline-flex items
-// with z-index 1, and z-index 1 grid and flex items whose order puts a later painted layer first in the tree. Sample centres sit in the overlaps,
+// with z-index 1, and z-index 1 grid and flex items whose order puts a later painted layer first in the tree.
+// stacking-isolation: isolation: isolate makes a stacking context (compositing-1 §3.2): a z-index -1 child paints over its isolated
+// parent's background, and an isolated flow box (in another ASCII case) paints over an earlier relative box it overlaps, in the
+// z-index 0 layer; an isolation: auto box beside them keeps its negative child under its background.
+// stacking-backface: backface-visibility: hidden gives a box a paint layer of its own that makes no stacking context (Blink
+// LayerTypeRequired; a normal-flow layer): a hidden-backface box with a child paints over a later flow sibling it overlaps, one
+// inside a flow wrapper (through the -webkit- alias) and one in another ASCII case paint under a later relative box, and a z-index
+// -1 child of a hidden-backface box still paints under the stage's background, and two hidden-backface flex items whose order swaps
+// them paint in tree order, so the later one, placed first, paints over the earlier where they overlap. Sample centres sit in the overlaps,
 // so the device pixels compare the order. The rejects: a percentage calculation in opacity, a z-index calculation that is not a whole
 // number. The native-only stacking refusals cannot be reject fixtures (a reject blocks web too); dragon test/paint-stacking.test.ts
 // compiles each of them.
@@ -33,5 +41,7 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('stacking-escape'),
   both('stacking-transform'),
   both('stacking-grid-items'),
+  both('stacking-isolation'),
+  both('stacking-backface'),
   reject('stacking-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(3 / 2)', 'z-index: calc(3/2) is unsupported: the calculation is not a whole number'),
 ];

@@ -159,7 +159,8 @@ export function hitRefusal(n: NativeCase): string | null {
   const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset')).map((x) => x.id);
   if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
   // PNT1: a stacking context below the root paints its layer in z-order, which rt-hit.ts does not order yet.
-  const contexts = nodes.filter((x) => x.parent !== null && (x.facts['stacking'] as { readonly createsContext?: boolean } | undefined)?.createsContext === true).map((x) => x.id);
+  // A normal-flow layer (backface-visibility: hidden) paints after its host's flow, which rt-hit.ts does not order either.
+  const contexts = nodes.filter((x) => x.parent !== null && ((f) => f?.createsContext === true || f?.layer === 'normal-flow')(x.facts['stacking'] as { readonly createsContext?: boolean; readonly layer?: string } | undefined)).map((x) => x.id);
   if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;
   // T150a: Chrome's elementFromPoint passes over a box that is not visible (its visible descendants still hit), which the hit test
   // does not model yet.
