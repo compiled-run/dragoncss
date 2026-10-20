@@ -11,8 +11,10 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Bg2PhaseFaults } from '../../faults/bg2-phase.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
+import type { ColorLonghand } from '../../css/properties.ts';
+import { usedColors } from '../../lower/paint/colors.ts';
 import type { BoxItem, ElementLayer } from './gradient.ts';
-import { BG2_TILING, boxWidths, paintsGradient, resolvedLayers } from './gradient.ts';
+import { BG2_TILING, obscuresOf, paintsGradient, resolvedLayers } from './gradient.ts';
 
 /** The device scales each native target's device lanes run at (parity targets.ts deviceDprs checks it holds the same). */
 export const NATIVE_DEVICE_DPRS: { readonly ios: readonly number[]; readonly android: readonly number[] } = { ios: [2, 3], android: [2, 3, 2.625] };
@@ -196,6 +198,49 @@ const borderTerm = (c: number, b: number): number => (c >= 0 ? 0 : c * borderUpp
 /** c * P for a padding written p, or null when it is unknown and counts. */
 const paddingTerm = (c: number, p: number | null): number | null => (c === 0 ? 0 : p === null ? null : c * p);
 
+/** Whether a border side hides the background under it (Blink BorderEdge::ObscuresBackground): every value it can take. */
+function obscureCases(el: ResolvedElement, side: number): readonly boolean[] {
+  const s = SIDE_NAMES[side] as string;
+  const o = obscuresOf(keyword(el, `border-${s}-style`) ?? '', usedColors(el)[`border-${s}-color` as ColorLonghand]);
+  return o === 'always' ? [true] : o === 'never' ? [false] : [true, false];
+}
+
+/**
+ * Whether a no-repeat tile at the start edge of an axis is one tile at every layout and device scale. Its offset x from the clip box
+ * is the origin box's start outset less the clip box's; layerPlacement takes the one-tile branch when x > 0, and otherwise holds
+ * the dest only when the snapped offset is at most x. Each outset is snapped (PixelSnappedContouredInnerBorder: the border plus
+ * the box edge's own rounding) or not (border-box, or content-box over non-zero padding), so the two offsets differ by that
+ * rounding exactly when one outset is snapped and the other is not; the rounding has either sign at some layout. So the layer is
+ * proven when both outsets snap alike, or when x is positive at every scale: a border of 1 device px or more, a padding of 1 LU or
+ * more, and nothing subtracted.
+ */
+export function startEdgeModelled(el: ResolvedElement, layer: ElementLayer, axis: Axis): boolean {
+  const g = layer.geometry;
+  const [start] = SIDES[axis];
+  const b = border(el, start);
+  const pads = [0, 1, 2, 3].map((side) => padding(el, side));
+  if (b === null || pads.some((p) => p === null)) return false;
+  const p = pads[start] as number;
+  // isZeroStrut: a content box over zero padding is the padding box; a padding under 1/128 px may round to zero LU at some scale.
+  const nonZero = (pads as number[]).some((v) => v !== 0);
+  if ((pads as number[]).some((v) => v !== 0 && Math.abs(v) < 1 / 128)) return false;
+  const snapped = (k: BoxItem, obscures: boolean, clip: boolean): boolean => {
+    if (k === 'border-box') return clip && obscures;
+    if (k === 'content-box') return !nonZero;
+    return true;
+  };
+  for (const ob of g.clip === 'border-box' ? obscureCases(el, start) : [false]) {
+    if (snapped(g.origin, false, false) === snapped(g.clip, ob, true)) continue;
+    // x = (bo - bd) * B + (po - pd) * P, with B >= 1 device px when b > 0 and P >= 1 LU when p >= 1/128 px.
+    const [bo, po] = OUTSET[g.origin];
+    const [bd, pd] = g.clip === 'border-box' ? [ob ? 1 : 0, 0] : OUTSET[g.clip];
+    const terms = [[bo - bd, b], [po - pd, p]] as const;
+    if (terms.some(([c, v]) => c < 0 && v !== 0)) return false;
+    if (!terms.some(([c, v]) => c > 0 && v > 0)) return false;
+  }
+  return true;
+}
+
 /** Whether a position is the start edge: 0 from the left or top, or 100% from the right or bottom. */
 const atStart = (v: LengthPct): boolean => ((v.unit === 'percent' || v.unit === 'px') && v.value === 0) || (v.unit === 'end-percent' && v.value === 100);
 
@@ -214,7 +259,8 @@ export function phaseOffsetLower(el: ResolvedElement, layer: ElementLayer, axis:
   const pe = padding(el, end);
   const [bo, po] = OUTSET[g.origin];
   // ComputeDestRectAdjustments: the clip box; a border-box clip drops each border side that obscures the background.
-  const [bd, pd] = g.clip === 'border-box' ? [boxWidths(el).obscures[start] === true ? 1 : 0, 0] : OUTSET[g.clip];
+  // A double side obscures only below 3 device px: take the case that starts the origin box earliest.
+  const [bd, pd] = g.clip === 'border-box' ? [obscureCases(el, start).includes(true) ? 1 : 0, 0] : OUTSET[g.clip];
   // The origin box's start offset from the clip box's: (bo - bd) borders and (po - pd) paddings.
   const pad = paddingTerm(po - pd, ps);
   if (pad === null) return null;
@@ -273,9 +319,7 @@ export function checkGradientPhase(root: ResolvedElement, targets: readonly stri
       for (const axis of ['x', 'y'] as const) {
         if ((axis === 'x' ? layer.geometry.repeatX : layer.geometry.repeatY) !== 'no-repeat') continue;
         const pos = axis === 'x' ? layer.geometry.positionX : layer.geometry.positionY;
-        if (atStart(pos)) continue;
-        const lower = phaseOffsetLower(el, layer, axis, ancestors);
-        if (lower !== null && lower >= MARGIN) continue;
+        if (atStart(pos) ? startEdgeModelled(el, layer, axis) : (phaseOffsetLower(el, layer, axis, ancestors) ?? Number.NEGATIVE_INFINITY) >= MARGIN) continue;
         const property = `background-position-${axis}`;
         const at = (el.props.get(property as Longhand) ?? el.props.get('background-image' as Longhand)) as ResolvedValue;
         const origin = at.declaration === null ? el.element.node.origin : authored(at.declaration.valueSpan);
@@ -287,8 +331,8 @@ export function checkGradientPhase(root: ResolvedElement, targets: readonly stri
           reported.add(id);
           const dpr = fractionalScale(NATIVE_DEVICE_DPRS[t]);
           const where = dpr === null ? `at a box edge that is not a whole device px (at DPR ${NATIVE_DEVICE_DPRS[t].join(' and ')} a box at whole CSS px stays modelled)` : `at DPR ${dpr}, where a box at whole CSS px has edges off the device px grid`;
-          const message = `${property} on ${el.element.address}: layer ${i + 1} (a ${kind} gradient) sits at ${describePosition(pos)} with no-repeat, and Dragon cannot prove the box ${long} than its tile, so the tile may start outside the box at a phase that is not a whole device px, which the native background plan does not model ${where} (${BG2_TILING})`;
-          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: `Place the layer at the ${axis === 'x' ? 'left' : 'top'} edge or a px offset from it, or give the box a px ${axis === 'x' ? 'width' : 'height'} larger than the tile.`, basis: 'computed-value' }));
+          const message = `${property} on ${el.element.address}: layer ${i + 1} (a ${kind} gradient) sits at ${describePosition(pos)} with no-repeat, and ${atStart(pos) ? `its background-origin (${layer.geometry.origin}) starts where its clip box (${layer.geometry.clip}) does but snaps to device px differently, so the tile may start outside the box` : `Dragon cannot prove the box ${long} than its tile, so the tile may start outside the box`} at a phase that is not a whole device px, which the native background plan does not model ${where} (${BG2_TILING})`;
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: atStart(pos) ? 'Give the layer a background-origin of padding-box (the initial value), or a border of 1px or more on that side that the clip box does not hold.' : `Place the layer at the ${axis === 'x' ? 'left' : 'top'} edge or a px offset from it, or give the box a px ${axis === 'x' ? 'width' : 'height'} larger than the tile.`, basis: 'computed-value' }));
         }
         return;
       }

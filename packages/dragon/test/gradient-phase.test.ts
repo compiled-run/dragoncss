@@ -20,7 +20,7 @@ const compileWith = (css: string, body: Body, faults: CompilerFaults = NO_FAULTS
 const one: Body = (r) => [div(r, 'a', ['box', 'two'])];
 /** The phase refusals of a page: target and message. */
 const phase = (css: string, body: Body = one): string[] =>
-  compileWith(css, body).diagnostics.filter((d) => d.message.includes('cannot prove the box')).map((d) => `${d.target} ${d.message}`).sort();
+  compileWith(css, body).diagnostics.filter((d) => d.message.includes('at a phase that is not a whole device px')).map((d) => `${d.target} ${d.message}`).sort();
 const targetsOf = (out: readonly string[]): string[] => out.map((m) => m.split(' ')[0] as string);
 
 /** The background write of node id in a compiled page's android program. */
@@ -73,7 +73,7 @@ describe('BG2-t: a no-repeat layer away from the start edge (background-blend-in
     expect(phase(`${BOX} ${TWO('right top, left top')}`)).toEqual([]);
   });
   it('the refused case is unmodelled where the message says: the plant compiles it, and planBackground fails at 2.625 only', () => {
-    expect(compileWith(`${BOX} ${TWO('right top, left bottom')}`, one, { ...NO_FAULTS, gradientPhaseUnchecked: true }).diagnostics.filter((d) => d.message.includes('cannot prove the box'))).toEqual([]);
+    expect(compileWith(`${BOX} ${TWO('right top, left bottom')}`, one, { ...NO_FAULTS, gradientPhaseUnchecked: true }).diagnostics.filter((d) => d.message.includes('at a phase that is not a whole device px'))).toEqual([]);
     const w = writeOf(`${BOX} .box { height: 10px; } ${TWO('right top, left bottom')}`, 'a', one, { ...NO_FAULTS, gradientPhaseUnchecked: true });
     // The box at whole CSS px from the page top, as a block after others lays it out.
     const at = (y: number) => ({ x: 4, y, w: 80, h: 20, border: 2, padding: 3 });
@@ -127,13 +127,46 @@ describe('BG2-t: what the proof accepts and refuses', () => {
   it('calc() positions are refused before the phase check (CALC-p), so it never reads one', () => {
     const c = compileWith(page('width: 70px; height: 40px; background-size: 30px 20px; background-position: calc(100% - 4px) 0;'), (r) => [div(r, 'a', ['a'])]);
     expect(c.diagnostics.filter((d) => d.severity === 'error').length).toBeGreaterThan(0);
-    expect(c.diagnostics.filter((d) => d.message.includes('cannot prove the box'))).toEqual([]);
+    expect(c.diagnostics.filter((d) => d.message.includes('at a phase that is not a whole device px'))).toEqual([]);
   });
   it('the web target and a layer at the start edge are never refused', () => {
     const c = compileWith(page('background-size: 30px 20px; background-position: right bottom;'), (r) => [div(r, 'a', ['a'])]);
     expect(c.diagnostics.filter((d) => d.target === 'web' && d.severity === 'error')).toEqual([]);
     expect(axes('background-size: 30px 20px; background-position: left top;')).toEqual([]);
     expect(axes('background-size: 30px 20px; background-position: 0 0;')).toEqual([]);
+  });
+});
+
+describe('BG2-t: a layer at the start edge, whose origin and clip boxes may snap differently', () => {
+  const page = (rule: string): string => `.a { width: 70px; height: 40px; ${rule} background-color: #eee; background-image: linear-gradient(#fa0, #05a); background-size: 30px 20px; background-repeat: no-repeat; background-position: left top; }`;
+  const refused = (rule: string): string[] => phase(page(rule), (r) => [div(r, 'a', ['a'])]).map((m) => `${m.split(' ')[0]} ${m.split(' ')[1]}`);
+  const both = ['android background-position-x', 'ios background-position-x'];
+  it('refuses a padding-box origin over a zero border that does not obscure: the origin snaps, the border-box clip does not', () => {
+    expect(refused('border: 0 dashed #123;')).toEqual(both);
+    expect(refused('border: 0 solid transparent;')).toEqual(both);
+    expect(phase(page('border: 0 dashed #123;'), (r) => [div(r, 'a', ['a'])])[0]).toContain('its background-origin (padding-box) starts where its clip box (border-box) does but snaps to device px differently');
+  });
+  it('refuses a border-box origin under an obscuring border, which the clip box starts inside', () => {
+    expect(refused('border: 2px solid #123; background-origin: border-box;')).toEqual(both);
+    expect(refused('border: 2px double #123; background-origin: border-box;')).toEqual(both);
+  });
+  it('accepts origins that snap like the clip, or start a whole border or padding inside it', () => {
+    expect(refused('')).toEqual([]);
+    expect(refused('border: 2px solid #123;')).toEqual([]);
+    expect(refused('border: 1px dashed #123;')).toEqual([]);
+    expect(refused('border: 2px dashed #123; background-origin: border-box;')).toEqual([]);
+    expect(refused('border: 2px solid #123; padding: 3px; background-origin: content-box;')).toEqual([]);
+    expect(refused('padding: 3px; background-origin: content-box; background-clip: content-box;')).toEqual([]);
+  });
+  it('the refused cases are unmodelled under the plant, at 2.625 for a whole-px box and at 2 for a fractional one', () => {
+    const planted = { ...NO_FAULTS, gradientPhaseUnchecked: true };
+    for (const [rule, border] of [['border: 0 dashed #123;', 0], ['border: 2px solid #123; background-origin: border-box;', 2]] as const) {
+      const w = writeOf(page(rule), 'a', (r) => [div(r, 'a', ['a'])], planted);
+      const at = (x: number) => ({ x, y: 4, w: 70 + 2 * border, h: 40 + 2 * border, border, padding: 0 });
+      const xs = Array.from({ length: 16 }, (_v, k) => k);
+      expect(xs.filter((x) => !plan(w, 2.625, at(x))).length, rule).toBeGreaterThan(0);
+      expect(Array.from({ length: 64 }, (_v, k) => k).filter((k) => !plan(w, 2, at(4), { x: k, y: 0 })).length, rule).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -169,6 +202,10 @@ describe('BG2-t: every accepted case is modelled by planBackground for any box o
     { rule: 'width: 70px; height: 40px; background-size: 40% 60%; background-position: 25% 75%;', box: { w: 70, h: 40, border: 0, padding: 0 } },
     { rule: 'width: 70px; height: 40px; border: 3px solid #123; padding: 4px; background-origin: border-box; background-size: 40px 25px; background-position: bottom right;', box: { w: 84, h: 54, border: 3, padding: 4 } },
     { rule: 'width: 76px; height: 16px; border: 2px solid #123; background-size: 30px 15px; background-position: 100% 100%;', box: { w: 80, h: 20, border: 2, padding: 0 } },
+    { rule: 'width: 70px; height: 40px; background-size: 30px 20px; background-position: left top;', box: { w: 70, h: 40, border: 0, padding: 0 } },
+    { rule: 'width: 70px; height: 40px; border: 1px dashed #123; background-size: 30px 20px; background-position: 0 0;', box: { w: 72, h: 42, border: 1, padding: 0 } },
+    { rule: 'width: 70px; height: 40px; border: 2px dashed #123; background-origin: border-box; background-size: 30px 20px; background-position: left top;', box: { w: 74, h: 44, border: 2, padding: 0 } },
+    { rule: 'width: 70px; height: 40px; border: 2px solid #123; padding: 3px; background-origin: content-box; background-size: 30px 20px; background-position: left top;', box: { w: 80, h: 50, border: 2, padding: 3 } },
   ];
   for (const c of cases) {
     it(c.rule, () => {
