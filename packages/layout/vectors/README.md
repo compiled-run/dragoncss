@@ -18,7 +18,7 @@ Every field is required and there are no defaults: the compiler writes every val
 
 - `viewport` `{ width, height }` in CSS px, the initial containing block. `devicePixelRatio`: border widths snap to whole device px.
 - The environment (V2 of the value model): `viewportUnits` `{ small, large, dynamic }`, each a `{ width, height }` in CSS px that viewport units of that kind read (plain `vw` reads `large`); `safeArea` `{ top, right, bottom, left }` in CSS px, the insets `env(safe-area-inset-*)` reads; `rootFontSize`, the root element's specified font size in CSS px, which `rem` reads. The compiler writes the reference environment: every size the viewport, no safe area, and the root's font size at text scale 1; a host writes the device's.
-- `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, strut, children }`. Children are all boxes (and replaced leaves) or all inline-level (text leaves, inline boxes and line breaks). The compiler wraps mixed content in anonymous boxes `<element>:anon<k>`; the engine never creates boxes. `strut` is the box's own `{ font, lineHeight }` when its children are inline-level (CSS2 §10.8.1), and null otherwise; every text leaf has the font and line-height of its parent, the strut or its inline box.
+- `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, strut, marker, children }`. Children are all boxes (and replaced leaves) or all inline-level (text leaves, inline boxes and line breaks). The compiler wraps mixed content in anonymous boxes `<element>:anon<k>`; the engine never creates boxes. `strut` is the box's own `{ font, lineHeight }` when its children are inline-level (CSS2 §10.8.1), and null otherwise; every text leaf has the font and line-height of its parent, the strut or its inline box. `marker` is a list item's outside marker `{ id: "<item>::marker", kind: "symbol" | "text", symbol, text, font, lineHeight }` (T151 R14), laid out as the rect `<item>::marker`, and null otherwise.
 - An inline box is `{ kind: "inline", id, style, font, lineHeight, children }`: an element with `display: inline`, whose children are inline-level. A line break (`<br>`) is `{ kind: "br", id, font, lineHeight }`. The engine refuses both (`inline-box`) until the inline core lays them out.
 - `style` has all 48 `LayoutStyle` fields. `verticalAlign` is `{ kind: "keyword", value }` for a CSS2 §10.8.1 keyword, a length, a percentage or a calculation; the compiler writes `baseline`. `textOverflow` is `"clip"` or `"ellipsis"` (css-overflow-4 §3.1). `textIndent` is a length, a percentage of the line's available width or a calculation (css-text-3 §8.1); the compiler writes `{ kind: "px", value: 0 }` for none. `lineClamp` is 0, or the line after which a line-clamp container clamps (TXT2-g). Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers. An order that is not a whole number (a math function, which the compiler sends unrounded) is rounded half toward +infinity and clamped to the int range by the engine, as Blink's ComputeInteger does. `grid` is the grid container's tracks, placement flow and justify-items (input.ts GridContainerStyle) on a `display: "grid"` box and `null` elsewhere; `gridItem` is the resolved placement and justify-self (GridItemStyle) on each in-flow child of a grid container and `null` elsewhere.
 - `aspectRatio` is `{ kind: "auto" }`, or Blink's layout ratio `{ kind: "ratio" | "auto-ratio", width, height }` in raw LayoutUnit values (positive integers; `auto-ratio` is `auto && <ratio>`, which sizes the content box). A percentage height, min-height or max-height beside a ratio is refused.
@@ -191,6 +191,7 @@ Input:
    "gridItem": null
   },
   "strut": null,
+  "marker": null,
   "children": [
    {
     "kind": "box",
@@ -331,6 +332,7 @@ Input:
       "kind": "normal"
      }
     },
+    "marker": null,
     "children": [
      {
       "kind": "text",

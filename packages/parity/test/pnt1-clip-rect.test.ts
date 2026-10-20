@@ -1,9 +1,9 @@
 // MASK-CLIP clip on the host: the clip-rect fixtures' points against the committed Chrome PNGs at every device DPR. The paint model
 // of pnt1-radius (paint-model.ts: boxes in tree order, overflow clips of ancestors, Skia's source-over) leaves out a box with an
-// empty clip rect write and every box inside it, as the device hides the box view and every view inside it; an Ahem glyph's points
-// show the text colour when its text view sits outside every hidden box. No text sits inside one: native targets refuse that, since
-// a hidden native view leaves the accessibility tree and Chrome keeps clipped text in it. Every colour and glyph point must equal
-// Chrome exactly. Two model faults must each disagree with Chrome somewhere in every case: the clip ignored
+// empty clip rect write or a clip label write and every box inside it, as the device hides the box view (or draws nothing of it)
+// and every view inside it; an Ahem glyph's points show the text colour when its text view sits outside every hidden box. Text sits
+// inside one only in clip-rect-sr-only, whose boxes carry it as their accessibility label: there Chrome must paint none of its
+// glyph points. Every colour and glyph point must equal Chrome exactly. Two model faults must each disagree with Chrome somewhere in every case: the clip ignored
 // (the device plant clip-rect-ignored) and only the box's own paint hidden, its descendants still painting.
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram, ProgramNode } from 'dragon';
@@ -23,7 +23,7 @@ type Fault = 'none' | 'ignored' | 'own';
 
 /** The ids of the nodes a fault paints nothing of: none ignores the clip; own leaves out only the clipped boxes themselves. */
 function hiddenNodes(p: NativeProgram, fault: Fault): Set<string> {
-  const cut = new Set(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'clip-rect-empty')).map((n) => n.id));
+  const cut = new Set(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'clip-rect-empty' || w.kind === 'clip-rect-label')).map((n) => n.id));
   if (fault === 'ignored') return new Set();
   if (fault === 'own') return cut;
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
@@ -88,8 +88,8 @@ function judge(caseId: string, p: NativeProgram, viewport: { width: number; heig
 }
 
 describe('MASK-CLIP clip: the paint model at every sample point equals the committed Chrome pixels', () => {
-  it('covers the two clip-rect fixtures in both directions', () => {
-    expect(CLIP_FIXTURES.map((f) => f.id)).toEqual(['clip-rect-basic', 'clip-rect-nested']);
+  it('covers the three clip-rect fixtures in both directions', () => {
+    expect(CLIP_FIXTURES.map((f) => f.id)).toEqual(['clip-rect-basic', 'clip-rect-nested', 'clip-rect-sr-only']);
   });
   for (const spec of CLIP_FIXTURES) {
     for (const c of casesOf(spec, fixtureInput(spec))) {
@@ -100,8 +100,10 @@ describe('MASK-CLIP clip: the paint model at every sample point equals the commi
           const v = judge(c.id, p, c.environment.viewport, 'none');
           expect(v.problems).toEqual([]);
           expect(v.cutPoints, 'points on clipped boxes and their descendants').toBeGreaterThan(0);
-          expect(v.hiddenGlyphPoints, 'glyph points of clipped text (refused natively)').toBe(0);
-          if (spec.id === 'clip-rect-basic') expect(v.glyphPoints - v.hiddenGlyphPoints, 'glyph points of text beside a clipped box').toBeGreaterThan(0);
+          // Text in a hidden box is lowered only as a clip label, which the sr-only fixture holds; elsewhere none sits in one.
+          if (spec.id === 'clip-rect-sr-only') expect(v.hiddenGlyphPoints, 'glyph points of clipped text Chrome must not paint').toBeGreaterThan(0);
+          else expect(v.hiddenGlyphPoints, 'glyph points of clipped text').toBe(0);
+          if (spec.id !== 'clip-rect-nested') expect(v.glyphPoints - v.hiddenGlyphPoints, 'glyph points of text beside a clipped box').toBeGreaterThan(0);
           for (const fault of ['ignored', 'own'] as const) expect(judge(c.id, p, c.environment.viewport, fault).problems.length, fault).toBeGreaterThan(0);
         }
       });

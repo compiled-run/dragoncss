@@ -9,11 +9,12 @@
 import type { CalcExpr, GapValue, InlineChild, InlineSizeValue, InsetValue, LayoutBox, LayoutInput, LayoutStyle, LengthCalc, MarginValue, MaxInlineSizeValue, MaxSizeValue, MinSizeValue, PaddingValue, Percent, Px, ReplacedLeaf, SizeValue } from './input.ts';
 import type { Easing, RtFaults, StepPosition } from './rt-easing.ts';
 import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts';
-import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, ValueRange } from './rt-interpolate.ts';
+import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, TransformOp, ValueRange } from './rt-interpolate.ts';
 import { colorRgba8, intToString, legacyColor, lengthPercent, lengthPx, TRANSPARENT, ZERO_PX } from './rt-interpolate.ts';
 import type { AnimationEntry, KeyframesRule, RunningAnimation } from './rt-animations.ts';
 import { advanceAnimation, animationFinished, composeAnimations, updateAnimations } from './rt-animations.ts';
 import type { RuleKeyframe } from './rt-keyframes.ts';
+import type { TransformOrigin } from './paint-transform.ts';
 import type { FillMode, PlaybackDirection } from './rt-timing.ts';
 import { computeSecondsTiming } from './rt-timing.ts';
 import type { RunningTransition, TransitionListing } from './rt-transition.ts';
@@ -42,9 +43,12 @@ export type EasingCode = {
   readonly position: StepPosition;
 };
 
-export type ValueKind = 'color' | 'length' | 'none';
+export type ValueKind = 'color' | 'length' | 'transform' | 'none';
 
-/** A compiled endpoint: a colour (channels 0 to 255, alpha 0 to 1), a length (px, %, or their calc() sum), or none. */
+/**
+ * A compiled endpoint: a colour (channels 0 to 255, alpha 0 to 1), a length (px, %, or their calc() sum), a transform function
+ * list (ANIM-b2; translate lengths in px or % of the border box, resolved at use; empty for none), or none.
+ */
 export type ValueCode = {
   readonly kind: ValueKind;
   readonly r: number;
@@ -54,6 +58,7 @@ export type ValueCode = {
   readonly px: number;
   readonly percent: number;
   readonly calc: boolean;
+  readonly ops: readonly TransformOp[];
 };
 
 export type ListingMode = 'listed' | 'unlisted' | 'initial';
@@ -67,7 +72,7 @@ export type ListingCode = {
   readonly easing: EasingCode;
 };
 
-export type TrackKind = 'length' | 'color';
+export type TrackKind = 'length' | 'color' | 'transform';
 
 /** One (element, property) transition slot: per assignment, the colour endpoint (lengths come from the input) and the listing. */
 export type SlotTable = {
@@ -127,6 +132,9 @@ export type TrackRef = { readonly node: string; readonly property: string };
 /** R9: an animated colour and the writes it reaches (inheriting descendants' colour, currentcolor border sides). */
 export type ClosureTable = { readonly source: TrackRef; readonly writes: readonly TrackRef[] };
 
+/** ANIM-b2: a node whose transform animates, with its transform-origin per assignment (lengths in px or % of the border box). */
+export type OriginTable = { readonly node: string; readonly values: readonly TransformOrigin[] };
+
 export type AnimTables = {
   readonly assignments: number;
   readonly slots: readonly SlotTable[];
@@ -135,6 +143,7 @@ export type AnimTables = {
   readonly rendered: readonly RenderedTable[];
   readonly bases: readonly BaseTable[];
   readonly closure: readonly ClosureTable[];
+  readonly origins: readonly OriginTable[];
 };
 
 /** Planted faults of the runtime (T065 §4); the rt ones are RtFaults. */
@@ -165,7 +174,11 @@ export type FrameEntry = { readonly node: string; readonly property: string; rea
 /** One colour write of a frame, as the device draws it. */
 export type ColorWrite = { readonly node: string; readonly property: string; readonly rgba: Rgba8Value };
 
-const EMPTY: AnimatedValue = { kind: 'opacity', number: 0, length: ZERO_PX, color: TRANSPARENT, ops: [] };
+/** One transform write of a frame (ANIM-b2): the functions and origin the view's transform writer takes; none is no functions. */
+export type TransformWrite = { readonly node: string; readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin };
+
+/** No value: what a base without an underlying value composes to while no animation applies (never written). */
+const EMPTY: AnimatedValue = { kind: 'none', number: 0, length: ZERO_PX, color: TRANSPARENT, ops: [] };
 const NO_COMPOSED: Composed = { set: false, value: EMPTY, keys: [] };
 
 // ---------------------------------------------------------------- conversions
@@ -184,6 +197,7 @@ export function valueOf(v: ValueCode): AnimatedValue | null {
     const l: LengthValue = v.calc ? { kind: 'calc', px: froundOf(v.px), percent: froundOf(v.percent) } : v.percent !== 0 ? lengthPercent(v.percent) : lengthPx(v.px);
     return { kind: 'length', number: 0, length: l, color: TRANSPARENT, ops: [] };
   }
+  if (v.kind === 'transform') return { kind: 'transform', number: 0, length: ZERO_PX, color: TRANSPARENT, ops: v.ops };
   return null;
 }
 
@@ -356,7 +370,7 @@ function recompose(s: AnimatorState, t: AnimTables, inputs: readonly LayoutInput
     const stack = list.filter((a) => ruleSetsByName(rules, a.name));
     const v = composeAnimations(stack, rules, base === null ? EMPTY : base, b.range, afterEvent, faults);
     // An underlying value that does not interpolate (auto) is read only by a neutral keyframe, which then throws (ANIM-k).
-    return { set: v.kind !== 'opacity', value: v, keys: keys };
+    return { set: v.kind !== 'none', value: v, keys: keys };
   });
 }
 
@@ -370,33 +384,43 @@ export function animatorStart(t: AnimTables, inputs: readonly LayoutInput[], ini
   return { current: s.current, transitions: s.transitions, lists: s.lists, composed: recompose(s, t, inputs, initial, true, faults, anim) };
 }
 
-function slotEvent(t: AnimTables, sl: SlotTable, running: RunningTransition | null, from: number, to: number, inputs: readonly LayoutInput[], faults: RtFaults, anim: AnimatorFaults): RunningTransition | null {
+function slotEvent(t: AnimTables, sl: SlotTable, running: RunningTransition | null, from: number, to: number, beforeInputs: readonly LayoutInput[], afterInputs: readonly LayoutInput[], faults: RtFaults, anim: AnimatorFaults): RunningTransition | null {
   const shownBefore = rendered(t, sl.node, from);
   const shownAfter = rendered(t, sl.node, to);
   // R7: display: none cancels the subtree's transitions; an element's first style (new, or shown again) starts none.
   if (!shownAfter) return anim.displayNoneKeepsTransition ? running : null;
   // Planted displayNoneKeepsTransition: the transition outlives display: none and resumes when the element is shown again.
   if (!shownBefore && anim.displayNoneKeepsTransition && running !== null) return running;
-  const stored = baseValue(sl.kind, sl.node, sl.property, from, sl.values[from], inputs);
+  const stored = baseValue(sl.kind, sl.node, sl.property, from, sl.values[from], beforeInputs);
   // Planted transitionOnFirstStyle: a first style transitions from a zero value (0px, transparent) as if it had an old style.
   const before = stored === null && !shownBefore && anim.transitionOnFirstStyle ? zeroOf(sl.kind) : stored;
-  const after = baseValue(sl.kind, sl.node, sl.property, to, sl.values[to], inputs);
+  const afterValue = baseValue(sl.kind, sl.node, sl.property, to, sl.values[to], afterInputs);
   const listing = sl.listings[to];
-  if (after === null || listing === undefined || !listing.present) return null;
-  const smooth = before !== null && before.kind === after.kind;
+  if (afterValue === null || listing === undefined || !listing.present) return null;
+  const smooth = before !== null && before.kind === afterValue.kind;
   const hasOld = (shownBefore || anim.transitionOnFirstStyle) && before !== null;
-  return updateTransition(running, { hasOldStyle: hasOld, oldBase: before === null ? after : before, after: after, smooth: smooth, listing: listingOf(listing), range: sl.range }, faults);
+  return updateTransition(running, { hasOldStyle: hasOld, oldBase: before === null ? afterValue : before, after: afterValue, smooth: smooth, listing: listingOf(listing), range: sl.range }, faults);
 }
 
 /** R4: one style change event, the state program having moved from the current assignment to `to`. */
 export function animatorEvent(s: AnimatorState, t: AnimTables, inputs: readonly LayoutInput[], initial: number, to: number, faults: RtFaults, anim: AnimatorFaults): AnimatorState {
+  return animatorRestyle(s, t, inputs, inputs, initial, to, faults, anim);
+}
+
+/**
+ * MQ-R1: one style change event across a size change of the media root: the before-change style resolves against `before` and
+ * the after-change style against `after` (every assignment's input at the old and the new environment), as Chrome restyles a
+ * viewport-relative length after a resize; running animations keep their time. animatorEvent is the case before = after.
+ */
+export function animatorRestyle(s: AnimatorState, t: AnimTables, before: readonly LayoutInput[], after: readonly LayoutInput[], initial: number, to: number, faults: RtFaults, anim: AnimatorFaults): AnimatorState {
+  if (before.length !== t.assignments || after.length !== t.assignments) throw new AnimatorError(intToString(before.length) + ' and ' + intToString(after.length) + ' resolved engine inputs for ' + intToString(t.assignments) + ' assignments');
   if (to < 0 || to >= t.assignments) throw new AnimatorError('no assignment ' + intToString(to) + ' (' + intToString(t.assignments) + ' assignments)');
   const from = s.current;
   if (s.transitions.length !== t.slots.length) throw new AnimatorError(intToString(s.transitions.length) + ' transition records for ' + intToString(t.slots.length) + ' slots');
   const transitions = s.transitions.map((r, k): RunningTransition | null => {
     const sl = t.slots[k];
     if (sl === undefined) throw new AnimatorError('no slot ' + intToString(k));
-    return slotEvent(t, sl, r, from, to, inputs, faults, anim);
+    return slotEvent(t, sl, r, from, to, before, after, faults, anim);
   });
   // R7: an element leaving display: none starts its animations again at time 0 (M7).
   const lists = t.animations.map((a, i) => {
@@ -405,7 +429,7 @@ export function animatorEvent(s: AnimatorState, t: AnimTables, inputs: readonly 
     return updateAnimations(prev, entriesOf(t, a, to), faults);
   });
   const next: AnimatorState = { current: to, transitions: transitions, lists: lists, composed: s.composed };
-  return { current: to, transitions: transitions, lists: lists, composed: recompose(next, t, inputs, initial, true, faults, anim) };
+  return { current: to, transitions: transitions, lists: lists, composed: recompose(next, t, after, initial, true, faults, anim) };
 }
 
 /** One lane or display step (R2): every running, unfinished transition and animation moves by ms. */
@@ -479,6 +503,41 @@ export function closureFrame(frame: readonly FrameEntry[], t: AnimTables, anim: 
 export function frameColors(frame: readonly FrameEntry[], t: AnimTables, anim: AnimatorFaults): ColorWrite[] {
   const out: ColorWrite[] = [];
   for (const e of closureFrame(frame, t, anim)) if (e.value.kind === 'color') out.push({ node: e.node, property: e.property, rgba: colorRgba8(e.value.color) });
+  return out;
+}
+
+/** The value of a (node, property) in an assignment from its slot or base table, or null where it has none. */
+function tableValue(t: AnimTables, node: string, property: string, i: number): AnimatedValue | null {
+  for (const sl of t.slots) {
+    if (sl.node !== node || sl.property !== property) continue;
+    const v = sl.values[i];
+    return v === undefined ? null : valueOf(v);
+  }
+  for (const b of t.bases) {
+    if (b.node !== node || b.property !== property) continue;
+    const v = b.values[i];
+    return v === undefined ? null : valueOf(v);
+  }
+  return null;
+}
+
+/**
+ * ANIM-b2: the transform write of every node whose transform animates, each frame: its frame value, or while nothing animates it
+ * its value in the current assignment (the state program holds no transform write of such a node), with the assignment's origin.
+ * A node absent or not rendered in the assignment gets none.
+ */
+export function frameTransforms(s: AnimatorState, t: AnimTables, frame: readonly FrameEntry[]): TransformWrite[] {
+  const out: TransformWrite[] = [];
+  for (const o of t.origins) {
+    const origin = o.values[s.current];
+    if (origin === undefined) throw new AnimatorError('the origin table of ' + o.node + ' has no assignment ' + intToString(s.current));
+    if (!rendered(t, o.node, s.current)) continue;
+    const i = indexOfEntry(frame, o.node, 'transform');
+    const e = frame[i];
+    const v = i < 0 || e === undefined ? tableValue(t, o.node, 'transform', s.current) : e.value;
+    if (v === null || v.kind !== 'transform') continue;
+    out.push({ node: o.node, ops: v.ops, origin: origin });
+  }
   return out;
 }
 

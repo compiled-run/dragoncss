@@ -46,7 +46,7 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('check() reports the same diagnostics without outputs', () => {
-    const input = inputFor('.g { isolation: isolate; }', (r) => [div(r, 'g', ['g'])]);
+    const input = inputFor('.g { mix-blend-mode: multiply; }', (r) => [div(r, 'g', ['g'])]);
     const r = ios().check(input);
     expect(r.ok).toBe(false);
     expect(r.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
@@ -72,6 +72,8 @@ describe('createProject().compile() and check()', () => {
     // the border image longhands (MISC-PAINT), and appearance, written only where it is not none (FORM-a), caret-color and accent-color,
     // written only where one is not auto (FORM-b), and -webkit-user-modify, never written (TOUCH).
     const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify'];
+    // The fragmentation longhands, written only where one is not initial (css-break-3).
+    unwritten.push('break-before', 'break-after', 'break-inside', 'orphans', 'widows');
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
@@ -84,7 +86,7 @@ describe('createProject().compile() and check()', () => {
     const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]));
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('analysis-only');
-    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { isolation: isolate; }', (r) => [div(r, 'a', ['a'])]));
+    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { mix-blend-mode: multiply; }', (r) => [div(r, 'a', ['a'])]));
     expect(g.outputs.web.kind).toBe('blocked');
   });
 

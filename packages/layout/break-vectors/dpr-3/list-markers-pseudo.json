@@ -1,0 +1,22 @@
+{
+  "case": "list-markers-pseudo",
+  "dpr": 3,
+  "texts": [
+    {"id":"d1:text0","lines":[[0,2]]},
+    {"id":"d2:text0","lines":[[0,3]]},
+    {"id":"s1:text0","lines":[[0,1]]},
+    {"id":"s2:text0","lines":[[0,2]]},
+    {"id":"n1:text0","lines":[[0,2]]},
+    {"id":"n1::marker:text0","lines":[[0,3]]},
+    {"id":"n2:text0","lines":[[0,1]]},
+    {"id":"n2::marker:text0","lines":[[0,3]]},
+    {"id":"n3:text0","lines":[[0,1]]},
+    {"id":"n3::marker:text0","lines":[[0,3]]},
+    {"id":"c1:text0","lines":[[0,1]]},
+    {"id":"c2:text0","lines":[[0,1]]},
+    {"id":"c3:text0","lines":[[0,1]]},
+    {"id":"m1:text0","lines":[[0,1]]},
+    {"id":"m1::marker:text0","lines":[[0,3]]},
+    {"id":"m2:text0","lines":[[0,1]]}
+  ]
+}

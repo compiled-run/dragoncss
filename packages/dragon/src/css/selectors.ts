@@ -27,7 +27,11 @@ export type PseudoClass =
   | { readonly kind: 'is'; readonly where: boolean; readonly selectors: readonly Selector[] }
   | { readonly kind: 'not'; readonly selectors: readonly Selector[] }
   | { readonly kind: 'has'; readonly selectors: readonly Selector[] }
-  | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo };
+  | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo }
+  | { readonly kind: 'link'; readonly state: LinkState };
+
+/** :link (an unvisited hyperlink), :visited, or :any-link (either). */
+export type LinkState = 'unvisited' | 'visited' | 'any';
 
 /** The interaction pseudo-classes Dragon compiles as interaction states (SELD-R2, analysis/interaction.ts). */
 export type InteractionPseudo = 'hover' | 'active' | 'focus' | 'focus-visible';
@@ -52,7 +56,9 @@ export const GENERATED_PSEUDOS: readonly GeneratedPseudo[] = ['before', 'after']
  */
 export type SelectorPseudoElement =
   | { readonly kind: 'generated'; readonly name: GeneratedPseudo; readonly span: Span; /** Written as CSS2's single-colon :before or :after. */ readonly legacy: boolean }
-  | { readonly kind: 'static-empty'; readonly name: string; readonly span: Span };
+  | { readonly kind: 'static-empty'; readonly name: string; readonly span: Span }
+  /** ::marker, whose rules cascade onto a list item's marker (resolve.ts markerOf); only color is accepted (generated.ts). */
+  | { readonly kind: 'marker'; readonly name: 'marker'; readonly span: Span };
 /**
  * Right-to-left: parts[0] is the subject; each later part is joined to the previous by its combinator. anchor: in a :has()
  * argument, the combinator joining the leftmost compound to the :has() element (Selectors-4 §3.4 relative selectors); else null.
@@ -72,7 +78,7 @@ export type Selector = {
 
 const SELECTOR_FIX =
   'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
-const INTERACTIVE = new Set(['focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
+const INTERACTIVE = new Set(['focus-within', 'target', 'checked', 'disabled', 'enabled']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const LEGACY_GENERATED: ReadonlySet<string> = new Set(GENERATED_PSEUDOS);
 const ZERO: Specificity = [0, 0, 0];
@@ -132,7 +138,7 @@ function pseudoElementOwner(name: string): string {
   if (name === '-webkit-slider-thumb' || name === '-webkit-slider-runnable-track') return 'the form-control package FORM-a';
   if (name.startsWith('-webkit-scrollbar')) return 'the scrollbar package OVFL-s';
   if (name === 'first-line' || name === 'first-letter') return 'the generated-content package GEN-d';
-  if (name === 'marker') return 'the list-marker packages GEN-c and GEN-d6';
+  if (name === 'marker') return 'the list-marker package GEN-d6';
   return 'a later package';
 }
 
@@ -199,6 +205,12 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
     refuse(part, `${text} inside a selector argument is not supported: it matches nothing here, but its specificity would still count`);
     return null;
   }
+  // Selectors-4 §8.1 and §8.2: :any-link matches a hyperlink (an a with an href, analysis/match.ts isAnyLink), :link an unvisited
+  // one and :visited a visited one. Dragon styles every link as unvisited: a native app keeps no visit history, and Chrome before
+  // any visit (the parity capture's fresh profile) does the same. stylesheet.ts refuses on the web what a visit would change there.
+  if (name === 'link' && args === null) return { kind: 'link', state: 'unvisited' };
+  if (name === 'visited' && args === null) return { kind: 'link', state: 'visited' };
+  if (name === 'any-link' && args === null) return { kind: 'link', state: 'any' };
   if (INTERACTIVE.has(name)) {
     refuse(part, `${text} depends on user interaction or document state, which a later package models as runtime state`, 'Model the state as a component state and select it with a class or a [ui-*] attribute.');
     return null;
@@ -348,12 +360,14 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       const name = asciiLower(String(part['name']));
       const generated = part['children'] === null && (GENERATED_PSEUDOS as readonly string[]).includes(name);
       const empty = part['children'] === null && isStaticEmptyPseudo(name);
-      if ((generated || empty) && ctx.inArgument) {
+      const marker = part['children'] === null && name === 'marker';
+      if ((generated || empty || marker) && ctx.inArgument) {
         // Selectors-4 §4: a pseudo-element is invalid in a selector argument; Chrome drops it, and so does Dragon.
         ok = false;
         chromeInvalid(part, generate(part), ctx, refuse);
       } else if (generated) pseudoElement = { kind: 'generated', name: name as GeneratedPseudo, span: spanOf(part, ctx.base), legacy: false };
       else if (empty) pseudoElement = { kind: 'static-empty', name, span: spanOf(part, ctx.base) };
+      else if (marker) pseudoElement = { kind: 'marker', name: 'marker', span: spanOf(part, ctx.base) };
       else {
         ok = false;
         if (part['children'] === null && PSEUDO_ELEMENT_VALID[name]?.valid === false) chromeInvalid(part, generate(part), ctx, refuse);
@@ -370,12 +384,24 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
   }
   if (!ok) return null;
   compounds.push({ compound: current, combinator: pending });
+  // GEN-c draws markers on the static program only, so a ::marker whose match depends on an interaction state is refused.
+  if (pseudoElement !== null && pseudoElement.kind === 'marker' && compounds.some((c) => c.compound.pseudos.some(interactive))) {
+    refuse(sel, `${generate(sel)} depends on an interaction state, and Dragon draws list markers in one state only (the list-marker package GEN-d6)`, 'Select the ::marker without :hover, :active or :focus.');
+    return null;
+  }
   const parts = compounds.reverse().map((c, i, all) => ({
     compound: c.compound as Compound,
     combinator: i === 0 ? null : (all[i - 1] as { combinator: Combinator | null }).combinator,
   }));
   const partial: Selector = { parts, specificity: ZERO, anchor: relative === null ? null : anchor, pseudoElement, dropped: false };
   return { ...partial, specificity: specificityOf(partial) };
+}
+
+/** Whether a pseudo-class is, or has in a selector argument, an interaction pseudo-class. */
+function interactive(p: PseudoClass): boolean {
+  if (p.kind === 'interaction') return true;
+  const inner = p.kind === 'is' || p.kind === 'not' || p.kind === 'has' ? p.selectors : p.kind === 'nth' ? (p.of ?? []) : [];
+  return inner.some((s) => s.parts.some((x) => x.compound.pseudos.some(interactive)));
 }
 
 function parseAttribute(part: CssNode, refuse: Refuse): AttributeTest | null {
@@ -441,4 +467,13 @@ export function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, d
   }
   diagnostics.push(...refusals);
   return ok ? out : null;
+}
+
+/** Whether a selector tests :link or :visited anywhere, arguments included: what it matches then depends on visit history. */
+export function testsVisitState(sel: Selector): boolean {
+  return sel.parts.some(({ compound }) =>
+    compound.pseudos.some((p) =>
+      p.kind === 'link' ? p.state !== 'any' : p.kind === 'is' || p.kind === 'not' || p.kind === 'has' ? p.selectors.some(testsVisitState) : p.kind === 'nth' && p.of !== null && p.of.some(testsVisitState),
+    ),
+  );
 }

@@ -3,6 +3,8 @@
 # side chrome (macos-26, where the Chrome captures are byte-identical to the local Mac's): every step except lanes-host.
 # side host (xcode-27, Xcode 27.0 and Swift 6.4 like the local Mac): lanes-host only. The host toolchains must equal the ones
 # the committed lanes.json records, or the round fails before running anything.
+# seed_run (regen-on-ci.yml's resume, first round only): the regen store comes from that run's chrome-1 artifact instead of the
+# Actions cache, so steps whose inputs this commit leaves alone are skipped or restored. The tree still starts at the commit.
 # save_cache false (regen-on-ci.yml's patch mode): nothing is saved, as in full-test.yml; the regen and WPT caches are restored
 # only and the pnpm store is not cached (setup-node's cache always saves).
 name: regen-on-ci-round
@@ -14,6 +16,7 @@ on:
       args: { type: string, required: true }
       sha: { type: string, required: true }
       prev: { type: string, required: false, default: '' }
+      seed_run: { type: string, required: false, default: '' }
       name: { type: string, required: true }
       save_cache: { type: boolean, required: false, default: true }
     outputs:
@@ -25,6 +28,8 @@ on:
         value: ${{ jobs.round.outputs.next }}
 permissions:
   contents: read
+  # seed_run downloads another run's artifact.
+  actions: read
 jobs:
   round:
     runs-on: ${{ inputs.runner }}
@@ -66,6 +71,33 @@ jobs:
           path: .git/dragon-regen/v2
           key: regen-store-v2-darwin-arm64-node24.15.0-${{ github.run_id }}-${{ inputs.name }}
           restore-keys: regen-store-v2-darwin-arm64-node24.15.0-
+      - name: Download the seed run's chrome-1 (first round)
+        id: seed
+        if: inputs.prev == '' && inputs.seed_run != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-1
+          path: ${{ runner.temp }}/seed
+          run-id: ${{ inputs.seed_run }}
+          github-token: ${{ github.token }}
+      # The seed's entries go over the cache's, and its outputs' blobs into the object database (a restore reads them from
+      # there), applied to a scratch index so the worktree stays at the commit: the round starts exactly where a cold one would.
+      # A failure here only leaves the round colder: an entry file that does not parse is no entry, a missing blob makes its
+      # step run.
+      - name: Seed the regen cache from it
+        if: steps.seed.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p .git/dragon-regen
+          zstd -dcq "$RUNNER_TEMP/seed/store.tar.zst" | tar -xf - -C .git/dragon-regen
+          if [ -s "$RUNNER_TEMP/seed/outputs.patch" ]; then
+            export GIT_INDEX_FILE="$RUNNER_TEMP/seed.index"
+            git read-tree HEAD
+            git apply --cached --binary "$RUNNER_TEMP/seed/outputs.patch"
+          fi
+          rm -rf "$RUNNER_TEMP/seed" "$RUNNER_TEMP/seed.index"
       - name: Download the previous round
         if: inputs.prev != ''
         uses: actions/download-artifact@v4
@@ -169,6 +201,8 @@ jobs:
           name: ${{ inputs.name }}
           path: ${{ runner.temp }}/out
           if-no-files-found: warn
+          # regen-on-ci.yml's resume-chrome-1 may have left a partial chrome-1 when its upload failed.
+          overwrite: true
           # The store is zstd already; zipping it again only costs time.
           compression-level: 0
       # Only the last round saves: each round's store holds every earlier round's entries, and a save packs the whole store

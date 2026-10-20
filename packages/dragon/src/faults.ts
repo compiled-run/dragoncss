@@ -1,8 +1,10 @@
 // Internal fault switches, reachable only through createProjectWith, so the parity harness can prove it fails (docs/api.md §7).
 // Each feature owns faults/<feature>.ts: its fault type (one documented field per fault) and its all-off defaults, and one line in
 // FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
+import { BACKGROUND_BLEND_FAULTS } from './faults/background-blend.ts';
 import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
 import { BORDER_IMAGE_FAULTS } from './faults/border-image.ts';
+import { BOX_DECORATION_FAULTS } from './faults/box-decoration.ts';
 import { CASC_FAULTS } from './faults/casc.ts';
 import { CASC_LAYER_FAULTS } from './faults/casc-layer.ts';
 import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
@@ -35,14 +37,20 @@ import { TXT_FV_FAULTS } from './faults/txt-fv.ts';
 import { TXT_FX_FAULTS } from './faults/txt-fx.ts';
 import { TXT_W_FAULTS } from './faults/txt-w.ts';
 import { TXT2_C_FAULTS } from './faults/txt2-c.ts';
+import { TXT2_D_FAULTS } from './faults/txt2-d.ts';
 import { TXT2_E_FAULTS } from './faults/txt2-e.ts';
 import { TXT2_G_FAULTS } from './faults/txt2-g.ts';
+import { TXT2_I_FAULTS } from './faults/txt2-i.ts';
+import { TXT2_LB_FAULTS } from './faults/txt2-lb.ts';
+import { TXT2_TAL_FAULTS } from './faults/txt2-tal.ts';
 import { TXT2B_FAULTS } from './faults/txt2b.ts';
 import { VALUES_FAULTS } from './faults/values.ts';
 
 export const FAULT_GROUPS = {
+  'background-blend': BACKGROUND_BLEND_FAULTS,
   blockify: BLOCKIFY_FAULTS,
   'border-image': BORDER_IMAGE_FAULTS,
+  'box-decoration': BOX_DECORATION_FAULTS,
   casc: CASC_FAULTS,
   'casc-layer': CASC_LAYER_FAULTS,
   'casc-property': CASC_PROPERTY_FAULTS,
@@ -75,8 +83,12 @@ export const FAULT_GROUPS = {
   'txt-fx': TXT_FX_FAULTS,
   'txt-w': TXT_W_FAULTS,
   'txt2-c': TXT2_C_FAULTS,
+  'txt2-d': TXT2_D_FAULTS,
   'txt2-e': TXT2_E_FAULTS,
   'txt2-g': TXT2_G_FAULTS,
+  'txt2-i': TXT2_I_FAULTS,
+  'txt2-lb': TXT2_LB_FAULTS,
+  'txt2-tal': TXT2_TAL_FAULTS,
   txt2b: TXT2B_FAULTS,
   values: VALUES_FAULTS,
 } as const;

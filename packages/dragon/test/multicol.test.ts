@@ -10,7 +10,6 @@ import { resolveAlias } from '../src/css/aliases.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE, UNADMITTED } from '../src/css/animation-kinds/kinds.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ROLE, SHORTHANDS } from '../src/css/properties.ts';
-import { COUNTERS_LONGHANDS } from '../src/css/properties/counters.ts';
 import { isInitialValue, NON_INITIAL_VALUE_TYPE } from '../src/css/properties/initial-only.ts';
 import { MULTICOL_INITIAL, MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS } from '../src/css/properties/multicol.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -55,8 +54,8 @@ const INITIAL_DECLS = [
 ];
 
 describe('the initial-only multicol family', () => {
-  it('follows counters in the registry, is paint-role rows, animates as Chrome 145 does and knows its initial values', () => {
-    const at = LONGHANDS.indexOf(COUNTERS_LONGHANDS[COUNTERS_LONGHANDS.length - 1] as (typeof COUNTERS_LONGHANDS)[number]) + 1;
+  it('follows color-scheme in the registry, is paint-role rows, animates as Chrome 145 does and knows its initial values', () => {
+    const at = LONGHANDS.indexOf('color-scheme') + 1;
     expect(LONGHANDS.slice(at, at + MULTICOL_LONGHANDS.length)).toEqual([...MULTICOL_LONGHANDS]);
     for (const s of MULTICOL_SHORTHANDS) expect(SHORTHANDS, s).toContain(s);
     for (const p of MULTICOL_LONGHANDS) {

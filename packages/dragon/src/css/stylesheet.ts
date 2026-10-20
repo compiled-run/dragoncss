@@ -6,7 +6,8 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
-import { legacyAliasRefusal, legacyAliasValue, resolveAlias } from './aliases.ts';
+import type { AliasValueParser } from './aliases.ts';
+import { aliasValueParser, legacyAliasRefusal, legacyAliasValue, resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
@@ -19,7 +20,7 @@ import { isPlaceShorthand, PLACE_SHORTHANDS, splitPlace } from './place.ts';
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from './properties.ts';
 import type { Selector } from './selectors.ts';
-import { parseSelectorList } from './selectors.ts';
+import { parseSelectorList, testsVisitState } from './selectors.ts';
 import { markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
@@ -43,6 +44,7 @@ import { ANIM_INITIAL, isAnimationProperty, parseAnimationDeclaration } from './
 import type { AnimLonghand, AnimList } from './properties/animation.ts';
 import { layerLonghandValue } from './shorthands/background.ts';
 import { isBackgroundLayerLonghand } from './properties/background-layers.ts';
+import { parseCss } from './parser.ts';
 
 export type { CssValue } from './values.ts';
 export { featureOf } from './values.ts';
@@ -125,7 +127,7 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: 'the stylesheet holds a U+0000 code point, which Chrome 145 reads differently by position', manual: 'Remove the U+0000, or write the escape \\FFFD for U+FFFD.' }));
   }
   const errors: { message: string; offset: number }[] = [];
-  const ast = parse(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
+  const ast = parseCss(text, { positions: true, parseValue: true, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) });
   // Only a backslash spells an escape once the input is preprocessed.
   if (text.includes('\\')) canonicalizeEscapes(ast);
   // An @media prelude is parsed by media/parse.ts, which Chrome 145 proves (an invalid query is `not all`); css-tree's own
@@ -179,7 +181,11 @@ function styleRule(prelude: CssNode, selectorText: string, block: CssNode, st: P
   const dropped = diagnostics.slice(before).some((d) => d.code === 'DRAGON_SELECTOR_DROPPED');
   const blockDiagnostics = dropped ? [] : diagnostics;
   const declarations: Declaration[] = [];
-  const rule = (): Rule[] => (selectors === null ? [] : [{ sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) }]);
+  const rule = (): Rule[] => {
+    if (selectors === null) return [];
+    checkVisitedColors(prelude, selectors, declarations, st.base, blockDiagnostics);
+    return [{ sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) }];
+  };
   const children = list(block, 'children');
   const conditional = (c: CssNode): boolean => c.type === 'Atrule' && ['media', 'supports'].includes(asciiLower(decodeName(String(c['name'])))) && c['block'] !== null && c['block'] !== undefined;
   // css-tree reads a nested rule whose selector starts with a type and a colon (span:first-child { }) as a declaration.
@@ -454,6 +460,33 @@ function parseNestingBlock(block: CssNode, parentText: string, parent: readonly 
   return out;
 }
 
+/**
+ * The properties a visited link takes from :visited rules (Chrome 145 css_properties.json5, the -internal-visited- longhands): every
+ * other property comes from the link's unvisited style, so for them :link and :visited rules apply as to an unvisited link.
+ */
+const VISITED_COLORS: ReadonlySet<string> = new Set([
+  'color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'border-block-start-color',
+  'border-block-end-color', 'border-inline-start-color', 'border-inline-end-color', 'caret-color', 'column-rule-color', 'fill', 'outline-color',
+  'stroke', 'text-decoration-color', 'text-emphasis-color', '-webkit-text-fill-color', '-webkit-text-stroke-color',
+]);
+
+/**
+ * LINK-RT: Dragon styles every hyperlink as unvisited (selectors.ts LinkState). On the web a visited link would take its colours from
+ * :visited rules instead of :link ones, which Dragon's per-element web output does not express, so a rule that tests :link or
+ * :visited and sets one of those colours is refused on the web. Native apps keep no visit history, so it compiles there.
+ */
+function checkVisitedColors(prelude: CssNode, selectors: readonly Selector[], declarations: readonly Declaration[], base: Span, diagnostics: Diagnostic[]): void {
+  if (!selectors.some(testsVisitState)) return;
+  const colors = declarations.flatMap((d) => [...d.longhands.map((l) => l.property as string), ...(d.pending?.longhands ?? [])]).filter((p) => VISITED_COLORS.has(p));
+  if (colors.length === 0) return;
+  diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+    origin: authored(spanOf(prelude, base)),
+    target: 'web',
+    message: `"${generate(prelude)}" tests whether a link was visited and sets ${[...new Set(colors)].join(', ')}: a visited link takes those colours from its :visited rules, and Dragon's web output styles every link as unvisited (LINK-RT)`,
+    manual: 'Select links with :any-link, which matches visited and unvisited links alike, or move the colours to a rule without :link or :visited.',
+  }));
+}
+
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
 const EMPTY_RAW = /^[\s;]*$/;
 
@@ -574,7 +607,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return null;
   }
   const from = diagnostics.length;
-  const declaration = parseResolved({ ...d, value: rewritten } as CssNode, property, base, sheetText, order, diagnostics);
+  const declaration = parseResolved({ ...d, value: rewritten } as CssNode, property, base, sheetText, order, diagnostics, aliasValueParser(name));
   for (let i = from; i < diagnostics.length; i++) {
     const x = diagnostics[i] as Diagnostic;
     diagnostics[i] = { ...x, message: `${x.message} (${name} is an alias of ${property})` };
@@ -582,7 +615,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   return declaration === null ? null : { ...declaration, alias: name };
 }
 
-function parseResolved(d: CssNode, property: string, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
+function parseResolved(d: CssNode, property: string, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[], aliasParse?: AliasValueParser): Declaration | null {
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
@@ -652,7 +685,8 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
     return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands, ...(sides === null ? {} : { sides }) } };
   }
   const tokens = list(valueNode, 'children').filter((n) => n.type !== 'WhiteSpace');
-  const parsed = parseValue(property, valueNode, tokens, base, sheetText);
+  // A var() value is parsed after substitution as the property, as Chrome does; an alias Chrome parses differently parses its own way here.
+  const parsed = aliasParse?.(tokens) ?? parseValue(property, valueNode, tokens, base, sheetText);
   switch (parsed.kind) {
     case 'invalid':
       diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {

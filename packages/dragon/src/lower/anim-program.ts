@@ -4,7 +4,8 @@
 // resolution per name); and the closure of writes an animated colour reaches each frame (R9: inheriting descendants and
 // currentcolor users). Records are per animation and slot, never per assignment pair (R20).
 import type { AnimationAnalysis, AnimationEntry, AnimValue, Listing } from '../analysis/animations.ts';
-import { animValueOf, fontPx, keyframeValueOf, MAX_CLOSURE_WRITES, MAX_TRANSITION_SLOTS } from '../analysis/animations.ts';
+import { endpointOf, fontPx, keyframeValueOf, MAX_CLOSURE_WRITES, MAX_TRANSITION_SLOTS, transformValueOf } from '../analysis/animations.ts';
+import { elementTransformOrigin } from '../analysis/paint-values/transform.ts';
 import type { ResolvedValue } from '../analysis/computed.ts';
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import type { LengthRange } from '../css/animation-kinds.ts';
@@ -14,7 +15,9 @@ import { ANIM_LIST_PROPERTIES } from '../css/properties/animation.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import type { WebAnimations } from '../emit/web-css.ts';
 import type { Longhand } from '../css/properties.ts';
-import type { AnimTables, EasingCode, EntryCode, ValueCode } from '@dragon/layout';
+import type { AnimTables, EasingCode, EntryCode, TransformLength, TransformOrigin, ValueCode } from '@dragon/layout';
+import type { TransformLengthDecl } from '../css/properties/transform.ts';
+import { engineOps } from './paint/transform.ts';
 
 export const ANIM_PROGRAM_VERSION = 'dragon.anim-program/1';
 
@@ -26,7 +29,7 @@ export type SlotListing = { readonly mode: Listing['mode']; readonly delay: numb
 export type TransitionSlot = {
   readonly node: string;
   readonly property: Longhand;
-  readonly kind: 'length' | 'color';
+  readonly kind: 'length' | 'color' | 'transform';
   readonly range: LengthRange;
   /** Per assignment, in the program's assignment order: the base value (null where the node is absent) and the listing. */
   readonly values: readonly (AnimValue | null)[];
@@ -53,6 +56,8 @@ export type AnimProgram = {
   readonly bases: readonly { readonly node: string; readonly property: Longhand; readonly values: readonly (AnimValue | null)[] }[];
   /** Per animated colour (node and property), the other writes its value reaches in any assignment. */
   readonly closure: readonly { readonly source: ClosureWrite; readonly writes: readonly ClosureWrite[] }[];
+  /** ANIM-b2: per node whose transform animates (a slot or a base), its transform-origin per assignment (null where absent). */
+  readonly origins: readonly { readonly node: string; readonly values: readonly (TransformOrigin | null)[] }[];
 };
 
 const BORDER_COLORS: readonly Longhand[] = ['border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color'];
@@ -86,10 +91,10 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
     const listed = new Set(anims.flatMap((a) => [...(a.elements.get(node)?.listings.keys() ?? [])]));
     for (const property of listed) {
       const kind = animationKind(property);
-      if (!admitted(kind) || (kind.kind !== 'length' && kind.kind !== 'color')) continue;
+      if (!admitted(kind) || (kind.kind !== 'length' && kind.kind !== 'color' && kind.kind !== 'transform')) continue;
       const values = trees.map((t) => {
         const at = t.get(node);
-        return at === undefined ? null : animValueOf((at.el.props.get(property) as ResolvedValue).value);
+        return at === undefined ? null : endpointOf(property, (at.el.props.get(property) as ResolvedValue).value);
       });
       const present = values.filter((v) => v !== null);
       if (present.every((v) => same(v, present[0] ?? null))) continue;
@@ -127,7 +132,7 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
       blocks: rule.blocks.map((b) => ({
         offsets: b.offsets,
         easing: b.easing,
-        values: b.values.filter((v) => admitted(animationKind(v.property))).map((v) => ({ property: v.property, value: keyframeValueOf(v.value, fontSize, rootSize) })),
+        values: b.values.filter((v) => admitted(animationKind(v.property))).map((v) => ({ property: v.property, value: animationKind(v.property).kind === 'transform' ? transformValueOf(v.value, fontSize, rootSize) : keyframeValueOf(v.value, fontSize, rootSize) })),
       })),
     };
   });
@@ -176,11 +181,29 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
       property,
       values: trees.map((t) => {
         const at = t.get(a.node);
-        return at === undefined ? null : animValueOf((at.el.props.get(property) as ResolvedValue).value);
+        return at === undefined ? null : endpointOf(property, (at.el.props.get(property) as ResolvedValue).value);
       }),
     }));
   });
-  return { version: ANIM_PROGRAM_VERSION, assignments: cases.map((c) => c.key), slots, animations, keyframes, rendered, bases, closure };
+  // ANIM-b2: the views' transform writer takes the origin with the functions, so every node whose transform animates carries it.
+  const transformed = [...new Set([...slots, ...bases].filter((x) => x.property === 'transform').map((x) => x.node))];
+  const origins = transformed.map((node) => ({
+    node,
+    values: trees.map((t) => {
+      const at = t.get(node);
+      if (at === undefined) return null;
+      const o = elementTransformOrigin(at.el);
+      return { x: originLength(o.x, node), y: originLength(o.y, node) };
+    }),
+  }));
+  return { version: ANIM_PROGRAM_VERSION, assignments: cases.map((c) => c.key), slots, animations, keyframes, rendered, bases, closure, origins };
+}
+
+/** A computed transform-origin length as the views' writer takes it (px or % of the border box). */
+function originLength(l: TransformLengthDecl, node: string): TransformLength {
+  if (l.unit === '%') return { kind: 'percent', px: 0, percent: l.value + 0 };
+  if (l.unit === 'px') return { kind: 'px', px: l.value + 0, percent: 0 };
+  throw new AnimProgramError(`${node}: a transform-origin length in ${l.unit} did not compute to px`);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -229,7 +252,8 @@ export function webAnimationsOf(analysis: AnimationAnalysis, valueText: (v: CssV
 // ---------------------------------------------------------------- the runtime tables (T065 R16, 3b)
 
 const NO_EASING: EasingCode = { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 1, position: 'end' };
-const NO_VALUE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false };
+const NO_VALUE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false, ops: [] };
+const ORIGIN_CENTRE: TransformOrigin = { x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } };
 const DIRECTIONS: readonly string[] = ['normal', 'reverse', 'alternate', 'alternate-reverse'];
 const FILLS: readonly string[] = ['none', 'forwards', 'backwards', 'both', 'auto'];
 
@@ -246,14 +270,17 @@ export function valueCode(v: AnimValue | null): ValueCode {
   if (v === null) return NO_VALUE;
   if (v.kind === 'color') return { ...NO_VALUE, kind: 'color', r: v.r, g: v.g, b: v.b, alpha: v.alpha };
   if (v.kind === 'length') return { ...NO_VALUE, kind: 'length', px: v.px, percent: v.percent, calc: v.calc };
+  // ANIM-b2: the functions as the static writer lowers them (lower/paint/transform.ts); matrix() pairs are refused (ANIM-m).
+  if (v.kind === 'transform') return { ...NO_VALUE, kind: 'transform', ops: v.fns.flatMap((f) => engineOps(f, 'an animated transform')) };
   if (v.kind === 'keyword' && v.value === 'transparent') return { ...NO_VALUE, kind: 'color' };
   return NO_VALUE;
 }
 
-function trackKind(property: Longhand): { readonly kind: 'length' | 'color'; readonly range: LengthRange } {
+function trackKind(property: Longhand): { readonly kind: 'length' | 'color' | 'transform'; readonly range: LengthRange } {
   const k = animationKind(property);
   if (k.kind === 'length') return { kind: 'length', range: k.range };
   if (k.kind === 'color') return { kind: 'color', range: 'all' };
+  if (k.kind === 'transform') return { kind: 'transform', range: 'all' };
   throw new AnimProgramError(`${property} has no animation writer (${k.kind})`);
 }
 
@@ -283,5 +310,7 @@ export function animTablesOf(ap: AnimProgram): AnimTables {
     rendered: ap.rendered,
     bases: ap.bases.map((b) => ({ node: b.node, property: b.property, ...trackKind(b.property), values: b.values.map(valueCode) })),
     closure: ap.closure,
+    // An absent node's origin is never read (frameTransforms skips a node that is not rendered).
+    origins: ap.origins.map((o) => ({ node: o.node, values: o.values.map((v) => v ?? ORIGIN_CENTRE) })),
   };
 }

@@ -42,7 +42,7 @@ export function translatorDigest(): string {
  * The paint seam files (EMS, notes/T046-paint-spec.md §3 item 5): every exported function in them is an engine root. The Skia
  * references (paint-blur.ts, paint-dither.ts, paint-aa.ts) are reached through them once a paint package imports them.
  */
-export const PAINT_ROOT_FILES = ['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts'];
+export const PAINT_ROOT_FILES = ['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts', 'paint-marker.ts'];
 
 /** The engine roots (native-strategy.md section 1.3): everything they reach is translated. */
 export function engineRoots(files: readonly string[]): { file: string; name: string }[] {
@@ -96,6 +96,12 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   if (decoration === undefined) throw new Error('the root file text-decoration.ts is not an engine file');
   for (const st of decoration.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('text-decoration.ts'), name: st.name.text });
+  }
+  // MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
+  const bandFile = program.getSourceFile(at('rt-band.ts'));
+  if (bandFile === undefined) throw new Error('the root file rt-band.ts is not an engine file');
+  for (const st of bandFile.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-band.ts'), name: st.name.text });
   }
   // SELD-R1b (T047 RT-9): the hit test and tap dispatch.
   const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;

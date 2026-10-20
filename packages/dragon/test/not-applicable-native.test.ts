@@ -137,10 +137,8 @@ describe('the owner-ruled entries are left out whatever their value, and say so 
 
 describe('off the list, a declaration or rule is still refused on every target', () => {
   const OFF: Record<string, string> = {
-    'scrollbar-width (hides scroll indicators)': '.a { scrollbar-width: none; }',
     '-webkit-appearance off the compat keywords (Chrome may keep a legacy one)': '.a { -webkit-appearance: push-button; }',
-    'color-scheme (changes the UA colours)': '.a { color-scheme: dark; }',
-    'break-inside (fragments columns, not only pages)': '.a { break-inside: avoid; }',
+    'column-count (lays out columns, which break-* then fragment)': '.a { column-count: 2; }',
     '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
     '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
     'a ::-webkit-scrollbar rule (deferred)': '.a::-webkit-scrollbar { background-color: #eee; }',
@@ -168,7 +166,9 @@ describe('off the list, a declaration or rule is still refused on every target',
       const c = compile(`${BASE}\n${extra}`, { web: {}, ...NATIVE });
       expectCatalogued(c.diagnostics);
       expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked', android: 'blocked' });
-      expect(errors(c.diagnostics).some((d) => d.target === null)).toBe(true);
+      // A refusal for no target in particular, or one for each target (multicol refuses column-count: 2 per target).
+      const refused = errors(c.diagnostics);
+      expect(refused.some((d) => d.target === null) || ['web', 'ios', 'android'].every((t) => refused.some((d) => d.target === t))).toBe(true);
       expect(c.diagnostics.some((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE')).toBe(false);
     });
   }
@@ -212,7 +212,8 @@ describe('querySupport', () => {
     for (const target of [{ kind: 'ios', minimum: '15.0' }, { kind: 'android', minSdk: 31 }] as const) {
       const a = querySupport({ kind: 'possibilities', target, css: 'cursor: pointer' });
       expect(a).toEqual({ kind: 'not-applicable', declaration: 'cursor: pointer', reason: expect.stringContaining(`cursor has no effect on ${target.kind}`) });
-      expect(querySupport({ kind: 'possibilities', target, css: 'scrollbar-width: none' }).kind).toBe('invalid-query');
+      // A declaration off the list is never answered not-applicable, whatever else it is.
+      expect(querySupport({ kind: 'possibilities', target, css: 'color-scheme: dark' }).kind).not.toBe('not-applicable');
     }
     expect(querySupport({ kind: 'possibilities', target: { kind: 'web' }, css: 'cursor: pointer' }).kind).toBe('invalid-query');
     // Only a query of exactly the one listed declaration is answered; another declaration beside it keeps the query invalid.

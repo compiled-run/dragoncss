@@ -7,13 +7,13 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page } from 'playwright';
-import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, clampedInput, fromCssPx, layout, inlineLeaves, leafFontOf, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import type { Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, ListMarker, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
+import { absoluteRects, clampedInput, fromCssPx, layout, inlineLeaves, leafFontOf, markerTextId, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import type { TextTransform } from 'dragon';
 import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
 import type { NativeDump } from './native-dump.ts';
-import { breakLineGroups } from './native-dump.ts';
+import { breakLineGroups } from './dump-line-groups.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { captureGeneratedTexts, pseudoId } from './pseudo-capture.ts';
@@ -73,9 +73,15 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       if (c.kind === 'inline') for (const k of c.children) walkInline(k, container);
     }
   };
+  // GEN-c: a list item's marker box has no lines; a text marker's text fragment has one, its whole text (marker.ts layoutMarker).
+  const markers = new Map<string, ListMarker>();
   const walk = (b: LayoutBox): void => {
     notText.add(b.id);
     zBoxes.set(b.id, b);
+    if (b.marker !== null) {
+      notText.add(b.marker.id);
+      if (b.marker.kind === 'text') markers.set(markerTextId(b.marker.id), b.marker);
+    }
     for (const c of b.children) {
       if (c.kind === 'box') {
         zParent.set(c.id, b.id);
@@ -106,6 +112,11 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
   const out: EngineText[] = [];
   for (const r of boxes) {
     if (isLine(r)) continue;
+    const marker = markers.get(r.id);
+    if (marker !== undefined) {
+      out.push(markerTextLines(r, marker, boxes, abs, snapped));
+      continue;
+    }
     if (!textContainer.has(r.id)) {
       if (notText.has(r.id)) continue;
       throw new Error(`rect ${r.id} is not a node of the layout input`);
@@ -151,6 +162,21 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     out.push({ id: r.id, container: pId, font: leaf.font, textFont: leafFontOf(leaf), lines: own });
   }
   return out;
+}
+
+/** A text marker's one line, as the device places it: its whole text at the line rect of its text fragment, in the marker's font. */
+function markerTextLines(r: LayoutRect, m: ListMarker, boxes: readonly LayoutRect[], abs: ReadonlyMap<string, LayoutRect>, snapped: ReadonlyMap<string, EngineLine['snapped']>): EngineText {
+  const pieces = boxes.filter((b) => isLine(b) && b.parent === r.id);
+  const piece = pieces[0];
+  if (piece === undefined || pieces.length !== 1) throw new Error(`${r.id}: a text marker has ${pieces.length} line rects, not 1`);
+  const text = m.text;
+  const a = abs.get(piece.id);
+  const e = snapped.get(piece.id);
+  const box = abs.get(m.id);
+  if (text === null || a === undefined || e === undefined || box === undefined) throw new Error(`${r.id}: the text marker ${m.id} is not placed`);
+  const cps = [...text].map((ch) => ch.codePointAt(0) as number);
+  const line: EngineLine = { start: 0, end: text.length, cps, shifts: [], rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, halfLeading: a.y - box.y, ellipsis: null, fragments: [[0, text.length]] };
+  return { id: r.id, container: m.id, font: m.font, textFont: { family: m.font.family, size: m.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, lines: [line] };
 }
 
 // ---------------------------------------------------------------- break vectors
@@ -462,7 +488,7 @@ export function checkDumpBreaks(dump: NativeDump, v: BreakVector): BreakResult {
   return { compared, problems };
 }
 
-/** The text of every leaf of an engine input, by id. */
+/** The text of every leaf and text marker of an engine input, by id. */
 export function leafTexts(root: LayoutBox): Map<string, string> {
   const out = new Map<string, string>();
   const walkInline = (c: InlineChild): void => {
@@ -470,6 +496,7 @@ export function leafTexts(root: LayoutBox): Map<string, string> {
     else if (c.kind === 'inline') for (const k of c.children) walkInline(k);
   };
   const walk = (b: LayoutBox): void => {
+    if (b.marker !== null && b.marker.kind === 'text' && b.marker.text !== null) out.set(markerTextId(b.marker.id), b.marker.text);
     for (const c of b.children) {
       if (c.kind === 'box') walk(c);
       else if (c.kind !== 'replaced') walkInline(c);
@@ -512,8 +539,14 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
     else if let ib = c as? InlineBox { notText.insert(ib.id.description); for k in ib.children.items { walkInline(k, container) } }
     else if let lb = c as? LineBreak { notText.insert(lb.id.description) }
   }
+  // GEN-c: a marker box has no lines; a text marker's text fragment has one, its whole text.
+  var markerTexts: [String: Int] = [:]
   func walk(_ b: LayoutBox) {
     zBoxes[b.id.description] = b
+    if let m = b.marker {
+      notText.insert(m.id.description)
+      if m.kind.description == "text", let t = m.text { markerTexts[m.id.description + ":text0"] = t.description.utf16.count }
+    }
     for c in b.children.items {
       if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
       else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
@@ -539,6 +572,10 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   }
   var out: [String] = []
   for id in order where zBoxes[id] == nil && !replaced.contains(id) {
+    if let n = markerTexts[id] {
+      out.append("\(id)\t[[0,\(n)]]")
+      continue
+    }
     if zParent[id] == nil {
       if notText.contains(id) { continue }
       fatalError("rect \(id) is not a node of the layout input")
@@ -604,8 +641,16 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
     else if (c is InlineBox) { notText.add(c.id); for (k in c.children) walkInline(k, container) }
     else if (c is LineBreak) notText.add(c.id)
   }
+  // GEN-c: a marker box has no lines; a text marker's text fragment has one, its whole text.
+  val markerTexts = HashMap<String, Int>()
   fun walk(b: LayoutBox) {
     zBoxes[b.id] = b
+    val m = b.marker
+    if (m != null) {
+      notText.add(m.id)
+      val t = m.text
+      if (m.kind == "text" && t != null) markerTexts[m.id + ":text0"] = t.length
+    }
     for (c in b.children) {
       if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) }
       else if (c is TextLeaf) zParent[c.id] = b.id
@@ -635,6 +680,11 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   val out = ArrayList<String>()
   for (id in order) {
     if (zBoxes.containsKey(id) || replaced.contains(id)) continue
+    val markerLength = markerTexts[id]
+    if (markerLength != null) {
+      out.add(id + "\t[[0," + markerLength + "]]")
+      continue
+    }
     if (!zParent.containsKey(id)) {
       if (notText.contains(id)) continue
       throw IllegalStateException("rect " + id + " is not a node of the layout input")
