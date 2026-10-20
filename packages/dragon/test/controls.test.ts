@@ -50,6 +50,29 @@ describe('FORM-a controls', () => {
     expect(errors(compile(`${BODY}${BUTTON}.p { line-height: 30px; } .b { line-height: inherit; }`, inParent(button)).diagnostics)).toEqual([]);
   });
 
+  it('refuses the font longhands and text-shadow Chrome resets when inherited, and revert of a reset longhand', () => {
+    const refused = (css: string): string[] => errors(compile(`${BODY}${BUTTON}${css}`, inParent(button)).diagnostics);
+    expect(refused('.p { font-variant-caps: small-caps; }')).toContainEqual(expect.stringMatching(/inherits font-variant-caps: small-caps/));
+    expect(refused('.p { font-style: italic; }')).toContainEqual(expect.stringMatching(/inherits font-style: italic/));
+    expect(refused('.p { color: red; } .b { color: revert; }')).toContainEqual(expect.stringMatching(/resolves color: revert to .*which Chrome's user-agent button rule resets/));
+    expect(refused('.p { color: red; } .b { color: revert-layer; }')).toContainEqual(expect.stringMatching(/resolves color: revert-layer/));
+    expect(refused('.p { font-style: normal; font-variant-caps: normal; } .b { color: revert; }')).toEqual([]);
+  });
+
+  it('refuses on native a control that scrolls, or a scrolling box inside one, and keeps them on web', () => {
+    const scrollKid = (r: SourceRef) => ({ ...div(r, 'b', ['b'], [div(r, 'k', ['k'], [text(r, 'kt', 'XX')])]), tag: 'button' });
+    const cases: readonly [string, Body, RegExp][] = [
+      [`${BUTTON}.k { height: 10px; width: 30px; overflow: auto; }`, (r) => [scrollKid(r)], /overflow-x: auto on <div> k inside <button> b is not supported on native/],
+      [`${RANGE}.r::-webkit-slider-runnable-track { height: 6px; overflow: auto; }`, (r) => [range(r)], /overflow-x: auto on <div> r::track inside <input> r is not supported on native/],
+      [`${BUTTON}.b { height: 10px; overflow: scroll; }`, (r) => [button(r)], /overflow-x: scroll on <button> b is not supported on native/],
+    ];
+    for (const [css, body, message] of cases) {
+      const native = compile(`${BODY}${css}`, body, NATIVE).diagnostics.filter((d) => d.severity === 'error' && message.test(d.message));
+      expect(native.map((d) => d.target).sort(), String(message)).toEqual(['android', 'ios']);
+      expect(errors(compile(`${BODY}${css}`, body).diagnostics), String(message)).toEqual([]);
+    }
+  });
+
   it('refuses a track that is not a block, and a thumb that floats or is not a block', () => {
     const range1 = (extra: string): string[] => errors(compile(`${BODY}${RANGE}${extra}`, (r) => [range(r)]).diagnostics);
     expect(range1('.r::-webkit-slider-runnable-track { display: flex; }')).toContainEqual(expect.stringMatching(/display: flex on the track of <input> r is not supported/));

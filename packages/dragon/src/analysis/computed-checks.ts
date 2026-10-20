@@ -1048,6 +1048,13 @@ const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] 
   ['word-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
   ['text-indent', (v) => (v.kind === 'length' || v.kind === 'percentage') && v.value === 0],
   ['text-transform', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
+  // html.css `font: -webkit-small-control` resets every font longhand the shorthand covers (font-feature-settings and font-variation-settings it does not).
+  ['font-style', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ...(['font-variant-caps', 'font-variant-ligatures', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-alternates', 'font-variant-position', 'font-variant-emoji', 'font-language-override'] as const).map((p): readonly [Longhand, (v: CssValue) => boolean] => [p, (v) => v.kind === 'keyword' && v.value === 'normal']),
+  ['font-stretch', (v) => (v.kind === 'percentage' && v.value === 100) || (v.kind === 'keyword' && v.value === 'normal')],
+  ['font-kerning', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-optical-sizing', (v) => v.kind === 'keyword' && v.value === 'auto'],
 ];
 
 /**
@@ -1085,11 +1092,16 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   }
   refuseGridItem(el, parentDisplay, refuse);
   noteStaticOnNative(el, targets, diagnostics, reported);
+  refuseScrollInControl(el, el, targets, diagnostics, reported);
   // The UA reset rows are not captured yet (#78's inherited-reset capture), so a button inheriting anything but the reset is refused.
   for (const [p, isReset] of BUTTON_RESETS) {
     const v = el.props.get(p) as ResolvedValue;
-    if (v.origin !== 'inherited' || v.declaration !== null || isReset(v.value)) continue;
-    refuse(v, `reset-${p}`, `<${tag}> ${address} inherits ${p}: ${valueToString(v.value)}, which Chrome's user-agent button rule resets; Dragon does not model that reset yet`, `Set ${p} on <${tag}> ${address} (inherit is fine).`);
+    // revert and revert-layer roll back to the UA rule Dragon lacks, so Dragon resolves them to the inherited value too.
+    const reverted = v.declared !== null && v.declared.kind === 'keyword' && (v.declared.value === 'revert' || v.declared.value === 'revert-layer');
+    if ((v.origin !== 'inherited' || v.declaration !== null) && !reverted) continue;
+    if (isReset(v.value)) continue;
+    const how = reverted ? `resolves ${p}: ${valueToString(v.declared as CssValue)} to ${valueToString(v.value)}` : `inherits ${p}: ${valueToString(v.value)}`;
+    refuse(v, `reset-${p}`, `<${tag}> ${address} ${how}, which Chrome's user-agent button rule resets; Dragon does not model that reset yet`, `Set ${p} on <${tag}> ${address} to a value (inherit is fine).`);
   }
   const family = el.props.get('font-family') as ResolvedValue;
   if (family.origin === 'user-agent') {
@@ -1139,6 +1151,7 @@ function checkRange(el: ResolvedElement, parentDisplay: string | null, targets: 
   }
   refuseGridItem(el, parentDisplay, refuse);
   noteStaticOnNative(el, targets, diagnostics, reported);
+  refuseScrollInControl(el, el, targets, diagnostics, reported);
   for (const p of RANGE_FLEX_LONGHANDS) {
     const v = el.props.get(p) as ResolvedValue;
     if (v.declaration === null || isInitialByProvenance(v, p)) continue;
@@ -1176,7 +1189,21 @@ function checkRangePart(el: ResolvedElement, targets: readonly string[], diagnos
 }
 
 /** An absolutely positioned box inside a form control: the engine does not look up its containing block there (control-out-of-flow). */
+/** A control, or a box inside one, that scrolls: the engine decides no scroll range inside a control, and the native scroll view needs one. */
+function refuseScrollInControl(el: ResolvedElement, control: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  for (const p of ['overflow-x', 'overflow-y'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const k = keywordOf(v);
+    if (k !== 'auto' && k !== 'scroll') continue;
+    const where = el === control ? `on <${el.element.tag}> ${el.element.address}` : `on <${el.element.tag}> ${el.element.address} inside <${control.element.tag}> ${control.element.address}`;
+    refuseOn(el, v, 'scroll', 'DRAGON_UNSUPPORTED_VALUE', native, diagnostics, reported, `${p}: ${k} ${where} is not supported on native: the engine decides no scroll range inside a form control`, `Use overflow: hidden or visible ${where}, or move the scrolling box outside the control.`);
+    return;
+  }
+}
+
 function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  refuseScrollInControl(el, button, targets, diagnostics, reported);
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos !== 'absolute' && pos !== 'fixed') return;
