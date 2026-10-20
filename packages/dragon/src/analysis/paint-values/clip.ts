@@ -30,8 +30,8 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { valueToString } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
-import { clipLabelRefusal } from './clip-label.ts';
 import { paintedOutlineStyle } from './outline.ts';
+import { clipLabelRefusal } from './clip-label.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
 const keywordOf = (el: Pick<ResolvedElement, 'props'>, p: Longhand): string => {
