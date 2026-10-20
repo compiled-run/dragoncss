@@ -36,13 +36,15 @@ function writeOf(css: string, id: string, body: Body = one, faults: CompilerFaul
 
 /**
  * The plan of a write for a border box at (x, y), w x h CSS px, borders and padding in CSS px, at a device scale: the box as the
- * engine hands it to the device (LU of the zoomed layout, borders floored to whole device px).
+ * engine hands it to the device (LU of the zoomed layout; borders snapped as layout units.ts snapBorderWidth does, floored to whole
+ * device px with 1 device px for a thinner non-zero one, or given in device px for an initial medium).
  */
-function plan(w: GradientWrite, dpr: number, box: { x: number; y: number; w: number; h: number; border: number; padding: number }, shift = { x: 0, y: 0 }): boolean {
+function plan(w: GradientWrite, dpr: number, box: { x: number; y: number; w: number; h: number; border: number; padding: number; borderDevice?: number }, shift = { x: 0, y: 0 }): boolean {
   const lu = (v: number): number => Math.round(v * dpr * 64);
-  const b = Math.floor(box.border * dpr) * 64;
+  const device = box.border * dpr;
+  const b = (box.borderDevice ?? (device >= 1 ? Math.floor(device) : device > 0 ? 1 : 0)) * 64;
   const paint: BackgroundPaint = {
-    box: { x: lu(box.x) + shift.x, y: lu(box.y) + shift.y, width: lu(box.w), height: lu(box.h), borders: [b, b, b, b], padding: [box.padding, box.padding, box.padding, box.padding].map(lu), obscures: w.obscures.map((o) => o === 'always') },
+    box: { x: lu(box.x) + shift.x, y: lu(box.y) + shift.y, width: lu(box.w), height: lu(box.h), borders: [b, b, b, b], padding: [box.padding, box.padding, box.padding, box.padding].map(lu), obscures: w.obscures.map((o) => o === 'always' || (o === 'double' && b < 3 * 64)) },
     color: w.color,
     colorClip: w.colorClip,
     layers: w.layers.map((l) => ({ geometry: l.geometry as LayerGeometry, image: { ...l.gradient, stops: l.gradient.stops.map((s) => ({ color: s.color, unit: s.unit, value: s.value })) } })),
@@ -144,11 +146,13 @@ describe('BG2-t: a layer at the start edge, whose origin and clip boxes may snap
   it('refuses a padding-box origin over a zero border that does not obscure: the origin snaps, the border-box clip does not', () => {
     expect(refused('border: 0 dashed #123;')).toEqual(both);
     expect(refused('border: 0 solid transparent;')).toEqual(both);
-    expect(phase(page('border: 0 dashed #123;'), (r) => [div(r, 'a', ['a'])])[0]).toContain('its background-origin (padding-box) starts where its clip box (border-box) does but snaps to device px differently');
+    expect(phase(page('border: 0 dashed #123;'), (r) => [div(r, 'a', ['a'])])[0]).toContain('its background-origin (padding-box) and clip box (border-box) snap to device px differently and the origin box can start at or before the clip box');
   });
   it('refuses a border-box origin under an obscuring border, which the clip box starts inside', () => {
     expect(refused('border: 2px solid #123; background-origin: border-box;')).toEqual(both);
-    expect(refused('border: 2px double #123; background-origin: border-box;')).toEqual(both);
+    // A double side obscures below 3 device px only: 1px does at DPR 2, 2px never does at the device scales.
+    expect(refused('border: 1px double #123; background-origin: border-box;')).toEqual(both);
+    expect(refused('border: 2px double #123; background-origin: border-box;')).toEqual([]);
   });
   it('accepts origins that snap like the clip, or start a whole border or padding inside it', () => {
     expect(refused('')).toEqual([]);
@@ -224,4 +228,83 @@ describe('BG2-t: every accepted case is modelled by planBackground for any box o
       expect(failures).toEqual([]);
     });
   }
+});
+
+describe('BG2-t start edge: border width keywords and unknown widths count only where they decide the answer', () => {
+  // The reported rule has no background colour (BG2c refuses that stack natively); the swept one adds one so it lowers.
+  const rule = (extra: string, color = ''): string => `.a { width: 70px; height: 40px; background: linear-gradient(#fa0, #05a) no-repeat; background-size: 30px 20px; ${color} ${extra} }`;
+  const at = (border: number, padding: number, borderDevice?: number) => ({ x: 4, y: 4, w: 70 + 2 * padding + 2 * border, h: 40 + 2 * padding + 2 * border, border, padding, ...(borderDevice === undefined ? {} : { borderDevice }) });
+  const swept = (w: GradientWrite, box: ReturnType<typeof at>): string[] => {
+    const out: string[] = [];
+    for (const dpr of ALL_DPRS) for (let s = 0; s < 64; s += 3) if (!plan(w, dpr, box, { x: s, y: 63 - s })) out.push(`${dpr} ${s}`);
+    return out;
+  };
+  for (const [extra, box] of [
+    ['border: solid #000;', at(1, 0, 3)],
+    ['border: thin solid #000;', at(1, 0)],
+    ['border: 2px solid #000; padding: 5%;', at(2, 5)],
+  ] as const) {
+    it(`accepts ${extra} with the initial padding-box origin under a border-box clip, which both snap alike`, () => {
+      const css = `.p { width: 100px; } ${rule(extra)}`;
+      const body: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])];
+      expect(phase(css, body)).toEqual([]);
+      expect(swept(writeOf(`.p { width: 100px; } ${rule(extra, 'background-color: #eee;')}`, 'a', body), box)).toEqual([]);
+    });
+  }
+  it('gives an unknown width its own message', () => {
+    const out = phase(`.p { width: 100px; } ${rule('padding: 5%; background-origin: content-box;')}`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
+    expect(targetsOf(out)).toEqual(['android', 'ios']);
+    expect(out[0]).toContain('a border or padding width that decides it is not known at compile time');
+  });
+});
+
+describe('BG2-t start edge: generated border, padding and box combinations against planBackground', () => {
+  // Every border style and width form, padding form and origin/clip pair, at the start edge. A refusal for snapping must be one
+  // planBackground can leave unmodelled; an accepted case must be modelled at every sampled layout; a refusal for an unknown
+  // width is fail-closed and only a percentage padding over a content box reaches it here.
+  const styles = ['none', 'solid #000', 'dashed #000', 'solid transparent', 'double #000'];
+  const widths: readonly (readonly [string, number, number | undefined])[] = [['0', 0, undefined], ['0.3px', 0.3, undefined], ['1px', 1, undefined], ['2px', 2, undefined], ['thin', 1, undefined], ['medium', 3, undefined], ['thick', 5, undefined], ['', 1, 3]];
+  const paddings: readonly (readonly [string, number])[] = [['0', 0], ['3px', 3], ['5%', 5]];
+  const boxes = ['border-box', 'padding-box', 'content-box'];
+  it('refuses exactly the start-edge combinations planBackground leaves unmodelled, and accepts no unmodelled far-edge one', () => {
+    const wrong: string[] = [];
+    const unknown: string[] = [];
+    let accepted = 0;
+    let snaps = 0;
+    let farAccepted = 0;
+    for (const position of ['left top', 'right bottom']) for (const style of styles) for (const [width, css, device] of widths) for (const [pad, padPx] of paddings) for (const origin of boxes) for (const clip of boxes) {
+      const extra = `border-style: ${style.split(' ')[0]}; border-color: ${style.split(' ')[1] ?? '#000'}; ${width === '' ? '' : `border-width: ${width};`} padding: ${pad}; background-origin: ${origin}; background-clip: ${clip}; background-position: ${position};`;
+      const css2 = `.p { width: 100px; } .a { width: 70px; height: 40px; ${extra} background-color: #eee; background-image: linear-gradient(#fa0, #05a); background-repeat: no-repeat; background-size: 30px 20px; }`;
+      const body: Body = (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])];
+      const c = compileWith(css2, body);
+      const refusal = c.diagnostics.find((d) => d.target === 'android' && d.message.includes('at a phase that is not a whole device px'));
+      // Other refusals (a colour clipped inside a border that shows the backdrop) leave no program to sweep.
+      if (c.diagnostics.some((d) => d.severity === 'error' && !d.message.includes('at a phase that is not a whole device px'))) continue;
+      const w = writeOf(css2, 'a', body, { ...NO_FAULTS, gradientPhaseUnchecked: true });
+      const border = style.startsWith('none') ? 0 : css;
+      const box = { x: 4, y: 4, w: 70 + 2 * padPx + 2 * border, h: 40 + 2 * padPx + 2 * border, border, padding: padPx, ...(style.startsWith('none') || device === undefined ? {} : { borderDevice: device }) };
+      let unmodelled = false;
+      for (const dpr of ALL_DPRS) for (let s = 0; s < 64 && !unmodelled; s += 3) if (!plan(w, dpr, box, { x: s, y: 63 - s })) unmodelled = true;
+      const name = `${extra}`;
+      if (position !== 'left top') {
+        // The far edge: a fail-closed proof over the box size; every case it accepts must be modelled.
+        if (refusal === undefined) farAccepted++;
+        if (refusal === undefined && unmodelled) wrong.push(`accepted but unmodelled: ${name}`);
+        continue;
+      }
+      if (refusal === undefined) {
+        accepted++;
+        if (unmodelled) wrong.push(`accepted but unmodelled: ${name}`);
+      } else if (refusal.message.includes('not known at compile time')) unknown.push(`${pad} ${origin} ${clip}`);
+      else {
+        snaps++;
+        if (!unmodelled) wrong.push(`refused but modelled: ${name}`);
+      }
+    }
+    expect(wrong).toEqual([]);
+    expect(accepted).toBeGreaterThan(0);
+    expect(snaps).toBeGreaterThan(0);
+    expect(farAccepted).toBeGreaterThan(0);
+    expect(unknown.every((u) => u.startsWith('5% ') && u.includes('content-box'))).toBe(true);
+  }, 240_000);
 });
