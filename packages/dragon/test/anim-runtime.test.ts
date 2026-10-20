@@ -30,8 +30,8 @@ function kotlinParams(cls: string): string[] {
 }
 
 const EASE = { kind: 'cubic-bezier', x1: 0.25, y1: 0.1, x2: 0.25, y2: 1, steps: 1, position: 'end' } as const;
-const NONE = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false } as const;
-const RED = { kind: 'color', r: 255, g: 0, b: 0, alpha: 1, px: 0, percent: 0, calc: false } as const;
+const NONE = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false, ops: [] } as const;
+const RED = { kind: 'color', r: 255, g: 0, b: 0, alpha: 1, px: 0, percent: 0, calc: false, ops: [] } as const;
 const TABLES: AnimTables = {
   assignments: 2,
   slots: [{ node: 'a', property: 'background-color', kind: 'color', range: 'all', values: [NONE, RED], listings: [{ present: true, mode: 'listed', delay: 0, duration: 0.3, easing: EASE }, { present: true, mode: 'listed', delay: -0.1, duration: 0.3, easing: EASE }] }],
@@ -40,6 +40,7 @@ const TABLES: AnimTables = {
   rendered: [{ node: 'a', values: [true, false] }],
   bases: [{ node: 'a', property: 'width', kind: 'length', range: 'non-negative', values: [NONE, NONE] }],
   closure: [{ source: { node: 'a', property: 'color' }, writes: [{ node: 'b', property: 'color' }] }],
+  origins: [],
 };
 
 describe('ANIM-b1: the animation tables as typed literals', () => {
@@ -61,9 +62,9 @@ describe('ANIM-b1: the animation tables as typed literals', () => {
     const all = [...swift.decls, swift.expr].join('\n');
     expect(all).toContain('EntryCode(JsString("spin \\"x\\""), true, false, 0.0, 20.0, Double.infinity, JsString("alternate"), JsString("both"), EasingCode(JsString("cubic-bezier"), 0.25, 0.1, 0.25, 1.0, 1.0, JsString("end")))');
     expect(all).toContain('ListingCode(true, JsString("listed"), -0.1, 0.3, ');
-    expect(all).toContain('ValueCode(JsString("length"), 0.0, 0.0, 0.0, 0.0, 10.0, 50.0, true)');
+    expect(all).toContain('ValueCode(JsString("length"), 0.0, 0.0, 0.0, 0.0, 10.0, 50.0, true, JsArray<TransformOp>([]))');
     expect(all).toContain('ClosureTable(TrackRef(JsString("a"), JsString("color")), JsArray<TrackRef>([TrackRef(JsString("b"), JsString("color"))]))');
-    expect(swift.expr).toBe('AnimTables(2.0, JsArray<SlotTable>([pSlot0]), JsArray<AnimationTable>([pAnimation0]), JsArray<KeyframesTable>([pKeyframes0]), JsArray<RenderedTable>([pRendered0]), JsArray<BaseTable>([pBase0]), JsArray<ClosureTable>([pClosure0]))');
+    expect(swift.expr).toBe('AnimTables(2.0, JsArray<SlotTable>([pSlot0]), JsArray<AnimationTable>([pAnimation0]), JsArray<KeyframesTable>([pKeyframes0]), JsArray<RenderedTable>([pRendered0]), JsArray<BaseTable>([pBase0]), JsArray<ClosureTable>([pClosure0]), JsArray<OriginTable>([]))');
     const kotlin = animTablesLit('kotlin', TABLES, 'p');
     const kall = [...kotlin.decls, kotlin.expr].join('\n');
     expect(kall).toContain('EntryCode("spin \\"x\\"", true, false, 0.0, 20.0, Double.POSITIVE_INFINITY, "alternate", "both", ');

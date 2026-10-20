@@ -27,7 +27,7 @@ function length(l: TransformLengthDecl, at: string): TransformLength {
 }
 
 /** The engine functions of one declared function; matrix() is translate · rotate · scale (css/properties/transform.ts). */
-function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
+export function engineOps(f: TransformFnDecl, at: string): TransformOp[] {
   switch (f.kind) {
     case 'translate':
       return [{ fn: f.fn, x: length(f.x, at), y: length(f.y, at), angle: 0, sx: 1, sy: 1 }];

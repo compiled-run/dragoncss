@@ -1,6 +1,7 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
 import { ALIASES } from './fixture-groups/aliases.ts';
+import { ANIMATIONS_PAINT } from './fixture-groups/animations-paint.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
 import { APPEARANCE } from './fixture-groups/appearance.ts';
 import { UI_COLORS } from './fixture-groups/ui-colors.ts';
@@ -153,6 +154,7 @@ export type FixtureSpec =
 export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
+  'animations-paint': ANIMATIONS_PAINT,
   appearance: APPEARANCE,
   'ui-colors': UI_COLORS,
   'user-modify': USER_MODIFY,
