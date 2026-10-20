@@ -79,6 +79,8 @@ export function appliedValue(engine: ExpectedEngine, backend: NativeBackend, w: 
       return w.shear;
     case 'synthetic-bold':
       return { keys: [...w.keys], values: [...w.values] };
+    case 'text-stroke':
+      return { width: w.width, color: rgba(w.color) };
     case 'font': {
       if (g.fontSize === null) throw new Error(`a font write on a node without a resolved font size`);
       const size = engine.platformFontSize(g.fontSize);

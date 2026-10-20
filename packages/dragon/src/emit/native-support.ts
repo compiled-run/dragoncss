@@ -323,6 +323,8 @@ public final class DragonTextView: UIView, DragonNodeView {
   public private(set) var dragonSyntheticBold: (keys: [Double], values: [Double])? = nil
   /// TXT-W: the synthetic oblique's shear (x per unit of height above the baseline), 0 for upright glyphs; Chrome's is Skia's skewX(-1/4).
   public private(set) var dragonGlyphShear: Double = 0
+  /// TXT-FX: the -webkit-text-stroke width (css px, points here) and opaque colour each line's outlines are stroked in after the fill, else nil.
+  public private(set) var dragonTextStroke: (width: Double, color: DragonRGBA8)? = nil
   public private(set) var specs: [DragonLineSpec] = []
   private var scale: Double = 1
   private let glyphLayer = DragonGlyphLayer()
@@ -361,6 +363,13 @@ public final class DragonTextView: UIView, DragonNodeView {
   /// The synthetic bold from the program: every glyph outline is stroked and filled; advances are the face's.
   public func dragonSetSyntheticBold(keys: [Double], values: [Double]) {
     dragonSyntheticBold = (keys, values)
+    setNeedsLayout()
+    glyphLayer.setNeedsDisplay()
+  }
+
+  /// The text stroke from the program: after each line's fill, its glyph outlines are stroked with a miter join (limit 4).
+  public func dragonSetTextStroke(width: Double, color: DragonRGBA8) {
+    dragonTextStroke = (width, color)
     setNeedsLayout()
     glyphLayer.setNeedsDisplay()
   }
@@ -407,8 +416,9 @@ public final class DragonTextView: UIView, DragonNodeView {
         r = r.union(CGRect(x: x0, y: y - b.maxY, width: x1 - x0, height: b.height))
       }
       // A fake-bold stroke reaches past the outline by at most its miter limit (4) times half its width.
+      // A text stroke reaches half its width past the outline (an Ahem box keeps its right angles); its whole width covers that.
       func grown(_ b: CGRect, _ sizeDevicePx: Double) -> CGRect {
-        let h = CGFloat(2 * dragonBoldStroke(sizeDevicePx) / scale)
+        let h = CGFloat(2 * dragonBoldStroke(sizeDevicePx) / scale + (dragonTextStroke?.width ?? 0))
         return b.insetBy(dx: -h, dy: -h)
       }
       for l in specs {
@@ -445,22 +455,36 @@ public final class DragonTextView: UIView, DragonNodeView {
     ctx.setFillColor(paint)
     ctx.setStrokeColor(paint)
     // y is up from the baseline here: a fake-bold run is each glyph's outline at its origin, stroked with a miter join and filled.
+    func outline(_ f: CTFont, _ glyphs: [CGGlyph], _ at: [CGPoint]) -> CGPath {
+      let path = CGMutablePath()
+      for (g, p) in zip(glyphs, at) {
+        var move = CGAffineTransform(translationX: p.x, y: p.y)
+        if let one = CTFontCreatePathForGlyph(f, g, &move) { path.addPath(one) }
+      }
+      return path
+    }
     func drawRun(_ f: CTFont, _ glyphs: [CGGlyph], _ at: [CGPoint], _ sizeDevicePx: Double) {
       let w = dragonBoldStroke(sizeDevicePx)
       if w <= 0 {
         CTFontDrawGlyphs(f, glyphs, at, glyphs.count, ctx)
-        return
+      } else {
+        ctx.addPath(outline(f, glyphs, at))
+        ctx.setLineWidth(CGFloat(w / scale))
+        ctx.setLineJoin(.miter)
+        ctx.setMiterLimit(4)
+        ctx.drawPath(using: .fillStroke)
       }
-      let outline = CGMutablePath()
-      for (g, p) in zip(glyphs, at) {
-        var move = CGAffineTransform(translationX: p.x, y: p.y)
-        if let path = CTFontCreatePathForGlyph(f, g, &move) { outline.addPath(path) }
+      // TXT-FX: Chrome's stroke pass after the fill pass of the line, a miter join at limit 4 (GraphicsContext::DrawTextPasses).
+      if let s = dragonTextStroke {
+        ctx.saveGState()
+        ctx.addPath(outline(f, glyphs, at))
+        ctx.setLineWidth(CGFloat(s.width))
+        ctx.setLineJoin(.miter)
+        ctx.setMiterLimit(4)
+        ctx.setStrokeColor(dragonUIColor(s.color).cgColor)
+        ctx.strokePath()
+        ctx.restoreGState()
       }
-      ctx.addPath(outline)
-      ctx.setLineWidth(CGFloat(w / scale))
-      ctx.setLineJoin(.miter)
-      ctx.setMiterLimit(4)
-      ctx.drawPath(using: .fillStroke)
     }
     for l in specs {
       ctx.saveGState()
@@ -504,6 +528,7 @@ public final class DragonTextView: UIView, DragonNodeView {
     ]
     if dragonGlyphShear != 0 { out.append(("glyphShear", .number(dragonGlyphShear))) }
     if let b = dragonSyntheticBold { out.append(("syntheticBold", .object([("keys", .array(b.keys.map { DumpJson.number($0) })), ("values", .array(b.values.map { DumpJson.number($0) }))]))) }
+    if let s = dragonTextStroke { out.append(("textStroke", .object([("width", .number(s.width)), ("color", dragonRGBAJson(s.color))]))) }
     return out
   }
 }
@@ -1379,6 +1404,12 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var dragonBoldValues: DoubleArray? = null
     private set
+  /** TXT-FX: the -webkit-text-stroke width (css px) and opaque colour each line's glyphs are stroked in after the fill, else null. */
+  var dragonStrokeWidth = 0.0
+    private set
+  var dragonStrokeColor: DragonRGBA8? = null
+    private set
+  private var scale = 1.0
   private var font: android.graphics.fonts.Font? = null
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
@@ -1401,6 +1432,25 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     dragonBoldValues = values
     dragonBoldPaints.clear()
     invalidate()
+  }
+
+  /** The text stroke from the program: after each line's fill, its glyphs are drawn again stroked with a miter join (limit 4). */
+  fun dragonSetTextStroke(width: Double, color: DragonRGBA8) {
+    dragonStrokeWidth = width
+    dragonStrokeColor = color
+    invalidate()
+  }
+
+  /** The stroke pass's paint at a run's paint: Chrome's stroke flags (GraphicsContext::DrawTextPasses), width in device px. */
+  private fun dragonStrokePaint(p: Paint): Paint? {
+    val c = dragonStrokeColor ?: return null
+    return Paint(p).apply {
+      style = Paint.Style.STROKE
+      strokeWidth = (dragonStrokeWidth * scale).toFloat()
+      strokeJoin = Paint.Join.MITER
+      strokeMiter = 4f
+      color = dragonArgb(c)
+    }
   }
 
   /** Skia's fake-bold stroke width in device px at a text size in device px (SkFloatInterpFunc, then size * scale, in Float); 0 when upright. */
@@ -1436,8 +1486,9 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
   }
 
   /** The engine's data at the device scale: the instance text size and the placed lines. */
-  fun dragonConfigure(bridge: DragonBridge, textSize: Float, lines: List<DragonLineSpec>) {
+  fun dragonConfigure(bridge: DragonBridge, textSize: Float, lines: List<DragonLineSpec>, deviceScale: Double) {
     specs = lines
+    scale = deviceScale
     font = bridge.font
     paint.typeface = bridge.typeface
     paint.textSize = textSize
@@ -1461,6 +1512,8 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
         canvas.translate(0f, y)
         if (dragonGlyphShear != 0.0) canvas.skew((-dragonGlyphShear).toFloat(), 0f)
         canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, dragonRunPaint(p))
+        val stroke = dragonStrokePaint(p)
+        if (stroke != null) canvas.drawGlyphs(glyphs, 0, positions, 0, glyphs.size, f, stroke)
         canvas.restore()
       }
       // Small caps (font-variant-caps): each run of glyphs at one instance size (0 for the view's) is drawn at that text size; the
@@ -1485,7 +1538,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     return listOf(
       Pair("textPaint.typeface", if (face != null && face === DragonBridge.shared(context).typeface) DumpJson.Obj(listOf(Pair("typeface", DumpJson.Str("dragon:" + dragonFamily)), Pair("textSize", DumpJson.Num(paint.textSize.toDouble())))) else DumpJson.Null),
       Pair("textPaint.color", dragonColorJson(paint.color)),
-    ) + (if (dragonGlyphShear != 0.0) listOf(Pair("glyphShear", DumpJson.Num(dragonGlyphShear))) else emptyList()) + (if (dragonBoldKeys != null && dragonBoldValues != null) listOf(Pair("syntheticBold", DumpJson.Obj(listOf(Pair("keys", DumpJson.Arr(dragonBoldKeys!!.map { DumpJson.Num(it) })), Pair("values", DumpJson.Arr(dragonBoldValues!!.map { DumpJson.Num(it) })))))) else emptyList())
+    ) + (if (dragonGlyphShear != 0.0) listOf(Pair("glyphShear", DumpJson.Num(dragonGlyphShear))) else emptyList()) + (if (dragonBoldKeys != null && dragonBoldValues != null) listOf(Pair("syntheticBold", DumpJson.Obj(listOf(Pair("keys", DumpJson.Arr(dragonBoldKeys!!.map { DumpJson.Num(it) })), Pair("values", DumpJson.Arr(dragonBoldValues!!.map { DumpJson.Num(it) })))))) else emptyList()) + (dragonStrokeColor?.let { listOf(Pair("textStroke", DumpJson.Obj(listOf(Pair("width", DumpJson.Num(dragonStrokeWidth)), Pair("color", dragonRGBAJson(it)))))) } ?: emptyList())
   }
 }
 `;
@@ -2030,7 +2083,7 @@ class DragonTree(val context: Context) {
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)
       val vm = viewMetrics
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
-      tv.dragonConfigure(bridge, size.toFloat(), specs)
+      tv.dragonConfigure(bridge, size.toFloat(), specs, zoomed.devicePixelRatio)
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView
