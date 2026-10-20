@@ -182,12 +182,18 @@ public final class DragonInteractionMachine {
   /// carry in place of their compile-time zeros, so a hit lands on the boxes as drawn.
   public private(set) var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
 
-  /// css-env-1: takes the mount's measured insets; when they differ, the hit tables are laid out again (the next point step hits
-  /// the new layout). Returns whether they differed, so the mount renders again.
+  /// css-env-1: takes the mount's measured insets; when they differ, the hit tables are laid out again and a hovering pointer's
+  /// last point is hit on the new layout (P11), as after an app setter. Returns whether they differed, so the mount renders again.
   @discardableResult public func setSafeArea(_ s: SafeAreaInsets) -> Bool {
     if dragonSameInsets(s, safeArea) { return false }
     safeArea = s
     hitTables = [:]
+    if pointer.pointerIn, let l = last {
+      step {
+        let h = hitAt(l.0, l.1)
+        commit(dragonInteractionCall("layoutChanged") { try rtInteraction_layoutChanged(tables, pointer, h, faults) })
+      }
+    }
     return true
   }
 
@@ -536,13 +542,17 @@ class DragonInteractionMachine(
     private set
 
   /**
-   * css-env-1: takes the mount's measured insets; when they differ, the hit tables are laid out again (the next point step hits
-   * the new layout). Returns whether they differed, so the mount renders again.
+   * css-env-1: takes the mount's measured insets; when they differ, the hit tables are laid out again and a hovering pointer's
+   * last point is hit on the new layout (P11), as after an app setter. Returns whether they differed, so the mount renders again.
    */
   fun setSafeArea(s: SafeAreaInsets): Boolean {
     if (dragonSameInsets(s, safeArea)) return false
     safeArea = s
     hitTables.clear()
+    if (pointer.pointerIn && hasLast) step {
+      val h = hitAt(lastX, lastY)
+      commit(rtInteraction_layoutChanged(tables, pointer, h, faults))
+    }
     return true
   }
 

@@ -662,10 +662,12 @@ public func dragonSameInsets(_ a: SafeAreaInsets, _ b: SafeAreaInsets) -> Bool {
 }
 
 /// css-env-1: an empty view over a mount's stage that calls onChange whenever the stage's safe-area insets may have changed: the
-/// stage entering a window, the window's insets changing (rotation, status bar, split view) or the stage resizing. The mount then
-/// measures the stage again (dragonSafeArea) and re-renders when the insets differ.
+/// stage entering a window, the window's insets changing (rotation, status bar, split view) or the stage resizing. The calls are
+/// coalesced onto the next main-queue turn, never made inside UIKit's own callback. The mount then measures the stage again
+/// (dragonSafeArea) and re-renders when the insets differ.
 public final class DragonSafeAreaProbe: UIView {
   public var onChange: (() -> Void)?
+  private var pending = false
 
   public init(stage: UIView) {
     super.init(frame: stage.bounds)
@@ -677,9 +679,19 @@ public final class DragonSafeAreaProbe: UIView {
 
   required init?(coder: NSCoder) { fatalError("dragon: DragonSafeAreaProbe is built in code") }
 
-  public override func didMoveToWindow() { super.didMoveToWindow(); onChange?() }
-  public override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); onChange?() }
-  public override func layoutSubviews() { super.layoutSubviews(); onChange?() }
+  public override func didMoveToWindow() { super.didMoveToWindow(); changed() }
+  public override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); changed() }
+  public override func layoutSubviews() { super.layoutSubviews(); changed() }
+
+  private func changed() {
+    if pending { return }
+    pending = true
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.pending = false
+      self.onChange?()
+    }
+  }
 }
 
 /// The native tree of one case: builds the views, applies the translated engine's snapped frames at the device scale, and reads

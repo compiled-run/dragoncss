@@ -223,6 +223,8 @@ public final class DragonInteractionMount {
     root.removeFromSuperview()
   }
 
+  deinit { probe.removeFromSuperview() }
+
   private func render() {
     let t = DragonTree()
     machine.build(t)

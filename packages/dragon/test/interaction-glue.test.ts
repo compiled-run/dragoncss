@@ -69,7 +69,12 @@ describe('the interaction glue', () => {
     expect(s).toContain('return dragonWithSafeArea(variants[laidOut](dpr), safeArea)');
     expect(k).toContain('rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea)');
     expect(k).toContain('fun input(dpr: Double): LayoutInput = dragonWithSafeArea(variants[laidOut](dpr), safeArea)');
-    for (const t of [s, k]) expect(block(t, t === s ? 'public func setSafeArea' : '  fun setSafeArea')).toMatch(/safeArea = s\n {4}hitTables(\.clear\(\)| = \[:\])/);
+    for (const t of [s, k]) {
+      const b = block(t, t === s ? 'public func setSafeArea' : '  fun setSafeArea');
+      expect(b).toMatch(/safeArea = s\n {4}hitTables(\.clear\(\)| = \[:\])/);
+      // P11: a hovering pointer's last point is hit again on the new layout.
+      expect(b).toContain('rtInteraction_layoutChanged(tables, pointer, h, faults)');
+    }
     // The stage, not the wrap-content root, is measured; the probe renders again on a change.
     expect(swift).toContain('machine.setSafeArea(dragonSafeArea(stage))');
     expect(swift).toMatch(/guard let self = self, self\.machine\.setSafeArea\(dragonSafeArea\(self\.stage\)\) else \{ return \}\n {6}self\.render\(\)/);
