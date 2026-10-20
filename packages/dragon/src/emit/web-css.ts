@@ -15,6 +15,7 @@
 // a:-webkit-any-link:active rule (color: -webkit-activelink) and its visited colour. revert gives the UA origin's value, which is
 // the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
+import { markerOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -309,13 +310,30 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       }));
       return { suffix, decls, diffs, own };
     };
+    // css-lists-3 §3.1: a list item's ::marker part, written only when its color is not inherited from the item in some band or
+    // state; an item that is no list item there has no marker, so inherit stands for it.
+    const markerPart = (el: ResolvedElement): Part[] => {
+      const line = (item: ResolvedElement | undefined): string => {
+        const m = item === undefined ? undefined : markerOf(item);
+        const v = m === undefined ? undefined : (m.props.get('color') as ResolvedValue);
+        return v === undefined || v.origin === 'inherited' ? '  color: inherit;' : `  color: ${valueText(v.value)};`;
+      };
+      const base = line(el);
+      const diffs = inBands.map((m) => (line(m.get(el.element.address)) === base ? [] : [line(m.get(el.element.address))]));
+      const own = states.flatMap((list, band) => list.flatMap((st) => {
+        const here = line(st.at.get(el.element.address));
+        return here === line((bandBase[band] as Map<string, ResolvedElement>).get(el.element.address)) ? [] : [{ band, conditions: st.conditions, lines: [here] }];
+      }));
+      const inherit = base === '  color: inherit;' && diffs.every((d) => d.length === 0) && own.length === 0;
+      return inherit ? [] : [{ suffix: '::marker', decls: [base], diffs, own }];
+    };
     const visit = (el: ResolvedElement, under: boolean): void => {
       // Below a UA colour, an inherited colour stays inherited, so it follows a link's :active and visited colours.
       const uaColor = (el.props.get('color') as ResolvedValue).origin === 'user-agent';
       const below = under || sources.has(el.element.address) || uaColor;
       // GEN-a: a generated box has no DOM element; it is emitted with its host as the host's class plus ::before or ::after.
       const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
-      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false))];
+      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false)), ...markerPart(el)];
       const keyOf = (pt: Part): string => `${pt.suffix}\u0000${pt.decls.join('\n')}${pt.diffs.some((d) => d.length > 0) ? `\u0000${JSON.stringify(pt.diffs)}` : ''}${pt.own.length > 0 ? `\u0001${JSON.stringify(pt.own)}` : ''}`;
       const variant = `${el.element.address}${parts.map(keyOf).join('\u0002')}`;
       let cls = variants.get(variant);

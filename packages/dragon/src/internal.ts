@@ -5,6 +5,7 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
+import { markerStyleOf } from './analysis/resolve.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -178,16 +179,20 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, ElementColors>();
+  const items = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
+    items.set(el.element.address, el);
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
-  // GEN-c: a ::marker box inherits its item's color and has its initial background (transparent) and border colours (currentcolor).
+  // GEN-c: a ::marker box takes its color from its ::marker rules or its item, and has its initial background (transparent) and
+  // border colours (currentcolor).
   for (const m of listItemMarkers(c.resolved)) {
-    const item = out.get(m.address);
+    const item = items.get(m.address);
     if (m.type.kind === 'none' || item === undefined) continue;
-    out.set(`${m.address}::marker`, { color: item.color, 'background-color': TRANSPARENT, 'border-top-color': item.color, 'border-right-color': item.color, 'border-bottom-color': item.color, 'border-left-color': item.color });
+    const color = usedColors(markerStyleOf(item)).color;
+    out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
   }
   return out;
 }
@@ -278,11 +283,11 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
     }
   };
   walk(c.resolved);
-  // GEN-c: a text marker's text ("<item>::marker:text0") is drawn in its item's color, which the ::marker inherits.
+  // GEN-c: a text marker's text ("<item>::marker:text0") is drawn in its ::marker's color, which it inherits.
   for (const m of listItemMarkers(c.resolved)) {
     const item = elements.get(m.address);
     if (m.type.kind !== 'type' || isSymbolMarker(m.type.type) || item === undefined) continue;
-    out.set(markerTextId(`${m.address}::marker`), usedColors(item).color);
+    out.set(markerTextId(`${m.address}::marker`), usedColors(markerStyleOf(item)).color);
   }
   return out;
 }

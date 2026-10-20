@@ -226,9 +226,9 @@ export function selectorMatches(rule: Rule, sel: Selector, chain: readonly Linke
   return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, ix, () => true);
 }
 
-/** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before or ::after box of the host chain[chain.length - 1]. */
-export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
-  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'generated' || sel.pseudoElement.name !== pseudo) return false;
+/** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before, ::after or ::marker box of the host chain[chain.length - 1]. */
+export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo | 'marker', faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind === 'static-empty' || sel.pseudoElement.name !== pseudo) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
   return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
 }
