@@ -24,7 +24,7 @@ export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   css: { 'background-color': ['background-color'] },
   // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transparent. A colour clipped to
   // text is drawn by the box's glyphs instead (native-program.ts textPaint).
-  lower: ({ el }) => [el === null || textClipFillOf(el) !== null ? { kind: 'background-color', color: TRANSPARENT } : foldedBackground(el)],
+  lower: ({ el, foldBackdrops }) => [el === null || textClipFillOf(el) !== null ? { kind: 'background-color', color: TRANSPARENT } : foldedBackground(el, foldBackdrops)],
 };
 
 /** The fractional opacity of an element whose group folds into its fill, or null. */
@@ -36,26 +36,13 @@ export function foldedOpacity(el: ResolvedElement): number | null {
   return o > 0 && o < 1 && opacityFolds(el) ? o : null;
 }
 
-function foldedBackground(el: ResolvedElement): BackgroundWrite {
+function foldedBackground(el: ResolvedElement, foldBackdrops: ReadonlySet<string>): BackgroundWrite {
   const c = usedColors(el)['background-color'];
   const o = foldedOpacity(el);
   if (o === null || c.alpha === 0) return { kind: 'background-color', color: c };
   const color = { ...c, alpha: opacityAlpha8(o) };
   // Alpha 0 paints nothing and 255 is the colour itself, which the platform draws exactly. The folded bytes are modelled over the
-  // ancestors' fills alone, so a box an offset can move over an earlier sibling's paint keeps the platform blend.
-  return color.alpha === 0 || color.alpha === 255 || !inFlowPaint(el) ? { kind: 'background-color', color } : { kind: 'background-color', color, folded: true };
+  // ancestors' background colours alone, so a box whose backdrop may hold other paint (fold-backdrop.ts) keeps the platform blend.
+  return color.alpha === 0 || color.alpha === 255 || !foldBackdrops.has(el.element.address) ? { kind: 'background-color', color } : { kind: 'background-color', color, folded: true };
 }
 
-const OFFSETS = ['top', 'right', 'bottom', 'left'] as const;
-
-/** Whether the box paints where flow put it: static, or relative with every offset auto or zero (a transform never folds). */
-function inFlowPaint(el: ResolvedElement): boolean {
-  const position = el.props.get('position')?.value;
-  if (position === undefined || position.kind !== 'keyword') return false;
-  if (position.value === 'static') return true;
-  if (position.value !== 'relative') return false;
-  return OFFSETS.every((side) => {
-    const v = el.props.get(side)?.value;
-    return v === undefined || (v.kind === 'keyword' && v.value === 'auto') || ((v.kind === 'length' || v.kind === 'percentage') && v.value === 0);
-  });
-}
