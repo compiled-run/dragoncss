@@ -9,7 +9,8 @@ import type { CssNode } from 'css-tree';
 import { generate } from 'css-tree';
 import type { Span } from '../../types.ts';
 import { asciiLower } from '../escapes.ts';
-import { foldNumber, parseMath, V1_MATH_FUNCTIONS } from '../math.ts';
+import { BLINK_MATH_FUNCTIONS, mathInvalidity } from '../math.ts';
+import { numberCalc } from './effects.ts';
 import type { PropertyAspect } from '../properties.ts';
 import type { ParsedValue } from '../stylesheet.ts';
 
@@ -79,6 +80,8 @@ function legacyShorthand(name: FragmentationShorthand): (tokens: readonly CssNod
   };
 }
 
+const ORPHANS_WIDOWS_FIX = 'Write orphans as a positive integer, or a calc() of numbers.';
+
 /** Blink stores orphans and widows in 16 bits: a larger specified integer computes to this. */
 export const MAX_ORPHANS_WIDOWS = 32767;
 
@@ -88,7 +91,7 @@ export const MAX_ORPHANS_WIDOWS = 32767;
  * clamped to MAX_ORPHANS_WIDOWS.
  */
 function positiveInteger(property: FragmentationLonghand): (tokens: readonly CssNode[], base: Span) => ParsedValue {
-  return (tokens) => {
+  return (tokens, base) => {
     const only = tokens[0];
     const ok = (n: number): ParsedValue => ({ kind: 'ok', longhands: [{ property, value: { kind: 'number', value: Math.min(n, MAX_ORPHANS_WIDOWS) }, explicit: true }] });
     if (tokens.length !== 1 || only === undefined) return { kind: 'invalid', reason: `${property} takes one positive integer` };
@@ -98,12 +101,17 @@ function positiveInteger(property: FragmentationLonghand): (tokens: readonly Css
       if (!/^[+]?\d+$/.test(text) || n < 1) return { kind: 'invalid', reason: `${property} takes an integer of at least 1` };
       return ok(n);
     }
-    if (only.type === 'Function' && V1_MATH_FUNCTIONS.has(asciiLower(String(only['name'])))) {
-      const parsed = parseMath(generate(only), { type: 'number' });
-      if (!parsed.ok) return { kind: 'invalid', reason: `${property}: ${parsed.reason}` };
-      const n = foldNumber(parsed.node);
-      if (Number.isNaN(n) || n < 1) return ok(1);
-      if (!Number.isFinite(n)) return ok(MAX_ORPHANS_WIDOWS);
+    // A calculation Chrome drops (one that is not a number) is invalid; one Chrome accepts but Dragon does not evaluate (round(),
+    // abs(), ..., or the constants infinity, NaN, pi and e) is refused, never dropped.
+    if (only.type === 'Function' && BLINK_MATH_FUNCTIONS.has(asciiLower(String(only['name'])))) {
+      const invalidity = mathInvalidity(generate(only), 'number');
+      if (invalidity !== null) return { kind: 'invalid', reason: `${property}: ${invalidity}` };
+    }
+    const calc = numberCalc(property, only, base, ORPHANS_WIDOWS_FIX.replace('orphans', property));
+    if (calc !== null) {
+      if (!('value' in calc)) return calc;
+      const n = calc.value;
+      if (n < 1) return ok(1);
       // Round half up by hand (only css/color.ts may call the Math rounding functions, test/ua.test.ts): n is at least 1 here.
       const whole = n - (n % 1);
       return ok(n % 1 >= 0.5 ? whole + 1 : whole);

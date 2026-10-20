@@ -74,7 +74,9 @@ describe('fragmentation', () => {
     expect(parse('orphans', 'calc(1.5)').longhands).toEqual([['orphans', '2']]);
     expect(parse('widows', 'calc(0)').longhands).toEqual([['widows', '1']]);
     expect(parse('widows', 'calc(-1)').longhands).toEqual([['widows', '1']]);
-    for (const v of ['0', '-1', '1.5', 'auto', '2 2', 'calc(1px)']) expect(parse('orphans', v).codes, v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    for (const v of ['0', '-1', '1.5', 'auto', '2 2', 'calc(1px)', 'calc(1%)']) expect(parse('orphans', v).codes, v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    // Chrome accepts these and Dragon does not evaluate them, so they are refused rather than dropped.
+    for (const v of ['round(3.4)', 'calc(2 * abs(-2))', 'calc(infinity)', 'calc(NaN)', 'calc(pi)', 'calc(e)']) expect(parse('widows', v).codes, v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
   });
 
   it('compiles on every target, and web output writes them only where a case sets them', () => {
