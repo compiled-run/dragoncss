@@ -14,6 +14,9 @@ export const BLOCK_IN_INLINE: readonly FixtureSpec[] = [
   // A border-box and border, margin, padding, background and outline reset, which give the inline box no box; a percentage height
   // of a block inside an inline element, against the block container; and the first empty line above a top margin.
   both('block-in-inline-reset'),
+  // The sizes, block margins (an owl rule's among them) and ratio a non-replaced inline box ignores; and the first empty line,
+  // above the blocks' top margin only where the inline boxes are their container's whole inline formatting context.
+  both('block-in-inline-ignored'),
   reject('reject-block-in-inline-box', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="b">YY</div>', '<div> b is block-level inside the inline box <span> s'),
   reject('reject-block-in-inline-beside', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="s"><div data-dragon-id="b">YY</div></span>', 'the inline box <span> s holds block-level boxes beside the text'),
 ];

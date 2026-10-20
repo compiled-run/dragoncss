@@ -31,13 +31,14 @@ const ALLOWED: ReadonlySet<Longhand> = new Set<Longhand>(['display', 'text-decor
 /**
  * Non-inherited longhands that do not apply to a non-replaced inline box (their "Applies to" lines in CSS2, css-sizing-3,
  * css-box-4, css-flexbox-1, css-grid-2, css-align-3, css-transforms-1 and -2, css-overflow-3 and -4, css-ui-4, css-masking-1
- * clip, css-images-3 object-*, SVG geometry), and ones that only qualify another: a border's style and colour, its radius, the
- * outline's colour and offset, and the background and mask layer geometry. None of them gives the inline box a box of its own.
+ * clip, css-images-3 object-*, SVG geometry), and ones that only qualify another: a border's colour and radius, the outline's
+ * colour and offset, and the background and mask layer geometry. None of them gives the inline box a box of its own. The lowering
+ * drops the sizes, block margins and ratio from the block-in-inline box (ios-layout.ts INLINE_IGNORES), as Chrome ignores them.
  */
 const NOT_A_BOX: ReadonlySet<Longhand> = new Set<Longhand>([
   'top', 'right', 'bottom', 'left', 'z-index', 'overflow-x', 'overflow-y', 'box-sizing', 'width', 'height', 'min-width', 'min-height',
   'max-width', 'max-height', 'aspect-ratio', 'margin-top', 'margin-bottom', 'object-fit', 'object-position',
-  'border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style', 'border-top-color', 'border-right-color',
+  'border-top-color', 'border-right-color',
   'border-bottom-color', 'border-left-color', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius',
   'border-bottom-left-radius', 'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'order', 'justify-content',
   'align-items', 'align-self', 'align-content', 'row-gap', 'column-gap', 'grid-template-columns', 'grid-template-rows',
@@ -52,6 +53,7 @@ const NOT_A_BOX: ReadonlySet<Longhand> = new Set<Longhand>([
 ] as Longhand[]);
 
 const BORDER_WIDTH = /^border-(top|right|bottom|left)-width$/;
+const BORDER_STYLE = /^border-(top|right|bottom|left)-style$/;
 
 /** Whether a computed value is a zero length or percentage, or a fully transparent colour: no box, whatever its property. */
 function isNothing(v: CssValue): boolean {
@@ -90,9 +92,12 @@ export function blockInInlineBlocker(props: ReadonlyMap<Longhand, ResolvedValue>
     const v = props.get(p) as ResolvedValue;
     // A defaulted longhand holds its initial value (in whatever form the resolver computed it); any other must spell it.
     if (v.origin === 'initial' || valueToString(v.value) === valueToString(initialValue(p, ua)) || isNothing(v.value)) continue;
-    // A border side or the outline is a box only when it is drawn: a line style and a width that is not zero.
+    // A border side or the outline is a box only when it is drawn: a line style and a computed width that is not zero (an initial
+    // medium width is 3px, so border-style: solid alone draws one).
     const side = BORDER_WIDTH.exec(p);
     if (side !== null && none(value(`border-${side[1]}-style` as Longhand))) continue;
+    const styled = BORDER_STYLE.exec(p);
+    if (styled !== null && (none(v.value) || isNothing(value(`border-${styled[1]}-width` as Longhand)))) continue;
     if (p === 'outline-style' && isNothing(value('outline-width'))) continue;
     return `${p}: ${valueToString(v.value)}`;
   }

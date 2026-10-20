@@ -30,15 +30,20 @@ describe('BII: the line fragments of a block-in-inline box', () => {
     expect([m['s:line0'], m['s:line1'], m['s:line2']]).toEqual([[400, 0, 0, 0], [200, 0, 200, 10], [400, 10, 0, 0]]);
   });
 
-  it('puts the first empty line above the blocks\' top margin where the container\'s top is fixed and no margin is pending', () => {
-    // Chrome 145: padding-top 3px and a 4px top margin put the line at 3 and the block at 7; a preceding sibling's pending margin
-    // makes the line wait for the blocks' collapsed margin instead.
+  it('puts the first empty line above the blocks\' top margin where the container holds only such inline boxes and its top is fixed', () => {
+    // Chrome 145: padding-top 3px and a 4px top margin put the line at 3 and the block at 7. A block box beside the inline box puts
+    // it in an anonymous block box, so the line waits for the blocks' collapsed margin instead.
     const pad = rects(box('html', {}, [box('w', { paddingTop: px(3) }, [bii('s', {}, [box('d', { marginTop: px(4), height: px(10) })])])]));
     expect([pad['s:line0'], pad['s:line1'], pad['s:line2']]).toEqual([[0, 3, 0, 0], [0, 7, 400, 10], [0, 17, 0, 0]]);
     const neg = rects(box('html', {}, [box('w', { paddingTop: px(3) }, [bii('s', {}, [box('d', { marginTop: px(-4), height: px(10) })])])]));
     expect([neg['s:line0'], neg['s:line1']]).toEqual([[0, 3, 0, 0], [0, -1, 400, 10]]);
     const sib = rects(box('html', {}, [box('w', { paddingTop: px(3) }, [box('k', { height: px(5), marginBottom: px(2) }), bii('s', {}, [box('d', { marginTop: px(9), height: px(10) })])])]));
     expect([sib['s:line0'], sib['s:line1']]).toEqual([[0, 17, 0, 0], [0, 17, 400, 10]]);
+    const trail = rects(box('html', {}, [box('w', { paddingTop: px(1) }, [bii('s', {}, [box('d', { marginTop: px(10), height: px(5) })]), box('k', { height: px(3) })])]));
+    expect([trail['s:line0'], trail['s:line1']]).toEqual([[0, 11, 0, 0], [0, 11, 400, 5]]);
+    // Two such inline boxes: the second line waits for the first blocks' bottom margin (3px) but not its own (4px collapsed).
+    const two = rects(box('html', {}, [box('w', { paddingTop: px(1) }, [bii('r', {}, [box('c', { marginTop: px(10), marginBottom: px(3), height: px(5) })]), bii('s', {}, [box('d', { marginTop: px(4), height: px(2) })])])]));
+    expect([two['r:line0'], two['s:line0'], two['s:line1']]).toEqual([[0, 1, 0, 0], [0, 19, 0, 0], [0, 20, 400, 2]]);
   });
 
   it('resolves its blocks\' percentage heights against its block container (CSS2 §10.1 item 2)', () => {

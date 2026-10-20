@@ -622,6 +622,22 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
   };
 }
 
+// CSS2 §10.2, §10.5, §10.7, §8.3 and css-sizing-4 §5.1: a non-replaced inline box takes no width, height, min or max size, block
+// margins or ratio. A block-in-inline box is that inline box (its web output keeps display: inline), so its block box takes none
+// of them either (measured against Chrome 145: span { height: 20px; width: 30px; margin-top: 10px } lays out as if unset).
+const INLINE_IGNORES = {
+  boxSizing: 'content-box',
+  width: { kind: 'auto' },
+  height: { kind: 'auto' },
+  minWidth: { kind: 'auto' },
+  minHeight: { kind: 'auto' },
+  maxWidth: { kind: 'none' },
+  maxHeight: { kind: 'none' },
+  marginTop: { kind: 'px', value: 0 },
+  marginBottom: { kind: 'px', value: 0 },
+  aspectRatio: { kind: 'auto' },
+} as const satisfies Partial<LayoutStyle>;
+
 /**
  * The layout tree of one resolved element that generates a box. Inline-level content (text, inline boxes, <br>s) beside block-level
  * boxes, or directly in a flex or grid container, is wrapped in anonymous boxes "<element>:anon<k>", one per maximal run; display:
@@ -640,7 +656,8 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   // positioned one, the lines of its containing block).
   const grid = own.display === 'grid' || own.display === 'inline-grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
   const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' || own.position === 'fixed' ? lowerOutOfFlowGridItem(gridParent, get) : lowerGridItem(gridParent, get)));
-  const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
+  const placed: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
+  const style: LayoutStyle = isBlockInInline(el) ? { ...placed, ...INLINE_IGNORES } : placed;
   const container = displayOf(el) === 'flex' || displayOf(el) === 'inline-flex' || displayOf(el) === 'grid' || displayOf(el) === 'inline-grid';
   const inline = kids.filter(isInlineLevel);
   const wrap = inline.length > 0 && (container || inline.length !== kids.length);

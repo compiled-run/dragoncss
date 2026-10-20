@@ -32,8 +32,10 @@ describe('FLT: float placement (CSS2 §9.5.1)', () => {
     expect([at(m, 'c').x, at(m, 'c').y, at(m, 'w').height]).toEqual([0, 10, 30]);
   });
 
-  it('refuses a float with an aspect-ratio, whose shrink-to-fit width it does not transfer', () => {
+  it('refuses a float with an aspect-ratio and an auto width, whose shrink-to-fit width it does not transfer, and sizes one with a width', () => {
     expect(codeOf(box('root', {}, [box('w', { overflowX: 'hidden', overflowY: 'hidden' }, [fl('a', 'left', { height: px(20), aspectRatio: { kind: 'ratio', width: 128, height: 64 } })])]))).toBe('float');
+    const m = rects(box('root', {}, [box('w', { width: px(100), overflowX: 'hidden', overflowY: 'hidden' }, [fl('a', 'left', { width: px(30), aspectRatio: { kind: 'ratio', width: 128, height: 64 } })])]));
+    expect([at(m, 'a').width, at(m, 'a').height]).toEqual([30, 15]);
   });
 
   it('places floats side by side, and a float that does not fit below the nearest float bottom that leaves room', () => {

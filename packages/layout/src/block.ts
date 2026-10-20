@@ -353,8 +353,8 @@ function collapsed(s: Strut): LU {
 /**
  * BII (CSS2 §9.2.1.1, Blink LayoutNG block-in-inline, measured against Chrome 145): an inline box holding only block-level boxes,
  * laid out as their block box, is three fragments of its block container's inline formatting context: an empty line at its line
- * start edge and top (or above it, at firstLine, where the blocks' top margin follows the line), the line holding the blocks (its border box), and an empty line at its line start edge below the margin
- * that collapses out of its bottom. The lines are zero-size boxes <id>:line0..2, as an inline box's fragments are.
+ * start edge and top (or above it, at firstLine, where the blocks' top margin follows the line), the line holding the blocks (its
+ * border box), and an empty line at its line start edge below the margin that collapses out of its bottom. The lines are zero-size boxes <id>:line0..2, as an inline box's fragments are.
  */
 function withBlockInInlineLines(frag: Frag, firstLine: LU, end: Strut, direction: Direction): Frag {
   const start = direction === 'rtl' ? frag.width : ZERO;
@@ -658,6 +658,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let cursor = ZERO;
   let seen = false;
   let escapeTop = EMPTY_STRUT;
+  // BII: whether the box's in-flow content is inline boxes of blocks only, so that it is their inline formatting context itself
+  // rather than holding them in an anonymous block box (CSS2 §9.2.1.1).
+  const ownLines = !kids.some((k) => k.kind !== 'box' || (k.boxType !== 'block-in-inline' && !isOutOfFlow(ctx, k) && !isFloat(ctx, k)));
   let baseline: LU | null = null;
   let lastBaseline: LU | null = null;
   let lastBaselineFlex = '';
@@ -723,9 +726,11 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         bfcLineOffset: inline.bfcLineOffset,
       });
     }
-    // BII: the empty line before the blocks takes the flow position when nothing is pending there: the container's top is fixed and
-    // no margin waits to collapse; otherwise it waits for the blocks' margins as they do (measured against Chrome 145).
-    const lineStart = (seen || !a.canCollapseTop) && strut.positive === 0 && strut.negative === 0 ? cursor : null;
+    // BII: where the box is the blocks' inline formatting context and its top is fixed (a box before, or a border, padding or new
+    // formatting context), the empty line before the blocks sits past the margins pending before it but above the blocks' own top
+    // margin. Otherwise the line is in an anonymous block box whose top the blocks' margin collapses through, so it sits at their
+    // top (measured against Chrome 145).
+    const lineStart = ownLines && (seen || !a.canCollapseTop) ? add(cursor, collapsed(strut)) : null;
     const before = joinStruts(joinMargin(strut, inline.marginTop), c.escapeTop);
     let y: LU;
     if (c.collapseThrough) {

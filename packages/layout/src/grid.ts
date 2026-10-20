@@ -2349,9 +2349,10 @@ function outOfFlowItem(ctx: Ctx, grid: GridState, box: LayoutBox): GridOutOfFlow
   const inlineEdge = outOfFlowEdge(ctx, grid, box, 'columns');
   const blockEdge = outOfFlowEdge(ctx, grid, box, 'rows');
   const gi = box.style.gridItem;
-  // Blink IsAbsoluteContainer: only a positioned grid container is the containing block, whose rectangle is the grid area; never
-  // a fixed box's, whose containing block is the viewport (CSS2 §10.1 item 3).
-  if (grid.style.position === 'static' || box.style.position === 'fixed' || gi === null) return { box, inlineStart: null, inlineEnd: null, blockStart: null, blockEnd: null, inlineEdge, blockEdge };
+  // Blink IsAbsoluteContainer: only a positioned grid container is the containing block, whose rectangle is the grid area. A fixed
+  // box's containing block is the viewport (CSS2 §10.1 item 3), but Chrome 145 takes its static position from that grid area too
+  // (gridOutOfFlow gives it no area).
+  if (grid.style.position === 'static' || gi === null) return { box, inlineStart: null, inlineEnd: null, blockStart: null, blockEnd: null, inlineEdge, blockEdge };
   const columns = outOfFlowLines(ctx, outOfFlowSpan(grid.columnTracks, gi.column, ctx.gridFaults), grid.columnStartOffset, grid.columns);
   const rows = outOfFlowLines(ctx, outOfFlowSpan(grid.rowTracks, gi.row, ctx.gridFaults), grid.rowStartOffset, grid.rows);
   return {
@@ -2471,11 +2472,8 @@ export function gridOutOfFlow(ctx: Ctx, box: LayoutBox, pending: readonly GridOu
   const rtl = directionOf(ctx, box) === 'rtl';
   const bsp = logicalBsp(pad, bor, rtl);
   const edges = ctx.gridFaults.absposAutoLineContentEdge ? bsp : logicalBsp({ top: ZERO, right: ZERO, bottom: ZERO, left: ZERO }, bor, rtl);
-  const containing = box.style.position !== 'static';
+  const positioned = box.style.position !== 'static';
   return pending.map((p): OutOfFlow => {
-    // A fixed child's containing block is the viewport (CSS2 §10.1 item 3): the grid gives it a static position only, as a static
-    // grid does.
-    const positioned = containing && p.box.style.position !== 'fixed';
     const inlineStart = !positioned ? bsp.left : p.inlineStart === null ? edges.left : p.inlineStart;
     const inlineEnd = !positioned ? sub(width, bsp.right) : p.inlineEnd === null ? sub(width, edges.right) : p.inlineEnd;
     const blockStart = !positioned ? bsp.top : p.blockStart === null ? edges.top : p.blockStart;
@@ -2486,7 +2484,9 @@ export function gridOutOfFlow(ctx: Ctx, box: LayoutBox, pending: readonly GridOu
     const edge: StaticEdge = p.inlineEdge === 'center' ? 'center' : (p.inlineEdge === 'start') !== rtl ? 'near' : 'far';
     const x: StaticAxis = { offset: rtl ? sub(width, u) : u, edge };
     const y: StaticAxis = { offset: staticAlong(blockStart, blockSize, p.blockEdge), edge: p.blockEdge === 'start' ? 'near' : p.blockEdge === 'end' ? 'far' : 'center' };
-    const area: AreaRect | null = positioned ? { x: rtl ? sub(sub(width, inlineStart), inlineSize) : inlineStart, y: blockStart, width: inlineSize, height: blockSize } : null;
+    // A fixed child's containing block is the viewport (CSS2 §10.1 item 3): Chrome 145 takes its static position from the grid area
+    // all the same, and its insets from the viewport.
+    const area: AreaRect | null = positioned && p.box.style.position !== 'fixed' ? { x: rtl ? sub(sub(width, inlineStart), inlineSize) : inlineStart, y: blockStart, width: inlineSize, height: blockSize } : null;
     return { box: p.box, x, y, area };
   });
 }
