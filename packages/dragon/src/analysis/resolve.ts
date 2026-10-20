@@ -33,6 +33,7 @@ import type { CustomProperties } from './variables.ts';
 import { computeResize } from '../css/properties/resize.ts';
 import { computeFontStretch } from '../css/properties/font-stretch.ts';
 import { computeTouchAction } from '../css/properties/touch-action.ts';
+import { applyWebkitScrollbar, hasScrollbarRules } from './webkit-scrollbar.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -239,6 +240,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
   const rulesOf = new Map([...GENERATED_PSEUDOS, 'marker' as const].map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind !== 'static-empty' && sel.pseudoElement.name === p))] as const));
   const markerRules = rulesOf.get('marker') as readonly Rule[];
+  const scrollbarRules = hasScrollbarRules(rules);
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = RESOLVED_CUSTOMS;
@@ -348,6 +350,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     blockify(props, parent === null ? null : parent.props, faults);
     adjustLineClampDisplay(props);
     computeOverflowPair(props);
+    // NA-NATIVE: a scroll container whose ::-webkit-scrollbar rules hide its scrollbars takes scrollbar-width: none.
+    if (pseudo === null && scrollbarRules) applyWebkitScrollbar(props, here, rules, faults);
     computeResize(props);
     computeTouchAction(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);

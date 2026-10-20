@@ -313,7 +313,9 @@ describe('TREE: ids, every attribute name, HTML case-insensitive attribute value
   it('Chrome-valid pseudo-elements stay refused and name their owner package; inside :is() an invalid one is refused', () => {
     const msg = (css: string): string[] => parse(css).diagnostics.map((d) => `${d.code} ${d.message}`);
     expect(msg('.a::-webkit-slider-thumb { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*FORM-a/)]);
-    expect(msg('.a::-webkit-scrollbar-thumb { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*OVFL-s/)]);
+    expect(msg('.a::-webkit-resizer { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*OVFL-s/)]);
+    // NA-NATIVE: the scrollbar parts parse; analysis/webkit-scrollbar.ts decides what they do to their element.
+    expect(msg('.a::-webkit-scrollbar-thumb { width: 1px; }')).toEqual([]);
     expect(msg(':is(.a::-moz-range-thumb) { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*forgiving/)]);
     expect(parse('[ns|x] { width: 1px; }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR']);
   });

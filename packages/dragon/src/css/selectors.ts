@@ -58,7 +58,11 @@ export type SelectorPseudoElement =
   | { readonly kind: 'generated'; readonly name: GeneratedPseudo; readonly span: Span; /** Written as CSS2's single-colon :before or :after. */ readonly legacy: boolean }
   | { readonly kind: 'static-empty'; readonly name: string; readonly span: Span }
   /** ::marker, whose rules cascade onto a list item's marker (resolve.ts markerOf); only color is accepted (generated.ts). */
-  | { readonly kind: 'marker'; readonly name: 'marker'; readonly span: Span };
+  | { readonly kind: 'marker'; readonly name: 'marker'; readonly span: Span }
+  | { readonly kind: 'scrollbar'; readonly name: ScrollbarPseudo; readonly span: Span };
+/** The custom scrollbar pseudo-elements, which build no box: analysis/webkit-scrollbar.ts reads what they do to their element. */
+export type ScrollbarPseudo = '-webkit-scrollbar' | '-webkit-scrollbar-thumb' | '-webkit-scrollbar-track' | '-webkit-scrollbar-track-piece' | '-webkit-scrollbar-button' | '-webkit-scrollbar-corner';
+export const SCROLLBAR_PSEUDOS: readonly ScrollbarPseudo[] = ['-webkit-scrollbar', '-webkit-scrollbar-thumb', '-webkit-scrollbar-track', '-webkit-scrollbar-track-piece', '-webkit-scrollbar-button', '-webkit-scrollbar-corner'];
 /**
  * Right-to-left: parts[0] is the subject; each later part is joined to the previous by its combinator. anchor: in a :has()
  * argument, the combinator joining the leftmost compound to the :has() element (Selectors-4 §3.4 relative selectors); else null.
@@ -136,7 +140,7 @@ function chromeInvalid(node: CssNode, text: string, ctx: Context, refuse: Refuse
 /** The package that owns the rendering of a pseudo-element Chrome 145 parses. */
 function pseudoElementOwner(name: string): string {
   if (name === '-webkit-slider-thumb' || name === '-webkit-slider-runnable-track') return 'the form-control package FORM-a';
-  if (name.startsWith('-webkit-scrollbar')) return 'the scrollbar package OVFL-s';
+  if (name.startsWith('-webkit-scrollbar') || name === '-webkit-resizer') return 'the scrollbar package OVFL-s';
   if (name === 'first-line' || name === 'first-letter') return 'the generated-content package GEN-d';
   if (name === 'marker') return 'the list-marker package GEN-d6';
   return 'a later package';
@@ -351,13 +355,15 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       const name = asciiLower(String(part['name']));
       const generated = part['children'] === null && (GENERATED_PSEUDOS as readonly string[]).includes(name);
       const empty = part['children'] === null && isStaticEmptyPseudo(name);
+      const scrollbar = part['children'] === null && (SCROLLBAR_PSEUDOS as readonly string[]).includes(name);
       const marker = part['children'] === null && name === 'marker';
-      if ((generated || empty || marker) && ctx.inArgument) {
+      if ((generated || empty || scrollbar || marker) && ctx.inArgument) {
         // Selectors-4 §4: a pseudo-element is invalid in a selector argument; Chrome drops it, and so does Dragon.
         ok = false;
         chromeInvalid(part, generate(part), ctx, refuse);
       } else if (generated) pseudoElement = { kind: 'generated', name: name as GeneratedPseudo, span: spanOf(part, ctx.base), legacy: false };
       else if (empty) pseudoElement = { kind: 'static-empty', name, span: spanOf(part, ctx.base) };
+      else if (scrollbar) pseudoElement = { kind: 'scrollbar', name: name as ScrollbarPseudo, span: spanOf(part, ctx.base) };
       else if (marker) pseudoElement = { kind: 'marker', name: 'marker', span: spanOf(part, ctx.base) };
       else {
         ok = false;

@@ -2,12 +2,14 @@
 // becomes a native scroll view over the padding box; each axis whose used value is auto or scroll scrolls, a hidden axis is locked.
 // The offset range comes from the translated engine on the device (overflow.ts scrollRanges), so nothing here reads a layout.
 // OVFL-S0: scrollbar-width: none on a scroll container hides its native scroll indicators (a scroll-indicators-hidden write after the
-// scroll-container one); thin and auto keep the platform's.
+// scroll-container one); thin and auto keep the platform's. So do ::-webkit-scrollbar rules that hide its scrollbars (NA-NATIVE,
+// analysis/webkit-scrollbar.ts).
 // css-overscroll-1: overscroll-behavior: none on a scrolling axis stops that axis's bounce (a scroll-bounce write, bounceX and bounceY
 // false where none), which only iOS draws. contain and none also stop scroll chaining in Chrome; a native scroll view hands a drag it
 // cannot scroll on to one around it, so they are refused on native inside a scroll view on that axis
 // (analysis/computed-checks.ts checkOverscrollChaining), and elsewhere there is nothing to chain to.
 import type { ResolvedValue } from '../../analysis/resolve.ts';
+import { webkitScrollbarHidden } from '../../analysis/webkit-scrollbar-state.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { PaintLowering } from './types.ts';
 
@@ -43,9 +45,10 @@ export const SCROLL_LOWERING: PaintLowering<ScrollWrite> = {
     };
     const bounceX = !none('overscroll-behavior-x');
     const bounceY = !none('overscroll-behavior-y');
+    const hidden = none('scrollbar-width') || (el !== null && webkitScrollbarHidden(el));
     return [
       { kind: 'scroll-container', x, y },
-      ...(none('scrollbar-width') ? [{ kind: 'scroll-indicators-hidden' } as const] : []),
+      ...(hidden ? [{ kind: 'scroll-indicators-hidden' } as const] : []),
       ...((x && !bounceX) || (y && !bounceY) ? [{ kind: 'scroll-bounce', bounceX, bounceY } as const] : []),
     ];
   },
