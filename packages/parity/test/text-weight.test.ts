@@ -30,14 +30,22 @@ import { FONT_FEATURES_LONGHANDS } from '../../dragon/src/css/properties/font-fe
 import { TEXT_FILL_STROKE_LONGHANDS } from '../../dragon/src/css/properties/text-fill-stroke.ts';
 import { TEXT_SHADOW_LONGHANDS } from '../../dragon/src/css/properties/text-shadow.ts';
 import { MASK_LONGHANDS } from '../../dragon/src/css/properties/mask.ts';
+import { BORDER_IMAGE_LONGHANDS } from '../../dragon/src/css/properties/border-image.ts';
+import { COUNTERS_LONGHANDS } from '../../dragon/src/css/properties/counters.ts';
+import { TABLE_LONGHANDS } from '../../dragon/src/css/properties/table.ts';
+import { OVERSCROLL_LONGHANDS } from '../../dragon/src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_LONGHANDS } from '../../dragon/src/css/properties/scroll-snap.ts';
+import { CONTAINMENT_LONGHANDS } from '../../dragon/src/css/properties/containment.ts';
+import { CONTAINER_QUERY_LONGHANDS } from '../../dragon/src/css/properties/container-query.ts';
 import { WHITE_SPACE } from '../src/fixture-groups/white-space.ts';
 import { FONT_REFERENCE_MAP, fontDataUrl, vendorFontBytes } from '../src/font-reference.ts';
 import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
 /**
- * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration), and every
- * LayoutStyle's lineClamp removed where it is 0 (the TXT2-g migration: a style is the object that carries textOverflow).
+ * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration) and its
+ * smallCaps where it is false (the TXT-FONTFEAT small-caps migration), and every LayoutStyle's lineClamp removed where it is 0 (the
+ * TXT2-g migration: a style is the object that carries textOverflow).
  */
 function withoutWrapKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(withoutWrapKeys);
@@ -45,7 +53,7 @@ function withoutWrapKeys(v: unknown): unknown {
   const o = v as Record<string, unknown>;
   const leaf = o['kind'] === 'text';
   const style = 'textOverflow' in o;
-  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
 }
 
 /**
@@ -62,8 +70,9 @@ function withoutWrapKeys(v: unknown): unknown {
  * digests are retaken on that landing's regenerated head. The landing of #370 does the same: it adds -webkit-opacity rows to the BASE
  * fixture opacity-cascade, which changes its vectors, pixels and captures (and its -rtl twin) and nothing else.
  */
-const BASE_OUTPUTS = { files: 13143, digest: '5e7fe7b3a00581dad1178b58e59061a6ccca82fe36b90dc043d2dde36a7d9a7b' };
-const BASE_CAPTURES = { files: 3354, digest: 'f480435bce4d3a70e0dd6ef1d580071ad684a9f0c313ed3690fbf6e996caa95a' };
+// Retaken on batch landing #457: TABLE (#443) changes list-style-values and TOUCH (#444) touch-action-values, the only BASE files that moved.
+const BASE_OUTPUTS = { files: 13143, digest: '2005c2806308eb30542addd828505363789fbfb2e87ec4046130ce0b9b840f97' };
+const BASE_CAPTURES = { files: 3354, digest: 'fa16f2e53e319bd858e47eb3663d0c860c4e18d72bd24ac51dd06f9b27b917b1' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -232,7 +241,7 @@ describe('the native refusals', () => {
 });
 
 /** Case id prefixes of the groups that landed after BASE beside those named in the filter below (see own). */
-const LATER_PREFIXES = ['clip-path-', 'svg-stroke', 'svg-dash', 'svg-geometry', 'bg-position-', 'clip-rect-', 'filter-none', 'atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-font-variant-', 'text-font-tuning-', 'text-font-stretch-', 'text-font-features-', 'text-font-size-', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units', 'text-decoration-native-values', 'text-fill-stroke-', 'text-shadow-', 'alias-background', 'shadow-webkit-alias', 'svg-opacity', 'text-style-ahem', 'text-decoration-native-styles', 'alias-font', 'mask-initial', 'svg-paint-order', 'text-shadow-none', 'svg-rrect', 'transform-extra-'];
+const LATER_PREFIXES = ['gen-', 'table-properties', 'appearance-values', 'ui-colors-values', 'user-modify-values', 'clip-path-', 'svg-stroke', 'svg-dash', 'svg-geometry', 'bg-position-', 'clip-rect-', 'filter-none', 'atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-font-variant-', 'text-font-tuning-', 'text-font-stretch-', 'text-font-features-', 'text-font-size-', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units', 'text-decoration-native-values', 'text-fill-stroke-', 'text-shadow-', 'alias-background', 'shadow-webkit-alias', 'svg-opacity', 'text-style-ahem', 'text-decoration-native-styles', 'alias-font', 'mask-initial', 'svg-paint-order', 'text-shadow-none', 'svg-rrect', 'transform-extra-', 'scroll-initial-longhands', 'containment-initial', 'zoom-', 'border-image-initial', 'svg-vector-effect', 'grid-item-', 'svg-inert'];
 
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
@@ -246,7 +255,7 @@ describe('BASE pins', () => {
   // The groups that landed after BASE and add files only: G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web,
   // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current, TXT2-g's line-clamp cases, PNT1's stacking-grid-items cases and touch-action-values. (PNT1's change to
   // three BASE fixtures is retaken in BASE_OUTPUTS and BASE_CAPTURES, not left out.)
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|clip-rect-|filter-none|bg-position-|svg-stroke|svg-dash|svg-geometry|clip-path-|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-font-variant-|text-font-tuning-|text-font-stretch-|text-font-features-|text-font-size-|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-fill-stroke-|text-shadow-|alias-background|shadow-webkit-alias|svg-opacity|text-style-ahem|alias-font|mask-initial|svg-paint-order|text-shadow-none|svg-rrect|transform-extra-)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(gen-|table-properties|appearance-values|ui-colors-values|user-modify-values|text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|clip-rect-|filter-none|bg-position-|svg-stroke|svg-dash|svg-geometry|clip-path-|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-font-variant-|text-font-tuning-|text-font-stretch-|text-font-features-|text-font-size-|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-fill-stroke-|text-shadow-|alias-background|shadow-webkit-alias|svg-opacity|text-style-ahem|alias-font|mask-initial|svg-paint-order|text-shadow-none|svg-rrect|transform-extra-|scroll-initial-longhands|containment-initial|zoom-|border-image-initial|svg-vector-effect|grid-item-|svg-inert)/.test(p);
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -274,9 +283,11 @@ describe('BASE pins', () => {
     expect({ files: paths.length, digest: digest(paths, content) }).toEqual(BASE_OUTPUTS);
     // The migration exception is not a blanket pass: a leaf whose key is not 'normal' keeps the key and differs.
     expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
+    expect(withoutWrapKeys({ kind: 'text', smallCaps: true })).toEqual({ kind: 'text', smallCaps: true });
+    expect(withoutWrapKeys({ kind: 'text', smallCaps: false })).toEqual({ kind: 'text' });
   });
   /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize, touch-action-values' touch-action, TXT-FX's text fill, stroke and shadow, the font-variant, font-tuning, font-stretch and font-features longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box'];
+  const ADDED_KEYS = [...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS, 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end'];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));

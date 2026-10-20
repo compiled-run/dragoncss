@@ -47,8 +47,13 @@ describe('the font shorthand', () => {
     expect(longhands('font: condensed 12px x').set).toEqual(['font-style=normal (reset)', 'font-weight=normal (reset)', 'font-size=12px', 'line-height=normal (reset)', 'font-family=x', 'font-stretch=condensed', ...VARIANTS, ...TUNING, ...SETTINGS]);
     expect(longhands('font: italic ultra-expanded 700 12px x').set.at(5)).toBe('font-stretch=ultra-expanded');
   });
-  it('refuses small-caps and the system fonts; drops what Chrome does not parse', () => {
-    for (const v of ['small-caps 12px x', 'caption', 'status-bar', 'oblique 2turn 12px x']) expect(longhands(`font: ${v}`).codes, v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+  it('sets font-variant-caps from small-caps', () => {
+    const caps = VARIANTS.map((v) => (v.startsWith('font-variant-caps=') ? 'font-variant-caps=small-caps' : v));
+    expect(longhands('font: small-caps 12px x')).toEqual({ set: ['font-style=normal (reset)', 'font-weight=normal (reset)', 'font-size=12px', 'line-height=normal (reset)', 'font-family=x', STRETCH, ...caps, ...TUNING, ...SETTINGS], codes: [] });
+    expect(longhands('font: italic normal small-caps 700 12px x').set).toEqual(['font-style=italic', 'font-weight=700', 'font-size=12px', 'line-height=normal (reset)', 'font-family=x', STRETCH, ...caps, ...TUNING, ...SETTINGS]);
+  });
+  it('refuses the system fonts; drops what Chrome does not parse', () => {
+    for (const v of ['caption', 'status-bar', 'oblique 2turn 12px x']) expect(longhands(`font: ${v}`).codes, v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
     for (const v of ['left 12px x', 'oblique 91deg 12px x', '12px', 'x', '0 12px x']) expect(longhands(`font: ${v}`).codes, v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
 });

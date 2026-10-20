@@ -131,7 +131,7 @@ describe('the svg model in a compile', () => {
     const user = compile(input, false);
     expect(errors(user)).toEqual([]);
     expect([user.targets.ios, user.targets.android, user.targets.web].every((t) => t !== 'blocked')).toBe(true);
-    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, cap: 'butt', join: 'miter', miterLimit: 4, fillRule: 'nonzero', dashes: [], dashOffset: 0, strokeFirst: false, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
+    expect(svgShapePath({ address: 'r', tag: 'rect', shape: { kind: 'rect', x: 1, y: 2, width: 3, height: 4 }, fill: { kind: 'none' }, stroke: { kind: 'none' }, strokeWidth: 1, fillOpacity: 1, strokeOpacity: 1, cap: 'butt', join: 'miter', miterLimit: 4, fillRule: 'nonzero', dashes: [], dashOffset: 0, strokeFirst: false, nonScalingStroke: false, painted: true })).toEqual([0, 1, 2, 1, 4, 2, 1, 4, 6, 1, 1, 6, 4]);
   });
   it('refuses on native, and compiles for web, a shape Chrome fades, a visible shape in a hidden <svg> and an <svg> Chrome does not clip: native draws a shape opaque or not at all, with its <svg>, and clips to the box', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'c', 'circle', [['cx', '12'], ['cy', '12'], ['r', '40']])];
@@ -547,6 +547,45 @@ describe('the svg model in a compile', () => {
       expect(paths[2], backend).toEqual([0, 10, 0, 3, 10 + 10 * k, 0, 20, 5 - 5 * k, 20, 5, 3, 20, 5 + 5 * k, 10 + 10 * k, 10, 10, 10, 3, 10 - 10 * k, 10, 0, 5 + 5 * k, 0, 5, 3, 0, 5 - 5 * k, 10 - 10 * k, 0, 10, 0, 4]);
       expect(paths[3], backend).toEqual([0, 0, 0, 1, 20, 0, 1, 20, 10, 1, 0, 10, 4]);
     }
+  });
+  it('SVG-vector-effect: vector-effect takes the keywords Chrome parses, is not inherited, is a presentation hint, and marks a non-scaling stroke in the native write', () => {
+    for (const [css, ok] of [['none', true], ['non-scaling-stroke', true], ['NON-SCALING-STROKE', true], ['non-scaling-size', false], ['non-rotation', false], ['fixed-position', false]] as const) {
+      expect(paintAttributeValue('vector-effect', css).ok, css).toBe(ok);
+    }
+    const input = svgTree('svg { vector-effect: non-scaling-stroke; } .n { vector-effect: non-scaling-stroke; } .o { vector-effect: none; }', (_r, o) => [
+      shape(o, 'i', 'path', [['d', 'M2 2 H20'], ['stroke', 'red']]),
+      { ...shape(o, 'n', 'rect', [['width', '10'], ['height', '10']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'n' }, o)] },
+      shape(o, 'a', 'circle', [['r', '4'], ['vector-effect', 'non-scaling-stroke']]),
+      { ...shape(o, 'b', 'circle', [['r', '4'], ['vector-effect', 'non-scaling-stroke']]), classes: [staticClass({ owner: DOC, sheet: 's', name: 'o' }, o)] },
+    ]);
+    const c = compile(input, true);
+    expect(errors(c)).toEqual([]);
+    // Not inherited: the svg's own value reaches no shape; CSS beats the attribute.
+    expect(svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.nonScalingStroke])).toEqual([['i', false], ['n', true], ['a', true], ['b', false]]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const backend of ['uikit', 'android-views'] as const) {
+      const w = p.programs[backend].nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes');
+      expect(w?.kind === 'svg-shapes' ? w.shapes.map((x) => x.nonScalingStroke) : null, backend).toEqual([false, true, true, false]);
+    }
+  });
+  it('SVG-inert: clip-rule and marker none compile on every target and change no native write; a marker url refuses everywhere, on the svg and each shape that inherits it', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'p', 'path', [['d', 'M0 0 H4 V4 Z'], ['clip-rule', 'evenodd'], ['marker-mid', 'none']]), shape(o, 'c', 'circle', [['r', '4']])];
+    const program = (css: string) => {
+      const c = compile(svgTree(css, shapes), false);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return JSON.stringify(p.programs.uikit.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes'));
+    };
+    expect(program('svg { clip-rule: evenodd; marker-start: none; } circle { clip-rule: EVENODD; marker-end: none; }')).toBe(program(''));
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
+    const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
+    expect(refused('circle { marker-end: url(#m); }')).toEqual(all('marker-end: url(#m) on <circle> c is unsupported: <marker> elements are not built yet (package SVG-b)'));
+    expect(refused('svg { marker-start: url(#m); }')).toEqual([...all('marker-start: url(#m) on <circle> c is unsupported: <marker> elements are not built yet (package SVG-b)'), ...all('marker-start: url(#m) on <path> p is unsupported: <marker> elements are not built yet (package SVG-b)'), ...all('marker-start: url(#m) on <svg> s is unsupported: <marker> elements are not built yet (package SVG-b)')].sort());
+    expect(svgAttributeRefusal('path', 'marker-end', 'url(#m)')).toContain('SVG-b');
+    expect(svgAttributeRefusal('path', 'clip-rule', 'bogus')).not.toBeNull();
+    expect(svgAttributeRefusal('rect', 'clip-rule', 'evenodd')).toBeNull();
   });
   it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect, and a negative attribute; a negative in CSS is invalid', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];

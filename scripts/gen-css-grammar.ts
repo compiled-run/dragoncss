@@ -13,6 +13,11 @@ import { LOGICAL_CORNER_PROPERTIES, RADIUS_LONGHANDS } from '../packages/dragon/
 import { TRANSFORM_LONGHANDS } from '../packages/dragon/src/css/properties/transform.ts';
 import { SVG_LONGHANDS } from '../packages/dragon/src/css/properties/svg.ts';
 import { MASK_LONGHANDS, MASK_SHORTHANDS } from '../packages/dragon/src/css/properties/mask.ts';
+import { BORDER_IMAGE_LONGHANDS, BORDER_IMAGE_SHORTHANDS } from '../packages/dragon/src/css/properties/border-image.ts';
+import { OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS } from '../packages/dragon/src/css/properties/overscroll.ts';
+import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/dragon/src/css/properties/scroll-snap.ts';
+import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
+import { CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS } from '../packages/dragon/src/css/properties/container-query.ts';
 
 type WebrefEntry = {
   name: string;
@@ -27,6 +32,12 @@ const webrefDir = dirname(require.resolve('@webref/css/package.json'));
 const webrefVersion = (JSON.parse(readFileSync(join(webrefDir, 'package.json'), 'utf8')) as { version: string }).version;
 if (webrefVersion !== '8.7.5') throw new Error(`@webref/css must be 8.7.5, found ${webrefVersion}`);
 const css = JSON.parse(readFileSync(join(webrefDir, 'css.json'), 'utf8')) as WebrefCss;
+
+/** The initial-only families' longhands and shorthands. */
+const INITIAL_ONLY_PROPERTIES = [
+  ...OVERSCROLL_LONGHANDS, ...OVERSCROLL_SHORTHANDS, ...SCROLL_SNAP_LONGHANDS, ...SCROLL_SNAP_SHORTHANDS,
+  ...CONTAINMENT_LONGHANDS, ...CONTAINMENT_SHORTHANDS, ...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS,
+];
 
 /** Longhands and shorthands the milestone-1 compiler reads. Support status lives in the profiles, not here. */
 const SUBSET = [
@@ -101,9 +112,11 @@ const SUBSET = [
   'text-shadow',
   // FX: filter (filter-effects-1 §5), after text-shadow, as LONGHANDS registers it.
   'filter',
-  // PNT2: the 3D transform longhands (css-transforms-2 §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
-  // Chrome 145's (css_properties.json5 keywords).
-  'backface-visibility', 'transform-style', 'transform-box',
+  // PNT2: the 3D transform longhands (css-transforms-2 §5, §6, §7), after filter, as LONGHANDS registers them. webref's keywords are
+  // Chrome 145's (css_properties.json5 keywords); perspective-origin's <position> is parsed as object-position's (values.ts positionValue).
+  'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin',
+  // ZOOM: zoom (css-viewport-1 §5), after transform-extra, as LONGHANDS registers it.
+  'zoom',
   // TXT2-g: the legacy line clamp (css-overflow-4 §4.2), after word-wrap, as LONGHANDS registers them.
   '-webkit-box-orient', '-webkit-line-clamp',
   // touch-action (pointerevents-3 §10.2), after line-clamp, as LONGHANDS registers it.
@@ -114,6 +127,17 @@ const SUBSET = [
   'clip-path',
   // MASK-CLIP: the mask layer longhands (css-masking-1 §7), then mask and mask-position, after clip-path, as LONGHANDS registers them.
   ...MASK_LONGHANDS, ...MASK_SHORTHANDS,
+  // MISC-PAINT: the border image longhands (css-backgrounds-3 §4), then border-image and -webkit-border-image, after mask, as LONGHANDS
+  // registers them.
+  ...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS,
+  // The initial-only families (css/properties/initial-only.ts), after the mask family, as LONGHANDS registers them.
+  ...INITIAL_ONLY_PROPERTIES,
+  // FORM-a: appearance (css-ui-4 §7.1), after the mask family, as LONGHANDS registers it.
+  'appearance',
+  // FORM-b: caret-color and accent-color (css-ui-4 §6.2, §6.3), after appearance, as LONGHANDS registers them.
+  'caret-color', 'accent-color',
+  // TOUCH: -webkit-user-modify, after caret-color and accent-color, as LONGHANDS registers it.
+  '-webkit-user-modify',
   // TABLE: the table properties (CSS2 §17), then border-spacing, after the mask family, as LONGHANDS registers them.
   'border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout', 'border-spacing',
   // GEN-d1 and GEN-d2: the counter properties (css-lists-3 §4) and quotes (css-content-3 §3.1), after the table family, as LONGHANDS registers them.
@@ -132,6 +156,8 @@ const SYNTAX_EXTENSIONS: { readonly [property: string]: string } = {
   'list-style-image': '-webkit-image-set( <image-set-option># ) | -webkit-cross-fade( <image> , <image> , [ <percentage> | <number> ] )',
   // css-ui-4 §5.1 lists no auto, but Chrome 145 parses it under CSSResizeAuto, a stable feature (css_parser_fast_paths.cc kResize).
   resize: 'auto',
+  // Blink Zoom::ParseSingleValue (longhands_custom.cc) also takes normal, which webref's css-viewport grammar omits; it computes to 1.
+  zoom: 'normal',
 };
 
 /**
@@ -155,6 +181,27 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // the grammar takes any value: a mask webref's grammar misses is refused, never dropped where Chrome would apply it. Pinned against
   // Chrome by packages/parity/test/mask-parse.test.ts.
   ...Object.fromEntries([...MASK_LONGHANDS, ...MASK_SHORTHANDS].map((p) => [p, '<any-value>'])),
+  // Blink's border image parsers (longhands_custom.cc BorderImageOutset through BorderImageWidth and WebkitBorderImage,
+  // shorthands_custom.cc BorderImage). Dragon accepts each border image longhand only at its initial value and refuses every other
+  // value where it applies (analysis/border-image.ts), so the grammar takes any value: a border image webref's grammar misses is
+  // refused, never dropped where Chrome would apply it. webref has no -webkit-border-image. Pinned against Chrome by
+  // packages/parity/test/border-image-parse.test.ts.
+  ...Object.fromEntries([...BORDER_IMAGE_LONGHANDS, ...BORDER_IMAGE_SHORTHANDS].map((p) => [p, '<any-value>'])),
+  // The overscroll, scroll-snap, containment and container-query families: Dragon accepts their initial values alone and refuses
+  // every other value where it applies (analysis/scroll-containment.ts), so the grammar takes any value, and a value webref's grammar
+  // misses (or lists though Chrome 145 lacks it, as overscroll-behavior: chain and scroll-snap-type: pair) is refused, never dropped
+  // where Chrome would apply it. Pinned against Chrome by packages/parity/test/scroll-containment-parse.test.ts.
+  ...Object.fromEntries(INITIAL_ONLY_PROPERTIES.map((p) => [p, '<any-value>'])),
+  // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
+  // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
+  // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.
+  appearance: '<any-value>',
+  // css-ui-4 §6.2 adds a second caret-shape colour; Chrome 145 parses one auto or <color> and drops two
+  // (packages/parity/test/ui-colors-parse.test.ts).
+  'caret-color': 'auto | <color>',
+  // webref has no -webkit-user-modify. Chrome 145 parses read-only, read-write and read-write-plaintext-only; Dragon accepts
+  // read-only and refuses the other two (properties/user-modify.ts), so the grammar takes any value and the parser decides.
+  '-webkit-user-modify': '<any-value>',
   // webref has no syntax for the legacy -webkit-box properties: Blink CSSParserFastPaths::IsValidKeywordPropertyAndValue for the
   // keyword ones, and WebkitBoxFlex (ConsumeNumber, any sign) and WebkitBoxOrdinalGroup (ConsumePositiveInteger) ParseSingleValue.
   '-webkit-box-align': 'stretch | start | center | end | baseline',
@@ -227,6 +274,9 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink Rx and Ry ::ParseSingleValue: auto, or ConsumeSVGGeometryPropertyLength with ValueRange::kNonNegative.
   rx: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
   ry: 'auto | <length-percentage [0,∞]> | <number [0,∞]>',
+  // Chrome parses none and non-scaling-stroke only (css_properties.json5 keywords); webref adds non-scaling-size, non-rotation and
+  // fixed-position, which Chrome rejects.
+  'vector-effect': 'none | non-scaling-stroke',
   // Blink BorderSpacing::ParseShorthand and the spacing longhands' ParseSingleValue: one or two non-negative lengths (webref's
   // <length>{1,2} takes negatives, which Chrome 145 drops); webref has no entry for the -webkit- spacing longhands.
   'border-spacing': '<length [0,∞]>{1,2}',
@@ -247,6 +297,7 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
  */
 const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string; readonly inherited: string } } = {
   '-webkit-box-orient': { initial: 'horizontal', inherited: 'no' },
+  '-webkit-user-modify': { initial: 'read-only', inherited: 'yes' },
   '-webkit-line-clamp': { initial: 'none', inherited: 'no' },
   // webref lists font-stretch as a legacy alias of css-fonts-4's font-width, without fields; Chrome 145 has no font-width and keeps
   // font-stretch a longhand, initial normal, inherited (css-fonts-4 §2.4).

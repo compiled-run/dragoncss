@@ -4,7 +4,7 @@ import type { ShapedItem } from './shaping.ts';
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
-  cachedRangeWidth, fontMetricPx, fromPxCeil, glyphAdvance16, glyphBoundsMetricPx, inlineToFloat, inlineToLayoutUnitCeil, platformFontSize, roundFontMetricHalfUpToWholePx,
+  cachedRangeWidth, floatAdd, fontMetricPx, fromPxCeil, glyphAdvance16, glyphBoundsMetricPx, inlineToFloat, inlineToLayoutUnitCeil, platformFontSize, roundFontMetricHalfUpToWholePx,
   roundFontMetricToWholePx, sub, textAdvanceAt, textRunLayoutUnit, ZERO,
 } from './units.ts';
 
@@ -177,6 +177,76 @@ function spacedSums(data: FontData, text: string, size: number, spacing16: numbe
   return { before, through, total, bad: -1 };
 }
 
+/**
+ * The size Blink draws synthesized small capitals at (simple_font_data.cc SimpleFontData::SmallCapsFontData through
+ * CreateScaledFontData): the computed
+ * size times kSmallCapsFontSizeMultiplier 0.7f in float, rounded to whole px by lroundf (half away from zero; sizes are never negative).
+ */
+export function smallCapsFontSize(computedSizePx: number): number {
+  return Math.floor(Math.fround(Math.fround(computedSizePx) * Math.fround(0.7)) + 0.5);
+}
+
+/**
+ * The code point small caps draws for cp (small_caps_iterator.cc SmallCapsIterator::Consume, harfbuzz_shaper.cc
+ * CaseMappingHarfBuzzBufferFiller): a to z change when uppercased
+ * (UCHAR_CHANGES_WHEN_UPPERCASED) and are drawn as A to Z at the small-caps size; every other ASCII code point and U+200B keeps its
+ * case and size. -1 for any other code point, whose case mapping Dragon does not port.
+ */
+export function smallCapsCodePoint(cp: number): number {
+  if (cp >= 0x61 && cp <= 0x7a) return cp - 0x20;
+  if ((cp >= 0 && cp < 0x80) || cp === ZWSP) return cp;
+  return -1;
+}
+
+/** Whether text holds a code point small caps uppercases, so it shapes in more than one font. */
+function hasSmallCapsLower(text: string): boolean {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) as number;
+    if (smallCapsCodePoint(cp) !== cp) return true;
+  }
+  return false;
+}
+
+/**
+ * Small-caps Ahem text as Blink shapes it without an smcp feature (harfbuzz_shaper.cc HarfBuzzShaper::ShapeSegment): the text
+ * splits into runs where a code point's case behaviour changes (SmallCapsIterator), a lowercase run is shaped uppercased at the
+ * small-caps size. The exact 16.16 sums before code points start and end (ComputePositionData's total_advance), the float width
+ * (ShapeResult::width_, the float sum of each run's 16.16 width), and the first code point that is not an Ahem glyph (bad), or -1.
+ */
+type SmallCapsSums = { readonly before: number; readonly through: number; readonly width: number; readonly bad: number };
+
+function smallCapsSums(data: FontData, text: string, size: number, small: number, start: number, end: number): SmallCapsSums {
+  let k = 0;
+  let before = 0;
+  let through = 0;
+  let total = 0;
+  let run = 0;
+  let width = 0;
+  let lower = false;
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) as number;
+    const drawn = smallCapsCodePoint(cp);
+    const em = drawn < 0 ? -1 : emAdvance(data, drawn);
+    if (em < 0) return { before: 0, through: 0, width: 0, bad: cp };
+    const isLower = drawn !== cp;
+    if (k > 0 && isLower !== lower) {
+      width = floatAdd(width, inlineToFloat(run));
+      run = 0;
+    }
+    lower = isLower;
+    if (k === start) before = total;
+    if (k === end) through = total;
+    const advance = glyphAdvance16(em * data.unitsPerEm, isLower ? small : size, data.unitsPerEm);
+    total = total + advance;
+    run = run + advance;
+    k++;
+  }
+  if (k > 0) width = floatAdd(width, inlineToFloat(run));
+  if (start >= k) before = total;
+  if (end >= k) through = total;
+  return { before, through, width, bad: -1 };
+}
+
 /** ShapeResult::CachedPositionForOffset of an Ahem item with spacing: the ceiled sum before a character, FromFloatCeil(width) at the end. */
 function spacedPosition(sum: number, atEnd: boolean): LU {
   return atEnd ? fromPxCeil(inlineToFloat(sum)) : inlineToLayoutUnitCeil(sum);
@@ -210,6 +280,12 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
       if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       const spacing16 = textRunLayoutUnit(font.letterSpacing);
       const word16 = textRunLayoutUnit(font.wordSpacing);
+      if (font.smallCaps && hasSmallCapsLower(text)) {
+        if (spacing16 !== 0 || word16 !== 0) return { ok: false, code: 'text-glyph', reason: 'small-caps text with letter or word spacing is not measured yet' };
+        const caps = smallCapsSums(data, text, instanceSize(font.size), smallCapsFontSize(font.size), 0, 0);
+        if (caps.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${caps.bad.toString(16).toUpperCase()} is not an Ahem small-caps glyph` };
+        return { ok: true, measure: { width: fromPxCeil(caps.width) } };
+      }
       if (spacing16 !== 0 || word16 !== 0) {
         const sums = spacedSums(data, text, instanceSize(font.size), spacing16, word16, 0, 0);
         if (sums.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${sums.bad.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };
@@ -229,6 +305,15 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
       if (font.family !== AHEM_FACE_ID) return { ok: false, code: 'text-glyph', reason: `the font data measurer measures the bundled Ahem, not ${font.family}` };
       const spacing16 = textRunLayoutUnit(font.letterSpacing);
       const word16 = textRunLayoutUnit(font.wordSpacing);
+      if (font.smallCaps && hasSmallCapsLower(text)) {
+        if (spacing16 !== 0 || word16 !== 0) return { ok: false, code: 'text-glyph', reason: 'small-caps text with letter or word spacing is not measured yet' };
+        const caps = smallCapsSums(data, text, instanceSize(font.size), smallCapsFontSize(font.size), start, end);
+        if (caps.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${caps.bad.toString(16).toUpperCase()} is not an Ahem small-caps glyph` };
+        // A position is the ceiled exact sum before its code point; the end is FromFloatCeil of the item's float width.
+        const n = codePointCount(text);
+        const at = (sum: number, atEnd: boolean): LU => (atEnd ? fromPxCeil(caps.width) : inlineToLayoutUnitCeil(sum));
+        return { ok: true, measure: { width: sub(at(caps.through, end >= n), at(caps.before, start >= n)) } };
+      }
       if (spacing16 !== 0 || word16 !== 0) {
         const sums = spacedSums(data, text, instanceSize(font.size), spacing16, word16, start, end);
         if (sums.bad >= 0) return { ok: false, code: 'text-glyph', reason: `U+${sums.bad.toString(16).toUpperCase()} is not an Ahem full-advance glyph` };

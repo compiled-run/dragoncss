@@ -17,7 +17,7 @@ import { blockify } from './blockify.ts';
 import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, userAgentValue } from './computed.ts';
+import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, synthesizesSmallCaps, userAgentValue } from './computed.ts';
 import { uaTagOf } from './elements.ts';
 import { generatedElement, generatedText, generatedTextNode, hostRefusal } from './generated.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
@@ -60,6 +60,8 @@ export type ResolvedText = {
   readonly props: ReadonlyMap<TextLonghand, ResolvedValue>;
   /** TXT2-e: why native targets refuse this text's transform in this resolved tree (text-transform.ts transformRun). */
   readonly transformRefusal?: string;
+  /** Whether its owner synthesizes small caps over a face without smcp (computed.ts synthesizesSmallCaps). */
+  readonly smallCaps: boolean;
 };
 
 const WHITE_SPACE = /[ \t\n\r\f]/;
@@ -462,7 +464,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
         if (text.length === 0) continue;
         const refusal = refusals.get(kid);
-        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua) };
+        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
         owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
       }
     };

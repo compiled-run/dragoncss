@@ -40,6 +40,7 @@ const asAlias = (p: Parsed, alias: string, property: string): Parsed => ({
 /** Values for each standard property: a typical value, a multi-token value where the grammar has one, and an invalid value. */
 const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'box-sizing': ['border-box', 'content-box'],
+  appearance: ['none', 'NONE', 'auto', 'button', 'menulist-button', 'push-button', 'none auto', '1px'],
   'background-clip': ['padding-box', 'CONTENT-BOX, border-box', 'text', 'border'],
   'box-shadow': ['1px 2px 3px red', 'inset 0 0 0 2px rgb(0 0 0 / 50%), 3px 3px currentcolor', 'none', '1px 2px calc(1px + 1px)', '1vw 0', '1px'],
   opacity: ['0', '50%', '0.5', '1.5', 'calc(50% + 10%)'],
@@ -47,6 +48,8 @@ const SAMPLES: { readonly [property: string]: readonly string[] } = {
   filter: ['none', 'NONE', 'blur(4px)', 'opacity(0) grayscale(1)', 'url(#f)', 'none blur(1px)'],
   'backface-visibility': ['visible', 'HIDDEN', 'none'],
   'transform-style': ['flat', 'Preserve-3d', 'flat flat'],
+  perspective: ['none', 'NONE', '100px', 'auto'],
+  'perspective-origin': ['center', 'left 10px top 20%', '1em 0', 'left right'],
   'user-select': ['none', 'TEXT', 'all', 'contain'],
   mask: ['none', 'NONE', 'url(m.svg) no-repeat center / contain', 'none, none'],
   'mask-clip': ['border-box', 'padding-box', 'no-clip'],
@@ -124,13 +127,13 @@ const COMMON = ['inherit', 'initial', 'unset', 'revert', 'var(--x)', 'var(--x, 1
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(80);
+    expect(ALIASES.length).toBe(83);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
       expect(resolveAlias(property)).toBe(property);
     }
-    expect(resolveAlias('-webkit-perspective')).toBe('-webkit-perspective');
+    expect(resolveAlias('-webkit-box-reflect')).toBe('-webkit-box-reflect');
     expect(resolveAlias('--webkit-flex')).toBe('--webkit-flex');
   });
   it('an alias declaration parses exactly as its property declaration, for valid, multi-token, wide, var() and invalid values', () => {
@@ -153,7 +156,7 @@ describe('legacy aliases parse as their property', () => {
     expect(parsed('margin-block-start: foo').diagnostics).toEqual([['DRAGON_CSS_INVALID_VALUE', '"foo" is not a valid value for margin-block-start (@webref/css grammar)']]);
   });
   it('aliases Chrome parses with legacy rules, and non-aliases, stay refused as unknown properties', () => {
-    for (const name of ['-webkit-perspective', '-webkit-writing-mode', '-webkit-box-reflect', '-webkit-background-origin', '-webkit-background-size']) {
+    for (const name of ['-webkit-writing-mode', '-webkit-box-reflect', '-webkit-background-origin', '-webkit-background-size']) {
       expect(parse(`${name}: none`).diagnostics.map((d) => d.code), name).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
     }
     // PNT1-radius: -webkit-border-radius is the radius family's own shorthand with Chrome's legacy two-value parsing, not an alias.
@@ -178,7 +181,19 @@ describe('legacy aliases parse as their property', () => {
     // transform itself keeps its own parse: a unitless perspective() is invalid there, as in Chrome.
     expect(parsed('transform: perspective(100)').diagnostics.map((d) => d[0])).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     // Every other alias parses no value differently.
-    for (const [alias] of ALIASES) if (alias !== '-webkit-transform') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
+    for (const [alias] of ALIASES) if (alias !== '-webkit-transform' && alias !== '-webkit-perspective') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
+  });
+  it('-webkit-perspective refuses every value but none and the CSS-wide keywords, since its legacy parsing takes a unitless length', () => {
+    const refusal = 'Chrome parses -webkit-perspective with legacy rules (a unitless length), and Dragon parses only perspective';
+    for (const v of ['100', '100px', '0', 'calc(10)', 'calc(infinity)', 'var(--p)', 'env(x, 10)', '\\6e one', 'none 1', 'auto']) {
+      expect(parsed(`-webkit-perspective: ${v}`).diagnostics, v).toEqual([['DRAGON_UNSUPPORTED_VALUE', expect.stringContaining(refusal)]]);
+      expect(parsed(`-webkit-perspective: ${v}`).declarations, v).toEqual([]);
+    }
+    for (const v of ['none', 'NONE', ' none ', 'inherit', 'initial', 'unset', 'revert', 'revert-layer', 'none !important']) {
+      expect(parsed(`-webkit-perspective: ${v}`), v).toEqual(asAlias(parsed(`perspective: ${v}`), '-webkit-perspective', 'perspective'));
+    }
+    // perspective keeps its own parse: a unitless length is invalid there, as in Chrome.
+    expect(parsed('perspective: 100').diagnostics.map((d) => d[0])).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
   it('an alias in a keyframe block sets its property', () => {
     const frames = (body: string) => {
@@ -281,9 +296,10 @@ describe('profile diagnostics name the alias as written', () => {
 
 describe('the alias fixtures cover every alias', () => {
   it('each alias appears in a fixture of the aliases group or its property\'s group, or the animation ones in the anim-webkit frame fixture', () => {
-    // shadow-webkit-alias (shadow group), opacity-cascade (effects group), filter-none (filter group), mask-initial (mask group) and
-    // transform-extra-initial (transform-extra group) hold the paint aliases where their pixel tests read them.
-    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
+    // shadow-webkit-alias (shadow group), opacity-cascade (effects group), filter-none (filter group), mask-initial (mask group),
+    // transform-extra-initial (transform-extra group) and appearance-values (appearance group) hold the paint aliases where their
+    // pixel tests read them.
+    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial', 'appearance-values'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
     const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
     for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
     expect(frames).toContain('@-webkit-keyframes');

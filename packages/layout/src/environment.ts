@@ -275,6 +275,7 @@ function resolveText(t: TextLeaf, parent: Env): TextLeaf {
     kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode,
     letterSpacing: resolveSpacing('letter-spacing', t.letterSpacing, env),
     wordSpacing: resolveSpacing('word-spacing', t.wordSpacing, env), overflowWrap: t.overflowWrap, wordBreak: t.wordBreak,
+    smallCaps: t.smallCaps,
   };
 }
 
@@ -496,7 +497,7 @@ function fontLengths(font: FontSpec, env: Env): FontLengths {
   const size = computedSize(font, env);
   const m = env.faults.exUntruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: env.faults.metricHalfUp, untruncatedFontSize: true }) : env.measurer;
   refuseUnknownFace(m, font, env);
-  return m.lengths({ family: font.family, size, letterSpacing: 0, wordSpacing: 0 });
+  return m.lengths({ family: font.family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
 }
 
 /** A face the measurer does not hold is refused with text-glyph, at the node whose font or length names it. */
@@ -527,7 +528,7 @@ function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): nu
         return floatAdd(floatAdd(fontMetricPx(i, d.unitsPerEm, d.ascent), fontMetricPx(i, d.unitsPerEm, d.descent)), fontMetricPx(i, d.unitsPerEm, d.lineGap));
       }
       refuseUnknownFace(env.measurer, font, env);
-      const m = env.measurer.metrics({ family: font.family, size, letterSpacing: 0, wordSpacing: 0 });
+      const m = env.measurer.metrics({ family: font.family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
       return toPx(add(add(m.ascent, m.descent), m.lineGap));
     }
     case 'number':

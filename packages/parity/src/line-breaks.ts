@@ -176,7 +176,7 @@ function markerTextLines(r: LayoutRect, m: ListMarker, boxes: readonly LayoutRec
   if (text === null || a === undefined || e === undefined || box === undefined) throw new Error(`${r.id}: the text marker ${m.id} is not placed`);
   const cps = [...text].map((ch) => ch.codePointAt(0) as number);
   const line: EngineLine = { start: 0, end: text.length, cps, shifts: [], rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, halfLeading: a.y - box.y, ellipsis: null, fragments: [[0, text.length]] };
-  return { id: r.id, container: m.id, font: m.font, textFont: { family: m.font.family, size: m.font.size, letterSpacing: 0, wordSpacing: 0 }, lines: [line] };
+  return { id: r.id, container: m.id, font: m.font, textFont: { family: m.font.family, size: m.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, lines: [line] };
 }
 
 // ---------------------------------------------------------------- break vectors

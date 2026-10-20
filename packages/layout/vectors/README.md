@@ -361,7 +361,8 @@ Input:
        "value": 0
       },
       "overflowWrap": "normal",
-      "wordBreak": "normal"
+      "wordBreak": "normal",
+      "smallCaps": false
      }
     ]
    }

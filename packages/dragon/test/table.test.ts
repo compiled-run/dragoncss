@@ -6,7 +6,6 @@ import type { Diagnostic } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
-import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
 import { TABLE_LONGHANDS } from '../src/css/properties/table.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
@@ -32,9 +31,9 @@ function compile(css: string, profiles: 'derive' | 'enforce' = 'derive') {
 const errors = (c: ReturnType<typeof compile>): Diagnostic[] => c.diagnostics.filter((d) => d.severity === 'error');
 
 describe('table properties: registry and parse', () => {
-  it('follow the mask family, inherited but for table-layout, with no layout or paint aspect', () => {
+  it('follow the user-modify family, inherited but for table-layout, with no layout or paint aspect', () => {
     expect([...TABLE_LONGHANDS]).toEqual(['border-collapse', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing', 'caption-side', 'empty-cells', 'table-layout']);
-    expect(LONGHANDS[LONGHANDS.indexOf('border-collapse') - 1]).toBe(MASK_LONGHANDS[MASK_LONGHANDS.length - 1]);
+    expect(LONGHANDS[LONGHANDS.indexOf('border-collapse') - 1]).toBe('-webkit-user-modify');
     for (const p of TABLE_LONGHANDS) {
       expect(INHERITED.has(p), p).toBe(p !== 'table-layout');
       expect(PROPERTY_ASPECTS[p], p).toEqual({ layout: false, paint: false });

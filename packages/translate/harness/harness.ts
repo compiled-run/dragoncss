@@ -75,7 +75,7 @@ import { measurerFor } from '../../layout/src/platform.ts';
 import type { GlyphShaper, HanKerningFontData, ShapedItem, ShapeResult, ShapingFaults } from '../../layout/src/shaping.ts';
 import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from '../../layout/src/text.ts';
-import { fontMetricLengths } from '../../layout/src/text.ts';
+import { fontMetricLengths, smallCapsFontSize } from '../../layout/src/text.ts';
 import type { TextFont } from '../../layout/src/input.ts';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
@@ -855,7 +855,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 }
 
 function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak'], path);
+  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -868,6 +868,7 @@ function decodeText(o: JsonObj, path: string): TextLeaf {
     wordSpacing: calcExpr(field(o, 'wordSpacing', path), `${path}.wordSpacing`),
     overflowWrap: lit(field(o, 'overflowWrap', path), ['normal', 'break-word', 'anywhere'], `${path}.overflowWrap`) as OverflowWrap,
     wordBreak: lit(field(o, 'wordBreak', path), ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'], `${path}.wordBreak`) as WordBreak,
+    smallCaps: bool(field(o, 'smallCaps', path), `${path}.smallCaps`),
   };
 }
 
@@ -1249,7 +1250,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const itemFor = (text: string, font: TextFont): ShapedItem => {
     const f = s.faces.get(font.family);
     if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
-    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, wordSpacing: font.wordSpacing, faults: sf });
+    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, wordSpacing: font.wordSpacing, smallCapsSize: font.smallCaps ? smallCapsFontSize(font.size) : -1, faults: sf });
     if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
     const result = shapeItem(made.item);
     if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };

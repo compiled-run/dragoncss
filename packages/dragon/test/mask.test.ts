@@ -9,6 +9,7 @@ import type { CompilerFaults } from '../src/faults.ts';
 import { initialValue, valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { MASK_INITIAL, MASK_LONGHANDS } from '../src/css/properties/mask.ts';
+import { BORDER_IMAGE_LONGHANDS } from '../src/css/properties/border-image.ts';
 import { LONGHANDS } from '../src/css/properties.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import type { Diagnostic } from '../src/types.ts';

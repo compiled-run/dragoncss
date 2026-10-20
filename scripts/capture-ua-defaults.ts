@@ -437,7 +437,9 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
           for (const [k, v] of Object.entries(s.attrs)) el.setAttribute(k, v);
           const bare = document.createElement('dragon-unstyled');
           const given = { ...(declared[tag] as Record<string, Record<string, string>>)[dir], ...textFonts[tag] };
-          for (const [p, v] of Object.entries(given)) bare.style.setProperty(p, v as string);
+          // FORM-a: appearance stays off the reference, so Chrome's form-control display adjustment (a control's appearance: auto
+          // makes it inline-block) shows as a forced display; appearance itself is declared, not forced.
+          for (const [p, v] of Object.entries(given)) if (p !== 'appearance') bare.style.setProperty(p, v as string);
           parent.append(el, bare);
           hostEl.appendChild(parent);
           const cs = getComputedStyle(el);
@@ -448,7 +450,7 @@ async function capture(browser: Browser, scheme: Scheme): Promise<Capture> {
             if (p.startsWith('--')) continue;
             const v = cs.getPropertyValue(p);
             if (v === ref.getPropertyValue(p)) continue;
-            if (known.has(p)) force[p] = v;
+            if (known.has(p)) { if (p !== 'appearance') force[p] = v; }
             else if (!known.has(physical(p))) row[p] = v;
           }
           (unmodelled[tag] as Record<string, Record<string, string>>)[dir] = row;
