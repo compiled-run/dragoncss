@@ -55,6 +55,7 @@ import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { OUTLINE } from './fixture-groups/outline.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
+import { OVERSCROLL } from './fixture-groups/overscroll.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
@@ -215,6 +216,7 @@ export const GROUPS = {
   'milestone-1': MILESTONE_1,
   outline: OUTLINE,
   overflow: OVERFLOW,
+  overscroll: OVERSCROLL,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,

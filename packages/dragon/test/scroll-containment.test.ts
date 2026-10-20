@@ -1,8 +1,9 @@
-// The overscroll, containment and container-query families are accepted at their initial values alone, on every target; every
-// other value is kept (the grammar takes any value, so Dragon never drops what Chrome keeps) and refused where it applies. Scroll
-// snapping takes Chrome 145's parse and is accepted at every value wherever nothing snaps; an active snap pair (a scroll container
-// with a snap type and a snap area) is refused on iOS and Android, which snap nothing yet, and compiles on web. The Chrome cases are
-// scroll-initial-longhands, scroll-snap-values, containment-initial and the reject-* cases of fixture-groups/scroll-containment.ts
+// The containment and container-query families are accepted at their initial values alone, on every target (the overscroll family,
+// registered with them, takes every value Chrome parses: test/overscroll.test.ts); every other value is kept (the grammar takes any
+// value, so Dragon never drops what Chrome keeps) and refused where it applies. Scroll snapping takes Chrome 145's parse and is
+// accepted at every value wherever nothing snaps; an active snap pair (a scroll container with a snap type and a snap area) is refused
+// on iOS and Android, which snap nothing yet, and compiles on web. The Chrome cases are scroll-initial-longhands, scroll-snap-values,
+// containment-initial and the reject-* cases of fixture-groups/scroll-containment.ts
 // (packages/parity/fixtures); packages/parity/test/scroll-containment-parse.test.ts pins the parse against Chrome 145.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
@@ -92,9 +93,6 @@ describe('the initial-only scroll and containment families', () => {
   });
 
   it('parse an initial spelling to the initial values, and keep every other value as written', () => {
-    expect(parsed('overscroll-behavior: AUTO')).toEqual(['overscroll-behavior-x: auto', 'overscroll-behavior-y: auto']);
-    expect(parsed('overscroll-behavior: auto contain')).toEqual(['overscroll-behavior-x: ?auto contain', 'overscroll-behavior-y: ?auto contain']);
-    expect(parsed('overscroll-behavior: auto auto auto')).toEqual(['overscroll-behavior-x: ?auto auto auto', 'overscroll-behavior-y: ?auto auto auto']);
     expect(parsed('contain: none none')).toEqual(['contain: ?none none']);
     expect(parsed('contain-intrinsic-size: none')).toEqual(['contain-intrinsic-width: none', 'contain-intrinsic-height: none']);
     expect(parsed('contain-intrinsic-size: auto none')).toEqual(['contain-intrinsic-width: ?auto none', 'contain-intrinsic-height: ?auto none']);
@@ -103,8 +101,6 @@ describe('the initial-only scroll and containment families', () => {
     expect(parsed('container: none / size')).toEqual(['container-name: ?none / size', 'container-type: ?none / size']);
     expect(parsed('container: none normal')).toEqual(['container-name: ?none normal', 'container-type: ?none normal']);
     expect(parsed('container-name: a b')).toEqual(['container-name: ?a b']);
-    // Values webref lists though Chrome lacks them are kept and refused, never dropped.
-    expect(parsed('overscroll-behavior-x: chain')).toEqual(['overscroll-behavior-x: ?chain']);
   });
 
   it('accept the initial values on every target, from any spelling and through the CSS-wide keywords', () => {
@@ -116,12 +112,12 @@ describe('the initial-only scroll and containment families', () => {
   });
 
   it('refuse every other value on every target, once per element and family, computed', () => {
-    for (const d of ['overscroll-behavior: contain', 'overscroll-behavior-y: none', 'overflow-anchor: none', 'contain: paint', 'content-visibility: hidden', 'content-visibility: auto',
+    for (const d of ['contain: paint', 'content-visibility: hidden', 'content-visibility: auto',
       'contain-intrinsic-size: 10px', 'contain-intrinsic-block-size: auto none', 'container-type: inline-size', 'container-name: card', 'container: card']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
     expect(errorsAt('contain: paint; content-visibility: hidden')).toEqual(REFUSED);
-    expect(errorsAt('contain: paint; overflow-anchor: none')).toEqual([...REFUSED, ...REFUSED].sort());
+    expect(errorsAt('contain: paint; container-type: inline-size')).toEqual([...REFUSED, ...REFUSED].sort());
     expect(errorsAt('--t: size; container-type: var(--t)')).toEqual(REFUSED);
   });
 
@@ -133,7 +129,6 @@ describe('the initial-only scroll and containment families', () => {
   });
 
   it('plant each family\'s fault: its non-initial value compiles, and only its own', () => {
-    expect(errorsAt('overscroll-behavior: contain', { ...NO_FAULTS, overscrollAccepted: true })).toEqual([]);
     expect(errorsAt('content-visibility: hidden', { ...NO_FAULTS, containmentAccepted: true })).toEqual([]);
     expect(errorsAt('container-name: card', { ...NO_FAULTS, containerQueryAccepted: true })).toEqual([]);
     expect(errorsAt('container-name: card', { ...NO_FAULTS, containmentAccepted: true })).toEqual(REFUSED);

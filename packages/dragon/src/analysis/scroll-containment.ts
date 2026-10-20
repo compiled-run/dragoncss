@@ -7,7 +7,6 @@ import { isInitialValue } from '../css/properties/initial-only.ts';
 import type { Longhand } from '../css/properties.ts';
 import { CONTAINER_QUERY_INITIAL, CONTAINER_QUERY_LONGHANDS } from '../css/properties/container-query.ts';
 import { CONTAINMENT_INITIAL, CONTAINMENT_LONGHANDS } from '../css/properties/containment.ts';
-import { OVERSCROLL_INITIAL, OVERSCROLL_LONGHANDS } from '../css/properties/overscroll.ts';
 import { alignsSnap, snapTypeOf } from '../css/properties/scroll-snap.ts';
 import type { CssValue } from '../css/values.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
@@ -38,9 +37,6 @@ function refuseNonInitial(el: ResolvedElement, targets: readonly string[], diagn
   }
 }
 
-// css-overscroll-1, css-scroll-anchoring-1: auto leaves scroll chaining and anchoring to the platform scroll view, as every Dragon
-// scroll container does; contain, none and overflow-anchor: none ask for behaviour no target implements.
-const OVERSCROLL: InitialOnlyFamily = { id: 'overscroll', longhands: OVERSCROLL_LONGHANDS, initial: OVERSCROLL_INITIAL, reason: 'Dragon implements no overscroll behaviour or scroll anchoring yet' };
 // css-contain-2: containment and content-visibility change layout and can skip painting a box's contents (text included); the
 // intrinsic sizes apply only under size containment.
 const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_LONGHANDS, initial: CONTAINMENT_INITIAL, reason: 'Dragon implements no containment or content-visibility yet' };
@@ -49,7 +45,6 @@ const CONTAINER_QUERY: InitialOnlyFamily = { id: 'container-query', longhands: C
 
 /** Refuses the first non-initial longhand of each initial-only family on the element; each family's planted fault accepts it. */
 export function checkScrollContainment(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: ScrollContainmentFaults): void {
-  if (!faults.overscrollAccepted) refuseNonInitial(el, targets, diagnostics, reported, OVERSCROLL);
   if (!faults.containmentAccepted) refuseNonInitial(el, targets, diagnostics, reported, CONTAINMENT);
   if (!faults.containerQueryAccepted) refuseNonInitial(el, targets, diagnostics, reported, CONTAINER_QUERY);
 }

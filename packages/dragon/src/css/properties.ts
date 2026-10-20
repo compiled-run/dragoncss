@@ -165,7 +165,7 @@ const FAMILIES = [
   family('transform-extra', TRANSFORM_EXTRA_LONGHANDS, TRANSFORM_EXTRA_SHORTHANDS, TRANSFORM_EXTRA_INHERITED, TRANSFORM_EXTRA_ASPECTS, TRANSFORM_EXTRA_CONTAINER, TRANSFORM_EXTRA_TEXT_ROLE),
   // ZOOM (css-viewport-1 §5): zoom, 1 only, after transform-extra.
   family('zoom', ZOOM_LONGHANDS, ZOOM_SHORTHANDS, ZOOM_INHERITED, ZOOM_ASPECTS, ZOOM_CONTAINER, ZOOM_TEXT_ROLE),
-  // css-overscroll-1, css-scroll-anchoring-1: overscroll-behavior and overflow-anchor, initial values only, after transform-extra.
+  // css-overscroll-1, css-scroll-anchoring-1: overscroll-behavior and overflow-anchor, after zoom.
   family('overscroll', OVERSCROLL_LONGHANDS, OVERSCROLL_SHORTHANDS, OVERSCROLL_INHERITED, OVERSCROLL_ASPECTS, OVERSCROLL_CONTAINER, OVERSCROLL_TEXT_ROLE),
   // css-scroll-snap-1: scroll-padding, scroll-margin and scroll snapping, after overscroll.
   family('scroll-snap', SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS, SCROLL_SNAP_INHERITED, SCROLL_SNAP_ASPECTS, SCROLL_SNAP_CONTAINER, SCROLL_SNAP_TEXT_ROLE),

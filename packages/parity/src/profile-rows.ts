@@ -50,7 +50,7 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
       // No lane renders native paint in milestone 1, so a row with any paint aspect is capped at caveat; so is a row whose claim
       // rests on what the device measures but no device lane checks (PROFILE_NOTES).
       const note = profileNoteFor(target, feature);
-      const status = aspects.paint || note !== null ? 'caveat' : 'exact';
+      const status = aspects.paint || note === 'measuredSafeArea' ? 'caveat' : 'exact';
       rows.push(note === null ? { feature, context, status, proofs } : { feature, context, status, proofs, note: PROFILE_NOTES[note] });
     } else {
       const dual = passing('chrome-dual');

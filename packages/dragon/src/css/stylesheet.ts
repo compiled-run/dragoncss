@@ -25,6 +25,7 @@ import { markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
 import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
+import { pairedLonghands } from './properties/overscroll.ts';
 import { shorthandHandler } from './shorthands/index.ts';
 import type { CssValue } from './values.ts';
 import { COLOR_FIX, CSS_WIDE, familyValue, featureOf, isPositionProperty, PAIR_VALUE_PROPERTIES, pairValue, positionValue, ratioValue, tokenValue, toValue } from './values.ts';
@@ -392,7 +393,7 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
     return null;
   }
   if (parts !== null && hasVar(parts)) {
-    const longhands: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
+    const longhands: readonly Longhand[] = isLonghand(property) ? pairedLonghands(property) : shorthandHandler(property).longhands;
     // Substitution runs per longhand winner, so a refusing shorthand with no longhands (writing-mode) could never check its value.
     if (longhands.length === 0 && !isLonghand(property) && shorthandHandler(property).refuse !== undefined) {
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
@@ -720,10 +721,10 @@ export function parseSubstitutedValue(property: Longhand | Shorthand, text: stri
   return parseValue(property, node, tokens, base, text);
 }
 
-/** A CSS-wide keyword sets the longhand itself, or every longhand of the shorthand. */
+/** A CSS-wide keyword sets the longhand itself (and its overscroll logical pair), or every longhand of the shorthand. */
 function expandWide(property: string, value: CssValue): LonghandValue[] {
   const wide = isShorthand(property) ? shorthandHandler(property).expandWide : undefined;
   if (wide !== undefined) return wide(value);
-  const targets: readonly Longhand[] = isLonghand(property) ? [property] : shorthandHandler(property as Shorthand).longhands;
+  const targets: readonly Longhand[] = isLonghand(property) ? pairedLonghands(property) : shorthandHandler(property as Shorthand).longhands;
   return targets.map((p) => ({ property: p, value, explicit: true }));
 }

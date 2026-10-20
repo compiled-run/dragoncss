@@ -973,6 +973,7 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         throw new StateEmitError(`${n.id}: the state runtime cannot write ${w.kind} yet`);
       case 'scroll-container':
       case 'scroll-indicators-hidden':
+      case 'scroll-bounce':
         // OVFL-B: the state runtime rebuilds clip views only; a scroll view under component states is refused here, by name.
         throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);
       case 'replaced-image':
