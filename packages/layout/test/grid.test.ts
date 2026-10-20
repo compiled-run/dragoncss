@@ -540,3 +540,33 @@ describe('percentages in a grid item\'s padding and margins while its auto colum
     }
   });
 });
+
+describe('calculated and viewport track sizes (Blink GridTrackSize over a calculated Length)', () => {
+  const pp = (pixels: number, percent: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: pixels }, { kind: 'percent', value: percent }] }, range: 'non-negative' } });
+  const cols = (sizes: readonly TrackSize[]): GridContainerStyle => gridStyle({ templateColumns: sizes.map((s) => ({ count: 1, sizes: [s] })), explicitColumnCount: sizes.length });
+  const items = (n: number): LayoutBox[] => Array.from({ length: n }, (_, k) => h10(`i${k}`));
+
+  it('resolves calc(50% - 10px) against the width, and clamps a negative result to 0 (ValueRange::kNonNegative)', () => {
+    expect(inGrid(grid(cols([pp(-10, 50), fr(1)]), items(2)), ['i0', 'i1'])).toEqual([[0, 0, 40 * 64, 640], [40 * 64, 0, 60 * 64, 640]]);
+    expect(inGrid(grid(cols([pp(10, -20), fr(1)]), items(2)), ['i0', 'i1'])).toEqual([[0, 0, 0, 640], [0, 0, 100 * 64, 640]]);
+  });
+  it('resolves a viewport length and a calculation without a percentage to px in the environment pass', () => {
+    const vw: TrackSize = { kind: 'breadth', breadth: { kind: 'calc', expr: { kind: 'viewport', value: 10, axis: 'width', size: 'large' }, range: 'non-negative' } };
+    // 10vw of the 400px viewport.
+    expect(inGrid(grid(cols([vw, fr(1)]), items(2)), ['i0', 'i1'])).toEqual([[0, 0, 40 * 64, 640], [40 * 64, 0, 60 * 64, 640]]);
+  });
+  it('counts auto-fill repetitions of minmax(min(100%, 30px), 1fr) with the calculation resolved against the width', () => {
+    const min: TrackSize = { kind: 'minmax', min: { kind: 'calc', expr: { kind: 'min', terms: [{ kind: 'percent', value: 100 }, { kind: 'px', value: 30 }] }, range: 'non-negative' }, max: { kind: 'fr', value: 1 } };
+    // floor(100 / 30) = 3 columns sharing 100px; the fourth item wraps.
+    expect(inGrid(grid(gridStyle({ autoRepeatColumns: fillOf('auto-fill', [min]) }), items(4)), ['i2', 'i3'])).toEqual([[4266, 0, 2133, 640], [0, 640, 2133, 640]]);
+    // Over 20px, min(100%, 30px) is 20px: one column.
+    expect(inGrid(grid(gridStyle({ autoRepeatColumns: fillOf('auto-fill', [min]) }), items(2), 20), ['i1'])).toEqual([[0, 640, 1280, 640]]);
+  });
+  it('sizes a row whose calculation has a percentage as auto against an indefinite height (GridSet normalization)', () => {
+    const g = box('g', { display: 'grid', width: { kind: 'px', value: 100 }, grid: gridStyle({ templateRows: [{ count: 1, sizes: [pp(30, 50)] }], explicitRowCount: 1 }) }, [h10('i0')]);
+    expect(inGrid(g, ['g', 'i0'])).toEqual([[0, 0, 6400, 640], [0, 0, 6400, 640]]);
+    const definite = box('g', { display: 'grid', width: { kind: 'px', value: 100 }, height: { kind: 'px', value: 40 }, grid: gridStyle({ templateRows: [{ count: 1, sizes: [pp(30, 50)] }], explicitRowCount: 1 }) }, [box('i0', { gridItem: autoItem })]);
+    // 30px + 50% of 40px, and the item stretches to the row.
+    expect(inGrid(definite, ['i0'])).toEqual([[0, 0, 6400, 50 * 64]]);
+  });
+});

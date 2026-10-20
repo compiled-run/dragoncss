@@ -7,8 +7,9 @@ import type { Browser, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
+import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
-import { BROWSER_FLAVOUR, hostPlatform } from './platform.ts';
+import { BROWSER_FLAVOUR, hostPlatform, REFERENCE_PLATFORM } from './platform.ts';
 import { applyTransformTwin } from './transform-capture.ts';
 import { capturePseudoElements, NO_PSEUDO_CAPTURE_FAULTS, pageHasGeneratedContent } from './pseudo-capture.ts';
 import type { PseudoCaptureFaults } from './pseudo-capture.ts';
@@ -91,7 +92,7 @@ const collectNodes = (props: string[]): CapturedNode[] => {
  * fixture's stated-reference transform (font-reference.ts), run on the loaded page before the capture; none for every other fixture.
  */
 export async function captureFixture(browser: Browser, fixture: string, html: string, env: Environment, extra: readonly string[] = [], prepare?: (page: Page) => Promise<void>, faults: PseudoCaptureFaults = NO_PSEUDO_CAPTURE_FAULTS): Promise<WebCapture> {
-  // A prepare script is code the memo key cannot see, and a browser launchChrome did not start has flags it cannot see.
+  // A prepare script is code the memo key cannot see, and a browser with no recorded launch flags has flags it cannot see.
   const args = launchArgsOf(browser);
   // A planted pseudo-capture fault changes the capture without changing the page, so it is never remembered.
   if (prepare !== undefined || args === null || faults !== NO_PSEUDO_CAPTURE_FAULTS) return captureFixtureLive(browser, fixture, html, env, extra, prepare, faults);
@@ -120,6 +121,11 @@ async function captureFixtureLive(browser: Browser, fixture: string, html: strin
   const page = await openPage(browser, html, env);
   try {
     if (prepare !== undefined) await prepare(page);
+    // The overlay-scrollbar rule (T078 R2): a scroll case's layout depends on the scrollbar environment (scrollbar-gutter: stable
+    // reserves a classic gutter), so on the reference platform its capture, at every DPR, is taken only where a stable gutter
+    // reserves nothing (the capture CLIs launch scroll cases with launchOverlayChrome there). Elsewhere Chrome keeps classic
+    // scrollbars even with --hide-scrollbars, and those captures are not the reference.
+    if (hostPlatform() === REFERENCE_PLATFORM && isScrollCase(fixture)) await assertOverlayScrollbars(page);
     // PNT2 case-kind registration (RT-13 style): a page with a transformed element is captured through the transform twin.
     const twin = await applyTransformTwin(page, [...LONGHANDS, ...extra]);
     const nodes = await page.evaluate(collectNodes, [...LONGHANDS, ...extra]);
