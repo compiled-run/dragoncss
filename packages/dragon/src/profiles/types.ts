@@ -32,7 +32,7 @@ export type ProfileRow = { readonly feature: string; readonly context: string; r
  */
 export const PROFILE_NOTES = {
   overlayScrollbars: 'holds with overlay scrollbars only (the reference environment); classic scrollbars reserve a 15px gutter at the inline and block end (11px for scrollbar-width: thin; measured on Chrome 145), which this claim does not cover',
-  androidNoOverscrollEffect: 'Android draws no overscroll effect (Chrome stretches or glows at the edge for auto and contain); the value still decides scroll chaining and is read back',
+  androidNoOverscrollEffect: 'Android draws no overscroll effect (Chrome stretches or glows at the edge for auto and contain); none is still read back',
 } as const;
 
 export type ProfileNote = keyof typeof PROFILE_NOTES;

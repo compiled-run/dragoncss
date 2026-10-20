@@ -165,25 +165,32 @@ function checkRoundedScrollContainer(el: ResolvedElement, propagated: ResolvedEl
 }
 
 /**
- * css-overscroll-1: Chrome 145 stops scroll chaining at a scroll container whose overscroll-behavior on an axis is contain or none,
- * one with overflow: hidden on both axes included (a wheel probe moves the outer scroller 0 px, against 720 with auto). Such a box
- * scrolls on no axis, so it has no native scroll view to take the drag (lower/paint/scroll.ts scroll-hold), and the outer view
- * would scroll; contain and none there are refused on ios and android until a non-scrolling box can hold a drag.
+ * css-overscroll-1: Chrome 145 stops scroll chaining on an axis at a scroll container whose overscroll-behavior there is contain or
+ * none, even when its content fits or the axis is hidden (a wheel probe moves the outer scroller 0 px, against 720 with auto). A
+ * native scroll view hands such a drag on to a native scroll view around it (it takes no drag without a range, and has none on a
+ * hidden axis), and Dragon cannot show the range at compile time. So contain or none on an axis is refused on ios and android
+ * where a native scroll view around the box scrolls that axis; with none around, nothing chains and native matches Chrome.
+ * around: the native scroll views around el, outermost first, not el's own (analysis/touch-action.ts nativePanner).
  */
-function checkOverscrollNoScrollView(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (nativeTargets.length === 0 || el === propagated) return;
+function checkOverscrollChaining(el: ResolvedElement, around: readonly NativePanner[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0 || around.length === 0) return;
   const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
-  if (!(kw('overflow-x') === 'hidden' && kw('overflow-y') === 'hidden')) return;
-  const p = (['overscroll-behavior-x', 'overscroll-behavior-y'] as const).find((q) => kw(q) !== 'auto');
+  // Only a scroll container's overscroll-behavior applies: a box with overflow visible or clip on both axes, display: contents and
+  // a non-replaced inline are none.
+  if (!['overflow-x', 'overflow-y'].some((p) => ['hidden', 'auto', 'scroll'].includes(kw(p as Longhand)))) return;
+  const d = kw('display');
+  if (d === 'contents' || d === 'none' || (d === 'inline' && el.element.tag !== 'img' && el.element.tag !== 'svg')) return;
+  const p = (['overscroll-behavior-x', 'overscroll-behavior-y'] as const).find((q) => kw(q) !== 'auto' && around.some((a) => (q === 'overscroll-behavior-x' ? a.x : a.y)));
   if (p === undefined) return;
+  const panner = [...around].reverse().find((a) => (p === 'overscroll-behavior-x' ? a.x : a.y)) as NativePanner;
   const v = el.props.get(p) as ResolvedValue;
   const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
-  const message = `${p}: ${kw(p)} on ${el.element.address}, a scroll container with overflow: hidden on both axes: Chrome stops scroll chaining there, and a box that scrolls on no axis has no native scroll view to hold the drag`;
+  const message = `${p}: ${kw(p)} on ${el.element.address}, inside the scroll container ${panner.address}: Chrome stops a drag on ${el.element.address} from scrolling ${panner.address} even when its content fits or the axis is hidden, and a native scroll view hands such a drag on, so Dragon compiles contain and none only where no native scroll view around the box scrolls that axis`;
   for (const t of nativeTargets) {
-    const id = `${t}|overscroll-hidden|${el.element.address}`;
+    const id = `${t}|overscroll-chaining|${el.element.address}`;
     if (reported.has(id)) continue;
     reported.add(id);
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: `Use overflow: auto on the box, or remove ${p} from ${el.element.address}.`, basis: 'computed-value' }));
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: `Remove ${p} from ${el.element.address}, or set it to auto.`, basis: 'computed-value' }));
   }
 }
 
@@ -1054,7 +1061,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-    if (!here) checkOverscrollNoScrollView(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkOverscrollChaining(el, around, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     const self = nativePanner(el, propagated);
     const panners = self === null ? around : [...around, self];

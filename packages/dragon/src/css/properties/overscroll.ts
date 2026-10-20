@@ -2,8 +2,9 @@
 // shorthand, and overflow-anchor, all initial auto and not inherited (Chrome 145 css_properties.json5). Chrome parses auto, contain
 // and none for each overscroll longhand (one or two of them for the shorthand, x then y) and auto, none or visible (a legacy keyword
 // that anchors as auto does) for overflow-anchor; it has no chain. They change only how a user's scrolling chains to outer scrollers and whether a scroller follows content that moves
-// above it, so no layout lane reads them. On native a Dragon scroll view never hands a drag to an outer one and never anchors, as
-// contain and overflow-anchor: none ask; none also turns off an iOS scroll view's bounce on that axis (lower/paint/scroll.ts).
+// above it, so no layout lane reads them. On native a Dragon scroll view never anchors, as overflow-anchor: none asks; none turns
+// off an iOS scroll view's bounce on that axis (lower/paint/scroll.ts), and contain and none are refused inside a native scroll view
+// on that axis, which would take a drag Chrome stops from chaining (analysis/computed-checks.ts checkOverscrollChaining).
 //
 // css-logical-1 §4: -inline and -block share one logical property group with -x and -y, and in horizontal-tb (the only writing
 // mode) map to -x and -y whatever the direction, so Chrome computes -inline as -x and -block as -y. Each declaration sets both

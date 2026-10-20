@@ -34,21 +34,6 @@ const SWIFT_MEMBERS = String.raw`  /// OVFL-B: this box's scroll offset range in
       s.bounces = x && y
     }
   }
-  /// overscroll-behavior contain or none on an axis: the pan takes a drag there with no range (alwaysBounce), so it does not chain
-  /// to an outer scroll view, as Chrome 145 stops it. A held axis that does not scroll stays still: its bounce is off (before iOS 17.4,
-  /// bounces is one switch, so it is off for both axes).
-  public func dragonHoldScroll(_ x: Bool, _ y: Bool) {
-    guard let s = dragonClipView as? DragonScrollView else { fatalError("dragon: \(dragonId) holds scroll drags without a scroll view") }
-    s.alwaysBounceHorizontal = x
-    s.alwaysBounceVertical = y
-    let lockedX = x && !s.scrollsX, lockedY = y && !s.scrollsY
-    if #available(iOS 17.4, *) {
-      if lockedX { s.bouncesHorizontally = false }
-      if lockedY { s.bouncesVertically = false }
-    } else if lockedX || lockedY {
-      s.bounces = false
-    }
-  }
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -124,7 +109,6 @@ public func dragonAppliedScroll(_ v: DragonBoxView) -> DumpJsonObject {
     by = sv.bouncesVertically
   }
   if (sv.scrollsX && !bx) || (sv.scrollsY && !by) { out.append(("dragonScroll.bounce", .array([.bool(bx), .bool(by)]))) }
-  if sv.alwaysBounceHorizontal || sv.alwaysBounceVertical { out.append(("dragonScroll.hold", .array([.bool(sv.alwaysBounceHorizontal), .bool(sv.alwaysBounceVertical)]))) }
   return out
 }
 `;
@@ -151,12 +135,6 @@ const KOTLIN_MEMBERS = String.raw`  /** OVFL-B: this box's scroll offset range i
     val s = dragonClipView as? DragonScrollView ?: throw IllegalStateException("dragon: " + dragonId + " sets scroll bounce without a scroll view")
     s.bounceX = x
     s.bounceY = y
-  }
-  /** overscroll-behavior contain or none on an axis: the scroll view takes a drag there with no range, so it does not chain. */
-  fun dragonHoldScroll(x: Boolean, y: Boolean) {
-    val s = dragonClipView as? DragonScrollView ?: throw IllegalStateException("dragon: " + dragonId + " holds scroll drags without a scroll view")
-    s.holdX = x
-    s.holdY = y
   }
 `;
 
@@ -210,9 +188,6 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
   /** overscroll-behavior per axis: false for none (dragonSetScrollBounce); no overscroll effect is drawn either way. */
   var bounceX = true
   var bounceY = true
-  /** overscroll-behavior contain or none per axis (dragonHoldScroll): a drag on that axis is taken even with no range, as Chrome stops its chaining. */
-  var holdX = false
-  var holdY = false
   /** Whether a touch enables the scrollbar of an axis: the one predicate both touch paths and the readback use. */
   fun barsOnTouch(axisScrolls: Boolean): Boolean = axisScrolls && indicators
   /** The offset range: minX, maxX, minY, maxY in device px; a locked axis is 0, 0. Every scroll clamps to it. */
@@ -261,12 +236,9 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
   override fun computeVerticalScrollOffset(): Int = scrollY - dragonRange[2]
   override fun computeVerticalScrollExtent(): Int = height
 
-  /** Whether a drag on an axis is this view's: it scrolls with a range there, or the axis is held. */
-  private fun takesX(): Boolean = holdX || (scrollsX && dragonRange[1] > dragonRange[0])
-  private fun takesY(): Boolean = holdY || (scrollsY && dragonRange[3] > dragonRange[2])
-  private fun takesTouch(): Boolean = takesX() || takesY()
+  private fun canScroll(): Boolean = dragonRange[1] > dragonRange[0] || dragonRange[3] > dragonRange[2]
 
-  private fun pastSlop(e: MotionEvent): Boolean = (takesX() && ax.pastSlop(e.x)) || (takesY() && ay.pastSlop(e.y))
+  private fun pastSlop(e: MotionEvent): Boolean = (scrollsX && ax.pastSlop(e.x)) || (scrollsY && ay.pastSlop(e.y))
 
   private fun beginDrag() {
     dragging = true
@@ -283,7 +255,7 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
   }
 
   override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
-    if (!takesTouch()) return false
+    if (!canScroll()) return false
     (tracker ?: VelocityTracker.obtain().also { tracker = it }).addMovement(e)
     when (e.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
@@ -304,7 +276,7 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
   }
 
   override fun onTouchEvent(e: MotionEvent): Boolean {
-    if (!takesTouch()) return false
+    if (!canScroll()) return false
     val t = tracker ?: VelocityTracker.obtain().also { tracker = it }
     t.addMovement(e)
     when (e.actionMasked) {
@@ -367,7 +339,6 @@ fun dragonAppliedScroll(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val out = mutableListOf(range)
   if (!(sv.barsOnTouch(sv.scrollsX) || sv.barsOnTouch(sv.scrollsY))) out.add(Pair("dragonScroll.indicators", DumpJson.Bool(false)))
   if ((sv.scrollsX && !sv.bounceX) || (sv.scrollsY && !sv.bounceY)) out.add(Pair("dragonScroll.bounce", DumpJson.Arr(listOf(DumpJson.Bool(sv.bounceX), DumpJson.Bool(sv.bounceY)))))
-  if (sv.holdX || sv.holdY) out.add(Pair("dragonScroll.hold", DumpJson.Arr(listOf(DumpJson.Bool(sv.holdX), DumpJson.Bool(sv.holdY)))))
   return out
 }
 `;
@@ -378,13 +349,12 @@ const bool = (b: boolean): string => (b ? 'true' : 'false');
 function scrollLine(v: string, w: ScrollWrite): string {
   if (w.kind === 'scroll-container') return `  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)})`;
   if (w.kind === 'scroll-indicators-hidden') return `  ${v}.dragonHideScrollIndicators()`;
-  if (w.kind === 'scroll-hold') return `  ${v}.dragonHoldScroll(${bool(w.holdX)}, ${bool(w.holdY)})`;
   return `  ${v}.dragonSetScrollBounce(${bool(w.bounceX)}, ${bool(w.bounceY)})`;
 }
 
-export const SCROLL_EMITTER: PaintEmitter<'scroll-container' | 'scroll-indicators-hidden' | 'scroll-bounce' | 'scroll-hold'> = {
+export const SCROLL_EMITTER: PaintEmitter<'scroll-container' | 'scroll-indicators-hidden' | 'scroll-bounce'> = {
   name: 'scroll',
-  kinds: ['scroll-container', 'scroll-indicators-hidden', 'scroll-bounce', 'scroll-hold'],
+  kinds: ['scroll-container', 'scroll-indicators-hidden', 'scroll-bounce'],
   lines: {
     uikit: (v, _n, w) => [scrollLine(v, w)],
     'android-views': (v, _n, w) => [scrollLine(v, w)],
@@ -392,7 +362,6 @@ export const SCROLL_EMITTER: PaintEmitter<'scroll-container' | 'scroll-indicator
   applied: (_e, _backend, w, _dpr, g) => {
     if (w.kind === 'scroll-indicators-hidden') return false;
     if (w.kind === 'scroll-bounce') return [w.bounceX, w.bounceY];
-    if (w.kind === 'scroll-hold') return [w.holdX, w.holdY];
     if (g.scroll === null) throw new Error('a scroll container with no engine scroll range');
     const [minX, maxX, minY, maxY] = g.scroll;
     return w.x ? (w.y ? [minX, maxX, minY, maxY] : [minX, maxX, 0, 0]) : w.y ? [0, 0, minY, maxY] : [0, 0, 0, 0];
