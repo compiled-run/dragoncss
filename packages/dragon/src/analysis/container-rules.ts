@@ -68,17 +68,6 @@ export function hasContainerUnits(v: CssValue): boolean {
   return isMathText(v) && new RegExp(CQ_IN_MATH.source, 'i').test((v as { text: string }).text);
 }
 
-/** A cqw or cqi length anywhere in a declaration's text, including a custom property's value and a var() fallback. */
-const CQ_IN_TEXT = /(?:\d|\.)cq[wi](?![\w-])/i;
-
-/**
- * Whether any declaration of the sheet may hold a cqw or cqi length once var() is substituted: a parsed longhand that holds one, or
- * any declaration (a custom property's value, a var() fallback) whose text mentions one.
- */
-export function usesContainerUnits(rules: readonly Rule[]): boolean {
-  return rules.some((r) => r.declarations.some((d) => CQ_IN_TEXT.test(d.text) || d.longhands.some((l) => hasContainerUnits(l.value))));
-}
-
 /** A container's width as calculation text: a px constant, or the viewport less the shift, clamped. */
 // 100vw is the viewport less no scrollbar: Dragon assumes overlay scrollbars on web as on native, as cq-rules does (decisions.md).
 function widthText(w: ContainerWidth, faults: ScrollContainmentFaults): string {

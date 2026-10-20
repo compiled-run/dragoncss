@@ -85,6 +85,9 @@ describe('CQ: @container rules', () => {
     expect(at('.a { width: 50cqw; } .b { width: inherit; }')).toEqual([px(150), px(150)]);
     expect(at('.a { --w: calc(10cqw + 1px); width: var(--w); } .b { width: var(--nope, 50cqw); }')).toEqual([px(31), px(150)]);
     expect(at('.a { width: calc(-5cqw + 100px); } .b { width: max(-5cqw, 2px); }')).toEqual([px(85), px(2)]);
+    // A unit that appears only after substitution: a registered initial value and an escaped unit.
+    expect(at("@property --w { syntax: '*'; inherits: false; initial-value: 10cqw; } .a { width: calc(var(--w) + 1px); } .b { --u: 10\\63 qw; width: var(--u); }")).toEqual([px(31), px(30)]);
+    expect(at('.a { width: calc(1\\63qi + 1px); } .b { width: 1\\63qi; }')).toEqual([px(4), px(3)]);
   });
 
   it('refuses a container query unit with no query container, on an unreadable one, on an inherited property and on the block axis', () => {

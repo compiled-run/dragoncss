@@ -48,7 +48,7 @@ import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
-import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers, usesContainerUnits } from './analysis/container-rules.ts';
+import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
 import { UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
@@ -1351,12 +1351,12 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const containerRefusals: ContainerRefusals = new Map();
       const unitRefusals: ContainerUnitRefusals = new Map();
       containerQueries = rules.some((r) => r.container !== undefined);
-      // CQ: cqw and cqi resolve against each element's query container, which the same pass finds.
-      const contained = containerQueries || usesContainerUnits(rules);
       const passes = bandList.map((b, k) => {
         const own: Diagnostic[] = [];
         const bandTargets = passTargets(k);
-        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, contained ? containerBand(b, containerRefusals, unitRefusals) : null) };
+        // CQ: cqw and cqi resolve against each element's query container, which the same pass finds. Every pass looks, since a unit
+        // may appear only after var() substitution (a custom property, a registered initial value, an escaped unit).
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, containerBand(b, containerRefusals, unitRefusals)) };
         return { result, diagnostics: scopedTo(own, bandTargets, targets) };
       });
       bandCases = passes.map((p) => p.result);
