@@ -103,6 +103,12 @@ export function staleCovers(problem: string, target: NativeTarget, lane: LaneId)
   return true;
 }
 
+/** Whether a staleLanes problem is a host lane's own case list (lanePrefix of staleCovers): the next host lanes run reruns that lane. */
+export function hostLaneStale(problem: string, targets: readonly TargetConfig[]): boolean {
+  const m = /^\S+: (ios|android) (\S+) does not match/.exec(problem);
+  return m !== null && targets.some((t) => t.target === m[1] && t.lanes.some((l) => l.lane === m[2] && l.where === 'host'));
+}
+
 /** Problems when a committed lanes file does not describe the current configuration (a stale file proves nothing). */
 export function staleLanes(f: LanesFile, targets: readonly TargetConfig[]): string[] {
   const out: string[] = [];
