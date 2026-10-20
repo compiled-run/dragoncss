@@ -285,8 +285,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       // css-color-4 §4.4: currentcolor as the value of color behaves as inherit.
       const currentColorOnColor = p === 'color' && w !== undefined && w.value.kind === 'keyword' && w.value.value === 'currentcolor';
       // css-cascade-5 §7.3, §7.4: revert in the author origin rolls back to the user-agent origin (there is no user origin), and
-      // revert-layer outside any layer is revert; presentational hints are author-level, so they are rolled back too.
+      // revert-layer outside any layer is revert; presentational hints are author-level, so revert rolls them back too.
       const reverted = !faults.revertAsUnset && w !== undefined && w.value.kind === 'keyword' && (w.value.value === 'revert' || w.value.value === 'revert-layer');
+      // revert-layer with no author layer below rolls back to the presentational hints, which sit below every layer (Chrome 145).
+      const toHint = reverted && w.value.kind === 'keyword' && w.value.value === 'revert-layer' && hints.has(p);
       if (w !== undefined && !currentColorOnColor && !reverted && !(w.value.kind === 'keyword' && ['inherit', 'initial', 'unset', 'revert', 'revert-layer'].includes(w.value.value))) {
         props.set(p, { value: w.value, origin: 'author', span: w.declaration.span, ...author });
       } else if (w !== undefined && !reverted && w.value.kind === 'keyword') {
@@ -294,7 +296,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
-      } else if (w === undefined && hints.has(p)) {
+      } else if ((w === undefined || toHint) && hints.has(p)) {
         // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
         // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
         const value = hints.get(p) as CssValue;
@@ -313,7 +315,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, defaultFor(p));
         defaulted.add(p);
       }
-      if (reverted && w !== undefined) {
+      if (reverted && w !== undefined && !toHint) {
         props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author });
         revertedProps.add(p);
       }
