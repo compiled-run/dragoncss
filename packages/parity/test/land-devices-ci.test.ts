@@ -343,6 +343,13 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     // A tooling-blocked job seen while the rest of the run still goes is never a verdict.
     const live = fake({ doneAfter: 1e9, jobs: [tooling, { name: 'ios (iPhone 17)', status: 'in_progress', conclusion: null, steps: [] }] });
     expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: live.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain(`failed in setup (android (dragon-480) (${TOOLING_STEP}))`);
+    // regen-on-ci.yml's host-precheck only reports: its failure (a kotlinc download, its timeout, its judge) never fails the run.
+    const precheck = (conclusion: string, at: string) => ({ name: 'host-precheck', status: 'completed', conclusion, steps: [step('Install dependencies', 'success'), step(at, conclusion === 'timed_out' ? 'cancelled' : 'failure')] });
+    for (const p of [precheck('failure', 'kotlinc 2.4.20 (the release lanes.json records)'), precheck('failure', 'Judge the android host lanes'), precheck('timed_out', 'parity:lanes --run-host (android)')]) {
+      expect(failedJobs([p, ok])).toEqual({ verdict: [], setup: [] });
+      const going = fake({ doneAfter: 1e9, jobs: [p, { name: 'host-1 / round', status: 'in_progress', conclusion: null, steps: [] }] });
+      expect(unavailable(() => runDevicesOnCi({ pr: 42, deps: going.deps, appearS: 300, waitS: 1200, startS: 600, pollS: 30 })).message).toContain('did not finish within 1200s, and no job of it failed (host-1 / round');
+    }
   });
   it('device-lanes.yml reports device-ci.ts TOOLING_EXIT in the Device tooling step, never in Device run', () => {
     const yml = readFileSync(repoPath('.github/workflows/device-lanes.yml'), 'utf8');
