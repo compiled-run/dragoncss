@@ -164,6 +164,29 @@ function checkRoundedScrollContainer(el: ResolvedElement, propagated: ResolvedEl
   }
 }
 
+/**
+ * css-overscroll-1: Chrome 145 stops scroll chaining at a scroll container whose overscroll-behavior on an axis is contain or none,
+ * one with overflow: hidden on both axes included (a wheel probe moves the outer scroller 0 px, against 720 with auto). Such a box
+ * scrolls on no axis, so it has no native scroll view to take the drag (lower/paint/scroll.ts scroll-hold), and the outer view
+ * would scroll; contain and none there are refused on ios and android until a non-scrolling box can hold a drag.
+ */
+function checkOverscrollNoScrollView(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0 || el === propagated) return;
+  const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
+  if (!(kw('overflow-x') === 'hidden' && kw('overflow-y') === 'hidden')) return;
+  const p = (['overscroll-behavior-x', 'overscroll-behavior-y'] as const).find((q) => kw(q) !== 'auto');
+  if (p === undefined) return;
+  const v = el.props.get(p) as ResolvedValue;
+  const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  const message = `${p}: ${kw(p)} on ${el.element.address}, a scroll container with overflow: hidden on both axes: Chrome stops scroll chaining there, and a box that scrolls on no axis has no native scroll view to hold the drag`;
+  for (const t of nativeTargets) {
+    const id = `${t}|overscroll-hidden|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: `Use overflow: auto on the box, or remove ${p} from ${el.element.address}.`, basis: 'computed-value' }));
+  }
+}
+
 const hasPercentage = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
 
 /** css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which uses visible. */
@@ -1031,6 +1054,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkOverscrollNoScrollView(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     const self = nativePanner(el, propagated);
     const panners = self === null ? around : [...around, self];

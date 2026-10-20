@@ -48,7 +48,9 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
       if (aspects.layout) proofs.push(proof('layout', 'linux-dragon-layout', layout));
       if (aspects.paint) proofs.push(proof('computed-value', 'chrome-dual', dual));
       // No lane renders native paint in milestone 1, so a row with any paint aspect is capped at caveat.
-      rows.push({ feature, context, status: aspects.paint ? 'caveat' : 'exact', proofs });
+      const note = profileNoteFor(target, feature);
+      const status = aspects.paint ? 'caveat' : 'exact';
+      rows.push(note === null ? { feature, context, status, proofs } : { feature, context, status, proofs, note: PROFILE_NOTES[note] });
     } else {
       const dual = passing('chrome-dual');
       if (dual.length === 0) continue;

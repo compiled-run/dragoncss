@@ -42,6 +42,7 @@ import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
 import { OUTLINE } from './fixture-groups/outline.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
+import { OVERSCROLL } from './fixture-groups/overscroll.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
@@ -49,7 +50,6 @@ import { REPLACED } from './fixture-groups/replaced.ts';
 import { RESIZE } from './fixture-groups/resize.ts';
 import { SCROLL_CONTAINMENT } from './fixture-groups/scroll-containment.ts';
 import { SCROLLBAR } from './fixture-groups/scrollbar.ts';
-import { OVERSCROLL } from './fixture-groups/overscroll.ts';
 import { SELECTION } from './fixture-groups/selection.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
@@ -184,6 +184,7 @@ export const GROUPS = {
   'milestone-1': MILESTONE_1,
   outline: OUTLINE,
   overflow: OVERFLOW,
+  overscroll: OVERSCROLL,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
@@ -191,7 +192,6 @@ export const GROUPS = {
   resize: RESIZE,
   'scroll-containment': SCROLL_CONTAINMENT,
   scrollbar: SCROLLBAR,
-  overscroll: OVERSCROLL,
   selection: SELECTION,
   selectors: SELECTORS,
   shadow: SHADOW,

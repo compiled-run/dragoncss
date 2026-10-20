@@ -32,6 +32,7 @@ export type ProfileRow = { readonly feature: string; readonly context: string; r
  */
 export const PROFILE_NOTES = {
   overlayScrollbars: 'holds with overlay scrollbars only (the reference environment); classic scrollbars reserve a 15px gutter at the inline and block end (11px for scrollbar-width: thin; measured on Chrome 145), which this claim does not cover',
+  androidNoOverscrollEffect: 'Android draws no overscroll effect (Chrome stretches or glows at the edge for auto and contain); the value still decides scroll chaining and is read back',
 } as const;
 
 export type ProfileNote = keyof typeof PROFILE_NOTES;
@@ -45,8 +46,9 @@ export function nativeOutlinePending(feature: string): boolean {
   return feature === 'outline-style:auto';
 }
 
-/** The note a target's row for a feature carries, or null: web overflow auto and scroll, scrollbar-width other than none and a stable gutter depend on the scrollbar environment (R3). */
+/** The note a target's row for a feature carries, or null: web overflow auto and scroll, scrollbar-width other than none and a stable gutter depend on the scrollbar environment (R3); Android overscroll-behavior draws no overscroll effect. */
 export function profileNoteFor(target: Target, feature: string): ProfileNote | null {
+  if (target === 'android' && /^overscroll-behavior(-x|-y|-inline|-block)?:/.test(feature)) return 'androidNoOverscrollEffect';
   return target === 'web' && /^(overflow-[xy]:(auto|scroll)|scrollbar-width:(auto|thin)|scrollbar-gutter:stable( both-edges)?)$/.test(feature) ? 'overlayScrollbars' : null;
 }
 

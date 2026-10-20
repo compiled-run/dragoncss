@@ -7,7 +7,8 @@
 //
 // css-logical-1 §4: -inline and -block share one logical property group with -x and -y, and in horizontal-tb (the only writing
 // mode) map to -x and -y whatever the direction, so Chrome computes -inline as -x and -block as -y. Each declaration sets both
-// longhands of its pair, so the per-longhand cascade picks the same winner for both, as Chrome's group cascade does.
+// longhands of its pair, so the per-longhand cascade picks the same winner for both, as Chrome's group cascade does; that holds for a
+// CSS-wide keyword and a var() value too (pairedLonghands, used by css/stylesheet.ts).
 import type { CssNode } from 'css-tree';
 import type { PropertyAspect } from '../properties.ts';
 import type { LonghandValue } from '../stylesheet.ts';
@@ -48,6 +49,14 @@ export const OVERSCROLL_PAIRS = {
   'overscroll-behavior-y': ['overscroll-behavior-y', 'overscroll-behavior-block'],
   'overscroll-behavior-block': ['overscroll-behavior-block', 'overscroll-behavior-y'],
 } as const;
+
+/**
+ * The longhands a declaration of a longhand sets: an overscroll longhand and its logical pair, any other longhand alone. The
+ * stylesheet gives a CSS-wide keyword and a var() value the same pair, so inherit, initial, revert and a substituted value set both.
+ */
+export function pairedLonghands<P extends string>(property: P): readonly P[] {
+  return property in OVERSCROLL_PAIRS ? (OVERSCROLL_PAIRS[property as keyof typeof OVERSCROLL_PAIRS] as readonly string[] as readonly P[]) : [property];
+}
 
 const BEHAVIOURS: ReadonlySet<string> = new Set(['auto', 'contain', 'none']);
 

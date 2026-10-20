@@ -17,6 +17,10 @@ body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
 .k { overscroll-behavior: initial; overflow-anchor: unset; }
 .i { overscroll-behavior: inherit; overflow-anchor: inherit; }
 .v { --o: contain; overscroll-behavior: var(--o) none; }
+.ki { overscroll-behavior-x: contain; overscroll-behavior-inline: inherit; }
+.kv { --o: none; overscroll-behavior-inline: var(--o); }
+.kn { overscroll-behavior-x: none; overscroll-behavior-inline: initial; }
+.kr { overscroll-behavior-inline: none; overscroll-behavior-x: revert; overscroll-behavior-block: none; overscroll-behavior-y: revert-layer; }
 .f { width: 60px; height: 20px; margin: 4px; background-color: #1f6feb; }
 .row { display: flex; width: 200px; }
 </style>
@@ -31,6 +35,10 @@ body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
 <div data-dragon-id="s7" class="s w"><div data-dragon-id="c7" class="c">XX</div></div>
 <div data-dragon-id="s8" class="s U"><div data-dragon-id="s8k" class="s k"><div data-dragon-id="c8" class="c">XX</div></div></div>
 <div data-dragon-id="s9" class="s v"><div data-dragon-id="c9" class="c">XX</div></div>
+<div data-dragon-id="s10" class="s n"><div data-dragon-id="s10k" class="s ki"><div data-dragon-id="c10" class="c">XX</div></div></div>
+<div data-dragon-id="s11" class="s kv"><div data-dragon-id="c11" class="c">XX</div></div>
+<div data-dragon-id="s12" class="s kn"><div data-dragon-id="c12" class="c">XX</div></div>
+<div data-dragon-id="s13" class="s kr"><div data-dragon-id="c13" class="c">XX</div></div>
 <div data-dragon-id="f1" class="f n">XX</div>
 <div data-dragon-id="row" class="row"><div data-dragon-id="r1" class="s n"><div data-dragon-id="rc1" class="c">X</div></div><div data-dragon-id="r2" class="s ct"><div data-dragon-id="rc2" class="c">X</div></div></div>
 </body>
