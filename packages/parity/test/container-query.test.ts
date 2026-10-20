@@ -9,7 +9,8 @@ import { committedDprCapture, DPRS, layoutCases, runDprCase } from '../src/dpr.t
 import { CONTAINER_QUERY } from '../src/fixture-groups/container-query.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
-const own = new Set(CONTAINER_QUERY.filter((f) => f.kind === 'layout').map((f) => f.id));
+// cq-rules, the group's @container rules case, is checked by its resize lanes (container-rules.test.ts).
+const own = new Set(CONTAINER_QUERY.filter((f) => f.kind === 'layout' && f.id !== 'cq-rules').map((f) => f.id));
 const corpus = layoutCases().filter((f) => own.has(f.spec.id));
 const compiled = new Map(corpus.map((f) => [f.spec.id, compileFixture(f.spec, NO_FAULTS, 'enforce').compiled]));
 

@@ -116,6 +116,7 @@ const NOT_CONTAINER_NAMES: ReadonlySet<string> = new Set(['none', 'and', 'not', 
 // css-syntax-3 §4.3.10: an ident starts with --, or an optional - and a name-start code point (non-ASCII included). It must end
 // at whitespace or the end: `card(` is a function token, so Chrome drops `@container card(min-width: 1px)` (and Dragon refuses it).
 const LEADING_NAME = /^\s*(--[A-Za-z0-9_\u0080-\uFFFF-]*|-?[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF-]*)(?=\s|$)/;
+const FUNCTION_START = /^\s*(-?-?[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF-]*)\(/;
 // css-syntax-3 §4.3.2: a comment is consumed with no token, so one between the name and the condition is whitespace.
 const COMMENT = /\/\*[\s\S]*?(?:\*\/|$)/g;
 
@@ -145,6 +146,9 @@ export const containerAtRule: AtRuleHandler = (at) => {
 function containerQueryRefusal(name: string | null, list: MediaQueryList, rest: string): string | null {
   if (name !== null && NOT_CONTAINER_NAMES.has(asciiLower(name))) return `${name} is not a container name`;
   if (rest.trim() === '') return 'a @container rule without a size query is not supported';
+  // css-syntax-3 §4.3.4: an ident followed by ( is a function token, so it is neither a name nor a query; Chrome drops the rule.
+  const fn = name === null ? FUNCTION_START.exec(rest) : null;
+  if (fn !== null && fn[1] !== undefined && !['style', 'scroll-state'].includes(asciiLower(fn[1]))) return `${fn[1]}( is a function token, not a container name, so Chrome drops this rule`;
   const q = list.queries[0];
   if (list.queries.length !== 1 || q === undefined || !q.valid || q.mediaType !== null || q.modifier !== null || q.condition === null) return 'only one size query in parentheses is supported';
   if (hasGeneralEnclosed(q.condition)) return 'only width queries are supported, not style() or scroll-state() queries';

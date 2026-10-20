@@ -84,6 +84,6 @@ describe('CQ: @container rules', () => {
     // The refusal names the rule that changes the container, not the first @container rule.
     expect(refusal('@container (min-width: 10px) { .a { height: 1px; } } @container (min-width: 20px) { .a { container-type: inline-size; } }')).toEqual(['@container (min-width: 20px) is not supported here: a @container rule changes the container-type, container-name or width of a query container, which Dragon does not resolve']);
     // css-syntax-3: card( is a function token, so Chrome drops the rule; Dragon refuses it rather than read card as a name.
-    expect(refusal('@container card(min-width: 1px) { .a { width: 1px; } }')).toHaveLength(1);
+    expect(refusal('@container card(min-width: 1px) { .a { width: 1px; } }')).toEqual(['@container card(min-width: 1px) in the stylesheet is not supported: card( is a function token, not a container name, so Chrome drops this rule']);
   });
 });
