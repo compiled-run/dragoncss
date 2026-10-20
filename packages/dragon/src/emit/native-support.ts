@@ -891,7 +891,7 @@ public final class DragonTree {
         for k in ib.children.items { walkInline(k, container) }
       } else if let br = c as? LineBreak { inlineIds.insert(br.id.description) }
     }
-    func walk(_ b: LayoutBox) {
+    func walk(_ b: LayoutBox) throws {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
       if let m = b.marker {
@@ -899,14 +899,15 @@ public final class DragonTree {
         if m.kind.description == "text" { zMarkerTexts[m.id.description + ":text0"] = m }
       }
       for c in b.children.items {
-        if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
+        if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; try walk(cb) }
+        else if let cc = c as? ControlBox { zParent[cc.id.description] = b.id.description; try walk(try controls_controlAsBox(cc)) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
         else if let rl = c as? ReplacedLeaf { zParent[rl.id.description] = b.id.description; zStyles[rl.id.description] = rl.style; zLeaves.append((rl.id.description, rl)) }
         else if let ib = c as? InlineBox { walkInline(ib, b.id.description) }
         else if let br = c as? LineBreak { walkInline(br, b.id.description) }
       }
     }
-    walk(zoomed.root)
+    try walk(zoomed.root)
     // OVFL-B: each scroll container's offset range in device px, from the translated engine, for the scroll module's hook.
     var scrollRanges: [String: [Double]] = [:]
     let sr = try overflow_scrollRanges(input, measurer)
@@ -1948,6 +1949,7 @@ import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpPixelsSamples
 import dev.dragon.dump.DumpTiming
 import dev.dragon.layout.Ctx
+import dev.dragon.layout.ControlBox
 import dev.dragon.layout.LayoutBox
 import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
@@ -1968,6 +1970,7 @@ import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.box_resolveBorder
 import dev.dragon.layout.box_resolvePadding
+import dev.dragon.layout.controls_controlAsBox
 import dev.dragon.layout.InlineBox
 import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
@@ -2173,6 +2176,7 @@ class DragonTree(val context: Context) {
       }
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
+        else if (c is ControlBox) { zParent[c.id] = b.id; walk(controls_controlAsBox(c)) }
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
         else if (c is InlineBox) walkInline(c, b.id)
         else if (c is LineBreak) walkInline(c, b.id)
@@ -3023,6 +3027,9 @@ export function environmentArgs(viewport: { readonly width: number; readonly hei
   return `ViewportUnitSizes(${v}, ${v}, ${v}), SafeAreaInsets(0.0, 0.0, 0.0, 0.0), ${doubleLit(rootFontSize)}`;
 }
 
+/** The translated union of a box's children (LayoutBox | ControlBox | TextLeaf | ReplacedLeaf). */
+const CHILDREN_UNION = 'U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf';
+
 /**
  * MQ-R1 (T067 R5, R6): environmentArgs with the viewport the state machine holds (the media root's CSS size, in the generated
  * variables named), so a size change lays out again with the new viewport units. The small, large and dynamic sizes equal it, as decided.
@@ -3060,12 +3067,24 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   // GEN-c: a list item's marker in the translated ListMarker's field order (input.ts): id, kind, symbol, text, font, lineHeight.
   const marker = (m: import('@dragon/layout').ListMarker | null): string =>
     m === null ? none : `ListMarker(${str(m.id)}, ${str(m.kind)}, ${m.symbol === null ? none : str(m.symbol)}, ${m.text === null ? none : str(m.text)}, ${fontSpecValue(lang, m.font)}, ${lineHeightValue(lang, m.lineHeight)})`;
-  const visit = (b: import('@dragon/layout').LayoutBox): string => {
+  // A control box's facts (input.ts ControlKind): ControlKind_range, ControlKind_sliderThumb or ControlKind_buttonBlock.
+  const controlKind = (c: import('@dragon/layout').ControlKind): string =>
+    c.kind === 'range'
+      ? `ControlKind_range(${str('range')}, ${doubleLit(c.defaultInlineSize)})`
+      : c.kind === 'slider-thumb'
+        ? `ControlKind_sliderThumb(${str('slider-thumb')}, ${doubleLit(c.ratio)})`
+        : `ControlKind_buttonBlock(${str('button-block')})`;
+  const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
-    const kids = b.children.map((c) => (c.kind === 'box' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
+    const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
     const strut = b.strut === null ? (lang === 'swift' ? 'nil' : 'null') : `LineStrut(${fontSpecValue(lang, b.strut.font)}, ${lineHeightValue(lang, b.strut.lineHeight)})`;
-    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${marker(b.marker)}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
-    decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);
+    const style = styleOf(b.style);
+    const arr = list(CHILDREN_UNION, kids);
+    const type = b.kind === 'control' ? 'ControlBox' : 'LayoutBox';
+    const body = b.kind === 'control'
+      ? `ControlBox(${str('control')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${controlKind(b.control)}, ${strut}, ${arr})`
+      : `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${style}, ${strut}, ${marker(b.marker)}, ${arr})`;
+    decls.push(lang === 'swift' ? `private func ${name}() -> ${type} {\n  return ${body}\n}` : `private fun ${name}(): ${type} =\n  ${body}`);
     return name;
   };
   const r = visit(root);

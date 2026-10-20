@@ -316,7 +316,7 @@ export function inlineBreaks(box: LayoutBox): LineBreak[] {
 /** A block container's inline content without its atomic inlines. */
 function inlineContent(box: LayoutBox): InlineChild[] {
   const out: InlineChild[] = [];
-  for (const c of box.children) if (c.kind !== 'box' && c.kind !== 'replaced') out.push(c);
+  for (const c of box.children) if (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') out.push(c);
   return out;
 }
 
@@ -324,7 +324,7 @@ function inlineContent(box: LayoutBox): InlineChild[] {
 function inlineChildren(box: LayoutBox): (InlineChild | LayoutBox)[] {
   const out: (InlineChild | LayoutBox)[] = [];
   for (const c of box.children) {
-    if ((c.kind === 'box' && !isAtomicInline(c)) || c.kind === 'replaced') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
+    if ((c.kind === 'box' && !isAtomicInline(c)) || c.kind === 'control' || c.kind === 'replaced') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
     out.push(c);
   }
   return out;

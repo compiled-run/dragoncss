@@ -17,6 +17,8 @@
 import type {
   BorderWidthValue,
   CalcExpr,
+  ControlBox,
+  ControlKind,
   FlexBasisValue,
   FontSpec,
   GapValue,
@@ -53,6 +55,7 @@ import type {
 } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
+import { zoomTrackLength } from './controls.ts';
 import type { FontLengths, TextMeasurer } from './text.ts';
 import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
 import { unsupported } from './unsupported.ts';
@@ -159,13 +162,13 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
  * Whether a box or its descendants hold anything to resolve at DPR 1: a calculation, a px length outside the CSS length range, or a text run whose font size or line
  * height is not already its computed px value; the pass returns such an input itself.
  */
-function boxNeedsEnvironment(b: LayoutBox, faults: EngineFaults): boolean {
+function boxNeedsEnvironment(b: LayoutBox | ControlBox, faults: EngineFaults): boolean {
   if (styleNeedsEnvironment(b.style)) return true;
   if (b.strut !== null && fontNeedsEnvironment(b.strut.font, b.strut.lineHeight, faults)) return true;
-  if (b.marker !== null && fontNeedsEnvironment(b.marker.font, b.marker.lineHeight, faults)) return true;
+  if (b.kind === 'box' && b.marker !== null && fontNeedsEnvironment(b.marker.font, b.marker.lineHeight, faults)) return true;
   if (resolveOrder(b.style.order, faults) !== b.style.order) return true;
   for (const c of b.children) {
-    if (c.kind === 'box') {
+    if (c.kind === 'box' || c.kind === 'control') {
       if (boxNeedsEnvironment(c, faults)) return true;
       continue;
     }
@@ -219,8 +222,23 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
 
 function resolveBox(b: LayoutBox, parent: Env): LayoutBox {
   const env: Env = { ...parent, node: b.id };
-  const children = b.children.map((c): LayoutBox | ReplacedLeaf | InlineChild => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveInline(c, env)));
-  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: b.strut === null ? null : resolveStrut(b.strut, env), marker: b.marker === null ? null : resolveMarker(b.marker, env), children };
+  return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: resolveStrutOf(b, env), marker: b.marker === null ? null : resolveMarker(b.marker, env), children: resolveChildren(b.children, env) };
+}
+
+function resolveStrutOf(b: LayoutBox | ControlBox, env: Env): LineStrut | null {
+  return b.strut === null ? null : resolveStrut(b.strut, env);
+}
+
+function resolveChildren(children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[], env: Env): (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] {
+  return children.map((c): LayoutBox | ControlBox | ReplacedLeaf | InlineChild => (c.kind === 'box' ? resolveBox(c, env) : c.kind === 'control' ? resolveControl(c, env) : c.kind === 'replaced' ? resolveReplaced(c, env) : resolveInline(c, env)));
+}
+
+/** A control box in zoomed px: a range's default track length is zoomed in float as Blink does (controls.ts zoomTrackLength). */
+function resolveControl(b: ControlBox, parent: Env): ControlBox {
+  const env: Env = { ...parent, node: b.id };
+  const c = b.control;
+  const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
+  return { kind: 'control', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
 }
 
 function resolveInline(c: InlineChild, parent: Env): InlineChild {
@@ -992,12 +1010,12 @@ function calcDependencies(e: CalcExpr, out: DependencyFlags): void {
   }
 }
 
-function boxDependencies(b: LayoutBox, out: DependencyFlags): void {
+function boxDependencies(b: LayoutBox | ControlBox, out: DependencyFlags): void {
   styleDependencies(b.style, out);
   if (b.strut !== null) fontDependencies(b.strut.font, b.strut.lineHeight, out);
-  if (b.marker !== null) fontDependencies(b.marker.font, b.marker.lineHeight, out);
+  if (b.kind === 'box' && b.marker !== null) fontDependencies(b.marker.font, b.marker.lineHeight, out);
   for (const c of b.children) {
-    if (c.kind === 'box') boxDependencies(c, out);
+    if (c.kind === 'box' || c.kind === 'control') boxDependencies(c, out);
     else if (c.kind === 'replaced') styleDependencies(c.style, out);
     else inlineDependencies(c, out);
   }

@@ -7,10 +7,10 @@
 // The line-clamp longhands are written only where one is not initial, and a line-clamp container writes display: -webkit-box (TXT2-g).
 // clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
 // So are the mask longhands, written only where one is not initial (a gradient mask-image MASK-CLIP draws, or -webkit-mask-composite:
-// source-over), and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none (no
-// Chrome UA rule sets it on a supported tag), and caret-color and accent-color, written on every element of a case where any
-// element's is not auto (FORM-b). -webkit-user-modify is never written: Dragon accepts only its initial read-only, which no Chrome UA
-// rule on a supported tag changes (TOUCH).
+// source-over), and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none or on a
+// form control or range part (Chrome's UA sets auto on button, input and the slider thumb, so their none must be written), and
+// caret-color and accent-color, written on every element of a case where any element's is not auto (FORM-b). -webkit-user-modify is
+// never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag changes (TOUCH).
 // speak, like caret-color, is written on every element of a case where any element's is not normal (NA-NATIVE-2).
 // break-before, break-after and break-inside are written only where one is not auto, and orphans and widows, inherited, on every
 // element of a case where any element's is not 2: their initial values, which no Chrome UA rule sets (css-break-3).
@@ -20,7 +20,7 @@
 // the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';
-import { markerOf } from '../analysis/resolve.ts';
+import { markerOf, rangePartOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -44,6 +44,20 @@ export type WebEmit = {
 };
 
 export const WEB_CSS_PATH = 'dragon.css';
+
+/** The track and thumb of range input el (analysis/resolve.ts), with the pseudo-element that styles each. */
+function rangeStyledParts(el: ResolvedElement): { readonly pseudo: string; readonly el: ResolvedElement }[] {
+  const out: { pseudo: string; el: ResolvedElement }[] = [];
+  let at: ResolvedElement = el;
+  for (;;) {
+    const next = at.children.find((c): c is ResolvedElement => c.kind === 'element' && rangePartOf(c) !== undefined);
+    if (next === undefined) return out;
+    const part = (rangePartOf(next) as { part: string | null }).part;
+    if (part === 'track') out.push({ pseudo: '-webkit-slider-runnable-track', el: next });
+    if (part === 'thumb') out.push({ pseudo: '-webkit-slider-thumb', el: next });
+    at = next;
+  }
+}
 
 /** CSS2 §9.3.2 box offsets, written only when one of them is not auto. */
 export const INSET_LONGHANDS: readonly (typeof LONGHANDS)[number][] = ['top', 'right', 'bottom', 'left'];
@@ -341,7 +355,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const fx = resolutions.some(writesFx);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
-      const appearance = resolutions.some(writesAppearance);
+      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || resolutions.some(writesAppearance);
       const breaks = resolutions.some(writesBreaks);
       const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p)) && (speak || p !== 'speak')).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
@@ -385,7 +399,10 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const below = under || sources.has(el.element.address) || uaColor;
       // GEN-a: a generated box has no DOM element; it is emitted with its host as the host's class plus ::before or ::after.
       const generated = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && isGeneratedElement(ch));
-      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false)), ...markerPart(el)];
+      // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class (in every band and
+      // interaction state); its container takes only UA and inherited values, which the input's own rules reproduce.
+      const ranges = rangePartOf(el)?.part === null ? rangeStyledParts(el).map((p) => partOf(p.el, `::${p.pseudo}`, below, false)) : [];
+      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false)), ...ranges, ...markerPart(el)];
       // NA-NATIVE: ::-webkit-scrollbar rules that hide the element's scrollbars are written as the one rule that does (webkit-scrollbar.ts),
       // outside @media and interaction states when they hide them in any band or state: where they do not, the element scrolls on no
       // axis they leave shown (that resolution refuses them otherwise), or a scrollbar-width other than auto makes Chrome ignore the rule.
@@ -410,7 +427,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch)) visit(ch, below);
+      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch) && (rangePartOf(ch)?.part ?? null) === null) visit(ch, below);
     };
     visit(c.root, false);
   }

@@ -31,7 +31,7 @@ export function clipLabelOf(box: LayoutNode, hidden: ReadonlySet<string> = new S
     for (const c of b.children) {
       if (c.kind === 'replaced') continue;
       if (c.kind === 'box' && isAtomicInline(c)) run.push(clipLabelOf(c, hidden) ?? '');
-      else if (c.kind === 'box') {
+      else if (c.kind === 'box' || c.kind === 'control') {
         flush(run);
         block(c);
       } else inline(c, run);

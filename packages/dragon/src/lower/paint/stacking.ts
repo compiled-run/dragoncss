@@ -427,7 +427,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
   const node = (b: LayoutNode, item: boolean): StackNode => {
     const el = elementOf(b);
     const container = FLEX_OR_GRID.includes(b.style.display);
-    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
+    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
     return own(b, el, item, b.kind === 'box' && b.marker !== null ? [...children, marker(b.marker)] : children);
   };
   return node(root, false);
@@ -443,7 +443,7 @@ const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak 
   const walk = (b: LayoutNode | InlineBox | LineBreak): void => {
     out.add(b);
     if (b.kind === 'box' && b.marker !== null) out.add(b.marker);
-    if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
+    if (b.kind === 'box' || b.kind === 'control' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
   };
   walk(root);
   return out;

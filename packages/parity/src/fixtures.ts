@@ -26,6 +26,7 @@ import { COLOR_FUNCTIONS } from './fixture-groups/color-functions.ts';
 import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
 import { CONTAINER_QUERY } from './fixture-groups/container-query.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
+import { CONTROLS } from './fixture-groups/controls.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_CONTENTS } from './fixture-groups/display-contents.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
@@ -191,6 +192,7 @@ export const GROUPS = {
   'color-scheme': COLOR_SCHEME,
   'container-query': CONTAINER_QUERY,
   contexts: CONTEXTS,
+  controls: CONTROLS,
   'ctx-proof': CTX_PROOF,
   'display-contents': DISPLAY_CONTENTS,
   'display-legacy': DISPLAY_LEGACY,

@@ -122,6 +122,8 @@ describe('dependency boundaries', () => {
       "import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';",
       // ::marker: a list item's resolved marker color, from the resolved tree alone.
       "import { markerOf } from '../analysis/resolve.ts';",
+      // FORM-a A4: which resolved elements are a range's shadow parts, a fact of the resolved tree (no matching).
+      "import { rangePartOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",
@@ -186,6 +188,7 @@ describe('dependency boundaries', () => {
 // ELB-2: the element keys are captured into tables of their own; the pins above cover only the element-table tags.
 describe('UA longhands of the element keys (ELB-2)', () => {
   it('pins the longhands a Chrome UA rule sets per element key', () => {
+    // FORM-a A2: appearance (auto, from html.css) joins the three form-control keys once it is a longhand.
     expect(elementKeyLonghands).toEqual({
       button: ['appearance', 'background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
       input: ['appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],

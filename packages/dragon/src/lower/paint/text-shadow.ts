@@ -22,7 +22,7 @@ function texts(box: LayoutBox): string[] {
     if (c.kind === 'text') out.push(c.id);
     else if (c.kind === 'inline') for (const k of c.children) visit(k);
   };
-  for (const c of box.children) if (c.kind !== 'box' && c.kind !== 'replaced') visit(c);
+  for (const c of box.children) if (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') visit(c);
   return out;
 }
 
