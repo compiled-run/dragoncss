@@ -1,7 +1,7 @@
 // The parse driver: parses one stylesheet use into rules with UTF-16 spans, validates values against the webref grammar, and
 // expands shorthands into longhands. Selectors are parsed in selectors.ts, at-rules decided in at-rules.ts, tokens converted in
 // values.ts and shorthands expanded by the registry in shorthands/ (see css/README.md).
-import { generate, parse } from 'css-tree';
+import { generate, parse, tokenize, tokenTypes } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
@@ -102,7 +102,7 @@ export type SheetUse = { readonly id: string; readonly owner: string; readonly s
  */
 export type EnclosedRules = { readonly atRule: Diagnostic; readonly span: Span; readonly rules: readonly Rule[]; readonly diagnostics: readonly Diagnostic[] };
 
-type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly properties: PropertySource[]; readonly faults: CascFaults; readonly layers: string[] };
+type ParseState = { order: number; readonly base: Span; readonly text: string; readonly use: SheetUse; readonly fontFaces: AtRuleContext[]; readonly keyframes: KeyframesSource[]; readonly properties: PropertySource[]; readonly faults: CascFaults; readonly layers: string[]; readonly nested: { start: number; end: number }[] };
 
 /**
  * Where a node that is not a style rule or declaration sits: top level (or inside a top-level at-rule), or in a rule block.
@@ -139,14 +139,18 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
     for (const c of [...list(node, 'children'), ...(block === null || block === undefined ? [] : [block])]) visit(c);
   };
   visit(ast);
+  const rules: Rule[] = [];
+  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, properties, faults, layers, nested: [] };
+  const parsed: Diagnostic[] = [];
+  parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [], layer: null }, parsed, enclosed, rules);
+  // A block holding nested rules is parsed again by parseNestingBlock, which reports its own errors, so css-tree's are not.
   for (const e of errors) {
     if (preludes.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
+    if (st.nested.some((m) => e.offset >= m.start && e.offset <= m.end)) continue;
     const at = { source: base.source, start: base.start + e.offset, end: base.start + e.offset };
     diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error: ${e.message}` }));
   }
-  const rules: Rule[] = [];
-  const st: ParseState = { order: orderStart, base, text, use, fontFaces, keyframes, properties, faults, layers };
-  parseTopLevel(list(ast, 'children'), st, { label: 'the stylesheet', selectors: 'top', conditions: [], layer: null }, diagnostics, enclosed, rules);
+  diagnostics.push(...parsed);
   return rules;
 }
 
@@ -157,19 +161,31 @@ function parseTopLevel(nodes: readonly CssNode[], st: ParseState, at: Where, dia
       refuseNode(node, st, at, diagnostics, enclosed, rules);
       continue;
     }
-    const rule = parseRule(node, st, diagnostics, enclosed, at.conditions, at.layer);
-    if (rule !== null) rules.push(rule);
+    rules.push(...parseRule(node, st, diagnostics, enclosed, at.conditions, at.layer));
   }
 }
 
-function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null): Rule | null {
+/** A style rule and, under css-nesting-1, the rules nested in its block, each after the declarations before it. */
+function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null): Rule[] {
+  const prelude = node['prelude'] as CssNode;
+  return styleRule(prelude, generate(prelude), node['block'] as CssNode, st, diagnostics, enclosed, conditions, layer);
+}
+
+/** selectorText: the selector list as the & of a nested rule reads it (css-nesting-1 §3.2). */
+function styleRule(prelude: CssNode, selectorText: string, block: CssNode, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null): Rule[] {
   const before = diagnostics.length;
-  const selectors = parseSelectorList(node['prelude'] as CssNode, st.base, st.use, diagnostics);
+  const selectors = parseSelectorList(prelude, st.base, st.use, diagnostics);
   // Chrome never parses the block of a rule it drops, so neither do its diagnostics count.
   const dropped = diagnostics.slice(before).some((d) => d.code === 'DRAGON_SELECTOR_DROPPED');
   const blockDiagnostics = dropped ? [] : diagnostics;
   const declarations: Declaration[] = [];
-  for (const d of list(node['block'] as CssNode, 'children')) {
+  const rule = (): Rule[] => (selectors === null ? [] : [{ sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) }]);
+  const children = list(block, 'children');
+  if (children.some((c) => c.type === 'Rule' || (c.type === 'Raw' && String(c['value']).includes('{')))) {
+    const nested = parseNestingBlock(block, selectorText, selectors, st, blockDiagnostics, dropped ? [] : enclosed, conditions, layer, declarations);
+    return dropped ? rule() : [...rule(), ...nested];
+  }
+  for (const d of children) {
     if (d.type !== 'Declaration') {
       refuseNode(d, st, { label: 'a rule block', selectors, conditions, layer }, blockDiagnostics, dropped ? [] : enclosed, []);
       continue;
@@ -177,8 +193,213 @@ function parseRule(node: CssNode, st: ParseState, diagnostics: Diagnostic[], enc
     const parsed = parseDeclaration(d, st.base, st.text, st.order++, blockDiagnostics);
     if (parsed !== null) declarations.push(parsed);
   }
-  if (selectors === null) return null;
-  return { sheet: st.use.id, owner: st.use.owner, selectors, declarations, ...(conditions.length === 0 ? {} : { condition: conditions }), ...(layer === null ? {} : { layer }) };
+  return rule();
+}
+
+/** One item of a rule block: a declaration, an at-rule, or a nested style rule (css-syntax-3 §5.4.4), as offsets in the block text. */
+type BlockItem = { readonly kind: 'declaration'; readonly start: number; readonly end: number } | { readonly kind: 'at-rule'; readonly start: number; readonly end: number } | { readonly kind: 'rule'; readonly start: number; readonly brace: number; readonly end: number };
+
+/**
+ * css-syntax-3 §5.4.4 "consume a block's contents": splits a rule block into declarations, at-rules and qualified rules. An item
+ * that starts with an identifier is a declaration up to the next top-level ";", unless a top-level {} block follows other tokens
+ * in a property that is not custom (a:hover { }), which makes it a rule; any other item is a rule ending at its block.
+ */
+function splitBlock(text: string): BlockItem[] {
+  const tokens: { type: number; start: number; end: number }[] = [];
+  tokenize(text, (type, start, end) => tokens.push({ type, start, end }));
+  const T = tokenTypes;
+  const items: BlockItem[] = [];
+  let i = 0;
+  // The index after the bracket that closes the one at index open, or tokens.length.
+  const closeOf = (open: number): number => {
+    const stack: number[] = [];
+    for (let k = open; k < tokens.length; k++) {
+      const t = (tokens[k] as { type: number }).type;
+      if (t === T.LeftCurlyBracket || t === T.LeftParenthesis || t === T.LeftSquareBracket || t === T.Function) stack.push(t);
+      else if (t === T.RightCurlyBracket || t === T.RightParenthesis || t === T.RightSquareBracket) {
+        stack.pop();
+        if (stack.length === 0) return k + 1;
+      }
+    }
+    return tokens.length;
+  };
+  const isOpen = (t: number): boolean => t === T.LeftParenthesis || t === T.LeftSquareBracket || t === T.Function;
+  while (i < tokens.length) {
+    const first = tokens[i] as { type: number; start: number; end: number };
+    if (first.type === T.WhiteSpace || first.type === T.Semicolon || first.type === T.Comment) {
+      i++;
+      continue;
+    }
+    const start = first.start;
+    if (first.type === T.AtKeyword) {
+      let k = i + 1;
+      while (k < tokens.length) {
+        const t = (tokens[k] as { type: number }).type;
+        if (t === T.Semicolon) { k++; break; }
+        if (t === T.LeftCurlyBracket) { k = closeOf(k); break; }
+        k = isOpen(t) ? closeOf(k) : k + 1;
+      }
+      items.push({ kind: 'at-rule', start, end: (tokens[k - 1] as { end: number }).end });
+      i = k;
+      continue;
+    }
+    const custom = first.type === T.Ident && text.slice(first.start, first.end).startsWith('--');
+    // Scan to the end of the item, noting the first top-level {} block and whether anything but white space precedes it after the colon.
+    let k = i;
+    let brace = -1;
+    let colon = -1;
+    let before = false;
+    while (k < tokens.length) {
+      const t = (tokens[k] as { type: number }).type;
+      if (t === T.Semicolon && (first.type === T.Ident || brace < 0)) break;
+      if (t === T.Colon && colon < 0) colon = k;
+      if (t === T.LeftCurlyBracket) {
+        if (brace < 0) brace = k;
+        k = closeOf(k);
+        if (first.type !== T.Ident) break;
+        continue;
+      }
+      if (brace < 0 && colon >= 0 && k > colon && t !== T.WhiteSpace && t !== T.Comment) before = true;
+      k = isOpen(t) ? closeOf(k) : k + 1;
+    }
+    const declaration = first.type === T.Ident && (brace < 0 || custom || (colon >= 0 && colon < brace && !before));
+    if (declaration) {
+      items.push({ kind: 'declaration', start, end: (tokens[Math.min(k, tokens.length) - 1] as { end: number }).end });
+      i = k + 1;
+      continue;
+    }
+    if (brace < 0) {
+      // A rule prelude with no block ends at the next ";" or the end of the block and is dropped (css-syntax-3 §5.4.3).
+      items.push({ kind: 'rule', start, brace: -1, end: (tokens[Math.min(k, tokens.length) - 1] as { end: number }).end });
+      i = k + 1;
+      continue;
+    }
+    const end = closeOf(brace);
+    items.push({ kind: 'rule', start, brace: (tokens[brace] as { start: number }).start, end: (tokens[end - 1] as { end: number }).end });
+    i = end;
+  }
+  return items;
+}
+
+/** The & of a nested selector: css-nesting-1 §3.2 reads it as :is() of the parent's selector list. */
+function nestedSelectorText(prelude: string, parent: string): string | null {
+  const is = `:is(${parent})`;
+  const parts: string[] = [];
+  let current = '';
+  let depth = 0;
+  let amp = false;
+  const T = tokenTypes;
+  let empty = false;
+  const done = (): void => {
+    const trimmed = current.trim();
+    if (trimmed === '') empty = true;
+    // A relative selector without & is relative to & (css-nesting-1 §3.1), with a leading combinator or as a descendant.
+    parts.push(amp ? trimmed : `${is} ${trimmed}`);
+    current = '';
+    amp = false;
+  };
+  tokenize(prelude, (type, start, end) => {
+    const t = prelude.slice(start, end);
+    if (type === T.LeftParenthesis || type === T.LeftSquareBracket || type === T.Function) depth++;
+    if (type === T.RightParenthesis || type === T.RightSquareBracket) depth--;
+    if (type === T.Comma && depth === 0) return done();
+    if (type === T.Delim && t === '&') {
+      amp = true;
+      current += is;
+      return;
+    }
+    current += t;
+  });
+  done();
+  return empty ? null : parts.join(', ');
+}
+
+/**
+ * css-nesting-1: the block of a style rule that nests rules, split by splitBlock. Its declarations go to declarations in order,
+ * wherever they stand (Chrome 145 keeps a run after a nested rule as a nested declarations rule that matches as the parent does);
+ * each nested style rule is returned with its selectors read through the parent's, its own nested rules after it.
+ */
+function parseNestingBlock(block: CssNode, parentText: string, parent: readonly Selector[] | null, st: ParseState, diagnostics: Diagnostic[], enclosed: EnclosedRules[], conditions: readonly RuleCondition[], layer: string | null, declarations: Declaration[]): Rule[] {
+  const span = spanOf(block, st.base);
+  const open = span.start - st.base.start;
+  const close = st.text[span.end - st.base.start - 1] === '}' ? span.end - st.base.start - 1 : span.end - st.base.start;
+  st.nested.push({ start: open, end: close });
+  const blockText = st.text.slice(open + 1, close);
+  const out: Rule[] = [];
+  for (const item of splitBlock(blockText)) {
+    const itemText = blockText.slice(item.start, item.end);
+    // Each item is parsed alone, located in the sheet by a base at its start.
+    const base: Span = { source: st.base.source, start: st.base.start + open + 1 + item.start, end: st.base.start + open + 1 + item.end };
+    const sub: ParseState = { ...st, base, text: itemText, nested: [] };
+    const errors: { message: string; offset: number }[] = [];
+    const parseItem = (context: string): CssNode => {
+      // A nested rule's prelude is read by nestedSelectorText, so css-tree parses only its block.
+      const node = parse(itemText, { context, positions: true, parseValue: true, parseRulePrelude: false, onParseError: (e) => errors.push({ message: e.message, offset: e.offset }) } as Parameters<typeof parse>[1]);
+      if (itemText.includes('\\')) canonicalizeEscapes(node);
+      return node;
+    };
+    const reportErrors = (): void => {
+      for (const e of errors) if (!sub.nested.some((m) => e.offset >= m.start && e.offset <= m.end)) diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored({ source: base.source, start: base.start + e.offset, end: base.start + e.offset }), message: `CSS parse error: ${e.message}` }));
+    };
+    if (item.kind === 'declaration') {
+      // css-tree throws on a declaration with no colon, which Chrome drops (css-syntax-3 §5.4.6).
+      let node: CssNode | null = null;
+      try {
+        node = parseItem('declaration');
+      } catch {
+        node = null;
+      }
+      reportErrors();
+      if (node === null || node.type !== 'Declaration') {
+        diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(base), message: 'CSS in a rule block is not a declaration or style rule' }));
+        continue;
+      }
+      const parsed = parseDeclaration(node, base, itemText, st.order++, diagnostics);
+      if (parsed !== null) declarations.push(parsed);
+      continue;
+    }
+    if (item.kind === 'at-rule') {
+      const node = parseItem('atrule');
+      refuseNode(node, sub, { label: 'a rule block', selectors: parent, conditions, layer }, diagnostics, enclosed, []);
+      st.order = sub.order;
+      continue;
+    }
+    const where = authored({ source: base.source, start: base.start, end: base.start + (item.brace < 0 ? itemText : itemText.slice(0, item.brace - item.start)).trimEnd().length });
+    if (item.brace < 0) {
+      diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: where, message: `"${itemText.trim()}" in a rule block has no block, so Chrome drops it` }));
+      continue;
+    }
+    const preludeText = itemText.slice(0, item.brace - item.start);
+    if (parent === null) continue;
+    if (parent.some((s) => s.pseudoElement !== null)) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_NESTED_RULE', { origin: where, message: `the nested rule "${preludeText.trim()}" in a rule for a pseudo-element is not supported (css-nesting-1: & cannot represent a pseudo-element, so Chrome matches nothing)` }));
+      continue;
+    }
+    const selectorText = nestedSelectorText(preludeText, parentText);
+    if (selectorText === null) {
+      diagnostics.push(diagnostic('DRAGON_CSS_PARSE', { origin: where, message: `the nested rule "${preludeText.trim()}" has an empty selector, so Chrome drops it` }));
+      continue;
+    }
+    // The selector list as & expands it; its nodes point at the nested prelude, which is what the author wrote.
+    const selectorNode = parse(selectorText, { context: 'selectorList', positions: true } as Parameters<typeof parse>[1]);
+    if (selectorText.includes('\\')) canonicalizeEscapes(selectorNode);
+    const at = { source: null, start: { offset: 0, line: 1, column: 1 }, end: { offset: preludeText.trimEnd().length, line: 1, column: 1 } };
+    const relocate = (n: CssNode): void => {
+      (n as { loc: unknown }).loc = at;
+      for (const c of list(n, 'children')) relocate(c);
+      for (const key of ['selector', 'value']) {
+        const v = n[key] as CssNode | null | undefined;
+        if (v !== null && v !== undefined && typeof v === 'object' && 'type' in v) relocate(v);
+      }
+    };
+    relocate(selectorNode);
+    const ruleNode = parseItem('rule');
+    out.push(...styleRule(selectorNode, selectorText, ruleNode['block'] as CssNode, sub, diagnostics, enclosed, conditions, layer));
+    st.order = sub.order;
+    // css-tree's errors inside a block that nests rules are its own misreading; that block was split again above.
+    reportErrors();
+  }
+  return out;
 }
 
 /** css-syntax-3 §5.4: an empty declaration (a lone ";") and the <!-- --> tokens produce no rule or declaration in the CSSOM. */
@@ -256,8 +477,7 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
     if (at.selectors === 'top') {
       for (const c of list(block, 'children')) {
         if (c.type === 'Rule') {
-          const r = parseRule(c, st, inner, enclosed, at.conditions, at.layer);
-          if (r !== null) rules.push(r);
+          rules.push(...parseRule(c, st, inner, enclosed, at.conditions, at.layer));
         } else if (c.type !== 'Declaration') refuseNode(c, st, { label, selectors: 'top', conditions: at.conditions, layer: at.layer }, inner, enclosed, rules);
       }
     } else {

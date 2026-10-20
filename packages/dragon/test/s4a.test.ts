@@ -239,8 +239,9 @@ describe('C5: a text leaf carries the text-align and direction of its block cont
 
 describe('C6: nested rules and every other non-declaration child of a rule block are diagnosed, never skipped', () => {
   const cases: readonly { css: string; code: string; span: string }[] = [
-    { css: '.a { width: 1px; & .b { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_NESTED_RULE', span: '& .b { width: 2px; }' },
-    { css: '.a { &:hover { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_NESTED_RULE', span: '&:hover { width: 2px; }' },
+    // css-nesting-1: & cannot stand for a pseudo-element, so a rule nested in a ::before rule is refused (the others are resolved).
+    { css: '.a::before { content: "x"; & .b { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_NESTED_RULE', span: '& .b' },
+    { css: '.a { .b { width: 2px; } width 1px; height: 2px; }', code: 'DRAGON_CSS_PARSE', span: 'width 1px' },
     { css: '.a { width: 1px; @media (min-width: 1px) { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@media (min-width: 1px) { width: 2px; }' },
     { css: '.a { width: 1px; @supports (display: flex) { .b { width: 2px; } } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@supports (display: flex) { .b { width: 2px; } }' },
     { css: '.a { width 1px; height: 2px; }', code: 'DRAGON_CSS_PARSE', span: 'width 1px;' },
@@ -266,7 +267,8 @@ describe('C6: nested rules and every other non-declaration child of a rule block
   it('the parser has no silent skip left: every non-Rule and non-Declaration node goes through refuseNode', () => {
     const src = readFileSync(new URL('../src/css/stylesheet.ts', import.meta.url), 'utf8');
     expect(src).not.toMatch(/type !== 'Declaration'\) continue|type !== 'Rule'\) continue/);
-    // The definition, the top-level and rule-block callers, and the two callers inside an unsupported at-rule (T005 rec 3).
-    expect(src.match(/refuseNode\(/g)?.length).toBe(5);
+    // The definition, the top-level and rule-block callers, the two callers inside an unsupported at-rule (T005 rec 3), and the
+    // at-rule caller in a block that nests rules (css-nesting-1).
+    expect(src.match(/refuseNode\(/g)?.length).toBe(6);
   });
 });

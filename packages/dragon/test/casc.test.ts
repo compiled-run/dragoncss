@@ -170,3 +170,38 @@ describe('all', () => {
     expect(codes(compile('.a { all: var(--k); }').c)).toEqual(['DRAGON_UNSUPPORTED_VALUE null']);
   });
 });
+
+describe('css-nesting-1', () => {
+  it('a nested rule reads & as :is() of its parent list, relative ones as descendants or after their combinator', () => {
+    const { c } = compile('.a { width: 10px; & { height: 3px; } :is(body) & { width: 20px; } }');
+    expect(value(c, 'width')).toBe('20px');
+    expect(value(c, 'height')).toBe('3px');
+    expect(value(compile('div { .a { width: 5px; } }').c, 'width')).toBe('auto');
+    expect(value(compile('body { > .a { width: 6px; } }').c, 'width')).toBe('6px');
+    expect(value(compile('body { div& { width: 7px; } }').c, 'width')).toBe('auto');
+    expect(value(compile('.a { body & { width: 8px; } }').c, 'width')).toBe('8px');
+  });
+  it('a nested selector takes the specificity of :is() of the parent list', () => {
+    // :is(.a, #z) .x is (1,1,0) even where .a matched, so it beats .q.r.s (0,3,0).
+    const { c } = compile('body, #z { .a { width: 9px; } } .a.a.a { width: 4px; }');
+    expect(value(c, 'width')).toBe('9px');
+  });
+  it('declarations after a nested rule keep their order', () => {
+    const { c } = compile('.a { width: 1px; & { width: 2px; } width: 3px; }');
+    expect(value(c, 'width')).toBe('3px');
+  });
+});
+
+describe('css-nesting-1 block splitting', () => {
+  it('a selector with no block is dropped up to its ";", and the declarations after it still apply', () => {
+    const css = '.a { & { width: 1px; } .b; height: 4px; }';
+    const diagnostics: Diagnostic[] = [];
+    const rules = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+    expect(diagnostics.map((d) => `${d.code} ${css.slice(d.origin.kind === 'authored' ? d.origin.span.start : 0, d.origin.kind === 'authored' ? d.origin.span.end : 0)}`)).toEqual(['DRAGON_CSS_PARSE .b']);
+    expect(rules.map((r) => r.declarations.map((d) => `${d.property}: ${d.text}`))).toEqual([['height: 4px'], ['width: 1px']]);
+  });
+  it('an identifier item with a {} block after other tokens is a rule, and a custom property keeps its block', () => {
+    const { c } = compile('.a { & { width: 1px; } div:not(.z)& { height: 5px; } --k: {x}; }');
+    expect(value(c, 'height')).toBe('5px');
+  });
+});
