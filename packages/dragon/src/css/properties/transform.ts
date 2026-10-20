@@ -97,16 +97,16 @@ export const inFloatRange = (v: number): boolean => Math.abs(v) < 2 ** 128 - 2 *
 const args = (fn: CssNode): CssNode[] => list(fn, 'children').filter((n) => n.type !== 'WhiteSpace' && !(n.type === 'Operator' && n['value'] === ','));
 
 /** A <length-percentage> argument: px, an absolute unit, em or rem, a percentage, or a unitless zero. */
-function readLength(n: CssNode, percent: boolean): Read<TransformLengthDecl> {
+function readLength(n: CssNode, percent: boolean, where = 'a transform function'): Read<TransformLengthDecl> {
   if (n.type === 'Percentage') return percent ? finiteLength(n, Number(n['value']), '%') : no(n, 'a percentage is not a length here');
   if (n.type === 'Number' && Number(n['value']) === 0) return ok(ZERO);
-  if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in a transform function is not supported yet; write a length or a percentage`);
+  if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in ${where} is not supported yet; write a length or a percentage`);
   if (n.type !== 'Dimension') return no(n, `${generate(n)} is not a length`);
   const unit = normalizeUnit(String(n['unit']));
   const c = unitEntry(unit)?.conversion;
   if (c === undefined) return no(n, `the unit ${unit} is not supported`);
   if (c.kind === 'refused') return no(n, c.reason);
-  if (c.kind === 'viewport') return no(n, `${unit} in a transform function would be resolved against the device viewport after layout, which Dragon's transform writer does not do yet; use px, em, rem or a percentage of the box`);
+  if (c.kind === 'viewport') return no(n, `${unit} in ${where} would be resolved against the device viewport after layout, which Dragon's transform writer does not do yet; use px, em, rem or a percentage of the box`);
   return finiteLength(n, Number(n['value']), unit);
 }
 
@@ -119,9 +119,9 @@ function finiteLength(n: CssNode, value: number, unit: string): Read<TransformLe
  * css-values-4 §7.1: an <angle> in degrees, or a unitless zero; the unit factors are the spec's, as Blink's
  * third_party/blink/renderer/core/css/css_primitive_value.cc:486-542 (ConversionToCanonicalUnitsScaleFactor) applies them.
  */
-function readAngle(n: CssNode): Read<number> {
+function readAngle(n: CssNode, where = 'rotate()'): Read<number> {
   if (n.type === 'Number' && Number(n['value']) === 0) return ok(0);
-  if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in rotate() is not supported yet; write an angle`);
+  if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in ${where} is not supported yet; write an angle`);
   if (n.type !== 'Dimension') return no(n, `${generate(n)} is not an angle`);
   const v = Number(n['value']);
   switch (normalizeUnit(String(n['unit']))) {
@@ -141,16 +141,16 @@ function readAngle(n: CssNode): Read<number> {
  * A <number>. Scale functions take numbers only: the grammar subset is webref's css-transforms-1 syntax, which matches before this
  * parse runs, so css-transforms-2 percentages (scale(50%)) never reach it.
  */
-function readNumber(n: CssNode): Read<number> {
+function readNumber(n: CssNode, where = 'a transform function'): Read<number> {
   if (n.type === 'Number') return finite(n, Number(n['value']));
-  if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in a transform function is not supported yet; write a number`);
+  if (n.type === 'Function') return no(n, `${String(n['name']).toLowerCase()}() in ${where} is not supported yet; write a number`);
   return no(n, `${generate(n)} is not a number`);
 }
 
 /** A scale property component: a <number>, or a <percentage> as that number over 100 (css-transforms-2 §4). */
 function readScaleComponent(n: CssNode): Read<number> {
   if (n.type === 'Percentage') return finite(n, Number(n['value']) / 100);
-  return readNumber(n);
+  return readNumber(n, 'scale');
 }
 
 const argText = (n: CssNode): string => {
@@ -342,16 +342,16 @@ function readIndividual(property: (typeof INDIVIDUAL_TRANSFORMS)[number], tokens
     const angleAt = tokens.length === 1 || !isAxisToken(a) ? 0 : tokens.length - 1;
     const axis = tokens.filter((_, i) => i !== angleAt);
     if (!isZAxis(axis)) return no(axis[0] as CssNode, `a rotation axis other than z turns the box out of the plane: ${PNT2_M}`);
-    const deg = readAngle(tokens[angleAt] as CssNode);
+    const deg = readAngle(tokens[angleAt] as CssNode, 'rotate');
     return deg.ok ? ok({ kind: 'rotate', deg: deg.value, text: `${cssNumberText(deg.value)}deg` }) : deg;
   }
   if (property === 'translate') {
-    const x = readLength(a, true);
+    const x = readLength(a, true, 'translate');
     if (!x.ok) return x;
-    const y = b === undefined ? ok(ZERO) : readLength(b, true);
+    const y = b === undefined ? ok(ZERO) : readLength(b, true, 'translate');
     if (!y.ok) return y;
     if (c !== undefined) {
-      const z = readLength(c, false);
+      const z = readLength(c, false, 'translate');
       if (!z.ok) return z;
       if (z.value.value !== 0) return no(c, `a z translation moves the box off the plane: ${PNT2_M}`);
     }
