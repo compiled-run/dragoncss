@@ -8,6 +8,7 @@ import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
 import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS } from '../src/css/properties/border-image.ts';
+import { FX_LONGHANDS } from '../src/css/properties/fx.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
@@ -69,8 +70,8 @@ describe('createProject().compile() and check()', () => {
     // outline longhands, which are written only when an author declaration sets one (Chrome's UA :focus-visible ring stays), and the
     // line-clamp longhands, which are written only where one is not initial (TXT2-g), clip, written only where it is not auto, and
     // clip-path, written only where it is not none, and the mask longhands, written only where one is not initial (MASK-CLIP), as are
-    // the border image longhands (MISC-PAINT).
-    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS];
+    // the border image longhands (MISC-PAINT) and backdrop-filter and mix-blend-mode (FX).
+    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, ...FX_LONGHANDS];
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
     expect(text).toContain('  width: 1px;');
     expect(text).toContain('  height: 33.3px;');
