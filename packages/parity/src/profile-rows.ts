@@ -4,9 +4,9 @@ import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
 import { MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { LanesFile } from './lanes.ts';
-import { ranIds, readLanesFile, staleLanes } from './lanes.ts';
+import { carryDeviceLanes, hostLaneStale, ranIds, readLanesFile, staleLanes } from './lanes-file.ts';
 import { repoPath } from './paths.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import type { NativeTarget, TargetConfig } from './targets.ts';
@@ -348,15 +348,34 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
   return v as LanesFile;
 }
 
-/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes; records behind the tree are not stale), each target's failure list and verdict. */
+/**
+ * A lanes file judged as the next host lanes run will leave it (pure): stale is staleLanes over the file as it is; the device evidence
+ * and the verdict are judged on the device records lanes-host will carry (carryDeviceLanes), and the verdict leaves out a host lane's
+ * own changed case list (hostLaneStale), which lanes-host reruns before regen-on-ci's second Chrome round re-judges it. So a case list
+ * that changed under a lane voids only the evidence of the records the next lanes run drops, and the rows that evidence proves, with
+ * native-lanes.ts, come out in the round that changed the cases, not one round after lanes-host. A fresh file is its own carry.
+ */
+export function judgedLanes(lanes: LanesFile | null, configured: readonly TargetConfig[], failuresOf: (target: NativeTarget) => readonly LaneFailure[] | null): { readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
+  const stale = lanes === null ? [] : staleLanes(lanes, configured);
+  if (lanes === null || stale.length === 0) return { stale, evidence: (target) => deviceEvidence(target, lanes, failuresOf(target), configured, stale), verdict: (target) => nativeVerdict(target, lanes, failuresOf(target), configured) };
+  const carried = carryDeviceLanes(lanes, configured);
+  return {
+    stale,
+    evidence: (target) => deviceEvidence(target, carried, failuresOf(target), configured, []),
+    verdict: (target) => {
+      const v = nativeVerdict(target, carried, failuresOf(target), configured);
+      return { ...v, stale: v.stale.filter((p) => !hostLaneStale(p, configured)) };
+    },
+  };
+}
+
+/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes; records behind the tree are not stale), each target's device evidence, failure list and verdict (judgedLanes). */
 export function committedLanes(): { readonly lanes: LanesFile | null; readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
   const raw = readLanesFile();
   const lanes = raw === null ? null : checkedLanes(raw, 'packages/parity/out/lanes.json');
-  const configured = nativeTargets();
-  const stale = lanes === null ? [] : staleLanes(lanes, configured);
   const failuresOf = (target: NativeTarget): readonly LaneFailure[] | null => {
     const path = repoPath(`packages/parity/out/device-failures-${target}.json`);
     return existsSync(path) ? checkedFailures(JSON.parse(readFileSync(path, 'utf8')) as unknown, `packages/parity/out/device-failures-${target}.json`) : null;
   };
-  return { lanes, stale, evidence: (target) => deviceEvidence(target, lanes, failuresOf(target), configured, stale), verdict: (target) => nativeVerdict(target, lanes, failuresOf(target), configured) };
+  return { lanes, ...judgedLanes(lanes, nativeTargets(), failuresOf) };
 }

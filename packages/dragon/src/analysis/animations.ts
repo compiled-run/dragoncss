@@ -11,6 +11,9 @@ import { resolveAlias } from '../css/aliases.ts';
 import { admitted, animationKind } from '../css/animation-kinds.ts';
 import type { Longhand } from '../css/properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from '../css/properties.ts';
+import type { TransformFnDecl, TransformLengthDecl } from '../css/properties/transform.ts';
+import { inFloatRange, TRANSFORM_LIST_TYPE, transformFunctionsOf, willChangeFeatures } from '../css/properties/transform.ts';
+import { lengthToPx } from '../css/units.ts';
 import type { AnimItem, AnimLonghand, AnimList, EasingValue, SubstitutedAnimation } from '../css/properties/animation.ts';
 import { ANIM_INITIAL, ANIM_LIST_PROPERTIES, substitutedAnimationValue } from '../css/properties/animation.ts';
 import { shorthandHandler } from '../css/shorthands/index.ts';
@@ -23,6 +26,11 @@ import { beats } from './cascade.ts';
 import type { ResolvedValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import { selectorMatches, specificityFor } from './match.ts';
+import { foldedOpacity } from '../lower/paint/background.ts';
+import { stackingOf } from '../lower/paint/stacking.ts';
+import type { StackNode } from '../lower/paint/stacking.ts';
+import { propagatedFrom } from './computed-checks.ts';
+import { resolvedStackTree } from './paint-values/stacking.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { resolvedCustoms } from './resolve.ts';
 import type { CustomProperties } from './variables.ts';
@@ -32,10 +40,14 @@ import { substituteVars } from './variables.ts';
 export const MAX_TRANSITION_SLOTS = 256;
 export const MAX_CLOSURE_WRITES = 1024;
 
-/** An endpoint as the runtime interpolates it: px and % (a calc() keeps both), a legacy colour, a keyword, or an unresolved value. */
+/**
+ * An endpoint as the runtime interpolates it: px and % (a calc() keeps both), a legacy colour, a transform function list (ANIM-b2;
+ * lengths in px or %, empty for none), a keyword, or an unresolved value.
+ */
 export type AnimValue =
   | { readonly kind: 'length'; readonly px: number; readonly percent: number; readonly calc: boolean }
   | { readonly kind: 'color'; readonly r: number; readonly g: number; readonly b: number; readonly alpha: number }
+  | { readonly kind: 'transform'; readonly fns: readonly TransformFnDecl[] }
   | { readonly kind: 'keyword'; readonly value: string }
   | { readonly kind: 'env'; readonly text: string };
 
@@ -230,6 +242,64 @@ export function keyframeValueOf(v: CssValue, fontSize: number, rootFontSize: num
   return animValueOf(v);
 }
 
+/** A transform length in px, or null when it does not compute to px here (a viewport unit, or em and rem without font sizes). */
+function transformPx(l: TransformLengthDecl, fontSize: number | null, rootFontSize: number | null): TransformLengthDecl | null {
+  if (l.unit === '%' || l.unit === 'px') return l;
+  if ((l.unit === 'em' && fontSize === null) || (l.unit === 'rem' && rootFontSize === null)) return null;
+  const px = lengthToPx(l.value, l.unit, { em: fontSize ?? 0, rem: rootFontSize ?? 0 });
+  return px === null || !inFloatRange(px) ? null : { value: px, unit: 'px' };
+}
+
+/**
+ * ANIM-b2: a transform value as the runtime interpolates it, none as no functions. A keyframe value's em and rem take the
+ * element's and the root's font size (a computed value is in px already); a length that does not compute to px is unresolved.
+ */
+export function transformValueOf(v: CssValue, fontSize: number | null, rootFontSize: number | null): AnimValue {
+  if (v.kind === 'keyword' && v.value === 'none') return { kind: 'transform', fns: [] };
+  if (v.kind !== 'other' || v.type !== TRANSFORM_LIST_TYPE) return animValueOf(v);
+  const fns: TransformFnDecl[] = [];
+  for (const f of transformFunctionsOf(v.text)) {
+    if (f.kind !== 'translate') {
+      fns.push(f);
+      continue;
+    }
+    const x = transformPx(f.x, fontSize, rootFontSize);
+    const y = transformPx(f.y, fontSize, rootFontSize);
+    if (x === null || y === null) return { kind: 'env', text: v.text };
+    fns.push({ ...f, x, y });
+  }
+  return { kind: 'transform', fns };
+}
+
+/** A longhand's value as the runtime interpolates it: transform through transformValueOf, every other longhand animValueOf. */
+export function endpointOf(p: Longhand, v: CssValue, fontSize: number | null = null, rootFontSize: number | null = null): AnimValue {
+  return animationKind(p).kind === 'transform' ? transformValueOf(v, fontSize, rootFontSize) : animValueOf(v);
+}
+
+const TRANSFORM_FAMILY = (f: TransformFnDecl): string => f.kind;
+const ANIM_M = 'mismatched transform functions need matrix interpolation (package ANIM-m)';
+
+/**
+ * Why two transform lists do not interpolate function by function on every target, or null. css-transforms-1 §9 (Chrome's
+ * TransformOperations::Blend): the shorter list is padded with identity functions and each pair must be one primitive; any
+ * other pair, and matrix() (decomposed), needs matrix interpolation (ANIM-m, M10). A rotation after a scale that is non-uniform
+ * at either end skews the box between them, which Android's View transform cannot express (PNT2-m).
+ */
+export function transformPairProblem(a: AnimValue, b: AnimValue): string | null {
+  if (a.kind !== 'transform' || b.kind !== 'transform') return null;
+  if (a.fns.some((f) => f.kind === 'matrix') || b.fns.some((f) => f.kind === 'matrix')) return ANIM_M;
+  const n = Math.min(a.fns.length, b.fns.length);
+  for (let i = 0; i < n; i++) if (TRANSFORM_FAMILY(a.fns[i] as TransformFnDecl) !== TRANSFORM_FAMILY(b.fns[i] as TransformFnDecl)) return ANIM_M;
+  const at = (i: number): TransformFnDecl[] => [a.fns[i], b.fns[i]].filter((f): f is TransformFnDecl => f !== undefined);
+  let skewing = false;
+  for (let i = 0; i < Math.max(a.fns.length, b.fns.length); i++) {
+    const fs = at(i);
+    if (skewing && fs.some((f) => f.kind === 'rotate' && f.deg !== 0)) return 'a rotation after a non-uniform scale skews the box between these values, which Android\'s View transform cannot express (package PNT2-m)';
+    if (fs.some((f) => f.kind === 'scale' && f.sx !== f.sy)) skewing = true;
+  }
+  return null;
+}
+
 /** A computed font size: computeLengths makes every font-size px, so anything else is a compiler error, not a default. */
 export function fontPx(v: CssValue): number {
   if (v.kind === 'length' && v.unit === 'px') return v.value;
@@ -251,8 +321,10 @@ export type AnimationInput = {
 };
 
 const KIND_LABEL = (k: AnimationKind): string => (k.kind === 'length' ? `length (${k.range})` : k.kind);
-// The spec's ANIM-p row: opacity and transform are admitted by ANIM-b2, so their refusals name that package.
-const PACKAGE_OF = (p: string): string => (p === 'opacity' || p === 'transform' ? 'ANIM-b2' : 'ANIM-p');
+// The spec's ANIM-p row: opacity, transform and the individual transforms (translate, rotate, scale) are admitted by ANIM-b2, so
+// their refusals name that package.
+const ANIM_B2: ReadonlySet<string> = new Set(['opacity', 'transform', 'translate', 'rotate', 'scale']);
+const PACKAGE_OF = (p: string): string => (ANIM_B2.has(p) ? 'ANIM-b2' : 'ANIM-p');
 
 /**
  * CSS2 §9.2.2: an element other than the root whose display is inline after blockification is an inline box (INL1a). The runtimes
@@ -262,6 +334,28 @@ const PACKAGE_OF = (p: string): string => (p === 'opacity' || p === 'transform' 
 function inlineBoxAt(el: ResolvedElement, root: ResolvedElement): boolean {
   const v = valueAt(el, 'display').value;
   return el !== root && v.kind === 'keyword' && v.value === 'inline';
+}
+
+/**
+ * ANIM-b2: while its transform animates, an element is a containing block and stacking context even where its own transform is
+ * none (css-transforms-1 §3, css-animations-1 §3, Chrome's running-animation compositing reasons); Dragon lowers both from the static
+ * transform only. So an element whose transform is none (and not will-change: transform) is refused when either can change what it
+ * paints: a positioned descendant (the containing block), or a paint order (stacking.ts stackingOf) that differs with the element
+ * made a stacking context. Returns what it has, or null.
+ */
+function untransformedStacking(el: ResolvedElement, root: ResolvedElement): string | null {
+  const own = valueAt(el, 'transform').value;
+  if (!(own.kind === 'keyword' && own.value === 'none') || willChangeFeatures(valueAt(el, 'will-change').value).includes('transform')) return null;
+  const isStatic = (e: ResolvedElement): boolean => {
+    const v = valueAt(e, 'position').value;
+    return v.kind === 'keyword' && v.value === 'static';
+  };
+  const positioned = (e: ResolvedElement): boolean => e.children.some((c) => c.kind === 'element' && (!isStatic(c) || positioned(c)));
+  if (positioned(el)) return 'a positioned descendant, whose containing block it becomes';
+  // The paint order with the element a stacking context (as a transformed box is) against the static one (Appendix E).
+  const tree = resolvedStackTree(root, propagatedFrom(root));
+  const marked = (n: StackNode): StackNode => ({ ...n, transformed: n.transformed || n.id === el.element.address, children: n.children.map(marked) });
+  return stackingOf(marked(tree)).order.join() === stackingOf(tree).order.join() ? null : 'content its stacking context would paint in another order';
 }
 
 const INLINE_ANIM_MANUAL = 'Animate a block-level element instead (display: block or inline-block on a wrapper), or remove the declaration.';
@@ -358,6 +452,8 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           else for (const item of list.items) feature(`${p}:${featureType(item)}`, d.valueSpan);
         }
       }
+      // Whether an earlier animation of this element animates transform: it composes under the later ones (rt-animations.ts).
+      let transformBelow = false;
       for (const a of ea.animations) {
         if (a.name === 'none') continue;
         if (!a.hasKeyframes) {
@@ -368,12 +464,20 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           once(`inl-anim|${ea.address}|${a.name}`, diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanFor(ea, 'animation-name')), message: `animation ${a.name} on <${el.element.tag}> ${ea.address} animates an inline box, which Dragon does not animate yet: no frame fixture proves it (INL1a)`, manual: INLINE_ANIM_MANUAL }));
         }
         const rule = keyframes.get(a.name) as KeyframesRule;
+        const fontSize = fontPx(valueAt(el, 'font-size').value);
+        const rootSize = fontPx(valueAt(rootEl, 'font-size').value);
+        const transforms: { offset: number; value: AnimValue; span: Span }[] = [];
         for (const b of rule.blocks) {
           for (const v of b.values) {
             const kind = animationKind(v.property);
             animated.add(`${ea.address}|${v.property}`);
             if (!admitted(kind)) continue;
-            const value = keyframeValueOf(v.value, fontPx(valueAt(el, 'font-size').value), fontPx(valueAt(rootEl, 'font-size').value));
+            const value = kind.kind === 'transform' ? transformValueOf(v.value, fontSize, rootSize) : keyframeValueOf(v.value, fontSize, rootSize);
+            if (kind.kind === 'transform') {
+              if (value.kind === 'env') once(`kfenv|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} is unsupported: a transform length that does not compute to px is not built yet (package ANIM-b2)`));
+              else for (const offset of b.offsets) transforms.push({ offset, value, span: v.valueSpan });
+            }
+            if (v.property === 'background-color' && foldedOpacity(el) !== null) once(`kffold|${ea.address}|${a.name}`, refuse(v.valueSpan, FOLD_ANIMATED(ea.address)));
             if (kind.kind === 'color' && value.kind === 'keyword' && value.value === 'currentcolor') once(`kfcc|${v.span.start}`, refuse(v.valueSpan, `${v.property}: currentcolor in @keyframes ${a.name} is unsupported: a keyframe pair between currentcolor and a colour is not built yet (package ANIM-cc)`));
             const id = `${a.name}|${v.span.start}|${v.property}`;
             const text = JSON.stringify(value);
@@ -381,6 +485,25 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             if (prev === undefined) resolutions.set(id, { address: ea.address, text });
             else if (prev.text !== text) once(`kfv|${id}`, refuse(v.valueSpan, `${v.property}: ${v.text} is unsupported: one @keyframes resolves to different values on ${prev.address} and ${ea.address} (package ANIM-v)`));
           }
+        }
+        const stacking = transforms.length > 0 ? untransformedStacking(el, rootEl) : null;
+        if (stacking !== null) once(`kfcb|${ea.address}`, refuse(spanFor(ea, 'animation-name'), `animation ${a.name} on ${ea.address} animates transform on an element whose transform is none, with ${stacking}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
+        // ANIM-m: each pair of neighbouring transform keyframes, a missing 0% or 100% being the element's own value (neutral).
+        if (transforms.length > 0) {
+          const sorted = transforms.map((t, i) => ({ ...t, i })).sort((x, y) => x.offset - y.offset || x.i - y.i);
+          const base = { value: endpointOf('transform', valueAt(el, 'transform').value), span: spanFor(ea, 'animation-name') };
+          const chain = [...((sorted[0] as { offset: number }).offset === 0 ? [] : [base]), ...sorted, ...((sorted[sorted.length - 1] as { offset: number }).offset === 1 ? [] : [base])];
+          // A missing 0% or 100% takes the underlying value, which is the lower animation's frame when one animates transform too,
+          // not the static value the pairs below are checked against.
+          if (transformBelow && chain.includes(base)) once(`kfnb|${a.name}|${ea.address}`, refuse(spanFor(ea, 'animation-name'), `animation ${a.name} on ${ea.address} leaves out its 0% or 100% transform keyframe over another animation of transform, whose frames that keyframe would take: not built yet (package ANIM-b2)`));
+          for (let k = 1; k < chain.length; k++) {
+            const x = chain[k - 1] as { value: AnimValue; span: Span };
+            const y = chain[k] as { value: AnimValue; span: Span };
+            const problem = transformPairProblem(x.value, y.value);
+            const span = y === base ? x.span : y.span;
+            if (problem !== null) once(`kfm|${a.name}|${span.start}|${ea.address}`, refuse(span, `transform in @keyframes ${a.name} on ${ea.address}: ${problem}`));
+          }
+          transformBelow = true;
         }
       }
     }
@@ -401,8 +524,8 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
         if (before === undefined || ea === undefined) continue;
         for (const [p, listing] of after.listings) {
           if (listing.delay + listing.duration <= 0) continue;
-          const from = animValueOf(valueAt(ea, p).value);
-          const to = animValueOf(valueAt(eb, p).value);
+          const from = endpointOf(p, valueAt(ea, p).value);
+          const to = endpointOf(p, valueAt(eb, p).value);
           if (sameValue(from, to)) continue;
           const kind = animationKind(p);
           if (kind.kind === 'discrete') continue;
@@ -416,6 +539,11 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
             continue;
           }
+          if (p === 'background-color' && (foldedOpacity(ea) !== null || foldedOpacity(eb) !== null)) once(`tfold|${address}|${span.start}`, refuse(span, FOLD_ANIMATED(address)));
+          const stacking = p === 'transform' ? (untransformedStacking(ea, [...ta.values()][0] as ResolvedElement) ?? untransformedStacking(eb, [...tb.values()][0] as ResolvedElement)) : null;
+          if (stacking !== null) once(`tcb|${address}`, refuse(span, `a transition of transform on ${address} starts on an element whose transform is none, with ${stacking}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
+          const problem = transformPairProblem(from, to);
+          if (problem !== null) once(`tm|${p}|${address}|${span.start}`, refuse(span, `${p} on ${address}: a transition between two reachable states: ${problem}`));
           const cc = (v: AnimValue): boolean => v.kind === 'keyword' && v.value === 'currentcolor';
           if (cc(from) !== cc(to)) once(`tcc|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition between currentcolor and a colour is unsupported (package ANIM-cc)`));
           if (animated.has(`${address}|${p}`)) once(`to|${p}|${span.start}`, refuse(span, `${p} on ${address} is both transitioned and animated: Chrome blocks transitions on animated properties (package ANIM-o)`));
@@ -460,6 +588,10 @@ export function refuseBandedAnimations(allRules: readonly Rule[], inEveryBand: (
     }
   }
 }
+
+// PNT1-opacity-b: a fractional opacity folded into its box's fill (lower/paint/background.ts) puts the alpha on the fill, which the
+// animator's background-color writes replace with the animated colour's own alpha; refused until the animator carries the fold.
+const FOLD_ANIMATED = (address: string): string => `background-color on ${address} animates the fill a fractional opacity is folded into, and the animated colour would drop the opacity: not built yet (package PNT1-opacity-b)`;
 
 function refuse(span: Span, message: string): Diagnostic {
   return diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message, manual: 'Remove the declaration, or animate a colour or length property between values of one kind.' });

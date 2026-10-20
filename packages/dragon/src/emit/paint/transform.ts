@@ -31,12 +31,12 @@ function lengthLit(b: NativeBackend, l: TransformLength): string {
   return b === 'uikit' ? `LengthValue(JsString(${k}), ${num(l.px)}, ${num(l.percent)})` : `LengthValue(${k}, ${num(l.px)}, ${num(l.percent)})`;
 }
 
-function opLit(b: NativeBackend, o: TransformOp): string {
+export function opLit(b: NativeBackend, o: TransformOp): string {
   const fn = checked(o.fn, FNS);
   return `TransformOp(${b === 'uikit' ? `JsString(${fn})` : fn}, ${lengthLit(b, o.x)}, ${lengthLit(b, o.y)}, ${num(o.angle)}, ${num(o.sx)}, ${num(o.sy)})`;
 }
 
-const originLit = (b: NativeBackend, o: TransformOrigin): string => `TransformOrigin(${lengthLit(b, o.x)}, ${lengthLit(b, o.y)})`;
+export const originLit = (b: NativeBackend, o: TransformOrigin): string => `TransformOrigin(${lengthLit(b, o.x)}, ${lengthLit(b, o.y)})`;
 
 const lengthJson = (l: TransformLength): JsonValue => [l.kind, l.px, l.percent];
 

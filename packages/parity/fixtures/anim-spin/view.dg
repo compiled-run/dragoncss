@@ -1,0 +1,6 @@
+<div rec
+{hold === true ? 'hold' : ''}
+hold: [false, true] = false
+component App
+<html>
+<body>

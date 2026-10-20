@@ -17,6 +17,12 @@ const SWIFT_MEMBERS = String.raw`  /// OVFL-B: this box's scroll offset range in
     addSubview(s)
     dragonClipView = s
   }
+  /// OVFL-S0: scrollbar-width: none hides the scroll view's indicators.
+  public func dragonHideScrollIndicators() {
+    guard let s = dragonClipView as? DragonScrollView else { fatalError("dragon: \(dragonId) hides scroll indicators without a scroll view") }
+    s.showsHorizontalScrollIndicator = false
+    s.showsVerticalScrollIndicator = false
+  }
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -78,12 +84,15 @@ public func dragonAfterLayoutScroll(_ v: DragonBoxView, _ shape: DragonBoxShape,
   sv.dragonSetRange(r, scale)
 }
 
-/// The readback of the scroll module: the offset range UIKit clamps a user's scroll to, in whole device px.
+/// The readback of the scroll module: the offset range UIKit clamps a user's scroll to, in whole device px, then false for
+/// indicators when no scrolling axis shows one (scrollbar-width: none), read from UIKit's own flags.
 public func dragonAppliedScroll(_ v: DragonBoxView) -> DumpJsonObject {
   guard let sv = v.dragonClipView as? DragonScrollView else { return [] }
   let s = v.dragonScale
   let r = [-sv.contentInset.left, sv.contentSize.width + sv.contentInset.right - sv.bounds.width, -sv.contentInset.top, sv.contentSize.height + sv.contentInset.bottom - sv.bounds.height]
-  return [("dragonScroll.range", .array(r.map { .number(dragonWholeDevicePx(Double($0) * s, "\(v.dragonId) scroll range") + 0) }))]
+  var out: DumpJsonObject = [("dragonScroll.range", .array(r.map { .number(dragonWholeDevicePx(Double($0) * s, "\(v.dragonId) scroll range") + 0) }))]
+  if !(sv.scrollsX && sv.showsHorizontalScrollIndicator) && !(sv.scrollsY && sv.showsVerticalScrollIndicator) { out.append(("dragonScroll.indicators", .bool(false))) }
+  return out
 }
 `;
 
@@ -98,6 +107,11 @@ const KOTLIN_MEMBERS = String.raw`  /** OVFL-B: this box's scroll offset range i
     val s = DragonScrollView(context, x, y)
     addView(s)
     dragonClipView = s
+  }
+  /** OVFL-S0: scrollbar-width: none hides the scroll view's scrollbars: a touch never enables them (DragonScrollView.barsOnTouch). */
+  fun dragonHideScrollIndicators() {
+    val s = dragonClipView as? DragonScrollView ?: throw IllegalStateException("dragon: " + dragonId + " hides scroll indicators without a scroll view")
+    s.indicators = false
   }
 `;
 
@@ -146,6 +160,10 @@ ${KOTLIN_DRAG}
  * fade, enabled at the first touch so a view at rest draws none.
  */
 class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolean) : DragonClipView(ctx) {
+  /** Whether a touch enables the overlay scrollbars; scrollbar-width: none turns it off (dragonHideScrollIndicators). */
+  var indicators = true
+  /** Whether a touch enables the scrollbar of an axis: the one predicate both touch paths and the readback use. */
+  fun barsOnTouch(axisScrolls: Boolean): Boolean = axisScrolls && indicators
   /** The offset range: minX, maxX, minY, maxY in device px; a locked axis is 0, 0. Every scroll clamps to it. */
   val dragonRange = IntArray(4)
   private val scroller = OverScroller(ctx)
@@ -198,8 +216,8 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
 
   private fun beginDrag() {
     dragging = true
-    isHorizontalScrollBarEnabled = scrollsX
-    isVerticalScrollBarEnabled = scrollsY
+    isHorizontalScrollBarEnabled = barsOnTouch(scrollsX)
+    isVerticalScrollBarEnabled = barsOnTouch(scrollsY)
     parent?.requestDisallowInterceptTouchEvent(true)
   }
 
@@ -240,8 +258,8 @@ class DragonScrollView(ctx: Context, val scrollsX: Boolean, val scrollsY: Boolea
         scroller.forceFinished(true)
         ax.down(e.x)
         ay.down(e.y)
-        isHorizontalScrollBarEnabled = scrollsX
-        isVerticalScrollBarEnabled = scrollsY
+        isHorizontalScrollBarEnabled = barsOnTouch(scrollsX)
+        isVerticalScrollBarEnabled = barsOnTouch(scrollsY)
       }
       MotionEvent.ACTION_MOVE -> {
         var start = startPending
@@ -288,23 +306,25 @@ fun dragonAfterLayoutScroll(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
   sv.dragonSetRange(r)
 }
 
-/** The readback of the scroll module: the offset range every scroll clamps to, in device px. */
+/** The readback of the scroll module: the offset range every scroll clamps to, in device px, then false for indicators when a touch enables no scrollbar. */
 fun dragonAppliedScroll(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val sv = v.dragonClipView as? DragonScrollView ?: return emptyList()
-  return listOf(Pair("dragonScroll.range", DumpJson.Arr(sv.dragonRange.map { DumpJson.Num(it.toDouble()) })))
+  val range = Pair("dragonScroll.range", DumpJson.Arr(sv.dragonRange.map { DumpJson.Num(it.toDouble()) }))
+  return if (sv.barsOnTouch(sv.scrollsX) || sv.barsOnTouch(sv.scrollsY)) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))
 }
 `;
 
 const bool = (b: boolean): string => (b ? 'true' : 'false');
 
-export const SCROLL_EMITTER: PaintEmitter<'scroll-container'> = {
+export const SCROLL_EMITTER: PaintEmitter<'scroll-container' | 'scroll-indicators-hidden'> = {
   name: 'scroll',
-  kinds: ['scroll-container'],
+  kinds: ['scroll-container', 'scroll-indicators-hidden'],
   lines: {
-    uikit: (v, _n, w) => [`  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)})`],
-    'android-views': (v, _n, w) => [`  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)})`],
+    uikit: (v, _n, w) => [w.kind === 'scroll-container' ? `  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)})` : `  ${v}.dragonHideScrollIndicators()`],
+    'android-views': (v, _n, w) => [w.kind === 'scroll-container' ? `  ${v}.dragonEnableScroll(${bool(w.x)}, ${bool(w.y)})` : `  ${v}.dragonHideScrollIndicators()`],
   },
   applied: (_e, _backend, w, _dpr, g) => {
+    if (w.kind === 'scroll-indicators-hidden') return false;
     if (g.scroll === null) throw new Error('a scroll container with no engine scroll range');
     const [minX, maxX, minY, maxY] = g.scroll;
     return w.x ? (w.y ? [minX, maxX, minY, maxY] : [minX, maxX, 0, 0]) : w.y ? [0, 0, minY, maxY] : [0, 0, 0, 0];

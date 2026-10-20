@@ -79,6 +79,9 @@ export function appliedValue(engine: ExpectedEngine, backend: NativeBackend, w: 
       return w.shear;
     case 'synthetic-bold':
       return { keys: [...w.keys], values: [...w.values] };
+    case 'text-stroke':
+      // The width the view strokes in device px (Chrome's css width * device pixel ratio): Android's Paint.strokeWidth is a float.
+      return { deviceWidth: ios ? w.width * dpr : engine.float32(w.width * dpr), color: rgba(w.color) };
     case 'font': {
       if (g.fontSize === null) throw new Error(`a font write on a node without a resolved font size`);
       const size = engine.platformFontSize(g.fontSize);

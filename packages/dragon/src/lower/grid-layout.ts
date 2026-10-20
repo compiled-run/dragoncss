@@ -4,9 +4,10 @@
 // repeat(auto-fill) or repeat(auto-fit) the explicit grid depends on the container's size, so the engine resolves those lines from
 // the line names written here as integer ids.
 import type { CssNode } from 'css-tree';
-import { parse } from 'css-tree';
-import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, GridLineName, GridSelfAlign, GridSpan, TrackBreadth, TrackRepeater, TrackSize } from '@dragon/layout';
+import { generate, parse } from 'css-tree';
+import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, GridLineName, GridSelfAlign, GridSpan, LengthCalc, TrackBreadth, TrackRepeater, TrackSize } from '@dragon/layout';
 import { list } from '../css/ast.ts';
+import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
 import { decodeName, serializeIdentifier } from '../css/escapes.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
@@ -47,8 +48,31 @@ const refuse = (p: Longhand, v: CssValue | string, why: string): never => {
   throw new GridLoweringError(p, `${p}: ${typeof v === 'string' ? v : valueToString(v)} has no grid layout mapping: ${why}`);
 };
 
+const VIEWPORT_AXIS: { readonly [unit: string]: 'width' | 'height' | 'min' | 'max' } = { vw: 'width', vi: 'width', vh: 'height', vb: 'height', vmin: 'min', vmax: 'max' };
+
+/**
+ * A track size's math function or viewport length as a non-negative calculation (Blink parses a <track-breadth> with
+ * ValueRange::kNonNegative), which the engine's environment pass resolves. Its em and rem are px already (computeGridLengths).
+ */
+function trackCalc(p: Longhand, n: CssNode): LengthCalc | null {
+  if (n.type === 'Dimension') {
+    const axis = VIEWPORT_AXIS[String(n['unit']).toLowerCase()];
+    return axis === undefined ? null : { kind: 'calc', expr: { kind: 'viewport', value: Number(n['value']), axis, size: 'large' }, range: 'non-negative' };
+  }
+  if (n.type !== 'Function' || !V1_MATH_FUNCTIONS.has(String(n['name']).toLowerCase())) return null;
+  const context = mathContextFor(p);
+  const text = generate(n);
+  const parsed = 'refused' in context ? null : parseMath(text, context);
+  if (parsed === null || !parsed.ok) return refuse(p, text, `a calculation V1 supports${parsed === null ? '' : ` (${parsed.reason})`}`);
+  const fonts = fontUnitsIn(parsed.node);
+  if (fonts.em || fonts.rem) return refuse(p, text, 'em and rem in a calculation on an element whose font sizes are not px');
+  return lowerLengthCalc(parsed.node, { em: 0, rem: 0 }, 'non-negative');
+}
+
 function breadth(p: Longhand, n: CssNode | undefined): TrackBreadth {
   if (n === undefined) return refuse(p, '(missing)', 'a track breadth is missing');
+  const calc = trackCalc(p, n);
+  if (calc !== null) return calc;
   if (n.type === 'Identifier') {
     const k = String(n['name']).toLowerCase();
     if (k === 'auto') return { kind: 'auto' };
@@ -62,18 +86,18 @@ function breadth(p: Longhand, n: CssNode | undefined): TrackBreadth {
     if (unit === 'fr') return { kind: 'fr', value };
   }
   if (n.type === 'Percentage') return { kind: 'percent', value: Number(n['value']) };
-  return refuse(p, String(n.type), 'expected px, %, fr, auto, min-content or max-content');
+  return refuse(p, String(n.type), 'expected px, %, fr, auto, min-content, max-content, a viewport length or a calculation');
 }
 
-function lengthPercentage(p: Longhand, n: CssNode | undefined): { readonly kind: 'px'; readonly value: number } | { readonly kind: 'percent'; readonly value: number } {
+function lengthPercentage(p: Longhand, n: CssNode | undefined): { readonly kind: 'px'; readonly value: number } | { readonly kind: 'percent'; readonly value: number } | LengthCalc {
   const b = breadth(p, n);
-  if (b.kind === 'px' || b.kind === 'percent') return b;
+  if (b.kind === 'px' || b.kind === 'percent' || b.kind === 'calc') return b;
   return refuse(p, b.kind, 'fit-content() takes a length or percentage');
 }
 
 /** A <track-size> token. css-grid-2 §7.2.1: a flexible minimum is invalid, and the computed text writes minmax(auto, <flex>) as the <flex>. */
 function trackSize(p: Longhand, n: CssNode): TrackSize {
-  if (n.type === 'Function') {
+  if (n.type === 'Function' && !V1_MATH_FUNCTIONS.has(String(n['name']).toLowerCase())) {
     const name = String(n['name']).toLowerCase();
     const args = argsOf(n);
     if (name === 'minmax' && args.length === 2 && args[0]?.length === 1 && args[1]?.length === 1) {
