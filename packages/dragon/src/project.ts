@@ -1329,8 +1329,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
         refuseAnimatedSafeAreaInsets(a, roots, nativeTargets, diagnostics, safeAreaReported);
         refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
-        // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only,         // FX-0: a backdrop-filter or mix-blend-mode is drawn only on a page that does not animate (analysis/fx.ts).
-        if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, fxReported, groupMotionReported,         refuseAnimatedFx(a);
+        // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only).
+        if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, groupMotionReported);
+        // FX-0: a backdrop-filter or mix-blend-mode is drawn only on a page that does not animate (analysis/fx.ts).
+        refuseAnimatedFx(a, roots, nativeTargets, diagnostics, fxReported);
       });
       // TXT-FX: a state program's text records carry no stroke, so native refuses a drawn stroke wherever the output is one.
       const animated = bandAnimations.some((a) => a.cases.some((c) => [...c.elements.values()].some((e) => e.declared || e.animations.some((x) => x.name !== 'none'))));
