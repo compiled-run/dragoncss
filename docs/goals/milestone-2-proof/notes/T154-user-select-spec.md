@@ -16,26 +16,28 @@ The used value (css-ui-4 §6.1) is what decides selection. `auto` resolves to `n
 `all` under `all`, and to `text` otherwise. The root counts as having a `text` parent, and nothing that compiles is editable, so
 `contain` never arises.
 
-An author value compiles on native when its used value is either:
+An author value compiles on native when either:
 
-- `none` (native matches it exactly), or
-- the used value `auto` would get under the same parent. Then the declaration changes nothing in Chrome, and native draws the
-  element as it draws the default. Undeclared, the element inherits its parent's computed value, and that resolves to the same
-  used value.
+- it computes to `none` (native matches it exactly; this covers `inherit` and `unset` under `none`), or
+- its parent's used value is `text` and its own is too. Then the declaration changes nothing in Chrome, and native draws the
+  element as it draws the default.
 
-So `auto`, `initial`, and `unset` always compile. `text` and `inherit` compile under a parent whose used value is `text`. A
-value is refused when it makes text selectable where the default would not (`text` under `none`), or selects content as a unit
-(`all`).
+So `auto`, `initial`, `unset`, `text` and `inherit` compile under a `text` parent. A value is refused when it makes text
+selectable where the default would not (`text` under `none`), or selects content as a unit (`all`).
+
+`auto` and `initial` under `none` are refused too, although their spec used value is `none`. Chrome 145 applies that used value
+only to where a selection can start: a press inside the `auto` box starts nothing. A selection that starts outside, by Ctrl+A or
+a drag from a later sibling, takes in and highlights the `auto` subtree. With `.a { user-select: none }` holding `.b`, Ctrl+A
+selects only the sibling's text; adding `.b { user-select: auto }` selects `.b`'s text too (landing review of #505).
 
 **Proof**
 - packages/dragon/test/user-select.test.ts covers the rule and its refusals.
-- packages/parity/test/user-select-noop.test.ts proves it against Chrome. For each case, Chrome drags a selection across the page
-  and inside each block. It compares the selected text and its client rects with the "native model" page, which keeps only the
+- packages/parity/test/user-select-noop.test.ts proves it against Chrome. For each case, Chrome selects all (Ctrl+A), drags a
+  selection across the page both ways (so one starts at the later sibling, outside any `none` subtree), and drags inside each block. It compares the selected text and its client rects with the "native model" page, which keeps only the
   `none` rules.
   - Every case Dragon compiles on native must select exactly what the model selects.
   - Every case Dragon refuses must select something different, so each refusal is needed.
-  - If the test pretends all 15 cases compile, it fails on all 6 refused cases.
-- user-select-none.html gains `auto` and `text` cases that compile on native, so they can prove profile rows.
+- user-select-none.html gains `auto` and `text` cases under a `text` parent that compile on native, so they can prove profile rows.
 
 ## Slice 2 and on: real selection (P6c, T077)
 

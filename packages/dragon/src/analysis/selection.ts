@@ -1,9 +1,11 @@
 // The user-select refusal (T154): no native text is selectable until package P6c (T077) builds selection. iOS and Android draw
 // every element as Chrome draws it with no author user-select (the default, auto, whose text Chrome makes selectable, is the gap P6c
-// closes) or with none (nothing selectable, which native already has). So on native an author's user-select compiles when its used
-// value (css-ui-4 §6.1) is none, or is the used value auto would get under the same parent, which makes the declaration change
-// nothing in Chrome: auto everywhere, and text, inherit or unset under a parent whose used value is text. Every other value
-// (text or all that makes text selectable where the default would not, or selects it as a unit) is refused until P6c.
+// closes) or with none (nothing selectable, which native already has). So on native an author's user-select compiles when it computes
+// to none, or when its parent's used value (css-ui-4 §6.1) is text and its own used value is too, which makes the declaration change
+// nothing in Chrome: auto, initial, text, inherit or unset under a text parent, and inherit or unset under none. Every other value is
+// refused until P6c: text or all that makes text selectable where the default would not, or selects it as a unit, and auto or initial
+// under none. Chrome 145 keeps the spec's used value none for auto there only where a selection starts (a press inside starts
+// nothing); a selection that starts outside, by Ctrl+A or a drag from a later sibling, takes in and highlights the auto subtree.
 // The parity lanes compile the refused values on native anyway (project.ts, lane-only): such a case proves web rows only.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../types.ts';
@@ -31,7 +33,8 @@ export function checkSelectable(root: ResolvedElement, targets: readonly string[
     if (v.value.kind !== 'keyword') throw new Error(`${el.element.address}: user-select did not compute to a keyword`);
     const k = v.value.value;
     const used = usedUserSelect(k, parent);
-    if (v.declaration !== null && v.origin !== 'inherited' && used !== 'none' && used !== usedUserSelect('auto', parent)) {
+    const changesNothing = k === 'none' || (parent === 'text' && used === 'text');
+    if (v.declaration !== null && v.origin !== 'inherited' && !changesNothing) {
       for (const t of targets) {
         if (t === 'web') continue;
         const id = `${t}|user-select|${el.element.address}`;
@@ -40,7 +43,7 @@ export function checkSelectable(root: ResolvedElement, targets: readonly string[
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
           origin: authored(v.declaration.valueSpan),
           target: t,
-          message: `${el.element.address} has user-select ${k}, whose used value in Chrome is ${used} where the default's is ${usedUserSelect('auto', parent)}; no ${t} text is selectable until package P6c (T077) builds selection, so Dragon compiles user-select only where it is none or changes nothing`,
+          message: `${el.element.address} has user-select ${k}, ${k === 'auto' && parent === 'none' ? 'which Chrome selects under a none parent when a selection starts outside it' : `whose used value in Chrome is ${used} where the default's is ${usedUserSelect('auto', parent)}`}; no ${t} text is selectable until package P6c (T077) builds selection, so Dragon compiles user-select only where it is none or changes nothing`,
           manual: 'Use user-select: none or auto, or leave user-select undeclared.',
           basis: 'computed-value',
         }));

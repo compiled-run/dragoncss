@@ -76,8 +76,8 @@ describe('user-select: native compiles none and the values that change nothing (
     }
   });
 
-  it('auto, initial, and text, inherit or unset under the default compile on ios and android: their used value is the default\'s', () => {
-    for (const css of ['.a { user-select: auto; }', '.a { user-select: initial; }', '.a { user-select: text; }', '.a { user-select: text; } .b { user-select: inherit; }', '.b { user-select: unset; }', '.a { user-select: none; } .b { user-select: auto; }', '.a { -webkit-user-select: TEXT; } .b { user-select: auto; }']) {
+  it('auto, initial, text, inherit or unset under a text parent compile on ios and android: their used value is the default\'s', () => {
+    for (const css of ['.a { user-select: auto; }', '.a { user-select: initial; }', '.a { user-select: text; }', '.a { user-select: text; } .b { user-select: inherit; }', '.b { user-select: unset; }', '.a { -webkit-user-select: TEXT; } .b { user-select: auto; }']) {
       const c = compile(css, NATIVE);
       expect(errors(c), css).toEqual([]);
       expect(c.outputs.ios.kind, css).not.toBe('blocked');
@@ -97,6 +97,17 @@ describe('user-select: native compiles none and the values that change nothing (
       expect(errs[0]?.message, css).toBe(`${el} has user-select ${k}, whose used value in Chrome is ${used} where the default's is ${def}; no ios text is selectable until package P6c (T077) builds selection, so Dragon compiles user-select only where it is none or changes nothing`);
       expect(c.outputs.web.kind, css).toBe('ready');
       expect(c.outputs.ios.kind, css).toBe('blocked');
+      expectCatalogued(errs);
+    }
+  });
+
+  it('auto or initial under none is refused on ios and android: Chrome selects it when a selection starts outside the none subtree', () => {
+    for (const css of ['.a { user-select: none; } .b { user-select: auto; }', '.a { user-select: none; } .b { user-select: initial; }', '.a { user-select: none; } .b { -webkit-user-select: auto; }']) {
+      const c = compile(css, NATIVE);
+      const errs = errors(c);
+      expect(errs.map((d) => [d.code, d.target]), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'android']]);
+      expect(errs[0]?.message, css).toBe('b has user-select auto, which Chrome selects under a none parent when a selection starts outside it; no ios text is selectable until package P6c (T077) builds selection, so Dragon compiles user-select only where it is none or changes nothing');
+      expect(c.outputs.web.kind, css).toBe('ready');
       expectCatalogued(errs);
     }
   });

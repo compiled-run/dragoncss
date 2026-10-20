@@ -1,7 +1,8 @@
 // T154 slice 1 against Chrome 145 (packages/dragon/src/analysis/selection.ts): on iOS and Android an author user-select compiles when
-// its used value is none or the default's, so native, which selects nothing yet (P6c), stands for the page with every rule but the
-// none ones removed. For each case Chrome drags a selection across the page and inside each block; a case Dragon compiles on native
-// selects exactly what that model page selects, and each case it refuses selects something else, so every refusal is needed.
+// it computes to none or its used value is text under a text parent, so native, which selects nothing yet (P6c), stands for the page
+// with every rule but the none ones removed. For each case Chrome selects all (Ctrl+A), drags a selection across the page both ways
+// (so one starts outside a none subtree, from the later sibling) and inside each block; a case Dragon compiles on native selects
+// exactly what that model page selects, and each case it refuses selects something else, so every refusal is needed.
 import { describe, expect, it } from 'vitest';
 import { createProjectWith, NO_FAULTS } from '../../dragon/src/internal.ts';
 import type { Targets } from '../../dragon/src/types.ts';
@@ -18,6 +19,7 @@ const CASES: readonly (readonly Rule[])[] = [
   [['.b', 'unset']],
   [['.a', 'text'], ['.b', 'inherit']],
   [['.a', 'none'], ['.b', 'auto']],
+  [['.a', 'none'], ['.b', 'initial']],
   [['.a', 'none'], ['.b', 'inherit']],
   [['.a', 'none'], ['.b', 'unset']],
   [['.b', 'none'], ['.c', 'auto']],
@@ -45,16 +47,25 @@ type Page = {
   setContent(html: string): Promise<void>;
   evaluate(expression: string): Promise<unknown>;
   mouse: { move(x: number, y: number): Promise<void>; down(): Promise<void>; up(): Promise<void>; click(x: number, y: number): Promise<void> };
+  keyboard: { press(key: string): Promise<void> };
 };
 type Browser = { newPage(): Promise<Page>; close(): Promise<void> };
 
-/** What each drag selects: the selected text and its client rects. Drags run across the page and inside each block's first line. */
+/**
+ * What each selection selects: the selected text and its client rects. Ctrl+A first, then drags across the page both ways and inside
+ * each block's first line.
+ */
 async function selections(page: Page, rules: readonly Rule[]): Promise<string[]> {
   await page.setContent(html(rules));
   // Ahem: each glyph is 10px square, so a block's first line spans y 0..10 from its top and its text from x 0.
   const tops = (await page.evaluate(`['a', 'b', 'c', 'd'].map((id) => document.querySelector('[data-dragon-id="' + id + '"]').getBoundingClientRect().top)`)) as number[];
-  const drags: [number, number, number, number][] = [[1, 1, 95, (tops[3] as number) + 5], ...tops.map((t): [number, number, number, number] => [22, t + 5, 68, t + 5])];
+  const end = (tops[3] as number) + 5;
+  const drags: [number, number, number, number][] = [[1, 1, 95, end], [95, end, 1, 1], ...tops.map((t): [number, number, number, number] => [22, t + 5, 68, t + 5])];
   const out: string[] = [];
+  const selected = `(() => { const s = getSelection(); const rects = s.rangeCount === 0 ? [] : [...s.getRangeAt(0).getClientRects()].map((r) => [r.x, r.y, r.width, r.height].map(Math.round).join(',')); return JSON.stringify([s.toString(), rects]); })()`;
+  await page.mouse.click(250, 200);
+  await page.keyboard.press('Control+A');
+  out.push(String(await page.evaluate(selected)));
   for (const [x0, y0, x1, y1] of drags) {
     await page.mouse.click(250, 200);
     await page.mouse.move(x0, y0);
@@ -62,7 +73,7 @@ async function selections(page: Page, rules: readonly Rule[]): Promise<string[]>
     await page.mouse.move((x0 + x1) / 2, (y0 + y1) / 2);
     await page.mouse.move(x1, y1);
     await page.mouse.up();
-    out.push(String(await page.evaluate(`(() => { const s = getSelection(); const rects = s.rangeCount === 0 ? [] : [...s.getRangeAt(0).getClientRects()].map((r) => [r.x, r.y, r.width, r.height].map(Math.round).join(',')); return JSON.stringify([s.toString(), rects]); })()`)));
+    out.push(String(await page.evaluate(selected)));
   }
   return out;
 }
@@ -71,8 +82,8 @@ describe('user-select slice 1: the values native compiles select in Chrome what 
   it('each compiled case selects as its none-only model does, each refused case differently', async () => {
     const compiled = CASES.filter(compilesOnNative);
     const refused = CASES.filter((r) => !compilesOnNative(r));
-    expect(compiled.length).toBeGreaterThanOrEqual(9);
-    expect(refused.length).toBeGreaterThanOrEqual(5);
+    expect(compiled.length).toBeGreaterThanOrEqual(7);
+    expect(refused.length).toBeGreaterThanOrEqual(8);
     const { launchChrome } = (await import(new URL('../src/chrome.ts', import.meta.url).href)) as { launchChrome: () => Promise<Browser> };
     const browser = await launchChrome();
     const problems: string[] = [];
@@ -85,7 +96,9 @@ describe('user-select slice 1: the values native compiles select in Chrome what 
         if (refused.includes(rules) && same) problems.push(`${css(rules)}: refused on native, but Chrome selects as the none-only model does`);
       }
       // A drag selects something on the default page, so the comparison sees selection at all.
-      expect((await selections(page, []))[0]).toContain('AAAA');
+      const plain = await selections(page, []);
+      expect(plain[0]).toContain('AAAA');
+      expect(plain[1]).toContain('AAAA');
     } finally {
       await browser.close();
     }
