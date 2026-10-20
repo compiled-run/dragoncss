@@ -209,8 +209,11 @@ export type VerticalAlignValue = VerticalAlignKeywordValue | Px | Percent | Leng
 export type Fr = { readonly kind: 'fr'; readonly value: number };
 export type MinContent = { readonly kind: 'min-content' };
 export type MaxContent = { readonly kind: 'max-content' };
-/** css-grid-2 §7.2.1 <track-breadth>; a % breadth resolves against the grid container's content box in its axis. */
-export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent;
+/**
+ * css-grid-2 §7.2.1 <track-breadth>; a % breadth resolves against the grid container's content box in its axis. A math function
+ * or a viewport length is a non-negative LengthCalc, which the environment pass leaves as px or a calculation with a percentage.
+ */
+export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent | LengthCalc;
 /**
  * css-grid-2 §7.2.1 <track-size>, as Blink's GridTrackSize keeps it: a single breadth, minmax(min, max), or fit-content(limit).
  * A flexible breadth is never a minimum: the compiler writes minmax(auto, <flex>) as the <flex> breadth.
@@ -218,7 +221,7 @@ export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent;
 export type TrackSize =
   | { readonly kind: 'breadth'; readonly breadth: TrackBreadth }
   | { readonly kind: 'minmax'; readonly min: TrackBreadth; readonly max: TrackBreadth }
-  | { readonly kind: 'fit-content'; readonly limit: Px | Percent };
+  | { readonly kind: 'fit-content'; readonly limit: Px | Percent | LengthCalc };
 /**
  * One repeater of a track list (Blink GridTrackRepeater): a track written on its own is a repeater of count 1 with one size;
  * repeat(n, sizes) keeps its count unexpanded, since Chrome sizes each size of a repeater as one set of n tracks.
@@ -396,7 +399,7 @@ export type WhiteSpaceCollapse = 'collapse' | 'preserve' | 'preserve-breaks' | '
 export type TextWrapMode = 'wrap' | 'nowrap';
 /** css-text-3 §5.5 overflow-wrap (word-wrap is its alias). */
 export type OverflowWrap = 'normal' | 'break-word' | 'anywhere';
-/** css-text-3 §5.2 word-break; break-all, keep-all and auto-phrase are refused (code word-break, TXT2-d). */
+/** css-text-3 §5.2 word-break; auto-phrase, and break-all over anything but ASCII letters, digits and spaces, are refused (code word-break, TXT2-d). */
 export type WordBreak = 'normal' | 'break-all' | 'keep-all' | 'break-word' | 'auto-phrase';
 
 /** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */

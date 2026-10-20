@@ -6,7 +6,8 @@ import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
-import { legacyAliasRefusal, resolveAlias } from './aliases.ts';
+import type { AliasValueParser } from './aliases.ts';
+import { aliasValueParser, legacyAliasRefusal, resolveAlias } from './aliases.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import { unprefixedSizeKeyword } from './size-keywords.ts';
 import type { AtRuleContext, RuleCondition } from './at-rules.ts';
@@ -300,7 +301,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
     return null;
   }
   const from = diagnostics.length;
-  const declaration = parseResolved(d, property, base, sheetText, order, diagnostics);
+  const declaration = parseResolved(d, property, base, sheetText, order, diagnostics, aliasValueParser(name));
   for (let i = from; i < diagnostics.length; i++) {
     const x = diagnostics[i] as Diagnostic;
     diagnostics[i] = { ...x, message: `${x.message} (${name} is an alias of ${property})` };
@@ -308,7 +309,7 @@ function parseDeclaration(d: CssNode, base: Span, sheetText: string, order: numb
   return declaration === null ? null : { ...declaration, alias: name };
 }
 
-function parseResolved(d: CssNode, property: string, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[]): Declaration | null {
+function parseResolved(d: CssNode, property: string, base: Span, sheetText: string, order: number, diagnostics: Diagnostic[], aliasParse?: AliasValueParser): Declaration | null {
   const span = spanOf(d, base);
   const valueNode = d['value'] as CssNode;
   const valueSpan = spanOf(valueNode, base);
@@ -377,7 +378,8 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
     return { property, text: source.trim(), span, valueSpan, longhands: [], order, ...important, pending: { parts, longhands, ...(sides === null ? {} : { sides }) } };
   }
   const tokens = list(valueNode, 'children').filter((n) => n.type !== 'WhiteSpace');
-  const parsed = parseValue(property, valueNode, tokens, base, sheetText);
+  // A var() value is parsed after substitution as the property, as Chrome does; an alias Chrome parses differently parses its own way here.
+  const parsed = aliasParse?.(tokens) ?? parseValue(property, valueNode, tokens, base, sheetText);
   switch (parsed.kind) {
     case 'invalid':
       diagnostics.push(diagnostic('DRAGON_CSS_INVALID_VALUE', {

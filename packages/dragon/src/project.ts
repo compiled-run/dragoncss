@@ -24,6 +24,8 @@ import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { checkTranslucentOutlines } from './analysis/paint-values/outline.ts';
 import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
+import { checkGeneratedIdentity, generatedRuleRefusals } from './analysis/generated.ts';
+import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked } from './analysis/link.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -31,9 +33,11 @@ import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './a
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
+import { refuseStatefulStrokes } from './analysis/text-stroke.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
+import { refuseAnimatedTextFill } from './analysis/paint-values/text-fill.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -1229,6 +1233,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // NA-NATIVE: a refusal of a listed property or rule blocks only web; native gets an info (css/not-applicable.ts).
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
+    diagnostics.push(...generatedRuleRefusals(rules));
     const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else diagnostics.push(...nativeRefusals);
@@ -1248,6 +1253,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
     }
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
+    checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics);
     checkSvgContent(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
     // reports a rule for the targets of the bands it applies in, so a rule in no band blocks nothing.
@@ -1275,6 +1281,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       });
       bandCases = passes.map((p) => p.result);
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
+      // GEN-a R12: a generated box and its text are the same in every reachable state, interaction state and band.
+      checkGeneratedIdentity(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), diagnostics);
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       // REPL-a: the images every band's resolved cases reference, read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
@@ -1299,12 +1307,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
       // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. PNT1: an animated color
       // must not turn a currentcolor dotted, dashed or 3D outline or rounded double border translucent, nor reach a currentcolor
-      // paint native bakes in the resting color. MQ-R1: native switches bands at run time, so every band's cases and animations are
+      // paint native bakes in the resting color, nor text with its own fill (TXT-FX). MQ-R1: native switches bands at run time, so every band's cases and animations are
       // checked (each refusal once).
       const gradientsReported = new Set<string>();
       const doublesReported = new Set<string>();
       const translucentReported = new Set<string>();
       const currentColorReported = new Set<string>();
+      const textFillReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
@@ -1312,7 +1321,15 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
+        refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
       });
+      // TXT-FX: a state program's text records carry no stroke, so native refuses a drawn stroke wherever the output is one.
+      const animated = bandAnimations.some((a) => a.cases.some((c) => [...c.elements.values()].some((e) => e.declared || e.animations.some((x) => x.name !== 'none'))));
+      const stateful = cases.some((c) => c.assignment.length > 0) ? 'app states'
+        : bandCases.some((r) => r.cases.some((c) => c.interaction.length > 0)) ? 'interaction states'
+        : animated ? 'transitions or animations'
+        : bands !== null && bands.partition.bands.length > 1 ? 'media bands' : null;
+      refuseStatefulStrokes(stateful, bandCases.flatMap((r) => r.cases.flatMap((c) => [...(c.resolved === null ? [] : [c.resolved]), ...c.interaction.map((i) => i.resolved)])), nativeTargets, diagnostics, options.faults);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
@@ -1538,7 +1555,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       },
       laneOnlyNative,
       images: images === null ? new Map() : images.bytes,
-      textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared },
+      textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,

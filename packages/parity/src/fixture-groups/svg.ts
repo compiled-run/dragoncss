@@ -42,6 +42,7 @@ export const SVG: readonly FixtureSpec[] = [
   both('svg-paint-order'),
   both('svg-rrect'),
   both('svg-vector-effect'),
+  both('svg-inert'),
   // RF-INL lays an inline svg out on its block container's lines (inline-replaced); inside an inline box it stays unproven (INL2c).
   reject('reject-svg-inline', 'DRAGON_UNPROVEN_CONTEXT', element('reject-svg-inline', 'a', 'svg'), 'inline <svg> a is an atomic inline inside the inline box <span> s'),
   reject('reject-svg-ratio', 'DRAGON_UNSUPPORTED_VALUE', element('reject-svg-ratio', 'a', 'svg'), '<svg> a has a viewBox and width and height auto'),

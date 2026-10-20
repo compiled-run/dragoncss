@@ -37,7 +37,7 @@ function refuse(property: string, t: CssNode, base: Span, why: string, manual: s
 }
 
 /** A number calculation folded now (css-values-4 §10), or the refusal; null for a token that is not a math function. */
-function numberCalc(property: string, t: CssNode, base: Span, manual: string): { readonly value: number } | ParsedValue | null {
+export function numberCalc(property: string, t: CssNode, base: Span, manual: string): { readonly value: number } | ParsedValue | null {
   if (t.type !== 'Function') return null;
   const name = asciiLower(String(t['name']));
   if (!BLINK_MATH_FUNCTIONS.has(name)) return null;

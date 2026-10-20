@@ -96,8 +96,8 @@ const alignItemsValues = [
 ] as const;
 
 // css-grid-2 §7: track sizes, repeaters, placements and the grid self-alignment keywords.
-const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {} });
-const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0) }) } });
+const breadth = tagged({ ...px(0), ...percent(0), fr: { value: num(0) }, ...auto, 'min-content': {}, 'max-content': {}, ...calc });
+const trackSize = tagged({ breadth: { breadth }, minmax: { min: breadth, max: breadth }, 'fit-content': { limit: tagged({ ...px(0), ...percent(0), ...calc }) } });
 const repeater = obj({ count, sizes: arr(trackSize, 1) });
 const gridLine = tagged({ auto: {}, line: { n: int }, 'named-line': { n: int, name: count0 }, span: { n: count }, 'named-span': { n: count, name: count0 }, area: { implicitName: count0, name: count0 } });
 const gridSpan = tagged({ definite: { start: int, end: int }, auto: { span: count }, lines: { start: gridLine, end: gridLine }, 'start-line': { line: int }, 'end-line': { line: int } });
@@ -630,9 +630,9 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
   });
 }
 
-const isFixedBreadth = (b: unknown): boolean => isRecord(b) && (b['kind'] === 'px' || b['kind'] === 'percent');
+const isFixedBreadth = (b: unknown): boolean => isRecord(b) && (b['kind'] === 'px' || b['kind'] === 'percent' || b['kind'] === 'calc');
 
-/** css-grid-2 §7.2: <fixed-size>, a track size with a length or percentage minimum or maximum (never fit-content()). */
+/** css-grid-2 §7.2: <fixed-size>, a track size with a length, percentage or calculated minimum or maximum (never fit-content()). */
 function isFixedSize(t: unknown): boolean {
   if (!isRecord(t)) return false;
   if (t['kind'] === 'breadth') return isFixedBreadth(t['breadth']);

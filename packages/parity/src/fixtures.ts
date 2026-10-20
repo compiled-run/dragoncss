@@ -1,15 +1,20 @@
 // The parity corpus. Every fixture is attempted in every run; none carries its own tolerance.
 import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeResetLonghand } from 'dragon';
 import { ALIASES } from './fixture-groups/aliases.ts';
+import { ANIMATIONS_PAINT } from './fixture-groups/animations-paint.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
+import { APPEARANCE } from './fixture-groups/appearance.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
+import { BACKGROUND_BLEND } from './fixture-groups/background-blend.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
+import { BG_CLIP_TEXT } from './fixture-groups/bg-clip-text.ts';
 import { BG_POSITION } from './fixture-groups/bg-position.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BLOCK_IN_INLINE } from './fixture-groups/block-in-inline.ts';
 import { BORDER_IMAGE } from './fixture-groups/border-image.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
+import { BOX_DECORATION } from './fixture-groups/box-decoration.ts';
 import { CASC_LAYER } from './fixture-groups/casc-layer.ts';
 import { CASC_PROPERTY } from './fixture-groups/casc-property.ts';
 import { CASC } from './fixture-groups/casc.ts';
@@ -17,6 +22,7 @@ import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
 import { CLIP_PATH } from './fixture-groups/clip-path.ts';
 import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
+import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
@@ -27,6 +33,7 @@ import { FIXED } from './fixture-groups/fixed.ts';
 import { FLOAT } from './fixture-groups/float.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { GENERATED_CONTENT } from './fixture-groups/generated-content.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
@@ -49,6 +56,8 @@ import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
 import { RESIZE } from './fixture-groups/resize.ts';
+import { SCROLL_CONTAINMENT } from './fixture-groups/scroll-containment.ts';
+import { SCROLLBAR } from './fixture-groups/scrollbar.ts';
 import { SELECTION } from './fixture-groups/selection.ts';
 import { SELECTORS } from './fixture-groups/selectors.ts';
 import { SHADOW } from './fixture-groups/shadow.ts';
@@ -58,6 +67,8 @@ import { SIZING } from './fixture-groups/sizing.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { STICKY } from './fixture-groups/sticky.ts';
 import { SVG } from './fixture-groups/svg.ts';
+import { TABLE } from './fixture-groups/table.ts';
+import { TEXT_ALIGN_LAST } from './fixture-groups/text-align-last.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
@@ -67,24 +78,32 @@ import { TEXT_FONT_SIZE } from './fixture-groups/text-font-size.ts';
 import { TEXT_FONT_STRETCH } from './fixture-groups/text-font-stretch.ts';
 import { TEXT_FONT_TUNING } from './fixture-groups/text-font-tuning.ts';
 import { TEXT_FONT_VARIANT } from './fixture-groups/text-font-variant.ts';
+import { TEXT_HYPHENS } from './fixture-groups/text-hyphens.ts';
 import { TEXT_INDENT } from './fixture-groups/text-indent.ts';
 import { TEXT_JUSTIFY } from './fixture-groups/text-justify.ts';
 import { TEXT_LATIN } from './fixture-groups/text-latin.ts';
+import { TEXT_LINE_BREAK } from './fixture-groups/text-line-break.ts';
 import { TEXT_OVERFLOW } from './fixture-groups/text-overflow.ts';
 import { TEXT_SHADOW } from './fixture-groups/text-shadow.ts';
 import { TEXT_SPACING } from './fixture-groups/text-spacing.ts';
 import { TEXT_STYLE } from './fixture-groups/text-style.ts';
+import { TEXT_TAB_SIZE } from './fixture-groups/text-tab-size.ts';
 import { TEXT_TRANSFORM } from './fixture-groups/text-transform.ts';
 import { TEXT_WEIGHT } from './fixture-groups/text-weight.ts';
+import { TEXT_WORD_BREAK } from './fixture-groups/text-word-break.ts';
+import { TEXT_WRAP } from './fixture-groups/text-wrap.ts';
 import { TOUCH_ACTION } from './fixture-groups/touch-action.ts';
 import { TRANSFORM_EXTRA } from './fixture-groups/transform-extra.ts';
 import { TRANSFORMS } from './fixture-groups/transforms.ts';
+import { UI_COLORS } from './fixture-groups/ui-colors.ts';
 import { UNIT_CONTEXTS } from './fixture-groups/unit-contexts.ts';
 import { UNITS } from './fixture-groups/units.ts';
+import { USER_MODIFY } from './fixture-groups/user-modify.ts';
 import { VALUES } from './fixture-groups/values.ts';
 import { VISIBILITY } from './fixture-groups/visibility.ts';
 import { WHITE_SPACE } from './fixture-groups/white-space.ts';
 import { WRITING_MODE } from './fixture-groups/writing-mode.ts';
+import { ZOOM } from './fixture-groups/zoom.ts';
 
 /**
  * The reference environment of every case in this lane (docs/api.md §7, §10.1): an input to the projection, the engine and Chrome.
@@ -140,14 +159,19 @@ export type FixtureSpec =
 export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
+  'animations-paint': ANIMATIONS_PAINT,
+  appearance: APPEARANCE,
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,
   background: BACKGROUND,
+  'background-blend': BACKGROUND_BLEND,
+  'bg-clip-text': BG_CLIP_TEXT,
   'bg-position': BG_POSITION,
   'block-elements': BLOCK_ELEMENTS,
   'block-in-inline': BLOCK_IN_INLINE,
   'border-image': BORDER_IMAGE,
   'border-paint': BORDER_PAINT,
+  'box-decoration': BOX_DECORATION,
   casc: CASC,
   'casc-layer': CASC_LAYER,
   'casc-property': CASC_PROPERTY,
@@ -155,6 +179,7 @@ export const GROUPS = {
   charset: CHARSET,
   'clip-path': CLIP_PATH,
   'clip-rect': CLIP_RECT,
+  'color-scheme': COLOR_SCHEME,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
   'display-legacy': DISPLAY_LEGACY,
@@ -165,6 +190,7 @@ export const GROUPS = {
   float: FLOAT,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
+  'generated-content': GENERATED_CONTENT,
   gradients: GRADIENTS,
   grid: GRID,
   'inert-layout': INERT_LAYOUT,
@@ -187,6 +213,8 @@ export const GROUPS = {
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
   resize: RESIZE,
+  'scroll-containment': SCROLL_CONTAINMENT,
+  scrollbar: SCROLLBAR,
   selection: SELECTION,
   selectors: SELECTORS,
   shadow: SHADOW,
@@ -196,6 +224,8 @@ export const GROUPS = {
   states: STATES,
   sticky: STICKY,
   svg: SVG,
+  table: TABLE,
+  'text-align-last': TEXT_ALIGN_LAST,
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,
@@ -205,24 +235,32 @@ export const GROUPS = {
   'text-font-stretch': TEXT_FONT_STRETCH,
   'text-font-tuning': TEXT_FONT_TUNING,
   'text-font-variant': TEXT_FONT_VARIANT,
+  'text-hyphens': TEXT_HYPHENS,
   'text-indent': TEXT_INDENT,
   'text-justify': TEXT_JUSTIFY,
   'text-latin': TEXT_LATIN,
+  'text-line-break': TEXT_LINE_BREAK,
   'text-overflow': TEXT_OVERFLOW,
   'text-shadow': TEXT_SHADOW,
   'text-spacing': TEXT_SPACING,
   'text-style': TEXT_STYLE,
+  'text-tab-size': TEXT_TAB_SIZE,
   'text-transform': TEXT_TRANSFORM,
   'text-weight': TEXT_WEIGHT,
+  'text-word-break': TEXT_WORD_BREAK,
+  'text-wrap': TEXT_WRAP,
   'touch-action': TOUCH_ACTION,
   'transform-extra': TRANSFORM_EXTRA,
   transforms: TRANSFORMS,
+  'ui-colors': UI_COLORS,
   'unit-contexts': UNIT_CONTEXTS,
   units: UNITS,
+  'user-modify': USER_MODIFY,
   values: VALUES,
   visibility: VISIBILITY,
   'white-space': WHITE_SPACE,
   'writing-mode': WRITING_MODE,
+  zoom: ZOOM,
 } as const satisfies { readonly [id: string]: readonly FixtureSpec[] };
 
 export type FixtureGroupId = keyof typeof GROUPS;

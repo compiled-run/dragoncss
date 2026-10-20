@@ -253,8 +253,11 @@ export function textTopology(compiled: object, assignment: Assignment): readonly
   return out;
 }
 
-/** Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address. */
-export function resolvedTextColors(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, Rgba8> | null {
+/**
+ * Dragon's resolved colour channels of every laid-out text node in one case, keyed by text address: its color, or with fill the
+ * colour its glyphs are filled in (compat §5 -webkit-text-fill-color, color where that is currentcolor).
+ */
+export function resolvedTextColors(compiled: object, assignment: Assignment, state: string | null = null, fill = false): ReadonlyMap<string, Rgba8> | null {
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, Rgba8>();
@@ -262,7 +265,10 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
     for (const ch of el.children) {
       if (ch.kind === 'element') walk(ch);
       else {
-        const v = ch.props.get('color');
+        // A text node takes its element's fill (the property is inherited and text nodes carry only the text longhands).
+        const f = fill ? el.props.get('-webkit-text-fill-color') : undefined;
+        if (fill && f === undefined) throw new Error(`${el.element.address}: -webkit-text-fill-color did not resolve`);
+        const v = f !== undefined && !(f.value.kind === 'keyword' && f.value.value === 'currentcolor') ? f : ch.props.get('color');
         if (v === undefined) throw new Error(`${ch.node.address}: color did not resolve`);
         out.set(ch.node.address, colorChannels(v.value, ch.node.address));
       }
