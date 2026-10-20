@@ -149,7 +149,7 @@ function swiftText(): string {
 /// are each assignment's engine input resolved for the environment at scale 1 (R14), where length endpoints come from.
 public final class DragonAnimator {
   private let tables: AnimTables
-  private let inputs: JsArray<LayoutInput>
+  private var inputs: JsArray<LayoutInput>
   private let initial: Double
   private let faults = RtFaults(${falses(faultArity().RtFaults)})
   private let anim = AnimatorFaults(${falses(faultArity().AnimatorFaults)})
@@ -167,6 +167,12 @@ public final class DragonAnimator {
       fatalError("dragon: the animator could not start: \(error)")
     }
     refresh()
+  }
+
+  /// css-env-1: the environment changed (the mount's measured safe-area insets), so every later event and step reads these inputs.
+  public func replaceInputs(_ next: [LayoutInput]) {
+    if next.count != inputs.items.count { fatalError("dragon: \(next.count) engine inputs for \(inputs.items.count) assignments") }
+    inputs = JsArray(next)
   }
 
   /// R4: one style change event, the setter having moved the machine to assignment to.
@@ -258,7 +264,7 @@ import dev.dragon.layout.*
  * are each assignment's engine input resolved for the environment at scale 1 (R14), where length endpoints come from.
  */
 class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, initial: Int, current: Int) {
-  private val inputs: JsArray<LayoutInput> = JsArray<LayoutInput>(inputs.size).also { it.addAll(inputs) }
+  private var inputs: JsArray<LayoutInput> = JsArray<LayoutInput>(inputs.size).also { it.addAll(inputs) }
   private val initial = initial.toDouble()
   private val faults = RtFaults(${falses(faultArity().RtFaults)})
   private val anim = AnimatorFaults(${falses(faultArity().AnimatorFaults)})
@@ -270,6 +276,12 @@ class DragonAnimator(private val tables: AnimTables, inputs: List<LayoutInput>, 
     if (inputs.size.toDouble() != tables.assignments) throw IllegalStateException("dragon: " + inputs.size + " engine inputs for " + tables.assignments + " assignments")
     state = rtAnimator_animatorStart(tables, this.inputs, current.toDouble(), faults, anim)
     refresh()
+  }
+
+  /** css-env-1: the environment changed (the mount's measured safe-area insets), so every later event and step reads these inputs. */
+  fun replaceInputs(next: List<LayoutInput>) {
+    if (next.size != inputs.size) throw IllegalStateException("dragon: " + next.size + " engine inputs for " + inputs.size + " assignments")
+    inputs = JsArray<LayoutInput>(next.size).also { it.addAll(next) }
   }
 
   /** R4: one style change event, the setter having moved the machine to assignment to. */

@@ -108,6 +108,10 @@ public final class DragonStateMachine {
   public var onChange: (() -> Void)?
   private var nodes: [String: DragonStateNode] = [:]
   private var order: [String] = []
+  /// css-env-1 env(safe-area-inset-*): the mount's measured insets in CSS px, which every engine input the machine lays out or
+  /// animates from carries in place of its compile-time zeros (setSafeArea).
+  public private(set) var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+  private var animMeasurer: TextMeasurer?
 
   public init(states: [String], domains: [[String]], base: [DragonStateNode], deltas: [DragonStateDelta], next: [[[Int]]], initial: Int, variants: [(Double) -> LayoutInput], skipRelayout: Bool, anim: AnimTables? = nil) {
     self.states = states; self.domains = domains; self.base = base; self.deltas = deltas; self.next = next; self.variants = variants; self.skipRelayout = skipRelayout
@@ -149,10 +153,29 @@ public final class DragonStateMachine {
   /// ANIM-b1: starts the animator at the current assignment, with every assignment's input resolved at scale 1 by measurer (R14).
   public func startAnimator(_ measurer: TextMeasurer) {
     guard let t = anim, animator == nil else { return }
-    let inputs = deltas.map { d -> LayoutInput in
-      do { return try environment_resolveEnvironment(variants[d.variant](1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
+    animMeasurer = measurer
+    animator = DragonAnimator(tables: t, inputs: animatorInputs(measurer), initial: initialAssignment, current: current)
+  }
+
+  /// css-env-1: takes the mount's measured insets; when they differ, the animator's inputs are resolved again with them. Returns
+  /// whether they differed, so the mount renders again.
+  @discardableResult public func setSafeArea(_ s: SafeAreaInsets) -> Bool {
+    if dragonSameInsets(s, safeArea) { return false }
+    safeArea = s
+    if let a = animator, let m = animMeasurer { a.replaceInputs(animatorInputs(m)) }
+    return true
+  }
+
+  /// Every assignment's input with the measured insets, resolved at scale 1 (R14): where transition length endpoints come from.
+  private func animatorInputs(_ measurer: TextMeasurer) -> [LayoutInput] {
+    return deltas.map { d -> LayoutInput in
+      do { return try environment_resolveEnvironment(laid(d.variant, 1), block_NO_ENGINE_FAULTS, measurer) } catch { fatalError("dragon: the animator inputs: \(error)") }
     }
-    animator = DragonAnimator(tables: t, inputs: inputs, initial: initialAssignment, current: current)
+  }
+
+  /// Variant v's engine input at dpr with the measured insets.
+  private func laid(_ v: Int, _ dpr: Double) -> LayoutInput {
+    return dragonWithSafeArea(variants[v](dpr), safeArea)
   }
 
   /// The clock step (R2): the virtual clock and every running transition and animation move by ms.
@@ -199,7 +222,7 @@ public final class DragonStateMachine {
 
   /// The engine input last laid out, with the animator's frame lengths patched in (R16).
   public func input(_ dpr: Double) -> LayoutInput {
-    let i = variants[laidOut](dpr)
+    let i = laid(laidOut, dpr)
     return animator?.patch(i) ?? i
   }
 }
@@ -224,13 +247,21 @@ public final class DragonStateMount {
   private let bridge: DragonBridge
   private var stale = false
   private var driver: DragonDisplayDriver?
+  private let probe: DragonSafeAreaProbe
 
   /// display: drive the animator from the display (CADisplayLink) while it is busy; off for the lanes, whose clock is the script's.
   public init(machine: DragonStateMachine, stage: UIView, measurer: TextMeasurer, scale: Double, bridge: DragonBridge, display: Bool = false) {
     self.machine = machine; self.stage = stage; self.measurer = measurer; self.scale = scale; self.bridge = bridge
+    probe = DragonSafeAreaProbe(stage: stage)
+    // css-env-1: the stage's insets before the animator resolves its inputs, so env() endpoints start from them.
+    machine.setSafeArea(dragonSafeArea(stage))
     // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
     machine.startAnimator(measurer)
     render()
+    probe.onChange = { [weak self] in
+      guard let self = self, self.machine.setSafeArea(dragonSafeArea(self.stage)) else { return }
+      self.render()
+    }
     machine.onChange = { [weak self] in
       self?.render()
       self?.drive()
@@ -265,7 +296,6 @@ public final class DragonStateMount {
     let t = DragonTree()
     machine.build(t)
     stage.addSubview(t.root)
-    t.safeArea = dragonSafeArea(stage)
     do {
       try t.apply(machine.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
@@ -275,6 +305,8 @@ public final class DragonStateMount {
     shown = t
     renders += 1
   }
+
+  deinit { probe.removeFromSuperview() }
 }
 
 /// A case script: its case (identity and expected digests) and its steps, which run on a DragonStateMount through the setters.
@@ -314,6 +346,7 @@ function kotlinSupportText(): string {
 import android.view.ViewGroup
 import dev.dragon.layout.AnimTables
 import dev.dragon.layout.LayoutInput
+import dev.dragon.layout.SafeAreaInsets
 import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
 import dev.dragon.layout.environment_resolveEnvironment
@@ -369,6 +402,13 @@ class DragonStateMachine(
   var onChange: (() -> Unit)? = null
   private val nodes = HashMap<String, DragonStateNode>()
   private var order: List<String> = emptyList()
+  /**
+   * css-env-1 env(safe-area-inset-*): the mount's measured insets in CSS px, which every engine input the machine lays out or
+   * animates from carries in place of its compile-time zeros (setSafeArea).
+   */
+  var safeArea = SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+    private set
+  private var animMeasurer: TextMeasurer? = null
 
   init {
     for (n in base) baseById[n.id] = n
@@ -411,9 +451,29 @@ class DragonStateMachine(
   fun startAnimator(measurer: TextMeasurer) {
     val t = anim ?: return
     if (animator != null) return
-    val inputs = deltas.map { environment_resolveEnvironment(variants[it.variant](1.0), block_NO_ENGINE_FAULTS, measurer) }
-    animator = DragonAnimator(t, inputs, initialAssignment, current)
+    animMeasurer = measurer
+    animator = DragonAnimator(t, animatorInputs(measurer), initialAssignment, current)
   }
+
+  /**
+   * css-env-1: takes the mount's measured insets; when they differ, the animator's inputs are resolved again with them. Returns
+   * whether they differed, so the mount renders again.
+   */
+  fun setSafeArea(s: SafeAreaInsets): Boolean {
+    if (dragonSameInsets(s, safeArea)) return false
+    safeArea = s
+    val a = animator
+    val m = animMeasurer
+    if (a != null && m != null) a.replaceInputs(animatorInputs(m))
+    return true
+  }
+
+  /** Every assignment's input with the measured insets, resolved at scale 1 (R14): where transition length endpoints come from. */
+  private fun animatorInputs(measurer: TextMeasurer): List<LayoutInput> =
+    deltas.map { environment_resolveEnvironment(laid(it.variant, 1.0), block_NO_ENGINE_FAULTS, measurer) }
+
+  /** Variant v's engine input at dpr with the measured insets. */
+  private fun laid(v: Int, dpr: Double): LayoutInput = dragonWithSafeArea(variants[v](dpr), safeArea)
 
   /** The clock step (R2): the virtual clock and every running transition and animation move by ms. */
   fun advance(ms: Double) {
@@ -461,7 +521,7 @@ class DragonStateMachine(
 
   /** The engine input last laid out, with the animator's frame lengths patched in (R16). */
   fun input(dpr: Double): LayoutInput {
-    val i = variants[laidOut](dpr)
+    val i = laid(laidOut, dpr)
     return animator?.patch(i) ?: i
   }
 }
@@ -493,6 +553,10 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     }
 
   init {
+    // css-env-1: the stage's insets before the animator resolves its inputs, so env() endpoints start from them; the probe renders
+    // again whenever they change.
+    machine.setSafeArea(dragonSafeArea(stage, scale))
+    DragonSafeAreaProbe(stage, this) { m -> if (m.machine.setSafeArea(dragonSafeArea(m.stage, m.scale))) m.render() }
     // ANIM-b1 R7: CSS animations start at first style, so the first render shows their t = 0 values.
     machine.startAnimator(measurer)
     render()
@@ -527,7 +591,6 @@ class DragonStateMount(val machine: DragonStateMachine, private val stage: ViewG
     // A fresh layout measurer per render, so a shaped one's cache never outlives a layout.
     val t = DragonTree(stage.context)
     machine.build(t)
-    t.safeArea = dragonSafeArea(stage, scale)
     t.apply(machine.input(scale), bridge.measurer, scale, bridge)
     stage.addView(t.root, ViewGroup.LayoutParams(t.root.dragonFrame[2], t.root.dragonFrame[3]))
     stage.removeView(shown.root)

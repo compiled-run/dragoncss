@@ -4,6 +4,7 @@
 // mouse or stylus, deferring the hover-exit clear to the next frame; and only a hovering or pressed pointer moves hover (R1).
 import { describe, expect, it } from 'vitest';
 import { interactionGlueKotlin, interactionGlueSupport, interactionGlueSwift } from '../src/emit/runtime/interaction-glue.ts';
+import { interactionSupport } from '../src/emit/runtime/interaction.ts';
 
 const swift = interactionGlueSwift();
 const kotlin = interactionGlueKotlin();
@@ -59,5 +60,22 @@ describe('the interaction glue', () => {
     ]);
     expect(moves(swift).length).toBe(2);
     expect(block(swift, '  override func touchesMoved')).toContain('guard let t = tracked, mouse, touches.contains(t) else { return }');
+  });
+  it('css-env-1: lays out and hit tests with the stage\'s measured insets, and re-renders when they change', () => {
+    const s = interactionSupport('uikit', () => '').text;
+    const k = interactionSupport('android-views', () => '').text;
+    // The hit table is laid out from the same input the views are, so a box an env() inset moves is hit where it is drawn.
+    expect(s).toContain('rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea)');
+    expect(s).toContain('return dragonWithSafeArea(variants[laidOut](dpr), safeArea)');
+    expect(k).toContain('rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea)');
+    expect(k).toContain('fun input(dpr: Double): LayoutInput = dragonWithSafeArea(variants[laidOut](dpr), safeArea)');
+    for (const t of [s, k]) expect(block(t, t === s ? 'public func setSafeArea' : '  fun setSafeArea')).toMatch(/safeArea = s\n {4}hitTables(\.clear\(\)| = \[:\])/);
+    // The stage, not the wrap-content root, is measured; the probe renders again on a change.
+    expect(swift).toContain('machine.setSafeArea(dragonSafeArea(stage))');
+    expect(swift).toMatch(/guard let self = self, self\.machine\.setSafeArea\(dragonSafeArea\(self\.stage\)\) else \{ return \}\n {6}self\.render\(\)/);
+    expect(kotlin).toContain('machine.setSafeArea(dragonSafeArea(stage, scale))');
+    expect(kotlin).toContain('if (m.machine.setSafeArea(dragonSafeArea(stage, m.scale))) m.render()');
+    expect(swift).not.toContain('dragonSafeArea(root');
+    expect(kotlin).not.toContain('dragonSafeArea(root');
   });
 });
