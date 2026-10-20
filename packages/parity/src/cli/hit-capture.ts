@@ -9,8 +9,9 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
 import { zoomGuard } from '../dpr.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
-import { captureHits, captureHitsAt, compareHitsAt, expectedHitDir, expectedHitDprDir, hitCaptureFile, HIT_DIVERGENCE_FILE, hitDivergenceJson, hitDivergenceOf, hitDprCaptures, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, replaceDirWhenFilled, staleDprDirs, withoutPointerEvents } from '../hit-capture.ts';
+import { captureHits, captureHitsAt, compareHitsAt, expectedHitDir, expectedHitDprDir, hitCaptureFile, HIT_DIVERGENCE_PATH, hitDivergenceDeltas, type HitMismatch, hitDprCaptures, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, replaceDirWhenFilled, staleDprDirs, withoutPointerEvents } from '../hit-capture.ts';
 import type { NativeCase } from '../native-host.ts';
+import { HIT_DIVERGENCE } from '../hit-divergence.ts';
 import { repoPath } from '../paths.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
 
@@ -64,7 +65,7 @@ const byId = new Map(cases.map((n) => [n.case.id, n]));
 const dprCaptures = hitDprCaptures(cases);
 const folders = readdirSync(dir, { withFileTypes: true }).filter((f) => f.isDirectory()).map((f) => f.name);
 for (const name of staleDprDirs(folders, dprCaptures.map((d) => d.dpr))) rmSync(`${dir}/${name}`, { recursive: true });
-const pinned: string[] = [];
+const compared: { readonly case: string; readonly dpr: number; readonly grid: readonly (readonly [number, number])[]; readonly stale: boolean; readonly mismatches: readonly HitMismatch[] }[] = [];
 for (const { dpr, ids } of dprCaptures) {
   const own = ids.map((id) => {
     const n = byId.get(id);
@@ -76,18 +77,21 @@ for (const { dpr, ids } of dprCaptures) {
     try {
       await zoomGuard(b, dpr);
       const caps = await inOrder(own, CHROME_PAGES, (n) => captureHitsAt(b, n, dpr));
-      const compared = caps.map((c, i) => {
+      caps.forEach((c, i) => {
         points += c.points;
         writeFileSync(`${into}/${hitCaptureFile(c.case)}`, hitCaptureJson(c));
-        return { case: c.case, ...compareHitsAt(own[i] as NativeCase, c, dpr) };
+        compared.push({ case: c.case, dpr, ...compareHitsAt(own[i] as NativeCase, c, dpr) });
       });
-      // The known divergences beside the captures, in the same swap (hit-capture.ts HitDivergence).
-      const divergence = hitDivergenceOf(dpr, compared);
-      writeFileSync(`${into}/${HIT_DIVERGENCE_FILE}`, hitDivergenceJson(divergence));
-      pinned.push(`DPR ${dpr} ${Object.keys(divergence.cases).length} cases`);
     } finally {
       await b.close();
     }
   });
 }
-console.log(`parity:hit-capture: ${cases.length} cases and ${dprCaptures.reduce((k, d) => k + d.ids.length, 0)} DPR captures (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit; known divergences: ${pinned.join(', ')}`);
+console.log(`parity:hit-capture: ${cases.length} cases and ${dprCaptures.reduce((k, d) => k + d.ids.length, 0)} DPR captures (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);
+// The captures are written; regen fails unless every case's mismatches at every device DPR are exactly its reviewed points.
+const deltas = hitDivergenceDeltas(HIT_DIVERGENCE, compared);
+if (deltas.length > 0) {
+  console.error(`parity:hit-capture: ${deltas.length} differences from the reviewed known divergences (${HIT_DIVERGENCE_PATH}):\n  ${deltas.join('\n  ')}`);
+  console.error('Run pnpm run parity:hit-divergence -- --write, review the diff, write a reason for every TODO reason, commit, and re-run.');
+  process.exit(1);
+}

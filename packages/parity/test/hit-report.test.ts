@@ -7,9 +7,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { capturedIds, caseHitTable, committedDivergence, committedHits, committedHitsAt, compareHits, compareHitsAt, divergenceDrift, gridSha256, HIT_FACTS_PATH, hitCases, hitDivergenceJson, hitDivergenceOf, hitDprCaptures, hitFactsJson, hitGrid, hitGridAt, hitProvenIds, hitRefusal, hitRefusedCases, replaceDirWhenFilled, restoreInterruptedSwap, staleDprDirs, tapTarget } from '../src/hit-capture.ts';
+import { capturedIds, caseHitTable, committedHits, committedHitsAt, compareHits, compareHitsAt, divergenceDelta, divergenceSource, gridSha256, HIT_DIVERGENCE_PATH, HIT_FACTS_PATH, hitCases, hitDivergenceDeltas, hitDprCaptures, hitFactsJson, hitGrid, hitGridAt, hitProvenIds, hitRefusal, hitRefusedCases, parseIndexRuns, replaceDirWhenFilled, restoreInterruptedSwap, reviewedAt, rewrittenDivergence, staleDprDirs, tapTarget, TODO_REASON } from '../src/hit-capture.ts';
 import { DPRS } from '../src/dpr.ts';
-import { HIT_DIVERGENCE_REASONS } from '../src/hit-divergence.ts';
+import { HIT_DIVERGENCE } from '../src/hit-divergence.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
@@ -108,15 +108,14 @@ describe('the host hit lane at the device DPRs', () => {
   });
 
   // One test per DPR, each case compared at every point of its committed capture on the grid its table derives now (a stale grid
-  // fails by name): Chrome's element everywhere but the DPR's known divergences, and exactly those points there, so a new mismatch
-  // and a fixed point both fail. A pinned case is not proven at that DPR (hitProvenIds); each one has a reviewed reason.
+  // fails by name): Chrome's element everywhere but the reviewed known divergences (hit-divergence.ts), and exactly those points
+  // there, so a new case, an extra point and a fixed point all fail. A pinned case is not proven at that DPR (hitProvenIds).
   for (const dpr of DPRS) {
-    it(`names Chrome's element at every point of every hit case's capture at DPR ${dpr} but exactly its known divergences`, () => {
+    it(`names Chrome's element at every point of every hit case's capture at DPR ${dpr} but exactly its reviewed divergences`, () => {
       const byId = new Map(cases.map((n) => [n.case.id, n]));
       const own = dprCaptures.find((d) => d.dpr === dpr);
       if (own === undefined) throw new Error(`no hit captures at DPR ${dpr}`);
-      const divergence = committedDivergence(dpr);
-      const drift: string[] = [];
+      const delta: string[] = [];
       const stale: string[] = [];
       let points = 0;
       for (const id of own.ids) {
@@ -125,57 +124,78 @@ describe('the host hit lane at the device DPRs', () => {
         const r = compareHitsAt(n, committedHitsAt(id, dpr), dpr);
         if (r.stale) stale.push(id);
         points += r.points;
-        drift.push(...divergenceDrift(id, dpr, r.mismatches, divergence.cases[id]));
+        delta.push(...divergenceDelta(id, dpr, r.grid, r.mismatches, reviewedAt(HIT_DIVERGENCE, id, dpr)));
       }
       expect(stale).toEqual([]);
-      expect(drift).toEqual([]);
+      expect(delta).toEqual([]);
       expect(points).toBeGreaterThan(0);
-      // Every pinned case is a hit case with a reviewed reason.
-      expect(Object.keys(divergence.cases).filter((id) => !byId.has(id))).toEqual([]);
-      expect(Object.keys(divergence.cases).filter((id) => !HIT_DIVERGENCE_REASONS.has(id))).toEqual([]);
       // Not proven at this DPR wherever a claim could be made: the proven set leaves out every pinned case.
-      const proven = new Set(hitProvenIds(dpr, own.ids, divergence));
-      expect(Object.keys(divergence.cases).filter((id) => proven.has(id))).toEqual([]);
-      expect(proven.size).toBe(own.ids.length - Object.keys(divergence.cases).length);
+      const pinned = HIT_DIVERGENCE.filter((e) => e.at[String(dpr)] !== undefined).map((e) => e.case);
+      const proven = new Set(hitProvenIds(dpr, own.ids, HIT_DIVERGENCE));
+      expect(pinned.filter((id) => proven.has(id))).toEqual([]);
+      expect(proven.size).toBe(own.ids.length - pinned.length);
     });
   }
 
-  it('demands exactly the pinned points: a new mismatch and a fixed point both drift', () => {
-    const m = (x: number, y: number) => ({ case: 'c', x, y, chrome: 'a', dragon: 'b' });
-    expect(divergenceDrift('c', 2, [m(128, 0), m(0, 128)], [[0, 128], [128, 0]])).toEqual([]);
-    expect(divergenceDrift('c', 2, [m(128, 0), m(256, 0)], [[128, 0]])).toEqual(['c (2, 0): Chrome a, Dragon b, not pinned']);
-    expect(divergenceDrift('c', 2, [], [[128, 0]])).toEqual(['c (1, 0): pinned, now Chrome\'s element']);
-    expect(divergenceDrift('c', 2, [m(128, 0)])).toEqual(['c (1, 0): Chrome a, Dragon b, not pinned']);
-  });
-
-  it('writes, reads and refuses the known-divergence file, and leaves a pinned case out of the proven ones', () => {
-    const m = (x: number, y: number) => ({ case: 'b', x, y, chrome: 'a', dragon: 'b' });
-    const d = hitDivergenceOf(2.625, [{ case: 'a', stale: false, mismatches: [] }, { case: 'b', stale: false, mismatches: [m(5, 9), m(3, 1), m(1, 9)] }]);
-    expect(d.cases).toEqual({ b: [[3, 1], [1, 9], [5, 9]] });
-    expect(() => hitDivergenceOf(2.625, [{ case: 'a', stale: true, mismatches: [] }])).toThrow(/a: its capture at DPR 2.625 is not on the grid/);
-    const root = mkdtempSync(join(tmpdir(), 'dragon-hit-div-'));
-    try {
-      const path = join(root, 'known-divergence.json');
-      writeFileSync(path, hitDivergenceJson(d));
-      expect(committedDivergence(2.625, path)).toEqual(d);
-      expect(() => committedDivergence(2, path)).toThrow(/malformed or from another Chrome, capture version or DPR/);
-      writeFileSync(path, hitDivergenceJson({ ...d, cases: { b: [] } }));
-      expect(() => committedDivergence(2.625, path)).toThrow(/malformed/);
-      writeFileSync(path, hitDivergenceJson({ ...d, cases: {} }));
-      expect(committedDivergence(2.625, path).cases).toEqual({});
-      expect(() => committedDivergence(2.625, join(root, 'none.json'))).toThrow(/no readable hit divergence file/);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-    expect(hitProvenIds(2.625, ['a', 'b', 'c'], d)).toEqual(['a', 'c']);
-    expect(hitProvenIds(1, ['a', 'b'], null)).toEqual(['a', 'b']);
-    expect(() => hitProvenIds(2, ['a'], d)).toThrow(/need that DPR's divergence file/);
-  });
-
-  it('gives every reviewed divergence reason to a hit case, in one line', () => {
+  it('reviews every known divergence: hit cases at captured DPRs, in case order, one written reason line each', () => {
     const ids = new Set(cases.map((n) => n.case.id));
-    expect([...HIT_DIVERGENCE_REASONS.keys()].filter((id) => !ids.has(id))).toEqual([]);
-    for (const [id, why] of HIT_DIVERGENCE_REASONS) expect(why.length > 0 && !why.includes('\n'), id).toBe(true);
+    expect(HIT_DIVERGENCE.filter((e) => !ids.has(e.case)).map((e) => e.case)).toEqual([]);
+    expect(HIT_DIVERGENCE.flatMap((e) => Object.keys(e.at).filter((d) => !DPRS.map(String).includes(d)).map((d) => `${e.case} ${d}`))).toEqual([]);
+    expect(HIT_DIVERGENCE.filter((e) => Object.keys(e.at).length === 0).map((e) => e.case)).toEqual([]);
+    expect(HIT_DIVERGENCE.map((e) => e.case)).toEqual([...new Set(HIT_DIVERGENCE.map((e) => e.case))].sort());
+    expect(HIT_DIVERGENCE.filter((e) => e.reason === TODO_REASON || e.reason.trim().length === 0 || e.reason.includes('\n')).map((e) => e.case)).toEqual([]);
+    // The file is exactly what the helper writes for its own entries (only reasons are edited by hand).
+    expect(readFileSync(repoPath(HIT_DIVERGENCE_PATH), 'utf8')).toBe(divergenceSource(HIT_DIVERGENCE));
+  });
+
+  describe('the reviewed known divergences', () => {
+    const grid: [number, number][] = Array.from({ length: 10 }, (_, i): [number, number] => [i * 128, 0]);
+    const sha = gridSha256(grid);
+    const m = (index: number) => ({ case: 'c', index, x: index * 128, y: 0, chrome: 'a', dragon: 'b' });
+    const at = (points: string) => ({ grid: sha, points });
+    it('passes exactly the reviewed points', () => {
+      expect(divergenceDelta('c', 2, grid, [m(2), m(3), m(4), m(7)], at('2-4 7'))).toEqual([]);
+      expect(divergenceDelta('c', 2, grid, [], undefined)).toEqual([]);
+    });
+    it('fails extra points, a new case, fixed points and another grid, naming the delta', () => {
+      expect(divergenceDelta('c', 2, grid, [m(2), m(3), m(4), m(7), m(9)], at('2-4 7'))).toEqual(['c at DPR 2: 1 points not reviewed, first (9, 0) Chrome a, Dragon b']);
+      expect(divergenceDelta('c', 2, grid, [m(1)], undefined)).toEqual(['c at DPR 2: a new divergence of 1 points, first (1, 0) Chrome a, Dragon b']);
+      expect(divergenceDelta('c', 2, grid, [m(2), m(4), m(7)], at('2-4 7'))).toEqual(['c at DPR 2: 1 reviewed points now name Chrome\'s element, first (3, 0)']);
+      expect(divergenceDelta('c', 2, grid, [], at('2-4 7'))).toEqual(['c at DPR 2: 4 reviewed points now name Chrome\'s element, first (2, 0); (3, 0); (4, 0)']);
+      expect(divergenceDelta('c', 2, grid, [m(2)], { grid: 'other', points: '2' })).toEqual(['c at DPR 2: the reviewed points were found on another grid']);
+      const deltas = hitDivergenceDeltas([{ case: 'gone', reason: 'r', at: { 2: at('1') } }, { case: 'c', reason: 'r', at: { 7: at('1') } }], [{ case: 'c', dpr: 2, grid, stale: true, mismatches: [] }]);
+      expect(deltas).toEqual(['gone: reviewed, but not a hit case', 'c at DPR 2: its capture is not on the grid its table derives (run pnpm run parity:hit-capture)', 'c: reviewed at DPR 7, which is not captured']);
+    });
+    it('refuses malformed point runs', () => {
+      expect(parseIndexRuns('2-4 7', 10, 'w')).toEqual([2, 3, 4, 7]);
+      expect(() => parseIndexRuns('2-4 5', 10, 'w')).toThrow(/not after the run before it with a gap/);
+      expect(() => parseIndexRuns('4-2', 10, 'w')).toThrow(/does not ascend/);
+      expect(() => parseIndexRuns('3 x', 10, 'w')).toThrow(/is not a grid index run/);
+      expect(() => parseIndexRuns('9-10', 10, 'w')).toThrow(/outside the grid of 10 points/);
+      expect(() => parseIndexRuns('', 10, 'w')).toThrow(/is not a grid index run/);
+    });
+    it('round-trips through the helper: points rewritten, reasons kept, a new case marked TODO, a fixed case dropped', async () => {
+      const before = [{ case: 'a', reason: 'kept reason', at: { 2: at('1') } }, { case: 'z', reason: 'fixed now', at: { 3: at('5') } }];
+      const next = rewrittenDivergence(before, [
+        { case: 'a', dpr: 2.625, grid: sha, indices: [7, 2, 3] }, { case: 'a', dpr: 2, grid: sha, indices: [1, 2] },
+        { case: 'b', dpr: 3, grid: sha, indices: [0] }, { case: 'z', dpr: 3, grid: sha, indices: [] },
+      ]);
+      expect(next).toEqual([{ case: 'a', reason: 'kept reason', at: { 2: at('1-2'), 2.625: at('2-3 7') } }, { case: 'b', reason: TODO_REASON, at: { 3: at('0') } }]);
+      expect(Object.keys(next[0]?.at ?? {})).toEqual(['2', '2.625']);
+      const root = mkdtempSync(join(tmpdir(), 'dragon-hit-div-'));
+      try {
+        const path = join(root, 'hit-divergence.ts');
+        writeFileSync(path, divergenceSource(next).replace("from './hit-capture.ts'", `from '${repoPath('packages/parity/src/hit-capture.ts')}'`));
+        const read = (await import(path)) as { HIT_DIVERGENCE: unknown };
+        expect(read.HIT_DIVERGENCE).toEqual(next);
+        expect(divergenceSource(read.HIT_DIVERGENCE as typeof next)).toBe(divergenceSource(next));
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+      expect(hitProvenIds(2.625, ['a', 'b', 'c'], next)).toEqual(['b', 'c']);
+      expect(hitProvenIds(3, ['a', 'b', 'c'], next)).toEqual(['a', 'c']);
+      expect(hitProvenIds(1, ['a', 'b'], next)).toEqual(['a', 'b']);
+    });
   });
 
   it('lets no profile row claim the hit test from a device lane, so the proven set is the only hit claim', async () => {
