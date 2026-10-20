@@ -5,6 +5,7 @@
 // Each family's kinds live in animation-kinds/<family>.ts, spread here one line per family, sorted by family id.
 import type { Longhand } from './properties.ts';
 import type { AnimationKind } from './animation-kinds/kinds.ts';
+import { APPEARANCE_ANIMATION } from './animation-kinds/appearance.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
@@ -14,6 +15,7 @@ import { CLIP_PATH_ANIMATION } from './animation-kinds/clip-path.ts';
 import { CLIP_RECT_ANIMATION } from './animation-kinds/clip-rect.ts';
 import { CONTAINER_QUERY_ANIMATION } from './animation-kinds/container-query.ts';
 import { CONTAINMENT_ANIMATION } from './animation-kinds/containment.ts';
+import { COUNTERS_ANIMATION } from './animation-kinds/counters.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
 import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
@@ -40,6 +42,7 @@ import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
+import { TABLE_ANIMATION } from './animation-kinds/table.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
 import { TEXT_BREAK_ANIMATION } from './animation-kinds/text-break.ts';
 import { TEXT_DECORATION_ANIMATION } from './animation-kinds/text-decoration.ts';
@@ -52,12 +55,16 @@ import { TEXT_TRANSFORM_ANIMATION } from './animation-kinds/text-transform.ts';
 import { TOUCH_ACTION_ANIMATION } from './animation-kinds/touch-action.ts';
 import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
+import { UI_COLORS_ANIMATION } from './animation-kinds/ui-colors.ts';
+import { USER_MODIFY_ANIMATION } from './animation-kinds/user-modify.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
+import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
 
 export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
 
 export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
+  ...APPEARANCE_ANIMATION,
   ...BACKGROUND_ANIMATION,
   ...BACKGROUND_LAYERS_ANIMATION,
   ...BORDER_ANIMATION,
@@ -67,6 +74,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...CLIP_RECT_ANIMATION,
   ...CONTAINER_QUERY_ANIMATION,
   ...CONTAINMENT_ANIMATION,
+  ...COUNTERS_ANIMATION,
   ...EFFECTS_ANIMATION,
   ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,
@@ -93,6 +101,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
   ...SVG_ANIMATION,
+  ...TABLE_ANIMATION,
   ...TEXT_ANIMATION,
   ...TEXT_BREAK_ANIMATION,
   ...TEXT_DECORATION_ANIMATION,
@@ -105,8 +114,11 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TOUCH_ACTION_ANIMATION,
   ...TRANSFORM_ANIMATION,
   ...TRANSFORM_EXTRA_ANIMATION,
+  ...UI_COLORS_ANIMATION,
+  ...USER_MODIFY_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
+  ...ZOOM_ANIMATION,
 };
 
 /** ANIM-b1 admits colour and length (R1, R13): kinds with an rt interpolator and a runtime writer on every target. */

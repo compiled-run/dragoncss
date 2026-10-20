@@ -58,8 +58,8 @@ const INITIAL_DECLS = [
 ];
 
 describe('the initial-only scroll and containment families', () => {
-  it('follow transform-extra in the registry, are paint-role rows, animate as Chrome 145 does and know their initial values', () => {
-    expect(LONGHANDS.slice(LONGHANDS.indexOf('perspective-origin') + 1, LONGHANDS.indexOf('perspective-origin') + 33)).toEqual(ALL);
+  it('follow transform-extra and zoom in the registry, are paint-role rows, animate as Chrome 145 does and know their initial values', () => {
+    expect(LONGHANDS.slice(LONGHANDS.indexOf('zoom') + 1, LONGHANDS.indexOf('zoom') + 33)).toEqual(ALL);
     expect(ALL).toHaveLength(32);
     for (const p of ALL) expect(PROPERTY_ROLE[p], p).toBe('paint');
     for (const p of ALL) expect(ANIMATION_KINDS[p], p).toBe(p.startsWith('contain-intrinsic-') ? UNADMITTED : DISCRETE);

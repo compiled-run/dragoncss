@@ -12,6 +12,7 @@ export const TEXT_FONT_LONGHANDS = ['font-weight', 'font-style'] as const;
 
 /**
  * The longhands no captured UA table holds: the text-font rows', font-synthesis's (no UA rule sets it; its initial is auto) and the
- * text-decoration ones (the a:any-link rule is read from the unmodelled capture, TDEC-a) and the text fill and stroke colours.
+ * text-decoration ones (the a:any-link rule is read from the unmodelled capture, TDEC-a), the text fill and stroke colours and
+ * caret-color (FORM-b: no UA rule sets it, and Chrome resolves its initial auto to the element's color, like the text fill colours).
  */
-export const UNCAPTURED_LONGHANDS = [...TEXT_FONT_LONGHANDS, 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, ...TEXT_FILL_STROKE_COLOR_LONGHANDS] as const;
+export const UNCAPTURED_LONGHANDS = [...TEXT_FONT_LONGHANDS, 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, ...TEXT_FILL_STROKE_COLOR_LONGHANDS, 'caret-color'] as const;

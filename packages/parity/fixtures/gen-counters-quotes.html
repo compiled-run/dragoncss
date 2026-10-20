@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+*, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; }
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; counter-reset: sec; quotes: "<" ">"; }
+.box { width: 80px; height: 10px; background-color: rgb(40, 90, 200); }
+.r1 { counter-reset: a; }
+.r2 { counter-reset: a 3 b; }
+.r3 { COUNTER-RESET: X x -2; }
+.r4 { counter-reset: list-item 2; }
+.r5 { counter-reset: none; }
+.i1 { counter-increment: a; }
+.i2 { counter-increment: a -2 b 0; }
+.i3 { counter-increment: sec calc(1 + 2); }
+.s1 { counter-set: a; }
+.s2 { counter-set: a -1 b 99999999999; }
+.q1 { quotes: none; }
+.q2 { quotes: "«" "»" '"' '"'; }
+.q3 { quotes: auto; }
+.v { --c: a 4; counter-reset: var(--c); }
+.par { counter-increment: sec; quotes: "[" "]"; width: 120px; padding: 2px; background-color: rgb(200, 60, 40); }
+.kid { width: 60px; height: 10px; }
+.inh { counter-reset: inherit; counter-increment: inherit; quotes: inherit; }
+.ini { quotes: initial; counter-set: initial; }
+.uns { counter-reset: unset; quotes: unset; }
+.f { display: flex; width: 200px; height: 20px; counter-reset: f; }
+.fi { width: 60px; height: 20px; counter-increment: f; background-color: rgb(20, 160, 80); }
+.blk { display: block; counter-increment: item; }
+.g::before { content: 'a'; counter-increment: sec; quotes: none; }
+.g::after { content: 'b'; counter-reset: g 1; counter-set: g 2; }
+.e::before { counter-increment: sec; }
+.sp { counter-increment: sec 2; quotes: "(" ")"; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r1" class="box r1">X</div>
+<div data-dragon-id="r2" class="box r2">X</div>
+<div data-dragon-id="r3" class="box r3">X</div>
+<div data-dragon-id="r4" class="box r4">X</div>
+<div data-dragon-id="r5" class="box r5">X</div>
+<div data-dragon-id="i1" class="box i1">X</div>
+<div data-dragon-id="i2" class="box i2">X</div>
+<div data-dragon-id="i3" class="box i3">X</div>
+<div data-dragon-id="s1" class="box s1">X</div>
+<div data-dragon-id="s2" class="box s2">X</div>
+<div data-dragon-id="q1" class="box q1">X</div>
+<div data-dragon-id="q2" class="box q2">X</div>
+<div data-dragon-id="q3" class="box q3">X</div>
+<div data-dragon-id="v" class="box v">X</div>
+<div data-dragon-id="par" class="par"><div data-dragon-id="kid" class="kid">XX</div><div data-dragon-id="inh" class="kid inh">X</div><div data-dragon-id="ini" class="kid ini">X</div><div data-dragon-id="uns" class="kid uns">X</div></div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
+<ol data-dragon-id="ol" class="r1"><li data-dragon-id="li1" class="blk">XX</li><li data-dragon-id="li2" class="blk i1">X</li></ol>
+<div data-dragon-id="g" class="g">XX</div>
+<div data-dragon-id="e" class="e">X</div>
+<div data-dragon-id="t">XX <span data-dragon-id="sp" class="sp">XX</span> X</div>
+</body>
+</html>

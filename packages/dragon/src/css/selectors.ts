@@ -42,6 +42,17 @@ export type Compound = {
   readonly pseudos: readonly PseudoClass[];
 };
 export type Specificity = readonly [number, number, number];
+/** The pseudo-elements that generate a box from string content (GEN-a, notes/T151-gen-spec.md R2, R5). */
+export type GeneratedPseudo = 'before' | 'after';
+export const GENERATED_PSEUDOS: readonly GeneratedPseudo[] = ['before', 'after'];
+/**
+ * The pseudo-element a selector's subject compound ends with (R5): ::before or ::after (or the legacy :before and :after), whose
+ * box the cascade builds from the host's chain, or a statically empty one (::backdrop, ::placeholder, a date or number input part),
+ * which matches no box once analysis/pseudo-hosts.ts proves no element of the tree can host it. span: the pseudo-element's text.
+ */
+export type SelectorPseudoElement =
+  | { readonly kind: 'generated'; readonly name: GeneratedPseudo; readonly span: Span; /** Written as CSS2's single-colon :before or :after. */ readonly legacy: boolean }
+  | { readonly kind: 'static-empty'; readonly name: string; readonly span: Span };
 /**
  * Right-to-left: parts[0] is the subject; each later part is joined to the previous by its combinator. anchor: in a :has()
  * argument, the combinator joining the leftmost compound to the :has() element (Selectors-4 §3.4 relative selectors); else null.
@@ -50,6 +61,8 @@ export type Selector = {
   readonly parts: readonly { readonly compound: Compound; readonly combinator: Combinator | null }[];
   readonly specificity: Specificity;
   readonly anchor: Combinator | null;
+  /** The pseudo-element the subject compound ends with, or null for an element selector (R5). */
+  readonly pseudoElement: SelectorPseudoElement | null;
   /**
    * The rule's selector list holds a selector Chrome 145 does not parse, so Chrome drops the whole rule: this selector never
    * matches (the planted fault invalidSelectorListKept keeps it).
@@ -61,6 +74,7 @@ const SELECTOR_FIX =
   'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
 const INTERACTIVE = new Set(['focus-within', 'target', 'visited', 'link', 'any-link', 'checked', 'disabled', 'enabled']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
+const LEGACY_GENERATED: ReadonlySet<string> = new Set(GENERATED_PSEUDOS);
 const ZERO: Specificity = [0, 0, 0];
 
 const add = (a: Specificity, b: Specificity): Specificity => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -84,7 +98,8 @@ function maxSpecificity(selectors: readonly Selector[], firstArgumentOfIs: boole
  * the planted fault idSpecificityAsClass (an id counts in the class column).
  */
 export function specificityOf(sel: Selector, firstArgumentOfIs = false, idAsClass = false): Specificity {
-  let total = ZERO;
+  // Selectors-4 §17: a pseudo-element counts as a type selector (Chrome: #a::before beats .c::before, GEN-P family1 specificity).
+  let total: Specificity = sel.pseudoElement === null ? ZERO : [0, 0, 1];
   for (const { compound: c } of sel.parts) {
     const ids = c.ids.length;
     total = add(total, [idAsClass ? 0 : ids, c.classes.length + c.attributes.length + (idAsClass ? ids : 0), c.tag === null ? 0 : 1]);
@@ -100,8 +115,8 @@ export function specificityOf(sel: Selector, firstArgumentOfIs = false, idAsClas
 
 type Refuse = (node: CssNode, message: string, manual?: string) => void;
 /** forgiving: inside an :is() or :where() argument list; drop: records a selector Chrome 145 does not parse. */
-/** inArgument: inside the selector argument of :is(), :where(), :not(), :has() or an "of S". */
-type Context = { readonly insideHas: boolean; readonly forgiving: boolean; readonly inArgument: boolean; readonly drop: (node: CssNode, text: string) => void };
+/** inArgument: inside the selector argument of :is(), :where(), :not(), :has() or an "of S"; base: the sheet's span, for spanOf. */
+type Context = { readonly insideHas: boolean; readonly forgiving: boolean; readonly inArgument: boolean; readonly base: Span; readonly drop: (node: CssNode, text: string) => void };
 
 /**
  * A selector Chrome 145 does not parse (selector-validity.generated.ts). Outside :is() and :where() Chrome drops the whole rule,
@@ -116,7 +131,26 @@ function chromeInvalid(node: CssNode, text: string, ctx: Context, refuse: Refuse
 function pseudoElementOwner(name: string): string {
   if (name === '-webkit-slider-thumb' || name === '-webkit-slider-runnable-track') return 'the form-control package FORM-a';
   if (name.startsWith('-webkit-scrollbar')) return 'the scrollbar package OVFL-s';
+  if (name === 'first-line' || name === 'first-letter') return 'the generated-content package GEN-d';
+  if (name === 'marker') return 'the list-marker packages GEN-c and GEN-d6';
   return 'a later package';
+}
+
+/**
+ * R5: pseudo-elements that match no box when no element of the tree can host them (the Tailwind 4 preflight's first rule names
+ * ::backdrop and ::file-selector-button). analysis/pseudo-hosts.ts proves the tree holds no host, or refuses the selector.
+ */
+export function isStaticEmptyPseudo(name: string): boolean {
+  return STATIC_EMPTY_PSEUDOS.has(name) || name.startsWith('-webkit-datetime-edit');
+}
+const STATIC_EMPTY_PSEUDOS: ReadonlySet<string> = new Set(['backdrop', 'file-selector-button', 'placeholder', '-webkit-search-decoration', '-webkit-date-and-time-value', '-webkit-calendar-picker-indicator', '-webkit-inner-spin-button', '-webkit-outer-spin-button']);
+
+/** The owner of what follows a pseudo-element in its compound (R5): Dragon refuses it rather than decide Chrome's validity. */
+function afterPseudoOwner(part: CssNode): string {
+  const name = asciiLower(String(part['name'] ?? ''));
+  if (part.type === 'PseudoElementSelector' && name === 'marker') return 'the list-marker package GEN-d6';
+  if (part.type === 'PseudoClassSelector' && (INTERACTION_PSEUDOS as readonly string[]).includes(name)) return 'state-dependent generated content, GEN-d8';
+  return 'the generated-content package GEN-d';
 }
 
 
@@ -240,7 +274,14 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
   let pending: Combinator | null = null;
   let anchor: Combinator | null = relative;
   let ok = true;
+  let pseudoElement: SelectorPseudoElement | null = null;
   for (const part of list(sel, 'children')) {
+    if (pseudoElement !== null) {
+      // R5: the pseudo-element ends the selector; Dragon refuses whatever follows it (::before:hover, ::before::marker, a combinator).
+      ok = false;
+      refuse(part, `"${generate(part)}" after the pseudo-element ::${pseudoElement.name} of ${generate(sel)} is not supported (${afterPseudoOwner(part)})`, 'End the selector with the pseudo-element.');
+      break;
+    }
     if (part.type === 'Combinator') {
       const name = String(part['name']);
       if (!COMBINATORS.has(name)) {
@@ -283,15 +324,32 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       const test = parseAttribute(part, refuse);
       if (test === null) ok = false;
       else current.attributes.push(test);
+    } else if (part.type === 'PseudoClassSelector' && part['children'] === null && LEGACY_GENERATED.has(asciiLower(String(part['name'])))) {
+      // CSS2's single-colon :before and :after are the pseudo-elements (Chrome keeps them: GEN-P family1 specificity).
+      const name = asciiLower(String(part['name'])) as GeneratedPseudo;
+      if (ctx.inArgument) {
+        ok = false;
+        chromeInvalid(part, generate(part), ctx, refuse);
+      } else pseudoElement = { kind: 'generated', name, span: spanOf(part, ctx.base), legacy: true };
     } else if (part.type === 'PseudoClassSelector') {
       const p = parsePseudoClass(part, ctx, refuse);
       if (p === null) ok = false;
       else current.pseudos.push(p);
     } else if (part.type === 'PseudoElementSelector') {
-      ok = false;
       const name = asciiLower(String(part['name']));
-      if (part['children'] === null && PSEUDO_ELEMENT_VALID[name]?.valid === false) chromeInvalid(part, generate(part), ctx, refuse);
-      else refuse(part, `pseudo-element ${generate(part)} is not supported: pseudo-elements generate boxes Dragon does not build yet (${pseudoElementOwner(name)})`, 'Style a real element instead of the pseudo-element.');
+      const generated = part['children'] === null && (GENERATED_PSEUDOS as readonly string[]).includes(name);
+      const empty = part['children'] === null && isStaticEmptyPseudo(name);
+      if ((generated || empty) && ctx.inArgument) {
+        // Selectors-4 §4: a pseudo-element is invalid in a selector argument; Chrome drops it, and so does Dragon.
+        ok = false;
+        chromeInvalid(part, generate(part), ctx, refuse);
+      } else if (generated) pseudoElement = { kind: 'generated', name: name as GeneratedPseudo, span: spanOf(part, ctx.base), legacy: false };
+      else if (empty) pseudoElement = { kind: 'static-empty', name, span: spanOf(part, ctx.base) };
+      else {
+        ok = false;
+        if (part['children'] === null && PSEUDO_ELEMENT_VALID[name]?.valid === false) chromeInvalid(part, generate(part), ctx, refuse);
+        else refuse(part, `pseudo-element ${generate(part)} is not supported: pseudo-elements generate boxes Dragon does not build yet (${pseudoElementOwner(name)})`, 'Style a real element instead of the pseudo-element.');
+      }
     } else {
       ok = false;
       refuse(part, `selector part "${generate(part)}" is not supported`);
@@ -303,7 +361,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
     compound: c.compound as Compound,
     combinator: i === 0 ? null : (all[i - 1] as { combinator: Combinator | null }).combinator,
   }));
-  const partial: Selector = { parts, specificity: ZERO, anchor: relative === null ? null : anchor, dropped: false };
+  const partial: Selector = { parts, specificity: ZERO, anchor: relative === null ? null : anchor, pseudoElement, dropped: false };
   return { ...partial, specificity: specificityOf(partial) };
 }
 
@@ -350,7 +408,7 @@ export function parseSelectorList(prelude: CssNode, base: Span, use: SheetUse, d
     ok = false;
     refusals.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: authored(spanOf(node, base)), message, manual }));
   };
-  const ctx: Context = { insideHas: false, forgiving: false, inArgument: false, drop: (node, text) => drops.push({ node, text }) };
+  const ctx: Context = { insideHas: false, forgiving: false, inArgument: false, base, drop: (node, text) => drops.push({ node, text }) };
   for (const sel of list(prelude, 'children')) {
     const s = parseComplex(sel, null, ctx, refuse);
     if (s === null) continue;

@@ -1,0 +1,7 @@
+component App(open: boolean = false) {
+  <html>
+    <body>
+      <div toggle class="toggle" ui-open={open}>AA</div>
+    </body>
+  </html>
+}
