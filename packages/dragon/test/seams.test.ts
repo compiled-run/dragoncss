@@ -133,7 +133,7 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
   // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
   // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts), CASC 2 registers a top-level @property
   // (casc-property.test.ts) and CASC 3 orders cascade layers (casc-layer.test.ts). The enclosing at-rule of the fourth sheet is
-  // @unknown-thing, which no handler will ever take. @charset has its own handler, which accepts only "utf-8" at the start of a sheet (charset.test.ts).
+  // @unknown-thing, which no handler will ever take. @charset has its own handler, which refuses only a non-UTF-8 encoding the sniffer reads at the start of a sheet (charset.test.ts).
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
   const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'page' && n !== 'layer' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
   const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@unknown-thing w { @${n} z { .b { height: 3px; } } }`];

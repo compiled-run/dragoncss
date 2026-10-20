@@ -1,6 +1,7 @@
 // The at-rule handler registry. @font-face is accepted (fonts/wire.ts), @media is conditional (MQ-a), @supports is decided at
-// build time (CASC), @charset and @page are dropped as they change nothing on screen, and @keyframes, @property and @layer have
-// handlers in at-rules/ (ANIM-b1, CASC 2, CASC 3); every other
+// build time (CASC), @page is dropped as it applies only when printing, @charset is dropped unless the encoding sniffer reads a
+// non-UTF-8 label from it (at-rules/charset.ts), and @keyframes, @property and @layer have handlers in at-rules/ (ANIM-b1, CASC 2,
+// CASC 3); every other
 // at-rule is refused: each registered name, and any name not registered, gets the same DRAGON_UNSUPPORTED_AT_RULE diagnostic, and
 // the parse driver (stylesheet.ts) then analyses the rules inside the at-rule's block for diagnostics only (T005 rec 3).
 import { generate } from 'css-tree';

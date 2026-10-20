@@ -41,6 +41,7 @@ describe('@charset', () => {
       ['charset-utf8', '<style>@charset "utf-8";\n', '<style>\n'], ['charset-utf8-upper', '<style>@charset "UTF-8";\n', '<style>\n'],
       ['charset-late', '<style> @charset "utf-8";\n', '<style>\n'], ['charset-single-quotes', "<style>@charset 'utf-8';\n", '<style>\n'],
       ['charset-after-rules', '@charset "iso-8859-1";\n@media (min-width: 1px) { @charset "utf-8"; }\n</style>', '</style>'],
+      ['page-dropped', '@page { margin: 1in; size: A4; }\n@page :first { margin-top: 2in; @top-left { content: "x"; } }\n</style>', '</style>'],
     ];
     for (const [id, line, without] of forms) {
       expect(read(`packages/parity/fixtures/${id}.html`).replace(line, without), id).toBe(none);

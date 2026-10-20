@@ -1,7 +1,8 @@
 // Fixture group charset (css-syntax-3 §3.2): @charset is accepted as a no-op, as Chrome drops it after decoding: "utf-8" at the
 // very start of a sheet, and any @charset the encoding sniffer does not read (after whitespace, in single quotes, after rules, inside
 // @media). Each accepted fixture must render in Chrome exactly as charset-none, the same sheet without it
-// (packages/dragon/test/charset.test.ts). The reject is the sniffed form with another encoding.
+// (packages/dragon/test/charset.test.ts). The reject is the sniffed form with another encoding. @page, dropped as it applies only when
+// printing, must render as charset-none too (page-dropped).
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
@@ -13,4 +14,5 @@ export const CHARSET: readonly FixtureSpec[] = [
   both('charset-late'),
   both('charset-single-quotes'),
   both('charset-after-rules'),
+  both('page-dropped'),
 ];

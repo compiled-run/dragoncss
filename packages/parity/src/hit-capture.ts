@@ -299,12 +299,12 @@ const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
 ];
 /**
  * The table, counters, zoom, perspective, scrolling and containment longhands added after the base, at their initial values
- * (perspective-origin at any value: Chrome resolves its 50% 50% to pixels).
+ * (perspective-origin at 50% 50% in emitted CSS; in a capture JSON_PERSPECTIVE_ORIGIN strips it, since Chrome resolves it to px).
  */
 const LAYOUT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['table-layout', 'auto'], ['border-collapse', 'separate'], ['-webkit-border-horizontal-spacing', '0px'], ['-webkit-border-vertical-spacing', '0px'],
   ['caption-side', 'top'], ['empty-cells', 'show'], ['quotes', 'auto'], ['counter-reset', 'none'], ['counter-set', 'none'],
-  ['counter-increment', 'none'], ['zoom', '1'], ['perspective', 'none'], ['perspective-origin', '[^"\\n;]*'],
+  ['counter-increment', 'none'], ['zoom', '1'], ['perspective', 'none'], ['perspective-origin', '50% 50%'],
   ['overscroll-behavior-x', 'auto'], ['overscroll-behavior-y', 'auto'], ['overscroll-behavior-inline', 'auto'], ['overscroll-behavior-block', 'auto'],
   ['overflow-anchor', 'auto'], ['scroll-padding-(?:top|right|bottom|left|inline-start|inline-end|block-start|block-end)', 'auto'],
   ['scroll-margin-(?:top|right|bottom|left|inline-start|inline-end|block-start|block-end)', '0px'], ['scroll-snap-type', 'none'],
@@ -312,6 +312,8 @@ const LAYOUT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['contain-intrinsic-(?:width|height|inline-size|block-size)', 'none'], ['container-type', 'normal'], ['container-name', 'none'],
 ];
 const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE, ...LAYOUT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
+/** perspective-origin in a capture: Chrome's computed value is the resolved 50% 50% in px, which depends on the box's size. */
+const JSON_PERSPECTIVE_ORIGIN = /,\n[ ]*"perspective-origin": "[^"\n]*"/g;
 const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE, ...LAYOUT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
 /** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
 const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
@@ -392,7 +394,7 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_PERSPECTIVE_ORIGIN, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(genB, '').replace(SVG_JSON, '');
     return BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '');
   }
   if (path.endsWith('.css')) {
