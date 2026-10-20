@@ -13,7 +13,7 @@ import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, la
 import { ANIM_LANE, HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
 import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
-import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
+import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, SHAPED_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
@@ -23,7 +23,7 @@ import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, deviceCaseIds, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { animSampleIds } from '../src/anim-samples.ts';
 
@@ -84,8 +84,9 @@ describe('native targets', () => {
     for (const l of ['device-frames', 'device-applied', 'device-lines', 'device-pixels']) {
       const a = lane(ios, l);
       const b = lane(android, l);
-      // TXT1a-2: the device cases are every layout case but the shaped ones, which the device runtime draws only from phase R on.
-      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, vectorCaseIds().length]));
+      // TXT1a-2 phase R: the device cases are every layout case, a shaped one drawn in its bundled real faces.
+      expect(deviceCaseIds()).toEqual(ids);
+      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, deviceCaseIds().length]));
       expect(b?.sets.filter((s) => s.role === 'shared')).toEqual(a?.sets);
       expect(b?.sets.filter((s) => s.role === 'extra').map((s) => [s.dpr, s.extra])).toEqual(EXTRA_DPRS.map((e) => [e.dpr, e.name]));
     }
@@ -109,12 +110,13 @@ describe('native targets', () => {
     expect(android.projection).toBe(nativeLayoutProjection);
     expect(ios.projection).toBe(android.projection);
   });
-  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout. TXT1a-2: a shaped
-  // case is no device case (targets.ts vectorCaseIds), and a real-face one has no native projection, so only device cases compare.
+  // One test per fixture, so the corpus's compiles are spread over tests rather than held to one test's timeout. TXT1a-2 phase R:
+  // every layout case is a device case (targets.ts deviceCaseIds), a shaped one in its bundled real faces.
   describe('iosLayoutProjection output deep-equals nativeLayoutProjection output for every device case, at DPR 1 and every DPR', () => {
-    const device = new Set(vectorCaseIds());
+    const device = new Set(deviceCaseIds());
     it('the fixture tests below cover every device case at DPR 1 and every DPR', () => {
-      expect(layoutCases().reduce((n, f) => n + f.cases.filter((c) => device.has(c.id)).length * (1 + DPRS.length), 0)).toBe(vectorCaseIds().length * (1 + DPRS.length));
+      expect(layoutCases().reduce((n, f) => n + f.cases.filter((c) => device.has(c.id)).length * (1 + DPRS.length), 0)).toBe(deviceCaseIds().length * (1 + DPRS.length));
+      expect(deviceCaseIds().length).toBe(ids.length);
       expect(vectorCaseIds().length + shapedCaseIds().size).toBe(ids.length);
     });
     it.each(layoutCases().map((f) => [f.spec.id, f] as const))('%s', (_id, f) => {
@@ -246,7 +248,7 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases, the visibility cases (T150a), the clip cases (MASK-CLIP), the svg cases (SVG-a2) and the line-clamp cases (TXT2-g)', () => {
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases, the visibility cases (T150a), the clip cases (MASK-CLIP), the svg cases (SVG-a2), the line-clamp cases (TXT2-g) and the shaped cases (TXT1a-2 phase R)', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
@@ -262,8 +264,10 @@ describe('committed out/lanes.json', () => {
     expect(refused.filter((id) => CLIP_RECT_OUT.includes(id)).sort()).toEqual([...CLIP_RECT_OUT].sort());
     expect(refused.filter((id) => CLIP_PATH_OUT.includes(id)).sort()).toEqual([...CLIP_PATH_OUT].sort());
     expect(refused.filter((id) => MARKER_OUT.includes(id)).sort()).toEqual([...MARKER_OUT].sort());
+    expect(refused.filter((id) => shapedCaseIds().has(id)).sort()).toEqual([...shapedCaseIds()].sort());
     for (const r of refusals) {
-      if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
+      if (shapedCaseIds().has(r.id)) expect(r.reason, r.id).toMatch(SHAPED_REASON);
+      else if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
@@ -276,8 +280,8 @@ describe('committed out/lanes.json', () => {
       else if (TRANSFORM_NAMED.includes(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }
-    // TXT1a-2: over the device cases (targets.ts vectorCaseIds), every layout case but the shaped ones the runtime draws from phase R.
-    const device = vectorCaseIds();
+    // TXT1a-2 phase R: over the device cases (targets.ts deviceCaseIds), every layout case; the shaped ones are refused above.
+    const device = deviceCaseIds();
     expect([...hitCases().map((n) => n.case.id), ...refused].sort()).toEqual([...device].sort());
     expect(hitCaseCount()).toBe(device.length - refused.length);
     // The declared device-hit sets hold exactly those cases (targets.ts hitCaseIds), in layout order, at every device DPR.
@@ -305,8 +309,8 @@ describe('committed out/lanes.json', () => {
         // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every hit case (the layout cases but
         // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
         // SELD-R2: device-traces runs every interaction script and compares only trace lines (b).
-        // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : vectorCaseIds().length;
+        // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts deviceCaseIds), a shaped case in its bundled real faces since TXT1a-2 phase R.
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : deviceCaseIds().length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           // A record carried over a changed case list (async device lanes) ran the cases its RanCases names, not today's.
