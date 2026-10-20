@@ -44,6 +44,8 @@ export const STACKING_OUT: readonly string[] = [
   'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
   'stacking-grid-items-rtl',
+  // isolation-values and isolation-stacking: isolation: isolate makes a stacking context below the root.
+  'isolation-values', 'isolation-values-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in

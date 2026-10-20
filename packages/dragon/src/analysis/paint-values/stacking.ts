@@ -49,9 +49,9 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
   return node(root, false);
 }
 
-/** Where to report a stacking refusal: the declaration that makes the box a layer item (z-index, position, opacity, transform). */
+/** Where to report a stacking refusal: the declaration that makes the box a layer item (z-index, position, opacity, transform, isolation). */
 function itemOrigin(el: ResolvedElement): ReturnType<typeof authored> | ResolvedElement['element']['node']['origin'] {
-  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change'] as const) {
+  for (const p of ['z-index', 'position', 'opacity', 'transform', 'will-change', 'isolation'] as const) {
     const v = el.props.get(p) as ResolvedValue | undefined;
     if (v === undefined || v.declaration === null) continue;
     if (p === 'z-index' && zIndexOf(v.value) === null) continue;

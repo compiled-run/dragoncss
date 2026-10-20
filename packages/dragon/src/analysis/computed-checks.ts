@@ -63,6 +63,7 @@ import { usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
+import { isIsolate } from '../css/properties/isolation.ts';
 import { checkTextTransform } from './text-transform.ts';
 import { checkLineClamp, lineClampOf } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
@@ -366,12 +367,13 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
         const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
         refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
       }
-      // PNT1: opacity below 1 (or will-change: opacity) makes an inline box a stacking context whose group would hold its content,
-      // which the native runtime places as flat siblings of the inline box view, so the group would be dropped.
+      // PNT1: opacity below 1 (or will-change: opacity, or isolation: isolate) makes an inline box a stacking context whose group
+      // would hold its content, which the native runtime places as flat siblings of the inline box view, so the group would be dropped.
       const opacity = it.kind === 'open' ? opacityOf((it.el.props.get('opacity') as ResolvedValue).value) : 1;
       if (opacity === null && it.kind === 'open') throw new Error(`${it.el.element.address}: opacity did not compute to a number`);
-      if (it.kind === 'open' && ((opacity as number) < 1 || elementWillChange(it.el).includes('opacity'))) {
-        const what = (opacity as number) < 1 ? ['opacity', `opacity: ${opacity}`] : ['will-change', 'will-change: opacity'];
+      const isolated = it.kind === 'open' && isIsolate(it.el.props.get('isolation')?.value);
+      if (it.kind === 'open' && ((opacity as number) < 1 || elementWillChange(it.el).includes('opacity') || isolated)) {
+        const what = (opacity as number) < 1 ? ['opacity', `opacity: ${opacity}`] : isolated ? ['isolation', 'isolation: isolate'] : ['will-change', 'will-change: opacity'];
         refuseNative(it.el, 'stacking-context', `${what[1]} on the inline box <${it.el.element.tag}> ${it.el.element.address} makes it a stacking context: the native runtime places an inline box's content beside its view, not in it, until INL1b, so the group would be dropped`, `Move the ${what[0]} to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
       }
       const collapse = keywordOf(it.el.props.get('white-space-collapse') as ResolvedValue);

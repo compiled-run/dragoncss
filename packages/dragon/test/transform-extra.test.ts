@@ -1,8 +1,8 @@
-// PNT2: backface-visibility, transform-style and transform-box are accepted at their initial values alone, on every target, and their
-// -webkit- names are aliases; every other value is kept as Chrome keeps it and refused where it applies, since hidden can hide a box
-// (and its text) and none of them is drawn. perspective and perspective-origin are accepted at any value: a perspective is drawn as an
-// identity transform. The Chrome cases are transform-extra-initial, reject-transform-extra-backface and transform-perspective
-// (packages/parity/fixtures);
+// PNT2: backface-visibility, transform-style and transform-box are accepted at their initial values, on every target, and their
+// -webkit- names are aliases; every other value is kept as Chrome keeps it and refused where it applies, since none of them is drawn,
+// except backface-visibility: hidden on a box whose will-change names transform, where Chrome draws nothing new. perspective and
+// perspective-origin are accepted at any value: a perspective is drawn as an identity transform. The Chrome cases are
+// transform-extra-initial, backface-values, reject-transform-extra-backface and transform-perspective (packages/parity/fixtures);
 // packages/parity/test/transform-extra-parse.test.ts pins the parse.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
@@ -135,7 +135,25 @@ describe('the 3D transform longhands', () => {
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors).toHaveLength(3);
-    for (const d of errors) expect(d.message).toMatch(/^backface-visibility: hidden on <div> a is unsupported: .*only visible is accepted$/);
+    for (const d of errors) expect(d.message).toMatch(/^backface-visibility: hidden on <div> a is unsupported: .*only visible is accepted, or hidden on a box whose will-change names transform$/);
+    for (const d of errors) expect((d.fix as { manual?: string } | undefined)?.manual).toBe('Remove backface-visibility from a, or add will-change: transform to it.');
+  });
+
+  it('accept backface-visibility: hidden on a box whose will-change names transform, where Chrome 145 draws nothing new', () => {
+    // will-change: transform already composites the box's transform node and makes it a stacking context, and a 2D transform never
+    // shows the back face, mirrored or not (analysis/transform-extra.ts hiddenBackfaceIsInert).
+    for (const d of ['will-change: transform; backface-visibility: hidden', '-webkit-backface-visibility: hidden; will-change: opacity, transform', 'will-change: transform; transform: scale(-1, 1) rotate(30deg); backface-visibility: hidden', 'will-change: transform; transform: scale(-1); -webkit-backface-visibility: hidden', '--b: hidden; will-change: transform; backface-visibility: var(--b)', '--w: transform; will-change: var(--w); backface-visibility: hidden', 'will-change: transform; perspective: 100px; backface-visibility: hidden']) {
+      expect(errorsAt(d), d).toEqual([]);
+    }
+    expect(errorsAt('will-change: transform; backface-visibility: hidden', NO_FAULTS, 'will-change: transform; backface-visibility: inherit')).toEqual([]);
+    // Anywhere else hidden gives the box a paint layer and a composited layer of its own: refused, on the box that sets it.
+    for (const d of ['will-change: opacity; backface-visibility: hidden', 'transform: rotate(10deg); backface-visibility: hidden', 'transform: scale(-1, 1); backface-visibility: hidden', 'position: relative; backface-visibility: hidden', 'perspective: 100px; backface-visibility: hidden']) {
+      expect(errorsAt(d), d).toEqual(REFUSED);
+    }
+    expect(errorsAt('will-change: transform', NO_FAULTS, 'backface-visibility: hidden')).toEqual(REFUSED);
+    expect(errorsAt('will-change: transform; backface-visibility: hidden', NO_FAULTS, 'backface-visibility: inherit')).toEqual(REFUSED);
+    // The other 3D longhands are still refused beside it.
+    expect(errorsAt('will-change: transform; backface-visibility: hidden; transform-style: preserve-3d')).toEqual(REFUSED);
   });
 
   it('a perspective acts as an identity transform: a stacking context and a containing block, refused where a transform is', () => {

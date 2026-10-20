@@ -6,12 +6,13 @@
 // ObjectPosition::ParseSingleValue both call ConsumePosition with no three-value feature). backface-visibility, transform-style and
 // transform-box are accepted at their initial values alone, where each changes nothing Dragon draws: a flat box makes no 3D rendering
 // context, Dragon's transforms are 2D (properties/transform.ts), and view-box is the border box of a CSS box. computed-checks refuses
-// every other value of those on every target (checkTransformExtra): hidden gives the box a paint layer of its own in Blink, which
-// moves it in the paint order, and hides it (and its text) once it faces away; preserve-3d makes a stacking context and a 3D
-// rendering context; another reference box moves a transform's origin. perspective and perspective-origin are accepted at any value:
-// over 2D transforms a perspective is an identity transform, a stacking context and containing block like a transform, refused
-// where a transform is (paint-values/transform.ts). The keyword grammars are webref's, which list exactly Chrome 145's keywords, so a
-// value Chrome drops is dropped and every value it keeps is kept, then refused.
+// every other value of those on every target (checkTransformExtra), but hidden on a box whose will-change names transform, which
+// already has the layers hidden adds: elsewhere hidden gives the box a paint layer and a composited layer of its own in Blink, which
+// move it in the paint order and change its raster, and hides it (and its text) once it faces away; preserve-3d makes a stacking
+// context and a 3D rendering context; another reference box moves a transform's origin. perspective and perspective-origin are
+// accepted at any value: over 2D transforms a perspective is an identity transform, a stacking context and containing block like a
+// transform, refused where a transform is (paint-values/transform.ts). The keyword grammars are webref's, which list exactly Chrome
+// 145's keywords, so a value Chrome drops is dropped and every value it keeps is kept, then refused.
 import type { CssValue, PositionOffset } from '../values.ts';
 import type { PropertyAspect } from '../properties.ts';
 
