@@ -666,11 +666,11 @@ function trackBreadth(v: JsonValue, path: string): TrackBreadth {
   if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'percent') return { kind: 'percent', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
   if (k === 'fr') return { kind: 'fr', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'calc') return lengthCalc(v, path);
   obj(v, ['kind'], path);
   if (k === 'auto') return { kind: 'auto' };
   if (k === 'min-content') return { kind: 'min-content' };
   if (k === 'max-content') return { kind: 'max-content' };
-  if (k === 'calc') return lengthCalc(v, path);
   return fail(`${path}: unknown kind ${k}`);
 }
 
