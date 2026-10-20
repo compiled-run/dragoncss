@@ -1437,8 +1437,8 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
 
   /** A line's frame on whole px, covering its fragment. */
   private fun dragonLineBounds(k: Int): Rect {
-    val r = dragonAccessibleRects[k]
-    return Rect(Math.floor(r[0]).toInt(), Math.floor(r[1]).toInt(), Math.ceil(r[0] + r[2]).toInt(), Math.ceil(r[1] + r[3]).toInt())
+    val c = dragonCoveringPx(dragonAccessibleRects[k])
+    return Rect(c[0], c[1], c[2], c[3])
   }
 
   /** The line at a point in px from the view's top-left, or -1. */
