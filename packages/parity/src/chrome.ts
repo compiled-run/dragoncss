@@ -2,6 +2,7 @@
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { chromium } from 'playwright';
 import type { Browser, Page } from 'playwright';
 import { repoPath } from './paths.ts';
@@ -158,7 +159,8 @@ function headlessShellPath(): string {
   const own = createRequire(import.meta.url);
   const pw = createRequire(own.resolve('playwright'));
   const core = pw.resolve('playwright-core');
-  const { registry } = pw(core.replace(/index\.js$/, 'lib/server/registry/index.js')) as { registry: { findExecutable(n: string): { executablePath(): string | undefined } | undefined } };
+  // Under vitest playwright-core resolves to index.mjs, so take its directory rather than rewriting the file name.
+  const { registry } = pw(join(dirname(core), 'lib/server/registry/index.js')) as { registry: { findExecutable(n: string): { executablePath(): string | undefined } | undefined } };
   const path = registry.findExecutable('chromium-headless-shell')?.executablePath();
   if (path === undefined) throw new Error(`Playwright ${PLAYWRIGHT_VERSION} names no chromium-headless-shell executable`);
   return path;
