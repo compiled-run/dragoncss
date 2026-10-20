@@ -14,6 +14,9 @@ import { CONTAINER_QUERY_INITIAL } from '../src/css/properties/container-query.t
 import { CONTAINMENT_INITIAL } from '../src/css/properties/containment.ts';
 import { OVERSCROLL_INITIAL } from '../src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_INITIAL } from '../src/css/properties/scroll-snap.ts';
+import { ANCHOR_POSITION_INITIAL } from '../src/css/properties/anchor-position.ts';
+import { IMAGE_RENDERING_INITIAL } from '../src/css/properties/image-rendering.ts';
+import { SVG_EXTRA_INITIAL } from '../src/css/properties/svg-extra.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 import { floorProblems } from './floor.ts';
 
@@ -100,7 +103,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
       // The overscroll, scroll-snap, containment and container-query longhands, which accept their initial values alone, at those
       // values in two spellings.
-      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])),
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL, ...IMAGE_RENDERING_INITIAL, ...ANCHOR_POSITION_INITIAL, ...SVG_EXTRA_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : v.kind === 'number' ? [String(v.value), `${v.value}.0`] : ['0', '0px']])),
       // isolation, whose isolate makes a stacking context and so changes paint order alone, at auto and isolate.
       isolation: ['auto', 'isolate'],
       // PNT2: the individual transforms (css-transforms-2 §4).

@@ -5,6 +5,7 @@
 // Each family's kinds live in animation-kinds/<family>.ts, spread here one line per family, sorted by family id.
 import type { Longhand } from './properties.ts';
 import type { AnimationKind } from './animation-kinds/kinds.ts';
+import { ANCHOR_POSITION_ANIMATION } from './animation-kinds/anchor-position.ts';
 import { APPEARANCE_ANIMATION } from './animation-kinds/appearance.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_BLEND_ANIMATION } from './animation-kinds/background-blend.ts';
@@ -29,6 +30,7 @@ import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { HYPHENS_ANIMATION } from './animation-kinds/hyphens.ts';
+import { IMAGE_RENDERING_ANIMATION } from './animation-kinds/image-rendering.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
 import { ISOLATION_ANIMATION } from './animation-kinds/isolation.ts';
 import { LINE_BREAK_ANIMATION } from './animation-kinds/line-break.ts';
@@ -48,6 +50,7 @@ import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
+import { SVG_EXTRA_ANIMATION } from './animation-kinds/svg-extra.ts';
 import { TAB_SIZE_ANIMATION } from './animation-kinds/tab-size.ts';
 import { TABLE_ANIMATION } from './animation-kinds/table.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
@@ -73,6 +76,7 @@ import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
 export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
 
 export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
+  ...ANCHOR_POSITION_ANIMATION,
   ...APPEARANCE_ANIMATION,
   ...BACKGROUND_ANIMATION,
   ...BACKGROUND_BLEND_ANIMATION,
@@ -97,6 +101,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_VARIANT_ANIMATION,
   ...GRID_ANIMATION,
   ...HYPHENS_ANIMATION,
+  ...IMAGE_RENDERING_ANIMATION,
   ...INLINE_ANIMATION,
   ...ISOLATION_ANIMATION,
   ...LINE_BREAK_ANIMATION,
@@ -116,6 +121,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
   ...SVG_ANIMATION,
+  ...SVG_EXTRA_ANIMATION,
   ...TAB_SIZE_ANIMATION,
   ...TABLE_ANIMATION,
   ...TEXT_ANIMATION,

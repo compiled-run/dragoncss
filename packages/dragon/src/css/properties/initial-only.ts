@@ -1,5 +1,5 @@
 // The value parsers of the families Dragon accepts at their initial values alone (overscroll.ts, scroll-snap.ts, containment.ts,
-// container-query.ts). A value that spells the initial value parses to it; any other value is kept as written and refused where it
+// container-query.ts, image-rendering.ts, anchor-position.ts, svg-extra.ts). A value that spells the initial value parses to it; any other value is kept as written and refused where it
 // applies (analysis/scroll-containment.ts). Their grammar takes any value (scripts/gen-css-grammar.ts), so Dragon never drops a
 // declaration Chrome keeps; packages/parity/test/scroll-containment-parse.test.ts pins the accepted spellings against Chrome 145.
 import type { CssNode } from 'css-tree';
@@ -19,17 +19,21 @@ export const NON_INITIAL_VALUE_TYPE = 'non-initial-value';
 export const kwInitial = (value: string): CssValue => ({ kind: 'keyword', value });
 /** The zero length, as the initial value "0" computes (analysis/computed.ts parseValueText). */
 export const ZERO_LENGTH: CssValue = { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT };
+/** A number initial value, as stop-opacity's 1. */
+export const numInitial = (value: number): CssValue => ({ kind: 'number', value });
 
-/** Whether a computed value is the initial one: the same keyword, or a zero px length. */
+/** Whether a computed value is the initial one: the same keyword or number, or a zero px length. */
 export function isInitialValue(initial: CssValue, v: CssValue): boolean {
   if (initial.kind === 'keyword') return v.kind === 'keyword' && v.value === initial.value;
+  if (initial.kind === 'number') return v.kind === 'number' && v.value === initial.value;
   return initial.kind === 'length' && v.kind === 'length' && v.value === 0 && v.unit === CANONICAL_LENGTH_UNIT;
 }
 
-/** Whether one token spells the initial value: its keyword in any ASCII case, or for a zero length 0 or 0px. */
+/** Whether one token spells the initial value: its keyword in any ASCII case, its number, or for a zero length 0 or 0px. */
 export function spellsInitial(initial: CssValue, t: CssNode | undefined): boolean {
   if (t === undefined) return false;
   if (initial.kind === 'keyword') return t.type === 'Identifier' && asciiLower(String(t['name'])) === initial.value;
+  if (initial.kind === 'number') return t.type === 'Number' && Number(t['value']) === initial.value;
   if (t.type === 'Number') return Number(t['value']) === 0;
   return t.type === 'Dimension' && Number(t['value']) === 0 && asciiLower(String(t['unit'])) === 'px';
 }

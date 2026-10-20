@@ -22,6 +22,9 @@ import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { MASK_VALUE_PARSERS } from './properties/mask.ts';
 import { CONTAINMENT_VALUE_PARSERS } from './properties/containment.ts';
 import { CONTAINER_QUERY_VALUE_PARSERS } from './properties/container-query.ts';
+import { IMAGE_RENDERING_VALUE_PARSERS } from './properties/image-rendering.ts';
+import { ANCHOR_POSITION_VALUE_PARSERS } from './properties/anchor-position.ts';
+import { SVG_EXTRA_VALUE_PARSERS } from './properties/svg-extra.ts';
 import { OVERSCROLL_VALUE_PARSERS } from './properties/overscroll.ts';
 import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
 import { COUNTERS_VALUE_PARSERS } from './properties/counters.ts';
@@ -86,6 +89,9 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(SCROLL_SNAP_VALUE_PARSERS),
   ...Object.entries(CONTAINMENT_VALUE_PARSERS),
   ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
+  ...Object.entries(IMAGE_RENDERING_VALUE_PARSERS),
+  ...Object.entries(ANCHOR_POSITION_VALUE_PARSERS),
+  ...Object.entries(SVG_EXTRA_VALUE_PARSERS),
   ...Object.entries(COUNTERS_VALUE_PARSERS),
   ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),
   ...Object.entries(BACKGROUND_BLEND_VALUE_PARSERS),

@@ -174,7 +174,8 @@ describe('mask', () => {
     expect(css.split('  -webkit-mask-composite: source-over;').length - 1).toBe(1);
     expect(css).not.toMatch(/ {2}mask-composite: /);
     expect(css.split('  mask-image: none;').length - 1).toBe(1);
-    expect(webOf('.s { -webkit-mask-composite: source-over; -webkit-mask-composite: initial; }')).not.toMatch(/mask/);
+    // mask-type (svg-extra) is the <mask> element's own property, not a mask layer longhand, and is written at its initial value.
+    expect(webOf('.s { -webkit-mask-composite: source-over; -webkit-mask-composite: initial; }')).not.toMatch(/mask(?!-type: luminance;)/);
   });
 
   it('refuses a mask that a child inherits explicitly, on the child too', () => {

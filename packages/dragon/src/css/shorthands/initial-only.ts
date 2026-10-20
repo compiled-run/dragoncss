@@ -1,5 +1,6 @@
 // The shorthands of the families Dragon accepts at their initial values alone (css/properties/initial-only.ts): overscroll-behavior,
-// scroll-padding, scroll-margin and their flow-relative forms, contain-intrinsic-size and container, as Chrome 145 registers them.
+// scroll-padding, scroll-margin and their flow-relative forms, contain-intrinsic-size, container and position-try, as Chrome 145
+// registers them.
 import { SCROLL_SNAP_SHORTHAND_LONGHANDS } from '../properties/scroll-snap.ts';
 import type { ShorthandHandler } from './shared.ts';
 
@@ -18,4 +19,5 @@ export const INITIAL_ONLY_SHORTHANDS = {
   'scroll-margin-block': { longhands: SCROLL_SNAP_SHORTHAND_LONGHANDS['scroll-margin-block'], expand: hooked },
   'contain-intrinsic-size': { longhands: ['contain-intrinsic-width', 'contain-intrinsic-height'], expand: hooked },
   container: { longhands: ['container-name', 'container-type'], expand: hooked },
+  'position-try': { longhands: ['position-try-order', 'position-try-fallbacks'], expand: hooked },
 } as const satisfies { readonly [s: string]: ShorthandHandler };
