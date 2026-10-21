@@ -1,0 +1,13 @@
+{
+  "case": "text-break-all-lato",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","data":"Supercalifragilistic words","lines":3,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2],"blank":[]},
+    {"id":"b:text0","data":"Ça déjà vu – naïve «oeuvre»","lines":4,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3],"blank":[7]},
+    {"id":"c:text0","data":"Extraordinary déjà-vu","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1],"blank":[13]},
+    {"id":"d:text0","data":"“Quoted”—dash… 1,234.5%","lines":4,"units":[0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3],"blank":[]},
+    {"id":"r1:text0","data":"Breaking","lines":8,"units":[0,1,2,3,4,5,6,7],"blank":[]},
+    {"id":"r2:text0","data":"Breaking","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

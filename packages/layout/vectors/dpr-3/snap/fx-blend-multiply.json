@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 13632
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 13632
+  },
+  {
+   "id": "x",
+   "parent": "body",
+   "x": 1920,
+   "y": 1920,
+   "width": 29568,
+   "height": 9792
+  },
+  {
+   "id": "k",
+   "parent": "x",
+   "x": 1824,
+   "y": 2112,
+   "width": 25920,
+   "height": 1920
+  },
+  {
+   "id": "e",
+   "parent": "x",
+   "x": 1344,
+   "y": 4800,
+   "width": 26880,
+   "height": 1728
+  },
+  {
+   "id": "f",
+   "parent": "x",
+   "x": 1344,
+   "y": 6528,
+   "width": 26880,
+   "height": 1920
+  },
+  {
+   "id": "fa",
+   "parent": "f",
+   "x": 0,
+   "y": 0,
+   "width": 5760,
+   "height": 1920
+  },
+  {
+   "id": "fb",
+   "parent": "f",
+   "x": 5760,
+   "y": 0,
+   "width": 5760,
+   "height": 1920
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 213,
+   "width": 1200,
+   "height": 213
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 213,
+   "width": 1200,
+   "height": 213
+  },
+  {
+   "id": "x",
+   "left": 30,
+   "top": 30,
+   "right": 492,
+   "bottom": 183,
+   "width": 462,
+   "height": 153
+  },
+  {
+   "id": "k",
+   "left": 59,
+   "top": 63,
+   "right": 464,
+   "bottom": 93,
+   "width": 405,
+   "height": 30
+  },
+  {
+   "id": "e",
+   "left": 51,
+   "top": 105,
+   "right": 471,
+   "bottom": 132,
+   "width": 420,
+   "height": 27
+  },
+  {
+   "id": "f",
+   "left": 51,
+   "top": 132,
+   "right": 471,
+   "bottom": 162,
+   "width": 420,
+   "height": 30
+  },
+  {
+   "id": "fa",
+   "left": 51,
+   "top": 132,
+   "right": 141,
+   "bottom": 162,
+   "width": 90,
+   "height": 30
+  },
+  {
+   "id": "fb",
+   "left": 141,
+   "top": 132,
+   "right": 231,
+   "bottom": 162,
+   "width": 90,
+   "height": 30
+  }
+ ]
+}

@@ -1,0 +1,9 @@
+{
+  "case": "transform-indiv-values-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a4:text0","lines":[[0,2]]},
+    {"id":"b4:text0","lines":[[0,2]]},
+    {"id":"c3:text0","lines":[[0,2]]}
+  ]
+}
