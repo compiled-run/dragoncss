@@ -37,7 +37,8 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   iframe: ['src', 'width', 'height'],
   // FORM-a A3: a button's type (button, submit, reset, or an invalid value, which is submit) changes only its activation
   // behaviour; Chrome's UA rules for button do not read it (HTML §15.5.3; parity fixture controls-button-type).
-  button: ['type'],
+  // FORM-c: disabled decides :disabled and :enabled (analysis/match.ts isActuallyDisabled) and the disabled UA key.
+  button: ['type', 'disabled'],
   // MEDIA-EL: a video's src is the stream that sizes it (videos/compile.ts), and preload none keeps it at the default object size.
   video: ['src', 'width', 'height', 'preload'],
   // GEN-c (notes/T151-gen-spec.md R14): ol start and reversed and li value set list item ordinals (HTML §4.4.5, §4.4.8), which
@@ -46,7 +47,7 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   li: ['value'],
   // FORM-a A4: an input's type picks its control (only range is laid out, computed-checks.ts refuses the others); min, max, value
   // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures).
-  input: ['type', 'min', 'max', 'value', 'step'],
+  input: ['type', 'min', 'max', 'value', 'step', 'disabled'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */

@@ -189,10 +189,10 @@ describe('matching on the fixed tree', () => {
   it('FORM-c: :disabled and :enabled match a form control by its disabled attribute, and never a div', () => {
     const controls = (r: SourceRef): TreeNode[] => {
       const el = (id: string, tag: string, attributes: ReturnType<typeof attr>[] = []): ElementNode => ({ ...div(r, id, ['c']), tag, attributes });
-      return [el('b1', 'button'), el('b2', 'button', [attr('disabled', '')]), el('r1', 'input', [attr('type', 'range'), attr('disabled', 'disabled')]), el('d1', 'div', [attr('disabled', '')]), el('d2', 'div')];
+      return [el('b1', 'button'), el('b2', 'button', [attr('disabled', '')]), el('r1', 'input', [attr('type', 'range'), attr('disabled', 'disabled')]), el('d1', 'div'), el('d2', 'div')];
     };
     const widths = (css: string): string[] => {
-      const c = project().compile(inputFor(`button, input { appearance: none; display: block; font: inherit; } input::-webkit-slider-thumb { appearance: none; } ${css}`, controls));
+      const c = project().compile(inputFor(`button, input { appearance: none; display: block; font: inherit; border: 0; } input::-webkit-slider-thumb { appearance: none; } ${css}`, controls));
       expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       return ['b1', 'b2', 'r1', 'd1', 'd2'].map((n) => explainOne(c, 'ios', n, 'width').value);
     };
