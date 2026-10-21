@@ -48,4 +48,6 @@ export const SVG_ANIMATION: { readonly [P in (typeof SVG_LONGHANDS)[number]]: An
   'text-anchor': DISCRETE,
   'dominant-baseline': DISCRETE,
   'alignment-baseline': DISCRETE,
+  // SVG-d: path data interpolates in Chrome (css_properties.json5 interpolable); no animation package admits it yet.
+  d: UNADMITTED,
 };

@@ -1722,6 +1722,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkMulticol(el, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
+      // A refusal reached through var() (an arc in d, say) is reported on shapes too; the profile pass stays with boxes.
+      checkSubstitution(el, targets, diagnostics, reported, null, fonts);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);

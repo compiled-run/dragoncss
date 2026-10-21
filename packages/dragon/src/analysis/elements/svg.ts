@@ -11,6 +11,7 @@ import { TRANSPARENT } from '../../css/color.ts';
 import { opacityOf } from '../../css/properties/effects.ts';
 import { dashArrayOf } from '../../css/properties/svg-dash.ts';
 import { paintsStrokeFirst } from '../../css/properties/svg-paint-order.ts';
+import { svgPathData, svgPathValue } from '../../css/properties/svg-d.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue, Declaration } from '../../css/stylesheet.ts';
 import { parseValue } from '../../css/stylesheet.ts';
@@ -163,6 +164,10 @@ export function svgPresentationHints(tag: string, attributes: ReadonlyMap<string
     const v = text === undefined ? null : p === 'rx' || p === 'ry' ? svgRadiusAttributeOf(p, text) : parseSvgLength(text);
     if (v !== null && !(p === 'r' && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
   }
+  // SVG-d: a path's d attribute hints the d property when its data parses whole (svgAttributeRefusal refuses any other).
+  const d = tag === 'path' ? attributes.get('d') : undefined;
+  const dv = d === undefined ? null : svgPathValue(d);
+  if (dv !== null && 'value' in dv) out.set('d', dv.value);
   // An svg's width and height, and a rect's, are geometry properties their attributes map to (SVG 2 §10.4, §11.2).
   if (tag === SVG_TAG || tag === 'rect') {
     for (const p of ['width', 'height'] as const) {
@@ -227,8 +232,10 @@ export function shapeOf(el: ResolvedElement): SvgShape | null {
     return text === undefined ? 0 : parseSvgLength(text);
   };
   if (tag === 'path') {
-    const d = parsePathData(attributes.get('d') ?? '');
-    return d.ok ? { kind: 'path', segments: d.segments } : null;
+    // SVG-d: the computed d, which the d attribute hints; none is an empty path.
+    const v = (el.props.get('d') as ResolvedValue).value;
+    const d = v.kind === 'keyword' ? null : parsePathData(svgPathData(v));
+    return d === null ? { kind: 'path', segments: [] } : d.ok ? { kind: 'path', segments: d.segments } : null;
   }
   if (tag === 'rect') {
     const [x, y, width, height] = [svgLengthOf(el, 'x'), svgLengthOf(el, 'y'), num('width'), num('height')];
