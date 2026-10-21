@@ -1,6 +1,6 @@
-// Fixture group env (ENV-SAFE): css-env-1 env(safe-area-inset-*). The rejects join the parity corpus. The layout fixtures are
-// web-only (ENV_FIXTURES, env-run.ts): Chrome renders them under Emulation.setSafeAreaInsetsOverride, and native targets refuse
-// env() until the native runtime reads the root view's insets, so they run the chrome-dual lane alone. Each names the insets it is
+// Fixture group env (ENV-SAFE): css-env-1 env(safe-area-inset-*). The rejects join the parity corpus. The layout fixtures run in
+// env-run.ts (ENV_FIXTURES): Chrome renders them under Emulation.setSafeAreaInsetsOverride, and linux-dragon-layout lays out the
+// native lowering with the same insets, which a native mount reads from its container (dragonSafeArea). Each names the insets it is
 // captured with, in whole CSS px (the override takes integers only).
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';

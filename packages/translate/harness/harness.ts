@@ -10,6 +10,7 @@ import type {
   BoxSizing,
   BoxType,
   CalcExpr,
+  ContainSize,
   Direction,
   Display,
   FlexBasisValue,
@@ -49,9 +50,11 @@ import type {
   MaxInlineSizeValue,
   MaxSizeValue,
   MinSizeValue,
+  NoneValue,
   Overflow,
   PaddingValue,
   Position,
+  Px,
   SafeAreaSide,
   SizeValue,
   TextAlign,
@@ -83,6 +86,7 @@ import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -554,6 +558,17 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+/** contain-intrinsic-width and -height: px or none. */
+function pxOrNone(v: JsonValue, path: string): Px | NoneValue {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'none') {
+    obj(v, ['kind'], path);
+    return { kind: 'none' };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 /** width and min-width: a SizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
 function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
   const k = kindOf(v, path);
@@ -651,7 +666,8 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'multicol', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'multicol', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -870,6 +886,11 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     textIndent: paddingValue(f('textIndent'), p('textIndent')),
     lineClamp: num(f('lineClamp'), p('lineClamp')),
+    containLayout: bool(f('containLayout'), p('containLayout')),
+    containPaint: bool(f('containPaint'), p('containPaint')),
+    containSize: lit(f('containSize'), ['none', 'inline-size', 'size'], p('containSize')) as ContainSize,
+    containIntrinsicWidth: pxOrNone(f('containIntrinsicWidth'), p('containIntrinsicWidth')),
+    containIntrinsicHeight: pxOrNone(f('containIntrinsicHeight'), p('containIntrinsicHeight')),
     multicol: decodeMulticol(f('multicol'), p('multicol')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
@@ -1044,7 +1065,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1135,6 +1156,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampHeightIncludesHiddenLines: b('clampHeightIncludesHiddenLines'),
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
+    containedContentSized: b('containedContentSized'),
+    containerJoinsFlow: b('containerJoinsFlow'),
   };
 }
 
@@ -1601,6 +1624,21 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const faults: DashFaults = { phase1: flagAt(a, 11), gapUnfitted: flagAt(a, 12) };
     return `["ok",[${commaList(outlinePaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), str(item(a, 6, '$'), '$[6]'), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10), faults).map(borderOpJson))}]]`;
   }
+  // PNT1-opacity-b: paint-group.ts.
+  if (name === 'paint:group:groupComposite') return `["ok",${h(groupComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10) !== 0))}]`;
+  if (name === 'paint:group:groupPack') return `["ok",${h(groupPack(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:group:groupTileSize') return `["ok",${h(groupTileSize(arg(a, 1)))}]`;
+  if (name === 'paint:group:groupTileIndex') return `["ok",${h(groupTileIndex(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupTileSpan') return numList(groupTileSpan(arg(a, 1), arg(a, 2)));
+  // PNT1-opacity-b S2: the software layer's fill, fold alpha and fold item.
+  if (name === 'paint:group:groupTileFoldIndex') return `["ok",${h(groupTileFoldIndex(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)))}]`;
+  if (name === 'paint:group:groupFoldAlpha') return `["ok",${h(groupFoldAlpha(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupFill') return `["ok",${h(groupFill(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8)))}]`;
+  if (name === 'paint:group:groupTileFolds') return `["ok",${groupTileFolds(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)) ? 'true' : 'false'}]`;
+  // PNT1-filter: paint-group.ts colour-matrix filters.
+  if (name === 'paint:group:groupFilterMatrix') return numList(groupFilterMatrix(arg(a, 1), arg(a, 2)));
+  if (name === 'paint:group:groupFilterMatrices') return numList(groupFilterMatrices(bitsList(a, 1)));
+  if (name === 'paint:group:groupFilterComposite') return `["ok",${h(groupFilterComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), bitsList(a, 9), arg(a, 10)))}]`;
   // PNT2: paint-transform.ts.
   if (name === 'paint:transform:resolveTransformOrigin') {
     const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));

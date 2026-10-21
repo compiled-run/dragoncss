@@ -1,13 +1,14 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
 import type { Auto, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
-import { add, clampNegativeToZero, divInt, max, min, sub, ZERO } from './units.ts';
+import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
   constrain,
   contentBox,
+  establishesFormattingContext,
   inlineMinMaxWith,
   INDEFINITE,
   isScrollContainer,
@@ -194,7 +195,7 @@ export type EngineFaults = {
   readonly emergencyBreakBeforeOpportunity: boolean;
   /** TXT2-a: word-break: break-word is laid out as normal. */
   readonly wordBreakBreakWordIgnored: boolean;
-  /** TXT2-d: word-break: break-all is laid out as normal. */
+  /** TXT2-d, TXT-BREAK-2: word-break: break-all is laid out as normal. */
   readonly breakAllIgnored: boolean;
   /** TXT2-g: a line-clamp container's content height takes every line instead of ending after line N. */
   readonly clampHeightIncludesHiddenLines: boolean;
@@ -202,6 +203,10 @@ export type EngineFaults = {
   readonly clampEllipsisMissingWhenLineFits: boolean;
   /** TXT2-g: line N gets an ellipsis even when it is the last line (Blink relayouts without the clamp when nothing follows). */
   readonly clampEllipsisOnExactLastLine: boolean;
+  /** CQ: an inline-size contained box contributes its content's intrinsic inline sizes. */
+  readonly containedContentSized: boolean;
+  /** CQ: an inline-size contained block joins its parent's block formatting context (margins collapse through it). */
+  readonly containerJoinsFlow: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -287,6 +292,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampHeightIncludesHiddenLines: false,
   clampEllipsisMissingWhenLineFits: false,
   clampEllipsisOnExactLastLine: false,
+  containedContentSized: false,
+  containerJoinsFlow: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
@@ -334,6 +341,11 @@ export type ContentsResult = {
   readonly defaultLastBaselineFlex: string;
 };
 
+/** css-sizing-4 §5.2: the content block size a size-contained box takes, contain-intrinsic-height or 0 for none. */
+function containedHeight(s: LayoutStyle): LU {
+  return s.containIntrinsicHeight.kind === 'px' ? fromCssPx(s.containIntrinsicHeight.value) : ZERO;
+}
+
 /** A set of adjoining vertical margins, kept as Blink NGMarginStrut does: the largest positive and the most negative. */
 export type Strut = { readonly positive: LU; readonly negative: LU };
 
@@ -359,9 +371,20 @@ function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): L
   return min(baseline, height);
 }
 
-// CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height.
+// CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height. css-contain-2 §3.2: a box with
+// layout containment has no baseline for anything outside it to align to.
 export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
+  const r = layoutOwnContents(ctx, box, a);
+  if (!box.style.containLayout) return r;
+  return { ...r, frag: { ...r.frag, baseline: null }, lastBaseline: null, lastBaselineFlex: '', defaultLastBaseline: null, defaultLastBaselineFlex: '' };
+}
+
+function layoutOwnContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
   const s = box.style;
+  // Inline-size containment only changes the intrinsic inline size (intrinsic.ts), so it lays out on any box, query containers too.
+  if (s.containSize === 'size' && (s.display !== 'block' || !s.containLayout)) {
+    unsupported('size-containment', box.id, 'css-contain-2 §3.1', `size containment on ${box.id} (${s.display}${s.containLayout ? '' : ', without layout containment'}) is not laid out yet`);
+  }
   checkOutOfFlowSiblings(ctx, box);
   const pad = resolvePaddingWith(s, a.cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -431,7 +454,8 @@ export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): Conte
   // spec reading of min-max-end-margin (CSS 2.1 §8.3.1), a non-zero min-height also keeps them from adjoining.
   const specNoCollapse = ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
   const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null && !specNoCollapse;
-  const flowIntrinsic = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  // css-contain-2 §3.1: under size containment the content height is contain-intrinsic-height (none is 0), whatever the contents.
+  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
   // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
   const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;
   // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
@@ -700,8 +724,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let inline: BlockLevelInline;
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext).
-    // css-multicol-1 §2: a multi-column container establishes a new block formatting context.
-    const newFormattingContext = kid.kind === 'replaced' || kid.style.display !== 'block' || isScrollContainer(kid.style) || kid.style.multicol !== null;
+    // css-multicol-1 §2: a multi-column container establishes a new block formatting context too.
+    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).

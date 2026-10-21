@@ -1,0 +1,1581 @@
+{
+ "schema": "dragon-resize-capture/1",
+ "case": "cq-units-rtl~resize",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2,
+ "direction": "rtl",
+ "start": {
+  "width": 400,
+  "height": 304
+ },
+ "steps": [
+  {
+   "kind": "resize",
+   "width": 304,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 328,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 352,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 368,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 376,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 384,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 392,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 344,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 400,
+   "height": 304
+  }
+ ],
+ "samples": [
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 384,
+     "height": 84,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 200,
+     "y": 0,
+     "width": 172,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 251.484375,
+     "y": 10,
+     "width": 120.515625,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 341.6875,
+     "y": 20,
+     "width": 30.3125,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 32,
+     "y": 30,
+     "width": 340,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 244.5,
+     "y": 30,
+     "width": 127.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 362,
+     "y": 40,
+     "width": 10,
+     "height": 34,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 222,
+     "y": 74,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 200,
+     "y": 84,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 350,
+     "y": 84,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 304,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 87.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 87.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 288,
+     "height": 77.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 154,
+     "y": 0,
+     "width": 138,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 193.921875,
+     "y": 10,
+     "width": 98.078125,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 263.7265625,
+     "y": 20,
+     "width": 28.2734375,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 30,
+     "width": 276,
+     "height": 47.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 188.5,
+     "y": 30,
+     "width": 103.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 282,
+     "y": 40,
+     "width": 10,
+     "height": 27.59375,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 154,
+     "y": 67.59375,
+     "width": 138,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 104,
+     "y": 77.59375,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 254,
+     "y": 77.59375,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 328,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 90,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 90,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 312,
+     "height": 80,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 166,
+     "y": 0,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 210,
+     "y": 10,
+     "width": 106,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 287,
+     "y": 20,
+     "width": 29,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 30,
+     "width": 300,
+     "height": 50,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 203.5,
+     "y": 30,
+     "width": 112.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 306,
+     "y": 40,
+     "width": 10,
+     "height": 30,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 166,
+     "y": 70,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 128,
+     "y": 80,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 278,
+     "y": 80,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 352,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 92.3984375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 92.3984375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 336,
+     "height": 82.3984375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 178,
+     "y": 0,
+     "width": 162,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 226.0859375,
+     "y": 10,
+     "width": 113.9140625,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 310.28125,
+     "y": 20,
+     "width": 29.71875,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 30,
+     "width": 324,
+     "height": 52.3984375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 218.5,
+     "y": 30,
+     "width": 121.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 330,
+     "y": 40,
+     "width": 10,
+     "height": 32.3984375,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 190,
+     "y": 72.3984375,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 152,
+     "y": 82.3984375,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 302,
+     "y": 82.3984375,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 368,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 368,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 368,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 352,
+     "height": 84,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 186,
+     "y": 0,
+     "width": 170,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 236.8046875,
+     "y": 10,
+     "width": 119.1953125,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 325.8046875,
+     "y": 20,
+     "width": 30.1953125,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 30,
+     "width": 340,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 228.5,
+     "y": 30,
+     "width": 127.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 346,
+     "y": 40,
+     "width": 10,
+     "height": 34,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 206,
+     "y": 74,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 168,
+     "y": 84,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 318,
+     "y": 84,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 376,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 376,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 376,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 360,
+     "height": 84,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 190,
+     "y": 0,
+     "width": 174,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 242.1640625,
+     "y": 10,
+     "width": 121.8359375,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 333.5625,
+     "y": 20,
+     "width": 30.4375,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 30,
+     "width": 340,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 236.5,
+     "y": 30,
+     "width": 127.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 354,
+     "y": 40,
+     "width": 10,
+     "height": 34,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 214,
+     "y": 74,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 176,
+     "y": 84,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 326,
+     "y": 84,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 384,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 92.796875,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 92.796875,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 368,
+     "height": 82.796875,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 192,
+     "y": 0,
+     "width": 164,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 240.765625,
+     "y": 10,
+     "width": 115.234375,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 326.1640625,
+     "y": 20,
+     "width": 29.8359375,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 28,
+     "y": 30,
+     "width": 328,
+     "height": 52.796875,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 233,
+     "y": 30,
+     "width": 123,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 346,
+     "y": 40,
+     "width": 10,
+     "height": 32.796875,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 206,
+     "y": 72.796875,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 184,
+     "y": 82.796875,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 334,
+     "y": 82.796875,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 392,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 392,
+     "height": 93.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 392,
+     "height": 93.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 376,
+     "height": 83.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 196,
+     "y": 0,
+     "width": 168,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 246.125,
+     "y": 10,
+     "width": 117.875,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 333.921875,
+     "y": 20,
+     "width": 30.078125,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 28,
+     "y": 30,
+     "width": 336,
+     "height": 53.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 238,
+     "y": 30,
+     "width": 126,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 354,
+     "y": 40,
+     "width": 10,
+     "height": 33.59375,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 214,
+     "y": 73.59375,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 192,
+     "y": 83.59375,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 342,
+     "y": 83.59375,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 344,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 344,
+     "height": 91.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 344,
+     "height": 91.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 328,
+     "height": 81.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 174,
+     "y": 0,
+     "width": 158,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 220.7265625,
+     "y": 10,
+     "width": 111.2734375,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 302.5234375,
+     "y": 20,
+     "width": 29.4765625,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 30,
+     "width": 316,
+     "height": 51.59375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 213.5,
+     "y": 30,
+     "width": 118.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 322,
+     "y": 40,
+     "width": 10,
+     "height": 31.59375,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 182,
+     "y": 71.59375,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 144,
+     "y": 81.59375,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 294,
+     "y": 81.59375,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 94,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 384,
+     "height": 84,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 200,
+     "y": 0,
+     "width": 172,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 251.484375,
+     "y": 10,
+     "width": 120.515625,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 341.6875,
+     "y": 20,
+     "width": 30.3125,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 32,
+     "y": 30,
+     "width": 340,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 244.5,
+     "y": 30,
+     "width": 127.5,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 362,
+     "y": 40,
+     "width": 10,
+     "height": 34,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 222,
+     "y": 74,
+     "width": 150,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 0)"
+     }
+    },
+    {
+     "id": "fix",
+     "kind": "element",
+     "hasBox": true,
+     "x": 200,
+     "y": 84,
+     "width": 200,
+     "height": 10,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "f-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 350,
+     "y": 84,
+     "width": 50,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -294,11 +294,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -552,11 +562,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -810,11 +830,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -1068,11 +1098,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     }
    ]
@@ -1334,11 +1374,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -1592,11 +1642,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -1850,11 +1910,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -2108,11 +2178,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     }
    ]
@@ -2374,11 +2454,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -2632,11 +2722,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -2890,11 +2990,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -3148,11 +3258,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     }
    ]
@@ -3414,11 +3534,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -3672,11 +3802,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -3930,11 +4070,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -4188,11 +4338,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     }
    ]
@@ -4454,11 +4614,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -4712,11 +4882,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -4970,11 +5150,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -5228,11 +5418,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     }
    ]
@@ -5494,11 +5694,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -5752,11 +5962,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -6010,11 +6230,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     },
     {
@@ -6268,11 +6498,21 @@
       "counter-set": "none",
       "quotes": "auto",
       "color-scheme": "normal",
+      "column-width": "auto",
+      "column-count": "auto",
+      "column-rule-width": "0px",
+      "column-rule-style": "none",
+      "column-rule-color": "rgb(0, 0, 0)",
+      "column-span": "none",
+      "column-fill": "balance",
+      "speak": "normal",
       "break-before": "auto",
       "break-after": "auto",
       "break-inside": "auto",
       "orphans": "2",
-      "widows": "2"
+      "widows": "2",
+      "backdrop-filter": "none",
+      "mix-blend-mode": "normal"
      }
     }
    ]

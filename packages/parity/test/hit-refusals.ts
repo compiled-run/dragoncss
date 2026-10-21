@@ -21,8 +21,8 @@ export const INLINE_OUT: readonly string[] = [
   'text-stroke-ahem', 'text-stroke-ahem-rtl',
   // TXT2-h's text-indent-ahem holds an inline box, a <br> and inline-blocks.
   'text-indent-ahem', 'text-indent-ahem-rtl',
-  // TXT-FONT's text-font-variant-ahem, text-font-variant-caps-ahem (sp), text-font-tuning-ahem, text-font-size-values-ahem and text-font-size-calc-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
-  'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-variant-caps-ahem', 'text-font-variant-caps-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-font-size-calc-ahem', 'text-font-size-calc-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
+  // TXT-FONT's text-font-variant-ahem, text-font-variant-caps-ahem (sp), text-font-tuning-ahem, text-font-size-values-ahem, text-font-size-calc-ahem and text-font-size-vw-ahem hold inline boxes, and so does TXT-W's text-style-ahem (em, i).
+  'text-font-variant-ahem', 'text-font-variant-ahem-rtl', 'text-font-variant-caps-ahem', 'text-font-variant-caps-ahem-rtl', 'text-font-tuning-ahem', 'text-font-tuning-ahem-rtl', 'text-font-size-values-ahem', 'text-font-size-values-ahem-rtl', 'text-font-size-calc-ahem', 'text-font-size-calc-ahem-rtl', 'text-font-size-vw-ahem', 'text-font-size-vw-ahem-rtl', 'text-style-ahem', 'text-style-ahem-rtl',
   // TXT-W's text-weight-bold-ahem holds inline boxes (b, strong).
   'text-weight-bold-ahem', 'text-weight-bold-ahem-rtl',
   // TXT2-d's text-word-break-ahem, TXT2-lb's text-line-break-ahem and TXT2-tal's text-align-last-ahem hold inline boxes (text-align-last-ahem also a <br>).
@@ -58,9 +58,14 @@ export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which 
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;
 export const STACKING_OUT: readonly string[] = [
-  'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'stacking-basic',
+  'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-clipped', 'opacity-group-clipped-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
-  'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl',
+  'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl',
+  // isolation-values and isolation-stacking: isolation: isolate makes a stacking context below the root.
+  'isolation-values', 'isolation-values-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
+  // fx-backdrop-* and fx-blend-*: a backdrop-filter or a mix-blend-mode makes a stacking context below the root.
+  'fx-backdrop-canvas', 'fx-backdrop-canvas-rtl', 'fx-backdrop-white', 'fx-backdrop-white-rtl', 'fx-blend-multiply', 'fx-blend-multiply-rtl',
+  'fx-blend-darken', 'fx-blend-darken-rtl',
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in

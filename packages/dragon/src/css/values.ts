@@ -2,10 +2,10 @@
 import { generate } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import type { ColorSyntax, Rgba8 } from './color.ts';
-import { parseColorNode } from './color.ts';
+import { parseColorValue } from './color.ts';
 import { asciiLower, decodeName, serializeString } from './escapes.ts';
 import type { Longhand } from './properties.ts';
-import { foldableUnits, foldNumber, mathContextFor, mathHasEnv, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
+import { foldableUnits, fontSizeUnits, foldNumber, mathContextFor, mathHasEnv, parseMath, V1_MATH_FUNCTIONS } from './math.ts';
 import { CANONICAL_LENGTH_UNIT, lengthFeatureType, normalizeUnit } from './units.ts';
 import { GENERIC_FAMILY_KEYWORDS } from '../fonts/font-face.ts';
 import type { FontMap } from '../fonts/font-map.ts';
@@ -21,8 +21,11 @@ export type CssValue =
   | { readonly kind: 'ratio'; readonly auto: boolean; readonly width: number; readonly height: number }
   /** css-images-3 §5.6 object-position as Chrome computes it: each axis an offset from the left or top edge, in px or %. */
   | { readonly kind: 'position'; readonly x: PositionOffset; readonly y: PositionOffset }
-  /** A resolved legacy sRGB colour; transparent and currentcolor stay keywords. */
-  | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax }
+  /**
+   * A resolved colour as the 8-bit sRGB colour Chrome paints; transparent and currentcolor stay keywords. css is Chrome's computed
+   * serialization when it is not rgb()/rgba() of value (the COL4 colour functions: color-mix(), relative colours, lab() and so on).
+   */
+  | { readonly kind: 'color'; readonly value: Rgba8; readonly syntax: ColorSyntax; readonly css?: string; readonly web?: string; readonly oklab?: true; readonly fractional?: true }
   | { readonly kind: 'other'; readonly type: string; readonly text: string };
 
 /** One computed <position> axis: px or a percentage of the free space. */
@@ -94,9 +97,10 @@ export function tokenValue(node: CssNode, property: string): CssValue | string {
   } else if (node.type !== 'Hash' && node.type !== 'Function') {
     return toValue(node, property);
   }
-  const c = parseColorNode(node);
+  const c = parseColorValue(node);
   if (!c.ok) return c.reason;
-  return c.kind === 'keyword' ? { kind: 'keyword', value: c.keyword } : { kind: 'color', value: c.value, syntax: c.syntax };
+  if (c.kind === 'keyword') return { kind: 'keyword', value: c.keyword };
+  return { kind: 'color', value: c.value, syntax: c.syntax, ...(c.css === undefined ? {} : { css: c.css }), ...(c.web === undefined ? {} : { web: c.web }), ...(c.oklab === undefined ? {} : { oklab: c.oklab }), ...(c.fractional === undefined ? {} : { fractional: c.fractional }) };
 }
 
 export function toValue(node: CssNode, property: string): CssValue {
@@ -159,8 +163,12 @@ function mathValue(node: CssNode, name: string, property: string): CssValue {
   if (!parsed.ok) return refused(parsed.reason);
   // CALC-2: a font-size or line-height calculation folds to px at build time (analysis/computed.ts computeLengths), so it holds
   // only lengths that do not change on the device.
-  if (FOLDED_MATH_PROPERTIES.has(property) && !foldableUnits(parsed.node)) {
-    return refused(`a calculation in ${property} is supported with px, %, em, rem and absolute lengths only; a viewport, safe-area, container or font-metric unit there changes the text on the device, which Dragon does not resolve yet`);
+  // A font-size calculation may also read the large viewport (vw, vh, vi, vb, vmin, vmax), which the engine resolves on the device.
+  if (property === 'font-size' && !fontSizeUnits(parsed.node)) {
+    return refused('a calculation in font-size is supported with px, %, em, rem, absolute and large viewport lengths (vw, vh, vi, vb, vmin, vmax) only; a safe-area, container, small or dynamic viewport or font-metric unit there is not resolved yet');
+  }
+  if (property === 'line-height' && !foldableUnits(parsed.node)) {
+    return refused('a calculation in line-height is supported with px, %, em, rem and absolute lengths only; a viewport, safe-area, container or font-metric unit there changes the text on the device, which Dragon does not resolve yet');
   }
   if (context.type === 'number') {
     const folded = foldNumber(parsed.node);

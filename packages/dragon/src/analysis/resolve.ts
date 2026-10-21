@@ -27,12 +27,13 @@ import type { LinkedElement, LinkedText } from './link.ts';
 import type { TransformItem } from './text-transform.ts';
 import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
-import { NO_INTERACTION } from './match.ts';
+import { NO_INTERACTION, pseudoSelectorMatches, selectorMatches } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
 import { computeResize } from '../css/properties/resize.ts';
 import { computeFontStretch } from '../css/properties/font-stretch.ts';
 import { computeTouchAction } from '../css/properties/touch-action.ts';
+import { applyWebkitScrollbar, hasScrollbarRules } from './webkit-scrollbar.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -239,6 +240,15 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
   const rulesOf = new Map([...GENERATED_PSEUDOS, 'marker' as const].map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind !== 'static-empty' && sel.pseudoElement.name === p))] as const));
   const markerRules = rulesOf.get('marker') as readonly Rule[];
+  const scrollbarRules = hasScrollbarRules(rules);
+  // CQ: a @container rule takes part only where environment.container says its query container matches. Its query is decided only
+  // for an element one of its selectors matches, so a container Dragon cannot read refuses only the rules that reach inside it.
+  const contained = rules.some((r) => r.container !== undefined);
+  const applying = (rs: readonly Rule[], ancestors: readonly LinkedElement[], self: LinkedElement | null, selects: (r: Rule) => boolean): readonly Rule[] => {
+    if (!contained) return rs;
+    const holds = environment.container;
+    return rs.filter((r) => r.container === undefined || (selects(r) && holds !== undefined && holds(r, ancestors, self)));
+  };
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = RESOLVED_CUSTOMS;
@@ -249,8 +259,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // parent, the host.
   const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | 'marker' | null = null): ResolvedElement => {
     const here = pseudo === null ? [...chain, el] : chain;
+    const selects = (r: Rule): boolean => r.selectors.some((sel) => (pseudo === null ? selectorMatches(r, sel, here, here.length - 1, 0, faults, interaction) : pseudoSelectorMatches(r, sel, here, pseudo, faults, interaction)));
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
-    const { winners, matched, scope } = cascadeElement(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo);
+    const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag);
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -348,6 +359,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     blockify(props, parent === null ? null : parent.props, faults);
     adjustLineClampDisplay(props);
     computeOverflowPair(props);
+    // NA-NATIVE: a scroll container whose ::-webkit-scrollbar rules hide its scrollbars takes scrollbar-width: none.
+    if (pseudo === null && scrollbarRules) applyWebkitScrollbar(props, here, rules, faults);
     computeResize(props);
     computeTouchAction(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);

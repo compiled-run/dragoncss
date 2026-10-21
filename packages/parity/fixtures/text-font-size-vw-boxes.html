@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.v1 { font-size: 4vw; }
+.v2 { font-size: clamp(1rem, 5vw, 1.5rem); }
+.v3 { font-size: calc(1em + 2vw); }
+.v4 { font-size: calc(50% + 3vmin); }
+.v5 { font-size: max(12px, 6vh); }
+.v6 { font-size: min(3vw, 2em); }
+.b { width: 2em; height: 1em; background-color: #9ad0ec; }
+.m { margin: 0.5em 1em; padding: calc(0.25em + 1px); width: calc(3em - 2px); height: 0.5em; background-color: #e8d36a; }
+.big { font-size: 20px; }
+.px { font-size: 9px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="v1 b"></div>
+<div data-dragon-id="b" class="v2 b"></div>
+<div data-dragon-id="c" class="big"><div data-dragon-id="c1" class="v3 b"></div></div>
+<div data-dragon-id="d" class="big"><div data-dragon-id="d1" class="v4 b"></div></div>
+<div data-dragon-id="e" class="v5 b"></div>
+<div data-dragon-id="f" class="v6 b"></div>
+<div data-dragon-id="g" class="v1"><div data-dragon-id="g1" class="m"></div><div data-dragon-id="g2" class="b"></div><div data-dragon-id="g3" class="px b"></div></div>
+<div data-dragon-id="h" class="v2 m"></div>
+</body>
+</html>

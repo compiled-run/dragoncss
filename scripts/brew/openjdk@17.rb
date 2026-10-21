@@ -1,0 +1,180 @@
+# homebrew/core's openjdk@17 formula at 17.0.21 (Formula/o/openjdk@17.rb, BSD-2-Clause), kept here so scripts/brew-openjdk17.sh can
+# install that exact build from a local tap after homebrew/core moves on. The one change: the bottle block's root_url, so its
+# bottles still come from homebrew/core's ghcr.io packages (by the sha256s below), not from the local tap's.
+class OpenjdkAT17 < Formula
+  desc "Development kit for the Java programming language"
+  homepage "https://openjdk.org/"
+  url "https://github.com/openjdk/jdk17u/archive/refs/tags/jdk-17.0.21-ga.tar.gz"
+  sha256 "f2d18152bbd924a329e76000065904dd6bcca3deb716e91834864a1f00d9ed99"
+  license "GPL-2.0-only" => { with: "Classpath-exception-2.0" }
+  compatibility_version 1
+
+  livecheck do
+    url :stable
+    regex(/^jdk[._-]v?(17(?:\.\d+)*)-ga$/i)
+  end
+
+  bottle do
+    root_url "https://ghcr.io/v2/homebrew/core"
+    sha256 cellar: :any, arm64_golden_gate: "733939db388c3cae83209853048598287c029abe919bf5a534221fd74512e2b5"
+    sha256 cellar: :any, arm64_tahoe:       "21dd7b1302c58dd79f58544797001715ac991146c8e33021ba978d08c0d84f6f"
+    sha256 cellar: :any, arm64_sequoia:     "5a59888c492e4d04c29ce6ab4ae5b8d3f7f620aedd73e7b2e20c1f615558ad87"
+    sha256               arm64_linux:       "4104441a45d10e6e45ababff0919b94449a0d6e3a5675b122d16f1a6e4cf9ed1"
+    sha256               x86_64_linux:      "4e3e453ccfb614047819e1096afd1b32e2a6e26d3ff8c8e826303c81474111e9"
+  end
+
+  keg_only :versioned_formula
+
+  deprecate! date: "2027-09-30", because: :unmaintained
+  disable! date: "2029-09-30", because: :unmaintained
+
+  depends_on "autoconf" => :build
+  depends_on "pkgconf" => :build
+
+  depends_on "freetype"
+  depends_on "giflib"
+  depends_on "harfbuzz"
+  depends_on "jpeg-turbo"
+  depends_on "libpng"
+  depends_on "little-cms2"
+
+  uses_from_macos "unzip" => :build
+  uses_from_macos "zip" => :build
+  uses_from_macos "cups" => :no_linkage
+
+  on_macos do
+    depends_on xcode: :build # for metal
+  end
+
+  on_linux do
+    depends_on "libxt" => :build
+    depends_on "alsa-lib"
+    depends_on "fontconfig" => :no_linkage
+    depends_on "libx11"
+    depends_on "libxext"
+    depends_on "libxi"
+    depends_on "libxrandr" => :no_linkage
+    depends_on "libxrender"
+    depends_on "libxtst"
+    depends_on "zlib-ng-compat"
+  end
+
+  # From https://jdk.java.net/archive/
+  resource "boot-jdk" do
+    on_macos do
+      on_arm do
+        url "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_macos-aarch64_bin.tar.gz"
+        sha256 "602d7de72526368bb3f80d95c4427696ea639d2e0cc40455f53ff0bbb18c27c8"
+      end
+      on_intel do
+        url "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_macos-x64_bin.tar.gz"
+        sha256 "b85c4aaf7b141825ad3a0ea34b965e45c15d5963677e9b27235aa05f65c6df06"
+      end
+    end
+    on_linux do
+      on_arm do
+        url "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz"
+        sha256 "13bfd976acf8803f862e82c7113fb0e9311ca5458b1decaef8a09ffd91119fa4"
+      end
+      on_intel do
+        url "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz"
+        sha256 "0022753d0cceecacdd3a795dd4cea2bd7ffdf9dc06e22ffd1be98411742fbb44"
+      end
+    end
+  end
+
+  def install
+    boot_jdk = buildpath/"boot-jdk"
+    resource("boot-jdk").stage boot_jdk
+    boot_jdk /= "Contents/Home" if OS.mac?
+    java_options = ENV.delete("_JAVA_OPTIONS")
+
+    args = %W[
+      --disable-warnings-as-errors
+      --with-boot-jdk-jvmargs=#{java_options}
+      --with-boot-jdk=#{boot_jdk}
+      --with-debug-level=release
+      --with-jvm-variants=server
+      --with-native-debug-symbols=none
+      --with-vendor-bug-url=#{tap.issues_url}
+      --with-vendor-name=#{tap.user}
+      --with-vendor-url=#{tap.issues_url}
+      --with-vendor-version-string=#{tap.user}
+      --with-vendor-vm-bug-url=#{tap.issues_url}
+      --with-version-build=#{revision}
+      --without-version-opt
+      --without-version-pre
+      --with-freetype=system
+      --with-giflib=system
+      --with-harfbuzz=system
+      --with-lcms=system
+      --with-libjpeg=system
+      --with-libpng=system
+      --with-zlib=system
+    ]
+
+    ldflags = ["-Wl,-rpath,#{loader_path.gsub("$", "\\$$")}/server"]
+    args += if OS.mac?
+      ldflags << "-headerpad_max_install_names"
+
+      # Allow unbundling `freetype` on macOS
+      inreplace "make/autoconf/lib-freetype.m4", '= "xmacosx"', '= ""'
+
+      %W[
+        --enable-dtrace
+        --with-freetype-include=#{formula_opt_include("freetype")}
+        --with-freetype-lib=#{formula_opt_lib("freetype")}
+        --with-sysroot=#{MacOS.sdk_path}
+      ]
+    else
+      %W[
+        --with-x=#{HOMEBREW_PREFIX}
+        --with-cups=#{HOMEBREW_PREFIX}
+        --with-fontconfig=#{HOMEBREW_PREFIX}
+        --with-stdc++lib=dynamic
+      ]
+    end
+    args << "--with-extra-ldflags=#{ldflags.join(" ")}"
+
+    system "bash", "configure", *args
+
+    ENV["MAKEFLAGS"] = "JOBS=#{ENV.make_jobs}"
+    system "make", "images"
+
+    jdk = libexec
+    if OS.mac?
+      libexec.install Dir["build/*/images/jdk-bundle/*"].first => "openjdk.jdk"
+      jdk /= "openjdk.jdk/Contents/Home"
+    else
+      libexec.install Dir["build/linux-*-server-release/images/jdk/*"]
+    end
+
+    bin.install_symlink Dir[jdk/"bin/*"]
+    include.install_symlink Dir[jdk/"include/*.h"]
+    include.install_symlink Dir[jdk/"include"/OS.kernel_name.downcase/"*.h"]
+    man1.install_symlink Dir[jdk/"man/man1/*"]
+  end
+
+  def caveats
+    on_macos do
+      <<~EOS
+        For the system Java wrappers to find this JDK, symlink it with
+          sudo ln -sfn #{opt_libexec}/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
+      EOS
+    end
+  end
+
+  test do
+    (testpath/"HelloWorld.java").write <<~JAVA
+      class HelloWorld {
+        public static void main(String args[]) {
+          System.out.println("Hello, world!");
+        }
+      }
+    JAVA
+
+    system bin/"javac", "HelloWorld.java"
+
+    assert_match "Hello, world!", shell_output("#{bin}/java HelloWorld")
+  end
+end

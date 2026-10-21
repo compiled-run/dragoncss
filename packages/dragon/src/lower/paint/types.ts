@@ -37,6 +37,8 @@ export type BoxPaintContext = {
   readonly images: ReadonlyMap<string, Uint8Array>;
   /** Whether this box or an ancestor has a transform that moves at run time (animated, transitioned or state-dependent). */
   readonly transformMoves: boolean;
+  /** PNT1-opacity-b: the elements whose folded fill has a provable backdrop (fold-backdrop.ts provableFoldBackdrops), by address. */
+  readonly foldBackdrops: ReadonlySet<string>;
   /** TDEC-b: every decorated text leaf's applied decorations (analysis/text-decoration.ts analyzeDecorations), by text address. */
   readonly decorations: ReadonlyMap<string, readonly AppliedDecoration[]>;
   /** TXT-FX: every shadowed text leaf's shadows (analysis/text-shadow.ts nativeTextShadows), by text address. */

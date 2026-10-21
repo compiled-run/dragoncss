@@ -20,6 +20,9 @@ declare module 'css-tree' {
   };
   export function parse(text: string, options?: ParseOptions): CssNode;
   export function generate(node: CssNode): string;
+  /** css-syntax-3 §4 tokens of text; onToken gets each token's type (tokenTypes) and its offsets. */
+  export function tokenize(text: string, onToken: (type: number, start: number, end: number) => void): void;
+  export const tokenTypes: { readonly [name: string]: number };
   /** Identifier escapes: decode gives the identifier's value with escapes resolved. */
   export const ident: { decode(text: string): string; encode(text: string): string };
   export type MatchResult = { readonly error: { readonly name: string; readonly message: string } | null };

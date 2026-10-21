@@ -14,6 +14,7 @@ import { toValue } from '../src/css/values.ts';
 import type { ResolvedValue } from '../src/analysis/computed.ts';
 import { computeLengths, parseValueText, valueToString } from '../src/analysis/computed.ts';
 import { TXT_FS_FAULTS } from '../src/faults/txt-fs.ts';
+import { fontLoweringGap, viewportFontSize } from '../src/lower/ios-layout.ts';
 import type { TxtFsFaults } from '../src/faults/txt-fs.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
@@ -78,9 +79,36 @@ describe('calculations in font-size and line-height', () => {
     expect([computedLineHeight('calc(1.5)', 20), computedLineHeight('calc(0.75rem + 0.5em)', 20, 10)]).toEqual(['1.5', '17.5px']);
   });
 
-  it('refuses a calculation that reads the viewport', () => {
-    expect(computed('calc(10px + 1vw)', 10)).toContain('is supported with px, %, em, rem and absolute lengths only');
+  it('keeps a font-size calculation that reads the viewport, with its em, rem and % made px, and refuses one in line-height', () => {
+    expect([computed('calc(10px + 1vw)', 10), computed('calc(1em + 2vw)', 10), computed('max(150%, 3vmin + 0.5rem)', 10, 20), computed('3vw', 10)]).toEqual(['calc(10px + 1vw)', 'calc(10px + 2vw)', 'max(15px,3vmin + 10px)', '3vw']);
+    expect(computed('calc(10px + env(safe-area-inset-top))', 10)).toContain('a safe-area, container, small or dynamic viewport or font-metric unit there is not resolved yet');
     expect(computedLineHeight('calc(1em + 1vh)', 10)).toContain('is supported with px, %, em, rem and absolute lengths only');
+  });
+
+  it('lowers a font-size that follows the viewport to the engine specified size, and an em over it to an em leaf', () => {
+    expect(viewportFontSize(declaredValue('font-size', '3vw'))).toEqual({ kind: 'viewport', value: 3, axis: 'width', size: 'large' });
+    expect(viewportFontSize(declaredValue('font-size', 'calc(10px + 1vw)'))?.kind).toBe('sum');
+    expect([viewportFontSize(declaredValue('font-size', '12px')), viewportFontSize(declaredValue('font-size', 'calc(1em + 1vw)')), viewportFontSize(declaredValue('font-size', 'calc(1px + 2px)'))]).toEqual([null, null, null]);
+  });
+
+  it('computes a percentage line-height to px of the element own size, and makes px only the rem of a viewport size under one', () => {
+    expect([computedLineHeight('150%', 20), computedLineHeight('0%', 20), computedLineHeight('1.5em', 20)]).toEqual(['30px', '0px', '30px']);
+    // ConvertLineHeight: float(size * int(percent)) / 100 as a float, so 155.5% is 155% (PR #521 review).
+    expect([computedLineHeight('155.5%', 17), computedLineHeight('150%', 13.3)]).toEqual([`${Math.fround(26.35)}px`, `${Math.fround(Math.fround(Math.fround(13.3) * 150) / 100)}px`]);
+    const underViewport = (declared: string): string => {
+      const value = declaredValue('font-size', declared);
+      const props = new Map<Longhand, ResolvedValue>([['font-size', { value, origin: 'author', span: null, declaration: null, declared: value } as unknown as ResolvedValue]]);
+      computeLengths(props, null, 20);
+      return valueToString((props.get('font-size') as ResolvedValue).value);
+    };
+    expect([underViewport('calc(1vw + 1rem)'), underViewport('calc(1vw + 1em)'), underViewport('calc(1em + 2px)')]).toEqual(['calc(1vw + 20px)', 'calc(1vw + 1em)', 'calc(1em + 2px)']);
+    expect(fontLoweringGap(declaredValue('font-size', '2vw'), declaredValue('line-height', 'calc(1rem + 1em)'), false)?.property).toBe('line-height');
+    expect(fontLoweringGap(declaredValue('font-size', '2vw'), declaredValue('line-height', 'calc(2px + 1em)'), false)).toBe(null);
+  });
+
+  it('plant viewportFontReadsHeight: a vw font size reads the viewport height', () => {
+    const plant = { ...TXT_FS_FAULTS, viewportFontReadsHeight: true };
+    expect([computed('3vw', 10, 16, plant), computed('calc(1em + 2vw)', 10, 16, plant)]).toEqual(['3vh', 'calc(10px + 2vh)']);
   });
 
   it('plant calcPercentOfRoot: a percentage in a calculation follows the root size', () => {
@@ -103,6 +131,13 @@ const body = (r: SourceRef): TreeNode[] => [el(r, 'a', 'div', ['k'], [el(r, 'b',
 function errors(bodyRule: string, k: string, q: string, faults: CompilerFaults = NO_FAULTS): string[] {
   const css = `body { font-family: Ahem; ${bodyRule} } .k { font-size: ${k}; } .q { font-size: ${q}; }`;
   return project(faults).compile(inputFor(css, body)).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
+}
+
+const nestedBody = (r: SourceRef): TreeNode[] => [el(r, 'a', 'div', ['k'], [el(r, 'm', 'div', ['m'], [el(r, 'c', 'div', [], [text(r, 't', 'XX')])])])];
+
+/** Each error as `<target> <code>` for Ahem text in a classless div under .m under .k. */
+function nestedErrors(css: string): string[] {
+  return project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; } ${css}`, nestedBody)).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
 }
 
 const CLAMPED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
@@ -132,6 +167,54 @@ describe("the minimum logical font size Chrome clamps a relative size to", () =>
     expect(errors('', 'x-small', '5px')).toEqual([]);
     // A percentage under an em size under the initial medium is still relative to it.
     expect(errors('', '0.5em', '50%')).toEqual(CLAMPED);
+  });
+
+  it('refuses on iOS and Android a size taken of a parent that follows the viewport, and a line-height inherited from one', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    expect(errors('', '2vw', '1.5em')).toEqual(NATIVE);
+    expect(errors('', '2vw', '150%')).toEqual(NATIVE);
+    expect(errors('', 'calc(1vw + 4px)', 'calc(1em + 2px)')).toEqual(NATIVE);
+    expect(errors('line-height: 1.5em; font-size: 2vw;', '12px', '14px')).toEqual(NATIVE);
+    expect(errors('font-size: 2vw; line-height: calc(1rem + 1em);', '2vw', '2vw')).toEqual(NATIVE);
+    expect(errors('', '2vw', '3vw')).toEqual([]);
+    expect(errors('line-height: 150%;', '2vw', 'calc(1vw + 1rem)')).toEqual([]);
+    expect(errors('line-height: calc(1em + 2px);', '12px', '2vw')).toEqual([]);
+    expect(errors('font-size: 2vw; line-height: 150%;', '3vw', '3vw')).toEqual(NATIVE);
+    expect(errors('line-height: 150%;', '2vw', '3vw')).toEqual([]);
+    expect(errors('line-height: 150%;', '12px', '14px')).toEqual([]);
+  });
+
+  it('refuses on iOS and Android an em or % line-height inherited through a text-less box with its own size (PR #521 review)', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    // Chrome computes 150% of 4vw on .k, and the text inherits that; the device would take it of the 2vw between.
+    expect(errors('', '4vw; line-height: 150%', '2vw')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 4vw; line-height: 150%; } .m { font-size: 2vw; }')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 4vw; line-height: 1.5em; } .m { font-size: 2vw; }')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 4vw; line-height: 150%; }')).toEqual([]);
+  });
+
+  it('refuses on iOS and Android any other inherited em length taken of a viewport size above one with its own size (PR #521 review)', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    expect(errors('', '2vw; text-indent: 1em', '4vw')).toEqual(NATIVE);
+    expect(errors('', '2vw; text-indent: calc(1em + 1px)', '20px')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 2vw; text-indent: 1em; } .m { font-size: 4vw; }')).toEqual(NATIVE);
+    expect(errors('', '2vw; text-indent: 1em', '2vw')).toEqual(NATIVE);
+    expect(nestedErrors('.k { font-size: 2vw; text-indent: 1em; }')).toEqual([]);
+    expect(errors('', '20px; text-indent: 1em', '4vw')).toEqual([]);
+  });
+
+  it('refuses an em keyframe on an element whose size follows the viewport, and compiles a px one (PR #521 review)', () => {
+    expect(nestedErrors('.m { font-size: 2vw; animation: m 1s; } @keyframes m { from { width: 5px; } to { width: 10px; } }')).toEqual([]);
+    expect(nestedErrors('.m { font-size: 2vw; animation: m 1s; } @keyframes m { from { width: 1em; } to { width: 2em; } }')).toEqual(['null DRAGON_UNSUPPORTED_VALUE', 'null DRAGON_UNSUPPORTED_VALUE']);
+  });
+
+  it('refuses on iOS and Android an em the paint programs, spacing or border widths read under a viewport size (PR #521 review)', () => {
+    const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+    for (const d of ['border-radius: 1em', 'box-shadow: 1em 1em red', 'outline: 0.1em solid red', 'transform: translateX(1em)', 'letter-spacing: 0.1em', 'border: 0.1em solid red']) {
+      expect(errors('', '12px', `2vw; ${d}`), d).toEqual(NATIVE);
+      expect(errors('', '12px', `20px; ${d}`), d).toEqual([]);
+    }
+    expect(errors('', '12px', '2vw; width: 10em; padding: 1em')).toEqual([]);
   });
 
   it('treats a calculation whose type is a percentage alone as a percentage, and any other calculation as absolute', () => {

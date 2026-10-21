@@ -367,13 +367,13 @@ describe('only failed jobs are a verdict (#193 review)', () => {
     const yml = readFileSync(repoPath('.github/workflows/device-lanes.yml'), 'utf8');
     expect(yml.match(/retry pnpm install --frozen-lockfile/g)?.length).toBe(3);
     expect(yml).not.toMatch(/^\s*- run: pnpm install/m);
-    expect(yml).toContain('retry brew install openjdk@17\n');
+    expect(yml).toContain('retry bash scripts/brew-openjdk17.sh\n');
     expect(yml).toContain('retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/');
     expect(yml).toContain('sdk_install() { "$sdk" --install "${pkgs[@]}" > "$RUNNER_TEMP/sdkmanager.log" 2>&1 || { tail -n 20 "$RUNNER_TEMP/sdkmanager.log"; return 1; }; }\n');
     // sdkmanager runs beside the Homebrew JDK install; the step waits for it, prints its retries, and fails when it failed.
     expect(yml).toContain('          retry sdk_install > "$RUNNER_TEMP/sdk-install.log" 2>&1 &\n          sdk_pid=$!\n');
     expect(yml).toContain('          sdk_code=0\n          wait "$sdk_pid" || sdk_code=$?\n          cat "$RUNNER_TEMP/sdk-install.log"\n          [ "$sdk_code" = 0 ] || exit 1\n          installed=$(');
-    expect(yml.indexOf('sdk_pid=$!')).toBeLessThan(yml.indexOf('retry brew install openjdk@17'));
+    expect(yml.indexOf('sdk_pid=$!')).toBeLessThan(yml.indexOf('retry bash scripts/brew-openjdk17.sh'));
     // The retry warnings are never sent to /dev/null with the command's output.
     expect(yml).not.toMatch(/retry [^\n]*>\s*\/dev\/null/);
     expect(yml).toContain('for p in "${pkgs[@]}"; do grep -qFx "$p" <<<"$installed" || { echo "::error::sdkmanager did not install $p"; exit 1; }; done');

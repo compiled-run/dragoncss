@@ -1,0 +1,15 @@
+{
+  "case": "filter-matrix-text-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"fm-a:text0","lines":[[0,1]]},
+    {"id":"fm-b:text0","lines":[[0,1]]},
+    {"id":"fm-d:text0","lines":[[0,2]]},
+    {"id":"fm-e:text0","lines":[[0,1]]},
+    {"id":"fm-f:text0","lines":[[0,3],[3,4]]},
+    {"id":"fm-g:text0","lines":[[0,1]]},
+    {"id":"fm-h:text0","lines":[[0,1]]},
+    {"id":"fm-i:text0","lines":[[0,1]]},
+    {"id":"fm-j:text0","lines":[[0,2],[2,3]]}
+  ]
+}
