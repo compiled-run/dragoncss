@@ -29,9 +29,11 @@
     "engine": 20258,
     "library": 22000,
     "rt": 55362,
-    "hit": 3144,
+    "hit": 3336,
     "animator": 30,
-    "interaction": 21
+    "interaction": 21,
+    "band": 27,
+    "pointer": 1537
   },
   "engineSplit": {
     "ok": 14257,
@@ -41,14 +43,16 @@
     "harnessError": 0
   },
   "digests": {
-    "vectors": "a357777dfc08454f0127ee32d34d099730a841732635110cfce27ef3c11e193a",
+    "vectors": "07193a2237c26471513e9cfe95b97799611eb0091da8510ddf98e4fa66993fc0",
     "units": "41c7a09c581011303f9896e233dfca4bc1bfc33266b817af269199de755508a7",
-    "engine": "cef65a486013f2a660390acaf872e195f02ce3ebe289874069bb6c739aa35487",
+    "engine": "3dbcd8f82e406316a3b1508a8b1df3131daeec83398613f6c1a5458f0f508e94",
     "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d",
     "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
-    "hit": "08099f3a294d1c12e69433b51d902c5c183f4e70debb0cc6c2ce0b1b751c9460",
-    "animator": "d050a01ebbb4c9e350d3a4e0e64dd8685d5586918a84c0569d772be8bb45d138",
-    "interaction": "f97585c89a98da73b70b9c08ccb5fd9d912b204367bd75e5f6ccdf1987b9e662"
+    "hit": "9c928339820d740914f97ed538be128ef1866886fe443b95050c519f8eed4442",
+    "animator": "caba5397c6a29e6a8e3601e71e2d58867a19acd326dae8503fdf5b609e19b030",
+    "interaction": "f97585c89a98da73b70b9c08ccb5fd9d912b204367bd75e5f6ccdf1987b9e662",
+    "band": "4769309d2fe3df09c6e125ae33c0f629e8eb50f69cff11021b3e37b86f8446ab",
+    "pointer": "171598a0f34bbcf9532b89a9ddeb93fc32ab44ffc36dd3255f595dab61a84d2c"
   },
-  "digest": "9c89a911ddab4f1dc3c5280549bf943ee990a98dfb38bf3ed9a93fdef03480e2"
+  "digest": "7ae77759226c282bc31875e75fa93eeba247439551a294d8f50c08784929e3c0"
 }
