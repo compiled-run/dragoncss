@@ -1,0 +1,212 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 15792
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 15792
+  },
+  {
+   "id": "page",
+   "parent": "body",
+   "x": 1344,
+   "y": 0,
+   "width": 64512,
+   "height": 14112
+  },
+  {
+   "id": "p-a",
+   "parent": "page",
+   "x": 3360,
+   "y": 0,
+   "width": 28896,
+   "height": 1680
+  },
+  {
+   "id": "p-b",
+   "parent": "page",
+   "x": 3360,
+   "y": 1680,
+   "width": 20247,
+   "height": 1680
+  },
+  {
+   "id": "p-c",
+   "parent": "page",
+   "x": 10584,
+   "y": 3360,
+   "width": 5093,
+   "height": 1680
+  },
+  {
+   "id": "card",
+   "parent": "page",
+   "x": 3360,
+   "y": 5040,
+   "width": 57120,
+   "height": 9072
+  },
+  {
+   "id": "c-a",
+   "parent": "card",
+   "x": 0,
+   "y": 0,
+   "width": 21420,
+   "height": 1680
+  },
+  {
+   "id": "c-b",
+   "parent": "card",
+   "x": 0,
+   "y": 1680,
+   "width": 1680,
+   "height": 5712
+  },
+  {
+   "id": "c-c",
+   "parent": "card",
+   "x": 0,
+   "y": 7392,
+   "width": 25200,
+   "height": 1680
+  },
+  {
+   "id": "fix",
+   "parent": "body",
+   "x": 0,
+   "y": 14112,
+   "width": 33600,
+   "height": 1680
+  },
+  {
+   "id": "f-a",
+   "parent": "fix",
+   "x": 0,
+   "y": 0,
+   "width": 8400,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 247,
+   "width": 1050,
+   "height": 247
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 247,
+   "width": 1050,
+   "height": 247
+  },
+  {
+   "id": "page",
+   "left": 21,
+   "top": 0,
+   "right": 1029,
+   "bottom": 221,
+   "width": 1008,
+   "height": 221
+  },
+  {
+   "id": "p-a",
+   "left": 74,
+   "top": 0,
+   "right": 525,
+   "bottom": 26,
+   "width": 451,
+   "height": 26
+  },
+  {
+   "id": "p-b",
+   "left": 74,
+   "top": 26,
+   "right": 390,
+   "bottom": 53,
+   "width": 316,
+   "height": 27
+  },
+  {
+   "id": "p-c",
+   "left": 186,
+   "top": 53,
+   "right": 266,
+   "bottom": 79,
+   "width": 80,
+   "height": 26
+  },
+  {
+   "id": "card",
+   "left": 74,
+   "top": 79,
+   "right": 966,
+   "bottom": 221,
+   "width": 892,
+   "height": 142
+  },
+  {
+   "id": "c-a",
+   "left": 74,
+   "top": 79,
+   "right": 408,
+   "bottom": 105,
+   "width": 334,
+   "height": 26
+  },
+  {
+   "id": "c-b",
+   "left": 74,
+   "top": 105,
+   "right": 100,
+   "bottom": 194,
+   "width": 26,
+   "height": 89
+  },
+  {
+   "id": "c-c",
+   "left": 74,
+   "top": 194,
+   "right": 467,
+   "bottom": 221,
+   "width": 393,
+   "height": 27
+  },
+  {
+   "id": "fix",
+   "left": 0,
+   "top": 221,
+   "right": 525,
+   "bottom": 247,
+   "width": 525,
+   "height": 26
+  },
+  {
+   "id": "f-a",
+   "left": 0,
+   "top": 221,
+   "right": 131,
+   "bottom": 247,
+   "width": 131,
+   "height": 26
+  }
+ ]
+}

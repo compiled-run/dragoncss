@@ -1,0 +1,9 @@
+{
+  "case": "opacity-group-over-group-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"og-a:text0","lines":[[0,1]]},
+    {"id":"og-c:text0","lines":[[0,2]]},
+    {"id":"og-f:text0","lines":[[0,2]]}
+  ]
+}
