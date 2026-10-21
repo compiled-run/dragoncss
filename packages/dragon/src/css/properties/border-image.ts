@@ -15,8 +15,8 @@ import type { CssValue } from '../values.ts';
 export const BORDER_IMAGE_LONGHANDS = ['border-image-source', 'border-image-slice', 'border-image-width', 'border-image-outset', 'border-image-repeat'] as const;
 // -webkit-border-image is no alias in Chrome but a legacy overlapping longhand that sets every border image longhand at once
 // (longhands_custom.cc WebkitBorderImage::ApplyValue), so it is the family's own shorthand here, as -webkit-border-radius is the
-// radius family's. It parses with an implied fill and sets the border widths from lengths (css_to_style_map.cc MapNinePieceImage),
-// and none, the one value Dragon accepts, sets the initial border image and no width.
+// radius family's. It parses with an implied fill (parseBorderImage), and the border widths it sets from lengths
+// (css_to_style_map.cc MapNinePieceImage) are analysis/webkit-border-image.ts's.
 export const BORDER_IMAGE_SHORTHANDS = ['border-image', '-webkit-border-image'] as const;
 export const BORDER_IMAGE_INHERITED: readonly (typeof BORDER_IMAGE_LONGHANDS)[number][] = [];
 export const BORDER_IMAGE_CONTAINER: readonly (typeof BORDER_IMAGE_LONGHANDS)[number][] = [];
@@ -183,16 +183,20 @@ function borderImageComponents(tokens: readonly CssNode[]): { readonly [P in Bor
 
 /**
  * border-image: each component Chrome's grammar takes sets its longhand (as that longhand parses it) and the rest are reset to their
- * initial values (shorthands_custom.cc BorderImage::ParseShorthand). -webkit-border-image, and a border-image value the grammar does
- * not take, keep the old reading: none sets every longhand initial, and anything else is kept as written on every longhand and
- * refused, so a value Dragon does not read is over-refused, never accepted (-webkit-border-image also sets the border widths and
- * an implied fill, which Dragon does not model).
+ * initial values (shorthands_custom.cc BorderImage::ParseShorthand). -webkit-border-image takes the same grammar
+ * (css_parsing_utils.cc ConsumeWebkitBorderImage, DefaultFill::kFill): a slice it holds is filled whether or not it says fill, and
+ * a value without a slice keeps the initial 100% unfilled. Its border width side effect is analysis/webkit-border-image.ts's. A
+ * value the grammar does not take keeps the old reading: none sets every longhand initial, and anything else is kept as written on
+ * every longhand and refused, so a value Dragon does not read is over-refused, never accepted.
  */
 function parseBorderImage(name: (typeof BORDER_IMAGE_SHORTHANDS)[number]): (tokens: readonly CssNode[], base: Span) => ParsedValue {
   return (tokens) => {
     if (tokens.length === 0) return { kind: 'invalid', reason: `${name} needs a value` };
     const none = tokens.length === 1 && isInitialSpelling('border-image-source', tokens[0]);
-    const parts = name === 'border-image' && !none ? borderImageComponents(tokens) : null;
+    const read = none ? null : borderImageComponents(tokens);
+    const slice = read === null ? undefined : read['border-image-slice'];
+    // ConsumeBorderImageSlice with DefaultFill::kFill: the slice is filled as if it said fill.
+    const parts = read !== null && name === '-webkit-border-image' && slice !== undefined && !slice.some((t) => ident(t) === 'fill') ? { ...read, 'border-image-slice': [...slice, { type: 'Identifier', name: 'fill' } as unknown as CssNode] } : read;
     if (parts !== null) {
       const values = BORDER_IMAGE_LONGHANDS.map((p) => {
         const part = parts[p];
@@ -296,4 +300,11 @@ export function borderImageParts(value: (p: BorderImageLonghand) => CssValue): {
       repeat: [repeat[0] as RepeatKeyword, (repeat[1] ?? repeat[0]) as RepeatKeyword],
     },
   };
+}
+
+/** A border-image-width value's four sides (top, right, bottom, left), or null for a value outside the grammar. */
+export function widthSidesOf(v: CssValue): readonly ExtentSide[] | null {
+  if (v.kind === 'other' && v.type !== BORDER_IMAGE_TYPES.width) return null;
+  const tokens = tokensOf(v);
+  return tokens.length === 0 ? null : sides(tokens.map(extent));
 }

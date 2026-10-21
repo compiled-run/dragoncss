@@ -762,7 +762,23 @@
       "dragon": [
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" },
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeSlice", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/webkit-border-image.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/resolver/style_cascade.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "940cc401c9035ea077048f30673819da6cfe0f56dd9eb4cb4113ec72987e749b",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "690-773", "symbol": "StyleCascade::ApplyWideOverlapping", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/webkit-border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -4314,7 +4330,8 @@
         { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/transform-extra.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/webkit-border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

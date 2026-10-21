@@ -34,6 +34,7 @@ import { computeResize } from '../css/properties/resize.ts';
 import { computeFontStretch } from '../css/properties/font-stretch.ts';
 import { computeTouchAction } from '../css/properties/touch-action.ts';
 import { applyWebkitScrollbar, hasScrollbarRules } from './webkit-scrollbar.ts';
+import { applyWebkitBorderImageWidths } from './webkit-border-image.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -342,6 +343,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyForcedUserAgent(tag, props, environment.ua);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
+    // MISC-PAINT part 2: -webkit-border-image sets the border widths no declaration sets (webkit-border-image.ts).
+    if (!faults.webkitBorderImageWidthsIgnored) applyWebkitBorderImageWidths(props);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {

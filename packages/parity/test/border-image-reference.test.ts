@@ -126,7 +126,7 @@ describe('MISC-PAINT border image device samples', () => {
     const engine = expectedEngine();
     let caught = 0;
     let kept = 0;
-    for (const n of nativeCases().filter((c) => c.spec.id === 'border-image-gradient' || c.spec.id === 'border-image-fractional' || c.spec.id === 'border-image-repeat')) {
+    for (const n of nativeCases().filter((c) => c.spec.id === 'border-image-gradient' || c.spec.id === 'border-image-fractional' || c.spec.id === 'border-image-repeat' || c.spec.id === 'border-image-webkit')) {
       const program = n.programs['android-views'];
       const viewport = n.case.environment.viewport;
       for (const dpr of DPRS) {

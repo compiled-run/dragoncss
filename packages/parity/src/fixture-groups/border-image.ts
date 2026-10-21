@@ -12,8 +12,11 @@
 // (MISC-PAINT part 2): repeat, round and space on 48 x 32 px boxes with 8px borders, whose tiles land on whole device px at DPR 2,
 // 2.625 and 3 (analysis/paint-values/border-image-tiling.ts proves it): one tile per edge, tiles repeated from a centred phase, round's
 // whole tiles at scale 0.5, space with no spacing and with no tile that fits (only the corners draw), a tile scaled 2 past its edge,
-// number and auto widths, the longhands, a border-box box and a box with no border style. The rejects: a radial-gradient() source
-// and a url() source, which no target draws yet.
+// number widths, the longhands, a border-box box and a box with no border style. border-image-webkit (MISC-PAINT part 2):
+// -webkit-border-image as Chrome 145 applies it, with its implied fill and the border widths it sets from px widths: alone, under a
+// declared border width (in either order), losing its image to border-image: none, with no width part (medium borders), with no
+// slice (100%, unfilled), per side, mixed width kinds, round, a later border-image-repeat over it and a box with no border style.
+// The rejects: a radial-gradient() source and a url() source, which no target draws yet.
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
 
@@ -22,6 +25,7 @@ export const BORDER_IMAGE: readonly FixtureSpec[] = [
   layout('border-image-gradient', ['ltr', 'rtl']),
   layout('border-image-fractional', ['ltr', 'rtl']),
   layout('border-image-repeat', ['ltr', 'rtl']),
+  layout('border-image-webkit', ['ltr']),
   reject('reject-border-image-source', 'DRAGON_UNSUPPORTED_VALUE', 'radial-gradient(red, blue)', 'border-image-source: radial-gradient(red,blue)'),
   reject('reject-border-image-url', 'DRAGON_UNSUPPORTED_VALUE', 'url(b.png)', 'border-image-source: url(b.png)'),
 ];

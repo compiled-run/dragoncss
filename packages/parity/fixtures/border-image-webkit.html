@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 400px; column-gap: 6px; row-gap: 6px; padding: 4px; }
+.b { width: 48px; height: 32px; background: #f0e8d8; border-color: #102030; }
+.sets { border-style: solid; -webkit-border-image: linear-gradient(to right, #2f4f66, #a57c5b) 8 / 8px; }
+.declared { border: 2px solid #102030; -webkit-border-image: linear-gradient(to bottom, #336699, #996633) 8 / 8px; }
+.later { -webkit-border-image: linear-gradient(to right, red, blue) 8 / 8px; border-style: solid; border-top-width: 4px; }
+.loses { border-style: dashed; -webkit-border-image: linear-gradient(to right, red, blue) 8 / 8px; border-image: none; }
+.medium { border-style: solid; -webkit-border-image: linear-gradient(30deg, #2f4f66, #a57c5b 60%, #102030) 8; }
+.nofill { border: 8px solid #102030; -webkit-border-image: linear-gradient(to left, #2f4f66, #a57c5b); }
+.sides { border-style: solid; -webkit-border-image: linear-gradient(to right, #123456, #abcdef) 8 / 8px 4px; }
+.mixedw { border-style: solid; -webkit-border-image: linear-gradient(to top, #0a8, #fff) 8 / 8px 2 auto 4px; }
+.round { border-style: solid; -webkit-border-image: linear-gradient(90deg, #336699, #996633) 16 / 8px round; }
+.over { border-style: solid; -webkit-border-image: linear-gradient(to right, #2f4f66, #a57c5b) 8 / 8px; border-image-repeat: repeat; }
+.styleless { -webkit-border-image: linear-gradient(red, blue) 8 / 8px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="sets" class="b sets"></div>
+<div data-dragon-id="declared" class="b declared"></div>
+<div data-dragon-id="later" class="b later"></div>
+<div data-dragon-id="loses" class="b loses"></div>
+<div data-dragon-id="medium" class="b medium"></div>
+<div data-dragon-id="nofill" class="b nofill"></div>
+<div data-dragon-id="sides" class="b sides"></div>
+<div data-dragon-id="mixedw" class="b mixedw"></div>
+<div data-dragon-id="round" class="b round"></div>
+<div data-dragon-id="over" class="b over"></div>
+<div data-dragon-id="styleless" class="b styleless"></div>
+</div>
+</body>
+</html>
