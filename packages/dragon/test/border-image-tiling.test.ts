@@ -114,7 +114,7 @@ describe('tiled gradient border images (MISC-PAINT part 2)', () => {
     expect(planBorderImage(paintOf(box, t, 2.625, 0, 0), NO_GRADIENT_FAULTS).modelled).toBe(false);
   });
 
-  it('is sound: every box the proof accepts is modelled by planBorderImage at every 2D sub-pixel position, and it accepts many', () => {
+  it('is sound: every box the proof accepts is modelled by planBorderImage at every sub-pixel position tried, and it accepts many', () => {
     let accepted = 0;
     let tried = 0;
     const slices = [[4, 'number'], [8, 'number'], [16, 'number'], [12, 'number'], [25, 'percent'], [50, 'percent']] as const;
@@ -133,7 +133,13 @@ describe('tiled gradient border images (MISC-PAINT part 2)', () => {
                   tried++;
                   if (tilingProblem(box, t, dpr) !== null) continue;
                   accepted++;
-                  for (let x = 0; x < 64; x += 9) for (let y = 0; y < 64; y += 13) expect(planBorderImage(paintOf(box, t, dpr, x + 640, y + 320), NO_GRADIENT_FAULTS).modelled, `${w} ${sv}${su} ${wv}${wu} ${rx} ${ry} ${fill} ${dpr} ${x} ${y}`).toBe(true);
+                  // Every LU offset on each axis, and a 2D lattice of both.
+                  const at = (x: number, y: number) => expect(planBorderImage(paintOf(box, t, dpr, x + 640, y + 320), NO_GRADIENT_FAULTS).modelled, `${w} ${sv}${su} ${wv}${wu} ${rx} ${ry} ${fill} ${dpr} ${x} ${y}`).toBe(true);
+                  for (let k = 0; k < 64; k++) {
+                    at(k, 0);
+                    at(0, k);
+                  }
+                  for (let x = 5; x < 64; x += 9) for (let y = 7; y < 64; y += 13) at(x, y);
                 }
               }
             }
