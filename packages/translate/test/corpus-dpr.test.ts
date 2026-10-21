@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { hexBits } from '../harness/host.ts';
 import { buildCorpus, m1CaseIds, M1_MANIFEST, topLevelVectorFiles, VECTORS_DIR } from '../src/corpus.ts';
-import { buildExtendedCorpus, CALC_DIR, CALC_SPEC, DPR_SETS, INLINE_SPEC, extendedLockedDigest, OVERFLOW_SPEC, SNAP_DPRS, UNITS_CALC_FUNCTIONS, UNITS_M2_FUNCTIONS, VALUES_PREFIX } from '../src/corpus-dpr.ts';
+import { buildExtendedCorpus, CALC_DIR, CALC_SPEC, DPR_SETS, INLINE_SPEC, extendedLockedDigest, OVERFLOW_SPEC, SNAP_DPRS, UNITS_CALC_FUNCTIONS, UNITS_M2_FUNCTIONS, VALUES_PREFIX, WRAP_STYLE_SPEC } from '../src/corpus-dpr.ts';
 import { EXTENDED_FAULTS, FAULTS } from '../src/faults.ts';
 import { suiteFloorProblems } from './floor.ts';
 
@@ -74,6 +74,8 @@ describe('extended corpus (lock packages/translate/corpus-dpr.json)', () => {
     // TXT2: 2 (text-justify-latin ltr and rtl), TXT2-b: 3 (text-word-spacing-lato ltr and rtl, text-word-spacing-nbsp), TXT2-h: 2
     // (text-indent-latin ltr and rtl) and TXT2-a: 1 (text-break-lato), at DPR 1, 2, 3 and 2.625, each with its shape transcript.
     expect(n['text-latin']).toBe((11 + 2 + 12 + 4 + 2 + 1 + 2 + 3 + 2 + 1) * 4);
+    // TXT-TW: the balance and pretty contexts, after text-latin.
+    expect(n['engine-wrap-style']).toBe(WRAP_STYLE_SPEC.engineWrapStyle);
     expect(x.engineSplit.threw + x.engineSplit.harnessError).toBe(0);
   });
 

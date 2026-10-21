@@ -304,13 +304,13 @@ public func paintShadow_insideShape(_ s: ShadowShape, _ x: Double, _ y: Double) 
   // ts: packages/layout/src/paint-shadow.ts:238
   do {
     var k: Double = 0.0
-    loop19: while (k < 4.0) {
-      loop19_body: do {
+    loop21: while (k < 4.0) {
+      loop21_body: do {
         let rx: Double = try paintShadow_at(s.radii, k)
         let ry: Double = try paintShadow_at(s.radii, (k + 4.0))
         // ts: packages/layout/src/paint-shadow.ts:241
         if (!((rx > 0.0) && (ry > 0.0))) {
-          break loop19_body
+          break loop21_body
         }
         let right: Bool = ((k == 1.0) || (k == 2.0))
         let bottom: Bool = ((k == 2.0) || (k == 3.0))
@@ -339,13 +339,13 @@ public func paintShadow_inCornerBox(_ s: ShadowShape, _ x: Double, _ y: Double) 
   // ts: packages/layout/src/paint-shadow.ts:259
   do {
     var k: Double = 0.0
-    loop18: while (k < 4.0) {
-      loop18_body: do {
+    loop20: while (k < 4.0) {
+      loop20_body: do {
         let rx: Double = try paintShadow_at(s.radii, k)
         let ry: Double = try paintShadow_at(s.radii, (k + 4.0))
         // ts: packages/layout/src/paint-shadow.ts:262
         if (!((rx > 0.0) && (ry > 0.0))) {
-          break loop18_body
+          break loop20_body
         }
         let right: Bool = ((k == 1.0) || (k == 2.0))
         let bottom: Bool = ((k == 2.0) || (k == 3.0))
@@ -657,12 +657,12 @@ public func paintShadow_compositeOnto(_ layer: JsArray<PaintShadow_Cell>, _ over
       // ts: packages/layout/src/paint-shadow.ts:490
       do {
         var x: Double = x0
-        loop22: while (x < x1) {
-          loop22_body: do {
+        loop24: while (x < x1) {
+          loop24_body: do {
             let c: Double = try coverageAt(x, y)
             // ts: packages/layout/src/paint-shadow.ts:492
             if (c == 0.0) {
-              break loop22_body
+              break loop24_body
             }
             let i: Double = try (4.0 * (((y - bounds.top) * paintShadow_width(bounds)) + (x - bounds.left)))
             let la: Double = try paintShadow_approxMulDiv255(sh.a, c)
@@ -677,7 +677,7 @@ public func paintShadow_compositeOnto(_ layer: JsArray<PaintShadow_Cell>, _ over
             try ca.v = (la + rtEasing_floorOf(((ca.v * keep) / 256.0)))
             // ts: packages/layout/src/paint-shadow.ts:504
             if (jsLength(over) == 0.0) {
-              break loop22_body
+              break loop24_body
             }
             let dr: PaintShadow_Cell = try paintShadow_cellAt(over, i)
             let dg: PaintShadow_Cell = try paintShadow_cellAt(over, (i + 1.0))
@@ -946,14 +946,14 @@ public func paintShadow_outerLayer(_ left: Double, _ top: Double, _ right: Doubl
   // ts: packages/layout/src/paint-shadow.ts:686
   do {
     var k: Double = (jsLength(shadows) - 1.0)
-    loop20: while (k >= 0.0) {
-      loop20_body: do {
+    loop22: while (k >= 0.0) {
+      loop22_body: do {
         let sh: ShadowInput = try jsUnwrap(jsAt(shadows, k))
         let shape: ShadowShape = try jsUnwrap(jsAt(shapes, k))
         let sigma: Double = try paintShadow_at(sigmas, k)
         // ts: packages/layout/src/paint-shadow.ts:690
         if try (((sh.inset || ((((sh.x == 0.0) && (sh.y == 0.0)) && (sh.blur == 0.0)) && (sh.spread == 0.0))) || (paintShadow_shapeType(shape) == S.s_empty)) || (sh.a == 0.0)) {
-          break loop20_body
+          break loop22_body
         }
         let spread: ShadowShape = try jsUnwrap(jsAt(spreads, k))
         let ox: Double = try paintShadow_at(offsets, (2.0 * k))
@@ -1016,12 +1016,12 @@ public func paintShadow_insetLayer(_ left: Double, _ top: Double, _ right: Doubl
   // ts: packages/layout/src/paint-shadow.ts:735
   do {
     var k: Double = (jsLength(shadows) - 1.0)
-    loop21: while (k >= 0.0) {
-      loop21_body: do {
+    loop23: while (k >= 0.0) {
+      loop23_body: do {
         let sh: ShadowInput = try jsUnwrap(jsAt(shadows, k))
         // ts: packages/layout/src/paint-shadow.ts:737
         if (((!sh.inset) || ((((sh.x == 0.0) && (sh.y == 0.0)) && (sh.blur == 0.0)) && (sh.spread == 0.0))) || (sh.a == 0.0)) {
-          break loop21_body
+          break loop23_body
         }
         let z: JsArray<Double> = try paintShadow_zoomed(sh, dpr, faults)
         let ox: Double = try paintShadow_at(z, 0.0)
@@ -1035,7 +1035,7 @@ public func paintShadow_insetLayer(_ left: Double, _ top: Double, _ right: Doubl
           try paintShadow_compositeOnto(layer, over, b, b, sh, { (x: Double, y: Double) throws -> Double in
     return try paintBlur_mulDiv255Round(paintShadow_shapeCoverage(bounds, x, y), 255.0)
 })
-          break loop21_body
+          break loop23_body
         }
         let grow: Double = try ((spread < 0.0) ? paintShadow_f32((blur - spread)) : blur)
         let l0: Double = try paintShadow_f32((pl - grow))

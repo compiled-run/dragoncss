@@ -41,6 +41,7 @@ function whole(d: DeviceSpec): { outcome: DeviceOutcome; dumps: CaseDumpHashes }
     anim: set(d, 'device-anim', dpr, 6),
     traces: set(d, 'device-traces', dpr, 2),
     env: set(d, 'device-env', dpr, 3),
+    selects: set(d, 'device-select', dpr, 5),
     trust: { device: d.name, dpr, rows: [{ case: 'trust', points: 3, mismatches: [] }] },
     vectors: VECTOR_DEVICES[d.target] === d.name ? vectorsRun(d.name) : null,
     blocked: null,
@@ -53,7 +54,7 @@ function partFile(d: DeviceSpec, parts: readonly DevicePart[], evidence = stamp(
   const w = whole(d);
   const has = (p: DevicePart): boolean => parts.includes(p);
   const o = w.outcome;
-  const outcome: DeviceOutcome = { device: d.name, set: has('cases') ? o.set : null, states: has('cases') ? o.states! : null, hits: has('cases') ? o.hits! : null, anim: has('anim') ? o.anim! : null, traces: has('cases') ? o.traces! : null, env: has('cases') ? o.env! : null, trust: has('cases') ? o.trust : null, vectors: has('vectors') ? o.vectors : null, blocked: null };
+  const outcome: DeviceOutcome = { device: d.name, set: has('cases') ? o.set : null, states: has('cases') ? o.states! : null, hits: has('cases') ? o.hits! : null, anim: has('anim') ? o.anim! : null, traces: has('cases') ? o.traces! : null, env: has('cases') ? o.env! : null, selects: has('cases') ? o.selects! : null, trust: has('cases') ? o.trust : null, vectors: has('vectors') ? o.vectors : null, blocked: null };
   const dpr = outcome.set?.dpr ?? outcome.anim?.dpr ?? null;
   const dumps = dpr === null ? null : { dpr, set: has('cases') ? w.dumps.set : {}, states: has('cases') ? w.dumps.states : {}, hits: has('cases') ? w.dumps.hits : {}, anim: has('anim') ? w.dumps.anim : {} };
   return { schema: PART_SCHEMA, target: d.target, device: d.name, parts, evidence, producedOn: CI, outcome, dumps };

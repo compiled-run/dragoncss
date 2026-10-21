@@ -399,11 +399,11 @@ fun paintDash_opacityGroups(p: DashPainter): JsArray<DashOpacityGroup> {
       // ts: packages/layout/src/paint-dash.ts:264
       run {
         var side: Double = 0.0
-        loop23@ while ((side < 4.0)) {
-          loop23_body@ do {
+        loop25@ while ((side < 4.0)) {
+          loop25_body@ do {
             // ts: packages/layout/src/paint-dash.ts:265
             if ((!paintDash_shouldRender(paintDash_edgeAt(p.edges, side)))) {
-              break@loop23_body
+              break@loop25_body
             }
             var before: Double = 0.0
             // ts: packages/layout/src/paint-dash.ts:267

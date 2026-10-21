@@ -2291,8 +2291,8 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/translate/harness/harness.ts:237
   do {
-    loop29: while true {
-      loop29_body: do {
+    loop31: while true {
+      loop31_body: do {
         let ch: Double = try harness_peek(c)
         // ts: packages/translate/harness/harness.ts:239
         if (ch == -1.0) {
@@ -2310,7 +2310,7 @@ func harness_parseString(_ c: Cursor) throws -> JsString {
         // ts: packages/translate/harness/harness.ts:243
         if (ch != 92.0) {
           _ = jsPush(out, ch)
-          break loop29_body
+          break loop31_body
         }
         let e: Double = try harness_peek(c)
         c.pos += 1.0
@@ -2410,14 +2410,14 @@ func harness_parseArray(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_J
   }
   // ts: packages/translate/harness/harness.ts:302
   do {
-    loop28: while true {
-      loop28_body: do {
+    loop30: while true {
+      loop30_body: do {
         _ = try jsPush(items, harness_parseValue(c))
         try harness_skipWs(c)
         // ts: packages/translate/harness/harness.ts:305
         if try (harness_peek(c) == 44.0) {
           c.pos += 1.0
-          break loop28_body
+          break loop30_body
         }
         try harness_expect(c, 93.0)
         return JsonArr(HS.s_arr, items)
@@ -2439,8 +2439,8 @@ func harness_parseObject(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_
   }
   // ts: packages/translate/harness/harness.ts:323
   do {
-    loop27: while true {
-      loop27_body: do {
+    loop29: while true {
+      loop29_body: do {
         try harness_skipWs(c)
         let key: JsString = try harness_parseString(c)
         try harness_skipWs(c)
@@ -2456,7 +2456,7 @@ func harness_parseObject(_ c: Cursor) throws -> any U_JsonArr_JsonBool_JsonNull_
         // ts: packages/translate/harness/harness.ts:333
         if try (harness_peek(c) == 44.0) {
           c.pos += 1.0
-          break loop27_body
+          break loop29_body
         }
         try harness_expect(c, 125.0)
         return JsonObj(HS.s_obj, keys, values)
@@ -3637,11 +3637,11 @@ func harness_replayMeasurer(_ s: Shaping, _ faults: EngineFaults) throws -> Text
     // ts: packages/translate/harness/harness.ts:1334
     do {
       var i: Double = 0.0
-      loop26: while (i < jsLength(units)) {
-        loop26_body: do {
+      loop28: while (i < jsLength(units)) {
+        loop28_body: do {
           // ts: packages/translate/harness/harness.ts:1335
           if try (jsUnwrap(jsAt(units, i)) < 0.0) {
-            break loop26_body
+            break loop28_body
           }
           // ts: packages/translate/harness/harness.ts:1336
           if (k == codePoint) {

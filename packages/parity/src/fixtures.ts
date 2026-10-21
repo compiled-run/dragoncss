@@ -26,6 +26,7 @@ import { CLIP_PATH } from './fixture-groups/clip-path.ts';
 import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
 import { COLOR_FUNCTIONS } from './fixture-groups/color-functions.ts';
 import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
+import { CONTAIN_INTRINSIC } from './fixture-groups/contain-intrinsic.ts';
 import { CONTAINER_QUERY } from './fixture-groups/container-query.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CONTROLS } from './fixture-groups/controls.ts';
@@ -34,10 +35,12 @@ import { DISPLAY_CONTENTS } from './fixture-groups/display-contents.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
+import { FIELD_SIZING } from './fixture-groups/field-sizing.ts';
 import { FILTER } from './fixture-groups/filter.ts';
 import { FIXED } from './fixture-groups/fixed.ts';
 import { FLOAT } from './fixture-groups/float.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
+import { FONT_UNITS } from './fixture-groups/font-units.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { FRAGMENTATION } from './fixture-groups/fragmentation.ts';
 import { FX } from './fixture-groups/fx.ts';
@@ -61,6 +64,7 @@ import { MEDIA_ENVIRONMENT } from './fixture-groups/media-environment.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { MOTION } from './fixture-groups/motion.ts';
 import { MULTICOL } from './fixture-groups/multicol.ts';
 import { OUTLINE } from './fixture-groups/outline.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
@@ -198,6 +202,7 @@ export const GROUPS = {
   'clip-rect': CLIP_RECT,
   'color-functions': COLOR_FUNCTIONS,
   'color-scheme': COLOR_SCHEME,
+  'contain-intrinsic': CONTAIN_INTRINSIC,
   'container-query': CONTAINER_QUERY,
   contexts: CONTEXTS,
   controls: CONTROLS,
@@ -206,10 +211,12 @@ export const GROUPS = {
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
+  'field-sizing': FIELD_SIZING,
   filter: FILTER,
   fixed: FIXED,
   float: FLOAT,
   'font-shorthand': FONT_SHORTHAND,
+  'font-units': FONT_UNITS,
   fonts: FONTS,
   fragmentation: FRAGMENTATION,
   fx: FX,
@@ -233,6 +240,7 @@ export const GROUPS = {
   'media-environment': MEDIA_ENVIRONMENT,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  motion: MOTION,
   multicol: MULTICOL,
   outline: OUTLINE,
   overflow: OVERFLOW,

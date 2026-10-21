@@ -19,6 +19,7 @@ import { resizeEmits } from './resize-scripts.ts';
 import { envEmits } from './device-env.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import { deviceTraceSources } from './trace-lane.ts';
+import { deviceSelectSource, selectEmits } from './select-lane.ts';
 import type { ParityCase } from './cases.ts';
 import { atDpr, layoutCases } from './dpr.ts';
 import type { FixtureSpec } from './fixtures.ts';
@@ -406,6 +407,8 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
   // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
   if let facts = dragonHitFactsTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".hit", dragonHitRuns(c, facts, scale: scale, measurer: bridge.measurer)) }
+  // T154 slice 2d: the device-select record, the case's live selection driven through its UITextInput.
+  if let probe = dragonSelectProbeTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".sel", dragonSelectProbe(c, probe, root: tree.root, scale: scale, measurer: bridge.measurer)) }
   let next = {
     tree.root.removeFromSuperview()
     mountedMedia?.removeFromSuperview()
@@ -792,7 +795,10 @@ class DragonActivity : Activity() {
     // An env phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
     val c = if (envPhase != null && envMounted != null) DragonCase(id, base.fixture, base.direction, base.compilerDigest, envMounted.machine.viewport.first, envMounted.machine.viewport.second, mapOf(scale to "device-env"), base.input, base.build) else base
     val t0: Long
-    val tree: DragonTree
+    var tree: DragonTree
+    // The state mount the tree comes from: its safe-area probe can render it again while the case settles (the insets measured
+    // once it is attached), and the case then settles and dumps the views now on screen.
+    var source: DragonStateMount? = null
     // A state mount on screen: its media root leaves the frame, and it stops observing the platform readings, after the dump.
     var mounted: DragonStateMount? = null
     var environment: DumpEnvironment? = null
@@ -801,6 +807,7 @@ class DragonActivity : Activity() {
       t0 = SystemClock.elapsedRealtimeNanos()
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
       if (envPhase == "scheme-back") {
         mounted = mount
         envMount = null
@@ -814,6 +821,7 @@ class DragonActivity : Activity() {
       // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
     } else {
       tree = DragonTree(this)
       c.build(tree)
@@ -884,7 +892,13 @@ class DragonActivity : Activity() {
               }
               frame.post { runCase(k + 1) }
             }
-            if (!run.hold) next.run()
+            // T154 slice 2d: the device-select record, the case's live selection driven by real touches, before the next case.
+            val probe = dragonSelectProbeTable[id]
+            if (probe != null) DragonSelectProbe(this, frame, tree.root, c.input(scale), bridge.measurer, probe, scale) { text ->
+              File(out, id + "@" + DumpJsonWriter.format(scale) + ".sel").writeText(text)
+              next.run()
+            }.start()
+            else if (!run.hold) next.run()
             else {
               // The capture-trust probe: the case stays on screen until the host has taken the OS screenshot.
               File(out, "hold-" + id).writeText("ok")
@@ -910,6 +924,7 @@ class DragonActivity : Activity() {
     var drawnAt = -1
     fun settle(frames: Int) {
       Choreographer.getInstance().postFrameCallback {
+        source?.tree?.let { if (it !== tree) { tree = it; drawnAt = -1 } }
         if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
         if (drawnAt < 0 || frames < drawnAt + 2) {
           if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
@@ -1089,12 +1104,15 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   }
   const supportPlant = plant !== null && (SUPPORT_PLANTS as readonly string[]).includes(plant) ? (plant as SupportPlant) : null;
   files.push(...emitNativeSupport(backend, supportPlant));
-  files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
+  // T154 slice 2d: the select cases ride with the layout cases; only the device-select launch lists them.
+  const all = [...cases, ...selectEmits(target)];
+  files.push(...(backend === 'uikit' ? emitUikitCases(all) : emitAndroidViewsCases(all)));
   // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs, animation tables and sample scripts.
   // MQ-R1: the resize cases' band programs and prefix scripts follow those, then the device-env rotation script.
   files.push(...emitStatePrograms(backend, [...stateEmits(target), ...animEmits(target), ...resizeEmits(target), ...envEmits(target)]));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
+  files.push(deviceSelectSource(target));
   // SELD-R2 (T064 R14): the interaction programs and their device-traces scripts.
   files.push(...deviceTraceSources(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);

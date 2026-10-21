@@ -12,4 +12,12 @@ export const ANIM_LANE = 'device-anim';
 export const TRACE_LANE = 'device-traces';
 /** MQ-R1 (T067 R7 (c)): one real rotation per device (device-env.ts). */
 export const ENV_LANE = 'device-env';
-export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE | typeof ENV_LANE;
+/** T154 slice 2d: the select cases' selection through the platform text-input APIs (UITextInput on iOS), against the selection model's. */
+export const SELECT_LANE = 'device-select';
+export type DeviceLaneId = DeviceCheckLane | typeof STATE_LANE | typeof HIT_LANE | typeof ANIM_LANE | typeof TRACE_LANE | typeof ENV_LANE | typeof SELECT_LANE;
+
+/**
+ * The device lanes that prove no profile row yet: one that has not run voids no target's device evidence, and its cases gate no row
+ * (profile-rows.ts deviceEvidence), so a new lane cannot demote rows before its first device record.
+ */
+export const ROWLESS_LANES: readonly string[] = [SELECT_LANE];

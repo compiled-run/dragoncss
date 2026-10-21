@@ -1,6 +1,6 @@
 // pnpm run native:devices [-- --target ios|android] [-- --plant glyph-offset-1|glyph-offset-y-1|dash-phase-1|dash-gap-unfitted|double-solid|
 // transform-origin-ignored|translate-percent-of-parent|image-offset-1|radius-square|outline-offset-1|outline-dash-unfitted|outline-tones-swapped|
-// single-run-baseline]
+// single-run-baseline|select-index-off-by-one]
 // (notes/T015-p4-review-p5-plan.md section 4 items 1 and 5; T093 ruling A and addendum). Without --plant: provisions and verifies
 // the device matrix, one device at a time: boots it headless (emulators by serial), runs the app once, and prints the model, OS and
 // build, the scale from the device profile and from the app, the window and stage in device px, the root's window offset and the
@@ -13,18 +13,21 @@
 // sample rules (PLANT_RULES) while device-frames and device-lines pass (plantVerdict).
 // --plant single-run-baseline (INL1a) runs LINE_PLANT_CASE and judges with judgeLinePlant: every line of a text view after the
 // first takes its first line's baseline offset, and the pixel lane must see each moved line's glyph bottom edge move with it.
+// --plant select-index-off-by-one (T154 slice 2d) runs the select cases with the clean and the planted app and judges with
+// judgeSelectPlant: the clean run's device-select passes, the planted run's fails.
 import { SUPPORT_PLANTS } from 'dragon';
 import type { SupportPlant } from 'dragon';
 import { GATE_GLYPH_POSITION_DEVICE_PX } from '../compare.ts';
 import { caseReference, dumpFile, evaluateCase, plantVerdict, readDump } from '../device-lanes.ts';
 import type { DeviceSpec } from '../device-run.ts';
-import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, DORMANT_PLANTS, iosProfileScale, isGlyphPlant, isMediaPlant, isPaintPlant, judgeGlyphPlant, judgeLinePlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
+import { avdScale, boot, DEVICE_MATRIX, deviceProfile, deviceRecord, DORMANT_PLANTS, iosProfileScale, isGlyphPlant, isMediaPlant, isPaintPlant, isSelectPlant, judgeGlyphPlant, judgeLinePlant, judgeSelectPlant, LINE_PLANT_CASE, matrixProblems, PLANT_AXIS, PLANT_CASE, PLANT_CASES, PLANT_DEVICES, PLANT_RULES, recordProblems, release, runApp } from '../device-run.ts';
 import { glyphPositions } from '../native-compare.ts';
 import { validateNativeDump } from '../native-dump.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BACKEND_OF, buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
 import { devicePoints, rasterSize, runFileText } from '../pixel-reference.ts';
+import { evaluateSelect, selectCaseIds } from '../select-lane.ts';
 import type { NativeTarget } from '../targets.ts';
 
 const args = process.argv.slice(2);
@@ -107,6 +110,40 @@ if (isPaintPlant(plant)) {
       for (const f of all) log(`${target} ${spec.name} @${dpr} ${plant}: ${f.case} ${f.lane} ${f.kind} ${f.node ?? ''}: ${f.detail}`);
       const v = plantVerdict(all, r.error, PLANT_RULES[plant]);
       log(`${target} ${spec.name} @${dpr} ${plant} on ${PLANT_CASES[plant].join(', ')}: device-pixels ${v.pixels} failures (${v.inked} on ${PLANT_RULES[plant].source} rules); device-frames ${v.frames}, device-lines ${v.lines} failures${r.error === null ? '' : '; the host did not finish'}: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
+      if (!v.caught) failures++;
+    } finally {
+      await release(h);
+    }
+  }
+  log(`plant ${plant}: status ${failures === 0 ? 'pass' : 'fail'}`);
+  process.exit(failures === 0 ? 0 : 1);
+}
+
+// The selection plant (T154 slice 2d): device-select must pass with the clean app and fail with the planted one.
+if (isSelectPlant(plant)) {
+  for (const target of targets) {
+    const clean = target === 'ios' ? buildIos({ reuse: true }) : buildAndroid({ reuse: true });
+    const build = target === 'ios' ? buildIos({ reuse: true, plant }) : buildAndroid({ reuse: true, plant });
+    const spec = DEVICE_MATRIX.find((d) => d.name === PLANT_DEVICES[target]);
+    if (spec === undefined) throw new Error(`no plant device ${PLANT_DEVICES[target]}`);
+    const ids = selectCaseIds();
+    const h = await boot(spec);
+    try {
+      const dpr = deviceProfile(h).profileScale;
+      const hostErrors: string[] = [];
+      const runOne = async (artifact: string, label: string) => {
+        const dir = join(nativeOut(target), 'devices', `${spec.name}-${label}`);
+        const r = await runApp(h, artifact, { runFile: runFileText(ids.map((id) => ({ id, points: [] })), false), caseCount: ids.length, outDir: dir });
+        if (r.error !== null) hostErrors.push(`the ${label} host did not finish: ${r.error}`);
+        const e = evaluateSelect(dir, target, dpr);
+        for (const d of e.details) log(`${target} ${spec.name} @${dpr} ${label}: device-select ${d}`);
+        return e;
+      };
+      const base = await runOne(clean.artifact, 'clean');
+      const planted = await runOne(build.artifact, plant);
+      const v = judgeSelectPlant(base, planted, hostErrors);
+      for (const p of v.problems) log(`${target} ${spec.name} @${dpr} ${plant}: ${p}`);
+      log(`${target} ${spec.name} @${dpr} ${plant} on ${ids.join(', ')}: clean device-select ${base.passed}/${ids.length} passed; planted ${planted.failed}/${ids.length} failed: plant ${v.caught ? 'CAUGHT' : 'NOT CAUGHT'}`);
       if (!v.caught) failures++;
     } finally {
       await release(h);

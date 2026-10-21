@@ -4,7 +4,7 @@ import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
 import { interactionContext, interactionRowFeature, MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, ROWLESS_LANES, SELECT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { LanesFile } from './lanes.ts';
 import { carryDeviceLanes, hostLaneStale, ranIds, readLanesFile, staleLanes } from './lanes-file.ts';
 import { repoPath } from './paths.ts';
@@ -253,7 +253,7 @@ export function deviceEvidence(target: NativeTarget, lanes: LanesFile | null, fa
   if (failures === null) return none(`no committed packages/parity/out/device-failures-${target}.json`);
   const out: DeviceEvidence['lanes'][number][] = [];
   for (const lc of c.lanes) {
-    if (lc.kind !== 'device') continue;
+    if (lc.kind !== 'device' || ROWLESS_LANES.includes(lc.lane)) continue;
     const rec = t.lanes.find((l) => l.lane === lc.lane);
     if (rec === undefined || rec.state === 'not run' || rec.state === 'blocked (owner tooling)') return none(`${target} ${lc.lane} did not run`);
     const listed = failures.filter((f) => f.lane === lc.lane);
@@ -380,8 +380,8 @@ export function checkedFailures(v: unknown, what: string): LaneFailure[] {
     };
     if (!isObject(f)) bad('not an object');
     const o = f as Record<string, unknown>;
-    // allRunFailures writes every device lane's failures, the script, hit, frame sample, trace and rotation lanes' too.
-    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE, TRACE_LANE, ENV_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
+    // allRunFailures writes every device lane's failures, the script, hit, frame sample, trace, rotation and select lanes' too.
+    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE, TRACE_LANE, ENV_LANE, SELECT_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
     if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
     if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
     if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.w { width: 60px; }
+.c { field-sizing: content; }
+.C { FIELD-SIZING: CONTENT; }
+.f { field-sizing: fixed; }
+.v { --s: content; field-sizing: var(--s); }
+.k { field-sizing: initial; }
+.i { field-sizing: inherit; color: rgb(20, 120, 40); }
+.row { display: flex; width: 220px; field-sizing: content; }
+.grid { display: grid; grid-template-columns: 50px auto; width: 200px; field-sizing: content; }
+.abs { position: absolute; top: 3px; inset-inline-end: 4px; field-sizing: content; background-color: rgb(200, 0, 90); }
+.stage { position: relative; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="s1" class="box c">XX XX</div>
+<div data-dragon-id="s2" class="box w C"><div data-dragon-id="s2c" class="i">XXX XX</div></div>
+<div data-dragon-id="s3" class="box w f">XX</div>
+<div data-dragon-id="s4" class="box v">XX</div>
+<div data-dragon-id="s5" class="box c"><div data-dragon-id="s5c" class="k">XX</div></div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="ra" class="box c">XX XX</div><div data-dragon-id="rb" class="box f">XX</div></div>
+<div data-dragon-id="grid" class="grid"><div data-dragon-id="ga" class="box c">XX</div><div data-dragon-id="gb" class="box i">XXXX</div></div>
+<div data-dragon-id="abs" class="abs">XX</div>
+</div>
+</body>
+</html>
