@@ -15,6 +15,8 @@
 // size, the font's metrics from the measurer, and the line height, each unzoomed by the font's zoom and zoomed by the conversion
 // zoom as CSSToLengthConversionData does. Every environment input is explicit in the LayoutInput.
 import type {
+  BlockSizeValue,
+  MaxBlockSizeValue,
   BorderWidthValue,
   CalcExpr,
   ControlBox,
@@ -47,6 +49,7 @@ import type {
   SafeAreaInsets,
   SizeValue,
   TextLeaf,
+  TextWrapStyle,
   TrackBreadth,
   TrackRepeater,
   TrackSize,
@@ -328,11 +331,11 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     bottom: resolveInset(s.bottom, env),
     left: resolveInset(s.left, env),
     width: resolveInlineSize(s.width, env),
-    height: resolveSize(s.height, env),
+    height: resolveBlockSize(s.height, env),
     minWidth: resolveInlineSize(s.minWidth, env),
-    minHeight: resolveSize(s.minHeight, env),
+    minHeight: resolveBlockSize(s.minHeight, env),
     maxWidth: resolveMaxInline(s.maxWidth, env),
-    maxHeight: resolveMax(s.maxHeight, env),
+    maxHeight: resolveMaxBlock(s.maxHeight, env),
     marginTop: envMargin(s.marginTop, env),
     marginRight: envMargin(s.marginRight, env),
     marginBottom: envMargin(s.marginBottom, env),
@@ -353,9 +356,17 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     textIndent: envPadding(s.textIndent, env),
     containIntrinsicWidth: s.containIntrinsicWidth.kind === 'px' ? lengthPx(s.containIntrinsicWidth, env.zoom) : s.containIntrinsicWidth,
     containIntrinsicHeight: s.containIntrinsicHeight.kind === 'px' ? lengthPx(s.containIntrinsicHeight, env.zoom) : s.containIntrinsicHeight,
+    textWrapStyle: resolveTextWrapStyle(s.textWrapStyle, env),
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
     zoom: [],
   };
+}
+
+/** text-wrap-style balance and pretty at the block's effective zoom, a float: the device pixel ratio (ComputedStyle::EffectiveZoom). */
+function resolveTextWrapStyle(v: TextWrapStyle, env: Env): TextWrapStyle {
+  if (v.kind === 'balance') return { kind: 'balance', zoom: Math.fround(v.zoom * env.zoom) };
+  if (v.kind === 'pretty') return { kind: 'pretty', zoom: Math.fround(v.zoom * env.zoom) };
+  return v;
 }
 
 function resolveVerticalAlign(v: VerticalAlignValue, env: Env): VerticalAlignValue {
@@ -464,6 +475,18 @@ function resolveMax(v: MaxSizeValue, env: Env): MaxSizeValue {
 }
 
 /** An inline size: lengths as resolveSize; the intrinsic size keywords are resolved in layout. */
+function resolveBlockSize(v: BlockSizeValue, env: Env): BlockSizeValue {
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
+  if (v.kind === 'calc') return resolveLengthCalc(v, env);
+  return v;
+}
+
+function resolveMaxBlock(v: MaxBlockSizeValue, env: Env): MaxBlockSizeValue {
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
+  if (v.kind === 'calc') return resolveLengthCalc(v, env);
+  return v;
+}
+
 function resolveInlineSize(v: InlineSizeValue, env: Env): InlineSizeValue {
   if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);

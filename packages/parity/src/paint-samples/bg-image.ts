@@ -285,7 +285,7 @@ function edgesOn(t: TileBox, axis: 0 | 1): TileEdge[] {
 export function tilePoints(ctx: PaintSampleContext): SamplePoint[] {
   const boxes = tileBoxes(ctx);
   if (boxes.length === 0) return [];
-  const only = backgroundOnly(ctx.program, ctx.boxes, ctx.dpr);
+  const only = backgroundOnly(ctx.program, ctx.viewport, ctx.boxes, ctx.dpr);
   const out: SamplePoint[] = [];
   const inset = SAMPLE_INSET_DEVICE_PX;
   for (const t of boxes) {

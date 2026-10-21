@@ -105,7 +105,7 @@ function propagated(n: LayoutNode, unknown: ReadonlySet<string>): void {
 const fcRoot = (b: LayoutNode): boolean =>
   b.kind === 'replaced' || b.style.display !== 'block' || scrollContainer(b) || b.style.containLayout || b.style.containPaint || b.style.containSize !== 'none';
 
-/** readFlow and readChild from a block flow: a percentage height whose end margins may collapse through it is refused. */
+/** readFlow and readChild from a block flow: a percentage or stretch height whose end margins may collapse through it is refused. */
 function flow(b: LayoutBox): void {
   if (b.style.display !== 'block' || hasInlineContent(b)) return;
   floatIn(b);
@@ -113,8 +113,9 @@ function flow(b: LayoutBox): void {
     if (!isNode(k) || outOfFlow(k) || k.kind === 'replaced' || fcRoot(k)) continue;
     flow(k);
     const endMayCollapse = !positivePx(k.style.borderBottomWidth) && !positivePx(k.style.paddingBottom) && k.children.some((c) => isNode(c) && !outOfFlow(c));
-    if (k.style.height.kind !== 'auto' && mayHavePercent(k.style.height) && endMayCollapse) {
-      throw new Undecided(k.id, 'a percentage height on a box whose end margins may collapse through it: its basis is not decided here');
+    const h = k.style.height;
+    if (h.kind !== 'auto' && (h.kind === 'stretch' || mayHavePercent(h)) && endMayCollapse) {
+      throw new Undecided(k.id, 'a percentage or stretch height on a box whose end margins may collapse through it: its basis is not decided here');
     }
   }
 }

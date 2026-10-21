@@ -97,6 +97,10 @@ export type Stretch = { readonly kind: 'stretch' };
 export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
 export type InlineSizeValue = SizeValue | SizeKeyword;
 export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
+/** css-sizing-4 §3.1: height, min-height and max-height also take stretch, read only on a block-level box in block flow. */
+export type BlockSizeValue = SizeValue | Stretch;
+export type MinBlockSizeValue = MinSizeValue | Stretch;
+export type MaxBlockSizeValue = MaxSizeValue | Stretch;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -195,6 +199,16 @@ export type AlignContent =
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
+/**
+ * css-text-4 §5.1 text-wrap-style of a block container, which Blink reads from the block's own style (inline_layout_algorithm.cc
+ * LineBreakStrategy): auto breaks greedily (stable is auto); balance and pretty run Blink's own line-breaking passes (inline.ts
+ * wrapStyleLines), whose penalties read the block's effective zoom (ScoreLineBreaker::SetupParameters). zoom is 1 in the compiler's
+ * input; the environment pass multiplies it by the block's effective zoom (the device pixel ratio times its zoom chain).
+ */
+export type TextWrapStyle =
+  | Auto
+  | { readonly kind: 'balance'; readonly zoom: number }
+  | { readonly kind: 'pretty'; readonly zoom: number };
 /**
  * css-text-3 §8.1 text-indent: <length-percentage>, negative allowed, on the first formatted line of a block container. A percentage
  * is of the line's available inline size, and of nothing (0) at min-content and max-content (Blink LineBreaker::ComputeTextIndent).
@@ -328,11 +342,11 @@ export type LayoutStyle = {
   readonly direction: Direction;
   readonly boxSizing: BoxSizing;
   readonly width: InlineSizeValue;
-  readonly height: SizeValue;
+  readonly height: BlockSizeValue;
   readonly minWidth: InlineSizeValue;
-  readonly minHeight: MinSizeValue;
+  readonly minHeight: MinBlockSizeValue;
   readonly maxWidth: MaxInlineSizeValue;
-  readonly maxHeight: MaxSizeValue;
+  readonly maxHeight: MaxBlockSizeValue;
   readonly marginTop: MarginValue;
   readonly marginRight: MarginValue;
   readonly marginBottom: MarginValue;
@@ -387,6 +401,7 @@ export type LayoutStyle = {
   readonly containSize: ContainSize;
   readonly containIntrinsicWidth: Px | NoneValue;
   readonly containIntrinsicHeight: Px | NoneValue;
+  readonly textWrapStyle: TextWrapStyle;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */

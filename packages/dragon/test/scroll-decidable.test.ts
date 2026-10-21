@@ -18,7 +18,7 @@ const DIV: LayoutStyle = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal', alignItems: 'normal',
   alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: { kind: 'auto' },
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, grid: null, gridItem: null, zoom: [],
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' }, grid: null, gridItem: null, zoom: [],
 };
 type Child = LayoutBox | ReplacedLeaf | InlineChild;
 const AHEM: FontSpec = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true };
@@ -59,6 +59,7 @@ const KIDS: Record<string, Kid> = {
   pctHeightMargin: (id) => box(id, { height: pct(50) }, [box(`${id}k`, { height: px(10), marginBottom: px(5) })]),
   pctHeightPadded: (id) => box(id, { height: pct(50), paddingBottom: px(2) }, [box(`${id}k`, { height: px(10), marginBottom: px(5) })]),
   pctHeightEmpty: (id) => box(id, { height: pct(50) }),
+  pctStretchMargin: (id) => box(id, { height: { kind: 'stretch' } }, [box(`${id}k`, { height: px(10), marginBottom: px(5) })]),
   deepPct: (id) => box(id, {}, [box(`${id}d`, { height: pct(50) }, [box(`${id}k`, { height: px(10), marginBottom: px(5) })])]),
   clipBoth: (id) => box(id, { overflowX: 'clip', overflowY: 'clip' }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
   nestedScroll: (id) => box(id, sc('auto', { width: px(50), height: px(20) }), [leaf(`${id}t`, 'XX'), br(`${id}b`)]),
@@ -128,7 +129,7 @@ describe('OVFL-B: undecidedScrollContainers against the engine', () => {
     expect(reasons([leaf('t', 'XX'), span('s', [leaf('u', 'YY')])])).toEqual(['c s: an inline box in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL1a)']);
     expect(reasons([leaf('t', 'XX'), br('b'), leaf('v', 'YY')])).toEqual(['c b: a <br> in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL1a)']);
     expect(reasons([leaf('t', 'XX'), box('k', { display: 'flex', width: px(10), height: px(10) })])).toEqual(['c k: an atomic inline in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL2)']);
-    expect(reasons([box('p', { height: pct(50) }, [box('k', { height: px(10), marginBottom: px(5) })])])).toEqual(['c p: a percentage height on a box whose end margins may collapse through it: its basis is not decided here']);
+    expect(reasons([box('p', { height: pct(50) }, [box('k', { height: px(10), marginBottom: px(5) })])])).toEqual(['c p: a percentage or stretch height on a box whose end margins may collapse through it: its basis is not decided here']);
     // G-OVF: a grid's scrollable overflow is decided (its tracks are a grid scroll container's inflow bounds).
     expect(reasons([box('g', { display: 'grid', grid: GRID })])).toEqual([]);
     expect(reasons([box('p', {}, [leaf('t', 'XX')]), box('q', { height: px(10) })])).toEqual([]);
@@ -160,7 +161,7 @@ describe('OVFL-B: the compiler refuses an undecided native scroll container', ()
     expect(refusals(atomic)).toEqual(both(`${prefix('k')}an atomic inline in the inline formatting context of a: its scrollable overflow is not decided here (R16, INL2) (OVFL-B)`));
     expect([atomic.outputs.ios.kind, atomic.outputs.android.kind]).toEqual(['blocked', 'blocked']);
     const pctHeight = compile('.p { height: 50%; } .k { height: 10px; margin-bottom: 5px; }', (r) => [div(r, 'p', ['p'], [div(r, 'k', ['k'])])]);
-    expect(refusals(pctHeight)).toEqual(both(`${prefix('p')}a percentage height on a box whose end margins may collapse through it: its basis is not decided here (OVFL-B)`));
+    expect(refusals(pctHeight)).toEqual(both(`${prefix('p')}a percentage or stretch height on a box whose end margins may collapse through it: its basis is not decided here (OVFL-B)`));
   });
 
   it('POSX-f: a fixed box inside auto or scroll is refused on ios and android only (it would scroll with the native content)', () => {
