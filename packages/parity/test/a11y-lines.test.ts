@@ -1,6 +1,7 @@
 // P6b (notes/T046-paint-spec.md §5.6, T076): per-line accessibility for Dragon-drawn text. For each document the lines native
 // exposes (packages/parity/src/ax-lines.ts axLinesOf, from the engine's layout of the document compiled for native) must be Chrome's
 // InlineTextBoxes: the same text nodes in tree order, the same names, and frames on the same px.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { NativeProgram } from 'dragon';
 import { createProjectWith, nativePrograms, NO_FAULTS } from 'dragon';
@@ -11,6 +12,7 @@ import { launchChrome, openPage } from '../src/chrome.ts';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
 import { referenceMeasurer } from '../src/native-host.ts';
+import { repoPath } from '../src/paths.ts';
 
 type AxDoc = { readonly id: string; readonly css: string; readonly body: string };
 
@@ -141,6 +143,31 @@ describe('headings Dragon cannot prove (P6b)', () => {
   });
 });
 
+describe('boxes an empty clip rect labels (MASK-CLIP) in the model', () => {
+  it('stand in, whole and once, for every line under them, where the first was', () => {
+    const html = readFileSync(repoPath('packages/parity/fixtures/clip-rect-sr-only.html'), 'utf8');
+    const project = createProjectWith(
+      { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } },
+      { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport },
+    );
+    const p = nativePrograms(project.compile(fixtureToInput('clip-rect-sr-only', html)), []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const lines = axLinesOfProgram(p.programs.uikit, ENVIRONMENT.viewport, 1, referenceMeasurer);
+    const label = (id: string): string => {
+      const w = p.programs.uikit.nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === 'clip-rect-label');
+      return w !== undefined && w.kind === 'clip-rect-label' ? w.label : '';
+    };
+    expect(lines.map((l) => [l.leaf, l.name, l.whole === true, l.heading])).toEqual([
+      ['cut-probe', label('cut-probe'), true, 0],
+      ['cut-inline', label('cut-inline'), true, 0],
+      ['cut-lines', label('cut-lines'), true, 0],
+      ['t1:text0', 'XXXX', false, 0],
+      ['cut-sr', 'Skip to content', true, 0],
+      ['t2:text0', 'XX', false, 0],
+    ]);
+  });
+});
+
 describe('the device-lines accessibility check (P6b)', () => {
   const frame = { x: 10, y: 20, width: 40, height: 10 };
   const edges = { left: 20, top: 40, right: 100, bottom: 60 };
@@ -148,19 +175,22 @@ describe('the device-lines accessibility check (P6b)', () => {
   const el = (name: string, heading = 0, f = frame): Accessible => ({ name, heading, frame: f });
   const line = (start: number, end: number, accessible: Accessible) => ({ frame, deviceEdges: edges, baseline: 8, start, end, accessible });
   const node = (id: string, lines: ReturnType<typeof line>[], accessible: Accessible = null) => ({ id, parent: 'a', kind: 'text', native: 'DragonTextView', frame, deviceEdges: edges, applied: {}, lines, accessible });
+  const box = (id: string, accessible: Accessible) => ({ ...node(id, [], accessible), kind: 'element', native: 'DragonBoxView' });
   const dump = (order: readonly string[], ...texts: ReturnType<typeof node>[]): NativeDump =>
     ({ case: { id: 'ax', dpr: 2 }, nodes: [...texts, { id: 'a', parent: null, kind: 'element', native: 'DragonBoxView', frame, deviceEdges: edges, applied: {}, lines: [line(0, 0, null)], accessible: null }], accessibleOrder: order }) as unknown as NativeDump;
   const rect = [0, 0, 0, 0] as const;
   // a:text0 wraps with a hanging space; b:text0, under an h2, ends its first line at a <br> (no space in the name); c:text0 is
-  // truncated (whole); h:text0 is hidden (no lines in the model).
+  // truncated (whole); h:text0 is hidden (no lines in the model); k is a box an empty clip rect labels, whose text k:text0 a screen
+  // reader does not reach.
   const model: AxLine[] = [
     { leaf: 'a:text0', name: 'AAAA ', rect, heading: 0 },
     { leaf: 'a:text0', name: 'BB', rect, heading: 0 },
     { leaf: 'b:text0', name: 'CC', rect, heading: 2 },
     { leaf: 'b:text0', name: 'DD', rect, heading: 2 },
     { leaf: 'c:text0', name: 'EEEE EEEE', rect, heading: 0, whole: true },
+    { leaf: 'k', name: 'KK', rect, heading: 0, whole: true },
   ];
-  const ORDER = ['a:text0', 'b:text0', 'c:text0'];
+  const ORDER = ['a:text0', 'b:text0', 'c:text0', 'k'];
   // A device frame may be off the line's by up to a device px (x by a quarter of a css px at DPR 2, here). The reading order may
   // hold other views (a control, a web view), which the check passes over.
   const good = (off = 0.25, order: readonly string[] = ['a', ...ORDER, 'f::foreign']): NativeDump =>
@@ -170,15 +200,17 @@ describe('the device-lines accessibility check (P6b)', () => {
       node('b:text0', [line(0, 3, el('CC', 1)), line(3, 5, el('DD', 1))]),
       node('c:text0', [line(0, 9, null), line(0, 4, null)], el('EEEE EEEE')),
       node('h:text0', [line(0, 2, null)]),
+      box('k', el('KK')),
+      node('k:text0', [line(0, 2, null)]),
     );
-  it("passes lines named and marked as the model's (a hanging space kept, none before a <br>), a whole leaf's view, hidden text with no element, DOM order", () => {
-    expect(checkAccessibleLines(good(), model)).toEqual({ compared: 6, problems: [] });
+  it("passes lines named and marked as the model's (a hanging space kept, none before a <br>), a whole leaf's view, hidden text with no element, a clip label's box, DOM order", () => {
+    expect(checkAccessibleLines(good(), model)).toEqual({ compared: 8, problems: [] });
   });
   it('writes what it passes for a made-up device dump (exposedAsModelled)', () => {
-    const bare = dump([], ...good().nodes.filter((n) => n.kind === 'text').map((n) => node(n.id, n.lines.map((l) => line(l.start ?? 0, l.end ?? 0, null)))));
+    const bare = dump([], ...good().nodes.filter((n) => n.id !== 'a').map((n) => (n.kind === 'text' ? node(n.id, n.lines.map((l) => line(l.start ?? 0, l.end ?? 0, null))) : box(n.id, null))));
     expect(exposedAsModelled(bare, model)).toEqual(good(0, ORDER));
   });
-  it("catches a dropped line, a wrong name or heading mark, a frame off by more than a device px, a whole leaf's line element or missing view element, exposed hidden text, and another reading order", () => {
+  it("catches a dropped line, a wrong name or heading mark, a frame off by more than a device px, a whole node's line element or missing view element, exposed hidden text or text under a clip label, and another reading order", () => {
     const r = checkAccessibleLines(
       dump(
         ['b:text0', 'a:text0', 'c:text0'],
@@ -186,6 +218,8 @@ describe('the device-lines accessibility check (P6b)', () => {
         node('b:text0', [line(0, 3, el('CC ', 1)), line(3, 5, el('DD'))], el('CC DD')),
         node('c:text0', [line(0, 9, null), line(0, 4, el('EEEE'))]),
         node('h:text0', [line(0, 2, el('HH'))]),
+        box('k', null),
+        node('k:text0', [line(0, 2, el('KK'))]),
       ),
       model,
     );
@@ -196,10 +230,12 @@ describe('the device-lines accessibility check (P6b)', () => {
       'b:text0: the view is an accessibility element itself, named "CC DD"',
       'b:text0:line0: named "CC ", expected "CC"',
       'b:text0:line1: not read as a heading, but the model has it under an h2',
-      'c:text0:line1: the leaf is exposed whole, but an element exposes the line',
-      'c:text0: the leaf is exposed whole, but the view is not an accessibility element',
-      "h:text0:line0: the model exposes none of this text (hidden, or a marker's), but an element exposes the line",
-      'reading order: the screen reader reads ["b:text0","a:text0","c:text0"], the model (DOM order) ["a:text0","b:text0","c:text0"]',
+      'c:text0:line1: the node is exposed whole, but an element exposes the line',
+      'c:text0: the node is exposed whole, but the view is not an accessibility element',
+      "h:text0:line0: the model exposes none of this text (hidden, a marker's, or under a clip label), but an element exposes the line",
+      'k: the node is exposed whole, but the view is not an accessibility element',
+      "k:text0:line0: the model exposes none of this text (hidden, a marker's, or under a clip label), but an element exposes the line",
+      'reading order: the screen reader reads ["b:text0","a:text0","c:text0"], the model (DOM order) ["a:text0","b:text0","c:text0","k"]',
     ]);
   });
 });

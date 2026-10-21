@@ -27,7 +27,8 @@ import { sub, ZERO } from '../../layout/src/units.ts';
 /**
  * One line's accessibility element: the text node it is a line of, its name, its frame in CSS px from the root, and the level of the
  * heading it is read under (0 for none); or, for a truncated leaf, the leaf's one element (whole) with its text, framed on the text
- * view.
+ * view; or (axLinesOfProgram) a box an empty clip rect() labels, whole, with no frame of its own here (a device check frames it on
+ * the box's view).
  */
 export type AxLine = { readonly leaf: string; readonly name: string; readonly rect: readonly [number, number, number, number]; readonly heading: number; readonly whole?: true };
 
@@ -139,7 +140,25 @@ export function axLinesOfProgram(program: NativeProgram, viewport: { readonly wi
     }
     return 0;
   };
-  const lines = axLinesOf(programInput(program, viewport, dpr), referenceMeasurer(), hidden, headingOf);
+  // MASK-CLIP: a box an empty clip rect() hides with text in it is one element labelled with that text (emit/paint/clip.ts
+  // dragonClipRectLabel), and a screen reader reaches none of the views inside it: the outermost such box over a leaf stands in for
+  // every line under it, once, where its first line was, named with the label, marked as no heading (the box view is static text).
+  const labelOf = (id: string): { readonly box: string; readonly label: string } | null => {
+    let out: { readonly box: string; readonly label: string } | null = null;
+    for (let at = nodes.get(id)?.parent ?? null; at !== null; at = nodes.get(at)?.parent ?? null) {
+      const w = nodes.get(at)?.writes.find((x) => x.kind === 'clip-rect-label');
+      if (w !== undefined && w.kind === 'clip-rect-label') out = { box: at, label: w.label };
+    }
+    return out;
+  };
+  const placed = new Set<string>();
+  const lines = axLinesOf(programInput(program, viewport, dpr), referenceMeasurer(), hidden, headingOf).flatMap((l): AxLine[] => {
+    const box = labelOf(l.leaf);
+    if (box === null) return [l];
+    if (placed.has(box.box)) return [];
+    placed.add(box.box);
+    return [{ leaf: box.box, name: box.label, rect: [0, 0, 0, 0], heading: 0, whole: true }];
+  });
   byView.set(key, lines);
   return lines;
 }
@@ -226,8 +245,9 @@ export type AxProblem = { readonly id: string; readonly detail: string };
  * heading exactly when the model's line is under one, and framed on the dumped line within GATE_DEVICE_PX on every edge, and the
  * view is not an element itself. A leaf the model exposes whole (one text-overflow truncates) has no line elements, and the view is
  * one element named with the leaf's text, marked a heading as the model's, and framed on the view. A text node the model exposes
- * nothing of (hidden, or a list marker's text) has no element at all. The order a screen reader reads the text views in
- * (accessibleOrder, less every other view) is the model's order of its text nodes, which is DOM order.
+ * nothing of (hidden, a list marker's text, or text under a box an empty clip rect labels) has no element at all; that box is one
+ * element named with its label and framed on its view. The order a screen reader reads the text views and those boxes in
+ * (accessibleOrder, less every other view) is the model's order, which is DOM order.
  */
 export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine[]): { readonly compared: number; readonly problems: readonly AxProblem[] } {
   const problems: AxProblem[] = [];
@@ -244,15 +264,16 @@ export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine
     if (a.heading !== (l.heading > 0 ? 1 : 0)) problems.push({ id, detail: `${at}: ${a.heading === 1 ? 'read as a heading, but the model has it under none' : `not read as a heading, but the model has it under an h${l.heading}`}` });
   };
   for (const n of dump.nodes) {
-    if (n.kind !== 'text') continue;
+    // A text node, or a box the model exposes (an empty clip rect's label).
+    if (n.kind !== 'text' && !byLeaf.has(n.id)) continue;
     const want = byLeaf.get(n.id) ?? [];
     const whole = want.find((l) => l.whole === true);
     const exposed = n.lines.flatMap((l, j) => (l.accessible === null ? [] : [j]));
     if (whole !== undefined) {
       compared++;
-      for (const j of exposed) problems.push({ id: n.id, detail: `${n.id}:line${j}: the leaf is exposed whole, but an element exposes the line` });
+      for (const j of exposed) problems.push({ id: n.id, detail: `${n.id}:line${j}: the node is exposed whole, but an element exposes the line` });
       const a = n.accessible;
-      if (a === null) problems.push({ id: n.id, detail: `${n.id}: the leaf is exposed whole, but the view is not an accessibility element` });
+      if (a === null) problems.push({ id: n.id, detail: `${n.id}: the node is exposed whole, but the view is not an accessibility element` });
       else {
         if (a.name !== whole.name) problems.push({ id: n.id, detail: `${n.id}: named ${JSON.stringify(a.name)}, expected ${JSON.stringify(whole.name)}` });
         marked(n.id, n.id, a, whole);
@@ -263,7 +284,7 @@ export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine
     if (n.accessible !== null) problems.push({ id: n.id, detail: `${n.id}: the view is an accessibility element itself, named ${JSON.stringify(n.accessible.name)}` });
     if (want.length === 0) {
       compared += n.lines.length;
-      for (const j of exposed) problems.push({ id: n.id, detail: `${n.id}:line${j}: the model exposes none of this text (hidden, or a marker's), but an element exposes the line` });
+      for (const j of exposed) problems.push({ id: n.id, detail: `${n.id}:line${j}: the model exposes none of this text (hidden, a marker's, or under a clip label), but an element exposes the line` });
       continue;
     }
     if (want.length !== n.lines.length) {
@@ -283,8 +304,8 @@ export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine
   }
   // The reading order: a device writes it (the schema allows null only in a ts-reference dump).
   if (dump.accessibleOrder !== null) {
-    const texts = new Set(dump.nodes.filter((n) => n.kind === 'text').map((n) => n.id));
-    const read = dump.accessibleOrder.filter((id) => texts.has(id));
+    const known = new Set([...dump.nodes.filter((n) => n.kind === 'text').map((n) => n.id), ...byLeaf.keys()]);
+    const read = dump.accessibleOrder.filter((id) => known.has(id));
     const model = modelOrder(expected);
     if (read.join('\n') !== model.join('\n')) problems.push({ id: dump.case.id, detail: `reading order: the screen reader reads ${JSON.stringify(read)}, the model (DOM order) ${JSON.stringify(model)}` });
   }
@@ -308,7 +329,7 @@ export function exposedAsModelled(dump: NativeDump, expected: readonly AxLine[])
   return {
     ...dump,
     nodes: dump.nodes.map((n) => {
-      const want = n.kind === 'text' ? (byLeaf.get(n.id) ?? []) : [];
+      const want = byLeaf.get(n.id) ?? [];
       const whole = want.find((l) => l.whole === true);
       const lined = whole === undefined && want.length === n.lines.length;
       return {

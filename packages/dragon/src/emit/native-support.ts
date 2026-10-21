@@ -197,29 +197,33 @@ public final class DragonRootView: UIView {
   }
   required init?(coder: NSCoder) { fatalError("DragonRootView is built in code") }
 
-  /// P6b: the text views with lines and the views that are accessibility elements themselves (a whole leaf, a control), in DOM
-  /// order, that VoiceOver can reach now: shown, and not inside a view that is one element for its whole subtree. A box's foreign
-  /// view (an iframe's WKWebView, a video's player) follows its box, as an accessibility container of its own content.
+  /// P6b: the text views with lines and the views that are accessibility elements themselves (a whole leaf, an empty clip rect's
+  /// label, a control), in DOM order, that VoiceOver can reach now (dragonVoiceOverReaches). A box's foreign view (an iframe's
+  /// WKWebView) follows its box, as an accessibility container of its own content.
   public override var accessibilityElements: [Any]? {
     get {
       if dragonAccessibleOrder.isEmpty { return super.accessibilityElements }
-      func reachable(_ v: UIView) -> Bool {
-        var x: UIView? = v
-        while let c = x, c !== self {
-          if c.isHidden || c.alpha < 0.01 || c.accessibilityElementsHidden || (c !== v && c.isAccessibilityElement) { return false }
-          x = c.superview
-        }
-        return x != nil
-      }
       var out: [Any] = []
-      for v in dragonAccessibleOrder where reachable(v) {
+      for v in dragonAccessibleOrder where dragonVoiceOverReaches(v, self) {
         if v.isAccessibilityElement || ((v as? DragonTextView)?.dragonAccessibleLines.isEmpty == false) { out.append(v) }
-        if let f = (v as? DragonBoxView)?.dragonForeignView, !v.isAccessibilityElement, reachable(f) { out.append(f) }
+        if let f = (v as? DragonBoxView)?.dragonForeignView, !v.isAccessibilityElement, dragonVoiceOverReaches(f, self) { out.append(f) }
       }
       return out
     }
     set { super.accessibilityElements = newValue }
   }
+}
+
+/// P6b: whether VoiceOver can reach a view (it, or the elements it holds) under root: it is inside root, and neither it nor a
+/// superview is hidden, transparent or hides its elements, nor is a superview an element for its whole subtree (an empty clip
+/// rect's label, dragonClipRectLabel).
+public func dragonVoiceOverReaches(_ v: UIView, _ root: UIView) -> Bool {
+  var x: UIView? = v
+  while let c = x, c !== root {
+    if c.isHidden || c.alpha < 0.01 || c.accessibilityElementsHidden || (c !== v && c.isAccessibilityElement) { return false }
+    x = c.superview
+  }
+  return x != nil
 }
 
 /// css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds.
@@ -1335,7 +1339,7 @@ public final class DragonTree {
           // P6b: the line's accessibility element as UIKit holds it in the view's live accessibilityElements, framed from the view's
           // live position; a hidden view exposes none.
           var accessible: DumpNodesLinesAccessible? = nil
-          if !tv.isHidden, let j = tv.dragonAccessibleSpecs.firstIndex(of: k), let live = tv.accessibilityElements, j < live.count, let el = live[j] as? UIAccessibilityElement {
+          if dragonVoiceOverReaches(tv, root), let j = tv.dragonAccessibleSpecs.firstIndex(of: k), let live = tv.accessibilityElements, j < live.count, let el = live[j] as? UIAccessibilityElement {
             let f = el.accessibilityFrameInContainerSpace
             accessible = DumpNodesLinesAccessible(name: el.accessibilityLabel ?? "", heading: el.accessibilityTraits.contains(.header) ? 1 : 0, frame: DumpNodesLinesAccessibleFrame(x: Double(r.minX + f.minX), y: Double(r.minY + f.minY), width: Double(f.width), height: Double(f.height)))
           }
@@ -1350,7 +1354,7 @@ public final class DragonTree {
       }
       // P6b: the view as one accessibility element of its own (a whole leaf, or a control), named and framed as UIKit reports it to VoiceOver.
       var accessible: DumpNodesAccessible? = nil
-      if !v.isHidden, v.isAccessibilityElement {
+      if dragonVoiceOverReaches(v, root), v.isAccessibilityElement {
         let f = UIAccessibility.convertFromScreenCoordinates(v.accessibilityFrame, in: root)
         accessible = DumpNodesAccessible(name: v.accessibilityLabel ?? "", heading: v.accessibilityTraits.contains(.header) ? 1 : 0, frame: DumpNodesAccessibleFrame(x: Double(f.minX), y: Double(f.minY), width: Double(f.width), height: Double(f.height)))
       }
@@ -2862,7 +2866,7 @@ class DragonTree(val context: Context) {
           // that is not visible exposes none.
           var accessible: DumpNodesLinesAccessible? = null
           val j = v.dragonAccessibleSpecs.indexOf(k)
-          val info = if (j < 0 || view.visibility != android.view.View.VISIBLE) null else v.accessibilityNodeProvider?.createAccessibilityNodeInfo(j)
+          val info = if (j < 0 || !dragonTalkBackReaches(view, root)) null else v.accessibilityNodeProvider?.createAccessibilityNodeInfo(j)
           if (info != null) {
             val bounds = android.graphics.Rect()
             @Suppress("DEPRECATION")
@@ -2880,7 +2884,7 @@ class DragonTree(val context: Context) {
       }
       // P6b: the view as one accessibility element of its own (a whole leaf, or a control), named and framed by the node info it gives TalkBack.
       var accessible: DumpNodesAccessible? = null
-      if (view.visibility == android.view.View.VISIBLE && view.importantForAccessibility == android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES && view.accessibilityNodeProvider == null && view.contentDescription != null) {
+      if (dragonTalkBackReaches(view, root) && view.importantForAccessibility == android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES && view.accessibilityNodeProvider == null && view.contentDescription != null) {
         val info = view.createAccessibilityNodeInfo()
         val bounds = android.graphics.Rect()
         @Suppress("DEPRECATION")
@@ -2904,12 +2908,29 @@ class DragonTree(val context: Context) {
     fun chain(id: String) {
       if (!seen.add(id)) return
       val vw = views[id] as android.view.View
-      if (vw.visibility == android.view.View.VISIBLE) accessibleOrder.add(id)
+      if (dragonTalkBackReaches(vw, root)) accessibleOrder.add(id)
       for (next in follows[vw.id] ?: emptyList<String>()) chain(next)
     }
     for (h in heads) chain(h)
     return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, accessibleOrder, pixels, timing, environment)
   }
+}
+
+/**
+ * P6b: whether TalkBack can reach a view (it, or the virtual nodes it holds) under root: it and every ancestor up to root are
+ * visible, and no ancestor is an important node that reports no accessibility children (one node for its whole subtree, as an empty
+ * clip rect's label is, DragonBoxView.addChildrenForAccessibility).
+ */
+fun dragonTalkBackReaches(v: android.view.View, root: android.view.View): Boolean {
+  if (v.visibility != android.view.View.VISIBLE) return false
+  var c = v.parent as? android.view.View
+  while (c != null) {
+    if (c.visibility != android.view.View.VISIBLE) return false
+    if (c.isImportantForAccessibility && c.createAccessibilityNodeInfo().childCount == 0) return false
+    if (c === root) return true
+    c = c.parent as? android.view.View
+  }
+  return false
 }
 
 /**

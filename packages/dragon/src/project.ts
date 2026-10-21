@@ -397,7 +397,7 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
       // P6b: a heading's role and aria-level as Chrome reads them (lower/paint/role.ts headingOf); one Dragon cannot prove is refused.
       const heading = headingOf(n.tag, (name) => {
         const a = n.attributes.find((x) => x.name === name);
-        // A value that differs by state is bound at run time (null); a state with no value leaves the attribute absent.
+        // A value that differs by state or by component argument is null; an alternative with no value leaves the attribute absent.
         const values = new Set((a?.value ?? []).map((c) => c.value));
         if (values.size > 1) return null;
         return [...values][0] ?? undefined;

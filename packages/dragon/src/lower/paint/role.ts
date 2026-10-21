@@ -20,15 +20,15 @@ const ARIA_LEVEL = /^[1-6]$/;
 
 /**
  * An element's heading in Chrome's accessibility tree, from its tag and its role and aria-level attributes (attr gives an
- * attribute's value, undefined when absent and null when it is bound at run time): the first token of role, if any, is the role
+ * attribute's value, undefined when absent and null when it differs by state or by component argument): the first token of role, if any, is the role
  * (heading, or a role of PLAIN_TEXT_ROLES); else h1 to h6 are headings of the tag's number. A heading's aria-level, if any, is its
  * level, else the tag's number, and 2 for another element (WAI-ARIA 1.2 heading: aria-level defaults to 2). The level, 0 for none,
- * or why Dragon refuses the element (a role or aria-level it cannot prove, or bound at run time).
+ * or why Dragon refuses the element (a role or aria-level it cannot prove, or one that differs by state or component argument).
  */
 export function headingOf(tag: string, attr: (name: string) => string | null | undefined): { readonly level: number } | { readonly refusal: string } {
   const tagLevel = /^h([1-6])$/.exec(tag);
   const role = attr('role');
-  if (role === null) return { refusal: 'a role bound at run time can make or unmake a heading, which native cannot follow' };
+  if (role === null) return { refusal: 'a role that differs by state or by component argument can make or unmake a heading, which native cannot follow' };
   const first = role === undefined ? undefined : (role.trim().toLowerCase().split(/\s+/)[0] ?? '');
   let heading: boolean;
   if (first === undefined || first === '') heading = tagLevel !== null;
@@ -38,7 +38,7 @@ export function headingOf(tag: string, attr: (name: string) => string | null | u
   else heading = false;
   if (!heading) return { level: 0 };
   const level = attr('aria-level');
-  if (level === null) return { refusal: `aria-level bound at run time on the heading <${tag}>` };
+  if (level === null) return { refusal: `aria-level that differs by state or by component argument on the heading <${tag}>` };
   if (level !== undefined) {
     if (!ARIA_LEVEL.test(level.trim())) return { refusal: `aria-level "${level}" on the heading <${tag}> is not a level 1 to 6` };
     return { level: Number(level.trim()) };
