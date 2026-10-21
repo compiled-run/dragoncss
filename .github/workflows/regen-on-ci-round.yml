@@ -47,6 +47,9 @@ jobs:
       # round runs out of memory (7 GB), go back to 2.
       DRAGON_REGEN_JOBS: '3'
       HOMEBREW_NO_INSTALL_CLEANUP: '1'
+      # lanes-host is one process holding every case's native compile; batch 4b's corpus passed Node's default 2 GB heap. The
+      # chrome side keeps the default: it runs DRAGON_REGEN_JOBS steps at once in the same 7 GB.
+      NODE_OPTIONS: ${{ inputs.side == 'host' && '--max-old-space-size=5120' || '' }}
     steps:
       - name: Check out the branch commit
         uses: actions/checkout@v4
