@@ -793,7 +793,8 @@ public func dragonSafeArea(_ container: UIView) -> SafeAreaInsets {
   let r = container.convert(container.bounds, to: w)
   let b = w.bounds
   func css(_ v: CGFloat) -> Double { return Double(max(0, v)) }
-  return SafeAreaInsets(css(i.top - r.minY), css(r.maxX - (b.width - i.right)), css(r.maxY - (b.height - i.bottom)), css(i.left - r.minX))
+  // Each side's unsafe band is the window's own edge strip: a container reaching past the window's edge is not under a bar there.
+  return SafeAreaInsets(css(min(i.top, r.maxY) - max(r.minY, 0)), css(min(r.maxX, b.width) - max(r.minX, b.width - i.right)), css(min(r.maxY, b.height) - max(r.minY, b.height - i.bottom)), css(min(i.left, r.maxX) - max(r.minX, 0)))
 }
 
 /// css-env-1: input with its safe-area insets replaced by a mount's measured ones.
@@ -2206,7 +2207,9 @@ fun dragonSafeArea(container: android.view.View, scale: Double): SafeAreaInsets 
   val right = at[0] + container.width - container.paddingRight
   val bottom = at[1] + container.height - container.paddingBottom
   fun css(px: Int): Double = maxOf(0, px) / scale
-  return SafeAreaInsets(css(bars.top - top), css(right - (window.width - bars.right)), css(bottom - (window.height - bars.bottom)), css(bars.left - left))
+  // Each side's unsafe band is the window's own edge strip: a container reaching past the window's edge (a mount's media root
+  // larger than the stage) is not under a bar there.
+  return SafeAreaInsets(css(minOf(bars.top, bottom) - maxOf(top, 0)), css(minOf(right, window.width) - maxOf(left, window.width - bars.right)), css(minOf(bottom, window.height) - maxOf(top, window.height - bars.bottom)), css(minOf(bars.left, right) - maxOf(left, 0)))
 }
 
 /** css-env-1: input with its safe-area insets replaced by a mount's measured ones. */
