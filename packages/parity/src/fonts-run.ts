@@ -9,29 +9,18 @@ import { compiledFeatures, NO_FAULTS, resolvedColors, resolvedTextColors, textTo
 import type { WebCapture } from './capture.ts';
 import { captureFixture, captureJson } from './capture.ts';
 import type { ParityCase } from './cases.ts';
-import { casesOf, fixtureInput } from './cases.ts';
+import { authoredFontHtml, casesOf, fixtureInput } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
 import { compareDual } from './dual.ts';
 import type { FontFixture } from './fixture-groups/fonts.ts';
-import { fontFaceUrls, parseFixtureHtml } from './fixture-reader.ts';
 import type { PlatformFont } from './font-reference.ts';
-import { fontDataUrl, fontReferencePrepare, platformFonts, VENDOR_FONTS, vendorFontBytes } from './font-reference.ts';
+import { fontReferencePrepare, platformFonts } from './font-reference.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import { repoPath } from './paths.ts';
 import { compileFixture, webCssOf } from './pipeline.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 
-/** The authored document as Chrome loads it: each @font-face url() that names a vendored font (fontFaceUrls) inlined as a data: URL. */
-export function authoredFontHtml(html: string): string {
-  const { style } = parseFixtureHtml(html);
-  if (style === null) return html;
-  const edits = fontFaceUrls(html.slice(style.start, style.end))
-    .flatMap((u) => u.spans.map((sp) => ({ start: style.start + sp.start, end: style.start + sp.end, text: `url("${fontDataUrl(vendorFontBytes(u.id.slice(VENDOR_FONTS.length)))}")` })))
-    .sort((a, b) => b.start - a.start);
-  let out = html;
-  for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
-  return out;
-}
+export { authoredFontHtml } from './cases.ts';
 
 /** The stated-reference transform of a fixture with a font map; a fixture without one renders as authored. */
 export function referenceTransform(f: FontFixture): ((page: Page) => Promise<void>) | undefined {

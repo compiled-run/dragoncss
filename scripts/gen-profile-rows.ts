@@ -18,7 +18,10 @@ import { committedEnvAuthored, runEnvFixture } from '../packages/parity/src/env-
 import { repoPath } from '../packages/parity/src/paths.ts';
 import type { CaseOutcome } from '../packages/parity/src/pipeline.ts';
 import { runFixture } from '../packages/parity/src/pipeline.ts';
-import { committedLanes, deriveAnimationRows, deriveMediaRows, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
+import { forcedDeviceCases } from '../packages/parity/src/forced-device.ts';
+import { traceScriptOfForced } from '../packages/parity/src/cases.ts';
+import { keptForceSteps } from '../packages/parity/src/trace-lane.ts';
+import { committedLanes, cutForceSteps, deriveAnimationRows, deriveInteractionRows, deriveMediaRows, deriveRows, nativeLanesSource, profileSource } from '../packages/parity/src/profile-rows.ts';
 import { resizeReport } from '../packages/parity/src/resize-capture.ts';
 import { animCasesOf, animFixtures } from '../packages/parity/src/anim-cases.ts';
 import { animSamples } from '../packages/parity/src/anim-samples.ts';
@@ -64,8 +67,14 @@ const committed = committedLanes();
 const resize = resizeReport();
 for (const f of resize.failures.slice(0, 3)) console.log(`not passing, proves nothing: ${f}`);
 const resizePassing = resize.passing.map((c) => ({ id: c.id, features: mediaFeatures(c.compiled) }));
+// SELD-R2 PR 5: the forced device cases (forced :focus or :focus-visible, no focusable element) that pass the host lanes prove the
+// forced-only interaction rows; on a native target only when each passes its device lanes (deriveInteractionRows).
+const passedHost = new Set(cases.filter((c) => c.status === 'pass' && c.lanes['chrome-dual'] === 'pass').map((c) => c.id));
+// A case proves nothing on device-traces unless its group's script keeps every step it forces after the MAX_TRACE_STEPS cut.
+const forcedOnly = forcedDeviceCases().filter((f) => passedHost.has(f.hostId)).map((f) => ({ id: f.hostId, device: f.case.id, cut: cutForceSteps(f.force, keptForceSteps(traceScriptOfForced(f.hostId))), features: f.features }));
 for (const target of ['ios', 'android', 'web'] as const) {
-  const rows = [...deriveRows(target, cases), ...deriveAnimationRows(target, framePassing, target === 'web' ? null : committed.evidence(target)), ...deriveMediaRows(target, resizePassing)];
+  const device = target === 'web' ? null : committed.evidence(target);
+  const rows = [...deriveRows(target, cases), ...deriveAnimationRows(target, framePassing, device), ...deriveMediaRows(target, resizePassing), ...deriveInteractionRows(target, forcedOnly, device)];
   writeFileSync(repoPath(`packages/dragon/src/profiles/${target}.ts`), profileSource(target, rows));
   console.log(`${target}: ${rows.length} rows from ${cases.length} cases`);
 }

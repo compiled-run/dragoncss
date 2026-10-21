@@ -11,6 +11,7 @@ import { TRANSPARENT } from '../../css/color.ts';
 import { opacityOf } from '../../css/properties/effects.ts';
 import { dashArrayOf } from '../../css/properties/svg-dash.ts';
 import { paintsStrokeFirst } from '../../css/properties/svg-paint-order.ts';
+import { svgPathData, svgPathValue } from '../../css/properties/svg-d.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue, Declaration } from '../../css/stylesheet.ts';
 import { parseValue } from '../../css/stylesheet.ts';
@@ -21,8 +22,8 @@ import type { ResolvedElement } from '../resolve.ts';
 export const SVG_TAG = 'svg';
 
 /** The presentation attributes Dragon maps to its svg property family (SVG 2 §6.6); author rules beat them. */
-export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order' | 'vector-effect' | 'clip-rule' | 'marker-start' | 'marker-mid' | 'marker-end';
-export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end'];
+export type SvgPaintAttribute = 'fill' | 'stroke' | 'stroke-width' | 'fill-opacity' | 'stroke-opacity' | 'stroke-linecap' | 'stroke-linejoin' | 'stroke-miterlimit' | 'fill-rule' | 'stroke-dasharray' | 'stroke-dashoffset' | 'paint-order' | 'vector-effect' | 'clip-rule' | 'marker-start' | 'marker-mid' | 'marker-end' | 'stop-color' | 'stop-opacity' | 'flood-color' | 'flood-opacity' | 'lighting-color' | 'mask-type' | 'text-anchor' | 'dominant-baseline' | 'alignment-baseline';
+export const SVG_PAINT_ATTRIBUTES: readonly SvgPaintAttribute[] = ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'paint-order', 'vector-effect', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', 'stop-color', 'stop-opacity', 'flood-color', 'flood-opacity', 'lighting-color', 'mask-type', 'text-anchor', 'dominant-baseline', 'alignment-baseline'];
 
 /** The attributes each SVG tag compiles: its geometry, the paint presentation attributes, and xmlns (no effect in HTML). */
 export const SVG_HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } = {
@@ -121,9 +122,22 @@ export function svgAttributeRefusal(tag: string, name: string, text: string): st
     return d.ok ? null : d.arc ? d.reason : `the path data does not parse (${d.reason}); Chrome would draw it only up to the error`;
   }
   const v = parseSvgLength(text);
-  if (v === null) return 'only numbers and px lengths are built (package SVG-units)';
-  if ((name === 'width' || name === 'height' || name === 'r' || name === 'rx' || name === 'ry') && v < 0) return 'a negative value is an error, which disables rendering in Chrome';
+  if (v === null) return svgRadiusAttributeOf(name, text) === null ? 'only numbers and px lengths are built (package SVG-units)' : null;
+  if ((name === 'width' || name === 'height' || name === 'r') && v < 0) return 'a negative value is an error, which disables rendering in Chrome';
   return null;
+}
+
+/**
+ * SVG-rrect: the px value a rect's rx or ry attribute hints, or null when the text is a length Dragon does not build (a percentage,
+ * em, a calculation: package SVG-units). Chrome keeps a negative attribute as the computed value and paints it as auto
+ * (svgRectRadii), and computes text that is no length at all (auto, inherit, a word, empty, "5 px", "5.") to 0. Text with a function
+ * (var(), calc(), env()) or another dimension may resolve to a length in Chrome, so it is refused.
+ */
+function svgRadiusAttributeOf(name: string, text: string): number | null {
+  if (name !== 'rx' && name !== 'ry') return null;
+  const v = parseSvgLength(text);
+  if (v !== null) return v;
+  return text.includes('(') || /^[ \t\n\r\f]*[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?(?:[a-zA-Z]+|%)[ \t\n\r\f]*$/.test(text) ? null : 0;
 }
 
 /** The geometry properties each shape tag maps its attributes to (SVG 2 §10.3, §10.4); a rect's width and height are below. */
@@ -147,9 +161,13 @@ export function svgPresentationHints(tag: string, attributes: ReadonlyMap<string
   }
   for (const p of SVG_GEOMETRY_HINTS[tag] ?? []) {
     const text = attributes.get(p);
-    const v = text === undefined ? null : parseSvgLength(text);
-    if (v !== null && !((p === 'r' || p === 'rx' || p === 'ry') && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
+    const v = text === undefined ? null : p === 'rx' || p === 'ry' ? svgRadiusAttributeOf(p, text) : parseSvgLength(text);
+    if (v !== null && !(p === 'r' && v < 0)) out.set(p, { kind: 'length', value: v, unit: 'px' });
   }
+  // SVG-d: a path's d attribute hints the d property when its data parses whole (svgAttributeRefusal refuses any other).
+  const d = tag === 'path' ? attributes.get('d') : undefined;
+  const dv = d === undefined ? null : svgPathValue(d);
+  if (dv !== null && 'value' in dv) out.set('d', dv.value);
   // An svg's width and height, and a rect's, are geometry properties their attributes map to (SVG 2 §10.4, §11.2).
   if (tag === SVG_TAG || tag === 'rect') {
     for (const p of ['width', 'height'] as const) {
@@ -188,12 +206,15 @@ function svgLengthOf(el: ResolvedElement, p: 'cx' | 'cy' | 'r' | 'x' | 'y'): num
 
 /**
  * SVG-rrect: a rect's used corner radii from its computed rx and ry, as SVG 2 §10.4 resolves them: an auto radius takes the other's
- * value (both auto are 0), then each is at most half the rect's width or height. Null when one is not resolved yet.
+ * value (both auto are 0), then each is at most half the rect's width or height. A negative radius (only an attribute gives one)
+ * paints as auto, as Chrome paints it. Null when one is not resolved yet.
  */
 export function svgRectRadii(rx: number | 'auto' | null, ry: number | 'auto' | null, width: number, height: number): { readonly rx: number; readonly ry: number } | null {
   if (rx === null || ry === null) return null;
-  const x = rx === 'auto' ? (ry === 'auto' ? 0 : ry) : rx;
-  const y = ry === 'auto' ? x : ry;
+  const ax = rx === 'auto' || rx < 0 ? 'auto' : rx;
+  const ay = ry === 'auto' || ry < 0 ? 'auto' : ry;
+  const x = ax === 'auto' ? (ay === 'auto' ? 0 : ay) : ax;
+  const y = ay === 'auto' ? x : ay;
   return { rx: Math.min(x, width / 2), ry: Math.min(y, height / 2) };
 }
 
@@ -211,8 +232,10 @@ export function shapeOf(el: ResolvedElement): SvgShape | null {
     return text === undefined ? 0 : parseSvgLength(text);
   };
   if (tag === 'path') {
-    const d = parsePathData(attributes.get('d') ?? '');
-    return d.ok ? { kind: 'path', segments: d.segments } : null;
+    // SVG-d: the computed d, which the d attribute hints; none is an empty path.
+    const v = (el.props.get('d') as ResolvedValue).value;
+    const d = v.kind === 'keyword' ? null : parsePathData(svgPathData(v));
+    return d === null ? { kind: 'path', segments: [] } : d.ok ? { kind: 'path', segments: d.segments } : null;
   }
   if (tag === 'rect') {
     const [x, y, width, height] = [svgLengthOf(el, 'x'), svgLengthOf(el, 'y'), num('width'), num('height')];

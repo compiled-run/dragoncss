@@ -1,0 +1,27 @@
+{
+  "case": "text-hyphens-webkit-ahem-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"kn:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"kn-twin:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"ka:text0","data":"internationalization extraordinary","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[20]},
+    {"id":"ka-twin:text0","data":"internationalization extraordinary","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[20]},
+    {"id":"km:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"km-twin:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"kx:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"kx-twin:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"ki:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"ki-twin:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"tn:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"tn-twin:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"ta:text0","data":"extraordinarily long words","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2],"blank":[15,20]},
+    {"id":"ta-twin:text0","data":"extraordinarily long words","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2],"blank":[15,20]},
+    {"id":"ov:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"ov-twin:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"ra:text0","data":"characterization","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"rb:text0","data":"ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"ra-twin:text0","data":"characterization","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"rb-twin:text0","data":"ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}

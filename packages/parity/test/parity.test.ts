@@ -28,7 +28,9 @@ import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts
 // against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
 // used key has a row, exactly what profile:rows derives, the context and lane shape, and every proof case a passing frame case.
 // MQ-R1: media rows (context media) are proven by resize cases against resize captures, and media-runtime-resize.test.ts does the same.
-const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT);
+// SELD-R2 PR 5: the interaction rows (context interaction/<input>) are proved by forced device cases on the device records
+// (deriveInteractionRows, interaction-rows.test.ts and android-profile.test.ts), not by layout cases' used keys.
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT && !r.context.startsWith('interaction/'));
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';

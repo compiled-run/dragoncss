@@ -15,6 +15,11 @@ import { CONTAINMENT_INITIAL } from '../src/css/properties/containment.ts';
 import { OVERSCROLL_INITIAL } from '../src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_INITIAL } from '../src/css/properties/scroll-snap.ts';
 import { MULTICOL_INITIAL } from '../src/css/properties/multicol.ts';
+import { ANCHOR_POSITION_INITIAL } from '../src/css/properties/anchor-position.ts';
+import { IMAGE_RENDERING_INITIAL } from '../src/css/properties/image-rendering.ts';
+import { SVG_EXTRA_INITIAL } from '../src/css/properties/svg-extra.ts';
+import { VIEW_TRANSITION_INITIAL } from '../src/css/properties/view-transition.ts';
+import { ANIMATION_EXTRA_INITIAL } from '../src/css/properties/animation-extra.ts';
 import { MOTION_INITIAL } from '../src/css/properties/motion.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 import { floorProblems } from './floor.ts';
@@ -81,7 +86,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // SVG-paint-order: two paint orders.
       'stroke-width': ['2px', '5'], 'fill-opacity': ['0.5', '20%'], 'stroke-opacity': ['0', '1'],
       'stroke-linecap': ['round', 'square'], 'stroke-linejoin': ['bevel', 'round'], 'stroke-miterlimit': ['1', '10'], 'fill-rule': ['evenodd', 'nonzero'], 'stroke-dasharray': ['2 3', 'none'], 'stroke-dashoffset': ['4px', '-2'],
-      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'], 'vector-effect': ['non-scaling-stroke', 'none'], 'clip-rule': ['evenodd', 'nonzero'], 'marker-start': ['none', 'none'], 'marker-mid': ['none', 'none'], 'marker-end': ['none', 'none'],
+      'cx': ['3px', '-1'], 'cy': ['2', '0px'], 'r': ['4px', '1'], 'x': ['1px', '-2'], 'y': ['3', '5px'], 'paint-order': ['stroke', 'normal'], 'rx': ['2px', 'auto'], 'ry': ['auto', '1'], 'vector-effect': ['non-scaling-stroke', 'none'], 'clip-rule': ['evenodd', 'nonzero'], 'marker-start': ['none', 'none'], 'marker-mid': ['none', 'none'], 'marker-end': ['none', 'none'], 'stop-color': ['red', 'currentcolor'], 'stop-opacity': ['0.5', '1'], 'flood-color': ['blue', 'black'], 'flood-opacity': ['0', '0.25'], 'lighting-color': ['white', 'red'], 'mask-type': ['alpha', 'luminance'], 'text-anchor': ['middle', 'end'], 'dominant-baseline': ['central', 'auto'], 'alignment-baseline': ['middle', 'baseline'], 'd': ['path("M0 0 H4")', 'none'],
       // TDEC-a: a decoration longhand other than the colour is compared at two values with no line drawn.
       'text-decoration-line': ['none', 'none'], 'text-decoration-style': ['solid', 'solid'], 'text-decoration-thickness': ['2px', '30%'],
       'text-underline-offset': ['1px', '-2px'], 'text-underline-position': ['auto', 'auto'], 'text-decoration-skip-ink': ['auto', 'none'],
@@ -102,7 +107,7 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
       // The overscroll, scroll-snap, containment, container-query, multicol and motion path longhands, which accept their initial values alone, at those
       // values in two spellings.
-      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL, ...MULTICOL_INITIAL, ...MOTION_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])),
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL, ...MULTICOL_INITIAL, ...IMAGE_RENDERING_INITIAL, ...ANCHOR_POSITION_INITIAL, ...SVG_EXTRA_INITIAL, ...VIEW_TRANSITION_INITIAL, ...ANIMATION_EXTRA_INITIAL, ...MOTION_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : v.kind === 'number' ? [String(v.value), `${v.value}.0`] : ['0', '0px']])),
       // isolation, whose isolate makes a stacking context and so changes paint order alone, at auto and isolate.
       isolation: ['auto', 'isolate'],
       // PNT2: the individual transforms (css-transforms-2 §4).
@@ -197,14 +202,17 @@ describe('positioning in the compiler', () => {
     // The same box beside elements only is laid out.
     expect(project('ltr', 'derive').compile(inputFor(`${FONT} .p { position: relative; } .a { position: absolute; }`, (r) => [div(r, 'p', ['p'], [div(r, 'k', [], [text(r, 't', 'XX')]), div(r, 'a', ['a'])])])).diagnostics).toEqual([]);
   });
-  it('position: fixed and sticky have no profile row: DRAGON_UNSUPPORTED_VALUE on ios and web; the lowering has no mapping for them', () => {
-    for (const v of ['fixed', 'sticky']) {
-      const input = inputFor(`${FONT} .a { position: ${v}; top: 1px; }`, (r) => [div(r, 'a', ['a'])]);
-      const c = project('ltr', 'enforce').compile(input);
-      const hits = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
-      expect(hits.map((d) => [d.target, spanTextOf(input, d)]).sort(), v).toEqual([['ios', v], ['web', v]]);
-      expect(project('ltr', 'derive').compile(input).diagnostics.map((d) => d.code), v).toEqual(['DRAGON_LOWERING_FAILED']);
-    }
+  it('POSX-s: position: sticky lowers, and on the root it is refused on ios and web at its declaration', () => {
+    expect(project('ltr', 'derive').compile(inputFor(`${FONT} .a { position: sticky; top: 1px; }`, (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
+    const root = inputFor(`${FONT} html { position: sticky; }`, (r) => [div(r, 'a', ['a'])]);
+    const hits = project('ltr', 'derive').compile(root).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
+    expect(hits.map((d) => [d.target, spanTextOf(root, d)]).sort()).toEqual([['ios', 'sticky'], ['web', 'sticky']]);
+  });
+  it('POSX-f: position: fixed lowers, and on the root it is refused on ios and web at its declaration', () => {
+    expect(project('ltr', 'derive').compile(inputFor(`${FONT} .a { position: fixed; top: 1px; }`, (r) => [div(r, 'a', ['a'])])).diagnostics).toEqual([]);
+    const root = inputFor(`${FONT} html { position: fixed; }`, (r) => [div(r, 'a', ['a'])]);
+    const hits = project('ltr', 'derive').compile(root).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
+    expect(hits.map((d) => [d.target, spanTextOf(root, d)]).sort()).toEqual([['ios', 'fixed'], ['web', 'fixed']]);
   });
 });
 

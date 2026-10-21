@@ -52,9 +52,10 @@ import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
-import { checkZoom } from './zoom.ts';
+import { checkZoom, effectiveZoom } from './zoom.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
+import { checkImageRendering, checkPixelatedTransformed } from './image-rendering.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
 import { paintContained } from './containment.ts';
@@ -85,6 +86,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
+import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -96,7 +98,8 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { environmentOf, generatedPseudoOf, refusedGenerationOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
+import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import { serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
 import { glyphFill, usedColors } from '../lower/paint/colors.ts';
@@ -325,13 +328,18 @@ function checkPercentRelative(el: ResolvedElement, where: string | null, targets
 }
 
 const displayKeyword = (el: ResolvedElement): string => keywordOf(el.props.get('display') as ResolvedValue);
-const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline';
+/** CSS2 §9.2.2: an inline box; display: inline on a replaced element makes an atomic inline instead (css-display-3 §2.4). */
+const isInlineBox = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline' && !isReplacedTag(el.element.tag);
 /** css-display-3 §2.5: a display: contents element generates no box; its children take its place in its parent's. */
 const isContents = (el: ResolvedElement): boolean => displayKeyword(el) === 'contents';
 /** The children that take part in el's box: el's children, with each display: contents child replaced by its own (recursively). */
 const boxKids = (el: ResolvedElement): (ResolvedElement | ResolvedText)[] => el.children.flatMap((c) => (c.kind === 'element' && isContents(c) ? boxKids(c) : [c]));
-/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL). */
-const isAtomic = (el: ResolvedElement): boolean => displayKeyword(el) === 'inline-block' || displayKeyword(el) === 'inline-flex' || displayKeyword(el) === 'inline-grid';
+/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box (INL2a, G-INL) or an inline-level replaced element (RF-INL). */
+const isAtomic = (el: ResolvedElement): boolean => {
+  const d = displayKeyword(el);
+  if (isReplacedTag(el.element.tag)) return d === 'inline' || d === 'inline-block';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
 
 /**
  * One item of an inline formatting context in tree order: a text, the open or close of an inline box, a <br> (CSS2 §9.2.2), or an
@@ -488,7 +496,7 @@ function checkContentsText(el: ResolvedElement, layoutParent: ResolvedElement | 
 // CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
 // element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
 // and runs with different text-wrap-mode in one formatting context.
-function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean): void {
+function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, ua: UaDataset): void {
   if (isInlineBox(el) || isContents(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
   const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string, origin: Origin = at.element.node.origin): void => {
@@ -500,6 +508,13 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     }
   };
   const refuseNative = (at: ResolvedElement, what: string, message: string, manual: string, origin?: Origin): void => refuseFor(targets.filter((t) => t === 'ios' || t === 'android'), at, what, message, manual, origin);
+  // BII: the engine places an inline box laid out as its blocks' block box with empty lines of its own, which a line of text or
+  // inline content beside it would hold instead (block-in-inline.ts).
+  const besideInline = el.children.some((c) => (c.kind === 'text' && c.text.trim() !== '') || (c.kind === 'element' && displayKeyword(c) !== 'none' && (isInlineBox(c) || isAtomic(c))));
+  for (const c of el.children) {
+    if (c.kind !== 'element' || !isBlockInInline(c) || !besideInline) continue;
+    refuse(c, 'block-in-inline-beside', `the inline box <${c.element.tag}> ${c.element.address} holds block-level boxes beside the text or inline content of ${el.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out yet (package BII)`, `Wrap the text beside ${c.element.address} in its own block, or make ${c.element.address} a block.`);
+  }
   // INL2c: an atomic inline inside an inline box, or beside text in a real face (Blink's LineBreaker for it is not ported).
   const unproven = (at: ResolvedElement, what: string, message: string, manual: string): void => {
     for (const t of targets) {
@@ -514,7 +529,9 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       unproven(child, 'in-inline-box', `${displayKeyword(child)} <${child.element.tag}> ${child.element.address} is an atomic inline inside the inline box <${box.element.tag}> ${box.element.address}; atomic inlines are proven only directly in their block container (INL2c)`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}.`);
       return;
     }
-    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`);
+    // BII: the resolver already made an inline box with no box of its own around only blocks a block (block-in-inline.ts).
+    const why = blockInInlineBlocker(box.props, box.children.map(blockInInlineChild), ua);
+    refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon lays out only when the inline box holds nothing but block-level boxes and has no box of its own (here ${why ?? 'it does'}; package BII)`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`);
   });
   for (const run of runs) {
     const realText = run.find((it) => it.kind === 'text' && realFaceAt(it.text.node.address));
@@ -789,19 +806,183 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Wrap the text beside the absolutely positioned element in its own element, or position a descendant of the root instead.', basis: 'computed-value' }));
     }
   };
-  if (isRoot && keywordOf(el.props.get('position') as ResolvedValue) === 'absolute') refuse(el, `position: absolute on the root element ${el.element.address} is not supported in milestone 1`);
+  const own = keywordOf(el.props.get('position') as ResolvedValue);
+  if (isRoot && (own === 'absolute' || own === 'fixed')) refuse(el, `position: ${own} on the root element ${el.element.address} is not supported in milestone 1`);
   // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
   if (!el.children.some((c) => c.kind === 'text' || displayKeyword(c) === 'inline' || isAtomic(c))) return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
-    if (keywordOf(c.props.get('position') as ResolvedValue) !== 'absolute') continue;
+    const pos = keywordOf(c.props.get('position') as ResolvedValue);
+    if (pos !== 'absolute' && pos !== 'fixed') continue;
     refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
-      ? `position: absolute on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)`
-      : `position: absolute on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
+      ? `position: ${pos} on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)`
+      : `position: ${pos} on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
   }
 }
 
+// FLT (CSS2 §9.5): the engine places a float beside the floats before it in its container and counts it in its block formatting
+// context root's height, but moves no in-flow box and shortens no line box for it (packages/layout/src/float.ts). So a float in
+// block flow compiles only where nothing in flow is beside it: its parent is a block container with no inline content, every in-flow
+// sibling before it, every float after it, and nothing in flow after it in its formatting context (the ancestors up to the context's
+// root have nothing in flow after it either). Its formatting context's plain blocks stay static (a relative offset would move the
+// float out of the root's area). float: inline-start and inline-end, clear on a float, a positioned float and a negative margin
+// have no case yet. The engine refuses all of these; each is refused here on every target at the float declaration, since a
+// refusal on the device is a crash.
+function checkFloats(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (el: ResolvedElement, message: string, manual: string): void => {
+    const v = el.props.get('float') as ResolvedValue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|float|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const floats = (el: ResolvedElement): boolean => keywordOf(el.props.get('float') as ResolvedValue) !== 'none';
+  const position = (el: ResolvedElement): string => keywordOf(el.props.get('position') as ResolvedValue);
+  const container = (el: ResolvedElement): boolean => ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(displayKeyword(el));
+  const scrolls = (el: ResolvedElement): boolean => el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue));
+  // A block box that takes part in its parent's block formatting context (block.ts newFormattingContext, float.ts sharesFormattingContext).
+  const shares = (el: ResolvedElement, parent: ResolvedElement): boolean => displayKeyword(el) === 'block' && !isReplacedTag(el.element.tag) && !scrolls(el) && !floats(el) && position(el) !== 'absolute' && position(el) !== 'fixed' && !container(parent);
+  const inFlow = (c: ResolvedElement): boolean => displayKeyword(c) !== 'none' && position(c) !== 'absolute' && position(c) !== 'fixed';
+  const negative = (v: ResolvedValue): boolean => ((v.value.kind === 'length' || v.value.kind === 'percentage') && v.value.value < 0) || (v.value.kind === 'other' && v.value.text.includes('-'));
+  // The first float of each formatting context, once seen: everything in flow after it is refused.
+  const walk = (el: ResolvedElement, chain: readonly ResolvedElement[], first: { at: ResolvedElement | null; parent: ResolvedElement | null }): void => {
+    const inline = el.children.some((c) => (c.kind === 'text' && c.text.length > 0) || (c.kind === 'element' && inFlow(c) && (isInlineBox(c) || isAtomic(c))));
+    for (const c of el.children) {
+      if (c.kind === 'text' && c.text.length > 0 && first.at !== null) refuse(first.at, `float: ${keywordOf(first.at.props.get('float') as ResolvedValue)} on ${first.at.element.address} is followed in its formatting context by text in ${el.element.address}: Dragon does not shorten line boxes around a float yet (FLT)`, `Wrap the text in an element before ${first.at.element.address}.`);
+      if (c.kind !== 'element' || displayKeyword(c) === 'none') continue;
+      const floating = floats(c) && !container(el);
+      if (floating) {
+        const f = keywordOf(c.props.get('float') as ResolvedValue);
+        const clear = keywordOf(c.props.get('clear') as ResolvedValue);
+        const margin = (['margin-top', 'margin-right', 'margin-bottom', 'margin-left'] as const).find((p) => negative(c.props.get(p) as ResolvedValue));
+        const plain = chain.find((a) => position(a) !== 'static');
+        if (f !== 'left' && f !== 'right') refuse(c, `float: ${f} on ${c.element.address} is not laid out yet (FLT: only left and right)`, `Use float: left or float: right on ${c.element.address}.`);
+        else if (displayKeyword(el) !== 'block' || isReplacedTag(el.element.tag)) refuse(c, `float: ${f} on ${c.element.address} in ${el.element.address}, whose display is ${displayKeyword(el)}: Dragon lays out a float only in a block container (FLT)`, `Wrap ${c.element.address} in a display: block element.`);
+        else if (inline) refuse(c, `float: ${f} on ${c.element.address} beside the text or inline content of ${el.element.address}: Dragon does not shorten line boxes around a float yet (FLT)`, `Wrap the text beside ${c.element.address} in its own element before the float, or use flex layout.`);
+        else if (first.at !== null && first.parent !== el) refuse(c, `float: ${f} on ${c.element.address} follows the float ${first.at.element.address} of another container in its formatting context: Dragon places floats beside each other only within one container (FLT)`, `Make ${c.element.address} a sibling of ${first.at.element.address}.`);
+        else if (clear !== 'none') refuse(c, `float: ${f} with clear: ${clear} on ${c.element.address}: clearance between floats is not laid out yet (FLT)`, `Remove clear from ${c.element.address}.`);
+        else if (position(c) !== 'static') refuse(c, `float: ${f} on the ${position(c)}ly positioned ${c.element.address} is not laid out yet (FLT)`, `Position a wrapper inside ${c.element.address} instead.`);
+        else if (margin !== undefined) refuse(c, `float: ${f} with a negative ${margin} on ${c.element.address}: a float that overlaps other boxes is not laid out yet (FLT)`, `Use a margin of 0 or more on ${c.element.address}.`);
+        else if (plain !== undefined) refuse(c, `float: ${f} on ${c.element.address} inside the ${position(plain)}ly positioned ${plain.element.address}, which shares its formatting context: its offset is not applied to the float yet (FLT)`, `Make ${plain.element.address} a formatting context root (overflow: hidden, display: flow-root is not supported) or keep it static.`);
+        else if (!isReplacedTag(c.element.tag) && (c.props.get('aspect-ratio') as ResolvedValue).value.kind === 'ratio' && keywordOf(c.props.get('width') as ResolvedValue) === 'auto') refuse(c, `float: ${f} with aspect-ratio and an auto width on ${c.element.address}: a float's shrink-to-fit width through a ratio is not laid out yet (FLT)`, `Give ${c.element.address} a width, or float a wrapper around it.`);
+        // The engine sizes a float shrink-to-fit and takes its width, min-width and max-width as lengths (float.ts floatWidth).
+        if (!isReplacedTag(c.element.tag)) refuseSizeKeywords(c, `on a float (FLT)`, `Use a length, a percentage or auto on ${c.element.address}, or put the keyword on a block inside the float.`, targets, diagnostics, reported);
+        if (first.at === null) {
+          first.at = c;
+          first.parent = el;
+        }
+        // A float is the root of its own block formatting context.
+        walk(c, [], { at: null, parent: null });
+        continue;
+      }
+      if (inFlow(c) && first.at !== null) refuse(first.at, `float: ${keywordOf(first.at.props.get('float') as ResolvedValue)} on ${first.at.element.address} is followed in its formatting context by ${c.element.address}, which is in flow: Dragon does not move boxes or lines around a float yet (FLT)`, `Put ${c.element.address} before ${first.at.element.address}, or make the floats' parent a formatting context root (overflow: hidden) with nothing after the floats in it.`);
+      if (inFlow(c) && shares(c, el)) walk(c, [...chain, c], first);
+      else walk(c, [], { at: null, parent: null });
+    }
+  };
+  walk(root, [], { at: null, parent: null });
+}
+
+// POSX-f2 (css-position-3 §2.1, filter-effects-1 §5, css-will-change-1 §3): a filter, or will-change naming filter or perspective,
+// makes an element the containing block of its fixed descendants, which the engine places against the viewport: refused on every
+// target (transforms are refused in paint-values/transform.ts). POSX-f: a native fixed box is a view of its parent's host, so in an
+// auto or scroll container it would scroll with the container's content (the native viewport itself does not scroll yet): refused on
+// ios and android. Both at the fixed box's position declaration.
+function checkFixedContainingBlocks(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (el: ResolvedElement, on: readonly string[], what: string, message: string, manual: string): void => {
+    const v = el.props.get('position') as ResolvedValue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of on) {
+      const id = `${t}|fixed-${what}|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const holderWhat = (h: ResolvedElement): string => (keywordOf(h.props.get('filter') as ResolvedValue) !== 'none' ? 'a filter' : `will-change: ${elementWillChange(h).join(', ')}`);
+  const walk = (el: ResolvedElement, holder: ResolvedElement | null, scroller: ResolvedElement | null): void => {
+    if (displayKeyword(el) === 'none') return;
+    if (keywordOf(el.props.get('position') as ResolvedValue) === 'fixed') {
+      const address = el.element.address;
+      if (holder !== null) refuse(el, targets, 'cb', `${holderWhat(holder)} on ${holder.element.address} makes it the containing block of the fixed ${address} (filter-effects-1 §5, css-will-change-1 §3; package POSX-f2)`, `Move ${address} outside ${holder.element.address}.`);
+      else if (scroller !== null) refuse(el, native, 'scroller', `the fixed ${address} inside the scroll container ${scroller.element.address} would scroll with its content on native, where Chrome keeps it in place (package POSX-f)`, `Move ${address} outside ${scroller.element.address}.`);
+    }
+    const filtered = keywordOf(el.props.get('filter') as ResolvedValue) !== 'none' || elementWillChange(el).some((p) => p === 'filter' || p === 'perspective');
+    const scrolls = el !== propagated && (['overflow-x', 'overflow-y'] as const).some((p) => ['auto', 'scroll'].includes(keywordOf(el.props.get(p) as ResolvedValue)));
+    for (const c of el.children) if (c.kind === 'element') walk(c, filtered ? el : holder, scrolls ? el : scroller);
+  };
+  walk(root, null, null);
+}
+
+// POSX-s (css-position-3 §3.4): the engine offsets a sticky box after layout against the viewport at scroll offset 0, inside its
+// parent's content box (packages/layout/src/layout.ts stickyOffset). It refuses a sticky root, an inline-level sticky box (placed by
+// a line box), a sticky box inside another, and a percentage padding on the parent (its containing block): refused here on every
+// target. A sticky box inside a hidden, auto or scroll container follows that container's scroll
+// offset, which the engine does not model: refused on ios and android (Chrome sticks it on the web). All at the position declaration.
+function checkSticky(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (el: ResolvedElement, on: readonly string[], what: string, message: string, manual: string): void => {
+    const v = el.props.get('position') as ResolvedValue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of on) {
+      const id = `${t}|sticky-${what}|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const isSticky = (el: ResolvedElement): boolean => keywordOf(el.props.get('position') as ResolvedValue) === 'sticky';
+  if (displayKeyword(root) !== 'none' && isSticky(root)) refuse(root, targets, 'root', `position: sticky on the root element ${root.element.address} is not supported (css-position-3 §3.4; package POSX-s)`, `Make a descendant of ${root.element.address} sticky instead.`);
+  const walk = (el: ResolvedElement, sticky: ResolvedElement | null, scroller: ResolvedElement | null): void => {
+    const percentPadding = (['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const).find((p) => hasPercentage(el.props.get(p) as ResolvedValue));
+    for (const c of el.children) {
+      if (c.kind !== 'element' || displayKeyword(c) === 'none') continue;
+      let within = sticky;
+      if (isSticky(c)) {
+        const address = c.element.address;
+        const d = displayKeyword(c);
+        if (d !== 'block' && d !== 'flex' && d !== 'grid' && d !== 'list-item') refuse(c, targets, 'inline', `position: sticky on the ${d} box ${address} is not supported yet: Dragon sticks only block-level boxes (css-position-3 §3.4; package POSX-s)`, `Set display: block on ${address}, or make a block wrapper sticky.`);
+        if (sticky !== null) refuse(c, targets, 'nested', `position: sticky on ${address} inside the sticky ${sticky.element.address} is not supported yet (css-position-3 §3.4; package POSX-s)`, `Make only one of ${sticky.element.address} and ${address} sticky.`);
+        if (percentPadding !== undefined) refuse(c, targets, 'padding', `a percentage ${percentPadding} on ${el.element.address}, the containing block of the sticky ${address}, is not supported yet (css-position-3 §3.4; package POSX-s)`, `Use a length for ${percentPadding} on ${el.element.address}.`);
+        if (scroller !== null) refuse(c, native, 'scroller', `the sticky ${address} inside the scroll container ${scroller.element.address} would not follow its scroll offset on native, where Chrome keeps it stuck (package POSX-s)`, `Move ${address} outside ${scroller.element.address}, or make it static there.`);
+        within = c;
+      }
+      const scrolls = c !== propagated && (['overflow-x', 'overflow-y'] as const).some((p) => ['hidden', 'auto', 'scroll'].includes(keywordOf(c.props.get(p) as ResolvedValue)));
+      walk(c, within, scrolls ? c : scroller);
+    }
+  };
+  walk(root, null, null);
+}
+
 const RATIO_BLOCK_SIZES: readonly Longhand[] = ['height', 'min-height', 'max-height'];
+
+/** css-sizing-3 §3.2 and css-sizing-4 §3.1: the inline-size keywords the engine resolves only on a block-level box without a ratio. */
+const SIZE_KEYWORDS: ReadonlySet<string> = new Set(['min-content', 'max-content', 'fit-content', 'stretch']);
+const INLINE_SIZES: readonly Longhand[] = ['width', 'min-width', 'max-width'];
+
+/**
+ * The width, min-width or max-width of el whose computed value is a sizing keyword, refused on every target as where says: the
+ * engine resolves them only for a block-level box with no aspect-ratio (block.ts blockLevelInlineSize, intrinsic.ts
+ * inlineContribution) and never on a replaced box (replaced.ts replacedSize through box.ts lengthWidth).
+ */
+function refuseSizeKeywords(el: ResolvedElement, where: string, manual: string, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  for (const p of INLINE_SIZES) {
+    const v = el.props.get(p) as ResolvedValue;
+    const k = keywordOf(v);
+    if (!SIZE_KEYWORDS.has(k)) continue;
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const t of targets) {
+      const id = `${t}|size-keyword-${p}|${JSON.stringify(origin)}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${p}: ${k} on ${el.element.address} ${where} is not supported yet (css-sizing-3 §3.2, css-sizing-4 §5.1)`, manual, basis: 'computed-value' }));
+    }
+  }
+}
 
 // css-sizing-4 §5.1: the engine takes aspect-ratio as Blink's raw layout ratio. A ratio whose parts are not whole 64ths needs
 // Blink's float continued fraction, which the compiler does not run, and a percentage block size beside a ratio has no
@@ -819,6 +1000,7 @@ function checkAspectRatio(el: ResolvedElement, targets: readonly string[], diagn
     }
   };
   const shown = valueToString(ratio.value);
+  if (!isReplacedTag(el.element.tag)) refuseSizeKeywords(el, `beside aspect-ratio: ${shown}`, `Use a length or auto beside aspect-ratio on ${el.element.address}.`, targets, diagnostics, reported);
   const raw = exactLayoutRatio(ratio.value.width, ratio.value.height);
   if (raw === null) {
     refuse(ratio, 'inexact', `aspect-ratio: ${shown} on ${el.element.address} is unsupported: Chrome converts a ratio whose parts are not whole multiples of 1/64 with a float continued fraction that Dragon does not compute at build time`, 'Write the ratio with whole numbers, for example 16 / 9, or parts that are multiples of 1/64.');
@@ -928,7 +1110,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const declared = size.origin === 'author' ? size.declared : null;
     const relative = declared !== null && (declared.kind === 'percentage' || isPercentFontSizeMath(declared) || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
-    const keyed = uaRows(ua, uaTagOf(tag)).contexts;
+    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'))).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -1116,8 +1298,9 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
 /** Walks one resolved case and records the refusals above; reported deduplicates them across cases. Text in a display: none
  * subtree is never laid out (CSS2 §9.2.4), so only the overflow check reaches it. fonts keys a substituted font-family as usedKeys does. */
 /**
- * REPL-a: a replaced element is laid out as a block-level box in normal flow or as a flex item. An inline-level one waits for
- * RF-INL (atomic inlines), and an absolutely positioned one for the CSS 2.2 §10.3.8 / §10.6.5 sizing the engine does not run yet.
+ * REPL-a: a replaced element is laid out as a block-level box in normal flow or as a flex item, and (RF-INL) as an atomic inline
+ * with display inline or inline-block. An absolutely positioned one waits for the CSS 2.2 §10.3.8 / §10.6.5 sizing the engine does
+ * not run yet.
  */
 function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const display = el.props.get('display') as ResolvedValue;
@@ -1133,15 +1316,15 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
     }
   };
   const d = keywordOf(display);
-  if (d === 'inline' || d === 'inline-block') {
-    refuse(display, 'inline', `display: ${d} on <${tag}> ${el.element.address} makes it an inline-level replaced box, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <${tag}> ${el.element.address}, or make it a flex item.`);
-  } else if (d !== 'block') {
+  // RF-INL: display inline or inline-block makes an atomic inline, laid out on its block container's lines (checkInline).
+  if (d !== 'block' && d !== 'inline' && d !== 'inline-block') {
     refuse(display, 'display', `display: ${valueToString(display.value)} on <${tag}> ${el.element.address} is not supported on a replaced element; only block-level replaced boxes and flex items are laid out`, `Set display: block on <${tag}> ${el.element.address}.`);
   }
   const pos = keywordOf(position);
   if (pos !== 'static' && pos !== 'relative') {
     refuse(position, 'position', `position: ${pos} on <${tag}> ${el.element.address} is not supported on a replaced element yet (CSS 2.2 §10.3.8, §10.6.5)`, `Position a wrapper element and keep <${tag}> ${el.element.address} in its flow.`);
   }
+  refuseSizeKeywords(el, `on the replaced <${tag}>`, `Use a length, a percentage or auto on <${tag}> ${el.element.address}, or size a wrapper element with the keyword.`, targets, diagnostics, reported);
 }
 
 /**
@@ -1321,6 +1504,206 @@ function checkMasksInside(el: ResolvedElement, targets: readonly string[], diagn
   }
 }
 
+/** One refusal per target, keyed so a cascade of cases reports it once. */
+function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT', targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, message: string, manual: string): void {
+  const origin = v === null || v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  for (const t of targets) {
+    const id = `${t}|button-${what}|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(code === 'DRAGON_UNSUPPORTED_FONT' ? diagnostic(code, { origin, target: t, message, manual }) : diagnostic(code, { origin, target: t, message, manual, basis: 'computed-value' }));
+  }
+}
+
+/** FORM-a: on a native target a button or range is drawn but not interactive, and its view has no control accessibility role yet. */
+function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const what = el.element.tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
+  for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
+    const id = `${t}|control-static|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_CONTROL_STATIC_NATIVE', { origin: el.element.node.origin, target: t, message: `${what} on ${t}: Dragon emits no control behaviour or accessibility role yet` }));
+  }
+}
+
+/** A form control as a grid item: the engine places no control in a grid (grid-control). */
+function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
+  const tag = el.element.tag;
+  refuse(null, 'grid-item', `<${tag}> ${el.element.address} is a grid item, and a form control as a grid item is not supported yet`, `Wrap <${tag}> ${el.element.address} in a div, which becomes the grid item.`);
+}
+
+/** The text longhands Chrome's UA button rule resets (html.css), with whether a computed value equals the reset. */
+const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
+  ['color', (v) => v.kind === 'color' && v.value.r === 0 && v.value.g === 0 && v.value.b === 0 && v.value.alpha === 255],
+  ['line-height', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['font-weight', (v) => (v.kind === 'number' && v.value === 400) || (v.kind === 'keyword' && v.value === 'normal')],
+  ['letter-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['word-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['text-indent', (v) => (v.kind === 'length' || v.kind === 'percentage') && v.value === 0],
+  ['text-transform', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
+  // html.css `font: -webkit-small-control` resets every font longhand the shorthand covers (font-feature-settings and font-variation-settings it does not).
+  ['font-style', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ...(['font-variant-caps', 'font-variant-ligatures', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-alternates', 'font-variant-position', 'font-variant-emoji', 'font-language-override'] as const).map((p): readonly [Longhand, (v: CssValue) => boolean] => [p, (v) => v.kind === 'keyword' && v.value === 'normal']),
+  ['font-stretch', (v) => (v.kind === 'percentage' && v.value === 100) || (v.kind === 'keyword' && v.value === 'normal')],
+  ['font-kerning', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-optical-sizing', (v) => v.kind === 'keyword' && v.value === 'auto'],
+];
+
+/**
+ * FORM-a A3: a button is laid out as a block container that centres its contents, or as the flex container its display says,
+ * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
+ * display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control font (R13).
+ */
+function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const tag = el.element.tag;
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
+    refuseOn(el, v, what, code, targets, diagnostics, reported, message, manual);
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  if (buttonAppearance(el.props) === 'theme') {
+    refuse(appearance, 'theme', `<${tag}> ${address} with appearance: ${valueToString(appearance.value)} and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which waits for the FORM-b package`, `Set appearance: none, or a background or border, on <${tag}> ${address}.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block (or flex) on <${tag}> ${address}, or make it a flex item.`);
+  } else if (d !== 'block' && d !== 'flex') {
+    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a button; only block and flex buttons are laid out`, `Set display: block (or flex) on <${tag}> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  // Chrome sizes a block-level flex button in block flow to its content, as it does a block one (Dragon's button-block), but
+  // the engine lays out a flex button as a plain flex container, which would stretch.
+  const width = el.props.get('width') as ResolvedValue;
+  const inBlockFlow = parentDisplay !== null && parentDisplay !== 'flex' && parentDisplay !== 'inline-flex' && parentDisplay !== 'grid' && parentDisplay !== 'inline-grid';
+  if (d === 'flex' && inBlockFlow && keywordOf(width) === 'auto') {
+    refuse(width, 'flex-width', `<${tag}> ${address} is a flex button with an auto width in block flow, which Chrome sizes to its content; Dragon lays out a flex button as a plain flex container, which would stretch`, `Set a width on <${tag}> ${address}, use display: block, or make it a flex item.`);
+  }
+  if (pos === 'absolute' || pos === 'fixed') {
+    refuse(position, 'position', `position: ${pos} on <${tag}> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <${tag}> ${address} in its flow.`);
+  }
+  refuseGridItem(el, parentDisplay, refuse);
+  noteStaticOnNative(el, targets, diagnostics, reported);
+  refuseScrollInControl(el, el, targets, diagnostics, reported);
+  // The UA reset rows are not captured yet (#78's inherited-reset capture), so a button inheriting anything but the reset is refused.
+  for (const [p, isReset] of BUTTON_RESETS) {
+    const v = el.props.get(p) as ResolvedValue;
+    // revert and revert-layer roll back to the UA rule Dragon lacks, so Dragon resolves them to the inherited value too.
+    const reverted = v.declared !== null && v.declared.kind === 'keyword' && (v.declared.value === 'revert' || v.declared.value === 'revert-layer');
+    if ((v.origin !== 'inherited' || v.declaration !== null) && !reverted) continue;
+    if (isReset(v.value)) continue;
+    const how = reverted ? `resolves ${p}: ${valueToString(v.declared as CssValue)} to ${valueToString(v.value)}` : `inherits ${p}: ${valueToString(v.value)}`;
+    refuse(v, `reset-${p}`, `<${tag}> ${address} ${how}, which Chrome's user-agent button rule resets; Dragon does not model that reset yet`, `Set ${p} on <${tag}> ${address} to a value (inherit is fine).`);
+  }
+  const family = el.props.get('font-family') as ResolvedValue;
+  if (family.origin === 'user-agent') {
+    refuse(family, 'font', `<${tag}> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <${tag}> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
+  }
+}
+
+/** The container-role longhands of a range input, which Chrome's range layout (a flex container) would read. */
+const RANGE_FLEX_LONGHANDS: readonly Longhand[] = ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'];
+
+/**
+ * FORM-a A4: an input[type=range] is laid out as its UA shadow tree and painted as CSS boxes when the input and its thumb are both
+ * appearance: none (R11, FORM-0 ruling F3). Refused: any other input type (FORM-b), a themed range or thumb (FORM-b), an
+ * inline-level range (RF-INL), any display but block or flex, an absolutely positioned range, and a flex container longhand
+ * on the input other than its initial value (the shadow tree's flex layout would read it).
+ */
+function checkRange(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
+  const type = el.element.attributes.get('type');
+  if (!isRangeType(type)) {
+    const id = `input-type|${address}`;
+    if (!reported.has(id)) {
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input> ${address} of type ${type === undefined ? 'text (no type)' : type} is not supported: only type=range is laid out; other inputs wait for the FORM-b package`, manual: `Use type="range", or a div in place of <input> ${address}.` }));
+    }
+    return;
+  }
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  const thumb = rangePart(el, 'thumb');
+  const thumbAppearance = thumb === null ? null : (thumb.props.get('appearance') as ResolvedValue);
+  if (keywordOf(appearance) !== 'none' || thumbAppearance === null || keywordOf(thumbAppearance) !== 'none') {
+    const v = keywordOf(appearance) !== 'none' ? appearance : thumbAppearance;
+    refuse(v, 'theme', `<input type=range> ${address} is painted by the platform theme unless it and its ::-webkit-slider-thumb are both appearance: none (Blink LayoutTheme; FORM-0 ruling F3), which waits for the FORM-b package`, `Set appearance: none on <input> ${address} and on its ::-webkit-slider-thumb.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <input> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <input> ${address}, or make it a flex item.`);
+  } else if (d !== 'block' && d !== 'flex') {
+    refuse(display, 'display', `display: ${d} on <input> ${address} is not supported on a range; only block-level ranges are laid out`, `Set display: block on <input> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos === 'absolute' || pos === 'fixed') {
+    refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
+  }
+  refuseGridItem(el, parentDisplay, refuse);
+  noteStaticOnNative(el, targets, diagnostics, reported);
+  refuseScrollInControl(el, el, targets, diagnostics, reported);
+  for (const p of RANGE_FLEX_LONGHANDS) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (v.declaration === null || isInitialByProvenance(v, p)) continue;
+    refuse(v, `flex-${p}`, `${p}: ${valueToString(v.value)} on <input type=range> ${address} is not supported: the range's shadow tree is laid out as a flex container, which no fixture proves under it`, `Remove ${p} from <input> ${address}.`);
+  }
+}
+
+/** A range shadow part of input el (resolve.ts), or null. */
+function rangePart(el: ResolvedElement, part: 'container' | 'track' | 'thumb'): ResolvedElement | null {
+  let at: ResolvedElement | undefined = el;
+  while (at !== undefined) {
+    const next: ResolvedElement | undefined = at.children.find((c): c is ResolvedElement => c.kind === 'element' && rangePartOf(c)?.part !== undefined && rangePartOf(c)?.part !== null);
+    if (next === undefined) return null;
+    if (rangePartOf(next)?.part === part) return next;
+    at = next;
+  }
+  return null;
+}
+
+/** A range part inherits its direction from the input: a direction set in a part rule is refused (cascade.ts maps flow-relative sides by the input's). */
+function checkRangePart(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const info = rangePartOf(el);
+  if (info === undefined || info.part === null) return;
+  const host = info.host.address;
+  const refuse = (v: ResolvedValue, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (direction.declaration !== null) refuse(direction, 'part-direction', `direction on the ${info.part} of <input> ${host} is not supported: a range part takes its input's direction`, `Set direction on <input> ${host} instead.`);
+  if (info.part === 'container') return;
+  // The engine lays out the track as a block container holding the thumb, and moves the thumb as an in-flow block (controls.ts).
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d !== 'block') refuse(display, 'part-display', `display: ${d} on the ${info.part} of <input> ${host} is not supported: only a block ${info.part} is laid out`, `Remove display from the ::-webkit-slider-${info.part === 'thumb' ? 'thumb' : 'runnable-track'} rule of <input> ${host}.`);
+  const float = el.props.get('float') as ResolvedValue;
+  if (info.part === 'thumb' && keywordOf(float) !== 'none') refuse(float, 'part-float', `float: ${valueToString(float.value)} on the thumb of <input> ${host} is not supported: the value moves only an in-flow thumb`, `Remove float from the ::-webkit-slider-thumb rule of <input> ${host}.`);
+}
+
+/** An absolutely positioned box inside a form control: the engine does not look up its containing block there (control-out-of-flow). */
+/** A control, or a box inside one, that scrolls: the engine decides no scroll range inside a control, and the native scroll view needs one. */
+function refuseScrollInControl(el: ResolvedElement, control: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  for (const p of ['overflow-x', 'overflow-y'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    const k = keywordOf(v);
+    if (k !== 'auto' && k !== 'scroll') continue;
+    const where = el === control ? `on <${el.element.tag}> ${el.element.address}` : `on <${el.element.tag}> ${el.element.address} inside <${control.element.tag}> ${control.element.address}`;
+    refuseOn(el, v, 'scroll', 'DRAGON_UNSUPPORTED_VALUE', native, diagnostics, reported, `${p}: ${k} ${where} is not supported on native: the engine decides no scroll range inside a form control`, `Use overflow: hidden or visible ${where}, or move the scrolling box outside the control.`);
+    return;
+  }
+}
+
+function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  refuseScrollInControl(el, button, targets, diagnostics, reported);
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos !== 'absolute' && pos !== 'fixed') return;
+  refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
+}
+
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults & MotionFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS, ...MOTION_FAULTS }): void {
   const propagated = propagatedFrom(root);
   if (!faults.maskLayerAccepted) for (const m of [...maskBackdropRefusals(root), ...maskDecorationRefusals(root, analyzeDecorations(root).applied)]) refuseMask(m.el, targets, diagnostics, reported, m.refusal);
@@ -1328,7 +1711,10 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
   // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
   // staleLh: the inherited em or % lengths an ancestor inherits over its own font size (checkViewportFont).
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>): void => {
+  // button: the form control el is inside, or null; parentDisplay: the display of el's layout parent, or null for the root.
+  // parentZoom: the parent's effective zoom (analysis/zoom.ts).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>, button: ResolvedElement | null, parentDisplay: string | null, parentZoom: number): void => {
+    const zoom = effectiveZoom(el, parentZoom);
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1336,11 +1722,13 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults, propagated, true);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
-      checkZoom(el, targets, diagnostics, reported);
+      checkZoom(el, zoom, parentZoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkMulticol(el, targets, diagnostics, reported, faults);
       checkMotion(el, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
+      // A refusal reached through var() (an arc in d, say) is reported on shapes too; the profile pass stays with boxes.
+      checkSubstitution(el, targets, diagnostics, reported, null, fonts);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
@@ -1355,16 +1743,16 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     const self = nativePanner(el, propagated);
     const panners = self === null ? around : [...around, self];
     if (!here) checkTouchAction(el, panners, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-    if (!here) checkAppearance(el, targets, diagnostics, reported);
     if (!here) checkPercentRelative(el, scroller === null ? null : el === root ? 'on the root (the viewport is its scroll container)' : `inside the scroll container ${scroller}`, targets, diagnostics, reported);
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
-    checkZoom(el, targets, diagnostics, reported);
+    checkZoom(el, zoom, parentZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
     // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     // The multicol family, initial values only (analysis/multicol.ts).
     checkMulticol(el, targets, diagnostics, reported, faults);
+    if (!here) checkImageRendering(el, targets, diagnostics, reported, faults);
     // The motion path family, initial values only (analysis/motion.ts).
     checkMotion(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
@@ -1373,10 +1761,19 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
-    else if (!here) {
+    else if (!here && el.element.tag === 'button') {
+      checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+    } else if (!here && el.element.tag === 'input') {
+      checkRange(el, parentDisplay, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+    } else if (!here && rangePartOf(el) !== undefined) {
+      checkRangePart(el, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+    } else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
       checkViewportFont(el, stale, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-      checkInline(el, targets, diagnostics, reported, shapedAt);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
@@ -1402,15 +1799,25 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkBackgroundBlend(el, targets, diagnostics, reported, faults);
     // Paint modules' computed-value refusals (analysis/paint-values), in registry order.
     if (!here) for (const m of PAINT_VALUES) m.check?.(el, targets, diagnostics, reported, propagated);
+    if (!here && button !== null) checkInsideButton(el, button, targets, diagnostics, reported);
     checkGeneratedContent(el, targets, diagnostics, reported);
+    const inside = button ?? (isControlTag(el.element.tag) ? el : null);
+    const display = keywordOf(el.props.get('display') as ResolvedValue);
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
     const boxParent = isContents(el) ? layoutParent : el;
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale, inside, display === 'contents' ? parentDisplay : display, zoom);
   };
-  walk(root, false, 'viewport', [], null, new Set());
+  walk(root, false, 'viewport', [], null, new Set(), null, null, 1);
+  checkPixelatedTransformed(root, targets, diagnostics, reported, faults);
   // SCROLL-SNAP: a scroll container that snaps to a snap area, which native does not yet (analysis/scroll-containment.ts).
   checkScrollSnap(root, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, faults);
+  // FLT: floats beside what the engine does not move (checkFloats).
+  checkFloats(root, propagated, targets, diagnostics, reported);
+  // POSX-f2: fixed boxes whose containing block a filter would make (checkFixedContainingBlocks).
+  checkFixedContainingBlocks(root, propagated, targets, diagnostics, reported);
+  // POSX-s: sticky boxes the engine does not offset (checkSticky).
+  checkSticky(root, propagated, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
@@ -1487,32 +1894,6 @@ function checkFontStretch(el: ResolvedElement, targets: readonly string[], diagn
         basis: 'computed-value',
       }));
     }
-  }
-}
-
-// FORM-a (css-ui-4 §7.1): Chrome 145 adjusts the display of a box whose appearance is not none before it looks at the element's type
-// (StyleAdjuster::AdjustStyleForHTMLElement): inline and inline-table become inline-block, list-item and table become block, and
-// every other display is kept. Dragon does not model the adjustment, so a non-none appearance on a box of those four displays is
-// refused for every target; on any other display appearance changes nothing Dragon lays out or paints.
-const APPEARANCE_ADJUSTED: { readonly [display: string]: string } = { inline: 'inline-block', 'inline-table': 'inline-block', 'list-item': 'block', table: 'block' };
-function checkAppearance(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const v = el.props.get('appearance') as ResolvedValue;
-  const k = keywordOf(v);
-  if (k === '' || k === 'none') return;
-  const display = keywordOf(el.props.get('display') as ResolvedValue);
-  const adjusted = APPEARANCE_ADJUSTED[display];
-  if (adjusted === undefined) return;
-  const id = `appearance|${el.element.address}`;
-  if (reported.has(id)) return;
-  reported.add(id);
-  for (const t of targets) {
-    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-      origin: v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan),
-      target: t,
-      message: `${el.element.address} has appearance ${k} on display ${display}, which Chrome turns into display ${adjusted}; Dragon does not model that adjustment (FORM-a)`,
-      manual: `Set appearance: none on ${el.element.address}, or give it display: ${adjusted}.`,
-      basis: 'computed-value',
-    }));
   }
 }
 
