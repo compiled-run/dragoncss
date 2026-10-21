@@ -52,6 +52,7 @@ const SAMPLES: { readonly [property: string]: readonly string[] } = {
   'transform-style': ['flat', 'Preserve-3d', 'flat flat'],
   perspective: ['none', 'NONE', '100px', 'auto'],
   'box-decoration-break': ['slice', 'CLONE', 'none'],
+  'line-break': ['auto', 'STRICT', 'loose', 'normal', 'auto auto'],
   'perspective-origin': ['center', 'left 10px top 20%', '1em 0', 'left right'],
   'user-select': ['none', 'TEXT', 'all', 'contain'],
   'clip-path': ['none', 'inset(1px 2px)', 'circle(10px at right 4px top 2px)', 'polygon(evenodd, 0 0, 10px 0, 0 10px)', 'url(#c)', 'inset()'],
@@ -147,15 +148,17 @@ function aliasDecides(alias: string, v: string): boolean {
 
 describe('legacy aliases parse as their property', () => {
   it('every alias is a lower-case -webkit- name, and resolveAlias maps it and nothing else', () => {
-    expect(ALIASES.length).toBe(95);
+    expect(ALIASES.length).toBe(96);
     for (const [alias, property] of ALIASES) {
       expect(alias, alias).toMatch(/^-webkit-[a-z-]+$/);
       expect(resolveAlias(alias)).toBe(property);
       expect(resolveAlias(property)).toBe(property);
     }
     expect(resolveAlias('-webkit-box-reflect')).toBe('-webkit-box-reflect');
-    // Only -webkit-mask-composite parses its own values (aliases/mask.ts); the rest parse exactly as their property.
-    expect(ALIASES.filter(([alias]) => aliasValueParser(alias) !== undefined).map(([alias]) => alias)).toEqual(['-webkit-mask-composite']);
+    // Only -webkit-line-break and -webkit-mask-composite parse their own values (aliases/line-break.ts, aliases/mask.ts); the rest
+    // parse exactly as their property.
+    expect(ALIASES.filter(([alias]) => aliasValueParser(alias) !== undefined).map(([alias]) => alias).sort()).toEqual(['-webkit-line-break', '-webkit-mask-composite']);
+    expect(['anywhere', 'ANYWHERE', 'auto', 'loose', 'anywhere auto', 'inherit'].map((v) => aliasDecides('-webkit-line-break', v))).toEqual([true, true, false, false, false, false]);
     expect(['add', 'exclude, add', 'not-a-value', 'inherit', 'var(--x)', '1px !important'].map((v) => aliasDecides('-webkit-mask-composite', v))).toEqual([true, true, true, false, false, false]);
     expect(resolveAlias('--webkit-flex')).toBe('--webkit-flex');
   });
@@ -224,7 +227,21 @@ describe('legacy aliases parse as their property', () => {
     // transform itself keeps its own parse: a unitless perspective() is invalid there, as in Chrome.
     expect(parsed('transform: perspective(100)').diagnostics.map((d) => d[0])).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     // Every other alias parses no value differently.
-    for (const [alias] of ALIASES) if (alias !== '-webkit-transform' && alias !== '-webkit-perspective') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
+    for (const [alias] of ALIASES) if (alias !== '-webkit-transform' && alias !== '-webkit-perspective' && alias !== '-webkit-line-break') expect(legacyAliasRefusal(alias, 'perspective(1) var(--x) \\61'), alias).toBeNull();
+  });
+  it('-webkit-line-break drops anywhere, refuses after-white-space and whatever a var(), env() or escape could spell, and parses the rest as line-break', () => {
+    const refusal = 'Chrome parses -webkit-line-break with its own keywords (after-white-space, and no anywhere), and Dragon parses only line-break';
+    for (const v of ['after-white-space', 'AFTER-WHITE-SPACE', 'var(--b)', 'env(x, auto)', 'str\\ict']) {
+      expect(parsed(`-webkit-line-break: ${v}`).diagnostics, v).toEqual([['DRAGON_UNSUPPORTED_VALUE', expect.stringContaining(refusal)]]);
+      expect(parsed(`-webkit-line-break: ${v}`).declarations, v).toEqual([]);
+    }
+    for (const v of ['anywhere', 'Anywhere']) {
+      expect(parsed(`-webkit-line-break: ${v}`).diagnostics.map((d) => d[0]), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+      expect(parsed(`-webkit-line-break: ${v}`).declarations, v).toEqual([]);
+    }
+    // line-break itself refuses anywhere and drops after-white-space, as Chrome parses it.
+    expect(parsed('line-break: anywhere').diagnostics.map((d) => d[0])).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(parsed('line-break: after-white-space').diagnostics.map((d) => d[0])).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
   it('-webkit-perspective refuses every value but none and the CSS-wide keywords, since its legacy parsing takes a unitless length', () => {
     const refusal = 'Chrome parses -webkit-perspective with legacy rules (a unitless length), and Dragon parses only perspective';
@@ -347,8 +364,8 @@ describe('the alias fixtures cover every alias', () => {
     // shadow-webkit-alias (shadow group), opacity-cascade (effects group), filter-none (filter group), mask-initial (mask group),
     // transform-extra-initial (transform-extra group), appearance-values (appearance group), box-decoration-initial (box-decoration
     // group) and clip-path-text (clip-path group) hold the paint aliases where their pixel tests read them, and multicol-initial
-    // (multicol group) the multicol ones.
-    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial', 'appearance-values', 'box-decoration-initial', 'alias-background-legacy', 'clip-path-text', 'multicol-initial'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
+    // (multicol group) the multicol ones; text-line-break-webkit-ahem (text-line-break group) holds -webkit-line-break.
+    const html = ['alias-background', 'alias-flex', 'alias-font', 'alias-logical', 'alias-paint', 'shadow-webkit-alias', 'opacity-cascade', 'filter-none', 'mask-initial', 'transform-extra-initial', 'appearance-values', 'box-decoration-initial', 'alias-background-legacy', 'clip-path-text', 'multicol-initial', 'text-line-break-webkit-ahem'].map((id) => readFileSync(new URL(`../../parity/fixtures/${id}.html`, import.meta.url), 'utf8')).join('\n');
     const frames = readFileSync(new URL('../../parity/fixtures/anim-webkit/view.css', import.meta.url), 'utf8');
     for (const [alias] of ALIASES) expect((alias.includes('-transition') || alias.includes('-animation') ? frames : html).includes(`${alias}:`), alias).toBe(true);
     expect(frames).toContain('@-webkit-keyframes');
