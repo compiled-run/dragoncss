@@ -35,6 +35,7 @@
    "style": {
     "display": "block",
     "position": "static",
+    "float": "none",
     "top": {
      "kind": "auto"
     },
@@ -159,7 +160,8 @@
      "kind": "none"
     },
     "grid": null,
-    "gridItem": null
+    "gridItem": null,
+    "zoom": []
    },
    "strut": null,
    "marker": null,
@@ -171,6 +173,7 @@
      "style": {
       "display": "block",
       "position": "static",
+      "float": "none",
       "top": {
        "kind": "auto"
       },
@@ -295,7 +298,8 @@
        "kind": "none"
       },
       "grid": null,
-      "gridItem": null
+      "gridItem": null,
+      "zoom": []
      },
      "strut": null,
      "marker": null,
@@ -307,6 +311,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -432,7 +437,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": null,
        "marker": null,
@@ -443,6 +449,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -569,7 +576,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "natural": {
           "kind": "none"
@@ -592,6 +600,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -718,7 +727,159 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
+         },
+         "natural": {
+          "kind": "none"
+         },
+         "defaultWidth": 300,
+         "defaultHeight": 150,
+         "objectFit": "fill",
+         "objectPositionX": {
+          "kind": "percent",
+          "value": 50
+         },
+         "objectPositionY": {
+          "kind": "percent",
+          "value": 50
+         }
+        },
+        {
+         "kind": "replaced",
+         "id": "s3",
+         "style": {
+          "display": "block",
+          "position": "static",
+          "float": "none",
+          "top": {
+           "kind": "auto"
+          },
+          "right": {
+           "kind": "auto"
+          },
+          "bottom": {
+           "kind": "auto"
+          },
+          "left": {
+           "kind": "auto"
+          },
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "direction": "ltr",
+          "boxSizing": "content-box",
+          "width": {
+           "kind": "px",
+           "value": 380
+          },
+          "height": {
+           "kind": "px",
+           "value": 80
+          },
+          "minWidth": {
+           "kind": "auto"
+          },
+          "minHeight": {
+           "kind": "auto"
+          },
+          "maxWidth": {
+           "kind": "none"
+          },
+          "maxHeight": {
+           "kind": "none"
+          },
+          "marginTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "marginBottom": {
+           "kind": "px",
+           "value": 4
+          },
+          "marginLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingTop": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingRight": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingBottom": {
+           "kind": "px",
+           "value": 0
+          },
+          "paddingLeft": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderTopWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderRightWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderBottomWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "borderLeftWidth": {
+           "kind": "px",
+           "value": 0
+          },
+          "flexDirection": "row",
+          "flexWrap": "nowrap",
+          "flexGrow": 0,
+          "flexShrink": 1,
+          "flexBasis": {
+           "kind": "auto"
+          },
+          "order": 0,
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "alignSelf": "auto",
+          "alignContent": "normal",
+          "rowGap": {
+           "kind": "normal"
+          },
+          "columnGap": {
+           "kind": "normal"
+          },
+          "textAlign": "start",
+          "aspectRatio": {
+           "kind": "auto"
+          },
+          "verticalAlign": {
+           "kind": "keyword",
+           "value": "baseline"
+          },
+          "textOverflow": "clip",
+          "textIndent": {
+           "kind": "px",
+           "value": 0
+          },
+          "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
+          "grid": null,
+          "gridItem": null,
+          "zoom": []
          },
          "natural": {
           "kind": "none"
@@ -749,7 +910,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 31584
+   "height": 45696
   },
   {
    "id": "body",
@@ -757,7 +918,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 30912
+   "height": 45024
   },
   {
    "id": "wrap",
@@ -765,7 +926,7 @@
    "x": 0,
    "y": 0,
    "width": 63840,
-   "height": 30912
+   "height": 45024
   },
   {
    "id": "s1",
@@ -782,6 +943,14 @@
    "y": 14112,
    "width": 33600,
    "height": 16800
+  },
+  {
+   "id": "s3",
+   "parent": "wrap",
+   "x": 0,
+   "y": 31584,
+   "width": 63840,
+   "height": 13440
   }
  ]
 }

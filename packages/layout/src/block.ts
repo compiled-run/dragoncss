@@ -1,5 +1,5 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Auto, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
+import type { Auto, ControlBox, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
@@ -22,6 +22,7 @@ import {
   specifiedBlockSizeWith,
   sumEdges,
 } from './box.ts';
+import { buttonContentShift, controlOf, plainBox, sliderThumbShift } from './controls.ts';
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
@@ -29,9 +30,11 @@ import { layoutInline } from './inline.ts';
 import type { MarkerAlignment, MarkerBox } from './marker.ts';
 import { alignMarker, layoutMarker, markerX } from './marker.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
-import { checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
+import { checkControlSubtree, checkOutOfFlowSiblings, isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio, ratioBlockLevelInlineSize, ratioFinalBlockSize, ratioInitialBlockSize } from './ratio.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
+import type { FloatArea } from './float.ts';
+import { floatsBottom, isFloat, layoutFloat, placeFloat } from './float.ts';
 import type { ClampedChild } from './line-clamp.ts';
 import { clampChild } from './line-clamp.ts';
 import type { TextMeasurer } from './text.ts';
@@ -365,27 +368,44 @@ function collapsed(s: Strut): LU {
   return add(s.positive, s.negative);
 }
 
+/**
+ * BII (CSS2 §9.2.1.1, Blink LayoutNG block-in-inline, measured against Chrome 145): an inline box holding only block-level boxes,
+ * laid out as their block box, is three fragments of its block container's inline formatting context: an empty line at its line
+ * start edge and top (or above it, at firstLine, where the blocks' top margin follows the line), the line holding the blocks (its
+ * border box), and an empty line at its line start edge below the margin that collapses out of its bottom. The lines are zero-size boxes <id>:line0..2, as an inline box's fragments are.
+ */
+function withBlockInInlineLines(frag: Frag, firstLine: LU, end: Strut, direction: Direction): Frag {
+  const start = direction === 'rtl' ? frag.width : ZERO;
+  const line = (j: number, x: LU, y: LU, width: LU, height: LU): Placed => ({ frag: { id: `${frag.id}:line${j}`, width, height, baseline: null, children: [], outOfFlow: [], inflow: null }, x, y });
+  const lines = [line(0, start, firstLine, ZERO, ZERO), line(1, ZERO, ZERO, frag.width, frag.height), line(2, start, add(frag.height, collapsed(end)), ZERO, ZERO)];
+  return { id: frag.id, width: frag.width, height: frag.height, baseline: frag.baseline, children: [...frag.children, ...lines], outOfFlow: frag.outOfFlow, inflow: frag.inflow };
+}
+
 // css-align-3 §9.1 with css-overflow-3 §3: a scroll container's baseline is clamped to its border box (measured, notes/T035-slice-4a.md).
 function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): LU | null {
   if (baseline === null || !isScrollContainer(box.style)) return baseline;
   return min(baseline, height);
 }
 
-// CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height. css-contain-2 §3.2: a box with
-// layout containment has no baseline for anything outside it to align to.
-export function layoutContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
-  const r = layoutOwnContents(ctx, box, a);
-  if (!box.style.containLayout) return r;
+// CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height. A control box is laid out as
+// its plain box, and a block button then centres its contents (controls.ts). css-contain-2 §3.2: a box with layout containment has
+// no baseline for anything outside it to align to.
+export function layoutContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsArgs): ContentsResult {
+  const r = layoutOwnContents(ctx, node, a);
+  if (!node.style.containLayout) return r;
   return { ...r, frag: { ...r.frag, baseline: null }, lastBaseline: null, lastBaselineFlex: '', defaultLastBaseline: null, defaultLastBaselineFlex: '' };
 }
 
-function layoutOwnContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsResult {
+function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsArgs): ContentsResult {
+  const control = controlOf(node);
+  const box = plainBox(node);
   const s = box.style;
   // Inline-size containment only changes the intrinsic inline size (intrinsic.ts), so it lays out on any box, query containers too.
   if (s.containSize === 'size' && (s.display !== 'block' || !s.containLayout)) {
     unsupported('size-containment', box.id, 'css-contain-2 §3.1', `size containment on ${box.id} (${s.display}${s.containLayout ? '' : ', without layout containment'}) is not laid out yet`);
   }
   checkOutOfFlowSiblings(ctx, box);
+  if (control !== null) checkControlSubtree(ctx, box);
   const pad = resolvePaddingWith(s, a.cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
@@ -398,11 +418,14 @@ function layoutOwnContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsR
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
     ? a.forcedBorderBoxHeight
     : specified !== null ? constrain(specified, minMax) : fromRatio === null ? null : constrain(fromRatio, minMax);
+  // BII: a block inside an inline box has the inline box's block container as its containing block (CSS2 §10.1 item 2), so the
+  // box Dragon wraps it in passes that basis through.
   const childBasis: HeightBasis = fixedBorderBox === null
-    ? INDEFINITE
+    ? box.boxType === 'block-in-inline' ? a.heightBasis : INDEFINITE
     : a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite ? { kind: 'flex-dependent' } : { kind: 'definite', value: contentBox(fixedBorderBox, vbp) };
 
   if (s.display === 'flex') {
+    if (control !== null && control.kind === 'button-block') throw new Error(`${box.id} is a block button with display flex; validateLayoutInput rejects this input`);
     const r = layoutFlexContainer(ctx, box, {
       pad,
       bor,
@@ -454,14 +477,27 @@ function layoutOwnContents(ctx: Ctx, box: LayoutBox, a: ContentsArgs): ContentsR
   // spec reading of min-max-end-margin (CSS 2.1 §8.3.1), a non-zero min-height also keeps them from adjoining.
   const specNoCollapse = ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
   const bottomAdjoins = !a.formattingContextRoot && bor.bottom === 0 && pad.bottom === 0 && fixedBorderBox === null && !specNoCollapse;
+  const flowEnd = bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  // CSS2 §10.6.7: a formatting context root's auto height reaches the bottom margin edge of its lowest float.
+  const floatEnd = a.formattingContextRoot ? floatsBottom(ctx, box, r.placed, contentWidth) : null;
+  const withFloats = floatEnd === null ? flowEnd : max(flowEnd, sub(floatEnd, add(bor.top, pad.top)));
   // css-contain-2 §3.1: under size containment the content height is contain-intrinsic-height (none is 0), whatever the contents.
-  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : bottomAdjoins ? r.cursor : add(r.cursor, collapsed(r.endStrut));
+  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : withFloats;
   // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
   const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;
   // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
   const height = fromRatio !== null
     ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
     : fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
+  if (control !== null && control.kind === 'button-block') {
+    // block_layout_algorithm.cc:1442 AlignBlockContent: the in-flow contents, their baseline and the static positions move down.
+    const shift = buttonContentShift(contentBox(height, vbp), intrinsic);
+    const placed = r.placed.map((p): Placed => ({ frag: p.frag, x: p.x, y: add(p.y, shift) }));
+    const outOfFlow = r.outOfFlow.map((o): OutOfFlow => ({ box: o.box, x: o.x, y: { offset: add(o.y.offset, shift), edge: o.y.edge }, area: o.area }));
+    const moved = clampScrollBaseline(box, r.baseline === null ? null : add(r.baseline, shift), height);
+    const shifted = (b: LU | null): LU | null => (b === null ? null : add(b, shift));
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline: moved, children: placed, outOfFlow, inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: shifted(r.lastBaseline), lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: shifted(r.defaultLastBaseline), defaultLastBaselineFlex: r.defaultLastBaselineFlex };
+  }
   const baseline = clampScrollBaseline(box, r.baseline, height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
@@ -512,7 +548,8 @@ const NONE: NoneValue = { kind: 'none' };
 // length_utils.cc at 145.0.7632.6: ComputeChildData 3283-3304, the in-flow line offset 2799-2804, LayoutNewFormattingContext
 // 2054-2169, LogicalFromBfcLineOffset 197-213, ResolveInlineAutoMargins 1555-1574, the stretch size 46-65; and
 // writing_mode_converter.cc SlowToPhysical 71-79).
-export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbDirection: Direction, container: InlineContainer): BlockLevelInline {
+export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbInline: LU, cbDirection: Direction, container: InlineContainer): BlockLevelInline {
+  const box = plainBox(node);
   const s = box.style;
   const pad = resolvePaddingWith(s, cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -523,8 +560,10 @@ export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbD
   // min(max-content, max(min-content, the stretch size)); width, min-width and max-width resolve them alike (Blink
   // ResolveInlineLengthInternal, length_utils.cc at 145.0.7632.6).
   const keyword = (k: string): LU | null => {
-    if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
+    if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content' && k !== 'stretch') return null;
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
+    // css-sizing-4 §3.1: stretch fills the space the margins leave (auto margins as 0), whatever box-sizing says.
+    if (k === 'stretch') return stretched;
     const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
     if (k === 'min-content') return minC;
     const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
@@ -535,7 +574,11 @@ export function blockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU, cbD
   const keywordMin = keyword(s.minWidth.kind);
   const keywordMax = keyword(s.maxWidth.kind);
   const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
-  const raw = keywordWidth !== null ? keywordWidth : specified === null ? stretched : borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
+  // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range');
+  const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
+  const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
   const mm: MinMax = { min: keywordMin !== null ? keywordMin : lengths.min, max: keywordMax !== null ? keywordMax : lengths.max };
   const width = keywordWidth === null && specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, mm), hbp);
@@ -685,13 +728,16 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     const markerY = a.marker === null || first === null ? null : inlineMarkerY(box, a.marker, a.origin.y, first);
     return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: first, outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: clampsLines(box, last) ? null : last, defaultLastBaselineFlex: clampsLines(box, last) ? box.id : '', markerY };
   }
-  if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
+  if (kids.some((k) => k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
   const direction = directionOf(ctx, box);
   const placed: Placed[] = [];
   let strut = EMPTY_STRUT;
   let cursor = ZERO;
   let seen = false;
   let escapeTop = EMPTY_STRUT;
+  // BII: whether the box's in-flow content is inline boxes of blocks only, so that it is their inline formatting context itself
+  // rather than holding them in an anonymous block box (CSS2 §9.2.1.1).
+  const ownLines = !kids.some((k) => k.kind !== 'box' || (k.boxType !== 'block-in-inline' && !isOutOfFlow(ctx, k) && !isFloat(ctx, k)));
   let baseline: LU | null = null;
   let lastBaseline: LU | null = null;
   let lastBaselineFlex = '';
@@ -700,12 +746,13 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   let markerY: LU | null = null;
   let inflow = false;
   const outOfFlow: OutOfFlow[] = [];
+  const floats: FloatArea[] = [];
   // TXT2-g: a line-clamp container counts the lines of its block children in order (BlockLineClampData::UpdateAfterLayout).
   let clampLeft = box.style.lineClamp > 0 ? box.style.lineClamp : 0;
   let clampedCursor: LU | null = null;
   for (let k = 0; k < kids.length; k++) {
     const child = kids[k] as LayoutBox['children'][number];
-    if (child.kind !== 'box' && child.kind !== 'replaced') continue;
+    if (child.kind !== 'box' && child.kind !== 'control' && child.kind !== 'replaced') continue;
     let kid = child;
     if (kid.kind === 'box' && isOutOfFlow(ctx, kid)) {
       // CSS2 §10.3.7 static position (Blink HandleOutOfFlowPositioned): the parent's content start edge in its direction, at the
@@ -720,12 +767,24 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       });
       continue;
     }
+    if (isFloat(ctx, kid)) {
+      if (kid.kind === 'control') unsupported('float', kid.id, 'CSS2 §9.5', `a floated form control ${kid.id}`);
+      // CSS2 §9.5.1 rule 4 with Blink's float origin: the float's top is the flow position with the pending margins once the parent's
+      // block offset is fixed, as the static position above. Later boxes keep their flow: the compiler refuses content after a float.
+      const top = !seen && a.canCollapseTop ? ZERO : add(cursor, collapsed(strut));
+      const f = layoutFloat(ctx, kid, a.contentWidth, a.childBasis);
+      const area = placeFloat(floats, kid.style.float, add(add(f.marginLeft, f.frag.width), f.marginRight), add(add(f.marginTop, f.frag.height), f.marginBottom), top, a.contentWidth);
+      floats.push(area);
+      placed.push({ frag: f.frag, x: add(add(a.origin.x, area.x), f.marginLeft), y: add(add(a.origin.y, area.y), f.marginTop) });
+      continue;
+    }
     inflow = true;
     let inline: BlockLevelInline;
     let c: ContentsResult;
-    // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext).
+    // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
+    // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
     // css-multicol-1 §2: a multi-column container establishes a new block formatting context too.
-    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || kid.style.multicol !== null;
+    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block') || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).
@@ -735,7 +794,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       c = { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: '', defaultLastBaseline: null, defaultLastBaselineFlex: '' };
     } else {
       inline = blockLevelInlineSize(ctx, kid, a.contentWidth, direction, container);
-      const clamp: ClampedChild | null = clampLeft > 0 ? clampChild(ctx, box, kid, inline.borderBoxWidth, a.contentWidth, clampLeft, kids.slice(k + 1)) : null;
+      if (clampLeft > 0 && kid.kind === 'control') unsupported('line-clamp', kid.id, 'css-overflow-4 §4.2', `${kid.id} in the line-clamp container ${box.id} is a form control, not a block container of inline content`);
+      const clamp: ClampedChild | null = clampLeft > 0 && kid.kind === 'box' ? clampChild(ctx, box, kid, inline.borderBoxWidth, a.contentWidth, clampLeft, kids.slice(k + 1)) : null;
       if (clamp !== null) {
         clampLeft = clamp.left;
         kid = clamp.kid;
@@ -750,6 +810,11 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         bfcLineOffset: inline.bfcLineOffset,
       });
     }
+    // BII: where the box is the blocks' inline formatting context and its top is fixed (a box before, or a border, padding or new
+    // formatting context), the empty line before the blocks sits past the margins pending before it but above the blocks' own top
+    // margin. Otherwise the line is in an anonymous block box whose top the blocks' margin collapses through, so it sits at their
+    // top (measured against Chrome 145).
+    const lineStart = ownLines && (seen || !a.canCollapseTop) ? add(cursor, collapsed(strut)) : null;
     const before = joinStruts(joinMargin(strut, inline.marginTop), c.escapeTop);
     let y: LU;
     if (c.collapseThrough) {
@@ -777,7 +842,10 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
       if (kid.kind === 'box' && kid.style.lineClamp < 0 && clampedCursor === null && !ctx.faults.clampHeightIncludesHiddenLines) clampedCursor = cursor;
       strut = joinStruts(joinMargin(EMPTY_STRUT, inline.marginBottom), c.escapeBottom);
     }
-    const at: Placed = { frag: c.frag, x: inline.x, y: add(a.origin.y, y) };
+    const thumb = kid.kind === 'control' ? kid.control : null;
+    // block_layout_algorithm.cc:2652-2654: a slider thumb moves along the inline axis by its input's value (controls.ts).
+    const thumbShift = thumb !== null && thumb.kind === 'slider-thumb' ? sliderThumbShift(thumb.ratio, a.contentWidth, c.frag.width, direction) : ZERO;
+    const at: Placed = { frag: c.frag, x: add(inline.x, thumbShift), y: add(a.origin.y, y) };
     if (baseline === null && c.frag.baseline !== null) baseline = add(at.y, c.frag.baseline);
     // Blink's last baseline (block_layout_algorithm.cc:3622-3647, measured in notes/T059-inl2.md): the last in-flow child with
     // one; a scroll container child gives its bottom margin edge, and a flex child's last baseline is not modelled.
@@ -802,7 +870,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     }
     // CSS2 §9.4.3: a relative offset moves the box after layout; the flow, margins and baselines keep its in-flow position.
     const offset = relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults);
-    placed.push({ frag: at.frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
+    const firstLine = lineStart === null || c.collapseThrough ? ZERO : sub(lineStart, y);
+    const frag = kid.kind === 'box' && kid.boxType === 'block-in-inline' ? withBlockInInlineLines(at.frag, firstLine, c.escapeBottom, direction) : at.frag;
+    placed.push({ frag, x: add(at.x, offset.dx), y: add(at.y, offset.dy) });
     if (ctx.faults.relativeShiftsFlow && !c.collapseThrough) cursor = add(cursor, offset.dy);
   }
   if (clampsLines(box, defaultLastBaseline)) {

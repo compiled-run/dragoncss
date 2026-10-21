@@ -1,0 +1,19 @@
+{
+  "case": "controls-button-block",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"b1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b2:text0","data":"XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2],"blank":[24,49]},
+    {"id":"b3:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b4:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"b5:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b6:text0","data":"XX XX XX","lines":3,"units":[0,0,0,1,1,1,2,2],"blank":[2,5]},
+    {"id":"b7:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b8:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"b10:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b11-b:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b12:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b13:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

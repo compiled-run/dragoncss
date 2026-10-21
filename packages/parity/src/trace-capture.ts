@@ -590,7 +590,7 @@ export function compareTraces(g: InteractionGroup, c: TraceCapture, faults: Inte
       problems.push(`${g.id} ${target}: the capture was taken on other derived steps; run pnpm run parity:trace-capture`);
       continue;
     }
-    const rt = new InteractionRuntime(d.ip, groupHit(g, d.inputs), faults);
+    const rt = new InteractionRuntime(d.ip, groupHit(g, d.inputs, 1), faults);
     for (const [i, s] of d.steps.entries()) {
       let got: InteractionSnapshot;
       try {

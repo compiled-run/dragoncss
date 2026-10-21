@@ -55,6 +55,8 @@ const REPLACED_KEY_SPECS = {
   path: { tag: 'path', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
   rect: { tag: 'rect', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
   circle: { tag: 'circle', attrs: {}, ns: 'http://www.w3.org/2000/svg' },
+  // MEDIA-EL: a video without a src; html.css gives every video object-fit: contain, and no rule keys on its src or preload.
+  video: { tag: 'video', attrs: {} },
 } as const satisfies Record<string, { tag: string; attrs: Record<string, string>; ns?: string }>;
 type ReplacedKey = keyof typeof REPLACED_KEY_SPECS;
 const REPLACED_KEYS = Object.keys(REPLACED_KEY_SPECS) as ReplacedKey[];
@@ -700,7 +702,7 @@ function render(c: Capture, scheme: Scheme): string {
     const d = table[k] as Dirs;
     return `{ ltr: ${field(d['ltr'] as Record<string, string>)}, rtl: ${field(d['rtl'] as Record<string, string>)} }`;
   };
-  lines.push('/** Replaced-element keys (REPL-0): iframe, and img with a loaded data: src. Their tables follow the element-key tables. */');
+  lines.push('/** Replaced-element keys (REPL-0): iframe, img with a loaded data: src, the SVG keys and video. Their tables follow the element-key tables. */');
   lines.push('export type ReplacedKey = ' + REPLACED_KEYS.map((t) => JSON.stringify(t)).join(' | ') + ';');
   lines.push('');
   lines.push('/** The element and attributes each replaced key was captured on. */');

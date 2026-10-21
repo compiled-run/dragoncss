@@ -1,0 +1,15 @@
+{
+  "case": "controls-button-demo",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"title:text0","lines":[[0,4]]},
+    {"id":"library-button:text0","lines":[[0,5]]},
+    {"id":"skip-back:text0","lines":[[0,1]]},
+    {"id":"play:text0","lines":[[0,2]]},
+    {"id":"skip-forward:text0","lines":[[0,1]]},
+    {"id":"t-1:text0","lines":[[0,7]]},
+    {"id":"a-1:text0","lines":[[0,3]]},
+    {"id":"t-2:text0","lines":[[0,2]]},
+    {"id":"a-2:text0","lines":[[0,18],[18,23]]}
+  ]
+}

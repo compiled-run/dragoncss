@@ -4,6 +4,12 @@
   "texts": [
     {"id":"w1:text0","lines":[[0,3]]},
     {"id":"u1:text0","lines":[[0,2]]},
-    {"id":"w1:text1","lines":[[0,3]]}
+    {"id":"w1:text1","lines":[[0,3]]},
+    {"id":"i1:text0","lines":[[0,1]]},
+    {"id":"i2:text0","lines":[[0,1]]},
+    {"id":"r1:text0","lines":[[0,1]]},
+    {"id":"r2:text0","lines":[[0,1]]},
+    {"id":"h1:text0","lines":[[0,1]]},
+    {"id":"m1:text0","lines":[[0,1]]}
   ]
 }

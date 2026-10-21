@@ -181,22 +181,22 @@ export function inlineMinMax(nodeId: string, style: LayoutStyle, cbInline: LU, b
 }
 
 /**
- * css-sizing-3 §3.2: min-content, max-content and fit-content as an inline size are read only by a block-level box in block
+ * css-sizing-3 §3.2 and css-sizing-4 §3.1: min-content, max-content, fit-content and stretch as an inline size are read only by a block-level box in block
  * flow (blockLevelInlineSize) and by its intrinsic contribution; every other reader takes the length through these and refuses
  * a keyword.
  */
 export function lengthWidth(nodeId: string, v: InlineSizeValue): SizeValue {
-  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content') return refuseKeyword(nodeId, 'width', v.kind);
+  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content' || v.kind === 'stretch') return refuseKeyword(nodeId, 'width', v.kind);
   return v;
 }
 
 export function lengthMinWidth(nodeId: string, v: InlineSizeValue): MinSizeValue {
-  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content') return refuseKeyword(nodeId, 'min-width', v.kind);
+  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content' || v.kind === 'stretch') return refuseKeyword(nodeId, 'min-width', v.kind);
   return v;
 }
 
 export function lengthMaxWidth(nodeId: string, v: MaxInlineSizeValue): MaxSizeValue {
-  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content') return refuseKeyword(nodeId, 'max-width', v.kind);
+  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content' || v.kind === 'stretch') return refuseKeyword(nodeId, 'max-width', v.kind);
   return v;
 }
 

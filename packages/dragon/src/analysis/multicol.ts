@@ -1,8 +1,8 @@
 // The multicol family (css/properties/multicol.ts). column-width as a px length and column-count as a positive integer make a block a
 // multi-column container, which the engine lays out (lower/ios-layout.ts multicolOf, LayoutStyle.multicol) where Chrome's columns are
 // proven: an unfloated block, static or relatively positioned, in a chain of such blocks, holding collapsible text and inline <br>s
-// alone, with an auto block size and aspect ratio, visible overflow, a px or normal column gap and the initial orphans and widows. Every other multi-column container is
-// refused on every target, as is any column rule, span or fill other than the initial one and any column-width or column-count
+// alone, with an auto block size and aspect ratio, visible overflow, a px or normal column gap, the initial orphans and widows and
+// effective zoom 1. Every other multi-column container is refused on every target, as is any column rule, span or fill other than the initial one and any column-width or column-count
 // spelling the parser keeps as written. Each element is refused once.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { MULTICOL_INITIAL, MULTICOL_LONGHANDS } from '../css/properties/multicol.ts';
@@ -14,6 +14,7 @@ import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
 import type { InitialOnlyFamily } from './scroll-containment.ts';
 import { refuseNonInitial } from './scroll-containment.ts';
+import { effectiveZoom } from './zoom.ts';
 
 // css-multicol-1 §6 and §7: column-span: all spans the columns, column-fill changes how their content is balanced, and a column rule
 // is drawn between them; Dragon builds none of it yet.
@@ -79,6 +80,9 @@ function refusal(el: ResolvedElement, chain: readonly ResolvedElement[]): string
   }
   if (keyword(el, 'contain') !== 'none' || keyword(el, 'container-type') !== 'normal') return 'it is contained';
   if (lineClampOf(el) > 0) return 'it clamps its lines';
+  // ZOOM: no case proves the columns' balancing or gap at an effective zoom other than the device scale.
+  const zoom = [...chain, el].reduce((z, e) => effectiveZoom(e, z), 1);
+  if (zoom !== 1) return `it is under zoom (effective zoom ${zoom})`;
   for (const c of el.children) {
     if (c.kind !== 'element') continue;
     if (c.element.tag !== 'br') return `it holds <${c.element.tag}> ${c.element.address}, and only text and <br> are proven`;

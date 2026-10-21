@@ -225,6 +225,8 @@ describe('multi-column containers', () => {
       ['.a { column-count: 2; widows: 1; }', own, 'its widows is not 2'],
       ['.a { column-count: 2; container-type: inline-size; }', own, 'it is contained'],
       ['.a { column-count: 2; aspect-ratio: 2 / 1; }', own, 'it has aspect-ratio: 2 / 1'],
+      ['.a { column-count: 2; zoom: 2; }', own, 'it is under zoom (effective zoom 2)'],
+      ['.o { zoom: 1.5; } .a { column-count: 2; }', nest('o'), 'it is under zoom (effective zoom 1.5)'],
       ['.a { column-count: 2; } br { display: block; }', own, 'it holds <br> b with display: block and float: none, and only an inline <br> is proven'],
       ['.a { column-count: 2; } br { float: left; }', own, 'it holds <br> b with display: block and float: left, and only an inline <br> is proven'],
       ['.a { column-count: 2; } br { display: flex; }', own, 'it holds <br> b with display: flex and float: none, and only an inline <br> is proven'],
