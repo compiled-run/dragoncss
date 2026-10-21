@@ -3,7 +3,7 @@
 // core/layout/scrollable_overflow_calculator.h (AddChild, AddOverflow), and the inflow bounds of core/layout/box_fragment_builder.cc
 // lines 241-366. The scroll rect follows css-overflow-3 §2.2 and matches Chrome (ports.json reference:
 // core/paint/paint_layer_scrollable_area.cc lines 968-982). The layout itself is unchanged: this reads the input and the layout's boxes.
-import type { Direction, LayoutBox, LayoutInput, ReplacedLeaf } from './input.ts';
+import type { Direction, LayoutBox, LayoutInput, LayoutNode, ReplacedLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, LU_PER_PX, max, min, snapEdge, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
@@ -17,6 +17,7 @@ import { UnsupportedSignal } from './unsupported.ts';
 import { placeLines } from './inline.ts';
 import { isAtomicInline } from './inline-box.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
+import { isFloat } from './float.ts';
 import type { TextMeasurer } from './text.ts';
 
 /** A grid container: display grid, or inline-grid (an atomic inline, css-grid-2 §5.1). */
@@ -228,7 +229,11 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
         continue;
       }
       if (k.kind !== 'box' && k.kind !== 'replaced') continue;
-      if (isOutOfFlow(ctx, k)) {
+      if (isOutOfFlow(ctx, k) && k.style.position === 'fixed') {
+        // POSX-f: a fixed box's containing block is the viewport, and it is in no box's scrollable overflow, the viewport's
+        // included: scrolling never moves it (css-overflow-3 §2.2; Blink skips fixed-position descendants of the LayoutView).
+        walk(k, b, icbWidth, nextPositioned, true);
+      } else if (isOutOfFlow(ctx, k)) {
         // CSS2 §10.1: the containing block is the padding box of the nearest positioned ancestor, or the initial one.
         const cb = nextPositioned;
         const key = cb === null ? '' : cb.id;
@@ -399,6 +404,7 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   }
   for (const k of b.children) {
     if ((k.kind !== 'box' && k.kind !== 'replaced') || isOutOfFlow(ix.ctx, k)) continue;
+    refuseFloat(ix, b, k);
     const kn = nodeOf(ix, k.id);
     const dx = sub(kn.rect.x, n.rect.x);
     const dy = sub(kn.rect.y, n.rect.y);
@@ -447,7 +453,7 @@ export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline
 
 /** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box, <br> or atomic inline child. */
 function hasInlineContent(box: LayoutBox): boolean {
-  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || (k.kind === 'box' && isAtomicInline(k)));
+  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || ((k.kind === 'box' || k.kind === 'replaced') && isAtomicInline(k)));
 }
 
 /**
@@ -604,6 +610,7 @@ function readFlow(ix: Index, n: Node): Flow {
   let escapeTop = EMPTY_STRUT;
   for (const k of b.children) {
     if ((k.kind !== 'box' && k.kind !== 'replaced') || isOutOfFlow(ix.ctx, k)) continue;
+    refuseFloat(ix, b, k);
     const kn = nodeOf(ix, k.id);
     const mt = resolveMarginWith(k.style.marginTop, cb, f).value;
     const mb = resolveMarginWith(k.style.marginBottom, cb, f).value;
@@ -626,6 +633,11 @@ function readFlow(ix: Index, n: Node): Flow {
   }
   if (!seen && canCollapseTop) return { escapeTop: strut, endStrut: EMPTY_STRUT, cursor: ZERO, hasContent: false, ends };
   return { escapeTop, endStrut: strut, cursor, hasContent: seen, ends };
+}
+
+/** FLT: a float in a block container: its scrollable overflow and its place outside the flow are not decided here. */
+function refuseFloat(ix: Index, b: LayoutBox, k: LayoutNode): void {
+  if ((b.style.display === 'block' || b.style.display === 'inline-block') && isFloat(ix.ctx, k)) throw new OverflowRefusal(k.id, `a float in ${b.id}: its scrollable overflow is not decided here (FLT)`);
 }
 
 function isRootOrFc(ix: Index, n: Node): boolean {

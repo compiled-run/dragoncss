@@ -14,7 +14,7 @@ export type ScrollUndecided = { readonly containerId: string; readonly nodeId: s
 type Child = LayoutBox | ControlBox | ReplacedLeaf | InlineChild;
 
 const isNode = (k: Child): k is LayoutBox | ReplacedLeaf => k.kind === 'box' || k.kind === 'replaced';
-const outOfFlow = (k: LayoutNode): boolean => k.style.position === 'absolute';
+const outOfFlow = (k: LayoutNode): boolean => k.style.position === 'absolute' || k.style.position === 'fixed';
 const userScrolls = (b: LayoutNode): boolean => b.kind === 'box' && [b.style.overflowX, b.style.overflowY].some((o) => o === 'auto' || o === 'scroll');
 const scrollContainer = (b: LayoutNode): boolean => [b.style.overflowX, b.style.overflowY].some((o) => o === 'hidden' || o === 'auto' || o === 'scroll');
 const hasInlineContent = (b: LayoutBox): boolean => b.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br');
@@ -41,6 +41,12 @@ function lineLevel(b: LayoutBox): void {
   }
 }
 
+/** overflow.ts refuseFloat: a float in a block container (FLT). */
+function floatIn(b: LayoutBox): void {
+  if (b.style.display !== 'block' && b.style.display !== 'inline-block') return;
+  for (const k of b.children) if (isNode(k) && !outOfFlow(k) && k.style.float !== 'none') throw new Undecided(k.id, `a float in ${b.id}: its scrollable overflow is not decided here (FLT)`);
+}
+
 /** The absolutely positioned boxes whose containing block is b (none when b is static and not contained), as indexOf files them. */
 function oofsOf(b: LayoutNode): LayoutNode[] {
   if (b.kind !== 'box' || !containsAbsolute(b.style)) return [];
@@ -48,8 +54,10 @@ function oofsOf(b: LayoutNode): LayoutNode[] {
   const walk = (p: LayoutBox): void => {
     for (const k of p.children) {
       if (!isNode(k)) continue;
-      if (outOfFlow(k)) out.push(k);
-      else if (k.kind === 'box' && !containsAbsolute(k.style)) walk(k);
+      // A fixed box's containing block is the viewport, and it is in no scrollable overflow (overflow.ts indexOf).
+      if (outOfFlow(k)) {
+        if (k.style.position === 'absolute') out.push(k);
+      } else if (k.kind === 'box' && !containsAbsolute(k.style)) walk(k);
     }
   };
   walk(b);
@@ -70,7 +78,7 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
     const grid = b.style.display === 'grid' || b.style.display === 'inline-grid';
     for (const k of b.children) {
       if (!isNode(k)) continue;
-      walk(k, outOfFlow(k) ? !(grid && containsAbsolute(b.style)) : known && !grid);
+      walk(k, k.style.position === 'fixed' || (outOfFlow(k) ? !(grid && containsAbsolute(b.style)) : known && !grid));
     }
   };
   walk(root, true);
@@ -83,6 +91,7 @@ function overflowOf(b: LayoutNode, unknown: ReadonlySet<string>): void {
   if (b.kind !== 'box') return;
   if (unknown.has(b.id)) throw new Undecided(b.id, 'a percentage padding against a grid area: its basis is not decided here');
   lineLevel(b);
+  floatIn(b);
   for (const k of b.children) if (isNode(k) && !outOfFlow(k)) propagated(k, unknown);
   for (const k of oofsOf(b)) propagated(k, unknown);
 }
@@ -99,6 +108,7 @@ const fcRoot = (b: LayoutNode): boolean =>
 /** readFlow and readChild from a block flow: a percentage height whose end margins may collapse through it is refused. */
 function flow(b: LayoutBox): void {
   if (b.style.display !== 'block' || hasInlineContent(b)) return;
+  floatIn(b);
   for (const k of b.children) {
     if (!isNode(k) || outOfFlow(k) || k.kind === 'replaced' || fcRoot(k)) continue;
     flow(k);

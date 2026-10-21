@@ -10,6 +10,7 @@ import type { AliasValueParser } from './aliases.ts';
 import { aliasValueParser, legacyAliasRefusal, legacyAliasValue, resolveAlias } from './aliases.ts';
 import { prefixedMaskBox } from './aliases/mask.ts';
 import { legacyDisplay } from './display-legacy.ts';
+import { unprefixedSizeKeyword } from './size-keywords.ts';
 import type { AtRuleContext, ContainerCondition, RuleCondition } from './at-rules.ts';
 import { handleAtRule, refuseAtRule } from './at-rules.ts';
 import { PAINT_VALUE_PARSERS } from './paint-parsers.ts';
@@ -994,7 +995,7 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     }
     const v = wide ? toValue(t, property) : tokenValue(t, property);
     if (typeof v === 'string') return { kind: 'token', token: t, reason: v };
-    values.push(v);
+    values.push(wide ? v : unprefixedSizeKeyword(property, v));
   }
   // A shorthand may refuse a grammar-valid value it cannot express (white-space-trim, shorthands/text.ts).
   const refusal = isShorthand(property) && !wide ? (shorthandHandler(property).refuse?.(tokens, base, sheetText) ?? null) : null;

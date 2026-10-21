@@ -10,7 +10,7 @@ import { div, inputFor, text } from './helpers.ts';
 
 // Engine input builders (as packages/layout/test/helpers.ts, which this package's tests cannot import): CSS initial values for a div.
 const DIV: LayoutStyle = {
-  display: 'block', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
+  display: 'block', position: 'static', float: 'none', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
   overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' },
   minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' },
   marginTop: { kind: 'px', value: 0 }, marginRight: { kind: 'px', value: 0 }, marginBottom: { kind: 'px', value: 0 }, marginLeft: { kind: 'px', value: 0 },
@@ -71,6 +71,9 @@ const KIDS: Record<string, Kid> = {
   gridItemPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}i`, sc('auto', { paddingLeft: pct(10), gridItem: ITEM }), [box(`${id}k`, { paddingTop: pct(5), height: px(90) })])]),
   gridAbsPct: (id) => box(id, { display: 'grid', grid: GRID, position: 'relative' }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
   gridAbsStaticPct: (id) => box(id, { display: 'grid', grid: GRID }, [box(`${id}a`, sc('auto', { position: 'absolute', paddingTop: pct(5), gridItem: ITEM }), [box(`${id}k`, { height: px(90) })])]),
+  // FLT: a float in a block container, and one deeper in a plain block.
+  float: (id) => box(id, { float: 'left', width: px(20), height: px(90) }),
+  deepFloat: (id) => box(id, {}, [box(`${id}f`, { float: 'right', width: px(20), height: px(90) })]),
   abs: (id) => box(id, { position: 'absolute', width: px(20), height: px(20) }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
 };
 
@@ -158,6 +161,14 @@ describe('OVFL-B: the compiler refuses an undecided native scroll container', ()
     expect([atomic.outputs.ios.kind, atomic.outputs.android.kind]).toEqual(['blocked', 'blocked']);
     const pctHeight = compile('.p { height: 50%; } .k { height: 10px; margin-bottom: 5px; }', (r) => [div(r, 'p', ['p'], [div(r, 'k', ['k'])])]);
     expect(refusals(pctHeight)).toEqual(both(`${prefix('p')}a percentage height on a box whose end margins may collapse through it: its basis is not decided here (OVFL-B)`));
+  });
+
+  it('POSX-f: a fixed box inside auto or scroll is refused on ios and android only (it would scroll with the native content)', () => {
+    const fixed = compile('.f { position: fixed; top: 0; width: 10px; height: 10px; } .k { height: 50px; }', (r) => [div(r, 'k', ['k']), div(r, 'f', ['f'])]);
+    const errors = fixed.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target}: ${d.message}`).sort();
+    const m = 'the fixed f inside the scroll container a would scroll with its content on native, where Chrome keeps it in place (package POSX-f)';
+    expect(errors).toEqual([`DRAGON_UNSUPPORTED_VALUE android: ${m}`, `DRAGON_UNSUPPORTED_VALUE ios: ${m}`]);
+    expect([fixed.outputs.ios.kind, fixed.outputs.android.kind, fixed.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
   });
 
   it('a decidable scroll container compiles everywhere, and hidden is never refused (it is no scroll view)', () => {

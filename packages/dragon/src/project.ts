@@ -28,7 +28,7 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledControl, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -1020,7 +1020,8 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
       const fact = trees.map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
       const grid = fact === null ? (trees.map((r) => hitUnmodelledGrid(r, compiles)).find((g) => g !== null) ?? null) : null;
       const control = fact === null && grid === null ? (trees.map(hitUnmodelledControl).find((g) => g !== null) ?? null) : null;
-      if (fact === null && grid === null && control === null) continue;
+      const unmodelled = fact === null && grid === null && control === null ? (trees.map((r) => hitUnmodelledBox(r, compiles)).find((g) => g !== null) ?? null) : null;
+      if (fact === null && grid === null && control === null && unmodelled === null) continue;
       for (const r of rules) {
         const pseudo = firstInteractionPseudo(r);
         if (pseudo === null) continue;
@@ -1029,7 +1030,9 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
           ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
           : grid !== null
             ? `:${pseudo} needs Dragon hit testing through the grid container ${grid}, which is not built yet (package GRID hit model)`
-            : `:${pseudo} needs Dragon hit testing through the form control ${control as string}, which is not built yet (FORM-a)`;
+            : control !== null
+              ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
+              : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
@@ -1037,7 +1040,9 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
           ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
           : grid !== null
             ? `Use flex or block layout in a document with :${pseudo} rules, or style the state with a component state until grid hit testing is built.`
-            : `Style the state with a component state in a document with a form control until control hit testing is built.`;
+            : control !== null
+              ? `Style the state with a component state in a document with a form control until control hit testing is built.`
+              : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }

@@ -13,6 +13,7 @@ import type {
   FlexDirection,
   FlexWrap,
   CalcExpr,
+  Float,
   FontSpec,
   GapValue,
   InlineChild,
@@ -70,6 +71,7 @@ import type { Containment } from '../css/properties/containment.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
 import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
+import { isBlockInInline } from '../analysis/block-in-inline.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -93,6 +95,19 @@ function keyword<T extends string>(id: string, get: Get, p: Longhand, allowed: r
   const v = get(p);
   if (v.kind === 'keyword' && (allowed as readonly string[]).includes(v.value)) return v.value as T;
   return fail(id, p, v, allowed.join(' | '));
+}
+
+/**
+ * CSS2 §9.5 float. inline-start and inline-end take their physical side from the element's own direction: they reach the engine
+ * only on flex and grid items, which do not float, since the compiler refuses them in block flow (computed-checks.ts checkFloats).
+ */
+function floatOf(id: string, get: Get): Float {
+  const v = get('float');
+  const d = get('direction');
+  const rtl = d.kind === 'keyword' && d.value === 'rtl';
+  if (v.kind === 'keyword' && v.value === 'inline-start') return rtl ? 'right' : 'left';
+  if (v.kind === 'keyword' && v.value === 'inline-end') return rtl ? 'left' : 'right';
+  return keyword<Float>(id, get, 'float', ['none', 'left', 'right']);
 }
 
 /** What the lowering of one element reads besides its values: its font sizes for em and rem, its effective zoom and the compiler faults. */
@@ -160,9 +175,9 @@ function maxSize(id: string, get: Get, p: Longhand, l: Lowering): MaxSizeValue {
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | none') : lp;
 }
 
-// css-sizing-3 §3.2: width, min-width and max-width also take min-content, max-content and fit-content; the engine reads them on a
-// block-level box in block flow and refuses them elsewhere.
-const INTRINSIC_SIZE_KEYWORDS = ['min-content', 'max-content', 'fit-content'] as const;
+// css-sizing-3 §3.2 and css-sizing-4 §3.1: width, min-width and max-width also take min-content, max-content, fit-content and
+// stretch; the engine reads them on a block-level box in block flow and refuses them elsewhere.
+const INTRINSIC_SIZE_KEYWORDS = ['min-content', 'max-content', 'fit-content', 'stretch'] as const;
 
 function inlineSize(id: string, get: Get, p: Longhand, l: Lowering): InlineSizeValue {
   const v = get(p);
@@ -423,7 +438,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
     display: displayOfStyle(id, get, lineClamp),
-    position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
+    position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute', 'fixed', 'sticky']),
+    float: floatOf(id, get),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
     bottom: inset(id, get, 'bottom', l),
@@ -621,11 +637,18 @@ export function assertTextCarriesContainer(container: LayoutStyle, containerId: 
   }
 }
 
-/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box among inline content (INL2a, G-INL). */
-const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'element' && (displayOf(c) === 'inline-block' || displayOf(c) === 'inline-flex' || displayOf(c) === 'inline-grid');
+/**
+ * CSS2 §9.2.4: an atomic inline among inline content: an inline-block, inline-flex or inline-grid box (INL2a, G-INL), or an
+ * inline-level replaced element (RF-INL; css-display-3 §2.4: display inline on a replaced element makes it atomic).
+ */
+const isAtomic = (c: ResolvedElement | ResolvedText): boolean => {
+  if (c.kind !== 'element') return false;
+  const d = displayOf(c);
+  if (isReplacedTag(c.element.tag)) return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
 
 /** CSS2 §9.2.2: inline-level content: text, an element whose box is an inline box (display: inline, <br> included), or an atomic inline. */
-// A replaced element (REPL-a) is laid out as its own leaf beside the inline content, never inside a line.
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
 /**
@@ -660,10 +683,15 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE, zoom), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, inner)) };
 }
 
-/** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
-function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | InlineChild {
+/**
+ * A block container's inline-level child: an atomic inline is a box (INL2a) or a replaced leaf (RF-INL) among its inline content,
+ * the rest lowerInline.
+ */
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
-  const box = lowerBox(c as ResolvedElement, l, null);
+  const el = c as ResolvedElement;
+  if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l.faults, l.ua, l.rootFontSize, l.images, null, l.zoom);
+  const box = lowerBox(el, l, null);
   // An inline-level control waits for RF-INL (analysis/computed-checks.ts checkButton refuses it).
   if (box.kind !== 'box') throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out (RF-INL)`);
   return box;
@@ -722,7 +750,7 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
   // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
   if (own.display === 'grid' || own.display === 'inline-grid') throw new LoweringError(id, 'display', `display: ${own.display} on the replaced element ${id} is not supported`);
   // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
-  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, raw) : lowerGridItem(gridParent, raw)));
+  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' || own.position === 'fixed' ? lowerOutOfFlowGridItem(gridParent, raw) : lowerGridItem(gridParent, raw)));
   const style: LayoutStyle = gridItem === null ? own : { ...own, gridItem };
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
   if (el.element.tag === 'img') {
@@ -747,6 +775,25 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
   };
 }
 
+// CSS2 §10.2, §10.5, §10.7, §8.3, css-sizing-4 §5.1 and css-overflow-3 §3: a non-replaced inline box takes no width, height, min
+// or max size, block margins, ratio or overflow. A block-in-inline box is that inline box (its web output keeps display: inline), so its block box takes none
+// of them either (measured against Chrome 145: span { height: 20px; width: 30px; margin-top: 10px } lays out as if unset).
+const INLINE_IGNORES = {
+  boxSizing: 'content-box',
+  width: { kind: 'auto' },
+  height: { kind: 'auto' },
+  minWidth: { kind: 'auto' },
+  minHeight: { kind: 'auto' },
+  maxWidth: { kind: 'none' },
+  maxHeight: { kind: 'none' },
+  marginTop: { kind: 'px', value: 0 },
+  marginBottom: { kind: 'px', value: 0 },
+  aspectRatio: { kind: 'auto' },
+  // css-overflow-3 §3: overflow applies to block containers, so an inline box never clips.
+  overflowX: 'visible',
+  overflowY: 'visible',
+} as const satisfies Partial<LayoutStyle>;
+
 /**
  * The layout tree of one resolved element that generates a box. Inline-level content (text, inline boxes, <br>s) beside block-level
  * boxes, or directly in a flex or grid container, is wrapped in anonymous boxes "<element>:anon<k>", one per maximal run; display:
@@ -767,8 +814,9 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely
   // positioned one, the lines of its containing block).
   const grid = own.display === 'grid' || own.display === 'inline-grid' ? gridStep(id, () => lowerGridContainer(get)) : null;
-  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, get) : lowerGridItem(gridParent, get)));
-  const style: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
+  const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' || own.position === 'fixed' ? lowerOutOfFlowGridItem(gridParent, get) : lowerGridItem(gridParent, get)));
+  const placed: LayoutStyle = grid === null && gridItem === null ? own : { ...own, grid: grid === null ? null : grid.style, gridItem };
+  const style: LayoutStyle = isBlockInInline(el) ? { ...placed, ...INLINE_IGNORES } : placed;
   const container = displayOf(el) === 'flex' || displayOf(el) === 'inline-flex' || displayOf(el) === 'grid' || displayOf(el) === 'inline-grid';
   const inline = kids.filter(isInlineLevel);
   const wrap = inline.length > 0 && (container || inline.length !== kids.length);
@@ -797,9 +845,9 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     }
   }
   flush();
-  // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
-  // atomic inline is on a line (INL2a).
-  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
+  // A line strut only when the box holds inline content: a block-level replaced leaf is a box of its own, not a line (REPL-a with
+  // INL1a); an atomic inline is on a line (INL2a, RF-INL).
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
   const strut = strutOf(el, inlineContent, l.mode, zoom);
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
   if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
@@ -814,7 +862,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     const ratio = rangeRatio({ min: a.get('min') ?? null, max: a.get('max') ?? null, step: a.get('step') ?? null, value: a.get('value') ?? null });
     return { kind: 'control', id, boxType: 'element', style, control: { kind: 'slider-thumb', ratio }, strut, children };
   }
-  return { kind: 'box', id, boxType: 'element', style, strut, marker: display === 'list-item' ? markerOf(el, l, zoom) : null, children };
+  return { kind: 'box', id, boxType: isBlockInInline(el) ? 'block-in-inline' : 'element', style, strut, marker: display === 'list-item' ? markerOf(el, l, zoom) : null, children };
 }
 
 const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];

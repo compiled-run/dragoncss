@@ -91,10 +91,12 @@ export type MinSizeValue = Px | Percent | Auto | LengthCalc;
 export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
 /** css-sizing-3 §3.2 fit-content: min(max-content, max(min-content, the stretch size)). */
 export type FitContent = { readonly kind: 'fit-content' };
-/** css-sizing-3 §3.2: the intrinsic size keywords of an inline size, read only on a block-level box in block flow. */
-export type IntrinsicSizeKeyword = MinContent | MaxContent | FitContent;
-export type InlineSizeValue = SizeValue | IntrinsicSizeKeyword;
-export type MaxInlineSizeValue = MaxSizeValue | IntrinsicSizeKeyword;
+/** css-sizing-4 §3.1 stretch (Chrome's -webkit-fill-available computes to it): the size that fills the available space. */
+export type Stretch = { readonly kind: 'stretch' };
+/** css-sizing-3 §3.2 and css-sizing-4 §3.1: the keywords of an inline size, read only on a block-level box in block flow. */
+export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
+export type InlineSizeValue = SizeValue | SizeKeyword;
+export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -129,8 +131,17 @@ export type AspectRatioValue =
  * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
-/** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
-export type Position = 'static' | 'relative' | 'absolute';
+/**
+ * CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4), and so does fixed, whose
+ * containing block is the viewport (§10.1 item 3, POSX-f). sticky offsets an in-flow box to keep it inside the viewport less its
+ * insets, at scroll offset 0, without leaving its containing block (css-position-3 §3.4, POSX-s; layout.ts stickyOffset).
+ */
+export type Position = 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+/**
+ * CSS2 §9.5: a float leaves the flow and is shifted to the left or right of its containing block (FLT). The compiler computes none
+ * for an absolutely positioned box (§9.7) and on the root; a flex or grid item ignores it. inline-start and inline-end are refused.
+ */
+export type Float = 'none' | 'left' | 'right';
 /**
  * css-overflow-3 §3: hidden, auto and scroll make a scroll container; clip clips without one. The validator requires a §3.1
  * computed pair: both axes in visible and clip, or both in hidden, auto and scroll.
@@ -307,6 +318,7 @@ export type GridItemStyle = {
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
+  readonly float: Float;
   readonly top: InsetValue;
   readonly right: InsetValue;
   readonly bottom: InsetValue;
@@ -438,8 +450,12 @@ export type TextLeaf = {
   readonly smallCaps: boolean;
 };
 
-/** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */
-export type BoxType = 'element' | 'anonymous';
+/**
+ * element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4).
+ * block-in-inline: an inline box the compiler lays out as the block box of the block-level boxes it alone holds (package BII), a
+ * block box that also places its three line fragments (block.ts withBlockInInlineLines).
+ */
+export type BoxType = 'element' | 'anonymous' | 'block-in-inline';
 
 /** css-images-3 §5.5 object-fit. */
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';

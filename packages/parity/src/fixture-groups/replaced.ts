@@ -22,7 +22,8 @@ export const REPLACED: readonly FixtureSpec[] = [
   both('replaced-demo'),
   // Every object-fit with keyword and length object-positions, letterboxed so the destination edges sit inside the content boxes.
   both('replaced-fit'),
-  reject('reject-replaced-inline', 'DRAGON_UNSUPPORTED_VALUE', imgTag('reject-replaced-inline'), 'display: inline on <img> a makes it an inline-level replaced box'),
+  // RF-INL lays an inline img out on its block container's lines (inline-replaced); inside an inline box it stays unproven (INL2c).
+  reject('reject-replaced-inline', 'DRAGON_UNPROVEN_CONTEXT', imgTag('reject-replaced-inline'), 'inline <img> a is an atomic inline inside the inline box <span> s'),
   reject('reject-replaced-remote', 'DRAGON_REMOTE_IMAGE', imgTag('reject-replaced-remote'), '<img> a: src https://example.com/a.png is a remote URL'),
   reject('reject-replaced-jpeg', 'DRAGON_UNSUPPORTED_IMAGE', imgTag('reject-replaced-jpeg'), '<img> a: JPEG decodes differ per platform'),
   reject('reject-replaced-abspos', 'DRAGON_UNSUPPORTED_VALUE', 'absolute', 'position: absolute on <img> a is not supported on a replaced element'),

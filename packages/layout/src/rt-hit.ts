@@ -595,7 +595,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   let pe = inherited;
   let own = target;
   let act = false;
-  if (b.boxType === 'element') {
+  if (b.boxType !== 'anonymous') {
     const f = s.facts.get(b.id);
     if (f === undefined) throw new HitError(`no hit facts for element ${b.id}`);
     pe = s.faults.pointerEventsNotInherited && f.inherited ? 'auto' : f.pointerEvents;
@@ -618,7 +618,9 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   for (const c of b.children) {
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
-    else if (c.kind === 'box' && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && (c.style.position === 'fixed' || c.style.position === 'sticky')) throw new HitError(fixedRefusal(c.id, c.style.position));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) throw new HitError(floatRefusal(c.id));
     else kids++;
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
@@ -671,9 +673,19 @@ function controlRefusal(id: string): string {
   return `${id} is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)`;
 }
 
-function isAtomicInline(b: LayoutBox): boolean {
+function isAtomicInline(b: LayoutBox | ReplacedLeaf): boolean {
   const d = b.style.display;
+  if (b.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+}
+
+function fixedRefusal(id: string, position: string): string {
+  const pkg = position === 'fixed' ? 'POSX-f' : 'POSX-s';
+  return `${id} is position: ${position}, a stacking context placed against the viewport, which the hit table does not model yet (${pkg}; no Chrome hit capture)`;
+}
+
+function floatRefusal(id: string): string {
+  return `${id} is a float, which the hit table does not model yet (FLT; no Chrome hit capture)`;
 }
 
 function atomicRefusal(id: string): string {
@@ -695,6 +707,9 @@ function boxHitRefusal(b: LayoutBox): string | null {
   for (const c of b.children) {
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'control') return controlRefusal(c.id);
+    if (c.kind === 'replaced' && isAtomicInline(c)) return atomicRefusal(c.id);
+    if ((c.kind === 'box' || c.kind === 'replaced') && (c.style.position === 'fixed' || c.style.position === 'sticky')) return fixedRefusal(c.id, c.style.position);
+    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) return floatRefusal(c.id);
     if (c.kind === 'box') {
       if (c.style.lineClamp > 0) return clampRefusal(c.id);
       if (isAtomicInline(c)) return atomicRefusal(c.id);

@@ -1,5 +1,5 @@
 // Intrinsic inline sizes (css-sizing-3 §5) and flex container intrinsic inline sizes (css-flexbox-1 §9.9.1, §9.9.2).
-import type { ControlBox, LayoutBox, LayoutNode } from './input.ts';
+import type { Auto, ControlBox, LayoutBox, LayoutNode, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
@@ -13,6 +13,9 @@ import { replacedContribution } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
 export type IntrinsicKind = 'min' | 'max';
+
+const AUTO: Auto = { kind: 'auto' };
+const NONE: NoneValue = { kind: 'none' };
 
 // css-sizing-3 §5.1: the min-content or max-content inline size of a box's content box. Absolutely positioned children take no
 // part (CSS2 §9.3.1). A range's is its default track length, whatever its children (length_utils.cc:1918-1928
@@ -31,8 +34,20 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
+  // CSS2 §9.5 (Blink BlockNode::ComputeMinMaxSizes): floats sit beside each other on one "line", so in the max-content size the left
+  // floats' contributions add up, as do the right floats', and the two sides add up; each float alone bounds the min-content size.
+  // The compiler keeps every float of a formatting context after its in-flow boxes, with no clear (computed-checks.ts checkFloats).
   let widest = ZERO;
-  for (const k of kids) if ((k.kind === 'box' || k.kind === 'control' || k.kind === 'replaced') && !isOutOfFlow(ctx, k)) widest = max(widest, inlineContribution(ctx, k, kind));
+  let left = ZERO;
+  let right = ZERO;
+  for (const k of kids) {
+    if ((k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced') || isOutOfFlow(ctx, k)) continue;
+    const c = inlineContribution(ctx, k, kind);
+    if (kind === 'max' && k.style.float === 'left') left = add(left, c);
+    else if (kind === 'max' && k.style.float === 'right') right = add(right, c);
+    else widest = max(widest, c);
+  }
+  return max(widest, add(left, right));
   return widest;
 }
 
@@ -50,6 +65,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   const bp = sumEdges(bor.left, bor.right, pad(s.paddingLeft), pad(s.paddingRight));
   // css-sizing-3 §5.2: min-content and max-content contribute that size of the content box, fit-content the size being asked for
   // (Blink ComputeMinMaxInlineSizes resolves a keyword width, min-width or max-width through the box's own min and max content).
+  // stretch has no size without an available space: a width or min-width of stretch contributes as auto, a max-width as none.
   const keyword = (k: string): LU | null => {
     if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
@@ -64,7 +80,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   if (width !== null) {
     size = width;
   } else {
-    const w = lengthWidth(box.id, s.width);
+    const w = s.width.kind === 'stretch' ? AUTO : lengthWidth(box.id, s.width);
     if (w.kind !== 'auto' && !hasPercent(w)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
     else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
     else size = add(intrinsicContentInlineSize(ctx, node, kind), bp);
@@ -72,13 +88,13 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   if (maxWidth !== null) {
     size = min(size, maxWidth);
   } else {
-    const hi = lengthMaxWidth(box.id, s.maxWidth);
+    const hi = s.maxWidth.kind === 'stretch' ? NONE : lengthMaxWidth(box.id, s.maxWidth);
     if (hi.kind !== 'none' && !hasPercent(hi)) size = min(size, borderBoxFromSpecified(resolveLength(hi, ZERO, ctx.faults), bp, s.boxSizing));
   }
   if (minWidth !== null) {
     size = max(size, minWidth);
   } else {
-    const lo = lengthMinWidth(box.id, s.minWidth);
+    const lo = s.minWidth.kind === 'stretch' ? AUTO : lengthMinWidth(box.id, s.minWidth);
     if (lo.kind !== 'auto') size = max(size, borderBoxFromSpecified(resolveMinLength(lo, null, ctx.faults), bp, s.boxSizing));
   }
   size = max(size, bp);

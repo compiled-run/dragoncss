@@ -138,6 +138,8 @@ describe('dependency boundaries', () => {
       "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
       "import { blendModeOf, FX_LONGHANDS, hasBackdropFilter } from '../css/properties/fx.ts';",
       "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
+      // BII: whether the resolver laid an inline box out as its blocks' block box, from the resolved element alone.
+      "import { isBlockInInline } from '../analysis/block-in-inline.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
       "import { familyListText } from '../css/values.ts';",

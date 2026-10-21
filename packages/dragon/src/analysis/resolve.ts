@@ -25,6 +25,8 @@ import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
 import { isRangeType } from './elements/controls.ts';
 import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
+import type { BlockInInlineChild } from './block-in-inline.ts';
+import { blockInInlineBlocker, isBlockInInline, markBlockInInline } from './block-in-inline.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { TransformItem } from './text-transform.ts';
 import { textTransformOf, transformRun } from './text-transform.ts';
@@ -209,11 +211,21 @@ export function phaseOneContext(runs: readonly (string | null)[], modes: readonl
   return runs.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
 
-/** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
-const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
+/**
+ * CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7); a replaced element
+ * with display: inline is an atomic inline instead (§2.4).
+ */
+const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline' && !isReplacedTag(el.element.tag);
 
-/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification. */
-const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex' || displayOf(el) === 'inline-grid';
+/**
+ * CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification, or
+ * an inline-level replaced element (RF-INL).
+ */
+const isAtomicInline = (el: ResolvedElement): boolean => {
+  const d = displayOf(el);
+  if (isReplacedTag(el.element.tag)) return d === 'inline' || d === 'inline-block';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
 
 /** An atomic inline's run in collapseInlineContext: U+FFFC, which is not white space (Blink inline_items_builder.cc:1245-1251). */
 const ATOMIC_RUN = '\ufffc';
@@ -222,6 +234,49 @@ const displayOf = (el: ResolvedElement): string => {
   const v = (el.props.get('display') as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
 };
+
+const outOfFlow = (k: ResolvedElement): boolean => {
+  const position = (k.props.get('position') as ResolvedValue).value;
+  const float = (k.props.get('float') as ResolvedValue).value;
+  return (position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed')) || (float.kind === 'keyword' && float.value !== 'none');
+};
+
+/** Whether an inline box holds anything a line box is made for: text that is not white space, a <br>, or an atomic inline. */
+function inlineHasContent(el: ResolvedElement): boolean {
+  if (el.element.tag === 'br') return true;
+  return el.children.some((k) => (k.kind === 'text' ? /[^ \t\n]/u.test(k.text) : displayOf(k) !== 'none' && !outOfFlow(k) && (!isInlineBox(k) || inlineHasContent(k))));
+}
+
+/**
+ * CSS2 §8.3.1: whether a block box may be empty, so that its top and bottom margins collapse through it: a block container that
+ * is no formatting context root, with no positive height or min-height, no vertical padding or border, and nothing in flow but
+ * such boxes and white space. Conservative: a percentage height or a float inside counts as nothing.
+ */
+function mayCollapseThrough(el: ResolvedElement): boolean {
+  const value = (p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
+  const positive = (v: CssValue): boolean => (v.kind === 'length' || v.kind === 'percentage') && v.value > 0;
+  const drawn = (side: 'top' | 'bottom'): boolean => {
+    const st = value(`border-${side}-style` as Longhand);
+    return !(st.kind === 'keyword' && (st.value === 'none' || st.value === 'hidden')) && !(value(`border-${side}-width` as Longhand).kind === 'length' && (value(`border-${side}-width` as Longhand) as { value: number }).value === 0);
+  };
+  const overflow = value('overflow-x');
+  if (displayOf(el) !== 'block' || isReplacedTag(el.element.tag) || !(overflow.kind === 'keyword' && overflow.value === 'visible')) return false;
+  const height = value('height');
+  if ((height.kind === 'length' && height.value > 0) || (value('min-height').kind === 'length' && positive(value('min-height')))) return false;
+  if (positive(value('padding-top')) || positive(value('padding-bottom')) || drawn('top') || drawn('bottom')) return false;
+  return el.children.every((k) => (k.kind === 'text' ? !/[^ \t\n]/u.test(k.text) : displayOf(k) === 'none' || outOfFlow(k) || (isInlineBox(k) ? !inlineHasContent(k) : mayCollapseThrough(k))));
+}
+
+/** A child of an inline box as blockInInlineBlocker reads it. */
+export function blockInInlineChild(k: ResolvedElement | { readonly kind: 'text'; readonly text: string }): BlockInInlineChild {
+  if (k.kind === 'text') return { kind: 'text', blank: /^[ \t\n]*$/u.test(k.text) };
+  if (isBlockInInline(k)) return { kind: 'nested', address: k.element.address };
+  const d = displayOf(k);
+  if (d === 'none') return { kind: 'none' };
+  // An absolutely positioned or floated child leaves the flow: it neither splits the inline box nor makes it a block's.
+  if (outOfFlow(k)) return { kind: 'out-of-flow' };
+  return isInlineBox(k) || isAtomicInline(k) || d === 'contents' || d.startsWith('inline') ? { kind: 'inline-level' } : { kind: 'block', empty: mayCollapseThrough(k) };
+}
 
 /** css-variables-1 §2: every resolved element's computed custom properties (ANIM-v substitutes transition and animation values with them). */
 const RESOLVED_CUSTOMS = new WeakMap<ResolvedElement, CustomProperties>();
@@ -425,6 +480,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       if (part !== null) rangeParts.set(self, { part, host: host as LinkedElement });
       else if (host !== null) rangeParts.set(self, { part: null, host });
       if (next !== null && host !== null) kids.push(visit(partElement(host, next), here, self, null, next));
+    }
+    // BII: an inline box that holds only block-level boxes, with no box of its own, lays out as their block box (block-in-inline.ts).
+    if (parent !== null && isInlineBox(self) && blockInInlineBlocker(props, kids.map(blockInInlineChild), environment.ua) === null) {
+      props.set('display', { ...(props.get('display') as ResolvedValue), value: { kind: 'keyword', value: 'block' } });
+      markBlockInInline(self);
     }
     // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it, and so
     // does a display: contents element's, whose children take its place in its parent's box (css-display-3 §2.5).

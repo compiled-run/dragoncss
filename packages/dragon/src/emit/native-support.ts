@@ -946,9 +946,10 @@ public final class DragonTree {
     // Content widths in LU, for the text breaking width: the border box minus borders and paddings (percentages of the parent's).
     var contentCache: [String: Double] = [:]
     // BG2: an absolutely positioned box's containing block width (CSS2 §10.1), the padding box of its nearest positioned ancestor
-    // or the initial containing block (layout.ts containingBlock); nil for an in-flow box.
+    // or the initial containing block, the viewport's for a fixed box (layout.ts containingBlock); nil for an in-flow box.
     func absoluteBasis(_ id: String) throws -> Double? {
       guard let z = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
+      if z.position.description == "fixed" { return try units_fromCssPx(zoomed.viewport.width) }
       if z.position.description != "absolute" { return nil }
       var at = zParent[id]
       while let a = at, let st = zStyles[a], st.position.description == "static" { at = zParent[a] }
@@ -2221,9 +2222,10 @@ class DragonTree(val context: Context) {
     val rects = HashMap<String, LayoutRect>()
     val contentCache = HashMap<String, Double>()
     // BG2: an absolutely positioned box's containing block width (CSS2 §10.1), the padding box of its nearest positioned ancestor
-    // or the initial containing block (layout.ts containingBlock); null for an in-flow box.
+    // or the initial containing block, the viewport's for a fixed box (layout.ts containingBlock); null for an in-flow box.
     fun absoluteBasis(id: String): Double? {
       val z = zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
+      if (z.position == "fixed") return units_fromCssPx(zoomed.viewport.width)
       if (z.position != "absolute") return null
       var at = zParent[id]
       while (at != null && zStyles[at]?.position == "static") at = zParent[at]
@@ -2858,7 +2860,7 @@ export function doubleLit(v: number): string {
 
 /** LayoutStyle fields in the order of the translated class's constructor (input.ts). */
 export const STYLE_FIELDS = [
-  'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
+  'display', 'position', 'float', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
   'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout',
@@ -2867,7 +2869,7 @@ export const STYLE_FIELDS = [
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
   px: 'Px', percent: 'Percent', auto: 'Auto', none: 'NoneValue', content: 'ContentValue', normal: 'NormalValue', number: 'NumberValue', 'device-px': 'DevicePx',
-  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent', 'fit-content': 'FitContent',
+  fr: 'Fr', 'min-content': 'MinContent', 'max-content': 'MaxContent', 'fit-content': 'FitContent', stretch: 'Stretch',
 };
 
 /** The translated engine's union type of TrackSize (grid.ts input), the element type of a track-size array. */
