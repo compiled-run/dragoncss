@@ -30,6 +30,8 @@ describe('SIZE-KW: a stretch block size', () => {
   it('refuses it on the root, inside a flex item and beside an aspect-ratio, on every target', () => {
     expect(refused(compile('html { height: stretch; }', (r) => [div(r, 'a', [])]), 'on html on the root element')).toEqual(ALL('stretch'));
     expect(refused(compile('.f { display: flex; height: 40px; } .a { min-height: -webkit-fill-available; }', (r) => [div(r, 'f', ['f'], [div(r, 'i', [], [div(r, 'a', ['a'])])])]), 'min-height: stretch on a inside a flex item')).toEqual(ALL('-webkit-fill-available'));
+    // A flex item reached through display: contents is a flex item all the same (css-display-3 §2.5).
+    expect(refused(compile('.f { display: flex; height: 40px; } .d { display: contents; } .a { height: stretch; }', (r) => [div(r, 'f', ['f'], [div(r, 'd', ['d'], [div(r, 'i', [], [div(r, 'a', ['a'])])])])]), 'height: stretch on a inside a flex item')).toEqual(ALL('stretch'));
     expect(refused(compile('.a { aspect-ratio: 2; max-height: stretch; }', (r) => [div(r, 'a', ['a'])]), 'max-height: stretch on a beside aspect-ratio')).toEqual(ALL('stretch'));
   });
 });

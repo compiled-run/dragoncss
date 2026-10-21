@@ -979,16 +979,21 @@ function checkStretchHeights(root: ResolvedElement, targets: readonly string[], 
   if (displayKeyword(root) !== 'none') refuse(root, 'root', 'on the root element', `Use a percentage or a viewport length for the root's size, or stretch a descendant of ${root.element.address}.`);
   const isFlex = (el: ResolvedElement): boolean => ['flex', 'inline-flex'].includes(displayKeyword(el));
   const outOfFlow = (el: ResolvedElement): boolean => ['absolute', 'fixed'].includes(keywordOf(el.props.get('position') as ResolvedValue));
-  // flexItem: whether the containing block of el's in-flow children is a flex item.
-  const walk = (el: ResolvedElement, flexItem: boolean): void => {
+  // flexItem: whether the containing block of el's in-flow children is a flex item; items: whether they are flex items.
+  const walk = (el: ResolvedElement, flexItem: boolean, items: boolean): void => {
     for (const c of el.children) {
       if (c.kind !== 'element' || displayKeyword(c) === 'none') continue;
+      // css-display-3 §2.5: display: contents puts c's children in its place, as el's children.
+      if (displayKeyword(c) === 'contents') {
+        walk(c, flexItem, items);
+        continue;
+      }
       if (flexItem) refuse(c, 'flex-item', `inside a flex item (its containing block's height is flexed or stretched)`, `Use a percentage, or set the height on ${c.element.address} itself.`);
       // A block inside an inline box (BII) has the inline box's containing block as its own.
-      walk(c, isBlockInInline(c) ? flexItem : isFlex(el) && !outOfFlow(c));
+      walk(c, isBlockInInline(c) ? flexItem : items && !outOfFlow(c), isFlex(c));
     }
   };
-  walk(root, false);
+  walk(root, false, isFlex(root));
 }
 
 /** css-sizing-3 §3.2 and css-sizing-4 §3.1: the inline-size keywords the engine resolves only on a block-level box without a ratio. */
