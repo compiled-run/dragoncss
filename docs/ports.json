@@ -1921,6 +1921,7 @@
         { "lines": "368-383", "symbol": "NinePieceImageGrid::GetNinePieceDrawInfo", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/nine-piece.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeWidthLu", "use": "port" },
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeSlice", "use": "port" },
@@ -1943,6 +1944,7 @@
         { "lines": "181-240", "symbol": "NinePieceImagePainter::Paint", "source": "located" }
       ],
       "dragon": [
+        { "file": "packages/layout/src/nine-piece.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBorderImage", "use": "port" }
       ]
