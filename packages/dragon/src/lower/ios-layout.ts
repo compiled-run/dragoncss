@@ -7,6 +7,7 @@ import type {
   AlignItems,
   AlignSelf,
   BorderWidthValue,
+  BlockSizeValue,
   BoxSizing,
   Display,
   FlexBasisValue,
@@ -31,6 +32,7 @@ import type {
   ListMarker,
   MarginValue,
   Overflow,
+  MaxBlockSizeValue,
   MaxInlineSizeValue,
   MaxSizeValue,
   PaddingValue,
@@ -181,6 +183,20 @@ function inlineSize(id: string, get: Get, p: Longhand, l: Lowering): InlineSizeV
 function maxInlineSize(id: string, get: Get, p: Longhand, l: Lowering): MaxInlineSizeValue {
   const v = get(p);
   if (v.kind === 'keyword' && (INTRINSIC_SIZE_KEYWORDS as readonly string[]).includes(v.value)) return { kind: v.value as (typeof INTRINSIC_SIZE_KEYWORDS)[number] };
+  return maxSize(id, get, p, l);
+}
+
+// css-sizing-4 §3.1: height, min-height and max-height also take stretch; the engine reads it on a block-level box in block flow
+// and refuses it elsewhere.
+function blockSize(id: string, get: Get, p: Longhand, l: Lowering): BlockSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
+  return size(id, get, p, l);
+}
+
+function maxBlockSize(id: string, get: Get, p: Longhand, l: Lowering): MaxBlockSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
   return maxSize(id, get, p, l);
 }
 
@@ -441,11 +457,11 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
     width: inlineSize(id, get, 'width', l),
-    height: size(id, get, 'height', l),
+    height: blockSize(id, get, 'height', l),
     minWidth: inlineSize(id, get, 'min-width', l),
-    minHeight: size(id, get, 'min-height', l),
+    minHeight: blockSize(id, get, 'min-height', l),
     maxWidth: maxInlineSize(id, get, 'max-width', l),
-    maxHeight: maxSize(id, get, 'max-height', l),
+    maxHeight: maxBlockSize(id, get, 'max-height', l),
     marginTop: margin(id, get, 'margin-top', l),
     marginRight: margin(id, get, 'margin-right', l),
     marginBottom: margin(id, get, 'margin-bottom', l),

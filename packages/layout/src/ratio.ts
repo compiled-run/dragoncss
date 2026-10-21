@@ -7,6 +7,8 @@ import { add, max, min, mulDiv, sub, ZERO } from './units.ts';
 import type { HeightBasis, MinMax } from './box.ts';
 import {
   blockMinMaxWith,
+  lengthHeight,
+  NO_STRETCH,
   borderBoxFromSpecified,
   constrain,
   hasPercent,
@@ -84,11 +86,11 @@ function clampTo(v: LU, mm: MinMax): LU {
   return constrain(v, mm);
 }
 
-/** Whether a length depends on a percentage basis the block axis may lack: the validator refuses these beside a ratio. */
+/** Whether a length depends on a percentage basis the block axis may lack, or is stretch: the validator refuses these beside a ratio. */
 function blockLengthsHavePercent(s: LayoutStyle): boolean {
-  const h = s.height.kind !== 'auto' && hasPercent(s.height);
-  const lo = s.minHeight.kind !== 'auto' && hasPercent(s.minHeight);
-  const hi = s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight);
+  const h = s.height.kind === 'stretch' || (s.height.kind !== 'auto' && hasPercent(s.height));
+  const lo = s.minHeight.kind === 'stretch' || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight));
+  const hi = s.maxHeight.kind === 'stretch' || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
   return h || lo || hi;
 }
 
@@ -105,11 +107,12 @@ function edgesOf(ctx: Ctx, box: LayoutBox, cbInline: LU): BoxEdges {
  * ComputeBlockSizeForFragment with an indefinite intrinsic size), or null when height is auto or its percentage has no basis. */
 function initialBlockSize(ctx: Ctx, box: LayoutBox, basis: HeightBasis, vbp: LU): LU | null {
   const s = box.style;
-  if (s.height.kind === 'auto') return null;
-  const b = hasPercent(s.height) ? (basis.kind === 'definite' ? basis.value : null) : ZERO;
-  const v = resolveLengthOrNull(s.height, b, ctx.faults);
+  const h = lengthHeight(box.id, s.height);
+  if (h.kind === 'auto') return null;
+  const b = hasPercent(h) ? (basis.kind === 'definite' ? basis.value : null) : ZERO;
+  const v = resolveLengthOrNull(h, b, ctx.faults);
   if (v === null) return null;
-  return clampTo(borderBoxFromSpecified(v, vbp, s.boxSizing), blockMinMaxWith(box, basis, vbp, ctx.faults));
+  return clampTo(borderBoxFromSpecified(v, vbp, s.boxSizing), blockMinMaxWith(box, basis, vbp, ctx.faults, NO_STRETCH));
 }
 
 /** A basis for block lengths that hold no percentage: the validator refuses a percentage beside a ratio where none is known. */
@@ -137,7 +140,7 @@ export function ratioBlockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU
   const basis = noPercentBasis(box);
   const block = initialBlockSize(ctx, box, basis, e.vbp);
   const own = inlineMinMaxOf(box.id, s, cbInline, e.hbp, ctx.faults);
-  const mm = withTransferred(block === null || isScrollContainer(s) ? own : withAutoMinInline(ctx, box, own, e.hbp), transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults), e.hbp, e.vbp));
+  const mm = withTransferred(block === null || isScrollContainer(s) ? own : withAutoMinInline(ctx, box, own, e.hbp), transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp));
   const extent = block === null ? stretched : inlineFromRatio(s, e.hbp, e.vbp, block);
   return max(clampTo(extent, mm), e.hbp);
 }
@@ -169,7 +172,7 @@ export function ratioContentInlineSize(ctx: Ctx, box: LayoutBox, kind: 'min' | '
   const e = edgesOf(ctx, box, cbInline);
   if (block !== null) return inlineFromRatio(s, e.hbp, e.vbp, block);
   const content = add(intrinsicContentInlineSize(ctx, box, kind), e.hbp);
-  return clampTo(content, transferredInlineMinMax(s, blockMinMaxWith(box, noPercentBasis(box), e.vbp, ctx.faults), e.hbp, e.vbp));
+  return clampTo(content, transferredInlineMinMax(s, blockMinMaxWith(box, noPercentBasis(box), e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp));
 }
 
 /**
@@ -191,7 +194,7 @@ export function ratioInlineContribution(ctx: Ctx, box: LayoutBox, kind: 'min' | 
     max: maxWidth.kind !== 'none' && !hasPercent(maxWidth) ? borderBoxFromSpecified(resolveLength(maxWidth, ZERO, ctx.faults), e.hbp, s.boxSizing) : null,
   };
   const autoMin = block !== null && !isScrollContainer(s) ? withAutoMinInline(ctx, box, own, e.hbp) : own;
-  const mm = s.width.kind === 'auto' ? withTransferred(autoMin, transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults), e.hbp, e.vbp)) : autoMin;
+  const mm = s.width.kind === 'auto' ? withTransferred(autoMin, transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp)) : autoMin;
   return max(clampTo(size, mm), e.hbp);
 }
 
@@ -207,7 +210,7 @@ export function ratioAbsoluteInlineSize(ctx: Ctx, box: LayoutBox, cbWidth: LU, s
   const s = box.style;
   const e = edgesOf(ctx, box, cbWidth);
   const basis = noPercentBasis(box);
-  const blockMm = blockMinMaxWith(box, basis, e.vbp, ctx.faults);
+  const blockMm = blockMinMaxWith(box, basis, e.vbp, ctx.faults, NO_STRETCH);
   const block = s.height.kind !== 'auto'
     ? initialBlockSize(ctx, box, basis, e.vbp)
     : stretchBlock === null ? null : max(clampTo(stretchBlock, blockMm), e.vbp);

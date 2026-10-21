@@ -6,6 +6,7 @@ import type {
   AspectRatioValue,
   AlignItems,
   AlignSelf,
+  BlockSizeValue,
   BorderWidthValue,
   BoxSizing,
   BoxType,
@@ -48,8 +49,10 @@ import type {
   ObjectFit,
   ObjectPositionValue,
   ReplacedLeaf,
+  MaxBlockSizeValue,
   MaxInlineSizeValue,
   MaxSizeValue,
+  MinBlockSizeValue,
   MinSizeValue,
   NoneValue,
   Float,
@@ -573,6 +576,20 @@ function pxOrNone(v: JsonValue, path: string): Px | NoneValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+/** height and min-height: a SizeValue, or css-sizing-4's stretch. */
+function blockSizeValue(v: JsonValue, path: string): BlockSizeValue {
+  if (kindOf(v, path) !== 'stretch') return sizeValue(v, path);
+  obj(v, ['kind'], path);
+  return { kind: 'stretch' };
+}
+
+/** max-height: a MaxSizeValue, or css-sizing-4's stretch. */
+function maxBlockSizeValue(v: JsonValue, path: string): MaxBlockSizeValue {
+  if (kindOf(v, path) !== 'stretch') return maxSizeValue(v, path);
+  obj(v, ['kind'], path);
+  return { kind: 'stretch' };
+}
+
 /** width and min-width: a SizeValue, the css-sizing-3 keywords min-content, max-content and fit-content, or css-sizing-4's stretch. */
 function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
   const k = kindOf(v, path);
@@ -842,11 +859,11 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: inlineSizeValue(f('width'), p('width')),
-    height: sizeValue(f('height'), p('height')),
+    height: blockSizeValue(f('height'), p('height')),
     minWidth: inlineSizeValue(f('minWidth'), p('minWidth')),
-    minHeight: sizeValue(f('minHeight'), p('minHeight')) as MinSizeValue,
+    minHeight: blockSizeValue(f('minHeight'), p('minHeight')) as MinBlockSizeValue,
     maxWidth: maxInlineSizeValue(f('maxWidth'), p('maxWidth')),
-    maxHeight: maxSizeValue(f('maxHeight'), p('maxHeight')),
+    maxHeight: maxBlockSizeValue(f('maxHeight'), p('maxHeight')),
     marginTop: sizeValue(f('marginTop'), p('marginTop')) as MarginValue,
     marginRight: sizeValue(f('marginRight'), p('marginRight')) as MarginValue,
     marginBottom: sizeValue(f('marginBottom'), p('marginBottom')) as MarginValue,

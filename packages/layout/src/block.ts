@@ -2,7 +2,7 @@
 import type { Auto, ControlBox, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
-import type { Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
+import type { BlockStretch, Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
@@ -321,6 +321,8 @@ export type ContentsArgs = {
   readonly formattingContextRoot: boolean;
   /** The box's border-box line-left offset in its parent's block formatting context; a formatting context root's children start at 0. */
   readonly bfcLineOffset: LU;
+  /** What a block size of stretch fills: the space in block flow (stretchOf), or refused for any other box. */
+  readonly blockStretch: BlockStretch;
 };
 
 export type ContentsResult = {
@@ -411,8 +413,8 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
   const contentWidth = contentBox(a.borderBoxWidth, hbp);
-  const minMax = blockMinMaxWith(box, a.heightBasis, vbp, ctx.faults);
-  const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSizeWith(box, a.heightBasis, vbp, ctx.faults) : null;
+  const minMax = blockMinMaxWith(box, a.heightBasis, vbp, ctx.faults, a.blockStretch);
+  const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSizeWith(box, a.heightBasis, vbp, ctx.faults, a.blockStretch) : null;
   // css-sizing-4 §5.1: an auto height comes from the ratio; it is definite for the children before content (ratio.ts).
   const fromRatio = a.forcedBorderBoxHeight === null && specified === null ? ratioInitialBlockSize(box, a.borderBoxWidth, hbp, vbp) : null;
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
@@ -469,6 +471,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
     bfcLineOffset: a.formattingContextRoot ? ZERO : a.bfcLineOffset,
     origin: { x: add(bor.left, pad.left), y: add(bor.top, pad.top) },
     canCollapseTop,
+    keepsEndMargin: a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0,
     childBasis,
     marker,
   });
@@ -670,10 +673,24 @@ type FlowArgs = {
   readonly bfcLineOffset: LU;
   readonly origin: Point;
   readonly canCollapseTop: boolean;
+  /** Whether the box has a bottom border or padding or is a formatting context root: its children's end margins count for stretch. */
+  readonly keepsEndMargin: boolean;
   readonly childBasis: HeightBasis;
   /** The list item's outside marker (T151 R14), placed against the first baseline of the content, or null. */
   readonly marker: MarkerBox | null;
 };
+
+/**
+ * css-sizing-4 §3.1: a block-level child's stretch fills its containing block's block size less its margins, as a percentage of it
+ * resolves; a start or end margin counts only where the container has a border or padding on that side or is a formatting context
+ * root, since otherwise it may collapse with the container's (Blink ResolveBlockLengthInternal kStretch; measured: margins of
+ * a child that cannot adjoin its container's are still left out on a side with no border or padding).
+ */
+function stretchOf(a: FlowArgs, inline: BlockLevelInline): BlockStretch {
+  const top = a.canCollapseTop ? ZERO : inline.marginTop;
+  const bottom = a.keepsEndMargin ? inline.marginBottom : ZERO;
+  return { kind: 'available', basis: a.childBasis, margins: add(top, bottom) };
+}
 
 type FlowResult = {
   /** Bottom border edge of the last in-flow box with content, relative to the content box top. */
@@ -804,6 +821,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         heightBasis: a.childBasis,
         formattingContextRoot: newFormattingContext,
         bfcLineOffset: inline.bfcLineOffset,
+        blockStretch: stretchOf(a, inline),
       });
     }
     // BII: where the box is the blocks' inline formatting context and its top is fixed (a box before, or a border, padding or new

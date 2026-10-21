@@ -410,6 +410,7 @@ function checkAtomic(a: LayoutNode): void {
   if (s.position !== 'static') unsupported('inline-box-position', a.id, 'CSS2 §9.4.3', `a ${s.position} atomic inline ${a.id}`);
   const va = s.verticalAlign;
   if (va.kind !== 'keyword' || va.value !== 'baseline') unsupported('vertical-align', a.id, 'CSS2 §10.8.1', `vertical-align other than baseline on atomic inline ${a.id} (INL2)`);
+  if (s.height.kind === 'stretch' || s.minHeight.kind === 'stretch' || s.maxHeight.kind === 'stretch') unsupported('intrinsic-size-keyword', a.id, 'css-sizing-4 §3.1', `a stretch block size on atomic inline ${a.id}, outside a block-level box in block flow`);
   const percent = (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
   if (percent) unsupported('percent-height-flex', a.id, 'CSS2 §10.5', `a percentage block size on atomic inline ${a.id}, whose line boxes do not read their block container's height`);
 }

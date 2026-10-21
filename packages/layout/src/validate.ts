@@ -75,6 +75,8 @@ const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
 const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {}, stretch: {} } as const;
+const blockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, stretch: {} });
+const maxBlockSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, stretch: {} });
 const inlineSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxInlineSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, ...intrinsic });
 const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });
@@ -132,11 +134,11 @@ export const styleSchema = obj({
   direction: lit('ltr', 'rtl'),
   boxSizing: lit('content-box', 'border-box'),
   width: inlineSize,
-  height: size,
+  height: blockSize,
   minWidth: inlineSize,
-  minHeight: size,
+  minHeight: blockSize,
   maxWidth: maxInlineSize,
-  maxHeight: maxSize,
+  maxHeight: maxBlockSize,
   marginTop: margin,
   marginRight: margin,
   marginBottom: margin,
@@ -880,7 +882,7 @@ function exprHoldsPercent(e: unknown): boolean {
 }
 
 // css-sizing-4 §5.1: a ratio transfers the block size before layout knows its percentage basis in every context, so Dragon
-// refuses a percentage height, min-height or max-height beside an aspect-ratio (the compiler reports it).
+// refuses a percentage or stretch height, min-height or max-height beside an aspect-ratio (the compiler reports it).
 function checkRatioBlockLengths(style: Record<string, unknown>, path: string, errors: ValidationError[], percentsRefused = true): void {
   const ratio = style['aspectRatio'];
   if (!isRecord(ratio) || ratio['kind'] === 'auto') return;
@@ -888,6 +890,11 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
   for (const part of ['width', 'height']) {
     const v = ratio[part];
     if (typeof v === 'number' && v > 2147483647) errors.push({ path: `${path}.style.aspectRatio.${part}`, code: 'bad-value', message: 'a layout ratio part is a raw LayoutUnit, at most 2147483647' });
+  }
+  // A ratio transfers a stretch block size before layout knows what it fills, as with a percentage (ratio.ts noPercentBasis).
+  for (const key of ['height', 'minHeight', 'maxHeight']) {
+    const v = style[key];
+    if (isRecord(v) && v['kind'] === 'stretch') errors.push({ path: `${path}.style.${key}`, code: 'bad-value', message: `a stretch ${key} beside an aspect-ratio is not supported` });
   }
   // A replaced box resolves its block lengths against its percentage basis itself (replaced.ts), so it takes them.
   if (!percentsRefused) return;
