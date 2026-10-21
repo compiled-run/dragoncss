@@ -417,6 +417,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Chromium files with a BSD licence in their own header (header-bsd-7)
 
+- `third_party/blink/renderer/modules/accessibility/ax_node_object.cc`: Copyright (C) 2012, Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_description.cc`: Copyright (C) 2007 Nicholas Shanks <contact@nickshanks.com>; Copyright (C) 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_metrics.cc`: Copyright (C) 2005, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2006 Alexey Proskuryakov
 - `third_party/blink/renderer/platform/fonts/simple_font_data.cc`: Copyright (C) 2005, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2006 Alexey Proskuryakov
