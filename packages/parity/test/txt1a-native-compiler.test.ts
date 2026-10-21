@@ -64,16 +64,41 @@ describe('TXT1a-2 phase C: native lowering of real bundled faces', () => {
     expect(c.digest).not.toBe(compile(inputOf('text-latin-lato')).digest);
   });
 
-  it('refuses Lato natively in a compile given the lanes verdict (a user output, which ships no faces or shim)', () => {
+  it('lowers Lato in a compile given a passing lanes verdict, but keeps the output analysis-only: a ready output ships no faces or shim', () => {
     const project = dragon.createProjectWith(
       { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP },
       { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport, nativeLanes: { ios: PASSING, android: PASSING } },
     );
     const c = project.compile(inputOf('text-latin-lato'));
-    const errors = nativeErrors(c);
-    expect(new Set(errors.map((d) => `${d.target} ${d.code}`))).toEqual(new Set(['ios DRAGON_UNSUPPORTED_FONT', 'android DRAGON_UNSUPPORTED_FONT']));
-    expect([c.outputs.ios.kind, c.outputs.android.kind]).toEqual(['blocked', 'blocked']);
+    expect(nativeErrors(c).map((d) => `${d.code}: ${d.message}`)).toEqual([]);
+    for (const t of ['ios', 'android'] as const) {
+      const o = c.outputs[t];
+      expect(o.kind, t).toBe('analysis-only');
+      expect(o.kind === 'analysis-only' ? o.reason : '', t).toContain(`real bundled faces (${LATO})`);
+    }
+    expect(dragon.nativeLayoutProjection(c, ENVIRONMENT, []).kind).toBe('ready');
     expect(project.compile(inputOf('text-ahem-single-line')).outputs.ios.kind).toBe('ready');
+    // A real face only another @media band lays out still ships with that band, so the output stays analysis-only.
+    const banded = withFontMapAssets(fixtureToInput('txt1a-real-band', `<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; }
+@media (min-width: 800px) { .t { font-family: Lato; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="t" class="t">XX XX</div>
+</body>
+</html>
+`), FONT_REFERENCE_MAP);
+    const b = project.compile(banded);
+    expect(nativeErrors(b).map((d) => `${d.code}: ${d.message}`)).toEqual([]);
+    for (const t of ['ios', 'android'] as const) {
+      const o = b.outputs[t];
+      expect(o.kind, t).toBe('analysis-only');
+      expect(o.kind === 'analysis-only' ? o.reason : '', t).toContain(`real bundled faces (${LATO})`);
+    }
   });
 
   it('lowers Lato for ios and android with the face id, with no font refusal and the engine projection equal to the native one', () => {

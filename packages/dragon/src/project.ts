@@ -1209,10 +1209,12 @@ export function nativeDigest(digest: string, t: 'ios' | 'android'): string {
  * pnpm run profile:rows from packages/parity/out/lanes.json) has every lane of that target passing and none stale; otherwise
  * analysis-only, naming why. A ready native output carries the backend's native support files.
  */
-export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict | null): ArtifactState {
+export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict | null, realFaces: readonly string[] = []): ArtifactState {
   const o = NATIVE_OUTPUT[t];
   const d = nativeDigest(digest, t);
   if (verdict === null) return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: no committed lanes verdict was given to this compilation, so the generated ${o.language} stays internal to the native lanes.` };
+  // TXT1a-2: the support files bundle no real face and no HarfBuzz shim yet, so an app drawing one would stop at launch.
+  if (realFaces.length > 0) return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: it lays out real bundled faces (${realFaces.join(', ')}), and a ready output does not yet ship the face files or the HarfBuzz shim that draws them.` };
   if (verdict.recorded && verdict.stale.length === 0 && verdict.notPassing.length === 0) return { kind: 'ready', digest: d, files: emitNativeSupport(o.backend), assets: [] };
   const why = !verdict.recorded ? 'no committed lanes record proves it' : verdict.stale.length > 0 ? `its committed lanes are stale (${verdict.stale.join('; ')})` : `these lanes do not pass: ${verdict.notPassing.join('; ')}`;
   return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: its layout projection feeds the internal lanes, and the generated ${o.language} stays internal to the native lanes until every ${t} lane passes in a current committed lanes record; ${why}.` };
@@ -1268,6 +1270,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
   let animation: AnimationAnalysis | null = null;
   let laneOnlyNative: ('ios' | 'android')[] = [];
+  // The real faces the native output lays out; a ready output ships neither them nor the shim yet (nativeOutputState).
+  const nativeRealFaceIds = new Set<string>();
   let focusable = true;
   let bands: Bands | null = null;
   let nativeBand = 0;
@@ -1605,11 +1609,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       for (const c of lowerings) {
         try {
           // On by default (InternalOptions.nativeRealFaces); turned off, every non-Ahem face is refused natively; an element's own
-          // font (its strut) counts, not only its text. A compile given the lanes verdict (a user's, whose output can be ready) refuses
-          // them too: a ready output's support files bundle no faces and no shim, so its app could not draw them.
-          const userOutput = options.nativeLanes !== null;
-          const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
-          const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
+          // font (its strut) counts, not only its text.
+          const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
+          const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse with nativeRealFaces off';
+          // Every band is lowered and shipped, so a real face of any band keeps the output analysis-only.
+          for (const f of real.values()) if (f.kind === 'face') nativeRealFaceIds.add(f.id);
           const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
@@ -1661,7 +1665,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const key = t as unknown as K;
     status[key] = blocking.length > 0 || cases.length === 0 ? 'blocked' : 'checked';
     if (status[key] === 'blocked') outputs[key] = { kind: 'blocked', diagnostics: blocking };
-    else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, options.nativeLanes === null ? null : options.nativeLanes[t]);
+    else if (t === 'ios' || t === 'android') outputs[key] = nativeOutputState(t, digest, options.nativeLanes === null ? null : options.nativeLanes[t], [...nativeRealFaceIds].sort());
     else {
       const webFonts = fonts === null || !fonts.used ? null : webFontsOf(fonts, options.faults);
       const whole = (b: Band | null): boolean => b === null || (b.width.some(holdsWholePx) && b.height.some(holdsWholePx));

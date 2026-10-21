@@ -33,6 +33,14 @@ describe('the native output state', () => {
     expect(s.kind).toBe('analysis-only');
     if (s.kind === 'analysis-only') expect(s.reason).toMatch(/these lanes do not pass: device-pixels fail \(3 failures\)/);
   });
+  it('is analysis-only when it lays out a real face, even with every lane passing, naming the faces', () => {
+    for (const t of ['ios', 'android'] as const) {
+      const s = nativeOutputState(t, DIGEST, PASSING, ['sha256:aa', 'sha256:bb']);
+      expect(s.kind, t).toBe('analysis-only');
+      if (s.kind === 'analysis-only') expect(s.reason, t).toMatch(/real bundled faces \(sha256:aa, sha256:bb\).*face files or the HarfBuzz shim/);
+    }
+    expect(nativeOutputState('ios', DIGEST, PASSING, []).kind).toBe('ready');
+  });
   it('is analysis-only when the record is stale, even with every lane passing', () => {
     const s = nativeOutputState('ios', DIGEST, { recorded: true, stale: ['ios device-frames does not match the configured case list'], notPassing: [] });
     expect(s.kind).toBe('analysis-only');
