@@ -7,7 +7,7 @@ import type { LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from './input.t
 import type { LU } from './units.ts';
 import { add, max, min, sub, ZERO } from './units.ts';
 import type { Frag } from './box.ts';
-import { borderBoxFromSpecified, constrain, INDEFINITE, inlineMinMaxOf, isScrollContainer, lengthWidth, resolveBorder, resolveInlineLengthWith, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
+import { borderBoxFromSpecified, constrain, INDEFINITE, inlineMinMaxOf, isScrollContainer, NO_STRETCH, lengthWidth, resolveBorder, resolveInlineLengthWith, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { layoutContents } from './block.ts';
 import type { IntrinsicKind } from './intrinsic.ts';
@@ -135,6 +135,7 @@ export function layoutAtomic(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, cbInline:
     heightBasis: INDEFINITE,
     formattingContextRoot: true,
     bfcLineOffset: ZERO,
+    blockStretch: NO_STRETCH,
   });
   const baseline = atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
   const marginBox = add(add(marginTop, r.frag.height), marginBottom);
