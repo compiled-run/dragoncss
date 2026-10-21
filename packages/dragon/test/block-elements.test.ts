@@ -31,15 +31,15 @@ describe('the element table', () => {
     expect(SUPPORTED_TAGS.has('pre')).toBe(false);
   });
   it('pins the declared UA values, the ancestor contexts and the unmodelled text fonts Chrome 145 has', () => {
-    expect(userAgentDeclared.p.ltr).toEqual({ display: 'block', 'margin-bottom': '1em', 'margin-top': '1em' });
-    expect(userAgentDeclared.h1.ltr).toEqual({ display: 'block', 'font-size': '2em', 'margin-bottom': '0.67em', 'margin-top': '0.67em' });
+    expect(userAgentDeclared.p.ltr).toEqual({ display: 'block', 'margin-bottom': '1em', 'margin-top': '1em', 'unicode-bidi': 'isolate' });
+    expect(userAgentDeclared.h1.ltr).toEqual({ display: 'block', 'font-size': '2em', 'margin-bottom': '0.67em', 'margin-top': '0.67em', 'unicode-bidi': 'isolate' });
     expect([userAgentDeclared.h2.ltr['font-size'], userAgentDeclared.h3.ltr['font-size'], userAgentDeclared.h4.ltr['font-size'], userAgentDeclared.h5.ltr['font-size'], userAgentDeclared.h6.ltr['font-size']]).toEqual(['1.5em', '1.17em', undefined, '0.83em', '0.67em']);
     expect([userAgentDeclared.h2.ltr['margin-top'], userAgentDeclared.h3.ltr['margin-top'], userAgentDeclared.h4.ltr['margin-top'], userAgentDeclared.h5.ltr['margin-top'], userAgentDeclared.h6.ltr['margin-top']]).toEqual(['0.83em', '1em', '1.33em', '1.67em', '2.33em']);
     expect(userAgentDeclared.ul.ltr['padding-left']).toBe('40px');
     expect(userAgentDeclared.ul.rtl['padding-right']).toBe('40px');
     expect(userAgentDeclared.ul.rtl['padding-left']).toBeUndefined();
-    expect(userAgentDeclared.dd.rtl).toEqual({ display: 'block', 'margin-right': '40px' });
-    expect(userAgentDeclared.li.ltr).toEqual({ display: 'list-item' });
+    expect(userAgentDeclared.dd.rtl).toEqual({ display: 'block', 'margin-right': '40px', 'unicode-bidi': 'isolate' });
+    expect(userAgentDeclared.li.ltr).toEqual({ display: 'list-item', 'unicode-bidi': 'isolate' });
     expect(userAgentDeclared.hr.ltr['border-top-style']).toBe('inset');
     expect(userAgentDeclared.hr.ltr['margin-left']).toBe('auto');
     expect(userAgentDeclared.hr.ltr['margin-top']).toBe('0.5em');
