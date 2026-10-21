@@ -175,6 +175,7 @@ export const styleSchema = obj({
   textOverflow: lit('clip', 'ellipsis'),
   textIndent: tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...calc }),
   lineClamp: count0,
+  textBoxTrim: nullable(obj({ start: bool, end: bool, alphabetic: bool })),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -509,6 +510,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
     // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
     if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
+    if (isRecord(style)) checkTextBoxTrim(style, false, path, errors);
     const kids = childrenOf(value, path, errors);
     if (kids === null) return;
     kids.forEach((child: unknown, i: number) => {
@@ -531,6 +533,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
       if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
+      checkTextBoxTrim(style, false, path, errors);
     }
     return;
   }
@@ -556,6 +559,15 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
   if (isRecord(style)) checkGrid(style, children, path, errors);
+  if (isRecord(style)) checkTextBoxTrim(style, style['display'] === 'block', path, errors);
+}
+
+/** css-inline-3 §5.1: text-box-trim trims a block container's inline content, at its start, its end or both; null is none. */
+function checkTextBoxTrim(style: Record<string, unknown>, blockContainer: boolean, path: string, errors: ValidationError[]): void {
+  const t = style['textBoxTrim'];
+  if (!isRecord(t)) return;
+  if (!blockContainer) errors.push({ path: `${path}.style.textBoxTrim`, code: 'bad-value', message: 'only a block-level block container (display block) trims its text box' });
+  if (t['start'] === false && t['end'] === false) errors.push({ path: `${path}.style.textBoxTrim`, code: 'bad-value', message: 'text-box-trim trims the start, the end or both; none is null' });
 }
 
 /** Blink kGridMaxTracks (core/style/grid_area.h): the most tracks a grid axis has, and the largest line magnitude. */
@@ -867,6 +879,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip',
   lineClamp: 0,
+  textBoxTrim: null,
   grid: null,
 };
 

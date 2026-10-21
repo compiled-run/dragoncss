@@ -38,6 +38,7 @@ import { TAB_SIZE_VALUE_PARSERS } from './properties/tab-size.ts';
 import { TEXT_SHADOW_VALUE_PARSERS } from './properties/text-shadow.ts';
 import { TEXT_TRANSFORM_VALUE_PARSERS } from './properties/text-transform.ts';
 import { TEXT_WRAP_VALUE_PARSERS } from './properties/text-wrap.ts';
+import { TEXT_BOX_VALUE_PARSERS } from './properties/text-box.ts';
 import { TOUCH_ACTION_VALUE_PARSERS } from './properties/touch-action.ts';
 import { VISIBILITY_VALUE_PARSERS } from './properties/visibility.ts';
 import { ZOOM_VALUE_PARSERS } from './properties/zoom.ts';
@@ -67,6 +68,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(LINE_CLAMP_VALUE_PARSERS),
   ...Object.entries(LINE_BREAK_VALUE_PARSERS),
   ...Object.entries(TEXT_WRAP_VALUE_PARSERS),
+  ...Object.entries(TEXT_BOX_VALUE_PARSERS),
   ...Object.entries(TAB_SIZE_VALUE_PARSERS),
   ...Object.entries(FONT_VARIANT_VALUE_PARSERS),
   ...Object.entries(FONT_TUNING_VALUE_PARSERS),

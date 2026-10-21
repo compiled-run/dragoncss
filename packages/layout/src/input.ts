@@ -128,6 +128,13 @@ export type AspectRatioValue =
  * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
  * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
+/**
+ * css-inline-3 §5.1-§5.2: which edges of a block container's inline content text-box-trim trims (the block-start edge of its first
+ * line, the block-end edge of its last line), and whether text-box-edge's under edge is alphabetic (the baseline) rather than text
+ * (the font's descent). The over edge is text: the font's ascent (auto and text; cap and ex are refused by the compiler).
+ */
+export type TextBoxTrim = { readonly start: boolean; readonly end: boolean; readonly alphabetic: boolean };
+
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
@@ -353,6 +360,8 @@ export type LayoutStyle = {
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
    */
   readonly lineClamp: number;
+  /** css-inline-3 §5.1 text-box-trim with text-box-edge on a block container whose children are inline-level; null for none. */
+  readonly textBoxTrim: TextBoxTrim | null;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */

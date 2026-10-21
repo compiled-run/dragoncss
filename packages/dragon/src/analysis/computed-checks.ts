@@ -27,6 +27,9 @@ import { TXT2_I_FAULTS } from '../faults/txt2-i.ts';
 import type { Txt2talFaults } from '../faults/txt2-tal.ts';
 import { TXT2_TAL_FAULTS } from '../faults/txt2-tal.ts';
 import { checkTextAlignLast } from './text-align-last.ts';
+import { checkTextBox } from './text-box.ts';
+import type { TextBoxFaults } from '../faults/text-box.ts';
+import { TEXT_BOX_FAULTS } from '../faults/text-box.ts';
 import type { TxtFvFaults } from '../faults/txt-fv.ts';
 import { TXT_FV_FAULTS } from '../faults/txt-fv.ts';
 import { checkFontVariant } from './font-variant.ts';
@@ -1158,7 +1161,7 @@ function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics:
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & BoxDecorationFaults & BackgroundBlendFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & TextBoxFaults & BoxDecorationFaults & BackgroundBlendFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...TEXT_BOX_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS }): void {
   const propagated = propagatedFrom(root);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
@@ -1212,6 +1215,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkHyphens(el, targets, diagnostics, reported, faults);
       // TXT2-tal: text-align-last values the engine does not lay out (analysis/text-align-last.ts).
       checkTextAlignLast(el, holdsInlineContent(el), targets, diagnostics, reported, faults);
+      // text-box-trim where the engine does not trim (analysis/text-box.ts).
+      checkTextBox(el, layoutParent, targets, diagnostics, reported, faults);
       // TXT-FONTFEAT: font-variant features over real faces (analysis/font-variant.ts).
       checkFontVariant(el, targets, diagnostics, reported, shapedAt, faults);
       // TXT-FONTFEAT: kerning, optical sizing and language override over real faces (analysis/font-tuning.ts).

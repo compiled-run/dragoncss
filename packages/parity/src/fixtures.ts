@@ -70,6 +70,7 @@ import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
 import { TABLE } from './fixture-groups/table.ts';
 import { TEXT_ALIGN_LAST } from './fixture-groups/text-align-last.ts';
+import { TEXT_BOX } from './fixture-groups/text-box.ts';
 import { TEXT_BREAK } from './fixture-groups/text-break.ts';
 import { TEXT_CALIBRATION } from './fixture-groups/text-calibration.ts';
 import { TEXT_DECORATION } from './fixture-groups/text-decoration.ts';
@@ -228,6 +229,7 @@ export const GROUPS = {
   svg: SVG,
   table: TABLE,
   'text-align-last': TEXT_ALIGN_LAST,
+  'text-box': TEXT_BOX,
   'text-break': TEXT_BREAK,
   'text-calibration': TEXT_CALIBRATION,
   'text-decoration': TEXT_DECORATION,

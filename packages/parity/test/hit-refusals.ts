@@ -42,6 +42,8 @@ export const INLINE_OUT: readonly string[] = [
   // GEN-c (#469): display-contents holds an inline box (a2), link-pseudos inline links (a1) and list-markers-disc an inline-block first
   // child (i1s, an atomic inline).
   'display-contents', 'display-contents-rtl', 'link-pseudos', 'link-pseudos-rtl', 'list-markers-disc', 'list-markers-disc-rtl',
+  // text-box-ahem holds inline boxes (h1, h2) and a <br> (i1).
+  'text-box-ahem', 'text-box-ahem-rtl',
   // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
 ];

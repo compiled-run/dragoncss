@@ -35,6 +35,7 @@ import type {
   SizeValue,
   TextAlign,
   TextIndentValue,
+  TextBoxTrim,
   TextOverflow,
   TextLeaf,
   TextWrapMode,
@@ -317,8 +318,9 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const l: Lowering = { em: fonts.em, rem: fonts.rem, faults };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
+  const display = displayOfStyle(id, get, lineClamp);
   return {
-    display: displayOfStyle(id, get, lineClamp),
+    display,
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute']),
     top: inset(id, get, 'top', l),
     right: inset(id, get, 'right', l),
@@ -368,9 +370,20 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
     textIndent: textIndent(id, get, l),
     lineClamp,
+    textBoxTrim: textBoxTrim(get, display),
     grid: null,
     gridItem: null,
   };
+}
+
+/**
+ * css-inline-3 §5.1-§5.2: text-box-trim on a block, with the under edge of its text-box-edge (alphabetic or text); null for none and
+ * off a block (analysis/text-box.ts refuses text-box-trim where the engine does not trim: other displays, cap and ex edges, ...).
+ */
+function textBoxTrim(get: Get, display: Display): TextBoxTrim | null {
+  const trim = keywordOf(get('text-box-trim'));
+  if (display !== 'block' || (trim !== 'trim-start' && trim !== 'trim-end' && trim !== 'trim-both')) return null;
+  return { start: trim !== 'trim-end', end: trim !== 'trim-start', alphabetic: keywordOf(get('text-box-edge')).endsWith(' alphabetic') };
 }
 
 /** Runs a grid lowering step, reporting its refusal as a LoweringError on the element. */
@@ -592,7 +605,8 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
   if (own.display === 'grid' || own.display === 'inline-grid') throw new LoweringError(id, 'display', `display: ${own.display} on the replaced element ${id} is not supported`);
   // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
   const gridItem = gridParent === null ? null : gridStep(id, () => (own.position === 'absolute' ? lowerOutOfFlowGridItem(gridParent, raw) : lowerGridItem(gridParent, raw)));
-  const style: LayoutStyle = gridItem === null ? own : { ...own, gridItem };
+  // css-inline-3 §5.1: a replaced element holds no inline content, so text-box-trim has nothing to trim.
+  const style: LayoutStyle = { ...own, textBoxTrim: null, gridItem: gridItem === null ? own.gridItem : gridItem };
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
   if (el.element.tag === 'img') {
     const src = el.element.attributes.get('src');

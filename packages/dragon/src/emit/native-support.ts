@@ -2555,7 +2555,7 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'textBoxTrim', 'grid', 'gridItem',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -2603,6 +2603,14 @@ function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string)
   if (s.kind === 'start-line') return `GridSpan_startLine(${str('start-line')}, ${doubleLit(s.line)})`;
   if (s.kind === 'end-line') return `GridSpan_endLine(${str('end-line')}, ${doubleLit(s.line)})`;
   return `GridSpan_lines(${str('lines')}, ${gridLineValue(s.start, str)}, ${gridLineValue(s.end, str)})`;
+}
+
+/** The textBoxTrim field of a LayoutStyle (css-inline-3 §5.1; input.ts TextBoxTrim), or null. */
+function textBoxTrimValue(lang: Lang, v: unknown): string {
+  if (v === undefined) throw new Error('LayoutStyle.textBoxTrim is missing; it is null where unused');
+  if (v === null) return lang === 'swift' ? 'nil' : 'null';
+  const t = v as import('@dragon/layout').TextBoxTrim;
+  return `TextBoxTrim(${String(t.start)}, ${String(t.end)}, ${String(t.alphabetic)})`;
 }
 
 /** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
@@ -2738,6 +2746,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
   const fieldValue = (st: import('@dragon/layout').LayoutStyle, f: (typeof STYLE_FIELDS)[number]): string => {
     const v = (st as unknown as Record<string, unknown>)[f];
+    if (f === 'textBoxTrim') return textBoxTrimValue(lang, v);
     return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
   };
   const styleOf = (st: import('@dragon/layout').LayoutStyle): string => `LayoutStyle(${STYLE_FIELDS.map((f) => fieldValue(st, f)).join(', ')})`;

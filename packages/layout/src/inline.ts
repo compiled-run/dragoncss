@@ -1783,6 +1783,7 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
   const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
   const rtl = directionOf(ctx, box) === 'rtl';
   checkClampContext(ctx, box, ifc, atoms.length);
+  checkTextBoxTrimContext(ctx, box, ifc, atoms.length);
   const out: AtomicLine[] = [];
   let top = ZERO;
   for (let n = 0; n < broken.length; n++) {
@@ -1889,7 +1890,57 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
     out.push({ line: { top, height, baseline, pieces: cut === null ? pieces : cut.pieces, boxes: on, boxRects, breaks, breakRects, ellipsis: cut === null ? null : cut.ellipsis }, atomics, atomicRects });
     top = add(top, height);
   }
-  return out;
+  return trimLineStart(ctx, box, ifc, out);
+}
+
+/**
+ * css-inline-3 §5.1 text-box-trim: trim-start (InlineLayoutAlgorithm::ApplyTextBoxTrim): the first formatted line's box starts at
+ * its over edge, the strut font's ascent above its baseline (InlineBoxState::AdjustEdges, text-box-edge text or auto) instead of
+ * the line's own ascent, and every later line follows it (BlockLayoutAlgorithm places each line after the one before).
+ */
+function trimLineStart(ctx: Ctx, box: LayoutBox, ifc: Ifc, lines: readonly AtomicLine[]): AtomicLine[] {
+  const t = box.style.textBoxTrim;
+  const first = lines[0];
+  if (t === null || !t.start || first === undefined || ctx.faults.textBoxTrimIgnored) return [...lines];
+  const dy = sub(ifc.strut.ascent, sub(first.line.baseline, first.line.top));
+  return lines.map((l): AtomicLine => ({ line: shiftLine(l.line, dy), atomics: l.atomics, atomicRects: l.atomicRects.map((r) => shiftRect(r, dy)) }));
+}
+
+function shiftRect(r: Rect, dy: LU): Rect {
+  return { x: r.x, y: add(r.y, dy), width: r.width, height: r.height };
+}
+
+function shiftLine(line: PlacedLine, dy: LU): PlacedLine {
+  const pieces = line.pieces.map((p): LinePiece => ({ ...p, top: add(p.top, dy) }));
+  const e = line.ellipsis;
+  const ellipsis = e === null ? null : { ...e, top: add(e.top, dy) };
+  return { ...line, top: add(line.top, dy), baseline: add(line.baseline, dy), pieces, boxRects: line.boxRects.map((r) => shiftRect(r, dy)), breakRects: line.breakRects.map((r) => shiftRect(r, dy)), ellipsis };
+}
+
+/**
+ * css-inline-3 §5.1 text-box-trim: trim-end (ApplyTextBoxTrim, SetTrimBlockEndBy): the block's content ends at the last line's under
+ * edge, the strut font's descent below its baseline (text-box-edge text or auto) or the baseline itself (alphabetic,
+ * FixedAlphabetic), instead of the line box's end. The amount the content's end moves up; zero without trim-end or lines.
+ */
+function trimmedLineEnd(ctx: Ctx, box: LayoutBox, ifc: Ifc, lines: readonly PlacedLine[]): LU {
+  const t = box.style.textBoxTrim;
+  const last = lines[lines.length - 1];
+  if (t === null || !t.end || last === undefined || ctx.faults.textBoxTrimIgnored) return ZERO;
+  const below = sub(add(last.top, last.height), last.baseline);
+  return t.alphabetic ? below : sub(below, ifc.strut.descent);
+}
+
+/**
+ * The text-box-trim containers the engine lays out: one inline formatting context of collapsible text and inline boxes, with no
+ * atomic inline, line clamp or text-overflow ellipsis. The compiler refuses the rest (analysis/text-box.ts); these guard the
+ * engine's own inputs.
+ */
+function checkTextBoxTrimContext(ctx: Ctx, box: LayoutBox, ifc: Ifc, atomics: number): void {
+  if (box.style.textBoxTrim === null) return;
+  if (ifc.mode !== 'collapse') unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, whose white space is preserved, is not yet proven against Chrome`);
+  if (atomics > 0) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which holds an atomic inline, is not yet proven against Chrome`);
+  if (box.style.lineClamp !== 0) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on the line-clamp container ${box.id} is not yet proven against Chrome`);
+  if (truncates(ctx, box)) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which truncates its lines with an ellipsis, is not yet proven against Chrome`);
 }
 
 /** Whether a block container truncates its overflowing lines (LayoutBlockFlow::ShouldTruncateOverflowingText): overflow not visible. */
@@ -2230,7 +2281,7 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
   placeTopFragments(inlineChildren(box), fragments, placed);
   const last = lines[lines.length - 1];
   const first = lines[0];
-  return { height: clampedLinesHeight(ctx, box, lines), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
+  return { height: sub(clampedLinesHeight(ctx, box, lines), trimmedLineEnd(ctx, box, ifc, lines)), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content breaks only at <br>s, so it is the widest forced line; min-content takes every

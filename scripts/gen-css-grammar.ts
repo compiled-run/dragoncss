@@ -109,6 +109,8 @@ const SUBSET = [
   'text-wrap-style', 'text-wrap',
   // css-text-3 §7.2: text-align-last, after word-wrap, as LONGHANDS registers it.
   'text-align-last',
+  // css-inline-3 §5: text-box-trim and text-box-edge, then the text-box shorthand, after text-align-last, as LONGHANDS registers them.
+  'text-box-trim', 'text-box-edge', 'text-box',
   // css-fonts-4 §6.4-§6.11: the font-variant longhands, then the font-variant shorthand, after word-wrap, as LONGHANDS registers them.
   'font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji', 'font-variant',
   // css-fonts-4 §6.3, §7.1, §6.13: font-kerning, font-optical-sizing and font-language-override, after word-wrap, as LONGHANDS registers them.
@@ -267,6 +269,11 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // Blink TextAlignLast (css_properties.json5 keywords): css-text-3's match-parent is not a Chrome 145 value. Pinned by
   // packages/parity/test/text-align-last-parse.test.ts.
   'text-align-last': 'auto | start | end | left | right | center | justify',
+  // Blink ConsumeTextBoxTrim, ConsumeTextBoxEdge and TextBox::ParseShorthand (Chrome 145): cap and ex need an under edge
+  // (TextBoxEdge::UnderForOver), and the shorthand takes normal. Pinned by packages/parity/test/text-box-parse.test.ts.
+  'text-box-trim': 'none | trim-start | trim-end | trim-both',
+  'text-box-edge': 'auto | text [ text | alphabetic ]? | [ cap | ex ] [ text | alphabetic ]',
+  'text-box': "normal | <'text-box-trim'> || <'text-box-edge'>",
   // Blink WordBreak (css_properties.json5 keywords): css-text-4's manual is not parsed in Chrome 145 (notes/T149-txt2-spec.md R2).
   'word-break': 'normal | break-all | keep-all | break-word | auto-phrase',
   // Blink's text-transform parser with CSSTextTransformFullWidth off (Chrome 145): one keyword; full-width and full-size-kana are invalid.

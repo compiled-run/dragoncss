@@ -202,6 +202,8 @@ export type EngineFaults = {
   readonly clampEllipsisMissingWhenLineFits: boolean;
   /** TXT2-g: line N gets an ellipsis even when it is the last line (Blink relayouts without the clamp when nothing follows). */
   readonly clampEllipsisOnExactLastLine: boolean;
+  /** css-inline-3 §5.1: text-box-trim is ignored; every line keeps its line box's block-start and block-end edges. */
+  readonly textBoxTrimIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -287,6 +289,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampHeightIncludesHiddenLines: false,
   clampEllipsisMissingWhenLineFits: false,
   clampEllipsisOnExactLastLine: false,
+  textBoxTrimIgnored: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
@@ -659,6 +662,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: first, outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: clampsLines(box, last) ? null : last, defaultLastBaselineFlex: clampsLines(box, last) ? box.id : '', markerY };
   }
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
+  // css-inline-3 §5.1: text-box-trim reaches the first and last lines of block children (BoxFragmentBuilder::SetInitialTextBoxTrim),
+  // which the engine does not trim; the compiler refuses it (analysis/text-box.ts).
+  if (box.style.textBoxTrim !== null && kids.length > 0) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which holds block-level boxes, is not yet proven against Chrome`);
   const direction = directionOf(ctx, box);
   const placed: Placed[] = [];
   let strut = EMPTY_STRUT;

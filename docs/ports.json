@@ -629,7 +629,9 @@
         { "lines": "1410-1421", "symbol": "ConsumeSVGGeometryPropertyLength", "source": "located" },
         { "lines": "4837-4840", "symbol": "ConsumePrefixedMaskComposite", "source": "located" },
         { "lines": "4939-4952", "symbol": "ConsumePrefixedBackgroundBox", "source": "located" },
-        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" }
+        { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" },
+        { "lines": "8624-8668", "symbol": "ConsumeTextBoxEdge", "source": "cited" },
+        { "lines": "8671-8674", "symbol": "ConsumeTextBoxTrim", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
@@ -646,7 +648,8 @@
         { "file": "packages/parity/test/place-computed.test.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/text-box.ts", "symbol": "consumeTextBoxEdge", "use": "port" }
       ]
     },
     {
