@@ -103,3 +103,37 @@ describe('FORM-a controls', () => {
     expect(errors(out.diagnostics)).toContainEqual(expect.stringMatching(/:hover needs Dragon hit testing through the form control b/));
   });
 });
+
+describe('FORM-d checkbox and radio', () => {
+  const TOGGLE = '.c { appearance: none; display: block; width: 12px; height: 12px; border: 1px solid #036; } ';
+  const toggle = (type: string) => (r: SourceRef) => ({ ...div(r, 'c', ['c']), tag: 'input', attributes: [attr('type', type)] });
+
+  it('accepts a checkbox or radio with appearance: none, its type ASCII case-insensitive, and refuses a themed one', () => {
+    for (const type of ['checkbox', 'radio', 'CheckBox', 'RADIO']) expect(errors(compile(`${BODY}${TOGGLE}`, (r) => [toggle(type)(r)]).diagnostics), type).toEqual([]);
+    expect(errors(compile(`${BODY}${TOGGLE}.c { appearance: auto; }`, (r) => [toggle('checkbox')(r)]).diagnostics)).toContainEqual(expect.stringMatching(/<input type=checkbox> c with appearance: auto is painted by the platform theme/));
+    expect(errors(compile(`${BODY}${TOGGLE}.c { appearance: radio; }`, (r) => [toggle('radio')(r)]).diagnostics)).toContainEqual(expect.stringMatching(/<input type=radio> c with appearance: radio is painted by the platform theme/));
+  });
+
+  it('refuses a display other than block or inline-block, and an aspect-ratio', () => {
+    const refused = (css: string): string[] => errors(compile(`${BODY}${TOGGLE}${css}`, (r) => [toggle('checkbox')(r)]).diagnostics);
+    expect(refused('.c { display: inline; }')).toContainEqual(expect.stringMatching(/display: inline on <input type=checkbox> c is not supported/));
+    expect(refused('.c { display: list-item; }')).toContainEqual(expect.stringMatching(/display: list-item on <input type=checkbox> c is not supported/));
+    expect(refused('.c { display: flex; }')).toContainEqual(expect.stringMatching(/display: flex on <input type=checkbox> c is not supported/));
+    expect(refused('.c { aspect-ratio: 2; height: auto; }')).toContainEqual(expect.stringMatching(/aspect-ratio: 2 \/ 1 on <input type=checkbox> c is not supported/));
+    expect(refused('.c { display: inline-block; }').filter((e) => e.includes('display:'))).toEqual([]);
+  });
+
+  it('refuses :checked, which the user changes at run time', () => {
+    expect(compile(`${BODY}${TOGGLE}.c:checked { width: 20px; }`, (r) => [toggle('checkbox')(r)]).diagnostics.some((d) => d.code === 'DRAGON_UNSUPPORTED_SELECTOR')).toBe(true);
+  });
+
+  it('warns on native that a checkbox or radio does not toggle, and compiles it', () => {
+    for (const type of ['checkbox', 'radio']) {
+      const out = compile(`${BODY}${TOGGLE}`, (r) => [toggle(type)(r)], NATIVE);
+      expect(errors(out.diagnostics)).toEqual([]);
+      const warned = out.diagnostics.filter((d) => d.code === 'DRAGON_CONTROL_STATIC_NATIVE');
+      expect(warned.map((d) => [d.target, d.message.includes(`<input type=${type}> c does not toggle when tapped`)]).sort()).toEqual([['android', true], ['ios', true]]);
+    }
+  });
+});
+

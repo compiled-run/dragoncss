@@ -412,3 +412,34 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(inside.kind === 'unsupported' ? inside.unsupported.code : 'ok').toBe('control-out-of-flow');
   });
 });
+
+describe('FORM-d toggle: a block checkbox or radio with appearance: none', () => {
+  // Chrome 145 (controls-toggle.html): in a 200px block, an auto-width toggle with 2px borders and 1px padding is 6px wide, a
+  // block-level one never collapses through (the next box's top margin does not join its margins), and auto margins centre it.
+  const edges: Partial<LayoutStyle> = { ...ZERO_EDGES, paddingTop: px(1), paddingRight: px(1), paddingBottom: px(1), paddingLeft: px(1), borderTopWidth: px(2), borderRightWidth: px(2), borderBottomWidth: px(2), borderLeftWidth: px(2) };
+  const margins = (top: number, right: number | 'auto', bottom: number, left: number | 'auto'): Partial<LayoutStyle> => ({ marginTop: px(top), marginRight: right === 'auto' ? { kind: 'auto' } : px(right), marginBottom: px(bottom), marginLeft: left === 'auto' ? { kind: 'auto' } : px(left) });
+  const rects = (kids: (LayoutBox | ControlBox)[]): Map<string, LayoutRect> => layoutRects(box('root', { width: px(200) }, kids));
+  const at = (r: Map<string, LayoutRect>, id: string): Rect => {
+    const x = r.get(id) as LayoutRect;
+    return [x.x / 64, x.y / 64, x.width / 64, x.height / 64];
+  };
+
+  it('fits its content in block flow, never collapses through, and centres between auto margins', () => {
+    const r = rects([control('a', { kind: 'toggle' }, { ...margins(3, 3, 3, 4) }), control('b', { kind: 'toggle' }, { ...edges, ...margins(3, 3, 3, 4) }), control('c', { kind: 'toggle' }, { ...edges, ...margins(0, 'auto', 0, 'auto') })]);
+    expect(at(r, 'a')).toEqual([4, 3, 0, 0]);
+    expect(at(r, 'b')).toEqual([4, 6, 6, 6]);
+    expect(at(r, 'c')).toEqual([97, 15, 6, 6]);
+  });
+
+  it('a plain box in its place would stretch and collapse through, so the control kind decides both', () => {
+    const r = rects([box('a', { ...margins(3, 3, 3, 4) }), box('b', { ...edges, ...margins(3, 3, 3, 4) })]);
+    expect(at(r, 'a')).toEqual([4, 3, 193, 0]);
+    expect(at(r, 'b')).toEqual([4, 3, 193, 6]);
+  });
+
+  it('the validator rejects a toggle that is not a block box', () => {
+    const input: LayoutInput = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1, root: box('root', {}, [control('t', { kind: 'toggle' }, { display: 'inline-block' })]) };
+    const valid = validateLayoutInput(input);
+    expect(valid.ok ? [] : valid.errors.map((e) => e.message)).toContain('a toggle control is a block box');
+  });
+});

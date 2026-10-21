@@ -3,7 +3,9 @@
 // nothing; Chrome's appearance display adjustment (an li with appearance: auto is a block, with no marker). The rejects name what
 // A3 refuses: a themed button (FORM-b), an inline-level one (RF-INL), the UA control font, an absolutely positioned button, an
 // auto-width flex button in block flow, and an inline element that appearance makes inline-block. FORM-c: :disabled and :enabled
-// from the disabled attribute, with Chrome's disabled button and range colours.
+// from the disabled attribute, with Chrome's disabled button and range colours. FORM-d: checkbox and radio inputs with appearance:
+// none as empty boxes (fitting their content in block flow, stretched as flex and grid items and between insets), refusing a themed
+// one, :checked and display: inline.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
@@ -28,5 +30,9 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-range-part-direction', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'direction on the track of <input> r is not supported'),
   reject('reject-controls-range-pseudo-state', 'DRAGON_UNSUPPORTED_SELECTOR', ':hover', null),
   both('controls-disabled'),
+  both('controls-toggle'),
+  reject('reject-controls-toggle-theme', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="c" type="checkbox">', '<input type=checkbox> c with appearance: auto is painted by the platform theme'),
+  reject('reject-controls-toggle-checked', 'DRAGON_UNSUPPORTED_SELECTOR', ':checked', null),
+  reject('reject-controls-toggle-inline', 'DRAGON_UNSUPPORTED_VALUE', 'inline', 'display: inline on <input type=radio> c is not supported'),
   reject('reject-controls-appearance-inline', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="s" class="a">XX</span>', 'display: inline-block on <span> s makes it an inline-level box'),
 ];

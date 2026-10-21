@@ -962,6 +962,10 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     obj(v, ['kind'], path);
     return { kind: 'button-block' };
   }
+  if (k === 'toggle') {
+    obj(v, ['kind'], path);
+    return { kind: 'toggle' };
+  }
   return fail(`${path}: unknown kind ${k}`);
 }
 

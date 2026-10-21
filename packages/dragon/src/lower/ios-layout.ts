@@ -61,7 +61,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { isControlTag } from '../analysis/elements/controls.ts';
+import { isControlTag, toggleType } from '../analysis/elements/controls.ts';
 import { rangePartOf } from '../analysis/resolve.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
@@ -850,6 +850,10 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const strut = strutOf(el, inlineContent, l.mode, zoom);
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
   if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  // FORM-d: an in-flow block checkbox or radio fits its content and never collapses through; floated, positioned, grid-placed or
+  // inline-block, Chrome lays it out as the plain box it is (controls-toggle fixtures).
+  const blockBox = style.display === 'block' && style.float === 'none' && style.position !== 'absolute' && style.position !== 'fixed' && style.gridItem === null;
+  if (el.element.tag === 'input' && toggleType(el.element.attributes.get('type')) !== null && blockBox) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'toggle' }, strut, children };
   const range = rangePartOf(el);
   if (range !== undefined && range.part === null) {
     // A range is a flex container whatever its display (range_input_type.cc CreateLayoutObject); its default track length is
