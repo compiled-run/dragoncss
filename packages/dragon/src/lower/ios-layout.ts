@@ -20,6 +20,7 @@ import type {
   JustifyContent,
   LayoutBox,
   LayoutStyle,
+  MulticolStyle,
   ObjectFit,
   ObjectPositionValue,
   ReplacedLeaf,
@@ -201,6 +202,20 @@ function gap(id: string, get: Get, p: Longhand, l: Lowering): GapValue {
   if (v.kind === 'keyword' && v.value === 'normal') return { kind: 'normal' };
   const lp = lengthPercentage(id, get, p, 'non-negative', l);
   return lp === null ? fail(id, p, v, 'px | % | a viewport length | a calculation | normal') : lp;
+}
+
+/**
+ * css-multicol-1 §3: a block whose column-width is a px length or whose column-count is a number is a multi-column container
+ * (analysis/multicol.ts refuses the ones the engine does not lay out, and every other spelling); column-count auto is 0.
+ */
+function multicolOf(get: Get): MulticolStyle | null {
+  const width = get('column-width');
+  const count = get('column-count');
+  if (keywordOf(get('display')) !== 'block' || (width.kind !== 'length' && count.kind !== 'number')) return null;
+  return {
+    count: count.kind === 'number' ? count.value : 0,
+    width: width.kind === 'length' && width.unit === 'px' ? { kind: 'px', value: width.value } : { kind: 'auto' },
+  };
 }
 
 // css-text-3 §8.1: text-indent is a length, a percentage of the line's available width or a calculation, negative allowed.
@@ -448,8 +463,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     // contain-intrinsic-width and -height accept none alone (analysis/scroll-containment.ts), a size containment of 0.
     containIntrinsicWidth: { kind: 'none' },
     containIntrinsicHeight: { kind: 'none' },
-    // css-multicol-1: the compiler writes no multi-column container yet; column-count and column-width are not lowered.
-    multicol: null,
+    multicol: multicolOf(get),
     grid: null,
     gridItem: null,
   };

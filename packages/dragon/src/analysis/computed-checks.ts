@@ -1325,7 +1325,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
   // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
   // staleLh: the inherited em or % lengths an ancestor inherits over its own font size (checkViewportFont).
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>): void => {
+  // chain: el's ancestors, outermost first.
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>, chain: readonly ResolvedElement[]): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1335,7 +1336,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkTransformExtra(el, targets, diagnostics, reported, faults);
       checkZoom(el, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
-      checkMulticol(el, targets, diagnostics, reported, faults);
+      checkMulticol(el, chain, true, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
       return;
     }
@@ -1359,8 +1360,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkZoom(el, targets, diagnostics, reported);
     // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
-    // The multicol family, initial values only (analysis/multicol.ts).
-    checkMulticol(el, targets, diagnostics, reported, faults);
+    // The multicol family: the multi-column containers the engine lays out, and the rest at initial values only (analysis/multicol.ts).
+    checkMulticol(el, chain, here, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
@@ -1400,9 +1401,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
     const boxParent = isContents(el) ? layoutParent : el;
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale, [...chain, el]);
   };
-  walk(root, false, 'viewport', [], null, new Set());
+  walk(root, false, 'viewport', [], null, new Set(), []);
   // SCROLL-SNAP: a scroll container that snaps to a snap area, which native does not yet (analysis/scroll-containment.ts).
   checkScrollSnap(root, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, faults);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
