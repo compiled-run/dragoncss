@@ -18,7 +18,7 @@ import { animEmits } from './anim-samples.ts';
 import { resizeEmits } from './resize-scripts.ts';
 import { envEmits } from './device-env.ts';
 import { deviceHitSource } from './hit-capture.ts';
-import { deviceTraceSources } from './trace-lane.ts';
+import { deviceTraceSources, hostUserInteractionSources } from './trace-lane.ts';
 import type { ParityCase } from './cases.ts';
 import { atDpr, layoutCases } from './dpr.ts';
 import type { FixtureSpec } from './fixtures.ts';
@@ -1097,6 +1097,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(deviceHitSource(target));
   // SELD-R2 (T064 R14): the interaction programs and their device-traces scripts.
   files.push(...deviceTraceSources(target));
+  // SELD-R2 §1: one user-app interaction file and its documented mount, compiled with the app.
+  files.push(...hostUserInteractionSources(target));
   if (plant !== null && supportPlant === null) files.push(PLANTED[plant as Exclude<BuildPlant, SupportPlant>]);
   // TXT1a-2 phase R: the HarfBuzz shim's wrapper, the host DragonShaper and the probe it is checked with.
   files.push(...shimSources(target));
