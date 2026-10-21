@@ -417,6 +417,10 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
       const pending = d.animation?.pending;
       if (pending !== undefined) for (const p of pending.targets) feature(`${p}:var()`, d.valueSpan);
       else for (const [p, list] of d.animation?.longhands ?? []) {
+        // all's CSS-wide keyword yields an initial list (no animation or transition runs: animation-name none, transition-duration
+        // 0s) or a list copied from a declaration keyed where it is written (inherit, revert-layer; revert reaches no UA animation),
+        // so it keys no frame-lane feature of its own.
+        if (list.kind === 'wide' && d.property === 'all') continue;
         if (list.kind === 'wide') feature(`${p}:${list.keyword}`, d.valueSpan);
         else for (const item of list.items) feature(`${p}:${featureType(item)}`, d.valueSpan);
       }
