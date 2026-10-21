@@ -46,6 +46,8 @@ export type WebCapture = {
 const collectNodes = (props: string[]): CapturedNode[] => {
   const out: CapturedNode[] = [];
   const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
+  // Runs in the page (page.evaluate), so it closes over nothing: the elements Chrome lays out as LayoutReplaced.
+  const REPLACED_TAGS = ['IMG', 'VIDEO', 'CANVAS', 'IFRAME', 'EMBED'];
   for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
     const id = el.getAttribute('data-dragon-id') as string;
     const r = el.getBoundingClientRect();
@@ -61,8 +63,9 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     // box (no box fragment of its own) also lists the zero-width piece of a <br> inside it beside that line's rect, and only in
     // the first layout (INL-P open question 1), so a zero-width <br> piece with another rect on its line is left out.
     // An SVG element is never a CSS inline box: an <svg> is a replaced element (an atomic inline at most) and a shape inside it
-    // is laid out by SVG, not by inline formatting, though its computed display is 'inline' (Chrome's LayoutSVGShape).
-    if (cs.display === 'inline' && el.tagName !== 'BR' && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
+    // is laid out by SVG, not by inline formatting, though its computed display is 'inline' (Chrome's LayoutSVGShape). RF-INL: a
+    // replaced element with display: inline is an atomic inline (Chrome's LayoutReplaced), one box on its line, not an inline box.
+    if (cs.display === 'inline' && el.tagName !== 'BR' && !REPLACED_TAGS.includes(el.tagName) && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
       const rects = Array.from(el.getClientRects());
       const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
       const extraBrPiece = (f: DOMRect): boolean =>
