@@ -1,0 +1,18 @@
+{
+  "case": "controls-button-flex-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,1]]},
+    {"id":"a2:text0","lines":[[0,2]]},
+    {"id":"a3:text0","lines":[[0,1]]},
+    {"id":"c1:text0","lines":[[0,5]]},
+    {"id":"c2:text0","lines":[[0,2]]},
+    {"id":"d1:text0","lines":[[0,2]]},
+    {"id":"d2:text0","lines":[[0,2]]},
+    {"id":"d3:text0","lines":[[0,17]]},
+    {"id":"e1-t:text0","lines":[[0,3]]},
+    {"id":"e1-u:text0","lines":[[0,2]]},
+    {"id":"e2:text0","lines":[[0,2]]},
+    {"id":"e3:text0","lines":[[0,2]]}
+  ]
+}

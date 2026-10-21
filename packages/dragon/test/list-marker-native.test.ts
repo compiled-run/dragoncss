@@ -185,8 +185,8 @@ describe('GEN-c: a text marker on the native programs', () => {
     expect(swift).not.toContain('dragonSetListMarker');
     expect(swift).toContain('ListMarker(JsString("li::marker"), JsString("text"), nil, JsString("1. "), FontSpec(JsString("Ahem"), 16.0,');
     for (const [b, tree, key, configure] of [
-      ['uikit', 'Support/DragonTree.swift', 'zMarkerTexts[m.id.description + ":text0"] = m', 'tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(try units_platformFontSize(m.font.size) / s)), lines: [spec], scale: s)'],
-      ['android-views', 'kotlin/dev/dragon/views/DragonTree.kt', 'zMarkerTexts[m.id + ":text0"] = m', 'tv.dragonConfigure(bridge, units_platformFontSize(marker.font.size).toFloat(), listOf(spec), scale)'],
+      ['uikit', 'Support/DragonTree.swift', 'zMarkerTexts[m.id.description + ":text0"] = m', 'tv.dragonConfigure(font: bridge.font(face: m.font.family.description, pointSize: CGFloat(try units_platformFontSize(m.font.size) / s)), face: m.font.family.description, lines: [spec], scale: s)'],
+      ['android-views', 'kotlin/dev/dragon/views/DragonTree.kt', 'zMarkerTexts[m.id + ":text0"] = m', 'tv.dragonConfigure(bridge, marker.font.family, units_platformFontSize(marker.font.size).toFloat(), listOf(spec), scale)'],
     ] as const) {
       const support = emitNativeSupport(b).find((f) => f.path === tree)?.text ?? '';
       expect(support, b).toContain(key);

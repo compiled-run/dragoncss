@@ -76,6 +76,8 @@ describe('text-box-trim: refusals', () => {
       ['.a { text-box: trim-both ex text; }', own, 'its text-box-edge is ex text, whose x-height over edge no Ahem fixture can tell from text'],
       ['.a { text-box-trim: trim-both; display: inline-block; }', own, 'its display is inline-block; Dragon trims a block\'s own lines only'],
       ['.f { display: flex; } .a { text-box-trim: trim-both; }', (r) => [div(r, 'f', ['f'], [div(r, 'a', ['a'], [text(r, 't', 'XX')])])], 'it sits in a display: flex box; Dragon trims a block in a block only'],
+      ['.f { display: flex; } .a { text-box-trim: trim-both; }', (r) => [div(r, 'f', ['f'], [div(r, 'm', [], [div(r, 'a', ['a'], [text(r, 't', 'XX')])])])], 'it sits inside the flex container <div> f, whose item Chrome sizes by its trimmed content'],
+      ['.g { display: grid; } .a { text-box-trim: trim-both; }', (r) => [div(r, 'g', ['g'], [div(r, 'm', [], [div(r, 'n', [], [div(r, 'a', ['a'], [text(r, 't', 'XX')])])])])], 'it sits inside the grid container <div> g, whose item Chrome sizes by its trimmed content'],
       ['.a { text-box-trim: trim-both; position: absolute; }', own, 'it is position: absolute'],
       ['.a { text-box-trim: trim-both; overflow: hidden; }', own, 'its overflow is not visible'],
       ['.a { text-box-trim: trim-both; white-space: pre; }', own, 'its white space is preserved'],

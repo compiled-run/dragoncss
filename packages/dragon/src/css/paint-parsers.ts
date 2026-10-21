@@ -19,12 +19,18 @@ import { FONT_VARIANT_VALUE_PARSERS } from './properties/font-variant.ts';
 import { FONT_TUNING_VALUE_PARSERS } from './properties/font-tuning.ts';
 import { FONT_STRETCH_VALUE_PARSERS } from './properties/font-stretch.ts';
 import { FONT_FEATURES_VALUE_PARSERS } from './properties/font-features.ts';
+import { FONT_SIZE_ADJUST_VALUE_PARSERS } from './properties/font-size-adjust.ts';
 import { LINE_BREAK_VALUE_PARSERS } from './properties/line-break.ts';
 import { FRAGMENTATION_VALUE_PARSERS } from './properties/fragmentation.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { MASK_VALUE_PARSERS } from './properties/mask.ts';
 import { CONTAINMENT_VALUE_PARSERS } from './properties/containment.ts';
 import { CONTAINER_QUERY_VALUE_PARSERS } from './properties/container-query.ts';
+import { IMAGE_RENDERING_VALUE_PARSERS } from './properties/image-rendering.ts';
+import { ANCHOR_POSITION_VALUE_PARSERS } from './properties/anchor-position.ts';
+import { SVG_EXTRA_VALUE_PARSERS } from './properties/svg-extra.ts';
+import { VIEW_TRANSITION_VALUE_PARSERS } from './properties/view-transition.ts';
+import { ANIMATION_EXTRA_VALUE_PARSERS } from './properties/animation-extra.ts';
 import { OVERSCROLL_VALUE_PARSERS } from './properties/overscroll.ts';
 import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
 import { COUNTERS_VALUE_PARSERS } from './properties/counters.ts';
@@ -36,6 +42,7 @@ import { SCROLLBAR_VALUE_PARSERS } from './properties/scrollbar.ts';
 import { SELECTION_VALUE_PARSERS } from './properties/selection.ts';
 import { SVG_DASH_VALUE_PARSERS } from './properties/svg-dash.ts';
 import { SVG_PAINT_ORDER_VALUE_PARSERS } from './properties/svg-paint-order.ts';
+import { SVG_D_VALUE_PARSERS } from './properties/svg-d.ts';
 import { parseBoxShadow } from './properties/shadow.ts';
 import { TAB_SIZE_VALUE_PARSERS } from './properties/tab-size.ts';
 import { TEXT_SHADOW_VALUE_PARSERS } from './properties/text-shadow.ts';
@@ -60,8 +67,12 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   // SVG-opacity: fill-opacity and stroke-opacity take opacity's <opacity-value>.
   ['fill-opacity', (tokens, base) => parseOpacityValue('fill-opacity', tokens, base)],
   ['stroke-opacity', (tokens, base) => parseOpacityValue('stroke-opacity', tokens, base)],
+  // SVG-inert-b: stop-opacity and flood-opacity take it too (css-color-4 §3.2, filter-effects-1 §9.2).
+  ['stop-opacity', (tokens, base) => parseOpacityValue('stop-opacity', tokens, base)],
+  ['flood-opacity', (tokens, base) => parseOpacityValue('flood-opacity', tokens, base)],
   ...Object.entries(SVG_DASH_VALUE_PARSERS),
   ...Object.entries(SVG_PAINT_ORDER_VALUE_PARSERS),
+  ...Object.entries(SVG_D_VALUE_PARSERS),
   ['box-shadow', parseBoxShadow],
   ...Object.entries(OUTLINE_VALUE_PARSERS),
   ...Object.entries(VISIBILITY_VALUE_PARSERS),
@@ -77,6 +88,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(FONT_TUNING_VALUE_PARSERS),
   ...Object.entries(FONT_STRETCH_VALUE_PARSERS),
   ...Object.entries(FONT_FEATURES_VALUE_PARSERS),
+  ...Object.entries(FONT_SIZE_ADJUST_VALUE_PARSERS),
   ...Object.entries(TEXT_SHADOW_VALUE_PARSERS),
   ...Object.entries(FILTER_VALUE_PARSERS),
   ...Object.entries(FX_VALUE_PARSERS),
@@ -94,6 +106,11 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(SCROLL_SNAP_VALUE_PARSERS),
   ...Object.entries(CONTAINMENT_VALUE_PARSERS),
   ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
+  ...Object.entries(IMAGE_RENDERING_VALUE_PARSERS),
+  ...Object.entries(ANCHOR_POSITION_VALUE_PARSERS),
+  ...Object.entries(SVG_EXTRA_VALUE_PARSERS),
+  ...Object.entries(VIEW_TRANSITION_VALUE_PARSERS),
+  ...Object.entries(ANIMATION_EXTRA_VALUE_PARSERS),
   ...Object.entries(COUNTERS_VALUE_PARSERS),
   ...Object.entries(MULTICOL_VALUE_PARSERS),
   ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),

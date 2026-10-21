@@ -80,6 +80,17 @@ describe('text-box-trim: refusals and validation', () => {
     expect(clamp.kind === 'unsupported' ? clamp.unsupported.code : null).toBe('text-box-trim');
   });
 
+  it('refuses a trimmed block that is positioned or floated', () => {
+    const cases: readonly (readonly [string, LayoutBox])[] = [
+      ['absolute', box('root', {}, [trimmed('a', BOTH, [t('t', FIVE)], { position: 'absolute' })])],
+      ['float', box('root', {}, [trimmed('a', BOTH, [t('t', FIVE)], { float: 'left' })])],
+    ];
+    for (const [what, root] of cases) {
+      const r = run(root);
+      expect(r.kind === 'unsupported' ? r.unsupported.code : r.kind, what).toBe('text-box-trim');
+    }
+  });
+
   it('accepts a trim on a block, and rejects one that trims nothing or sits on an inline box', () => {
     const input = (root: LayoutBox) => JSON.parse(JSON.stringify({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root })) as unknown;
     expect(validateLayoutInput(input(box('root', {}, [trimmed('a', BOTH, [t('t', 'XX')])]))).ok).toBe(true);

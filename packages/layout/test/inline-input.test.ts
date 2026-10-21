@@ -33,8 +33,8 @@ describe('the validator for inline content (R5)', () => {
     expect(v(box('root', {}, [box('c', {}, [{ ...inner, children: [replaced as unknown as InlineChild] }], strut)]))).toEqual(['block-in-inline']);
     expect(v(box('root', {}, [box('c', { display: 'inline' })]))).toEqual(['bad-value']);
     expect(v(box('root', {}, [box('c', {}, [{ ...inner, style: { ...inner.style, display: 'block' } }])]))).toEqual(['bad-value']);
-    // An inline replaced box is an atomic inline (INL2): a replaced leaf stays block-level.
-    expect(v(box('root', {}, [{ ...replaced, style: { ...divStyle, display: 'inline' } } as unknown as LayoutBox]))).toEqual(['bad-value']);
+    // An inline replaced box is an atomic inline (RF-INL), so it is inline content: its block container has a strut.
+    expect(v(box('root', {}, [{ ...replaced, style: { ...divStyle, display: 'inline' } } as unknown as LayoutBox], null))).toEqual(['strut']);
   });
   it('rejects a text leaf whose font or line-height is not its parent\'s (the strut, or its inline box)', () => {
     expect(v(box('root', {}, [box('c', {}, [text('t', 'XX'), span('s', [text('u', 'YY')], { font: ahemFont(20) })], strut)]))).toEqual(['leaf-font']);

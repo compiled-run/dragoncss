@@ -107,6 +107,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'image-offset-1': ['replaced-block', 'replaced-fit'],
   // BG2-u: bg-image-web's tile edges (rule edge:<id>:tile-*) move with the tiles, shifted 2 device px (past GATE_DEVICE_PX; the name is the registry's).
   'bg-image-offset-1': ['bg-image-web'],
+  // replaced-pixelated's upscaled imgs show nearest-neighbour texels (image-flat:<id>:nearest-<n>) that a filtered draw blends.
+  'image-smooth': ['replaced-pixelated'],
   // SVG-a2: svg-basic's p2 (a closed curve around a square subpath of the same direction) shows the fill rule; svg-paint's shapes
   // are filled and stroked in distinct colours with strokes wide enough to sample.
   'svg-stroke-first': ['svg-paint', 'svg-basic'],
@@ -159,6 +161,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
   'bg-image-offset-1': /^(image-flat|edge):[^:]+:tile-/,
+  'image-smooth': /^image-flat:[^:]+:nearest-/,
   'svg-stroke-first': /^svg:/,
   'svg-even-odd': /^svg:/,
   'svg-stroke-unscaled': /^svg:/,

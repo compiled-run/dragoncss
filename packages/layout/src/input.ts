@@ -91,10 +91,12 @@ export type MinSizeValue = Px | Percent | Auto | LengthCalc;
 export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
 /** css-sizing-3 §3.2 fit-content: min(max-content, max(min-content, the stretch size)). */
 export type FitContent = { readonly kind: 'fit-content' };
-/** css-sizing-3 §3.2: the intrinsic size keywords of an inline size, read only on a block-level box in block flow. */
-export type IntrinsicSizeKeyword = MinContent | MaxContent | FitContent;
-export type InlineSizeValue = SizeValue | IntrinsicSizeKeyword;
-export type MaxInlineSizeValue = MaxSizeValue | IntrinsicSizeKeyword;
+/** css-sizing-4 §3.1 stretch (Chrome's -webkit-fill-available computes to it): the size that fills the available space. */
+export type Stretch = { readonly kind: 'stretch' };
+/** css-sizing-3 §3.2 and css-sizing-4 §3.1: the keywords of an inline size, read only on a block-level box in block flow. */
+export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
+export type InlineSizeValue = SizeValue | SizeKeyword;
+export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -124,20 +126,29 @@ export type AspectRatioValue =
   | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
 /**
- * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
- * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
- * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
- */
-/**
  * css-inline-3 §5.1-§5.2: which edges of a block container's inline content text-box-trim trims (the block-start edge of its first
  * line, the block-end edge of its last line), and whether text-box-edge's under edge is alphabetic (the baseline) rather than text
  * (the font's descent). The over edge is text: the font's ascent (auto and text; cap and ex are refused by the compiler).
  */
 export type TextBoxTrim = { readonly start: boolean; readonly end: boolean; readonly alphabetic: boolean };
 
+/**
+ * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
+ * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
+ * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
+ */
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
-/** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
-export type Position = 'static' | 'relative' | 'absolute';
+/**
+ * CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4), and so does fixed, whose
+ * containing block is the viewport (§10.1 item 3, POSX-f). sticky offsets an in-flow box to keep it inside the viewport less its
+ * insets, at scroll offset 0, without leaving its containing block (css-position-3 §3.4, POSX-s; layout.ts stickyOffset).
+ */
+export type Position = 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+/**
+ * CSS2 §9.5: a float leaves the flow and is shifted to the left or right of its containing block (FLT). The compiler computes none
+ * for an absolutely positioned box (§9.7) and on the root; a flex or grid item ignores it. inline-start and inline-end are refused.
+ */
+export type Float = 'none' | 'left' | 'right';
 /**
  * css-overflow-3 §3: hidden, auto and scroll make a scroll container; clip clips without one. The validator requires a §3.1
  * computed pair: both axes in visible and clip, or both in hidden, auto and scroll.
@@ -314,6 +325,7 @@ export type GridItemStyle = {
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
+  readonly float: Float;
   readonly top: InsetValue;
   readonly right: InsetValue;
   readonly bottom: InsetValue;
@@ -388,6 +400,12 @@ export type LayoutStyle = {
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
+  /**
+   * ZOOM (css-viewport-1 §5): the zoom of each element from the root down to this one that is not 1, root first; an anonymous box
+   * takes its parent's. Its lengths and its text's font sizes and spacings are CSS px at zoom 1, which the environment pass
+   * multiplies by Blink's effective zoom (units.ts effectiveZoom).
+   */
+  readonly zoom: readonly number[];
 };
 
 /**
@@ -447,8 +465,12 @@ export type TextLeaf = {
   readonly smallCaps: boolean;
 };
 
-/** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */
-export type BoxType = 'element' | 'anonymous';
+/**
+ * element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4).
+ * block-in-inline: an inline box the compiler lays out as the block box of the block-level boxes it alone holds (package BII), a
+ * block box that also places its three line fragments (block.ts withBlockInInlineLines).
+ */
+export type BoxType = 'element' | 'anonymous' | 'block-in-inline';
 
 /** css-images-3 §5.5 object-fit. */
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
@@ -474,8 +496,32 @@ export type ReplacedLeaf = {
   readonly objectPositionY: ObjectPositionValue;
 };
 
-/** A box-level child: an element or anonymous box, or a replaced leaf. */
-export type LayoutNode = LayoutBox | ReplacedLeaf;
+/**
+ * What a form control's box does beyond a plain box (FORM-a, Blink 145):
+ * - range: the input[type=range] flex container, whose intrinsic content inline size is defaultInlineSize CSS px (the compiler
+ *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
+ * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
+ *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
+ * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent).
+ */
+export type ControlKind =
+  | { readonly kind: 'range'; readonly defaultInlineSize: number }
+  | { readonly kind: 'slider-thumb'; readonly ratio: number }
+  | { readonly kind: 'button-block' };
+
+/** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
+export type ControlBox = {
+  readonly kind: 'control';
+  readonly id: string;
+  readonly boxType: BoxType;
+  readonly style: LayoutStyle;
+  readonly control: ControlKind;
+  readonly strut: LineStrut | null;
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
+};
+
+/** A box-level child: an element or anonymous box, a form control's box, or a replaced leaf. */
+export type LayoutNode = LayoutBox | ControlBox | ReplacedLeaf;
 
 /**
  * An inline box (CSS2 §9.2.2): an element with display inline inside an inline formatting context. Its font and line-height are
@@ -519,8 +565,9 @@ export type ListMarker = {
 };
 
 /**
- * Children are either all boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks): the compiler
- * wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level, else null.
+ * Children are either all boxes, control boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks):
+ * the compiler wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level,
+ * else null.
  */
 export type LayoutBox = {
   readonly kind: 'box';
@@ -530,7 +577,7 @@ export type LayoutBox = {
   readonly strut: LineStrut | null;
   /** The outside list marker of a list item (T151 R14), or null. */
   readonly marker: ListMarker | null;
-  readonly children: readonly (LayoutBox | ReplacedLeaf | InlineChild)[];
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
 };
 
 /** The initial containing block in CSS px. */

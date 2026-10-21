@@ -146,7 +146,7 @@ export function faultsFor(r: Rng, names: readonly (keyof EngineFaults)[] = P1_FA
 }
 
 const INITIAL: LayoutStyle = {
-  display: 'block', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
+  display: 'block', position: 'static', float: 'none', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
   overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' },
   minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' },
   marginTop: { kind: 'px', value: 0 }, marginRight: { kind: 'px', value: 0 }, marginBottom: { kind: 'px', value: 0 }, marginLeft: { kind: 'px', value: 0 },
@@ -157,7 +157,7 @@ const INITIAL: LayoutStyle = {
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textBoxTrim: null,
-  grid: null, gridItem: null,
+  grid: null, gridItem: null, zoom: [],
 };
 
 function len(r: Rng, min: number): number {
@@ -640,6 +640,33 @@ export function hitExpected(lines: readonly string[]): string[] {
   });
 }
 
+// ---------------------------------------------------------------- select suite (T154 slice 2a)
+
+/** The selection cases (packages/parity parity:select-vectors): the documents packages/parity select-model.test.ts proves against Chrome. */
+export const SELECT_VECTORS = join(RT_VECTORS_DIR, 'select/cases.json');
+
+/**
+ * The select suite: one library-mode line per selection case: its engine input, its facts, and the points and drags Chrome was
+ * driven at. The TypeScript harness's answers are the expected results; Swift and Kotlin must equal them, and packages/parity
+ * select-model proves the TypeScript model equals Chrome at those points.
+ */
+export function selectCases(): string[] {
+  const v = JSON.parse(readFileSync(SELECT_VECTORS, 'utf8')) as { schema: string; cases: { platform: string; input: unknown; facts: unknown; points: unknown; drags: unknown }[] };
+  if (v.schema !== 'dragon-select-vectors/1') throw new Error(`${SELECT_VECTORS}: schema ${v.schema}; run pnpm run parity:select-vectors`);
+  const out = v.cases.map((c) => JSON.stringify(['rt-select', c.platform, c.input, c.facts, c.points, c.drags]));
+  if (out.length === 0) throw new Error('the select suite has no cases');
+  return out;
+}
+
+/** The select suite's expected results; a line the TypeScript reference threw on or refused fails the build, not the natives. */
+export function selectExpected(lines: readonly string[]): string[] {
+  return lines.map((line, i) => {
+    const r = runLibraryCase(line);
+    if (!r.startsWith('["ok",')) throw new Error(`select case ${i}: the TypeScript reference answered ${r.slice(0, 200)}, not a result`);
+    return r;
+  });
+}
+
 // ---------------------------------------------------------------- animator suite (ANIM-b1 3b, T065 R16)
 
 /** The frame cases as animator scripts (packages/parity parity:anim-vectors). */
@@ -724,6 +751,7 @@ export function buildCorpus(): Corpus {
   const interaction = interactionCases();
   const band = bandCases();
   const pointer = pointerCases();
+  const select = selectCases();
   const suites: Suite[] = [
     { name: 'vectors', mode: 'engine', lines: vLines, expected: vLines.map(runEngineCase) },
     { name: 'units', mode: 'units', lines: units, expected: units.map(runUnitsCase) },
@@ -741,6 +769,8 @@ export function buildCorpus(): Corpus {
     { name: 'band', mode: 'library', lines: band, expected: bandExpected(band) },
     // MQ-R2: the Android pointer and hover readings over every source combination, after band.
     { name: 'pointer', mode: 'library', lines: pointer, expected: bandExpected(pointer) },
+    // T154 slice 2a: the selection model over the select-model documents, after interaction.
+    { name: 'select', mode: 'library', lines: select, expected: selectExpected(select) },
   ];
   const d = digestsOf(suites);
   return { suites, vectors, engineSplit: split(suites[2]?.expected ?? []), digest: d.digest, digests: d.digests };

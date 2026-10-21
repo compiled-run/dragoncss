@@ -5,10 +5,13 @@
 // Each family's kinds live in animation-kinds/<family>.ts, spread here one line per family, sorted by family id.
 import type { Longhand } from './properties.ts';
 import type { AnimationKind } from './animation-kinds/kinds.ts';
+import { ANCHOR_POSITION_ANIMATION } from './animation-kinds/anchor-position.ts';
+import { ANIMATION_EXTRA_ANIMATION } from './animation-kinds/animation-extra.ts';
 import { APPEARANCE_ANIMATION } from './animation-kinds/appearance.ts';
 import { BACKGROUND_ANIMATION } from './animation-kinds/background.ts';
 import { BACKGROUND_BLEND_ANIMATION } from './animation-kinds/background-blend.ts';
 import { BACKGROUND_LAYERS_ANIMATION } from './animation-kinds/background-layers.ts';
+import { BIDI_ANIMATION } from './animation-kinds/bidi.ts';
 import { BORDER_ANIMATION } from './animation-kinds/border.ts';
 import { BORDER_IMAGE_ANIMATION } from './animation-kinds/border-image.ts';
 import { BOX_ANIMATION } from './animation-kinds/box.ts';
@@ -24,6 +27,7 @@ import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
 import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
+import { FONT_SIZE_ADJUST_ANIMATION } from './animation-kinds/font-size-adjust.ts';
 import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
 import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
@@ -31,6 +35,7 @@ import { FRAGMENTATION_ANIMATION } from './animation-kinds/fragmentation.ts';
 import { FX_ANIMATION } from './animation-kinds/fx.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { HYPHENS_ANIMATION } from './animation-kinds/hyphens.ts';
+import { IMAGE_RENDERING_ANIMATION } from './animation-kinds/image-rendering.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
 import { ISOLATION_ANIMATION } from './animation-kinds/isolation.ts';
 import { LINE_BREAK_ANIMATION } from './animation-kinds/line-break.ts';
@@ -52,6 +57,7 @@ import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
 import { SPEAK_ANIMATION } from './animation-kinds/speak.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
+import { SVG_EXTRA_ANIMATION } from './animation-kinds/svg-extra.ts';
 import { TAB_SIZE_ANIMATION } from './animation-kinds/tab-size.ts';
 import { TABLE_ANIMATION } from './animation-kinds/table.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
@@ -71,6 +77,7 @@ import { TRANSFORM_ANIMATION } from './animation-kinds/transform.ts';
 import { TRANSFORM_EXTRA_ANIMATION } from './animation-kinds/transform-extra.ts';
 import { UI_COLORS_ANIMATION } from './animation-kinds/ui-colors.ts';
 import { USER_MODIFY_ANIMATION } from './animation-kinds/user-modify.ts';
+import { VIEW_TRANSITION_ANIMATION } from './animation-kinds/view-transition.ts';
 import { VISIBILITY_ANIMATION } from './animation-kinds/visibility.ts';
 import { WRITING_MODE_ANIMATION } from './animation-kinds/writing-mode.ts';
 import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
@@ -78,10 +85,13 @@ import { ZOOM_ANIMATION } from './animation-kinds/zoom.ts';
 export type { AnimationKind, LengthRange } from './animation-kinds/kinds.ts';
 
 export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
+  ...ANCHOR_POSITION_ANIMATION,
+  ...ANIMATION_EXTRA_ANIMATION,
   ...APPEARANCE_ANIMATION,
   ...BACKGROUND_ANIMATION,
   ...BACKGROUND_BLEND_ANIMATION,
   ...BACKGROUND_LAYERS_ANIMATION,
+  ...BIDI_ANIMATION,
   ...BORDER_ANIMATION,
   ...BORDER_IMAGE_ANIMATION,
   ...BOX_ANIMATION,
@@ -97,6 +107,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FLEX_ANIMATION,
   ...FLOAT_ANIMATION,
   ...FONT_FEATURES_ANIMATION,
+  ...FONT_SIZE_ADJUST_ANIMATION,
   ...FONT_STRETCH_ANIMATION,
   ...FONT_TUNING_ANIMATION,
   ...FONT_VARIANT_ANIMATION,
@@ -104,6 +115,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FX_ANIMATION,
   ...GRID_ANIMATION,
   ...HYPHENS_ANIMATION,
+  ...IMAGE_RENDERING_ANIMATION,
   ...INLINE_ANIMATION,
   ...ISOLATION_ANIMATION,
   ...LINE_BREAK_ANIMATION,
@@ -125,6 +137,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SHADOW_ANIMATION,
   ...SPEAK_ANIMATION,
   ...SVG_ANIMATION,
+  ...SVG_EXTRA_ANIMATION,
   ...TAB_SIZE_ANIMATION,
   ...TABLE_ANIMATION,
   ...TEXT_ANIMATION,
@@ -144,6 +157,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TRANSFORM_EXTRA_ANIMATION,
   ...UI_COLORS_ANIMATION,
   ...USER_MODIFY_ANIMATION,
+  ...VIEW_TRANSITION_ANIMATION,
   ...VISIBILITY_ANIMATION,
   ...WRITING_MODE_ANIMATION,
   ...ZOOM_ANIMATION,

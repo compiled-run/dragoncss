@@ -326,7 +326,8 @@ describe('profile diagnostics name the alias as written', () => {
   };
   it('an unsupported value says which alias set it', () => {
     expect(messages('body { margin: 0 } .a { -webkit-box-sizing: unset }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
-      // casc-all proves box-sizing: unset in inline flow only, so in block flow the alias value is an unproven context.
+      // casc-all proves box-sizing: unset in inline flow only, so in block flow the alias value is unsupported and an unproven context.
+      'DRAGON_UNSUPPORTED_VALUE box-sizing: unset (set by -webkit-box-sizing: unset) is unsupported (support profile m1-s5); in block/ltr use border-box, content-box or inherit',
       'DRAGON_UNPROVEN_CONTEXT box-sizing:unset (set by -webkit-box-sizing: unset) on a is used in the block/ltr context, which is not proven (proven: inline/ltr, inline/rtl); box-sizing values proven in block/ltr: border-box, content-box, inherit, initial or revert',
     ]);
   });

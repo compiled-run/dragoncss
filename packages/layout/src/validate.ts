@@ -1,5 +1,5 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
-import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ListMarker, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { CalcExpr, ControlKind, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ListMarker, ReplacedLeaf, TextLeaf } from './input.ts';
 
 type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
@@ -74,7 +74,7 @@ const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as 
 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
-const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {} } as const;
+const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {}, stretch: {} } as const;
 const inlineSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxInlineSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, ...intrinsic });
 const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });
@@ -121,7 +121,8 @@ const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto',
 
 export const styleSchema = obj({
   display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
-  position: lit('static', 'relative', 'absolute'),
+  position: lit('static', 'relative', 'absolute', 'fixed', 'sticky'),
+  float: lit('none', 'left', 'right'),
   top: inset,
   right: inset,
   bottom: inset,
@@ -183,6 +184,7 @@ export const styleSchema = obj({
   textBoxTrim: nullable(obj({ start: bool, end: bool, alphabetic: bool })),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
+  zoom: arr({ t: 'number', min: 0, exclusiveMin: true, integer: false }, 0),
 });
 
 /** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
@@ -219,6 +221,9 @@ export const replacedLeafSchema = obj({
   objectPositionY: tagged({ px: { value: anyNum }, percent: { value: anyNum } }),
 });
 
+/** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {} });
+
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
 
@@ -233,6 +238,7 @@ type Assert<T extends true> = T;
 export type SchemaMatchesStyle = Assert<Equal<Infer<typeof styleSchema>, LayoutStyle>>;
 export type SchemaMatchesText = Assert<Equal<Infer<typeof textLeafSchema>, TextLeaf>>;
 export type SchemaMatchesReplaced = Assert<Equal<Infer<typeof replacedLeafSchema>, ReplacedLeaf>>;
+export type SchemaMatchesControl = Assert<Equal<Infer<typeof controlKindSchema>, ControlKind>>;
 export type SchemaMatchesBreak = Assert<Equal<Infer<typeof lineBreakSchema>, LineBreak>>;
 export type SchemaMatchesStrut = Assert<Equal<Infer<typeof strutSchema>, LineStrut>>;
 export type SchemaMatchesMarker = Assert<Equal<Infer<typeof markerSchema>, ListMarker>>;
@@ -490,7 +496,7 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
   }
 }
 
-function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null): void {
+function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null, inControl = false): void {
   if (!isRecord(value)) {
     errors.push({ path, code: 'wrong-type', message: 'expected a box, replaced leaf, inline box, line break or text object' });
     return;
@@ -515,6 +521,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
     // css-contain-2 §3.1: size containment has no effect on a non-atomic inline box.
     if (isRecord(style) && style['containSize'] !== undefined && style['containSize'] !== 'none') errors.push({ path: `${path}.style.containSize`, code: 'bad-value', message: 'an inline box is never size contained' });
+    // CSS2 §9.7: a float is blockified, so it is never an inline box.
+    if (isRecord(style) && style['float'] !== 'none') errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'a float is blockified: it is never an inline box' });
     // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
     if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
     if (isRecord(style)) checkTextBoxTrim(style, false, path, errors);
@@ -532,11 +540,10 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     checkRule(value, replacedLeafSchema, path, errors);
     const style = value['style'];
     if (isRecord(style)) {
-      // Atomic inline-level replaced boxes (CSS2 §10.3.2 in an inline formatting context) are not supported yet.
-      if (style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a replaced leaf is block-level; an inline replaced box is not supported' });
       if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
-      if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
+      if (style['position'] === 'absolute' || style['position'] === 'fixed') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
+      checkFloat(value, style, path, parentId, errors);
       // css-contain-2 §3.2: a size-contained replaced box loses its natural size, which replaced.ts does not model.
       if (style['containSize'] !== undefined && style['containSize'] !== 'none') errors.push({ path: `${path}.style.containSize`, code: 'bad-value', message: 'a size-contained replaced box is not supported' });
       checkRatioBlockLengths(style, path, errors, false);
@@ -546,26 +553,48 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     }
     return;
   }
-  if (kind !== 'box') {
-    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | replaced | inline | br | text' });
+  if (kind !== 'box' && kind !== 'control') {
+    errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | control | replaced | inline | br | text' });
     return;
   }
-  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema, marker: nullable(markerSchema) }, path, errors, ['kind', 'children', 'strut']);
+  const isControl = kind === 'control';
+  if (isControl) {
+    checkFields(value, { id: str, boxType: lit('element'), style: styleSchema, control: controlKindSchema }, path, errors, ['kind', 'children', 'strut']);
+    checkControl(value, path, errors);
+  } else {
+    checkFields(value, { id: str, boxType: lit('element', 'anonymous', 'block-in-inline'), style: styleSchema, marker: nullable(markerSchema) }, path, errors, ['kind', 'children', 'strut']);
+  }
+  const ownStyle = value['style'];
+  // An absolutely positioned box inside a control is not supported yet (position.ts checkControlSubtree).
+  if (inControl && isRecord(ownStyle) && ownStyle['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned box inside a form control is not supported' });
   const style = value['style'];
   checkMarker(value, path, errors);
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
-  if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
+  if (isAtomic(value) && isRecord(style) && (style['position'] === 'absolute' || style['position'] === 'fixed')) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
   if (isAtomic(value) && parentId === null) errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'the root box is blockified: it is never inline-block, inline-flex or inline-grid' });
+  if (isRecord(style)) checkFloat(value, style, path, parentId, errors);
   const children = childrenOf(value, path, errors);
   if (children === null) return;
-  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null));
+  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || isControl));
+  // Only a block container's flow moves a slider thumb by its value (block.ts layoutBlockFlow); in a flex track it would sit at 0.
+  children.forEach((child: unknown, i: number) => {
+    if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'slider-thumb') return;
+    if (!isRecord(style) || style['display'] !== 'block') {
+      errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a slider thumb is a block-flow child: its parent is a block container' });
+    }
+  });
   checkStrut(value, children, path, errors);
   checkInlineContent(value, children, path, errors);
   if (isRecord(style) && clipsOnly(style['overflowX']) !== clipsOnly(style['overflowY'])) {
     errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be a computed pair: css-overflow-3 §3.1 computes visible beside hidden, auto or scroll to auto, and clip to hidden' });
   }
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
+  // BII: a block-in-inline box is a static block box of block-level boxes only (block.ts withBlockInInlineLines).
+  if (value['boxType'] === 'block-in-inline') {
+    if (!isRecord(style) || style['display'] !== 'block' || style['position'] !== 'static' || style['float'] !== 'none') errors.push({ path: `${path}.style`, code: 'bad-value', message: 'a block-in-inline box is a static, unfloated block box' });
+    if (children.some((c) => !isRecord(c) || (c['kind'] !== 'box' && c['kind'] !== 'replaced'))) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a block-in-inline box holds only block-level boxes' });
+  }
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
   if (isRecord(style)) checkGrid(style, children, path, errors);
   if (isRecord(style)) checkTextBoxTrim(style, style['display'] === 'block', path, errors);
@@ -613,10 +642,11 @@ function checkGrid(style: Record<string, unknown>, children: readonly unknown[],
     }
   }
   children.forEach((child: unknown, i: number) => {
-    if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced') || !isRecord(child['style'])) return;
+    // A box, a replaced leaf and a form control (FORM-a) are each a grid item of a grid container; text never is (checkInlineContent).
+    if (!isRecord(child) || (child['kind'] !== 'box' && child['kind'] !== 'replaced' && child['kind'] !== 'control') || !isRecord(child['style'])) return;
     const cs = child['style'];
     const item = cs['gridItem'];
-    const outOfFlow = cs['position'] === 'absolute';
+    const outOfFlow = cs['position'] === 'absolute' || cs['position'] === 'fixed';
     const at = `${path}.children[${i}].style.gridItem`;
     if (isGrid !== (item !== null && item !== undefined)) bad(at, 'a grid placement is written for each child of a grid container and only there');
     if (!isRecord(item)) return;
@@ -711,6 +741,25 @@ function sameValue(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
+/**
+ * A control box's own rules: a range is a flex container and a block button a block container (controls.ts); a thumb's ratio is
+ * at most 1; a control is never absolutely positioned and takes no aspect-ratio.
+ */
+function checkControl(value: Record<string, unknown>, path: string, errors: ValidationError[]): void {
+  const control = value['control'];
+  const style = value['style'];
+  if (!isRecord(control) || !isRecord(style)) return;
+  const bad = (key: string, message: string): void => {
+    errors.push({ path: `${path}.${key}`, code: 'bad-value', message });
+  };
+  if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
+  if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
+  if (control['kind'] === 'slider-thumb' && typeof control['ratio'] === 'number' && control['ratio'] > 1) bad('control.ratio', 'a slider thumb ratio is at most 1');
+  if (style['position'] === 'absolute') bad('style.position', 'an absolutely positioned form control is not supported');
+  const ratio = style['aspectRatio'];
+  if (isRecord(ratio) && ratio['kind'] !== 'auto') bad('style.aspectRatio', 'a form control takes no aspect-ratio');
+}
+
 /** css-overflow-3 §3.1: visible and clip stay as they are only beside visible or clip. */
 function clipsOnly(v: unknown): boolean {
   return v === 'visible' || v === 'clip';
@@ -729,10 +778,26 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
   return children;
 }
 
-/** An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid. */
-const isAtomic = (c: unknown): boolean => isRecord(c) && c['kind'] === 'box' && isRecord(c['style']) && (c['style']['display'] === 'inline-block' || c['style']['display'] === 'inline-flex' || c['style']['display'] === 'inline-grid');
+/**
+ * An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid, or a replaced leaf with display
+ * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4).
+ */
+const isAtomic = (c: unknown): boolean => {
+  if (!isRecord(c) || !isRecord(c['style'])) return false;
+  const d = c['style']['display'];
+  if (c['kind'] === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  return c['kind'] === 'box' && (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid');
+};
 
 const isInlineLevel = (c: unknown): boolean => isRecord(c) && (c['kind'] === 'text' || c['kind'] === 'inline' || c['kind'] === 'br' || isAtomic(c));
+
+// CSS2 §9.7: a float is blockified and an absolutely positioned box's float computes to none; the compiler refuses a float on the root.
+function checkFloat(node: Record<string, unknown>, style: Record<string, unknown>, path: string, parentId: string | null, errors: ValidationError[]): void {
+  if (style['float'] !== 'left' && style['float'] !== 'right') return;
+  if (parentId === null) errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'the root box does not float' });
+  if (style['position'] === 'absolute' || style['position'] === 'fixed') errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'an absolutely positioned box does not float (its float computes to none)' });
+  if (isAtomic(node)) errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'a float is blockified: it is never an atomic inline' });
+}
 
 /** A value as JSON with every object's keys sorted, so two fonts compare equal whatever their key order. */
 function canonicalOf(v: unknown): string {
@@ -844,9 +909,10 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem' | 'zoom'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
+  float: 'none',
   top: { kind: 'auto' },
   right: { kind: 'auto' },
   bottom: { kind: 'auto' },
@@ -994,8 +1060,12 @@ export function validateLayoutInput(json: unknown): ValidationResult {
       errors.push({ path: '$.root.style.gridItem', code: 'grid-shape', message: 'the root box is not a grid item' });
     }
     // CSS2 §10.1: the root box is laid out in the initial containing block; the engine places it in flow.
-    if (isRecord(root) && isRecord(root['style']) && root['style']['position'] === 'absolute') {
+    if (isRecord(root) && isRecord(root['style']) && (root['style']['position'] === 'absolute' || root['style']['position'] === 'fixed')) {
       errors.push({ path: '$.root.style.position', code: 'bad-value', message: 'the root box cannot be absolutely positioned' });
+    }
+    // css-position-3 §3.4: the root box has no containing block to stick in (POSX-s).
+    if (isRecord(root) && isRecord(root['style']) && root['style']['position'] === 'sticky') {
+      errors.push({ path: '$.root.style.position', code: 'bad-value', message: 'the root box cannot be sticky' });
     }
   }
   if (errors.length > 0) return { ok: false, errors };

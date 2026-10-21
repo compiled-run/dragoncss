@@ -1,0 +1,11 @@
+{
+  "case": "block-in-inline-cases-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b1:text0","data":"bb","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b2:text0","data":"cc dd ee","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t3:text0","data":"gg","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

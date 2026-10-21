@@ -139,7 +139,6 @@ describe('off the list, a declaration or rule is still refused on every target',
   const OFF: Record<string, string> = {
     '-webkit-appearance off the compat keywords (Chrome may keep a legacy one)': '.a { -webkit-appearance: push-button; }',
     'column-count (lays out columns, which break-* then fragment)': '.a { column-count: 2; }',
-    '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
     'a scrollbar pseudo-element followed by a pseudo-class': '.a::-webkit-scrollbar:hover { width: 5px; }',
   };
   for (const [what, extra] of Object.entries(OFF)) {

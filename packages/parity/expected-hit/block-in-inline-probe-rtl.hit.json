@@ -1,0 +1,18 @@
+{
+  "case": "block-in-inline-probe-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 128,
+  "gridSha256": "a60e21f15cffe47b63039ff5b4a72219cd0e5de5b2adc0e0058dc9ee77cd8fe8",
+  "ids": [
+    "c1",
+    "c2",
+    "html"
+  ],
+  "runs": [[0,32],[1,72],[2,24]]
+}

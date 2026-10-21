@@ -11,7 +11,9 @@ import { BACKGROUND } from './fixture-groups/background.ts';
 import { BG_CLIP_TEXT } from './fixture-groups/bg-clip-text.ts';
 import { BG_IMAGE } from './fixture-groups/bg-image.ts';
 import { BG_POSITION } from './fixture-groups/bg-position.ts';
+import { BIDI } from './fixture-groups/bidi.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
+import { BLOCK_IN_INLINE } from './fixture-groups/block-in-inline.ts';
 import { BORDER_IMAGE } from './fixture-groups/border-image.ts';
 import { BORDER_PAINT } from './fixture-groups/border-paint.ts';
 import { BOX_DECORATION } from './fixture-groups/box-decoration.ts';
@@ -26,12 +28,15 @@ import { COLOR_FUNCTIONS } from './fixture-groups/color-functions.ts';
 import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
 import { CONTAINER_QUERY } from './fixture-groups/container-query.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
+import { CONTROLS } from './fixture-groups/controls.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
 import { DISPLAY_CONTENTS } from './fixture-groups/display-contents.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FILTER } from './fixture-groups/filter.ts';
+import { FIXED } from './fixture-groups/fixed.ts';
+import { FLOAT } from './fixture-groups/float.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { FRAGMENTATION } from './fixture-groups/fragmentation.ts';
@@ -41,6 +46,7 @@ import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
 import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
+import { INLINE_REPLACED } from './fixture-groups/inline-replaced.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
@@ -74,6 +80,7 @@ import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
 import { SPEAK } from './fixture-groups/speak.ts';
 import { STATES } from './fixture-groups/states.ts';
+import { STICKY } from './fixture-groups/sticky.ts';
 import { SVG } from './fixture-groups/svg.ts';
 import { TABLE } from './fixture-groups/table.ts';
 import { TEXT_ALIGN_LAST } from './fixture-groups/text-align-last.ts';
@@ -177,7 +184,9 @@ export const GROUPS = {
   'bg-clip-text': BG_CLIP_TEXT,
   'bg-image': BG_IMAGE,
   'bg-position': BG_POSITION,
+  bidi: BIDI,
   'block-elements': BLOCK_ELEMENTS,
+  'block-in-inline': BLOCK_IN_INLINE,
   'border-image': BORDER_IMAGE,
   'border-paint': BORDER_PAINT,
   'box-decoration': BOX_DECORATION,
@@ -192,12 +201,15 @@ export const GROUPS = {
   'color-scheme': COLOR_SCHEME,
   'container-query': CONTAINER_QUERY,
   contexts: CONTEXTS,
+  controls: CONTROLS,
   'ctx-proof': CTX_PROOF,
   'display-contents': DISPLAY_CONTENTS,
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
   filter: FILTER,
+  fixed: FIXED,
+  float: FLOAT,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
   fragmentation: FRAGMENTATION,
@@ -208,6 +220,7 @@ export const GROUPS = {
   'inert-layout': INERT_LAYOUT,
   'inherit-contexts': INHERIT_CONTEXTS,
   inline: INLINE,
+  'inline-replaced': INLINE_REPLACED,
   'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
   isolation: ISOLATION,
@@ -240,6 +253,7 @@ export const GROUPS = {
   'sizing-ratio': SIZING,
   speak: SPEAK,
   states: STATES,
+  sticky: STICKY,
   svg: SVG,
   table: TABLE,
   'text-align-last': TEXT_ALIGN_LAST,
