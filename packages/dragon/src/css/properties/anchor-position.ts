@@ -2,9 +2,9 @@
 // normal), position-area (none), position-try-fallbacks (none), position-try-order (normal) with the position-try shorthand of
 // -order and -fallbacks, and position-visibility (anchors-visible, where webref says anchor-visible), none inherited (Chrome 145
 // css_properties.json5). Dragon positions no box against an anchor yet: a name only names an anchor, and the others move or hide an
-// absolutely positioned box only when it has an anchor or a position area. So it accepts the initial values alone, where no box is
-// anchored, and refuses every other value (analysis/scroll-containment.ts). Rows are proven by the computed value, as no layout lane
-// reads them.
+// absolutely positioned box only when it has an anchor or a position area. So it accepts every value of the naming longhands
+// (ANCHOR_NAMING), and the initial values alone of the others, where no box is anchored, refusing every other value
+// (analysis/scroll-containment.ts). Rows are proven by the computed value, as no layout lane reads them.
 import type { CssNode } from 'css-tree';
 import type { Span } from '../../types.ts';
 import type { PropertyAspect } from '../properties.ts';
@@ -12,7 +12,7 @@ import type { ParsedValue } from '../stylesheet.ts';
 import type { CssValue } from '../values.ts';
 import type { InitialOnlyParser } from './initial-only.ts';
 import { asciiLower } from '../escapes.ts';
-import { initialOnlyLonghand, kwInitial, nonInitial, spellsInitial } from './initial-only.ts';
+import { dashedIdentListLonghand, initialOnlyLonghand, kwInitial, nonInitial, spellsInitial } from './initial-only.ts';
 
 export const ANCHOR_POSITION_LONGHANDS = ['anchor-name', 'anchor-scope', 'position-anchor', 'position-area', 'position-try-order', 'position-try-fallbacks', 'position-visibility'] as const;
 export const ANCHOR_POSITION_SHORTHANDS = ['position-try'] as const;
@@ -64,7 +64,17 @@ export function parsePositionTry(tokens: readonly CssNode[], _base: Span): Parse
   };
 }
 
+/**
+ * The longhands that only name anchors, or scope the names: anchor-name (none | <dashed-ident>#) and anchor-scope (none | all |
+ * <dashed-ident>#). A name changes nothing until a box is anchored to it, and Dragon accepts no position-anchor, position-area or
+ * anchor() that would anchor one, so it accepts every value of these two (measured pixel-identical to none in Chrome 145 at DPR 1,
+ * 2, 2.625 and 3). The rest stay refused at any value but the initial one (analysis/scroll-containment.ts).
+ */
+export const ANCHOR_NAMING: readonly AnchorPositionLonghand[] = ['anchor-name', 'anchor-scope'];
+
 export const ANCHOR_POSITION_VALUE_PARSERS: { readonly [P in AnchorPositionLonghand | (typeof ANCHOR_POSITION_SHORTHANDS)[number]]: InitialOnlyParser } = {
   ...(Object.fromEntries(ANCHOR_POSITION_LONGHANDS.map((p) => [p, initialOnlyLonghand(p, ANCHOR_POSITION_INITIAL[p])])) as { readonly [P in AnchorPositionLonghand]: InitialOnlyParser }),
+  'anchor-name': dashedIdentListLonghand('anchor-name', ANCHOR_POSITION_INITIAL['anchor-name']),
+  'anchor-scope': dashedIdentListLonghand('anchor-scope', ANCHOR_POSITION_INITIAL['anchor-scope'], ['all']),
   'position-try': parsePositionTry,
 };

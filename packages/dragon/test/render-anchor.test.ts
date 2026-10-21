@@ -90,7 +90,13 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     expect(parsed('position-try: normal')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('position-try: most-width')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('position-anchor: auto')).toEqual(['position-anchor: ?auto']);
-    expect(parsed('anchor-name: --a')).toEqual(['anchor-name: ?--a']);
+    // The naming longhands keep a <dashed-ident> list as Chrome 145 serializes it, escapes decoded, and drop anything else.
+    expect(parsed('anchor-name: --a')).toEqual(['anchor-name: --a']);
+    expect(parsed('anchor-name: --a,--B')).toEqual(['anchor-name: --a, --B']);
+    expect(parsed('anchor-name: --\\61')).toEqual(['anchor-name: --a']);
+    expect(parsed('anchor-scope: ALL')).toEqual(['anchor-scope: all']);
+    for (const v of ['anchor-name: a', 'anchor-name: --a --b', 'anchor-name: none, --a', 'anchor-scope: all, --a', 'timeline-scope: all']) expect(parsed(v), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    expect(parsed('interpolate-size: allow-keywords')).toEqual(['interpolate-size: allow-keywords']);
     expect(parsed('baseline-shift: 0')).toEqual(['baseline-shift: 0px']);
     expect(parsed('baseline-shift: sub')).toEqual(['baseline-shift: ?sub']);
     // baseline, a zero length in any unit and a zero length calculation compute to 0px; a zero percentage computes to 0%.
@@ -100,7 +106,6 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     // Values webref lists though Chrome drops them are kept and refused, never dropped.
     expect(parsed('position-visibility: anchor-visible')).toEqual(['position-visibility: ?anchor-visible']);
     expect(parsed('view-transition-name: auto')).toEqual(['view-transition-name: ?auto']);
-    expect(parsed('timeline-scope: all')).toEqual(['timeline-scope: ?all']);
     expect(parsed('interpolate-size: Numeric-Only')).toEqual(['interpolate-size: numeric-only']);
   });
 
@@ -115,28 +120,50 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
   });
 
   it('refuse every other value on every target, once per element and family, computed', () => {
-    for (const d of ['anchor-name: --a', 'anchor-scope: all', 'position-anchor: auto',
+    for (const d of ['position-anchor: auto',
       'position-area: top', 'position-try: flip-block', 'position-try-order: most-width', 'position-try-fallbacks: --a', 'position-visibility: always', 'baseline-shift: 2px',
       'shape-rendering: crispEdges', 'color-interpolation: linearRGB',
       'color-interpolation-filters: sRGB', 'color-rendering: optimizeSpeed', 'buffered-rendering: static', 'view-transition-name: card', 'view-transition-class: a b', 'view-transition-group: contain',
-      'interpolate-size: allow-keywords', 'timeline-scope: --t']) {
+    ]) {
       // An inherited one is refused on the child as well.
       expect(errorsAt(d), d).toEqual(INHERITED.has(d.split(':')[0] as never) ? [...REFUSED, ...REFUSED].sort() : REFUSED);
     }
-    expect(errorsAt('anchor-name: --a; position-area: top')).toEqual(REFUSED);
+    expect(errorsAt('anchor-scope: all; position-area: top')).toEqual(REFUSED);
     const at = (decl: string): string[] => {
       const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } .s { ${decl}; }`, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
       return [...new Set(c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0] as string))];
     };
     expect(at('position-try: flip-block')).toEqual(['position-try-fallbacks: flip-block on <div> a']);
     expect(at('position-try: most-width --a')).toEqual(['position-try-order: most-width on <div> a']);
-    expect(errorsAt('anchor-name: --a; shape-rendering: crispEdges; interpolate-size: allow-keywords')).toEqual(Array(5).fill(REFUSED).flat().sort());
-    expect(errorsAt('--r: --a; anchor-name: var(--r)')).toEqual(REFUSED);
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { anchor-name: --a; }';
+    expect(errorsAt('position-area: top; shape-rendering: crispEdges; view-transition-name: card')).toEqual(Array(4).fill(REFUSED).flat().sort());
+    expect(errorsAt('--r: auto; position-anchor: var(--r)')).toEqual(REFUSED);
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { position-area: top; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors).toHaveLength(3);
-    for (const d of errors) expect(d.message).toMatch(/^anchor-name: --a on <div> a is unsupported: Dragon implements no anchor positioning yet; only none is accepted$/);
+    for (const d of errors) expect(d.message).toMatch(/^position-area: top on <div> a is unsupported: Dragon implements no anchor positioning yet; only none is accepted$/);
+  });
+
+  it('accept every value of the names nothing can look up: anchor-name, anchor-scope, timeline-scope, interpolate-size off animation', () => {
+    for (const d of ['anchor-name: --a', 'anchor-name: --a, --b', 'anchor-scope: all', 'anchor-scope: --a', 'timeline-scope: --t, --u', 'interpolate-size: allow-keywords', '--r: --a; anchor-name: var(--r)']) expect(errorsAt(d), d).toEqual([]);
+  });
+
+  it('refuse interpolate-size: allow-keywords on native where a sizing longhand animates or transitions, and keep it on web', () => {
+    const kw = (css: string, faults: CompilerFaults = NO_FAULTS): string[] => {
+      const c = project(faults).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
+      return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.message}`).sort();
+    };
+    const native = (address: string, what: string): string[] => ['android', 'ios'].map((t) => `${t} interpolate-size: allow-keywords on ${address} lets Chrome interpolate ${what} to and from an intrinsic size keyword, which the native animator does not interpolate (it would flip at the midpoint)`);
+    // From the element's own auto width, the inherited allow-keywords reaches the child.
+    expect(kw('.s { interpolate-size: allow-keywords; } .c { animation: g 1s; } @keyframes g { to { width: 10px; } }')).toEqual(native('b', 'an animation of width'));
+    expect(kw('.s { interpolate-size: allow-keywords; width: 50px; animation: g 1s; } @keyframes g { to { width: auto; } }')).toEqual(native('a', 'an animation of width'));
+    expect(kw('.s { interpolate-size: allow-keywords; height: 10px; transition: height 1s; }')).toEqual(native('a', 'a transition of height'));
+    // Between lengths it interpolates as numeric-only does; with no motion, or numeric-only, it changes nothing.
+    expect(kw('.s { interpolate-size: allow-keywords; width: 50px; animation: g 1s; } @keyframes g { to { width: 10px; } }')).toEqual([]);
+    expect(kw('.s { interpolate-size: allow-keywords; transition: opacity 1s; }')).toEqual([]);
+    expect(kw('.s { interpolate-size: numeric-only; transition: height 1s; }')).toEqual([]);
+    expect(kw('.s { interpolate-size: allow-keywords; transition: height 0s; }')).toEqual([]);
+    expect(kw('.s { interpolate-size: allow-keywords; height: 10px; transition: height 1s; }', { ...NO_FAULTS, animationExtraAccepted: true })).toEqual([]);
   });
 
   it('accept the UA view-transition-name: root on the root, and refuse an author one', () => {
@@ -156,15 +183,13 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
       return [...new Set(c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0] as string))].sort();
     };
     expect(at('.s { shape-rendering: crispEdges; }')).toEqual(['shape-rendering: crispEdges on <div> a', 'shape-rendering: crispEdges on <div> b']);
-    expect(at('.s { anchor-name: --a; }')).toEqual(['anchor-name: --a on <div> a']);
+    expect(at('.s { position-area: top; }')).toEqual(['position-area: top on <div> a']);
   });
 
   it('plant each family\'s fault: its non-initial value compiles, and only its own', () => {
     expect(errorsAt('position-area: top', { ...NO_FAULTS, anchorPositionAccepted: true })).toEqual([]);
     expect(errorsAt('shape-rendering: crispEdges', { ...NO_FAULTS, svgExtraAccepted: true })).toEqual([]);
     expect(errorsAt('view-transition-name: card', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([]);
-    expect(errorsAt('timeline-scope: --t', { ...NO_FAULTS, animationExtraAccepted: true })).toEqual([]);
-    expect(errorsAt('interpolate-size: allow-keywords', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([...REFUSED, ...REFUSED].sort());
-    expect(errorsAt('anchor-name: --a', { ...NO_FAULTS, viewTransitionAccepted: true, svgExtraAccepted: true })).toEqual(REFUSED);
+    expect(errorsAt('position-area: top', { ...NO_FAULTS, viewTransitionAccepted: true, svgExtraAccepted: true })).toEqual(REFUSED);
   });
 });
