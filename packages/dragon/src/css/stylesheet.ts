@@ -9,6 +9,7 @@ import { list, spanOf } from './ast.ts';
 import type { AliasValueParser } from './aliases.ts';
 import { aliasValueParser, legacyAliasRefusal, legacyAliasValue, resolveAlias } from './aliases.ts';
 import { prefixedMaskBox } from './aliases/mask.ts';
+import { CHROME_DROPPED_PROPERTIES } from './chrome-dropped.ts';
 import { legacyDisplay } from './display-legacy.ts';
 import { unprefixedSizeKeyword } from './size-keywords.ts';
 import type { AtRuleContext, ContainerCondition, RuleCondition } from './at-rules.ts';
@@ -673,6 +674,14 @@ function parseResolved(d: CssNode, property: string, base: Span, sheetText: stri
     return animation === null ? null : { property, text, span, valueSpan, longhands: [], order, ...important, animation };
   }
   if (property === 'all') return parseAll(valueNode, span, valueSpan, text, order, important, diagnostics);
+  if (CHROME_DROPPED_PROPERTIES.has(property)) {
+    // TXT2-i: Chrome does not know the property and drops the declaration, so Dragon drops it too (css/chrome-dropped.ts).
+    diagnostics.push(diagnostic('DRAGON_PROPERTY_DROPPED', {
+      origin: authored(span),
+      message: `${property} is dropped: Chrome 145 does not know the property, so the declaration never applies`,
+    }));
+    return null;
+  }
   if (!isLonghand(property) && !isShorthand(property)) {
     const refusal = diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
       origin: authored(span),
