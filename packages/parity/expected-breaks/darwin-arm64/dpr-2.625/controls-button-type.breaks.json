@@ -1,0 +1,13 @@
+{
+  "case": "controls-button-type",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"t-none:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t-button:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t-submit:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t-reset:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t-bogus:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"t-empty:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

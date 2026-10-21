@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { objectBoundingBox } from '@dragon/layout';
 import { parsePathData, parseSvgLength, parseViewBox } from '../src/analysis/elements/svg-path.ts';
-import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgShapeEmpty, svgZeroLengthSubpath } from '../src/analysis/elements/svg.ts';
+import { paintAttributeValue, svgAttributeRefusal, svgPresentationHints, svgRectRadii, svgShapeEmpty, svgZeroLengthSubpath } from '../src/analysis/elements/svg.ts';
 import { createProjectWith, nativePrograms, NO_FAULTS, svgScenes } from '../src/internal.ts';
 import { svgDashPhase, svgShapePath } from '../src/lower/paint/image.ts';
 import { svgPaintAlpha } from '../src/css/color.ts';
@@ -595,7 +595,49 @@ describe('the svg model in a compile', () => {
     expect(svgAttributeRefusal('path', 'clip-rule', 'bogus')).not.toBeNull();
     expect(svgAttributeRefusal('rect', 'clip-rule', 'evenodd')).toBeNull();
   });
-  it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect, and a negative attribute; a negative in CSS is invalid', () => {
+  it('SVG-inert-b: the stop, flood, lighting, mask-type, text-anchor and baseline longhands compile on every target, as CSS and as attributes, and change no native write', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'p', 'path', [['d', 'M0 0 H4 V4 Z'], ['stop-color', 'green'], ['flood-opacity', '0.3'], ['text-anchor', 'middle'], ['alignment-baseline', 'before-edge']]), shape(o, 'c', 'circle', [['r', '4']])];
+    const program = (css: string) => {
+      const c = compile(svgTree(css, shapes), false);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      return JSON.stringify(p.programs.uikit.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'svg-shapes'));
+    };
+    expect(program('svg { stop-color: red; stop-opacity: 50%; flood-color: currentcolor; flood-opacity: 2; lighting-color: blue; mask-type: alpha; text-anchor: end; dominant-baseline: use-script; alignment-baseline: middle; } circle { stop-opacity: 0; mask-type: ALPHA; dominant-baseline: central; }')).toBe(program(''));
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
+    expect(refused('circle { alignment-baseline: text-top; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "text-top" is not a valid value for alignment-baseline (@webref/css grammar)']);
+    expect(refused('circle { stop-color: none; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "none" is not a valid value for stop-color (@webref/css grammar)']);
+    expect(svgAttributeRefusal('rect', 'dominant-baseline', 'hanging')).toBeNull();
+    expect(svgAttributeRefusal('rect', 'lighting-color', 'red')).toBeNull();
+    expect(svgAttributeRefusal('rect', 'mask-type', 'bogus')).not.toBeNull();
+  });
+  it('SVG-d: CSS d replaces a path\'s d attribute and none empties it; a rect ignores it; bad path data is invalid and an arc refuses', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'p', 'path', [['d', 'M0 0 H4 V4 Z']]), shape(o, 'q', 'path', []), shape(o, 'r', 'rect', [['width', '4'], ['height', '4']])];
+    const geometry = (css: string) => {
+      const c = compile(svgTree(css, shapes), false);
+      expect(errors(c), css).toEqual([]);
+      return svgScenes(c, [])?.[0]?.shapes.map((x) => [x.address, x.shape]);
+    };
+    const base = geometry('');
+    const empty = { kind: 'path', segments: [] };
+    expect(base?.[1]).toEqual(['q', empty]);
+    expect(geometry('path:first-child { d: path("M0 0 H4 V4 Z"); } rect { d: path("M1 1 H2"); }')).toEqual(base);
+    // Relative commands and PATH() in any case resolve to the same absolute segments; the attribute's path moves to q.
+    const moved = geometry('path:nth-child(2) { d: path("M0 0 H4 V4 Z"); }');
+    expect(moved?.[1]).toEqual(['q', base?.[0]?.[1]]);
+    expect(geometry('path:nth-child(2) { d: PATH("m0 0 h4 v4 z"); }')).toEqual(moved);
+    expect(geometry('path:first-child { d: none; }')?.[0]).toEqual(['p', empty]);
+    expect(geometry('path:first-child { d: path(""); }')?.[0]).toEqual(['p', empty]);
+    expect(geometry('path:first-child { d: path("M0 0 H1"); }')?.[0]).not.toEqual(base?.[0]);
+    const refused = (css: string) => errors(compile(svgTree(css, shapes), false));
+    for (const v of ['path("M0 0 L 10")', 'path(evenodd, "M0 0 H4")', '"M0 0 H4"', 'path("M0 0") path("M1 1")', 'path(M0)']) expect(refused(`path:first-child { d: ${v}; }`)[0], v).toContain('DRAGON_CSS_INVALID_VALUE');
+    expect(refused('path:first-child { d: path("M0 0 A5 5 0 0 1 4 4"); }')).toEqual(['DRAGON_UNSUPPORTED_VALUE * d: path("M0 0 A5 5 0 0 1 4 4") is unsupported: elliptical arc commands are not built yet (package SVG-arc)']);
+    // An arc that reaches d through var() refuses too, rather than drawing nothing.
+    expect(refused('path:first-child { --x: path("M0 0 A5 5 0 0 1 4 4"); d: var(--x); }')).toHaveLength(1);
+    expect(refused('path:first-child { --x: path("M0 0 A5 5 0 0 1 4 4"); d: var(--x); }')[0]).toContain('DRAGON_UNSUPPORTED_VALUE');
+  });
+  it('SVG-rrect: refuses everywhere a percentage or calculated rx or ry on a rect; a negative in CSS is invalid', () => {
     const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])];
     const refused = (css: string) => errors(compile(svgTree(css, shapes), false)).sort();
     const all = (m: string) => ['android', 'ios', 'web'].map((t) => `DRAGON_UNSUPPORTED_VALUE ${t} ${m}`);
@@ -603,8 +645,20 @@ describe('the svg model in a compile', () => {
     expect(refused('rect { rx: 10%; }')).toEqual(all('rx: 10% on <rect> r is unsupported: a percentage rx is relative to the viewport width, which is not built yet (package SVG-units)'));
     expect(refused('rect { ry: calc(1px + 2px); }')).toEqual(all('ry: calc(1px + 2px) on <rect> r is unsupported: a calculated ry is not resolved yet (package SVG-units)'));
     expect(refused('rect { rx: -2px; }')).toEqual(['DRAGON_CSS_INVALID_VALUE * "-2px" is not a valid value for rx (@webref/css grammar)']);
-    expect(svgAttributeRefusal('rect', 'ry', '-1')).toContain('negative');
     expect(svgAttributeRefusal('rect', 'rx', '2px')).toBeNull();
     expect(svgAttributeRefusal('rect', 'rx', '10%')).toContain('SVG-units');
+    expect(svgAttributeRefusal('rect', 'ry', '5em')).toContain('SVG-units');
+  });
+  it('SVG-rrect: a negative rx or ry attribute stays the computed value and paints as auto; one that is no length (auto, a word, empty, "5 px") computes to 0, and one with a function refuses, as in Chrome', () => {
+    for (const t of ['-1', 'auto', 'AUTO', 'inherit', 'abc', '', 'abc1', '5 px', '5.', '5PX']) for (const n of ['rx', 'ry']) expect(svgAttributeRefusal('rect', n, t), `${n}="${t}"`).toBeNull();
+    for (const t of ['var(--r)', 'calc(pi)', 'env(x, 3px)', '5em', '5e', '10%']) expect(svgAttributeRefusal('rect', 'rx', t), `rx="${t}"`).toContain('SVG-units');
+    expect(svgPresentationHints('rect', new Map([['rx', '5PX'], ['ry', '5 px'], ['width', '12pX']]))).toEqual(new Map([['rx', { kind: 'length', value: 5, unit: 'px' }], ['ry', { kind: 'length', value: 0, unit: 'px' }], ['width', { kind: 'length', value: 12, unit: 'px' }]]));
+    expect(svgAttributeRefusal('circle', 'r', '-1')).toContain('negative');
+    expect(svgPresentationHints('rect', new Map([['rx', '-6'], ['ry', 'auto']]))).toEqual(new Map([['rx', { kind: 'length', value: -6, unit: 'px' }], ['ry', { kind: 'length', value: 0, unit: 'px' }]]));
+    expect(svgRectRadii(-6, 9, 40, 30)).toEqual({ rx: 9, ry: 9 });
+    expect(svgRectRadii(8, -5, 40, 30)).toEqual({ rx: 8, ry: 8 });
+    expect(svgRectRadii(-6, 'auto', 40, 30)).toEqual({ rx: 0, ry: 0 });
+    expect(svgRectRadii(-5, 80, 100, 60)).toEqual({ rx: 50, ry: 30 });
+    expect(svgRectRadii(0, 10, 40, 30)).toEqual({ rx: 0, ry: 10 });
   });
 });

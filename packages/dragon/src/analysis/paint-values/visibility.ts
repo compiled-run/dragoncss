@@ -12,6 +12,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
 import { isSvgShapeTag } from '../elements/svg.ts';
+import { videoLoads } from '../../videos/compile.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
@@ -91,6 +92,7 @@ const isKeyword = (v: ResolvedValue | undefined, ...k: readonly string[]): boole
 export function ownViews(el: Pick<ResolvedElement, 'element' | 'props'>): string[] {
   const out: string[] = [];
   if (el.element.tag === 'iframe') out.push('the web view of an iframe');
+  if (el.element.tag === 'video' && videoLoads(el)) out.push('the player of a video');
   if (isKeyword(el.props.get('overflow-x'), 'auto', 'scroll') || isKeyword(el.props.get('overflow-y'), 'auto', 'scroll')) out.push('the scroll view of a scroll container');
   return out;
 }

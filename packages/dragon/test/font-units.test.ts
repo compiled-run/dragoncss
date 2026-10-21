@@ -134,6 +134,14 @@ describe('the contexts that stay refused', () => {
     expect(c.outputs.web.kind).toBe('ready');
   });
 
+  it('refuses natively an ex, ch or cap length under a zoom, and keeps the web output', () => {
+    const c = compile('.a { zoom: 2; } .b { width: 2ch; }');
+    expect(codes(c)).toEqual(['android DRAGON_LOWERING_FAILED', 'ios DRAGON_LOWERING_FAILED']);
+    expect(errors(c)[0]).toContain('expected an ex, ch or cap length at zoom 1');
+    expect(c.outputs.web.kind).toBe('ready');
+    expect(codes(compile('.a { zoom: 1; } .b { width: 2ch; }'))).toEqual([]);
+  });
+
   it('refuses a keyframe in ex, ch or cap', () => {
     const c = compile('@keyframes k { from { width: 1ch } to { width: 3ch } } .a { animation: k 1s infinite }');
     expect(codes(c)).toEqual(['null DRAGON_UNSUPPORTED_VALUE', 'null DRAGON_UNSUPPORTED_VALUE']);

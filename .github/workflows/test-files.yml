@@ -280,7 +280,9 @@ jobs:
       cancel-in-progress: false
     runs-on: macos-26
     timeout-minutes: 120
+    # android-profile.test.ts holds every fixture's native and enforced compiles (about 3 GB at its peak); macOS sizes the default heap near 2 GB.
     env:
+      NODE_OPTIONS: --max-old-space-size=4096
       FILES: ${{ needs.resolve.outputs.chrome }}
     steps:
       - uses: actions/checkout@v4
