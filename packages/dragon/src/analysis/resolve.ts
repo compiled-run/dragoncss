@@ -367,7 +367,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const kw = w.value.value;
         const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
-        props.set(p, { ...r, span: w.declaration.span, ...author });
+        // CASC: the keyword changes nothing where the element takes the same value with no author declaration of p: no hint, no UA
+        // rule, and (below the root, whose inherited values come from the environment) the inherited or initial value.
+        const bare = parent === null || hints.has(p) || userAgentValue(tag, p, environment.ua) !== null ? null : inherited ? fromParent(p).value : initialValue(p, environment.ua);
+        const unchanged = bare !== null && JSON.stringify(bare) === JSON.stringify(r.value);
+        props.set(p, { ...r, span: w.declaration.span, ...author, ...(unchanged ? { unchanged: true as const } : {}) });
       } else if ((w === undefined || toHint) && hints.has(p)) {
         // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
         // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
@@ -388,7 +392,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         defaulted.add(p);
       }
       if (reverted && w !== undefined && !toHint) {
-        props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author });
+        // CASC: with no hint to roll back, revert takes the value the element has with no author declaration of p: it changes nothing.
+        props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author, ...(hints.has(p) ? {} : { unchanged: true as const }) });
         revertedProps.add(p);
       }
     }
@@ -683,7 +688,7 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
     const value = declaredUserAgentValue(tag, p, ua, direction, ownFontSize, parentFontSize);
     const was = props.get(p) as ResolvedValue;
     // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
-    const none = reverted.has(p) ? { span: was.span, declaration: was.declaration, declared: was.declared, losing: was.losing, ...(was.substitution === undefined ? {} : { substitution: was.substitution }) } : unset;
+    const none = reverted.has(p) ? { span: was.span, declaration: was.declaration, declared: was.declared, losing: was.losing, ...(was.substitution === undefined ? {} : { substitution: was.substitution }), ...(was.unchanged === true ? { unchanged: true as const } : {}) } : unset;
     if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
     // The capture derives no declared values for the root (its UA values, as :root { view-transition-name: root }, are captured
     // computed), so the root keeps a captured UA value.

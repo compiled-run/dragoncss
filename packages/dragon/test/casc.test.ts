@@ -7,7 +7,7 @@ import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { evaluateSupports, parseSupportsCondition } from '../src/css/at-rules/supports.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor, spanTextOf } from './helpers.ts';
+import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 
 type K = 'ios' | 'android' | 'web';
 const compile = (css: string, opts: { faults?: CompilerFaults; profiles?: 'enforce' | 'derive'; tag?: string } = {}): { input: FrontEndResult; c: Compiled<K> } => {
@@ -179,6 +179,35 @@ describe('all', () => {
     expect(refused('.a { all: initial !important; font-family: Ahem !important; }')).toEqual([]);
     expect(refused('.a { all: initial !important; font-family: Ahem; }').sort()).toEqual(['android', 'ios', 'web']);
     expect(refused('.a { font-family: Ahem; } .a { all: initial; }').sort()).toEqual(['android', 'ios', 'web']);
+  });
+  it('leaves unicode-bidi alone, as Chrome 145 does', () => {
+    const { c } = compile('.a { unicode-bidi: isolate; } .a { all: unset; }');
+    expect(value(c, 'unicode-bidi')).toBe('isolate');
+  });
+});
+
+describe('CSS-wide keywords against the support profiles (CASC)', () => {
+  // The probe of coverage-rank: text inside the element, so text longhands are checked where their values reach.
+  const errors = (css: string): string[] => {
+    const input = inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 't', 'Hi')])])]);
+    const project = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', rootFont: 'ahem' });
+    return project.compile(input).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${String(d.target)} ${d.message}`);
+  };
+  it('all: unset, revert and inherit compile on every target where each longhand keeps or takes a proven value', () => {
+    for (const kw of ['unset', 'revert', 'inherit']) expect(errors(`.a { all: ${kw}; }`), kw).toEqual([]);
+  });
+  it('a keyword that leaves the value unchanged needs no row: position: initial on a block is static', () => {
+    expect(errors('.a { position: initial; top: initial; margin: initial; }')).toEqual([]);
+  });
+  it('a keyword is checked as the value it computes to in its own context', () => {
+    // width: inherit takes the body's auto here, which no declaration needs; from a px width it takes a proven px width.
+    expect(errors('body { width: 50px; } .a { width: inherit; }')).toEqual([]);
+  });
+  it('a keyword that computes to an unsupported value is refused, naming the value', () => {
+    const e = errors('.a { all: initial; }');
+    for (const t of ['ios', 'android', 'web']) {
+      expect(e, t).toContainEqual(expect.stringMatching(new RegExp(`^DRAGON_UNSUPPORTED_VALUE ${t} font-family: initial \\(set by all: initial\\) on \\S+ computes to Times, which is unsupported`)));
+    }
   });
 });
 

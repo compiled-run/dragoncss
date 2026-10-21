@@ -325,11 +325,15 @@ describe('profile diagnostics name the alias as written', () => {
     return [...new Set(c.diagnostics.map((d) => `${d.code} ${d.message}`))];
   };
   it('an unsupported value says which alias set it', () => {
-    expect(messages('body { margin: 0 } .a { -webkit-box-sizing: unset }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
-      // casc-all proves box-sizing: unset in inline flow only, so in block flow the alias value is unsupported and an unproven context.
-      'DRAGON_UNSUPPORTED_VALUE box-sizing: unset (set by -webkit-box-sizing: unset) is unsupported (support profile m1-s5); in block/ltr use border-box, content-box or inherit',
-      'DRAGON_UNPROVEN_CONTEXT box-sizing:unset (set by -webkit-box-sizing: unset) on a is used in the block/ltr context, which is not proven (proven: inline/ltr, inline/rtl); box-sizing values proven in block/ltr: border-box, content-box, inherit, initial or revert',
+    // One message per target (ios, web), each listing that target's proven values.
+    expect(messages('body { margin: 0 } .a { -webkit-flex-basis: min-content }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
+      'DRAGON_UNSUPPORTED_VALUE flex-basis: min-content (set by -webkit-flex-basis: min-content) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-px>, <length-rem>, <max()>, <min()>, <percentage>, auto, inherit, initial or revert',
+      'DRAGON_UNSUPPORTED_VALUE flex-basis: min-content (set by -webkit-flex-basis: min-content) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-px>, <length-rem>, <max()>, <min()>, <percentage>, auto or inherit',
     ]);
+  });
+  it('a CSS-wide keyword that leaves the value unchanged needs no row of its own (CASC)', () => {
+    // casc-all proves box-sizing: unset in inline flow only; in block flow it computes to content-box, the value with no declaration.
+    expect(messages('body { margin: 0 } .a { -webkit-box-sizing: unset }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([]);
   });
   it('an unproven context names the alias shorthand that set the longhand', () => {
     const [m, ...rest] = messages('body { margin: 0 } .p { display: flex; flex-direction: column } .a { -webkit-flex: 3 }', 'rtl', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);

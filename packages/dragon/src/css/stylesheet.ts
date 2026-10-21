@@ -766,7 +766,7 @@ function parseAll(valueNode: CssNode, span: Span, valueSpan: Span, text: string,
   }
   const value: CssValue = { kind: 'keyword', value: keyword };
   // Chrome's all skips direction, unicode-bidi and -webkit-user-modify (Chrome 145, landing review of #480).
-  const longhands = LONGHANDS.filter((p) => p !== 'direction' && p !== '-webkit-user-modify').map((p) => ({ property: p, value, explicit: true }));
+  const longhands = LONGHANDS.filter((p) => p !== 'direction' && p !== 'unicode-bidi' && p !== '-webkit-user-modify').map((p) => ({ property: p, value, explicit: true }));
   const animation: AnimationDeclValue = { longhands: new Map((Object.keys(ANIM_INITIAL) as AnimLonghand[]).map((p): [AnimLonghand, AnimList] => [p, { kind: 'wide', keyword }])) };
   return { property: 'all', text, span, valueSpan, longhands, order, ...important, animation };
 }
