@@ -210,6 +210,10 @@ export type EngineFaults = {
   readonly containedContentSized: boolean;
   /** CQ: an inline-size contained block joins its parent's block formatting context (margins collapse through it). */
   readonly containerJoinsFlow: boolean;
+  /** TXT-TW: text-wrap-style balance and pretty lay lines out greedily, as auto does (inline.ts wrapStyleLines). */
+  readonly wrapStyleGreedy: boolean;
+  /** css-inline-3 §5.1: text-box-trim is ignored; every line keeps its line box's block-start and block-end edges. */
+  readonly textBoxTrimIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -297,6 +301,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampEllipsisOnExactLastLine: false,
   containedContentSized: false,
   containerJoinsFlow: false,
+  wrapStyleGreedy: false,
+  textBoxTrimIgnored: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
@@ -715,6 +721,9 @@ const clampsLines = (box: LayoutBox, last: LU | null): boolean => box.style.line
 
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = box.children;
+  if (box.style.multicol !== null && ((box.strut === null && kids.length > 0) || a.marker !== null)) {
+    unsupported('multicol', box.id, 'css-multicol-1 §3', `the multi-column container ${box.id} ${a.marker !== null ? 'is a list item' : 'holds block-level boxes'}, which is not yet proven against Chrome`);
+  }
   if (box.strut !== null) {
     // CSS2 §9.2.1.1: the compiler wraps inline content beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
     const r = layoutInline(ctx, box, a.contentWidth, a.origin);
@@ -726,6 +735,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: first, outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: clampsLines(box, last) ? null : last, defaultLastBaselineFlex: clampsLines(box, last) ? box.id : '', markerY };
   }
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
+  // css-inline-3 §5.1: text-box-trim reaches the first and last lines of block children (BoxFragmentBuilder::SetInitialTextBoxTrim),
+  // which the engine does not trim; the compiler refuses it (analysis/text-box.ts).
+  if (box.style.textBoxTrim !== null && kids.length > 0) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which holds block-level boxes, is not yet proven against Chrome`);
   const direction = directionOf(ctx, box);
   const placed: Placed[] = [];
   let strut = EMPTY_STRUT;
@@ -780,7 +792,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
     // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
-    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block');
+    // css-multicol-1 §2: a multi-column container establishes a new block formatting context too.
+    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block') || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).

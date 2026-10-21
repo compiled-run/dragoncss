@@ -39,6 +39,7 @@ import type {
   MaxSizeValue,
   InlineSizeValue,
   MinSizeValue,
+  MulticolStyle,
   PaddingValue,
   Percent,
   PixelsAndPercent,
@@ -47,6 +48,7 @@ import type {
   SafeAreaInsets,
   SizeValue,
   TextLeaf,
+  TextWrapStyle,
   TrackBreadth,
   TrackRepeater,
   TrackSize,
@@ -222,6 +224,8 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   for (const v of [s.containIntrinsicWidth, s.containIntrinsicHeight]) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
+  const m = s.multicol;
+  if (m !== null && m.width.kind === 'px' && !inCssLengthRange(m.width.value)) return true;
   return gridNeedsEnvironment(s.grid);
 }
 
@@ -353,9 +357,18 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     textIndent: envPadding(s.textIndent, env),
     containIntrinsicWidth: s.containIntrinsicWidth.kind === 'px' ? lengthPx(s.containIntrinsicWidth, env.zoom) : s.containIntrinsicWidth,
     containIntrinsicHeight: s.containIntrinsicHeight.kind === 'px' ? lengthPx(s.containIntrinsicHeight, env.zoom) : s.containIntrinsicHeight,
+    textWrapStyle: resolveTextWrapStyle(s.textWrapStyle, env),
+    multicol: s.multicol === null ? null : resolveMulticol(s.multicol, env),
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
     zoom: [],
   };
+}
+
+/** text-wrap-style balance and pretty at the block's effective zoom, a float: the device pixel ratio (ComputedStyle::EffectiveZoom). */
+function resolveTextWrapStyle(v: TextWrapStyle, env: Env): TextWrapStyle {
+  if (v.kind === 'balance') return { kind: 'balance', zoom: Math.fround(v.zoom * env.zoom) };
+  if (v.kind === 'pretty') return { kind: 'pretty', zoom: Math.fround(v.zoom * env.zoom) };
+  return v;
 }
 
 function resolveVerticalAlign(v: VerticalAlignValue, env: Env): VerticalAlignValue {
@@ -498,6 +511,12 @@ function resolveBasis(v: FlexBasisValue, env: Env): FlexBasisValue {
   if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
+}
+
+/** css-multicol-1 §3.1: a px column-width zooms as a length; column-count is a number. */
+function resolveMulticol(m: MulticolStyle, env: Env): MulticolStyle {
+  const w = m.width;
+  return { count: m.count, width: w.kind === 'px' ? lengthPx(w, env.zoom) : w };
 }
 
 function resolveGap(v: GapValue, env: Env): GapValue {

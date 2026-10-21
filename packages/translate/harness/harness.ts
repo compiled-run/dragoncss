@@ -26,6 +26,8 @@ import type {
   GridAutoRepeat,
   GridContainerStyle,
   GridItemStyle,
+  MulticolStyle,
+  TextBoxTrim,
   GridLine,
   GridLineName,
   GridSelfAlign,
@@ -61,6 +63,7 @@ import type {
   SizeValue,
   TextAlign,
   TextOverflow,
+  TextWrapStyle,
   TextLeaf,
   TextWrapMode,
   WhiteSpaceCollapse,
@@ -667,13 +670,27 @@ function aspectRatioValue(v: JsonValue, path: string): AspectRatioValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+function textWrapStyleValue(v: JsonValue, path: string): TextWrapStyle {
+  const k = kindOf(v, path);
+  if (k === 'auto') {
+    obj(v, ['kind'], path);
+    return { kind: 'auto' };
+  }
+  if (k === 'balance' || k === 'pretty') {
+    const o = obj(v, ['kind', 'zoom'], path);
+    const zoom = numField(o, 'zoom', path);
+    return k === 'balance' ? { kind: 'balance', zoom } : { kind: 'pretty', zoom };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 const STYLE_KEYS: readonly string[] = [
   'display', 'position', 'float', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
   'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
-  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'zoom',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -812,6 +829,31 @@ function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
   };
 }
 
+function decodeMulticol(v: JsonValue, path: string): MulticolStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['count', 'width'], path);
+  const count = numField(o, 'count', path);
+  if (!Number.isInteger(count) || count < 0) return fail(`${path}.count: expected a column count of at least 0, got ${count}`);
+  const w = field(o, 'width', path);
+  const k = kindOf(w, `${path}.width`);
+  if (k === 'auto') {
+    obj(w, ['kind'], `${path}.width`);
+    if (count === 0) return fail(`${path}: column-count and column-width are both auto`);
+    return { count, width: { kind: 'auto' } };
+  }
+  if (k !== 'px') return fail(`${path}.width: unknown kind ${k}`);
+  return { count, width: { kind: 'px', value: numField(obj(w, ['kind', 'value'], `${path}.width`), 'value', `${path}.width`) } };
+}
+
+function decodeTextBoxTrim(v: JsonValue, path: string): TextBoxTrim | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['start', 'end', 'alphabetic'], path);
+  const start = bool(field(o, 'start', path), `${path}.start`);
+  const end = bool(field(o, 'end', path), `${path}.end`);
+  if (!start && !end) return fail(`${path}: text-box-trim trims the start, the end or both; none is null`);
+  return { start, end, alphabetic: bool(field(o, 'alphabetic', path), `${path}.alphabetic`) };
+}
+
 function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
   if (v.kind === 'null') return null;
   const o = obj(v, ['column', 'row', 'justifySelf'], path);
@@ -882,6 +924,9 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     containSize: lit(f('containSize'), ['none', 'inline-size', 'size'], p('containSize')) as ContainSize,
     containIntrinsicWidth: pxOrNone(f('containIntrinsicWidth'), p('containIntrinsicWidth')),
     containIntrinsicHeight: pxOrNone(f('containIntrinsicHeight'), p('containIntrinsicHeight')),
+    textWrapStyle: textWrapStyleValue(f('textWrapStyle'), p('textWrapStyle')),
+    multicol: decodeMulticol(f('multicol'), p('multicol')),
+    textBoxTrim: decodeTextBoxTrim(f('textBoxTrim'), p('textBoxTrim')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
     zoom: numbers(f('zoom'), p('zoom')),
@@ -1091,7 +1136,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1184,6 +1229,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
     containedContentSized: b('containedContentSized'),
     containerJoinsFlow: b('containerJoinsFlow'),
+    wrapStyleGreedy: b('wrapStyleGreedy'),
+    textBoxTrimIgnored: b('textBoxTrimIgnored'),
   };
 }
 
