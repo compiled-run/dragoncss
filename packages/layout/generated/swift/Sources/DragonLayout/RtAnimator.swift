@@ -358,11 +358,11 @@ public func rtAnimator_findStyle(_ b: any U_ControlBox_LayoutBox, _ id: JsString
   }
   // ts: packages/layout/src/rt-animator.ts:211
   do {
-    let _a231 = b.children
-    var _i231 = 0
-    while _i231 < _a231.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a231.items[_i231]
-      _i231 += 1
+    let _a232 = b.children
+    var _i232 = 0
+    while _i232 < _a232.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a232.items[_i232]
+      _i232 += 1
       // ts: packages/layout/src/rt-animator.ts:212
       if ((c.kind == S.s_replaced) && ((c as! ReplacedLeaf).id == id)) {
         return (c as! ReplacedLeaf).style
@@ -501,11 +501,11 @@ public func rtAnimator_lengthBase(_ resolved: LayoutInput, _ node: JsString, _ p
 public func rtAnimator_rendered(_ t: AnimTables, _ node: JsString, _ i: Double) throws -> Bool {
   // ts: packages/layout/src/rt-animator.ts:267
   do {
-    let _a232 = t.rendered
-    var _i232 = 0
-    while _i232 < _a232.items.count {
-      let r: RenderedTable = _a232.items[_i232]
-      _i232 += 1
+    let _a233 = t.rendered
+    var _i233 = 0
+    while _i233 < _a233.items.count {
+      let r: RenderedTable = _a233.items[_i233]
+      _i233 += 1
       // ts: packages/layout/src/rt-animator.ts:268
       if (r.node != node) {
         continue
@@ -562,20 +562,20 @@ public func rtAnimator_rulesFor(_ t: AnimTables, _ property: JsString) throws ->
     let keyframes: JsArray<RuleKeyframe> = JsArray<RuleKeyframe>([])
     // ts: packages/layout/src/rt-animator.ts:300
     do {
-      let _a233 = r.blocks
-      var _i233 = 0
-      while _i233 < _a233.items.count {
-        let bl: KeyframeBlock = _a233.items[_i233]
-        _i233 += 1
+      let _a234 = r.blocks
+      var _i234 = 0
+      while _i234 < _a234.items.count {
+        let bl: KeyframeBlock = _a234.items[_i234]
+        _i234 += 1
         var sets: Bool = false
         var value: AnimatedValue = rtAnimator_EMPTY
         // ts: packages/layout/src/rt-animator.ts:303
         do {
-          let _a234 = bl.values
-          var _i234 = 0
-          while _i234 < _a234.items.count {
-            let v: KeyframeValue = _a234.items[_i234]
-            _i234 += 1
+          let _a235 = bl.values
+          var _i235 = 0
+          while _i235 < _a235.items.count {
+            let v: KeyframeValue = _a235.items[_i235]
+            _i235 += 1
             // ts: packages/layout/src/rt-animator.ts:304
             if (v.property != property) {
               continue
@@ -587,11 +587,11 @@ public func rtAnimator_rulesFor(_ t: AnimTables, _ property: JsString) throws ->
         }
         // ts: packages/layout/src/rt-animator.ts:309
         do {
-          let _a235 = bl.offsets
-          var _i235 = 0
-          while _i235 < _a235.items.count {
-            let offset: Double = _a235.items[_i235]
-            _i235 += 1
+          let _a236 = bl.offsets
+          var _i236 = 0
+          while _i236 < _a236.items.count {
+            let offset: Double = _a236.items[_i236]
+            _i236 += 1
             _ = try jsPush(keyframes, RuleKeyframe(offset, bl.hasEasing, (bl.hasEasing ? rtAnimator_easingOf(bl.easing) : rtEasing_LINEAR), sets, value))
           }
         }
@@ -605,22 +605,22 @@ public func rtAnimator_rulesFor(_ t: AnimTables, _ property: JsString) throws ->
 public func rtAnimator_ruleSetsByName(_ rules: JsArray<KeyframesRule>, _ name: JsString) throws -> Bool {
   // ts: packages/layout/src/rt-animator.ts:317
   do {
-    let _a236 = rules
-    var _i236 = 0
-    while _i236 < _a236.items.count {
-      let r: KeyframesRule = _a236.items[_i236]
-      _i236 += 1
+    let _a237 = rules
+    var _i237 = 0
+    while _i237 < _a237.items.count {
+      let r: KeyframesRule = _a237.items[_i237]
+      _i237 += 1
       // ts: packages/layout/src/rt-animator.ts:318
       if (r.name != name) {
         continue
       }
       // ts: packages/layout/src/rt-animator.ts:319
       do {
-        let _a237 = r.keyframes
-        var _i237 = 0
-        while _i237 < _a237.items.count {
-          let k: RuleKeyframe = _a237.items[_i237]
-          _i237 += 1
+        let _a238 = r.keyframes
+        var _i238 = 0
+        while _i238 < _a238.items.count {
+          let k: RuleKeyframe = _a238.items[_i238]
+          _i238 += 1
           // ts: packages/layout/src/rt-animator.ts:319
           if k.sets {
             return true
@@ -637,11 +637,11 @@ public func rtAnimator_sampleKeys(_ list: JsArray<RunningAnimation>, _ faults: R
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/rt-animator.ts:329
   do {
-    let _a238 = list
-    var _i238 = 0
-    while _i238 < _a238.items.count {
-      let a: RunningAnimation = _a238.items[_i238]
-      _i238 += 1
+    let _a239 = list
+    var _i239 = 0
+    while _i239 < _a239.items.count {
+      let a: RunningAnimation = _a239.items[_i239]
+      _i239 += 1
       let c: ComputedTiming = try rtTiming_computeSecondsTiming(a.timing, a.held.seconds, faults)
       _ = try jsPush(out, ((c.currentIteration == nil) ? (0.0 / 0.0) : jsUnwrap(c.currentIteration)))
       _ = try jsPush(out, ((c.progress == nil) ? (0.0 / 0.0) : jsUnwrap(c.progress)))
@@ -827,11 +827,11 @@ public func rtAnimator_animatorAdvance(_ s: AnimatorState, _ t: AnimTables, _ in
 public func rtAnimator_animatorBusy(_ s: AnimatorState) throws -> Bool {
   // ts: packages/layout/src/rt-animator.ts:446
   do {
-    let _a239 = s.transitions
-    var _i239 = 0
-    while _i239 < _a239.items.count {
-      let r: RunningTransition? = _a239.items[_i239]
-      _i239 += 1
+    let _a240 = s.transitions
+    var _i240 = 0
+    while _i240 < _a240.items.count {
+      let r: RunningTransition? = _a240.items[_i240]
+      _i240 += 1
       // ts: packages/layout/src/rt-animator.ts:446
       if try ((r != nil) && (!rtTransition_transitionFinished(jsUnwrap(r)))) {
         return true
@@ -840,18 +840,18 @@ public func rtAnimator_animatorBusy(_ s: AnimatorState) throws -> Bool {
   }
   // ts: packages/layout/src/rt-animator.ts:447
   do {
-    let _a240 = s.lists
-    var _i240 = 0
-    while _i240 < _a240.items.count {
-      let l: JsArray<RunningAnimation> = _a240.items[_i240]
-      _i240 += 1
+    let _a241 = s.lists
+    var _i241 = 0
+    while _i241 < _a241.items.count {
+      let l: JsArray<RunningAnimation> = _a241.items[_i241]
+      _i241 += 1
       // ts: packages/layout/src/rt-animator.ts:447
       do {
-        let _a241 = l
-        var _i241 = 0
-        while _i241 < _a241.items.count {
-          let a: RunningAnimation = _a241.items[_i241]
-          _i241 += 1
+        let _a242 = l
+        var _i242 = 0
+        while _i242 < _a242.items.count {
+          let a: RunningAnimation = _a242.items[_i242]
+          _i242 += 1
           // ts: packages/layout/src/rt-animator.ts:447
           if try ((!a.paused) && (!rtAnimations_animationFinished(a))) {
             return true
@@ -898,11 +898,11 @@ public func rtAnimator_animatorFrame(_ s: AnimatorState, _ t: AnimTables, _ faul
   var k: Double = 0.0
   // ts: packages/layout/src/rt-animator.ts:470
   do {
-    let _a242 = s.transitions
-    var _i242 = 0
-    while _i242 < _a242.items.count {
-      let r: RunningTransition? = _a242.items[_i242]
-      _i242 += 1
+    let _a243 = s.transitions
+    var _i243 = 0
+    while _i243 < _a243.items.count {
+      let r: RunningTransition? = _a243.items[_i243]
+      _i243 += 1
       let sl: SlotTable? = jsAt(t.slots, k)
       k += 1.0
       // ts: packages/layout/src/rt-animator.ts:473
@@ -944,11 +944,11 @@ public func rtAnimator_closureFrame(_ frame: JsArray<FrameEntry>, _ t: AnimTable
   }
   // ts: packages/layout/src/rt-animator.ts:493
   do {
-    let _a243 = t.closure
-    var _i243 = 0
-    while _i243 < _a243.items.count {
-      let c: ClosureTable = _a243.items[_i243]
-      _i243 += 1
+    let _a244 = t.closure
+    var _i244 = 0
+    while _i244 < _a244.items.count {
+      let c: ClosureTable = _a244.items[_i244]
+      _i244 += 1
       let i: Double = try rtAnimator_indexOfEntry(frame, c.source.node, c.source.property)
       let src: FrameEntry? = jsAt(frame, i)
       // ts: packages/layout/src/rt-animator.ts:496
@@ -957,11 +957,11 @@ public func rtAnimator_closureFrame(_ frame: JsArray<FrameEntry>, _ t: AnimTable
       }
       // ts: packages/layout/src/rt-animator.ts:497
       do {
-        let _a244 = c.writes
-        var _i244 = 0
-        while _i244 < _a244.items.count {
-          let w: TrackRef = _a244.items[_i244]
-          _i244 += 1
+        let _a245 = c.writes
+        var _i245 = 0
+        while _i245 < _a245.items.count {
+          let w: TrackRef = _a245.items[_i245]
+          _i245 += 1
           // ts: packages/layout/src/rt-animator.ts:497
           if try (rtAnimator_indexOfEntry(out, w.node, w.property) < 0.0) {
             try out = jsConcatArrays([out, JsArray<FrameEntry>([FrameEntry(w.node, w.property, jsUnwrap(src).value)])])
@@ -978,11 +978,11 @@ public func rtAnimator_frameColors(_ frame: JsArray<FrameEntry>, _ t: AnimTables
   let out: JsArray<ColorWrite> = JsArray<ColorWrite>([])
   // ts: packages/layout/src/rt-animator.ts:505
   do {
-    let _a245 = try rtAnimator_closureFrame(frame, t, anim)
-    var _i245 = 0
-    while _i245 < _a245.items.count {
-      let e: FrameEntry = _a245.items[_i245]
-      _i245 += 1
+    let _a246 = try rtAnimator_closureFrame(frame, t, anim)
+    var _i246 = 0
+    while _i246 < _a246.items.count {
+      let e: FrameEntry = _a246.items[_i246]
+      _i246 += 1
       // ts: packages/layout/src/rt-animator.ts:505
       if (e.value.kind == S.s_color) {
         _ = try jsPush(out, ColorWrite(e.node, e.property, rtInterpolate_colorRgba8(e.value.color)))
@@ -996,11 +996,11 @@ public func rtAnimator_frameColors(_ frame: JsArray<FrameEntry>, _ t: AnimTables
 public func rtAnimator_tableValue(_ t: AnimTables, _ node: JsString, _ property: JsString, _ i: Double) throws -> AnimatedValue? {
   // ts: packages/layout/src/rt-animator.ts:511
   do {
-    let _a246 = t.slots
-    var _i246 = 0
-    while _i246 < _a246.items.count {
-      let sl: SlotTable = _a246.items[_i246]
-      _i246 += 1
+    let _a247 = t.slots
+    var _i247 = 0
+    while _i247 < _a247.items.count {
+      let sl: SlotTable = _a247.items[_i247]
+      _i247 += 1
       // ts: packages/layout/src/rt-animator.ts:512
       if ((sl.node != node) || (sl.property != property)) {
         continue
@@ -1011,11 +1011,11 @@ public func rtAnimator_tableValue(_ t: AnimTables, _ node: JsString, _ property:
   }
   // ts: packages/layout/src/rt-animator.ts:516
   do {
-    let _a247 = t.bases
-    var _i247 = 0
-    while _i247 < _a247.items.count {
-      let b: BaseTable = _a247.items[_i247]
-      _i247 += 1
+    let _a248 = t.bases
+    var _i248 = 0
+    while _i248 < _a248.items.count {
+      let b: BaseTable = _a248.items[_i248]
+      _i248 += 1
       // ts: packages/layout/src/rt-animator.ts:517
       if ((b.node != node) || (b.property != property)) {
         continue
@@ -1032,11 +1032,11 @@ public func rtAnimator_frameTransforms(_ s: AnimatorState, _ t: AnimTables, _ fr
   let out: JsArray<TransformWrite> = JsArray<TransformWrite>([])
   // ts: packages/layout/src/rt-animator.ts:531
   do {
-    let _a248 = t.origins
-    var _i248 = 0
-    while _i248 < _a248.items.count {
-      let o: OriginTable = _a248.items[_i248]
-      _i248 += 1
+    let _a249 = t.origins
+    var _i249 = 0
+    while _i249 < _a249.items.count {
+      let o: OriginTable = _a249.items[_i249]
+      _i249 += 1
       let origin: TransformOrigin? = jsAt(o.values, s.current)
       // ts: packages/layout/src/rt-animator.ts:533
       if (origin == nil) {
@@ -1163,11 +1163,11 @@ public func rtAnimator_withLength(_ s: LayoutStyle, _ property: JsString, _ l: L
 public func rtAnimator_rangeOf(_ t: AnimTables, _ node: JsString, _ property: JsString) throws -> JsString {
   // ts: packages/layout/src/rt-animator.ts:578
   do {
-    let _a249 = t.slots
-    var _i249 = 0
-    while _i249 < _a249.items.count {
-      let sl: SlotTable = _a249.items[_i249]
-      _i249 += 1
+    let _a250 = t.slots
+    var _i250 = 0
+    while _i250 < _a250.items.count {
+      let sl: SlotTable = _a250.items[_i250]
+      _i250 += 1
       // ts: packages/layout/src/rt-animator.ts:578
       if ((sl.node == node) && (sl.property == property)) {
         return sl.range
@@ -1176,11 +1176,11 @@ public func rtAnimator_rangeOf(_ t: AnimTables, _ node: JsString, _ property: Js
   }
   // ts: packages/layout/src/rt-animator.ts:579
   do {
-    let _a250 = t.bases
-    var _i250 = 0
-    while _i250 < _a250.items.count {
-      let b: BaseTable = _a250.items[_i250]
-      _i250 += 1
+    let _a251 = t.bases
+    var _i251 = 0
+    while _i251 < _a251.items.count {
+      let b: BaseTable = _a251.items[_i251]
+      _i251 += 1
       // ts: packages/layout/src/rt-animator.ts:579
       if ((b.node == node) && (b.property == property)) {
         return b.range
@@ -1195,11 +1195,11 @@ public func rtAnimator_patchStyle(_ id: JsString, _ s: LayoutStyle, _ frame: JsA
   var style: LayoutStyle = s
   // ts: packages/layout/src/rt-animator.ts:585
   do {
-    let _a251 = frame
-    var _i251 = 0
-    while _i251 < _a251.items.count {
-      let e: FrameEntry = _a251.items[_i251]
-      _i251 += 1
+    let _a252 = frame
+    var _i252 = 0
+    while _i252 < _a252.items.count {
+      let e: FrameEntry = _a252.items[_i252]
+      _i252 += 1
       // ts: packages/layout/src/rt-animator.ts:585
       if ((e.node == id) && (e.value.kind == S.s_length)) {
         try style = rtAnimator_withLength(style, e.property, e.value.length, rtAnimator_rangeOf(t, e.node, e.property))
@@ -1252,11 +1252,11 @@ public func rtAnimator_patchInput(_ input: LayoutInput, _ frame: JsArray<FrameEn
   var `any`: Bool = false
   // ts: packages/layout/src/rt-animator.ts:615
   do {
-    let _a252 = frame
-    var _i252 = 0
-    while _i252 < _a252.items.count {
-      let e: FrameEntry = _a252.items[_i252]
-      _i252 += 1
+    let _a253 = frame
+    var _i253 = 0
+    while _i253 < _a253.items.count {
+      let e: FrameEntry = _a253.items[_i253]
+      _i253 += 1
       // ts: packages/layout/src/rt-animator.ts:615
       if (e.value.kind == S.s_length) {
         `any` = true

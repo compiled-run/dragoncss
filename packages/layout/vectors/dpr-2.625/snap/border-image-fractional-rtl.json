@@ -1,0 +1,195 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 17808
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 17808
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": -1344,
+   "y": 0,
+   "width": 68544,
+   "height": 17808
+  },
+  {
+   "id": "zero",
+   "parent": "row",
+   "x": 57792,
+   "y": 672,
+   "width": 10080,
+   "height": 7728
+  },
+  {
+   "id": "zerofill",
+   "parent": "row",
+   "x": 46704,
+   "y": 672,
+   "width": 10080,
+   "height": 7728
+  },
+  {
+   "id": "auto",
+   "parent": "row",
+   "x": 35616,
+   "y": 672,
+   "width": 10080,
+   "height": 7728
+  },
+  {
+   "id": "half",
+   "parent": "row",
+   "x": 24528,
+   "y": 672,
+   "width": 10080,
+   "height": 7728
+  },
+  {
+   "id": "mixed",
+   "parent": "row",
+   "x": 13440,
+   "y": 672,
+   "width": 10080,
+   "height": 7728
+  },
+  {
+   "id": "near",
+   "parent": "row",
+   "x": 2352,
+   "y": 672,
+   "width": 10080,
+   "height": 7728
+  },
+  {
+   "id": "pct",
+   "parent": "row",
+   "x": 57792,
+   "y": 9408,
+   "width": 10080,
+   "height": 7728
+  },
+  {
+   "id": "ring",
+   "parent": "row",
+   "x": 46704,
+   "y": 9408,
+   "width": 10080,
+   "height": 7728
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 278,
+   "width": 1050,
+   "height": 278
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 278,
+   "width": 1050,
+   "height": 278
+  },
+  {
+   "id": "row",
+   "left": -21,
+   "top": 0,
+   "right": 1050,
+   "bottom": 278,
+   "width": 1071,
+   "height": 278
+  },
+  {
+   "id": "zero",
+   "left": 882,
+   "top": 11,
+   "right": 1040,
+   "bottom": 131,
+   "width": 158,
+   "height": 120
+  },
+  {
+   "id": "zerofill",
+   "left": 709,
+   "top": 11,
+   "right": 866,
+   "bottom": 131,
+   "width": 157,
+   "height": 120
+  },
+  {
+   "id": "auto",
+   "left": 536,
+   "top": 11,
+   "right": 693,
+   "bottom": 131,
+   "width": 157,
+   "height": 120
+  },
+  {
+   "id": "half",
+   "left": 362,
+   "top": 11,
+   "right": 520,
+   "bottom": 131,
+   "width": 158,
+   "height": 120
+  },
+  {
+   "id": "mixed",
+   "left": 189,
+   "top": 11,
+   "right": 347,
+   "bottom": 131,
+   "width": 158,
+   "height": 120
+  },
+  {
+   "id": "near",
+   "left": 16,
+   "top": 11,
+   "right": 173,
+   "bottom": 131,
+   "width": 157,
+   "height": 120
+  },
+  {
+   "id": "pct",
+   "left": 882,
+   "top": 147,
+   "right": 1040,
+   "bottom": 268,
+   "width": 158,
+   "height": 121
+  },
+  {
+   "id": "ring",
+   "left": 709,
+   "top": 147,
+   "right": 866,
+   "bottom": 268,
+   "width": 157,
+   "height": 121
+  }
+ ]
+}

@@ -86,11 +86,11 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:45
   do {
-    let _a218 = box.children
-    var _i218 = 0
-    while _i218 < _a218.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a218.items[_i218]
-      _i218 += 1
+    let _a219 = box.children
+    var _i219 = 0
+    while _i219 < _a219.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a219.items[_i219]
+      _i219 += 1
       // ts: packages/layout/src/position.ts:46
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
         try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s290, jsConcat(S.s550, (k as! ReplacedLeaf).id, S.s113))
@@ -126,11 +126,11 @@ public func position_inset(_ v: any U_Auto_LengthCalc_Percent_Px, _ basis: Doubl
 public func position_checkControlSubtree(_ ctx: Ctx, _ box: LayoutBox) throws -> Void {
   // ts: packages/layout/src/position.ts:62
   do {
-    let _a219 = box.children
-    var _i219 = 0
-    while _i219 < _a219.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a219.items[_i219]
-      _i219 += 1
+    let _a220 = box.children
+    var _i220 = 0
+    while _i220 < _a220.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a220.items[_i220]
+      _i220 += 1
       // ts: packages/layout/src/position.ts:63
       if ((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) {
         continue

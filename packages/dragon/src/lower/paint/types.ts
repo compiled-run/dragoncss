@@ -31,6 +31,8 @@ export type BoxPaintContext = {
   readonly box: LayoutNode;
   readonly el: ResolvedElement | null;
   readonly parentColor: Rgba8;
+  /** The element whose overflow the viewport takes (css-overflow-3 §3.3, computed-checks propagatedFrom), or null: not a scroll container itself. */
+  readonly propagated?: ResolvedElement | null;
   /** The node's facts record: a module publishes typed facts (paint order, radii, transforms) under its own name; never projected. */
   readonly facts: Record<string, unknown>;
   /** REPL-a: the bytes of every drawable image src of the case (images/compile.ts). */

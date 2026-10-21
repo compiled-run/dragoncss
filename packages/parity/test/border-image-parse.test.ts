@@ -87,7 +87,9 @@ describe('border-image: Chrome 145 parsing', () => {
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    expect(real.filter((it) => it.longhands !== null).length).toBe(16);
+    // MISC-PAINT: the border-image shorthand splits into its components, so none 100%, stretch, 100% and none 100% / 1 / 0 stretch
+    // are accepted as the initial longhands too (16 before).
+    expect(real.filter((it) => it.longhands !== null).length).toBe(20);
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(30);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
   }, 120_000);

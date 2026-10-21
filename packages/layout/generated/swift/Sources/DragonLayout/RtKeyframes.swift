@@ -78,11 +78,11 @@ public func rtKeyframes_completeKeyframes(_ group: KeyframeGroup) throws -> JsAr
   }
   // ts: packages/layout/src/rt-keyframes.ts:52
   do {
-    let _a294 = group.keyframes
-    var _i294 = 0
-    while _i294 < _a294.items.count {
-      let k: PropertyKeyframe = _a294.items[_i294]
-      _i294 += 1
+    let _a295 = group.keyframes
+    var _i295 = 0
+    while _i295 < _a295.items.count {
+      let k: PropertyKeyframe = _a295.items[_i295]
+      _i295 += 1
       _ = jsPush(out, k)
     }
   }
@@ -160,11 +160,11 @@ public func rtKeyframes_sampleKeyframes(_ keyframes: JsArray<PropertyKeyframe>, 
   var result: InterpolatedValue? = nil
   // ts: packages/layout/src/rt-keyframes.ts:99
   do {
-    let _a295 = try rtKeyframes_keyframeSegments(keyframes)
-    var _i295 = 0
-    while _i295 < _a295.items.count {
-      let s: KeyframeSegment = _a295.items[_i295]
-      _i295 += 1
+    let _a296 = try rtKeyframes_keyframeSegments(keyframes)
+    var _i296 = 0
+    while _i296 < _a296.items.count {
+      let s: KeyframeSegment = _a296.items[_i296]
+      _i296 += 1
       // ts: packages/layout/src/rt-keyframes.ts:100
       if (!((fraction >= s.applyFrom) && (fraction < s.applyTo))) {
         continue
@@ -202,11 +202,11 @@ public func rtKeyframes_groupFromRule(_ rule: JsArray<RuleKeyframe>, _ defaultEa
     var next: Double = rtEasing_INFINITY
     // ts: packages/layout/src/rt-keyframes.ts:145
     do {
-      let _a296 = rule
-      var _i296 = 0
-      while _i296 < _a296.items.count {
-        let k: RuleKeyframe = _a296.items[_i296]
-        _i296 += 1
+      let _a297 = rule
+      var _i297 = 0
+      while _i297 < _a297.items.count {
+        let k: RuleKeyframe = _a297.items[_i297]
+        _i297 += 1
         // ts: packages/layout/src/rt-keyframes.ts:145
         if ((k.offset > last) && (k.offset < next)) {
           next = k.offset
@@ -215,11 +215,11 @@ public func rtKeyframes_groupFromRule(_ rule: JsArray<RuleKeyframe>, _ defaultEa
     }
     // ts: packages/layout/src/rt-keyframes.ts:146
     do {
-      let _a297 = rule
-      var _i297 = 0
-      while _i297 < _a297.items.count {
-        let k: RuleKeyframe = _a297.items[_i297]
-        _i297 += 1
+      let _a298 = rule
+      var _i298 = 0
+      while _i298 < _a298.items.count {
+        let k: RuleKeyframe = _a298.items[_i298]
+        _i298 += 1
         // ts: packages/layout/src/rt-keyframes.ts:146
         if (k.offset == next) {
           _ = jsPush(sorted, k)
@@ -235,11 +235,11 @@ public func rtKeyframes_groupFromRule(_ rule: JsArray<RuleKeyframe>, _ defaultEa
   let easings: JsArray<Easing> = JsArray<Easing>([])
   // ts: packages/layout/src/rt-keyframes.ts:151
   do {
-    let _a298 = sorted
-    var _i298 = 0
-    while _i298 < _a298.items.count {
-      let k: RuleKeyframe = _a298.items[_i298]
-      _i298 += 1
+    let _a299 = sorted
+    var _i299 = 0
+    while _i299 < _a299.items.count {
+      let k: RuleKeyframe = _a299.items[_i299]
+      _i299 += 1
       _ = jsPush(easings, (k.hasEasing ? k.easing : defaultEasing))
     }
   }
