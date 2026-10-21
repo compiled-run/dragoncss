@@ -9,10 +9,10 @@ import { BG_IMAGE_KOTLIN, BG_IMAGE_KOTLIN_IMPORTS, BG_IMAGE_KOTLIN_MEMBERS, BG_I
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT } from './types.ts';
 
-type Lang = 'swift' | 'kotlin';
+export type Lang = 'swift' | 'kotlin';
 
 /** A Double literal that reads back as the same double in Swift and Kotlin (native-support.ts doubleLit). */
-function num(v: number): string {
+export function num(v: number): string {
   if (!Number.isFinite(v)) throw new Error(`non-finite number ${v} in a gradient`);
   if (Object.is(v, -0)) return '-0.0';
   const s = String(v);
@@ -25,7 +25,7 @@ const color = (c: { r: number; g: number; b: number; alpha: number }): string =>
 const lengthPct = (lang: Lang, v: { unit: string; value: number }): string => `LengthPct(${str(lang, v.unit)}, ${num(v.value)})`;
 
 /** A translated GradientImage constructor call. */
-function gradientImage(lang: Lang, g: LoweredGradient): string {
+export function gradientImage(lang: Lang, g: LoweredGradient): string {
   const stops = g.stops.map((s) => `CssStop(${color(s.color)}, ${str(lang, s.unit)}, ${num(s.value)})`);
   return `GradientImage(${g.radial}, ${g.repeating}, ${str(lang, g.direction)}, ${num(g.angleDeg)}, ${num(g.slope)}, ${str(lang, g.sideX)}, ${str(lang, g.sideY)}, ${g.circle}, ${str(lang, g.extent)}, ${lengthPct(lang, g.radiusX)}, ${lengthPct(lang, g.radiusY)}, ${lengthPct(lang, g.centerX)}, ${lengthPct(lang, g.centerY)}, ${arr(lang, 'CssStop', stops)})`;
 }

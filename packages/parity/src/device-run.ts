@@ -99,6 +99,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'translate-percent-of-parent': ['transform-translate'],
   // gradient-linear's gradient points (rule gradient:<id>) see a 1 device px shift of every raster.
   'gradient-offset-1': ['gradient-linear'],
+  // MISC-PAINT: border-image-gradient's border image points (rule gradient:<id>) see a 1 device px shift of every border image raster.
+  'border-image-offset-1': ['border-image-gradient'],
   // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
@@ -152,6 +154,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'translate-percent-of-parent': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,
   'gradient-offset-1': /^gradient:/,
+  'border-image-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
   'bg-image-offset-1': /^(image-flat|edge):[^:]+:tile-/,

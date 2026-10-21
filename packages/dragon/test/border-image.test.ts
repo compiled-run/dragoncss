@@ -1,10 +1,11 @@
-// MISC-PAINT: the border image longhands, border-image and -webkit-border-image are accepted at their initial values alone, on every
-// target; every other value is kept and refused where it applies, since no target draws border images yet. The Chrome cases are
-// border-image-initial and reject-border-image-source (packages/parity/fixtures); packages/parity/test/border-image-parse.test.ts
-// pins the parse against Chrome.
+// MISC-PAINT: the border image longhands, border-image and -webkit-border-image. Every target accepts a border image whose source is
+// none, and part 1's gradient border image (analysis/border-image.ts); the rest is kept and refused where it applies, by name. The
+// Chrome cases are border-image-initial, border-image-gradient, reject-border-image-source and reject-border-image-repeat
+// (packages/parity/fixtures); packages/parity/test/border-image-parse.test.ts pins the parse against Chrome.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { emitNativeSupport, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { initialValue, valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -86,12 +87,29 @@ describe('border-image', () => {
       expect(parsed(d), d).toEqual([d]);
       expect(kindsOf(d), d).toEqual(['other']);
     }
-    // Anything but none is kept on every longhand, so it is over-refused rather than read as partly initial.
-    expect(kindsOf('border-image: url(b.png) 30 round')).toEqual(['other', 'other', 'other', 'other', 'other']);
+    // border-image sets each component it holds and resets the rest; a value its grammar does not take is kept on every longhand,
+    // so it is over-refused rather than read as partly initial. -webkit-border-image keeps that reading for anything but none.
+    expect(parsed('border-image: url(b.png) 30 round')).toEqual(['border-image-source: url(b.png)', 'border-image-slice: 30', 'border-image-width: 1', 'border-image-outset: 0', 'border-image-repeat: round']);
+    expect(parsed('border-image: none 100% / 1 / 0 stretch')).toEqual(INITIAL_DECLS);
+    expect(parsed('border-image: round linear-gradient(red, blue) fill 10% 4 / / 2px')).toEqual(['border-image-source: linear-gradient(red,blue)', 'border-image-slice: fill 10% 4', 'border-image-width: 1', 'border-image-outset: 2px', 'border-image-repeat: round']);
+    expect(parsed('border-image: 10 / 4px auto 2 stretch space')).toEqual(['border-image-source: none', 'border-image-slice: 10', 'border-image-width: 4px auto 2', 'border-image-outset: 0', 'border-image-repeat: stretch space']);
+    for (const d of ['border-image: 1 2 3 4 5', 'border-image: 10 / / ', 'border-image: 10 /', 'border-image: url(a.png) url(b.png)', 'border-image: round round round', 'border-image: bogus', 'border-image: 10 / -1', 'border-image: round fill 10% 4 linear-gradient(red, blue) / / 2px']) {
+      expect(kindsOf(d), d).toEqual(['other', 'other', 'other', 'other', 'other']);
+    }
     expect(kindsOf('-webkit-border-image: url(b.png) 10 / 4px')).toEqual(['other', 'other', 'other', 'other', 'other']);
-    expect(parsed('border-image: url(b.png) 30 round')[0]).toBe('border-image-source: url(b.png) 30 round');
-    expect(parsed('border-image: none 100% / 1 / 0 stretch')[0]).toBe('border-image-source: none 100% / 1 / 0 stretch');
     expect(parsed('-webkit-border-image: url(b.png) 10 / 4px')[0]).toBe('border-image-source: url(b.png) 10 / 4px');
+    // The types the profile rows key (featureOf <longhand>:<type>).
+    const typesOf = (decl: string): string[] => {
+      const css = `.a { ${decl}; }`;
+      const rules = parseStylesheet(css, { source: SOURCE, start: 0, end: css.length }, { id: 's', owner: 'doc', scope: 'document' }, 0, []);
+      return (rules[0]?.declarations[0]?.longhands ?? []).map((l) => (l.value.kind === 'other' ? l.value.type : l.value.kind));
+    };
+    expect(typesOf('border-image: linear-gradient(red, blue) 30% fill / 2 / 1px repeat')).toEqual(['linear-gradient()', 'slice', 'widths', 'outsets', 'repeat']);
+    expect(typesOf('border-image-source: url(b.png)')).toEqual(['url()']);
+    expect(typesOf('border-image-source: bogus')).toEqual(['border-image-value']);
+    // border resets the border image (Chrome's border shorthand includes the border image longhands); border-top does not.
+    expect(parsed('border: 1px solid red').slice(12)).toEqual(INITIAL_DECLS);
+    expect(parsed('border-top: 1px solid red')).toHaveLength(3);
     expect(parsed('border-image-slice: inherit')).toEqual(['border-image-slice: inherit']);
   });
 
@@ -105,28 +123,84 @@ describe('border-image', () => {
     expect(errorsAt('--b: none; border-image-source: var(--b)')).toEqual([]);
   });
 
-  it('refuses every other value on every target, once where it applies', () => {
-    for (const d of ['border-image-source: url(b.png)', 'border-image-source: linear-gradient(red, blue)', 'border-image-slice: 30%', 'border-image-slice: 100% fill', 'border-image-width: 4px', 'border-image-width: auto', 'border-image-outset: 2px', 'border-image-outset: 0px', 'border-image-repeat: round', 'border-image: url(b.png) 30 round', 'border-image: linear-gradient(red, blue) 1', '-webkit-border-image: url(b.png) 10 / 4px', '-webkit-border-image: linear-gradient(red, blue) 1']) {
-      expect(errorsAt(d), d).toEqual(REFUSED);
+  it('accepts a source of none with any other longhand, and part 1\'s gradient border images, on every target', () => {
+    for (const d of ['border-image-slice: 30%', 'border-image-slice: 100% fill', 'border-image-width: 4px', 'border-image-width: 10%', 'border-image-outset: 2px', 'border-image-repeat: round', 'border-image: none 10 / 3 / 2 round']) {
+      expect(errorsAt(d), d).toEqual([]);
     }
-    expect(errorsAt('border-image-source: url(b.png); border-image-repeat: round; border-image-width: 3')).toEqual(REFUSED);
+    for (const d of [
+      'border-image-source: linear-gradient(red, blue)',
+      'border-image: linear-gradient(red, blue) 1',
+      'border-image: linear-gradient(to right, red, blue) 1',
+      'border-image: linear-gradient(110deg, #2f4f66, #a57c5b 40%, #102030) 30% fill / 2 4px auto',
+      'border-image: linear-gradient(0.3turn, red, blue) 10 / 0 / 0px stretch stretch',
+      'border-style: none; border-image: linear-gradient(red, blue) 10 fill',
+      'border-style: dashed; border-image: linear-gradient(red, blue) 2',
+    ]) expect(errorsAt(d), d).toEqual([]);
+    // A later border resets an earlier border image (and an earlier border does not reset a later one), as in Chrome.
+    expect(errorsAt('border-image: url(b.png) 30 round; border: 1px solid')).toEqual([]);
+    expect(errorsAt('border-image: linear-gradient(red, blue) 1 round; border-top: 1px solid')).toEqual(REFUSED);
+  });
+
+  it('refuses every other border image on every target by name, once where it applies', () => {
+    const cases: readonly (readonly [string, RegExp])[] = [
+      ['border-image-source: url(b.png)', /^border-image-source: url\(b\.png\) on <div> a is unsupported: a url\(\) border image is not drawn yet/],
+      ['border-image: url(b.png) 30 round', /^border-image-source: url\(b\.png\) on <div> a is unsupported: a url\(\) border image/],
+      ['border-image-source: radial-gradient(red, blue)', /a radial-gradient\(\) border image is not drawn yet/],
+      ['border-image-source: repeating-linear-gradient(red, blue 10%)', /a repeating-linear-gradient\(\) border image is not drawn yet/],
+      ['border-image-source: conic-gradient(red, blue)', /a conic-gradient\(\) border image is not drawn yet/],
+      ['border-image-source: linear-gradient(red, 30%, blue)', /the gradient: colour hints/],
+      ['border-image-source: linear-gradient(to top right, red, blue)', /a gradient to a corner/],
+      ['border-image-source: linear-gradient(10.005deg, red, blue)', /off the 0\.01deg grid/],
+      ['border-image-source: linear-gradient(currentcolor, blue)', /a currentcolor stop/],
+      ['border-image-source: linear-gradient(rgba(255, 0, 0, 0.5), blue)', /a translucent stop/],
+      ['border-image-source: linear-gradient(transparent, blue)', /a translucent stop/],
+      ['border-image-source: linear-gradient(red 4px, blue)', /a stop position in px/],
+      ['border-image-source: linear-gradient(red 50%, blue 50%)', /stops all sit at one offset/],
+      ['border-image: linear-gradient(red, blue) 1 / 10%', /^border-image-width: 10% on <div> a is unsupported: a percentage border image width/],
+      ['border-image: linear-gradient(red, blue) 1 / 1em', /a border image width in em/],
+      ['border-image: linear-gradient(red, blue) 1 / 1 / 2px', /^border-image-outset: 2px on <div> a is unsupported: a border image outset/],
+      ['border-image: linear-gradient(red, blue) 1 / 1 / 0.5', /a border image outset/],
+      ['border-image: linear-gradient(red, blue) 1 round', /^border-image-repeat: round on <div> a is unsupported: border-image-repeat round is not drawn yet/],
+      ['border-image: linear-gradient(red, blue) 1 stretch space', /border-image-repeat stretch space is not drawn yet/],
+      ['border-image: linear-gradient(red, blue) 1 repeat', /border-image-repeat repeat/],
+      ['border-image: linear-gradient(red, blue) 1; border-radius: 4px', /on a rounded box/],
+      ['border-image: linear-gradient(red, blue) 1; background-image: linear-gradient(red, blue)', /over a background image/],
+      ['border-image: linear-gradient(red, blue) 1; display: list-item', /display list-item/],
+      ['border-image: linear-gradient(red, blue) 1; display: table-cell', /display table-cell/],
+      ['-webkit-border-image: url(b.png) 10 / 4px', /^-webkit-border-image: /],
+      ['-webkit-border-image: linear-gradient(red, blue) 1', /^-webkit-border-image: /],
+    ];
+    for (const [d, message] of cases) {
+      const css = `body { font-family: Ahem; font-size: 10px; } .s { border: 2px solid #102030; ${d}; }`;
+      const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', [], [text(r, 't', 'XX')])])]));
+      const errors = c.diagnostics.filter((x) => x.severity === 'error');
+      expect(errors.map((x) => `${String(x.target)} ${x.code}`).sort(), d).toEqual(REFUSED);
+      for (const x of errors) expect(x.message, d).toMatch(message);
+    }
     // A value that arrives through var() is refused as well.
-    expect(errorsAt('--b: linear-gradient(red, blue); border-image-source: var(--b)')).toEqual(REFUSED);
+    expect(errorsAt('--b: url(b.png); border-image-source: var(--b)')).toEqual(REFUSED);
     expect(errorsAt('--b: url(b.png) 30; -webkit-border-image: var(--b)')).toEqual(REFUSED);
+    expect(errorsAt('--b: linear-gradient(red, blue); border-image-source: var(--b)')).toEqual([]);
     // -webkit-border-image is refused even where it loses (analysis/border-image.ts): Chrome applies it first and keeps its border widths.
     expect(errorsAt('-webkit-border-image: url(b.png) 30; border-image-source: none')).toEqual(REFUSED);
-    // Dragon's border shorthand sets no border image longhand, so an earlier border image is still refused (Chrome's border resets it).
-    expect(errorsAt('border-image-repeat: round; border: 1px solid')).toEqual(REFUSED);
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { border-image-repeat: space; }';
-    const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
-    const errors = c.diagnostics.filter((x) => x.severity === 'error');
-    expect(errors).toHaveLength(3);
-    for (const d of errors) expect(d.message).toMatch(/^border-image-repeat: space on <div> a is unsupported: /);
-    // The reject-border-image-source fixture's message (packages/parity/src/fixture-groups/border-image.ts).
-    const shown = project(NO_FAULTS).compile(inputFor('body { font-family: Ahem; } .s { border: 4px solid; border-image-source: linear-gradient(red, blue); }', (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
-    const refused = shown.diagnostics.filter((x) => x.severity === 'error');
-    expect(refused).toHaveLength(3);
-    for (const d of refused) expect(d.message).toMatch(/^border-image-source: linear-gradient\(red,blue\) on <div> a is unsupported: /);
+    // The reject fixtures' messages (packages/parity/src/fixture-groups/border-image.ts).
+    const shown = (css: string): string[] => project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; } .s { border: 4px solid #102030; ${css} }`, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])).diagnostics.filter((x) => x.severity === 'error').map((x) => x.message);
+    expect(shown('border-image-source: radial-gradient(red, blue);').map((m) => m.startsWith('border-image-source: radial-gradient(red,blue) on <div> a is unsupported: '))).toEqual([true, true, true]);
+    expect(shown('border-image: linear-gradient(red, blue) 1 round;').map((m) => m.startsWith('border-image-repeat: round on <div> a is unsupported: '))).toEqual([true, true, true]);
+  });
+
+  it('refuses a drawn border image on the native targets inside a transformed or composited subtree, and web keeps it', () => {
+    const at = (outer: string, inner = ''): string[] => {
+      const css = `body { font-family: Ahem; font-size: 10px; } .o { ${outer} } .s { border: 4px solid #102030; border-image: linear-gradient(red, blue) 2; ${inner} }`;
+      const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'o', 'div', ['o'], [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])]));
+      return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code} ${d.message.split(':')[0]}`).sort();
+    };
+    expect(at('width: 100px')).toEqual([]);
+    const native = ['android DRAGON_UNSUPPORTED_VALUE border-image-source on a', 'ios DRAGON_UNSUPPORTED_VALUE border-image-source on a'];
+    expect(at('transform: rotate(10deg)')).toEqual(native);
+    expect(at('will-change: transform')).toEqual(native);
+    expect(at('overflow: auto; height: 20px')).toEqual(native);
+    expect(at('', 'will-change: opacity')).toEqual(native);
   });
 
   it('refuses a -webkit-border-image that loses the cascade, since Chrome keeps the border widths it sets', () => {
@@ -160,10 +234,14 @@ describe('border-image', () => {
   });
 
   it('refuses a border image that a child inherits explicitly, on the child too', () => {
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { border-image-width: 4px; } .c { border-image-width: inherit; }';
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { border-image: linear-gradient(red, blue) 1 / 4px round; } .c { border-image-repeat: inherit; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
     const at = c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0]).sort();
-    expect(at).toEqual(['border-image-width: 4px on <div> a', 'border-image-width: 4px on <div> a', 'border-image-width: 4px on <div> a', 'border-image-width: 4px on <div> b', 'border-image-width: 4px on <div> b', 'border-image-width: 4px on <div> b']);
+    expect(at).toEqual(['border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a']);
+    // The child's own source is none, so it draws nothing; inheriting the source too refuses it.
+    const both = 'body { font-family: Ahem; font-size: 10px; } .s { border-image: linear-gradient(red, blue) 1 / 4px round; } .c { border-image: inherit; }';
+    const d = project(NO_FAULTS).compile(inputFor(both, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
+    expect(d.diagnostics.filter((x) => x.severity === 'error').map((x) => x.message.split(' is unsupported')[0]).sort()).toEqual(['border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> b', 'border-image-repeat: round on <div> b', 'border-image-repeat: round on <div> b']);
   });
 
   it('refuses every border image longhand in @keyframes, even at its initial value', () => {
@@ -182,5 +260,21 @@ describe('border-image', () => {
   it('plant borderImageAccepted: a border image compiles', () => {
     expect(errorsAt('border-image-source: url(b.png)', { ...NO_FAULTS, borderImageAccepted: true })).toEqual([]);
     expect(errorsAt('border-image: linear-gradient(red, blue) 1', { ...NO_FAULTS, borderImageAccepted: true })).toEqual([]);
+  });
+});
+
+describe('border-image native support', () => {
+  it('the border stage draws the image in place of the style, lays it out after layout, and has the border-image-offset-1 plant', () => {
+    expect(SUPPORT_PLANTS).toContain('border-image-offset-1');
+    for (const [b, ext] of [['uikit', 'swift'], ['android-views', 'kt']] as const) {
+      const own = emitNativeSupport(b).find((f) => f.path.endsWith(`DragonPaintBorder.${ext}`))?.text ?? '';
+      expect(own).toContain(b === 'uikit' ? '  if dragonPaintBorderImage(v, ctx, shape) { return }' : '  if (dragonPaintBorderImage(v, canvas, shape)) return');
+      expect(own).toContain('  dragonAfterLayoutBorderImage(v, shape, scale)');
+      const [off, on] = b === 'uikit' ? ['public let dragonBorderImagePlantDevicePx: Double = 0\n', 'public let dragonBorderImagePlantDevicePx: Double = 1\n'] : ['const val DRAGON_BORDER_IMAGE_PLANT_DEVICE_PX = 0.0\n', 'const val DRAGON_BORDER_IMAGE_PLANT_DEVICE_PX = 1.0\n'];
+      expect(own).toContain(off);
+      const planted = emitNativeSupport(b, 'border-image-offset-1').find((f) => f.path.endsWith(`DragonPaintBorder.${ext}`))?.text ?? '';
+      expect(planted).toContain(on);
+      expect(planted.replace(on, off)).toBe(own);
+    }
   });
 });
