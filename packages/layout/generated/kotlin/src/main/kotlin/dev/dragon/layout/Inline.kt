@@ -420,11 +420,11 @@ fun inline_checkRtlAtomics(box: LayoutBox, items: JsArray<Inline_Item>): Unit {
   // ts: packages/layout/src/inline.ts:252
   run {
     var i: Double = 0.0
-    loop35@ while ((i <= jsLength(items))) {
-      loop35_body@ do {
+    loop37@ while ((i <= jsLength(items))) {
+      loop37_body@ do {
         // ts: packages/layout/src/inline.ts:253
         if (((i < jsLength(items)) && !jsStrEq(jsUnwrap(jsAt(items, i)).kind, "br"))) {
-          break@loop35_body
+          break@loop37_body
         }
         var letters: Double = 0.0
         var atomics: Double = 0.0
@@ -445,16 +445,16 @@ fun inline_checkRtlAtomics(box: LayoutBox, items: JsArray<Inline_Item>): Unit {
         // ts: packages/layout/src/inline.ts:261
         run {
           var j: Double = start
-          loop36@ while ((j < i)) {
-            loop36_body@ do {
+          loop38@ while ((j < i)) {
+            loop38_body@ do {
               val it: Inline_Item = jsUnwrap(jsAt(items, j))
               // ts: packages/layout/src/inline.ts:263
               if (!jsStrEq(it.kind, "atomic")) {
-                break@loop36_body
+                break@loop38_body
               }
               // ts: packages/layout/src/inline.ts:264
               if (((letters == 0.0) && (atomics == 1.0))) {
-                break@loop36_body
+                break@loop38_body
               }
               var before: Boolean = false
               var after: Boolean = false
@@ -757,12 +757,12 @@ fun inline_contentIndex(items: JsArray<Inline_Item>, boxParent: JsArray<Double>,
   // ts: packages/layout/src/inline.ts:475
   run {
     var i: Double = 0.0
-    loop31@ while ((i < jsLength(items))) {
-      loop31_body@ do {
+    loop33@ while ((i < jsLength(items))) {
+      loop33_body@ do {
         val it: Inline_Item = jsUnwrap(jsAt(items, i))
         // ts: packages/layout/src/inline.ts:477
         if (((!inline_isContent(it)) || (!inline_within(boxParent, it.box, b)))) {
-          break@loop31_body
+          break@loop33_body
         }
         // ts: packages/layout/src/inline.ts:478
         if ((!last)) {
@@ -980,11 +980,11 @@ fun inline_graphemeBoundariesOf(items: JsArray<Inline_Item>, startItems: JsArray
     // ts: packages/layout/src/inline.ts:597
     run {
       var p: Double = 1.0
-      loop30@ while ((p < jsLength(run))) {
-        loop30_body@ do {
+      loop32@ while ((p < jsLength(run))) {
+        loop32_body@ do {
           // ts: packages/layout/src/inline.ts:598
           if ((!jsUnwrap(jsAt(breaks, p)))) {
-            break@loop30_body
+            break@loop32_body
           }
           jsPush(out, Boundary(inline_afterCloses(items, jsUnwrap(jsAt(run, (p - 1.0)))), false))
           jsPush(startItems, jsUnwrap(jsAt(run, p)))
@@ -1449,11 +1449,11 @@ fun inline_atomicOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boole
   // ts: packages/layout/src/inline.ts:831
   run {
     var i: Double = 0.0
-    loop50@ while ((i <= jsLength(cps))) {
-      loop50_body@ do {
+    loop52@ while ((i <= jsLength(cps))) {
+      loop52_body@ do {
         // ts: packages/layout/src/inline.ts:832
         if (((i < jsLength(cps)) && (jsUnwrap(jsAt(cps, i)) != inline_OBJECT))) {
-          break@loop50_body
+          break@loop52_body
         }
         val seg: JsArray<Double> = jsArrayOf<Double>()
         // ts: packages/layout/src/inline.ts:834
@@ -1486,17 +1486,17 @@ fun inline_atomicOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boole
   // ts: packages/layout/src/inline.ts:839
   run {
     var i: Double = 1.0
-    loop51@ while ((i < jsLength(cps))) {
-      loop51_body@ do {
+    loop53@ while ((i < jsLength(cps))) {
+      loop53_body@ do {
         val cur: Double = jsUnwrap(jsAt(cps, i))
         val last: Double = jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:842
         if (((cur != inline_OBJECT) && (last != inline_OBJECT))) {
-          break@loop51_body
+          break@loop53_body
         }
         // ts: packages/layout/src/inline.ts:843
         if (((cur == inline_SPACE) || (cur == inline_ZWSP))) {
-          break@loop51_body
+          break@loop53_body
         }
         var seen: Boolean = false
         // ts: packages/layout/src/inline.ts:845
@@ -1571,27 +1571,27 @@ fun inline_ahemOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolean
   // ts: packages/layout/src/inline.ts:875
   run {
     var i: Double = 1.0
-    loop54@ while ((i < jsLength(cps))) {
-      loop54_body@ do {
+    loop56@ while ((i < jsLength(cps))) {
+      loop56_body@ do {
         val cur: Double = jsUnwrap(jsAt(cps, i))
         val last: Double = jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:879
         if ((cur == inline_SPACE)) {
-          break@loop54_body
+          break@loop56_body
         }
         // ts: packages/layout/src/inline.ts:880
         if ((last == inline_SPACE)) {
           jsPush(out, i)
-          break@loop54_body
+          break@loop56_body
         }
         // ts: packages/layout/src/inline.ts:885
         if ((cur == inline_ZWSP)) {
-          break@loop54_body
+          break@loop56_body
         }
         // ts: packages/layout/src/inline.ts:886
         if ((last == inline_ZWSP)) {
           jsPush(out, i)
-          break@loop54_body
+          break@loop56_body
         }
         var breaks: Boolean = false
         // ts: packages/layout/src/inline.ts:892
@@ -1877,12 +1877,12 @@ fun inline_hyphenLeads(cps: JsArray<Double>): JsArray<Double> {
   // ts: packages/layout/src/inline.ts:1084
   run {
     var i: Double = 2.0
-    loop43@ while ((i < jsLength(cps))) {
-      loop43_body@ do {
+    loop45@ while ((i < jsLength(cps))) {
+      loop45_body@ do {
         val cur: Double = jsUnwrap(jsAt(cps, i))
         // ts: packages/layout/src/inline.ts:1086
         if (((((jsUnwrap(jsAt(cps, (i - 1.0))) != inline_HYPHEN_MINUS) || (cur <= 127.0)) || (cur > 255.0)) || (inline_latinBreakClass(cur) != inline_LC_AL))) {
-          break@loop43_body
+          break@loop45_body
         }
         val before: Double = inline_latinBreakClass(jsUnwrap(jsAt(cps, (i - 2.0))))
         // ts: packages/layout/src/inline.ts:1088
@@ -1921,18 +1921,18 @@ fun inline_latinOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolea
   // ts: packages/layout/src/inline.ts:1105
   run {
     var i: Double = 1.0
-    loop49@ while ((i < jsLength(cps))) {
-      loop49_body@ do {
+    loop51@ while ((i < jsLength(cps))) {
+      loop51_body@ do {
         val cur: Double = jsUnwrap(jsAt(cps, i))
         val last: Double = jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:1108
         if ((cur == inline_SPACE)) {
-          break@loop49_body
+          break@loop51_body
         }
         // ts: packages/layout/src/inline.ts:1109
         if ((last == inline_SPACE)) {
           jsPush(out, i)
-          break@loop49_body
+          break@loop51_body
         }
         var decided: Boolean = false
         var breaks: Boolean = false
@@ -2028,18 +2028,18 @@ fun inline_breakAllOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boo
   // ts: packages/layout/src/inline.ts:1220
   run {
     var i: Double = 1.0
-    loop48@ while ((i < jsLength(cps))) {
-      loop48_body@ do {
+    loop50@ while ((i < jsLength(cps))) {
+      loop50_body@ do {
         val cur: Double = jsUnwrap(jsAt(cps, i))
         val last: Double = jsUnwrap(jsAt(cps, (i - 1.0)))
         // ts: packages/layout/src/inline.ts:1223
         if ((cur == inline_SPACE)) {
-          break@loop48_body
+          break@loop50_body
         }
         // ts: packages/layout/src/inline.ts:1224
         if ((last == inline_SPACE)) {
           jsPush(out, i)
-          break@loop48_body
+          break@loop50_body
         }
         // ts: packages/layout/src/inline.ts:1228
         if (((((last == inline_HYPHEN_MINUS) && (cur > 127.0)) && (cur <= 255.0)) && (inline_latinBreakClass(cur) == inline_LC_AL))) {
@@ -2687,13 +2687,13 @@ fun inline_piecesOf(ifc: Ifc, s: ShapedItems, bl: BrokenLine): JsArray<ShapedPie
   // ts: packages/layout/src/inline.ts:1609
   run {
     var k: Double = 0.0
-    loop41@ while ((k < jsLength(bl.results))) {
-      loop41_body@ do {
+    loop43@ while ((k < jsLength(bl.results))) {
+      loop43_body@ do {
         val res: BreakResult = jsUnwrap(jsAt(bl.results, k))
         val it: U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = jsUnwrap(jsAt(s.items, res.index))
         // ts: packages/layout/src/inline.ts:1612
         if ((!jsStrEq(it.kind, "text") || (res.end == res.start))) {
-          break@loop41_body
+          break@loop43_body
         }
         val from: Double = (jsUnwrap(jsAt(s.firstItem, res.index)) + res.start)
         val to: Double = (jsUnwrap(jsAt(s.firstItem, res.index)) + res.end)
@@ -2830,12 +2830,12 @@ fun inline_justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: JsArray<Double>,
   // ts: packages/layout/src/inline.ts:1703
   run {
     var i: Double = line.start
-    loop34@ while ((i < line.visibleEnd)) {
-      loop34_body@ do {
+    loop36@ while ((i < line.visibleEnd)) {
+      loop36_body@ do {
         val it: Inline_Item = jsUnwrap(jsAt(ifc.items, i))
         // ts: packages/layout/src/inline.ts:1705
         if (!jsStrEq(it.kind, "char")) {
-          break@loop34_body
+          break@loop36_body
         }
         // ts: packages/layout/src/inline.ts:1706
         if ((first < 0.0)) {
@@ -3141,8 +3141,8 @@ fun inline_placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: JsArray<A
   // ts: packages/layout/src/inline.ts:1907
   run {
     var n: Double = 0.0
-    loop27@ while ((n < jsLength(broken))) {
-      loop27_body@ do {
+    loop29@ while ((n < jsLength(broken))) {
+      loop29_body@ do {
         val unjustified: Inline_Line = jsUnwrap(jsAt(broken, n))
         val lineIndent: Double = (if (inline_indented(ctx, broken, n)) indent else units_ZERO)
         // ts: packages/layout/src/inline.ts:1910
@@ -3155,7 +3155,7 @@ fun inline_placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: JsArray<A
           val placed: PlacedLine = inline_placePreservedLine(ctx, box, ifc, adv, unjustified, available, top)
           jsPush(out, AtomicLine(placed, jsArrayOf<Double>(), jsArrayOf<Rect>()))
           top = units_add(top, placed.height)
-          break@loop27_body
+          break@loop29_body
         }
         val justified: Justified? = inline_justifyLine(ctx, box, ifc, adv, unjustified, (n == (jsLength(broken) - 1.0)), available)
         val line: Inline_Line = (if ((justified == null)) unjustified else Inline_Line(unjustified.start, unjustified.end, unjustified.visibleEnd, unjustified.pieces, unjustified.forced, jsUnwrap(justified)))
@@ -3193,12 +3193,12 @@ fun inline_placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: JsArray<A
         // ts: packages/layout/src/inline.ts:1941
         run {
           var j: Double = line.start
-          loop28@ while ((j < line.end)) {
-            loop28_body@ do {
+          loop30@ while ((j < line.end)) {
+            loop30_body@ do {
               val it: Inline_Item = jsUnwrap(jsAt(ifc.items, j))
               // ts: packages/layout/src/inline.ts:1943
               if (!jsStrEq(it.kind, "atomic")) {
-                break@loop28_body
+                break@loop30_body
               }
               jsPush(onAtoms, j)
               above = units_max(above, jsUnwrap(jsAt(atoms, it.atom)).above)
@@ -3243,12 +3243,12 @@ fun inline_placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: JsArray<A
         // ts: packages/layout/src/inline.ts:1975
         run {
           var j: Double = line.start
-          loop29@ while ((j < line.end)) {
-            loop29_body@ do {
+          loop31@ while ((j < line.end)) {
+            loop31_body@ do {
               val it: Inline_Item = jsUnwrap(jsAt(ifc.items, j))
               // ts: packages/layout/src/inline.ts:1977
               if (!jsStrEq(it.kind, "br")) {
-                break@loop29_body
+                break@loop31_body
               }
               val p: BoxMetrics = (if ((it.box < 0.0)) ifc.strut else jsUnwrap(jsAt(ifc.boxMetrics, it.box)))
               jsPush(breaks, it.br)
@@ -3792,11 +3792,11 @@ fun inline_collectFragments(ctx: Ctx, ifc: Ifc, atoms: JsArray<AtomicLayout>, at
         // ts: packages/layout/src/inline.ts:2296
         run {
           var j: Double = 0.0
-          loop39@ while ((j < jsLength(line.breaks))) {
-            loop39_body@ do {
+          loop41@ while ((j < jsLength(line.breaks))) {
+            loop41_body@ do {
               // ts: packages/layout/src/inline.ts:2297
               if ((jsUnwrap(jsAt(line.breaks, j)) != ri)) {
-                break@loop39_body
+                break@loop41_body
               }
               val r: Rect = jsUnwrap(jsAt(line.breakRects, j))
               out.placed.set(br.id, Placed(Frag(br.id, r.width, r.height, null, jsArrayOf<Placed>(), jsArrayOf<OutOfFlow>(), null), units_add(origin.x, r.x), units_add(origin.y, r.y)))
@@ -3822,11 +3822,11 @@ fun inline_collectFragments(ctx: Ctx, ifc: Ifc, atoms: JsArray<AtomicLayout>, at
         // ts: packages/layout/src/inline.ts:2306
         run {
           var j: Double = 0.0
-          loop40@ while ((j < jsLength(line.atomics))) {
-            loop40_body@ do {
+          loop42@ while ((j < jsLength(line.atomics))) {
+            loop42_body@ do {
               // ts: packages/layout/src/inline.ts:2307
               if ((jsUnwrap(jsAt(line.atomics, j)) != ai)) {
-                break@loop40_body
+                break@loop42_body
               }
               val r: Rect = jsUnwrap(jsAt(line.atomicRects, j))
               out.placed.set(a.id, Placed(jsUnwrap(jsAt(atoms, ai)).frag, units_add(origin.x, r.x), units_add(origin.y, r.y)))

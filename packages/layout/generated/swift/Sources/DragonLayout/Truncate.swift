@@ -85,11 +85,11 @@ public func truncate_codePoints(_ text: JsString, _ start: Double, _ end: Double
   var k: Double = 0.0
   // ts: packages/layout/src/truncate.ts:49
   do {
-    let _a361 = jsCodePoints(text)
-    var _i361 = 0
-    while _i361 < _a361.items.count {
-      let ch: JsString = _a361.items[_i361]
-      _i361 += 1
+    let _a367 = jsCodePoints(text)
+    var _i367 = 0
+    while _i367 < _a367.items.count {
+      let ch: JsString = _a367.items[_i367]
+      _i367 += 1
       // ts: packages/layout/src/truncate.ts:50
       if ((k >= start) && (k < end)) {
         out += ch
@@ -142,18 +142,18 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   var clusterEnd: Double = 0.0
   // ts: packages/layout/src/truncate.ts:85
   do {
-    let _a362 = result.runs
-    var _i362 = 0
-    while _i362 < _a362.items.count {
-      let run: ShapingRun = _a362.items[_i362]
-      _i362 += 1
+    let _a368 = result.runs
+    var _i368 = 0
+    while _i368 < _a368.items.count {
+      let run: ShapingRun = _a368.items[_i368]
+      _i368 += 1
       // ts: packages/layout/src/truncate.ts:86
       do {
-        let _a363 = run.glyphs
-        var _i363 = 0
-        while _i363 < _a363.items.count {
-          let g: ShapingGlyph = _a363.items[_i363]
-          _i363 += 1
+        let _a369 = run.glyphs
+        var _i369 = 0
+        while _i369 < _a369.items.count {
+          let g: ShapingGlyph = _a369.items[_i369]
+          _i369 += 1
           let at: Double = (run.start + g.ci)
           // ts: packages/layout/src/truncate.ts:88
           if ((at < s.start) || (at >= s.end)) {
@@ -228,25 +228,25 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
   // ts: packages/layout/src/truncate.ts:139
   do {
     var i: Double = (jsLength(children) - 1.0)
-    loop42: while (i >= 0.0) {
-      loop42_body: do {
+    loop44: while (i >= 0.0) {
+      loop44_body: do {
         let c: TruncSource = try jsUnwrap(jsAt(children, i))
         let first: Bool = (i == 0.0)
         var space: Double = try units_sub(available, c.x)
         // ts: packages/layout/src/truncate.ts:143
         if (space <= 0.0) {
-          break loop42_body
+          break loop44_body
         }
         try space = units_sub(space, e.width)
         // ts: packages/layout/src/truncate.ts:145
         if (space >= c.width) {
           ellipsized = i
           try x = units_add(c.x, c.width)
-          break loop42
+          break loop44
         }
         // ts: packages/layout/src/truncate.ts:151
         if ((space <= 0.0) && (!first)) {
-          break loop42_body
+          break loop44_body
         }
         let length: Double = (c.end - c.start)
         let fit: Fit = try truncate_offsetToFit(ctx, nodeId, c, shaped, space)
@@ -255,7 +255,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         if ((n == 0.0) || (n == length)) {
           // ts: packages/layout/src/truncate.ts:156
           if (!first) {
-            break loop42_body
+            break loop44_body
           }
           n = ((n == 0.0) ? 1.0 : (length - 1.0))
         }
@@ -263,7 +263,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         count = n
         try cutWidth = ((n == fit.count) ? fit.width : truncate_truncatedWidth(ctx, nodeId, c, shaped, n))
         try x = units_add(c.x, cutWidth)
-        break loop42
+        break loop44
       }
       i -= 1.0
     }
