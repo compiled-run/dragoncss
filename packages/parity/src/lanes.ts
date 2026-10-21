@@ -22,7 +22,7 @@ import { REFERENCE_PLATFORM } from './platform.ts';
 import { enforcedCompile } from './pipeline.ts';
 import { profilePendingCaseIds } from './profile-pending.ts';
 import { SAMPLE_RULES } from './samples.ts';
-import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
+import { isShapedInput, joinHyphenRects, shapedCaseIds } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import type { DeviceLaneId } from './device-lanes.ts';
@@ -150,6 +150,8 @@ function vectorSuites(lane: LaneConfig): (ReturnType<typeof declaredSuites>[numb
     'vectors-m2': top.filter((id) => !m1.has(id)).length,
     'vectors-dpr': lane.sets.filter((s) => s.role !== 'top-level').flatMap((s) => s.ids).filter((id) => pending.has(id)).length,
     'engine-dpr': vectorCaseIds().filter((id) => pending.has(id)).length * extendedManifest().dprSets.length,
+    // A pending shaped case keeps its DPR 1 vector (layout:vectors writes it) and has none at the DPR sets (layout:dpr-vectors).
+    'text-latin': [...shapedCaseIds()].filter((id) => pending.has(id)).length * extendedManifest().dprSets.length,
   };
   return declaredSuites(lane).map((s) => ({ ...s, cases: s.cases - (out[s.suite] ?? 0), pending: out[s.suite] ?? 0 }));
 }
