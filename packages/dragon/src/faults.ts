@@ -10,6 +10,7 @@ import { CASC_FAULTS } from './faults/casc.ts';
 import { CASC_LAYER_FAULTS } from './faults/casc-layer.ts';
 import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
+import { CONTAIN_INTRINSIC_FAULTS } from './faults/contain-intrinsic.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
 import { FX_FAULTS } from './faults/fx.ts';
@@ -57,6 +58,7 @@ export const FAULT_GROUPS = {
   'casc-layer': CASC_LAYER_FAULTS,
   'casc-property': CASC_PROPERTY_FAULTS,
   'cascade-var': CASCADE_VAR_FAULTS,
+  'contain-intrinsic': CONTAIN_INTRINSIC_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
   fonts: FONTS_FAULTS,
   fx: FX_FAULTS,

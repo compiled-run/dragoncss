@@ -24,6 +24,7 @@ import { CLIP_PATH } from './fixture-groups/clip-path.ts';
 import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
 import { COLOR_FUNCTIONS } from './fixture-groups/color-functions.ts';
 import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
+import { CONTAIN_INTRINSIC } from './fixture-groups/contain-intrinsic.ts';
 import { CONTAINER_QUERY } from './fixture-groups/container-query.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
@@ -189,6 +190,7 @@ export const GROUPS = {
   'clip-rect': CLIP_RECT,
   'color-functions': COLOR_FUNCTIONS,
   'color-scheme': COLOR_SCHEME,
+  'contain-intrinsic': CONTAIN_INTRINSIC,
   'container-query': CONTAINER_QUERY,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,

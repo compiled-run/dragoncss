@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; color: rgb(20, 40, 160); }
+.stage { position: relative; width: 300px; padding: 6px; background-color: rgb(245, 240, 230); }
+.blk { contain: strict; contain-intrinsic-size: 47px 23px; margin-top: 4px; background-color: rgb(200, 220, 255); }
+.ib { display: inline-block; vertical-align: top; background-color: rgb(250, 190, 60); }
+.ibs { contain: size layout; contain-intrinsic-size: 31px 17px; padding: 2px 3px; border: 1px solid rgb(30, 30, 30); }
+.ibi { contain: inline-size layout; contain-intrinsic-width: 55px; contain-intrinsic-height: 90px; }
+.ict { container-type: inline-size; contain-intrinsic-width: 64px; contain-intrinsic-height: 99px; }
+.ibw { contain: size layout; width: 50px; contain-intrinsic-width: 20px; contain-intrinsic-height: 8px; }
+.abs { position: absolute; top: 3px; inset-inline-end: 5px; contain: strict; contain-intrinsic-size: 40px; background-color: rgb(200, 0, 90); }
+.fix { contain: strict; height: 12px; contain-intrinsic-height: 30px; margin-top: 3px; background-color: rgb(40, 120, 40); }
+.min { contain: strict; min-height: 15px; contain-intrinsic-height: 5px; margin-top: 3px; background-color: rgb(120, 40, 120); }
+.em { contain: strict; font-size: 13px; contain-intrinsic-height: 2.5em; margin-top: 3px; background-color: rgb(90, 160, 200); }
+.frac { contain: strict; contain-intrinsic-height: 7.3px; padding: 1px 0; margin-top: 3px; background-color: rgb(160, 90, 30); }
+.none { contain: strict; contain-intrinsic-size: none; padding: 3px; margin-top: 3px; background-color: rgb(30, 160, 90); }
+.case { contain: STRICT; CONTAIN-INTRINSIC-SIZE: 26PX 0; margin-top: 3px; background-color: rgb(220, 120, 160); }
+.var { --h: 19px; contain: strict; contain-intrinsic-height: var(--h); margin-top: 3px; background-color: rgb(100, 100, 220); }
+.inert { contain-intrinsic-size: 100px 50px; margin-top: 3px; background-color: rgb(230, 230, 120); }
+.inert-auto { contain-intrinsic-size: auto 500px; background-color: rgb(120, 230, 230); }
+.inert-none { contain-intrinsic-width: auto none; contain-intrinsic-height: 3em; background-color: rgb(230, 120, 230); }
+.inert-h { contain: inline-size layout; contain-intrinsic-height: 77px; margin-top: 3px; background-color: rgb(180, 180, 180); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="blk" class="blk">XXXX XXXX XXXX</div>
+<div data-dragon-id="line">X<div data-dragon-id="ibs" class="ib ibs">XX XX</div>X<div data-dragon-id="ibi" class="ib ibi">XX XX XX XX</div><div data-dragon-id="ict" class="ib ict">XX XXX XX</div><div data-dragon-id="ibw" class="ib ibw">XX</div>X</div>
+<div data-dragon-id="abs" class="abs">XX</div>
+<div data-dragon-id="fix" class="fix">XX</div>
+<div data-dragon-id="min" class="min"></div>
+<div data-dragon-id="em" class="em">XX</div>
+<div data-dragon-id="frac" class="frac"></div>
+<div data-dragon-id="none" class="none">XX</div>
+<div data-dragon-id="case" class="case"></div>
+<div data-dragon-id="var" class="var"></div>
+<div data-dragon-id="inert" class="inert">XX XX</div>
+<div data-dragon-id="inert-auto" class="inert-auto">XX</div>
+<div data-dragon-id="inert-none" class="inert-none">XX</div>
+<div data-dragon-id="inert-h" class="inert-h">XX XXX</div>
+</div>
+</body>
+</html>
