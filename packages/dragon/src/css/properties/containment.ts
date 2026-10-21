@@ -34,7 +34,7 @@ export const CONTAINMENT_ASPECTS = { ...Object.fromEntries(CONTAINMENT_LONGHANDS
 export const CONTAINMENT_INITIAL_ONLY = CONTAINMENT_LONGHANDS.filter((p) => p !== 'contain' && p !== 'contain-intrinsic-width' && p !== 'contain-intrinsic-height');
 
 /** The physical intrinsic-size longhands Dragon lowers (LayoutStyle containIntrinsicWidth and containIntrinsicHeight). */
-export const INTRINSIC_SIZE_LONGHANDS = ['contain-intrinsic-width', 'contain-intrinsic-height'] as const;
+export const INTRINSIC_SIZE_PROPERTIES = ['contain-intrinsic-width', 'contain-intrinsic-height'] as const;
 
 /** The value type of contain-intrinsic-width or -height: auto with a fallback of none or a length (css-sizing-4 §5.2). */
 export const INTRINSIC_AUTO_TYPE = 'contain-intrinsic-auto';

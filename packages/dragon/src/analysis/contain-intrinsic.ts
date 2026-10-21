@@ -9,7 +9,7 @@
 // group, where the later declaration wins, a non-none width or height is refused wherever an author declares its flow-relative
 // counterpart: Dragon cascades them apart, so it cannot tell which one Chrome keeps.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
-import { INTRINSIC_AUTO_TYPE, INTRINSIC_SIZE_LONGHANDS } from '../css/properties/containment.ts';
+import { INTRINSIC_AUTO_TYPE, INTRINSIC_SIZE_PROPERTIES } from '../css/properties/containment.ts';
 import type { ContainIntrinsicFaults } from '../faults/contain-intrinsic.ts';
 import type { Diagnostic } from '../types.ts';
 import { appliedContainment, displayOf } from './containment.ts';
@@ -17,7 +17,7 @@ import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
 
 /** Whether size containment applies to the element's box in the axis contain-intrinsic-width (width) or -height (height) sizes. */
-export function intrinsicSizeApplies(el: ResolvedElement, p: (typeof INTRINSIC_SIZE_LONGHANDS)[number]): boolean {
+export function intrinsicSizeApplies(el: ResolvedElement, p: (typeof INTRINSIC_SIZE_PROPERTIES)[number]): boolean {
   const size = appliedContainment(el).size;
   if (size === 'size') return true;
   if (p === 'contain-intrinsic-height') return false;
@@ -29,7 +29,7 @@ export function intrinsicSizeApplies(el: ResolvedElement, p: (typeof INTRINSIC_S
 
 /** Refuses an intrinsic size Dragon does not lay out, once per element and longhand, on every target. */
 export function checkIntrinsicSize(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: ContainIntrinsicFaults): void {
-  for (const p of INTRINSIC_SIZE_LONGHANDS) {
+  for (const p of INTRINSIC_SIZE_PROPERTIES) {
     const v = el.props.get(p) as ResolvedValue | undefined;
     if (v === undefined) continue;
     const value = v.value;
