@@ -281,14 +281,15 @@ export class MeetCheck {
 
   /**
    * Whether the pair paints in tree order: no box below their common ancestor, on either text's path, may paint out of tree order
-   * against its siblings' subtrees. A reordering box at or above the common ancestor moves both texts together.
+   * against its siblings' subtrees (positioned, floated, a reordered or z-indexed item, or a stacking context, text-shadow.ts survey). A reordering box at or above the common ancestor moves both texts together.
    */
   private treeOrdered(first: InkText, second: InkText): boolean {
     const pf = this.chainOf(first.parent);
-    const ps = new Set(this.chainOf(second.parent));
+    const pt = this.chainOf(second.parent);
+    const ps = new Set(pt);
     const common = pf.find((e) => ps.has(e));
     const below = (chain: readonly ResolvedElement[]): readonly ResolvedElement[] => (common === undefined ? chain : chain.slice(0, chain.indexOf(common)));
-    return ![...below(pf), ...below(this.chainOf(second.parent))].some((e) => this.reordering.has(e));
+    return ![...below(pf), ...below(pt)].some((e) => this.reordering.has(e));
   }
 
   /** first comes before second in tree order (and paints first, where the pair is tree-ordered). */

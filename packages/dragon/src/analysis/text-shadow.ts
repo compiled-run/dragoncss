@@ -212,6 +212,41 @@ function groupOf(el: ResolvedElement): string | null {
   return o !== null && o < 1 ? `opacity: ${o}` : null;
 }
 
+/** A longhand's resolved value as written, or null where Dragon resolves no such longhand. */
+const valueOf = (el: ResolvedElement, p: string): string | null => {
+  const v = (el.props as ReadonlyMap<string, ResolvedValue>).get(p);
+  return v === undefined ? null : valueToString(v.value);
+};
+
+/** will-change values that make a box a stacking context (css-will-change-1 §2.1: any property whose non-initial value would). */
+const STACKING_WILL_CHANGE = ['opacity', 'transform', 'translate', 'rotate', 'scale', 'perspective', 'filter', 'backdrop-filter', 'clip-path', 'mask', 'mask-image', 'isolation', 'mix-blend-mode', 'contain'];
+
+/**
+ * Why a box creates a stacking context without positioning (CSS 2.1 Appendix E, css-position-4 §stacking contexts), or null: opacity
+ * under 1, a transform or an individual transform, perspective, a filter or backdrop filter, a clip path, a mask, isolation: isolate,
+ * a blend mode, will-change naming one of them, or layout or paint containment (contain, a size container, content-visibility).
+ */
+export function stackingContextOf(el: ResolvedElement): string | null {
+  const group = groupOf(el);
+  if (group !== null) return group;
+  const not = (p: string, initial: string): string | null => {
+    const v = valueOf(el, p);
+    return v === null || v === initial ? null : `${p}: ${v}`;
+  };
+  for (const [p, initial] of [['translate', 'none'], ['rotate', 'none'], ['scale', 'none'], ['perspective', 'none'], ['filter', 'none'], ['backdrop-filter', 'none'], ['clip-path', 'none'], ['mask-image', 'none'], ['isolation', 'auto'], ['mix-blend-mode', 'normal']] as const) {
+    const why = not(p, initial);
+    if (why !== null) return why;
+  }
+  const will = elementWillChange(el).find((w) => STACKING_WILL_CHANGE.includes(w));
+  if (will !== undefined) return `will-change: ${will}`;
+  const contain = valueOf(el, 'contain') ?? 'none';
+  if (/\b(layout|paint|strict|content)\b/.test(contain)) return `contain: ${contain}`;
+  const container = valueOf(el, 'container-type') ?? 'normal';
+  if (container !== 'normal') return `container-type: ${container}`;
+  const visibility = valueOf(el, 'content-visibility') ?? 'visible';
+  return visibility === 'visible' ? null : `content-visibility: ${visibility}`;
+}
+
 /** Every text's ink and reach, and the parents of the tree's elements, for the check that no two texts' shadows meet. */
 type Others = { readonly inks: ReadonlyMap<ResolvedText, InkText>; readonly meet: MeetCheck };
 
@@ -242,9 +277,11 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
   let order = 0;
   const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null, itemReordered: boolean): void => {
     if (keyword(el.props, 'display') === 'none') return;
-    // A box that may paint out of tree order against its siblings' subtrees: positioned, floated, or a flex or grid item that is
-    // z-indexed or among siblings with an order other than 0 (itemReordered). MeetCheck reads these below a pair's common ancestor.
-    if (itemReordered || keyword(el.props, 'position') !== 'static' || keyword(el.props, 'float') !== 'none') reordering.add(el);
+    // A box that may paint out of tree order against its siblings' subtrees: positioned, floated, a flex or grid item that is
+    // z-indexed or among siblings with an order other than 0 (itemReordered), or a static box that creates a stacking context, which
+    // Chrome paints in the z-index 0 layer, after the in-flow inline content of its later siblings (stackingContextOf). MeetCheck
+    // reads these below a pair's common ancestor.
+    if (itemReordered || keyword(el.props, 'position') !== 'static' || keyword(el.props, 'float') !== 'none' || stackingContextOf(el) !== null) reordering.add(el);
     const itemsOf = /^(inline-)?(flex|grid)$/.test(keyword(el.props, 'display'));
     const reordered = itemsOf && el.children.some((c) => c.kind === 'element' && keyword(c.props, 'order') !== '0');
     const childReordered = (c: ResolvedElement): boolean => itemsOf && (reordered || keyword(c.props, 'z-index') !== 'auto');

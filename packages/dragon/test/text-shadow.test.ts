@@ -320,6 +320,19 @@ describe('text-shadow', () => {
     expect(refused(`.a { position: relative; line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
     expect(refused(`.a { ${shadow} } .p { float: left; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
     expect(refused(`.a { ${shadow} } .p { position: relative; z-index: -1; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
+    // A static box that creates a stacking context paints in the z-index 0 layer, after the later paragraph's glyphs (landing's
+    // repros): the heading's shadow lands over them in Chrome, so each is refused, under a positioned body as well.
+    for (const box of ['isolation: isolate;', 'filter: brightness(1);', 'clip-path: inset(0);', 'will-change: opacity;', 'contain: paint;', 'contain: layout;', 'container-type: inline-size;', 'mask-image: linear-gradient(red, red);', 'perspective: 100px;', 'translate: 0;']) {
+      expect([...new Set(errorsIn(`${h} .h { ${box} }`, heading))], box).toEqual(NATIVE_REFUSED);
+      expect([...new Set(errorsIn(`body { position: relative; } ${h} .h { ${box} }`, heading))], box).toEqual(NATIVE_REFUSED);
+    }
+    // Translucent unshadowed text in a group (opacity under 1, or a transform), then a later text with a hard shadow: the group
+    // paints after the shadow, its translucent glyphs over it.
+    const later = (r: SourceRef) => [el(r, 'g', 'div', ['g'], [text(r, 't', 'XX')]), el(r, 's', 'div', ['s'], [text(r, 'u', 'XX')])];
+    const hard = '.g { line-height: 12px; color: rgba(0, 0, 0, 0.5); } .s { line-height: 12px; text-shadow: 0 -6px 0 #000; }';
+    expect([...new Set(errorsIn(hard, later))]).toEqual([]);
+    expect([...new Set(errorsIn(`${hard} .g { opacity: 0.99; }`, later))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(`${hard} .g { transform: translateX(0px); }`, later))]).toEqual(NATIVE_REFUSED);
     // And without a trigger below it, the positioned wrapper changes nothing.
     expect(refused(`.a { line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'r'))).toEqual([]);
     expect(refused(`.f { display: flex; } .a { ${shadow} }`, two('a', 'p', 'f r'))).toEqual([]);
