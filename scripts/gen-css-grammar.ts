@@ -117,6 +117,8 @@ const SUBSET = [
   'font-stretch',
   // TXT-FONTFEAT: font-feature-settings and font-variation-settings (css-fonts-4 §6.12, §7.2), before the line clamp, as LONGHANDS registers them.
   'font-feature-settings', 'font-variation-settings',
+  // TXT-FSA: font-size-adjust (css-fonts-5 §2.6), after the settings, as LONGHANDS registers it.
+  'font-size-adjust',
   // TXT-FX: the text fill colour and stroke (compat §5), then the -webkit-text-stroke shorthand, after the font families, as LONGHANDS registers them.
   '-webkit-text-fill-color', '-webkit-text-stroke-color', '-webkit-text-stroke-width', '-webkit-text-stroke',
   // TXT-FX: text-shadow (css-text-decor-4 §4), after the text fill and stroke, as LONGHANDS registers it.

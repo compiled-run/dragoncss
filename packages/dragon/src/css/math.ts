@@ -665,7 +665,8 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 // font-feature-settings and font-variation-settings: a setting's value is an <integer> or a <number> (css-fonts-4 §6.12, §7.2).
 // orphans and widows: Blink ConsumePositiveInteger takes a calculation that resolves to a number (properties/fragmentation.ts).
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber, as StrokeMiterlimit::ParseSingleValue does; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set', 'orphans', 'widows']);
+// font-size-adjust: a <number [0,∞]>, after an optional metric keyword (css-fonts-5 §2.6).
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set', 'orphans', 'widows', 'font-size-adjust']);
 // rotate (css-transforms-2 §4): its axis numbers are never a math function Dragon keeps (an axis is refused), so one resolves to the angle.
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style', 'rotate']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).

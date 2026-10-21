@@ -43,7 +43,8 @@ describe('the text-font-size fixtures', () => {
       expect(out.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual(directions.map((d) => [d, 'pass', 'pass']));
     }, 300_000);
   }
-  for (const id of ['reject-text-font-size-minimum']) {
+  // TXT-FSA: a font-size-adjust number, refused at parse time on every target (text-font-size-adjust.test.ts holds its layout case).
+  for (const id of ['reject-text-font-size-minimum', 'reject-text-font-size-adjust-number']) {
     it(`${id} is refused on every target`, async () => {
       const out = await runFixture(specOf(id), browser, { authored: authored(), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
       expect(out.reason).toBeNull();
