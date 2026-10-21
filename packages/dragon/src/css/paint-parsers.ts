@@ -29,6 +29,7 @@ import { OVERSCROLL_VALUE_PARSERS } from './properties/overscroll.ts';
 import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
 import { COUNTERS_VALUE_PARSERS } from './properties/counters.ts';
 import { MULTICOL_VALUE_PARSERS } from './properties/multicol.ts';
+import { MOTION_VALUE_PARSERS } from './properties/motion.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
@@ -94,6 +95,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
   ...Object.entries(COUNTERS_VALUE_PARSERS),
   ...Object.entries(MULTICOL_VALUE_PARSERS),
+  ...Object.entries(MOTION_VALUE_PARSERS),
   ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),
   ...Object.entries(BACKGROUND_BLEND_VALUE_PARSERS),
   ...Object.entries(FRAGMENTATION_VALUE_PARSERS),

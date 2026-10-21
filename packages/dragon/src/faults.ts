@@ -21,6 +21,7 @@ import { INL2A_FAULTS } from './faults/inl2a.ts';
 import { MASK_FAULTS } from './faults/mask.ts';
 import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
+import { MOTION_FAULTS } from './faults/motion.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { MULTICOL_FAULTS } from './faults/multicol.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
@@ -68,6 +69,7 @@ export const FAULT_GROUPS = {
   mask: MASK_FAULTS,
   media: MEDIA_FAULTS,
   'milestone-1': MILESTONE_1_FAULTS,
+  motion: MOTION_FAULTS,
   'mq-r0': MQ_R0_FAULTS,
   multicol: MULTICOL_FAULTS,
   ovfl: OVFL_FAULTS,
