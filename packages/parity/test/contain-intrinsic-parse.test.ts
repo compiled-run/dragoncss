@@ -76,10 +76,11 @@ describe('contain-intrinsic-size: Chrome 145 parsing', () => {
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    // Chrome parses a value Dragon does not read only where it is a CSS-wide keyword, a calculation, or auto alone or with a calculation,
-    // each of which Dragon keeps and refuses.
+    // Chrome parses a value Dragon does not read only where it is a calculation (alone or after auto), or a contain-intrinsic-size whose
+    // second value is a bare auto after none or a length (Chrome 145 parses none auto and 10px auto), each of which Dragon keeps and
+    // refuses.
     const unread = real.filter((it, i) => it.read === null && (seen[0] as Seen[])[i]?.parsed === true).map((it) => `${it.name}: ${it.v}`);
-    expect(unread.every((u) => /: (calc\(|auto calc\(|inherit|initial|unset)/.test(u)), unread.join('\n')).toBe(true);
+    expect(unread.every((u) => /: (auto )?calc\(/.test(u) || /^contain-intrinsic-size: (none|10px) auto$/.test(u)), unread.join('\n')).toBe(true);
     expect(real.filter((it) => it.read !== null).length).toBe(READ);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));
   }, 120_000);

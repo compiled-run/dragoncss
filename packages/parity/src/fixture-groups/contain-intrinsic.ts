@@ -4,7 +4,8 @@
 // over an intrinsic one, an absolutely positioned box from the one-value shorthand, a height and a min-height over an intrinsic
 // height, em, fractional px, none with padding, another ASCII case and var(); and boxes where no size containment applies, which
 // the values do not change (auto with a length or none among them). The rejects: auto on a size-contained box (it takes the last
-// remembered size, which Dragon does not track), a percentage (Chrome drops it), and the flow-relative contain-intrinsic-inline-size.
+// remembered size, which Dragon does not track), a percentage (Chrome drops it), the flow-relative contain-intrinsic-inline-size, and a
+// width beside a declared contain-intrinsic-inline-size (Chrome keeps the later of the two; Dragon cascades them apart).
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
 
@@ -12,5 +13,6 @@ export const CONTAIN_INTRINSIC: readonly FixtureSpec[] = [
   layout('contain-intrinsic-ahem', ['ltr', 'rtl']),
   reject('reject-contain-intrinsic-auto', 'DRAGON_UNSUPPORTED_VALUE', 'auto 40px', 'contain-intrinsic-width: auto 40px on <div> s is unsupported: auto takes'),
   reject('reject-contain-intrinsic-percent', 'DRAGON_UNSUPPORTED_VALUE', '10%', 'contain-intrinsic-height: 10% on <div> s is unsupported'),
+  reject('reject-contain-intrinsic-logical', 'DRAGON_UNSUPPORTED_VALUE', '40px', 'contain-intrinsic-width: 40px on <div> s is unsupported: contain-intrinsic-inline-size is also declared'),
   reject('reject-contain-intrinsic-inline-size', 'DRAGON_UNSUPPORTED_VALUE', '30px', 'contain-intrinsic-inline-size: 30px on <div> s is unsupported'),
 ];

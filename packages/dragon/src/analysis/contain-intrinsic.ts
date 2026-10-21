@@ -4,7 +4,10 @@
 // applies, a px length or none compiles; auto is refused there, since it takes the box's last remembered size once the box has been
 // laid out without size containment (a state or band change can do that), which Dragon does not track. A value the parser does not
 // read (css/properties/containment.ts parseIntrinsicSize keeps it as written) is refused everywhere. The flow-relative
-// contain-intrinsic-inline-size and -block-size stay at their initial values (analysis/scroll-containment.ts).
+// contain-intrinsic-inline-size and -block-size stay at their initial values (analysis/scroll-containment.ts), and since Chrome
+// resolves each with its physical counterpart (inline-size with width, block-size with height, horizontal-tb) as one logical property
+// group, where the later declaration wins, a non-none width or height is refused wherever an author declares its flow-relative
+// counterpart: Dragon cascades them apart, so it cannot tell which one Chrome keeps.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { INTRINSIC_AUTO_TYPE, INTRINSIC_SIZE_LONGHANDS } from '../css/properties/containment.ts';
 import type { ContainIntrinsicFaults } from '../faults/contain-intrinsic.ts';
@@ -31,9 +34,13 @@ export function checkIntrinsicSize(el: ResolvedElement, targets: readonly string
     if (v === undefined) continue;
     const value = v.value;
     const applies = intrinsicSizeApplies(el, p);
-    let reason: string | null = null;
     if (value.kind === 'keyword' && value.value === 'none') continue;
-    if (value.kind === 'length') {
+    const logical = p === 'contain-intrinsic-width' ? 'contain-intrinsic-inline-size' : 'contain-intrinsic-block-size';
+    const counterpart = el.props.get(logical) as ResolvedValue | undefined;
+    let reason: string | null = null;
+    if (counterpart !== undefined && counterpart.declaration !== null) {
+      reason = `${logical} is also declared on it, and Chrome keeps whichever of the two is declared later, which Dragon does not track`;
+    } else if (value.kind === 'length') {
       if (applies && value.unit !== 'px') reason = `a ${value.unit} length did not compute to px, which the layout engine needs`;
     } else if (value.kind === 'other' && value.type === INTRINSIC_AUTO_TYPE) {
       if (applies && !faults.intrinsicAutoAccepted) reason = 'auto takes the box\'s last remembered size once it has been laid out without size containment, which Dragon does not track';

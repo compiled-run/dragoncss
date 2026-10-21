@@ -33,7 +33,7 @@ const specOf = (id: string) => {
 };
 
 const LAYOUT = 'contain-intrinsic-ahem';
-const REJECTS = ['reject-contain-intrinsic-auto', 'reject-contain-intrinsic-percent', 'reject-contain-intrinsic-inline-size', 'reject-contain-content-visibility'];
+const REJECTS = ['reject-contain-intrinsic-auto', 'reject-contain-intrinsic-percent', 'reject-contain-intrinsic-inline-size', 'reject-contain-intrinsic-logical', 'reject-contain-content-visibility'];
 const live = () => ({ authored: liveAuthored(browser), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' as const });
 
 describe('the contain-intrinsic fixtures against live Chrome', () => {

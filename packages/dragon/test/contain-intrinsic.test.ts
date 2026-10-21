@@ -91,6 +91,10 @@ describe('contain-intrinsic-size: layout', () => {
     for (const d of ['contain-intrinsic-width: 10%', 'contain-intrinsic-height: calc(1px + 1px)', 'contain-intrinsic-width: auto']) expect(at(d), d).toHaveLength(3);
     // The flow-relative longhands stay at their initial values (analysis/scroll-containment.ts).
     expect(errors(compile('.a { contain: strict; contain-intrinsic-inline-size: 30px; }'))[0]).toContain('contain-intrinsic-inline-size: 30px on <div> a is unsupported');
+    // Chrome keeps the later of a physical size and its declared flow-relative counterpart, which Dragon cascades apart.
+    expect(at('contain-intrinsic-height: 40px; contain-intrinsic-block-size: none')).toEqual(['android contain-intrinsic-height', 'ios contain-intrinsic-height', 'web contain-intrinsic-height']);
+    expect(at('contain-intrinsic-inline-size: none; contain-intrinsic-width: 40px')).toHaveLength(3);
+    expect(errors(compile('.a { contain: strict; contain-intrinsic-size: none; contain-intrinsic-inline-size: none; }'))).toEqual([]);
   });
 
   it('refuses auto on a box that a reachable state size-contains, though it is not contained at first', () => {
