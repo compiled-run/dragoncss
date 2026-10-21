@@ -90,8 +90,8 @@ describe('R5: initial line widths lower to device px', () => {
     for (const [kw, fixture] of [['initial', 'casc-css-wide'], ['inherit', 'ctx-proof-inherit']] as const) {
       for (const profile of [webProfile, iosProfile]) {
         const rows = profile.rows.filter((r) => r.feature === `border-top-width:${kw}`);
-        expect(rows.map((r) => r.context).sort(), `${profile.target} ${kw}`).toEqual(kw === 'initial' ? ['block/ltr', 'block/rtl', 'inline/ltr', 'inline/rtl'] : ['block/ltr', 'block/rtl']);
-        // casc-all proves initial's inline rows; the block rows are the named fixture's.
+        expect(rows.map((r) => r.context).sort(), `${profile.target} ${kw}`).toEqual(kw === 'initial' && profile.target !== 'web' ? ['block/ltr', 'block/rtl', 'inline/ltr', 'inline/rtl'] : ['block/ltr', 'block/rtl']);
+        // casc-all proves initial's inline rows on native; the block rows are the named fixture's.
         for (const r of rows.filter((x) => x.context.startsWith('block/'))) expect(r.proofs.flatMap((pr) => pr.cases), `${profile.target} ${kw} ${r.context}`).toContain(r.context.endsWith('/rtl') ? `${fixture}-rtl` : fixture);
       }
       const c = project().compile(inputFor(`.a { border-style: solid; border-top-width: ${kw}; }`, (r) => [div(r, 'a', ['a'])]));

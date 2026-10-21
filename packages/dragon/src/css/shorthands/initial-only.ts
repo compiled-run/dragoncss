@@ -1,5 +1,5 @@
 // The shorthands of the families Dragon accepts at their initial values alone (css/properties/initial-only.ts): overscroll-behavior,
-// contain-intrinsic-size, container, columns and column-rule, as Chrome 145 registers them (columns without its column-height and
+// contain-intrinsic-size, container, columns, column-rule and position-try, as Chrome 145 registers them (columns without its column-height and
 // column-wrap, which MulticolColumnWrapping keeps off).
 import { MULTICOL_SHORTHAND_LONGHANDS } from '../properties/multicol.ts';
 import type { ShorthandHandler } from './shared.ts';
@@ -16,4 +16,5 @@ export const INITIAL_ONLY_SHORTHANDS = {
   container: { longhands: ['container-name', 'container-type'], expand: hooked },
   columns: { longhands: MULTICOL_SHORTHAND_LONGHANDS.columns, expand: hooked },
   'column-rule': { longhands: MULTICOL_SHORTHAND_LONGHANDS['column-rule'], expand: hooked },
+  'position-try': { longhands: ['position-try-order', 'position-try-fallbacks'], expand: hooked },
 } as const satisfies { readonly [s: string]: ShorthandHandler };

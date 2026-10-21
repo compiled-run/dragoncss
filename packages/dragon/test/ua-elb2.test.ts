@@ -35,9 +35,10 @@ describe('element keys (ELB-2)', () => {
     expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ cursor: 'default' });
     expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ cursor: 'text' });
     expect(light.userAgentUnmodelled['a[href]']?.ltr).toMatchObject({ cursor: 'pointer', 'text-decoration-line': 'underline' });
-    // GEN-b (T151 R13): list-style-type is a longhand now, so ol's decimal is a declared UA value, no longer unmodelled.
-    expect(light.userAgentUnmodelled['ol']?.ltr).toEqual({ 'unicode-bidi': 'isolate' });
-    expect(light.userAgentDeclared['ol']?.ltr).toMatchObject({ 'list-style-type': 'decimal' });
+    // GEN-b (T151 R13): list-style-type is a longhand now, so ol's decimal is a declared UA value, no longer unmodelled; so is its
+    // unicode-bidi isolate since unicode-bidi is one (css/properties/bidi.ts).
+    expect(light.userAgentUnmodelled['ol']?.ltr).toEqual({});
+    expect(light.userAgentDeclared['ol']?.ltr).toMatchObject({ 'list-style-type': 'decimal', 'unicode-bidi': 'isolate' });
     expect(light.userAgentUnmodelled['span']).toEqual({ ltr: {}, rtl: {} });
     // FORM-a: appearance is a declared longhand, kept off the reference element, so Chrome's form-control adjustment still shows
     // as a forced display: inline-block.
@@ -83,7 +84,7 @@ describe('the dark UA dataset (ELB-2)', () => {
 // REPL-0: the replaced keys (iframe, img with a data: src) in tables of their own after the element-key tables.
 describe('replaced keys (REPL-0)', () => {
   // SVG-a1 added svg and its shapes (SVG-namespace elements) to these tables.
-  const REPLACED = ['iframe', 'img[src]', 'svg', 'path', 'rect', 'circle'];
+  const REPLACED = ['iframe', 'img[src]', 'svg', 'path', 'rect', 'circle', 'video'];
   it('are captured in tables of their own, light and dark; the element-key tables do not list them', () => {
     for (const ds of [light, dark]) {
       for (const table of [ds.replacedKeySpecs, ds.replacedKeyComputed, ds.replacedKeyLonghands, ds.replacedKeyDeclared, ds.replacedKeyContexts, ds.replacedKeyTextFonts, ds.replacedKeyUnmodelled, ds.replacedKeyForced]) {
@@ -107,5 +108,11 @@ describe('replaced keys (REPL-0)', () => {
     expect(light.replacedKeyUnmodelled['img[src]'].ltr).toEqual({ 'overflow-clip-margin': 'content-box' });
     expect(light.replacedKeyForced['img[src]']).toEqual({ ltr: {}, rtl: {} });
     expect(dark.replacedKeyDeclared).toEqual(light.replacedKeyDeclared);
+  });
+  it('pin the UA values Chrome gives a video (MEDIA-EL): object-fit contain, clipped at its content box', () => {
+    expect(light.replacedKeyDeclared.video.ltr).toEqual({ 'object-fit': 'contain', 'overflow-x': 'clip', 'overflow-y': 'clip' });
+    expect(light.replacedKeyUnmodelled.video.ltr).toEqual({ 'overflow-clip-margin': 'content-box' });
+    expect(light.replacedKeyForced.video).toEqual({ ltr: {}, rtl: {} });
+    expect(light.replacedKeyComputed.video['object-fit']).toBe('contain');
   });
 });

@@ -1,0 +1,19 @@
+{
+  "case": "unicode-bidi-blocks-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"b1:text0","lines":[[0,9],[9,11]]},
+    {"id":"b2:text0","lines":[[0,9],[9,17]]},
+    {"id":"b3a:text0","lines":[[0,2]]},
+    {"id":"b3:text0","lines":[[0,5]]},
+    {"id":"r1:text0","lines":[[0,5]]},
+    {"id":"r2:text0","lines":[[0,2]]},
+    {"id":"r3:text0","lines":[[0,5]]},
+    {"id":"pp:text0","lines":[[0,6]]},
+    {"id":"sp:text0","lines":[[0,2]]},
+    {"id":"pp:text1","lines":[[1,3]]},
+    {"id":"b4:text0","lines":[[0,3]]},
+    {"id":"b4a:text0","lines":[[0,5]]},
+    {"id":"b4:text1","lines":[[1,3]]}
+  ]
+}

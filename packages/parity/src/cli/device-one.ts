@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { handedOver, HOST_ON_STDIN, parseDeviceJob, parseHandle } from '../device-jobs.ts';
 import { runOneDevice } from '../device-lanes.ts';
 import { DEVICE_MATRIX } from '../device-run.ts';
-import { nativeCases } from '../native-host.ts';
+import { deviceCheckCases } from '../native-host.ts';
 import { nativeTargets } from '../targets.ts';
 import type { HostRun } from '../lanes.ts';
 
@@ -21,7 +21,7 @@ const spec = DEVICE_MATRIX.find((d) => d.target === job.target && d.name === job
 if (t === undefined || spec === undefined) throw new Error(`no ${job.target} target or device ${job.device}`);
 const handed = handedOver(process.stdin, job.host === HOST_ON_STDIN);
 try {
-  const outcome = await runOneDevice(t, spec, handed.host ?? (job.host as HostRun | null), job.artifact, nativeCases, job.vectors, (l) => console.log(l), { boot: async () => parseHandle(await handed.handle, spec), release: null });
+  const outcome = await runOneDevice(t, spec, handed.host ?? (job.host as HostRun | null), job.artifact, deviceCheckCases, job.vectors, (l) => console.log(l), { boot: async () => parseHandle(await handed.handle, spec), release: null });
   writeFileSync(outFile, JSON.stringify(outcome));
 } finally {
   handed.close();

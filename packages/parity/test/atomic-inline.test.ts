@@ -23,7 +23,7 @@ import { compileFixture, runFixture } from '../src/pipeline.ts';
 import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
 
 const STYLE = {
-  display: 'block', position: 'static', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
+  display: 'block', position: 'static', float: 'none', top: { kind: 'auto' }, right: { kind: 'auto' }, bottom: { kind: 'auto' }, left: { kind: 'auto' },
   overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box', width: { kind: 'auto' }, height: { kind: 'auto' },
   minWidth: { kind: 'auto' }, minHeight: { kind: 'auto' }, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' },
   marginTop: { kind: 'px', value: 0 }, marginRight: { kind: 'px', value: 0 }, marginBottom: { kind: 'px', value: 0 }, marginLeft: { kind: 'px', value: 0 },
@@ -31,7 +31,7 @@ const STYLE = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' },
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null,
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null, zoom: [],
 } as const satisfies LayoutStyle;
 
 describe('compare.ts: an anonymous box holding only atomic inlines', () => {

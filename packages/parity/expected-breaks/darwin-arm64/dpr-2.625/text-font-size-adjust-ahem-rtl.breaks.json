@@ -1,0 +1,25 @@
+{
+  "case": "text-font-size-adjust-ahem-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"n:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"n-twin:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"u:text0","data":"XX XXX XXXX","lines":2,"units":[0,0,0,0,0,0,0,1,1,1,1],"blank":[6]},
+    {"id":"u-twin:text0","data":"XX XXX XXXX","lines":2,"units":[0,0,0,0,0,0,0,1,1,1,1],"blank":[6]},
+    {"id":"pi:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"pn:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"pu:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"pk:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"pi-twin:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"pn-twin:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"pu-twin:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"pk-twin:text0","data":"XXX XX XXXX","lines":3,"units":[0,0,0,0,1,1,1,2,2,2,2],"blank":[3,6]},
+    {"id":"f:text0","data":"XX XXX XX","lines":3,"units":[0,0,0,1,1,1,1,2,2],"blank":[2,6]},
+    {"id":"f-twin:text0","data":"XX XXX XX","lines":3,"units":[0,0,0,1,1,1,1,2,2],"blank":[2,6]},
+    {"id":"ra:text0","data":"XXXX XXXXXXX","lines":2,"units":[0,0,0,0,0,1,1,1,1,1,1,1],"blank":[4]},
+    {"id":"rb:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"ra-twin:text0","data":"XXXX XXXXXXX","lines":2,"units":[0,0,0,0,0,1,1,1,1,1,1,1],"blank":[4]},
+    {"id":"rb-twin:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}

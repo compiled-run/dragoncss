@@ -56,6 +56,8 @@ export type FontFaults = {
   readonly stretchNotReset: boolean;
   /** The font shorthand leaves font-feature-settings and font-variation-settings alone (Chrome's resets both to normal). */
   readonly featureSettingsNotReset: boolean;
+  /** The font shorthand leaves font-size-adjust alone (Chrome's resets it to none). */
+  readonly sizeAdjustNotReset: boolean;
 };
 
 export const NO_FONT_FAULTS: FontFaults = {
@@ -86,6 +88,7 @@ export const NO_FONT_FAULTS: FontFaults = {
   tuningNotReset: false,
   stretchNotReset: false,
   featureSettingsNotReset: false,
+  sizeAdjustNotReset: false,
 };
 
 export type FontFaultName = keyof FontFaults;
@@ -97,7 +100,7 @@ export const CAPTURE_FAULTS: readonly FontFaultName[] = [
 ];
 export const UNIT_FAULTS: readonly FontFaultName[] = ['remoteUrlAccepted', 'manifestOrderSensitive', 'skipUnreadableSrc', 'fenceDisabled'];
 /** The font shorthand faults (TXT-W2, css/shorthands/text.ts fontShorthand), each caught against Chrome by font-shorthand.test.ts. */
-export const SHORTHAND_FAULTS: readonly FontFaultName[] = ['lineHeightNotReset', 'synthesisResetByShorthand', 'inheritNotAllLonghands', 'variantNotReset', 'tuningNotReset', 'stretchNotReset', 'featureSettingsNotReset'];
+export const SHORTHAND_FAULTS: readonly FontFaultName[] = ['lineHeightNotReset', 'synthesisResetByShorthand', 'inheritNotAllLonghands', 'variantNotReset', 'tuningNotReset', 'stretchNotReset', 'featureSettingsNotReset', 'sizeAdjustNotReset'];
 /** The computed font-weight and font-style faults (TXT-W1, fonts/weight.ts), each caught against Chrome by text-weight.test.ts. */
 export const WEIGHT_FAULTS: readonly FontFaultName[] = ['bolderBandEdge', 'lighterBandEdge', 'weightNotInherited', 'obliqueAngleDropped', 'syntheticBoldThreshold700', 'quarterUnitRounding'];
 

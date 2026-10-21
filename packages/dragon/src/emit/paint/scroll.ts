@@ -336,7 +336,7 @@ fun dragonAfterLayoutScroll(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
 fun dragonAppliedScroll(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val sv = v.dragonClipView as? DragonScrollView ?: return emptyList()
   val range = Pair("dragonScroll.range", DumpJson.Arr(sv.dragonRange.map { DumpJson.Num(it.toDouble()) }))
-  val out = mutableListOf(range)
+  val out = mutableListOf<Pair<String, DumpJson>>(range)
   if (!(sv.barsOnTouch(sv.scrollsX) || sv.barsOnTouch(sv.scrollsY))) out.add(Pair("dragonScroll.indicators", DumpJson.Bool(false)))
   if ((sv.scrollsX && !sv.bounceX) || (sv.scrollsY && !sv.bounceY)) out.add(Pair("dragonScroll.bounce", DumpJson.Arr(listOf(DumpJson.Bool(sv.bounceX), DumpJson.Bool(sv.bounceY)))))
   return out
