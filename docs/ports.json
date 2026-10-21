@@ -4632,9 +4632,9 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-select.ts", "symbol": null, "use": "reference" }
-        ]
-      },
-      {
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/modules/accessibility/ax_node_object.cc",
       "licence": "bsd-google",
       "noticeText": "header-bsd-7",

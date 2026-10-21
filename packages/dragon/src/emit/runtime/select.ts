@@ -142,7 +142,8 @@ public final class DragonSelection: UIView, UITextInput, UITextInteractionDelega
     guard let c = dragonSelectCall("focusAt", { try rtSelect_focusAt(table, lu(p.x), lu(p.y)) }) else { return nil }
     let i = Int(dragonSelectCall("caretIndex") { try rtSelect_caretIndex(JsArray(carets), c) })
     let k = carets[i]
-    return DragonTextPosition(i + dragonSelectIndexPlant, emptyBlock: k.node != c.node || k.offset != c.offset)
+    // The plant moves the index on, kept in range so selectionRects and text(in:) never index past the last caret.
+    return DragonTextPosition(min(carets.count - 1, i + dragonSelectIndexPlant), emptyBlock: k.node != c.node || k.offset != c.offset)
   }
 
   /// The word around a position (rt-select.ts wordAround), or nil where none is selected.
@@ -369,7 +370,7 @@ class DragonSelection(input: LayoutInput, measurer: TextMeasurer, facts: DragonS
   fun indexAt(x: Double, y: Double): Int {
     if (count == 0) return -1
     val c = rtSelect_focusAt(table, lu(x), lu(y)) ?: return -1
-    return rtSelect_caretIndex(carets, c).toInt() + DRAGON_SELECT_INDEX_PLANT
+    return minOf(count - 1, rtSelect_caretIndex(carets, c).toInt() + DRAGON_SELECT_INDEX_PLANT)
   }
 
   /** A caret's rect in px: x, y, height. */

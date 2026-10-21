@@ -996,7 +996,7 @@ export async function runOneDevice(t: TargetConfig, spec: DeviceSpec, host: Host
       const traceExtra: LaneFailure[] = xr.error === null ? [] : [{ lane: TRACE_LANE, case: '-', dpr, node: null, kind: 'device-record', detail: `the host did not finish the interaction scripts: ${xr.error}` }];
       traces = evaluateTraceSet(dpr, tracesDir, rec, traceIds, t.target === 'android', evaluateTraces, traceExtra);
       log(`${spec.name}: device-traces ${traces.dumps}/${traces.cases} records, ${traces.compared.b} compared in ${((Date.now() - x0) / 1000).toFixed(0)} s; failures ${JSON.stringify(failuresByKind(traces.failures))}`);
-      // T154 slice 2d: device-select from a launch of the select cases, each driven by long presses and handle drags.
+      // T154 slice 2d: device-select from a launch of the select cases, each driven through the platform text-input APIs (UITextInput on iOS).
       const selectIds = selectCaseIds();
       const selectDir = join(nativeOut(t.target), 'lanes', `${spec.name}-select`);
       const q0 = Date.now();

@@ -4,7 +4,7 @@ import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
 import { interactionContext, interactionRowFeature, MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, SELECT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, ROWLESS_LANES, SELECT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { LanesFile } from './lanes.ts';
 import { carryDeviceLanes, hostLaneStale, ranIds, readLanesFile, staleLanes } from './lanes-file.ts';
 import { repoPath } from './paths.ts';
@@ -253,7 +253,7 @@ export function deviceEvidence(target: NativeTarget, lanes: LanesFile | null, fa
   if (failures === null) return none(`no committed packages/parity/out/device-failures-${target}.json`);
   const out: DeviceEvidence['lanes'][number][] = [];
   for (const lc of c.lanes) {
-    if (lc.kind !== 'device') continue;
+    if (lc.kind !== 'device' || ROWLESS_LANES.includes(lc.lane)) continue;
     const rec = t.lanes.find((l) => l.lane === lc.lane);
     if (rec === undefined || rec.state === 'not run' || rec.state === 'blocked (owner tooling)') return none(`${target} ${lc.lane} did not run`);
     const listed = failures.filter((f) => f.lane === lc.lane);

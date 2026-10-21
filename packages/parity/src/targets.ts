@@ -26,7 +26,7 @@ export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-fr
   'device-traces',
   // MQ-R1 (notes/T067 R7 (c)): one real rotation per device.
   'device-env',
-  // T154 slice 2d: the select cases' live selection under long presses and handle drags.
+  // T154 slice 2d: the select cases' selection, driven through the platform text-input APIs (UITextInput on iOS).
   'device-select'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
