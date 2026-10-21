@@ -547,6 +547,9 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
+  // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
+  ['view-transition-name', all],
   // SVG-a1: the svg family paints only an <svg>'s shapes, never a box; an <svg> itself is an unmodelled fact (hitUnmodelledFact),
   // as Chrome hits its painted shapes (pointer-events: visiblePainted), which the hit test does not model yet.
   ['fill', all],

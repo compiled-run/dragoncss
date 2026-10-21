@@ -25,8 +25,12 @@ export function isBlockInInline(el: ResolvedElement): boolean {
   return BLOCK_IN_INLINE.has(el);
 }
 
-/** The non-inherited longhands an inline box may set and still lay out as its blocks' block box: decorations propagate to them. */
-const ALLOWED: ReadonlySet<Longhand> = new Set<Longhand>(['display', 'text-decoration-line', 'text-decoration-style', 'text-decoration-color', 'text-decoration-thickness']);
+/**
+ * The non-inherited longhands an inline box may set and still lay out as its blocks' block box: decorations propagate to them, and
+ * unicode-bidi (not inherited) orders only the box's own inline content, of which it has none. A div keeps its UA unicode-bidi:
+ * isolate when made inline (HTML §15.3.5), the value every BII capture of a div made inline was taken under.
+ */
+const ALLOWED: ReadonlySet<Longhand> = new Set<Longhand>(['display', 'text-decoration-line', 'text-decoration-style', 'text-decoration-color', 'text-decoration-thickness', 'unicode-bidi']);
 
 /**
  * Non-inherited longhands that do not apply to a non-replaced inline box (their "Applies to" lines in CSS2, css-sizing-3,
