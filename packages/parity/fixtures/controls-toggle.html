@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 300px; background-color: #eee; }
+input { appearance: none; background-color: #036; }
+.blk { display: block; }
+.sized { width: 16px; height: 16px; border: 2px solid #c00; border-radius: 3px; }
+.round { width: 14px; height: 14px; border: 1px solid #0a0; border-radius: 50%; }
+.pad { padding: 3px 5px; border: 1px solid #333; }
+.half { width: 50%; height: 6px; padding: 2px; border: 1px solid; }
+.centre { margin: 4px auto; width: 20px; height: 6px; }
+.min { min-width: 30px; height: 4px; }
+.off { border: 2px solid; width: 10px; height: 10px; }
+.row { display: flex; height: 30px; }
+.col { display: flex; flex-direction: column; }
+.grid { display: grid; grid-template-columns: 60px 60px; grid-template-rows: 24px; }
+.abs { position: relative; height: 40px; }
+.abs input { position: absolute; left: 10px; right: 10px; top: 5px; bottom: 5px; }
+.fl input { float: left; width: 10px; height: 10px; }
+.fl { height: 20px; }
+.grow { flex: 1; }
+.short { height: 6px; }
+.mid-x { align-self: center; }
+.start { justify-self: start; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<input data-dragon-id="c1" type="checkbox" class="blk">
+<input data-dragon-id="c2" type="checkbox" class="blk">
+<input data-dragon-id="c3" type="checkbox" class="blk pad">
+<input data-dragon-id="c4" type="checkbox" class="blk sized" checked="">
+<input data-dragon-id="r1" type="radio" class="blk round" name="g">
+<input data-dragon-id="r2" type="RADIO" class="blk round" name="g" checked="">
+<input data-dragon-id="c5" type="Checkbox" class="blk half">
+<input data-dragon-id="c6" type="checkbox" class="blk centre">
+<input data-dragon-id="c7" type="checkbox" class="blk min">
+<div data-dragon-id="line">XX<input data-dragon-id="c8" type="checkbox" class="sized">XX<input data-dragon-id="r3" type="radio" class="round">XX<input data-dragon-id="c9" type="checkbox">X</div>
+<div data-dragon-id="line2">X<input data-dragon-id="c10" type="checkbox">X<input data-dragon-id="c11" type="checkbox" class="off" disabled="">X<input data-dragon-id="r4" type="radio" class="off" disabled="">X</div>
+<div data-dragon-id="row" class="row"><input data-dragon-id="c12" type="checkbox"><input data-dragon-id="r5" type="radio" class="grow"><input data-dragon-id="c13" type="checkbox" class="sized"></div>
+<div data-dragon-id="col" class="col"><input data-dragon-id="c14" type="checkbox" class="short"><input data-dragon-id="c15" type="checkbox" class="sized mid-x"></div>
+<div data-dragon-id="grid" class="grid"><input data-dragon-id="c16" type="checkbox"><input data-dragon-id="r6" type="radio" class="sized start"></div>
+<div data-dragon-id="abs" class="abs"><input data-dragon-id="c17" type="checkbox"></div>
+<div data-dragon-id="fl" class="fl"><input data-dragon-id="c18" type="checkbox"><input data-dragon-id="r7" type="radio"></div>
+</div>
+</body>
+</html>

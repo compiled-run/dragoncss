@@ -83,7 +83,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
-import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
+import { buttonAppearance, isControlTag, isRangeType, toggleType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -1515,7 +1515,12 @@ function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, co
 
 /** FORM-a: on a native target a button or range is drawn but not interactive, and its view has no control accessibility role yet. */
 function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const what = el.element.tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
+  const toggle = el.element.tag === 'input' ? toggleType(el.element.attributes.get('type')) : null;
+  const what = el.element.tag === 'button'
+    ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text`
+    : toggle !== null
+      ? `<input type=${toggle}> ${el.element.address} does not toggle when tapped, and screen readers do not see a ${toggle}`
+      : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
   for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
     const id = `${t}|control-static|${el.element.address}`;
     if (reported.has(id)) continue;
@@ -1618,7 +1623,7 @@ function checkRange(el: ResolvedElement, parentDisplay: string | null, targets: 
     const id = `input-type|${address}`;
     if (!reported.has(id)) {
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input> ${address} of type ${type === undefined ? 'text (no type)' : type} is not supported: only type=range is laid out; other inputs wait for the FORM-b package`, manual: `Use type="range", or a div in place of <input> ${address}.` }));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input> ${address} of type ${type === undefined ? 'text (no type)' : type} is not supported: only range, checkbox and radio inputs are laid out; other inputs wait for the FORM-b package`, manual: `Use type="range", or a div in place of <input> ${address}.` }));
     }
     return;
   }
@@ -1649,6 +1654,32 @@ function checkRange(el: ResolvedElement, parentDisplay: string | null, targets: 
     if (v.declaration === null || isInitialByProvenance(v, p)) continue;
     refuse(v, `flex-${p}`, `${p}: ${valueToString(v.value)} on <input type=range> ${address} is not supported: the range's shadow tree is laid out as a flex container, which no fixture proves under it`, `Remove ${p} from <input> ${address}.`);
   }
+}
+
+/**
+ * FORM-d: a checkbox or radio is painted as CSS boxes only with appearance: none, when Chrome lays it out as an empty box (an
+ * auto width in block flow fits its content, controls-toggle fixtures). Refused: a themed one (FORM-b), any display but block
+ * and inline-block (inline and list-item lay out boxes no fixture proves), and an aspect-ratio (the engine's controls take none).
+ */
+function checkToggle(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const type = toggleType(el.element.attributes.get('type')) as 'checkbox' | 'radio';
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  if (keywordOf(appearance) !== 'none') {
+    refuse(appearance, 'theme', `<input type=${type}> ${address} with appearance: ${valueToString(appearance.value)} is painted by the platform theme, which waits for the FORM-b package`, `Set appearance: none on <input> ${address} and draw it with borders and backgrounds.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d !== 'block' && d !== 'inline-block' && d !== 'none') {
+    refuse(display, 'display', `display: ${d} on <input type=${type}> ${address} is not supported; only block and inline-block checkboxes and radios are laid out`, `Set display: block or inline-block on <input> ${address}.`);
+  }
+  const ratio = el.props.get('aspect-ratio') as ResolvedValue;
+  if (ratio.value.kind === 'ratio') {
+    refuse(ratio, 'ratio', `aspect-ratio: ${valueToString(ratio.value)} on <input type=${type}> ${address} is not supported: the engine sizes no form control through a ratio`, `Give <input> ${address} a width and a height.`);
+  }
+  noteStaticOnNative(el, targets, diagnostics, reported);
+  refuseScrollInControl(el, el, targets, diagnostics, reported);
 }
 
 /** A range shadow part of input el (resolve.ts), or null. */
@@ -1760,7 +1791,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkButton(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
-      checkRange(el, parentDisplay, targets, diagnostics, reported);
+      if (toggleType(el.element.attributes.get('type')) !== null) checkToggle(el, targets, diagnostics, reported);
+      else checkRange(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && rangePartOf(el) !== undefined) {
       checkRangePart(el, targets, diagnostics, reported);

@@ -8,7 +8,7 @@
 // clip is written only where it is not auto, and clip-path only where it is not none: their initial values, which no Chrome UA rule sets.
 // So are the mask longhands, written only where one is not initial (a gradient mask-image MASK-CLIP draws, or -webkit-mask-composite:
 // source-over), and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none or on a
-// form control or range part (Chrome's UA sets auto on button, input and the slider thumb, so their none must be written), and
+// button, range part, checkbox or radio (Chrome's UA sets auto on button, input and the slider thumb, so their none must be written), and
 // caret-color and accent-color, written on every element of a case where any element's is not auto (FORM-b). -webkit-user-modify is
 // never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag changes (TOUCH),
 // and neither is font-size-adjust: Dragon accepts only its initial none, which no Chrome UA rule sets (TXT-FSA).
@@ -23,6 +23,7 @@ import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';
 import { markerOf } from '../analysis/resolve.ts';
 import { rangePartOf } from '../analysis/resolve.ts';
+import { toggleType } from '../analysis/elements/controls.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -359,7 +360,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const fx = resolutions.some(writesFx);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
-      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || resolutions.some(writesAppearance);
+      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || (el.element.tag === 'input' && toggleType(el.element.attributes.get('type')) !== null) || resolutions.some(writesAppearance);
       const breaks = resolutions.some(writesBreaks);
       const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && p !== 'font-size-adjust' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p)) && (speak || p !== 'speak')).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.

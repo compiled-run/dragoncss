@@ -493,12 +493,15 @@ export type ReplacedLeaf = {
  *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
  * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
  *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
- * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent).
+ * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent);
+ * - toggle: a block checkbox or radio with appearance: none (FORM-d), a plain block box that never collapses through and whose
+ *   auto width in block flow fits its content.
  */
 export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
-  | { readonly kind: 'button-block' };
+  | { readonly kind: 'button-block' }
+  | { readonly kind: 'toggle' };
 
 /** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
 export type ControlBox = {

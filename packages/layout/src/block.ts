@@ -574,9 +574,10 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const keywordMin = keyword(s.minWidth.kind);
   const keywordMax = keyword(s.maxWidth.kind);
   const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
-  // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
-  // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
-  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range');
+  // A block button's, range's or toggle's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never
+  // stretched by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html,
+  // controls-range-block.html, controls-toggle.html).
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'toggle');
   const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
   const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
@@ -779,8 +780,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let inline: BlockLevelInline;
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
-    // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
-    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block');
+    // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext);
+    // and a toggle, which Chrome 145 never collapses through (controls-toggle.html).
+    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && (kid.control.kind === 'button-block' || kid.control.kind === 'toggle'));
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).

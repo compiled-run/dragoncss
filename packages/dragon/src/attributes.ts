@@ -47,7 +47,9 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   li: ['value'],
   // FORM-a A4: an input's type picks its control (only range is laid out, computed-checks.ts refuses the others); min, max, value
   // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures).
-  input: ['type', 'min', 'max', 'value', 'step', 'disabled'],
+  // FORM-d: checked and name change a checkbox's or radio's state and form value, which no accepted style reads (:checked is
+  // refused until it is runtime state, and a themed control is refused).
+  input: ['type', 'min', 'max', 'value', 'step', 'disabled', 'checked', 'name'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */

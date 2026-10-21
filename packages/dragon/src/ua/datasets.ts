@@ -54,8 +54,10 @@ export type UaDataset = {
 
 type TextFontRow = { readonly [property: string]: string };
 
-/** The element keys of the form controls Dragon lays out (FORM-a), and of a disabled button and range (FORM-c). */
-export type ControlKey = Extract<ElementKey, 'button' | 'input' | 'input[type=range]' | 'button:disabled' | 'input[type=range]:disabled'>;
+/** The element keys of the form controls Dragon lays out (FORM-a, FORM-d), and of each one disabled (FORM-c). */
+export type ControlKey = Extract<ElementKey, (typeof CONTROL_KEYS)[number]>;
+
+const CONTROL_KEYS = ['button', 'input', 'input[type=range]', 'button:disabled', 'input[type=range]:disabled', 'input[type=checkbox]', 'input[type=checkbox]:disabled', 'input[type=radio]', 'input[type=radio]:disabled'] as const;
 
 /** A row key of the UA dataset: a captured tag, a replaced key (REPL-0) or a control key (FORM-a). */
 export type UaKey = CapturedTag | ReplacedKey | ControlKey;
@@ -77,7 +79,7 @@ function isReplacedKey(key: UaKey): key is ReplacedKey {
 }
 
 function isControlKey(key: UaKey): key is ControlKey {
-  return key === 'button' || key === 'input' || key === 'input[type=range]' || key === 'button:disabled' || key === 'input[type=range]:disabled';
+  return (CONTROL_KEYS as readonly string[]).includes(key);
 }
 
 /**

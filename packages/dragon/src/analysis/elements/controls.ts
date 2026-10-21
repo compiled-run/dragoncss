@@ -2,6 +2,7 @@
 // its contents (or the flex container its display says) and Dragon paints as CSS boxes once its used appearance is none
 // (Blink layout_theme.cc AdjustAppearanceWithAuthorStyle and IsControlStyled; FORM-0 ruling F1 and the R11 probe). A4 adds
 // input[type=range], laid out as Chrome's UA shadow tree (container, track, thumb; analysis/resolve.ts resolves the parts).
+// FORM-d adds checkbox and radio inputs with appearance: none, which Chrome lays out as empty boxes.
 import type { Longhand } from '../../css/properties.ts';
 import { usedAppearance } from '../../forms/appearance.ts';
 import type { UsedAppearance } from '../../forms/appearance.ts';
@@ -12,13 +13,16 @@ export const CONTROL_TAGS: readonly string[] = ['button', 'input'];
 
 /**
  * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it); an input's
- * do, and only type=range (ASCII case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is
+ * do: range, checkbox and radio (ASCII case-insensitive, HTML §4.10.5) are laid out; any other input reads the plain input key and is
  * refused (computed-checks.ts). A disabled button or range (match.ts isActuallyDisabled) reads its own key: html.css's
  * :disabled rules give it other colours (FORM-c).
  */
 export function controlUaKey(tag: string, type: string | undefined, disabled: boolean = false): ControlKey | null {
   if (tag === 'button') return disabled ? 'button:disabled' : 'button';
   if (tag === 'input' && isRangeType(type)) return disabled ? 'input[type=range]:disabled' : 'input[type=range]';
+  const toggle = tag === 'input' ? toggleType(type) : null;
+  if (toggle === 'checkbox') return disabled ? 'input[type=checkbox]:disabled' : 'input[type=checkbox]';
+  if (toggle === 'radio') return disabled ? 'input[type=radio]:disabled' : 'input[type=radio]';
   if (tag === 'input') return 'input';
   return null;
 }
@@ -26,6 +30,12 @@ export function controlUaKey(tag: string, type: string | undefined, disabled: bo
 /** HTML §4.10.5: the type attribute's keyword, ASCII case-insensitively. */
 export function isRangeType(type: string | undefined): boolean {
   return type !== undefined && type.replace(/[A-Z]/g, (c) => c.toLowerCase()) === 'range';
+}
+
+/** FORM-d: checkbox or radio when the type attribute's keyword (ASCII case-insensitive, HTML §4.10.5) is one, else null. */
+export function toggleType(type: string | undefined): 'checkbox' | 'radio' | null {
+  const t = type?.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  return t === 'checkbox' || t === 'radio' ? t : null;
 }
 
 /** Whether a tag is a form control. */

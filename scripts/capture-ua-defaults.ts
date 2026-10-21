@@ -38,6 +38,11 @@ const KEY_SPECS = {
   // FORM-c: html.css's :disabled rules give a disabled button and range other colours.
   'button:disabled': { tag: 'button', attrs: { type: 'button', disabled: '' } },
   'input[type=range]:disabled': { tag: 'input', attrs: { type: 'range', disabled: '' } },
+  // FORM-d: a checkbox and a radio, each with its :disabled colours.
+  'input[type=checkbox]': { tag: 'input', attrs: { type: 'checkbox' } },
+  'input[type=checkbox]:disabled': { tag: 'input', attrs: { type: 'checkbox', disabled: '' } },
+  'input[type=radio]': { tag: 'input', attrs: { type: 'radio' } },
+  'input[type=radio]:disabled': { tag: 'input', attrs: { type: 'radio', disabled: '' } },
   a: { tag: 'a', attrs: {} },
   // A fresh profile has no history, so the link is unvisited (:link).
   'a[href]': { tag: 'a', attrs: { href: 'https://dragon.invalid/unvisited' } },
