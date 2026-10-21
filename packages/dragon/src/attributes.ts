@@ -38,6 +38,8 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   // FORM-a A3: a button's type (button, submit, reset, or an invalid value, which is submit) changes only its activation
   // behaviour; Chrome's UA rules for button do not read it (HTML §15.5.3; parity fixture controls-button-type).
   button: ['type'],
+  // MEDIA-EL: a video's src is the stream that sizes it (videos/compile.ts), and preload none keeps it at the default object size.
+  video: ['src', 'width', 'height', 'preload'],
   // GEN-c (notes/T151-gen-spec.md R14): ol start and reversed and li value set list item ordinals (HTML §4.4.5, §4.4.8), which
   // analysis/ordinals.ts computes; HTML §15 gives them no presentational hint, so their only rendering is the marker text.
   ol: ['start', 'reversed'],
@@ -62,6 +64,13 @@ const OWNERS: Readonly<Record<string, string>> = {
   dir: 'the bidi package (dir sets direction and unicode-bidi)',
   hidden: 'the display package (hidden applies display: none)',
   style: 'the style-attribute package SOV',
+  // MEDIA-EL: a video without them shows its first frame and never plays; with them Chrome plays it or draws its own controls.
+  controls: 'the media-element package MEDIA-EL (controls and playback)',
+  autoplay: 'the media-element package MEDIA-EL (controls and playback)',
+  muted: 'the media-element package MEDIA-EL (controls and playback)',
+  loop: 'the media-element package MEDIA-EL (controls and playback)',
+  playsinline: 'the media-element package MEDIA-EL (controls and playback)',
+  poster: 'the media-element package MEDIA-EL (the poster frame)',
   // rel and target are neutral off hyperlinks (NEUTRAL_ATTRIBUTES); on a, area and link they change link behaviour.
   rel: 'the link package LINK-RT (on a hyperlink it changes link behaviour)',
   target: 'the link package LINK-RT (on a hyperlink it changes link behaviour)',

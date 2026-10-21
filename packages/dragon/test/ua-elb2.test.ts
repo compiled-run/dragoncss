@@ -84,7 +84,7 @@ describe('the dark UA dataset (ELB-2)', () => {
 // REPL-0: the replaced keys (iframe, img with a data: src) in tables of their own after the element-key tables.
 describe('replaced keys (REPL-0)', () => {
   // SVG-a1 added svg and its shapes (SVG-namespace elements) to these tables.
-  const REPLACED = ['iframe', 'img[src]', 'svg', 'path', 'rect', 'circle'];
+  const REPLACED = ['iframe', 'img[src]', 'svg', 'path', 'rect', 'circle', 'video'];
   it('are captured in tables of their own, light and dark; the element-key tables do not list them', () => {
     for (const ds of [light, dark]) {
       for (const table of [ds.replacedKeySpecs, ds.replacedKeyComputed, ds.replacedKeyLonghands, ds.replacedKeyDeclared, ds.replacedKeyContexts, ds.replacedKeyTextFonts, ds.replacedKeyUnmodelled, ds.replacedKeyForced]) {
@@ -108,5 +108,11 @@ describe('replaced keys (REPL-0)', () => {
     expect(light.replacedKeyUnmodelled['img[src]'].ltr).toEqual({ 'overflow-clip-margin': 'content-box' });
     expect(light.replacedKeyForced['img[src]']).toEqual({ ltr: {}, rtl: {} });
     expect(dark.replacedKeyDeclared).toEqual(light.replacedKeyDeclared);
+  });
+  it('pin the UA values Chrome gives a video (MEDIA-EL): object-fit contain, clipped at its content box', () => {
+    expect(light.replacedKeyDeclared.video.ltr).toEqual({ 'object-fit': 'contain', 'overflow-x': 'clip', 'overflow-y': 'clip' });
+    expect(light.replacedKeyUnmodelled.video.ltr).toEqual({ 'overflow-clip-margin': 'content-box' });
+    expect(light.replacedKeyForced.video).toEqual({ ltr: {}, rtl: {} });
+    expect(light.replacedKeyComputed.video['object-fit']).toBe('contain');
   });
 });

@@ -104,7 +104,7 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
           if (p.x < 0 || p.y < 0) off.push(`${n.case.id}@${dpr} ${p.rule}: outside the raster at (${p.x}, ${p.y})`);
           for (const [id, b] of boxes) {
             // maskedAt and dropsBaseAt leave a point a later opaque box hides: it shows that box.
-            if (b.image === null && maskedAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: inside the web view ${id}`);
+            if (b.image === null && maskedAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: inside the ${b.video ? 'video player' : 'web view'} ${id}`);
             if (b.image !== null && base(p.rule) && dropsBaseAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: on non-flat content of ${id}`);
             if (p.rule.startsWith(`image-flat:${id}:`) && !flatAt(b, p.x, p.y)) off.push(`${n.case.id}@${dpr} ${p.rule}: an image-flat point not on flat content of ${id}`);
           }
@@ -205,7 +205,7 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) data.set(x < 32 ? [255, 0, 0, 255] : [0, 0, 255, 255], (y * 64 + x) * 4);
     const rect = { x: -320, y: -320, width: 640, height: 640 };
     const box = (later: ReplacedSamplesBox['later'], cover: ReplacedSamplesBox['cover'], image = true): ReplacedSamplesBox =>
-      ({ paint: { dest: rect, content: rect, drawn: rect }, image: image ? { width: 64, height: 64, data } : null, later, cover, clip: [], pixelated: false });
+      ({ paint: { dest: rect, content: rect, drawn: rect }, image: image ? { width: 64, height: 64, data } : null, video: false, later, cover, clip: [], pixelated: false });
     const over = { id: 'later', left: -10, top: -10, right: 40, bottom: 40, width: 50, height: 50 };
 
     it('never places an image point outside the raster, though the drawn part starts left of and above it', () => {

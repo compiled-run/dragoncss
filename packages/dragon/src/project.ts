@@ -6,6 +6,7 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
+import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
 import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
@@ -1408,7 +1409,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       // REPL-a: the images every band's resolved cases and their interaction states reference (img src, background url()), read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
       const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
-      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
+      const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])));
+      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
+      // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
+      const videos = compileVideos(roots, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
+      images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       // MQ-R1: native runs every band, so every other band's analysis reports too (each diagnostic once).

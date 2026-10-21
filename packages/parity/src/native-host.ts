@@ -271,6 +271,8 @@ func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
   // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
   dragonForeignViewLoadsSrc = false
+  // MEDIA-EL: nor open a video stream; the players' frames and gravity are what the lanes prove.
+  dragonVideoViewLoadsStream = false
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
   // --dragon-cases wins over a run file left in the container by an earlier run.
@@ -588,6 +590,7 @@ import dev.dragon.views.DragonTree
 import dev.dragon.views.dragonForeignViewLoadsSrc
 import dev.dragon.views.dragonReadRun
 import dev.dragon.views.dragonSamples
+import dev.dragon.views.dragonVideoViewLoadsStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -612,6 +615,8 @@ class DragonActivity : Activity() {
     dragonForeignViewLoadsSrc = false
     // MQ-R1: the activity handles rotation itself (configChanges) and lane runs start portrait; device-env rotates it on purpose.
     requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    // MEDIA-EL: nor open a video stream; the players' frames are what the lanes prove.
+    dragonVideoViewLoadsStream = false
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     frame.setBackgroundColor(0xffffffff.toInt())
     frame.setOnApplyWindowInsetsListener { v, insets ->
