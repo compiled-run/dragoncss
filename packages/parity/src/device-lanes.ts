@@ -22,13 +22,14 @@ import { runDeviceVectors } from './device-vectors.ts';
 import type { DeviceRun, HostRun } from './lanes.ts';
 import { committedDprCapture } from './dpr.ts';
 import type { BreakVector, ChromeBreaks } from './line-breaks.ts';
+import { axLinesOfProgram, checkAccessibleLines } from './ax-lines.ts';
 import { BREAK_MISMATCH, breakVector, checkDumpBreaks, compareVectorWithChrome, engineTextLines, leafTexts, readBreakVector, readChromeBreaks } from './line-breaks.ts';
 import type { CheckResult, DumpFault, ExpectedApplied, NamedCheck, RgbaImage } from './native-compare.ts';
 import { appliedTransforms, checkAgainstChrome, checkAgainstEngine, checkApplied, DUMP_FAULTS, FAULT_CHECK, pixelAt, plantDumpFault, transformedFrames } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
 import { validateNativeDump } from './native-dump.ts';
 import type { NativeCase } from './native-host.ts';
-import { BACKEND_OF, buildAndroid, buildIos, deviceCheckCases, engineBoxes, expectedEngine, nativeOut } from './native-host.ts';
+import { BACKEND_OF, buildAndroid, buildIos, deviceCheckCases, engineBoxes, expectedEngine, nativeOut, referenceMeasurer } from './native-host.ts';
 import { expectedHitRuns, hitCases } from './hit-capture.ts';
 import { deriveScripts, stateEmits, stateGroups, stateProgramOf } from './state-cases.ts';
 import type { AnimSample } from './anim-samples.ts';
@@ -49,7 +50,7 @@ export type { DeviceCheckLane, DeviceLaneId };
 
 export type FailureKind =
   | 'dump-missing' | 'dump-invalid' | 'device-scale' | 'frame-chrome' | 'frame-engine' | 'applied' | 'native-class' | 'expected-digest'
-  | 'line-chrome' | 'line-engine' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind'
+  | 'line-chrome' | 'line-engine' | 'line-accessible' | typeof BREAK_MISMATCH | 'pixel' | 'raster-size' | 'capture-trust' | 'device-record' | 'compiler-digest' | 'case-identity' | 'capture-kind'
   | 'blank-capture'
   | 'hit-missing' | 'hit-mismatch'
   | 'frame-reference'
@@ -189,6 +190,15 @@ export function evaluateCase(target: NativeTarget, n: CheckedCase, dpr: number, 
   for (const p of d.nodes.problems) fail('device-frames', 'frame-engine', p, idOf(p));
   for (const p of a.lines.problems) fail('device-lines', 'line-chrome', p, idOf(p));
   for (const p of d.lines.problems) fail('device-lines', 'line-engine', p, idOf(p));
+  // P6b: each text line's accessibility element, or a whole leaf's view, named and marked as the model's lines and framed on the line
+  // or view, and the reading order (ax-lines.ts checkAccessibleLines). The lines it checks are the ones (d) compared, so it adds none
+  // to the count. A model the engine cannot lay out fails the lane rather than the run.
+  try {
+    const ax = checkAccessibleLines(dump, axLinesOfProgram(programOf(n, target), env.viewport, dpr, referenceMeasurer));
+    for (const p of ax.problems) fail('device-lines', 'line-accessible', p.detail, p.id);
+  } catch (e) {
+    fail('device-lines', 'line-accessible', `the accessibility model could not be built: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   // (b), the native classes and the expected digest.
   const expected: ExpectedApplied = new Map(ref.expected.nodes.map((x) => [x.id, x.applied]));

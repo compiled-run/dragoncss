@@ -25,6 +25,7 @@ import type { FixtureSpec } from './fixtures.ts';
 import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
+import { axLinesOfProgram, exposedAsModelled } from './ax-lines.ts';
 import type { NativeDump } from './native-dump.ts';
 import { forcedDeviceCases } from './forced-device.ts';
 import { NATIVE_CONFIG, nativeCompileOnce } from './native-compile.ts';
@@ -792,7 +793,10 @@ class DragonActivity : Activity() {
     // An env phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
     val c = if (envPhase != null && envMounted != null) DragonCase(id, base.fixture, base.direction, base.compilerDigest, envMounted.machine.viewport.first, envMounted.machine.viewport.second, mapOf(scale to "device-env"), base.input, base.build) else base
     val t0: Long
-    val tree: DragonTree
+    var tree: DragonTree
+    // The state mount the tree comes from: its safe-area probe can render it again while the case settles (the insets measured
+    // once it is attached), and the case then settles and dumps the views now on screen.
+    var source: DragonStateMount? = null
     // A state mount on screen: its media root leaves the frame, and it stops observing the platform readings, after the dump.
     var mounted: DragonStateMount? = null
     var environment: DumpEnvironment? = null
@@ -801,6 +805,7 @@ class DragonActivity : Activity() {
       t0 = SystemClock.elapsedRealtimeNanos()
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
       if (envPhase == "scheme-back") {
         mounted = mount
         envMount = null
@@ -814,6 +819,7 @@ class DragonActivity : Activity() {
       // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
     } else {
       tree = DragonTree(this)
       c.build(tree)
@@ -910,6 +916,7 @@ class DragonActivity : Activity() {
     var drawnAt = -1
     fun settle(frames: Int) {
       Choreographer.getInstance().postFrameCallback {
+        source?.tree?.let { if (it !== tree) { tree = it; drawnAt = -1 } }
         if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
         if (drawnAt < 0 || frames < drawnAt + 2) {
           if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
@@ -1415,21 +1422,22 @@ export function relabelledReferenceDump(target: NativeTarget, c: { readonly id: 
   const e = expectedDump(program, c.id, viewport, dpr, expectedEngine());
   const applied = new Map(e.nodes.map((x) => [x.id, x.applied]));
   const sha = createHash('sha256').update(c.id).digest('hex');
-  return {
+  // The accessibility elements and reading order are the model's (ax-lines.ts exposedAsModelled).
+  return exposedAsModelled({
     ...ref,
     lane: target === 'ios' ? 'ios-sim' : 'android-emu',
     case: { ...ref.case, expectedDigest: expectedDigest(e) },
     device: { platform: target, os: 'host encoder test', model: 'none', abi: 'host', scale: dpr, toolchain: 'host', renderer: 'none' },
+    // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
     nodes: ref.nodes.map((x) => ({
       ...x,
       native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
       applied: applied.get(x.id) ?? {},
-      // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
       lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: x.kind === 'text' ? 3 * j : 0, end: x.kind === 'text' ? 3 * j + 2 : 0 })),
     })),
     pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
     timing: { settleMs: 1.25, dumpMs: 0.5 },
-  } as NativeDump;
+  } as NativeDump, axLinesOfProgram(program, viewport, dpr, referenceMeasurer));
 }
 
 /** Compiles the encoder with a program that builds the dumps by typed constructors and prints each as one JSON line; returns the lines. */

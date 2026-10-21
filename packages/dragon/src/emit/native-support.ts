@@ -188,12 +188,42 @@ public protocol DragonNodeView: UIView {
 
 /// The initial containing block: the fixture root at the device origin, white like Chrome's canvas.
 public final class DragonRootView: UIView {
+  /// P6b: every node view in DOM order (DragonTree.apply), whatever hosts it, so VoiceOver reads in Chrome's order, not by position.
+  public var dragonAccessibleOrder: [UIView] = []
   public init() {
     super.init(frame: .zero)
     backgroundColor = .white
     clipsToBounds = false
   }
   required init?(coder: NSCoder) { fatalError("DragonRootView is built in code") }
+
+  /// P6b: the text views with lines and the views that are accessibility elements themselves (a whole leaf, an empty clip rect's
+  /// label, a control), in DOM order, that VoiceOver can reach now (dragonVoiceOverReaches). A box's foreign view (an iframe's
+  /// WKWebView) follows its box, as an accessibility container of its own content.
+  public override var accessibilityElements: [Any]? {
+    get {
+      if dragonAccessibleOrder.isEmpty { return super.accessibilityElements }
+      var out: [Any] = []
+      for v in dragonAccessibleOrder where dragonVoiceOverReaches(v, self) {
+        if v.isAccessibilityElement || ((v as? DragonTextView)?.dragonAccessibleLines.isEmpty == false) { out.append(v) }
+        if let f = (v as? DragonBoxView)?.dragonForeignView, !v.isAccessibilityElement, dragonVoiceOverReaches(f, self) { out.append(f) }
+      }
+      return out
+    }
+    set { super.accessibilityElements = newValue }
+  }
+}
+
+/// P6b: whether VoiceOver can reach a view (it, or the elements it holds) under root: it is inside root, and neither it nor a
+/// superview is hidden, transparent or hides its elements, nor is a superview an element for its whole subtree (an empty clip
+/// rect's label, dragonClipRectLabel).
+public func dragonVoiceOverReaches(_ v: UIView, _ root: UIView) -> Bool {
+  var x: UIView? = v
+  while let c = x, c !== root {
+    if c.isHidden || c.alpha < 0.01 || c.accessibilityElementsHidden || (c !== v && c.isAccessibilityElement) { return false }
+    x = c.superview
+  }
+  return x != nil
 }
 
 /// css-overflow-3 §3: the padding box of an overflow: hidden node; its children are clipped to its bounds.
@@ -367,15 +397,19 @@ public final class DragonTextView: UIView, DragonNodeView {
 
   /// P6b: the accessibility elements, one per line in order, from dragonSetAccessibleLines.
   public private(set) var dragonAccessibleLines: [UIAccessibilityElement] = []
+  /// P6b: the index into specs of each accessibility element's line (a truncated line's unpainted run has none).
+  public private(set) var dragonAccessibleSpecs: [Int] = []
 
   /// P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
-  /// it) and frame (its fragment, in device px from the view's top-left) as a static text element in the view's space.
-  public func dragonSetAccessibleLines(names: [String], rects: [[Double]], scale: Double) {
+  /// it) and frame (its fragment, in device px from the view's top-left) as a static text element in the view's space; under a
+  /// heading (heading, its level, else 0) each is a header too.
+  public func dragonSetAccessibleLines(names: [String], rects: [[Double]], specs: [Int], scale: Double, heading: Int) {
     let s = CGFloat(scale)
+    dragonAccessibleSpecs = specs
     dragonAccessibleLines = zip(names, rects).map { name, r in
       let e = UIAccessibilityElement(accessibilityContainer: self)
       e.accessibilityLabel = name
-      e.accessibilityTraits = .staticText
+      e.accessibilityTraits = heading > 0 ? [.staticText, .header] : .staticText
       e.accessibilityFrameInContainerSpace = CGRect(x: CGFloat(r[0]) / s, y: CGFloat(r[1]) / s, width: CGFloat(r[2]) / s, height: CGFloat(r[3]) / s)
       return e
     }
@@ -386,11 +420,13 @@ public final class DragonTextView: UIView, DragonNodeView {
 
   /// P6b: the view as one static text element named with its text, for a leaf text-overflow truncates (for now): Chrome's
   /// InlineTextBoxes there are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text.
-  public func dragonSetAccessibleWhole(_ text: String) {
+  /// Under a heading it is a header too.
+  public func dragonSetAccessibleWhole(_ text: String, heading: Int) {
     dragonAccessibleLines = []
+    dragonAccessibleSpecs = []
     accessibilityElements = nil
     isAccessibilityElement = true
-    accessibilityTraits = .staticText
+    accessibilityTraits = heading > 0 ? [.staticText, .header] : .staticText
     accessibilityLabel = text
   }
 
@@ -793,7 +829,8 @@ public func dragonSafeArea(_ container: UIView) -> SafeAreaInsets {
   let r = container.convert(container.bounds, to: w)
   let b = w.bounds
   func css(_ v: CGFloat) -> Double { return Double(max(0, v)) }
-  return SafeAreaInsets(css(i.top - r.minY), css(r.maxX - (b.width - i.right)), css(r.maxY - (b.height - i.bottom)), css(i.left - r.minX))
+  // Each side's unsafe band is the window's own edge strip: a container reaching past the window's edge is not under a bar there.
+  return SafeAreaInsets(css(min(i.top, r.maxY) - max(r.minY, 0)), css(min(r.maxX, b.width) - max(r.minX, b.width - i.right)), css(min(r.maxY, b.height) - max(r.minY, b.height - i.bottom)), css(min(i.left, r.maxX) - max(r.minX, 0)))
 }
 
 /// css-env-1: input with its safe-area insets replaced by a mount's measured ones.
@@ -845,6 +882,8 @@ public final class DragonTree {
   public let root = DragonRootView()
   private var views: [String: DragonNodeView] = [:]
   private var order: [String] = []
+  /// P6b: the node views as the program builds them, which is DOM order.
+  private var domOrder: [UIView] = []
   private var parents: [String: String?] = [:]
   /// Per text view: each line's half-leading (its content top below the line top, INL1a: it differs by line), and the view's
   /// one ascent and descent.
@@ -865,15 +904,19 @@ public final class DragonTree {
   public func companion(_ id: String, _ view: UIView) { companions[id, default: []].append(view) }
   /// A built node's view, for the runtime writers (RT-1, RT-2, RT-11).
   public func node(_ id: String) -> DragonNodeView? { return views[id] }
+  /// A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted.
+  public func layoutParent(_ id: String) -> String? { return parents[id] ?? nil }
 
   public func boxNode(_ id: String, parent: String?, kind: String) -> DragonBoxView {
     let v = DragonBoxView(dragonId: id, kind: kind, parent: parent)
     views[id] = v
+    domOrder.append(v)
     return v
   }
   public func textNode(_ id: String, parent: String?, kind: String) -> DragonTextView {
     let v = DragonTextView(dragonId: id, kind: kind, parent: parent)
     views[id] = v
+    domOrder.append(v)
     // Visibility (T150a): the run follows its element, through an anonymous box, which inherits the element's value.
     var owner = parent.flatMap { views[$0] as? DragonBoxView }
     if let o = owner, o.dragonKind == "anonymous" { owner = o.dragonParent.flatMap { views[$0] as? DragonBoxView } }
@@ -881,6 +924,16 @@ public final class DragonTree {
     o.dragonTextLeaves.append(v)
     v.isHidden = !o.dragonVisible
     return v
+  }
+
+  /// The level of the nearest heading over a node in the DOM (the role module's dragonHeading), or 0.
+  private func headingOf(_ id: String) -> Int {
+    var at = views[id]?.dragonParent
+    while let p = at, let b = views[p] as? DragonBoxView {
+      if b.dragonHeadingLevel > 0 { return b.dragonHeadingLevel }
+      at = b.dragonParent
+    }
+    return 0
   }
 
   private static func isLine(_ r: LayoutRect) -> Bool {
@@ -1139,9 +1192,11 @@ public final class DragonTree {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       let size = try units_platformFontSize(leaves[li].font.size)
       var specs: [DragonLineSpec] = []
-      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left.
+      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left, its LU edges snapped as
+      // the dump snaps the line's.
       var axNames: [String] = []
       var axRects: [[Double]] = []
+      var axSpecs: [Int] = []
       // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
       // points and glyph pens in zoomed px from the root.
       var geometry: [[Double]] = []
@@ -1203,7 +1258,12 @@ public final class DragonTree {
             // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
             let nameEnd = !line.breaks.items.isEmpty && line.pieces.items.last === piece ? piece.visibleEnd : piece.end
             axNames.append(scalars[Int(piece.start)..<Int(nameEnd)].map { String($0) }.joined())
-            axRects.append([a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu])
+            let ax0 = try units_snapEdge(a.x)
+            let ay0 = try units_snapEdge(a.y)
+            let ax1 = try units_snapEdge(a.x + a.width)
+            let ay1 = try units_snapEdge(a.y + a.height)
+            axRects.append([ax0 - e[0], ay0 - e[1], ax1 - ax0, ay1 - ay0])
+            axSpecs.append(specs.count)
             geometry.append([a.x / lu, width / lu, a.y / lu])
             geometryCps.append(shown.map { Double($0.value) })
             geometryPens.append(run.xs.map { $0 + e[0] })
@@ -1216,7 +1276,7 @@ public final class DragonTree {
       textMetrics[id] = viewMetrics
       // The leaf's face (Ahem or a bundled real face, as the measurer laid it out) at the instance size in points.
       tv.dragonConfigure(font: bridge.font(face: leafFont.family.description, pointSize: CGFloat(size / s)), face: leafFont.family.description, lines: specs, scale: s)
-      if elided { tv.dragonSetAccessibleWhole(leaves[li].text.description) } else { tv.dragonSetAccessibleLines(names: axNames, rects: axRects, scale: s) }
+      if elided { tv.dragonSetAccessibleWhole(leaves[li].text.description, heading: headingOf(id)) } else { tv.dragonSetAccessibleLines(names: axNames, rects: axRects, specs: axSpecs, scale: s, heading: headingOf(id)) }
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       if let cv = views[pId] as? DragonBoxView, let strut = p.strut, let m = viewMetrics {
@@ -1225,6 +1285,8 @@ public final class DragonTree {
         dragonAfterText(cv, tv, DragonTextGeometry(id: id, lines: geometry, cps: geometryCps, pens: geometryPens, textFont: [m.ascent, m.ascent, leaves[li].font.size], strutFont: [ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size], boxFonts: boxFonts, origin: [e[0], e[1]], scale: s))
       }
     }
+    // P6b: VoiceOver reads the views in DOM order, whatever view hosts each (PNT1) and wherever it sits.
+    root.dragonAccessibleOrder = domOrder
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
     inlineLines = [:]
     var fragments: [String: [Int]] = [:]
@@ -1274,18 +1336,40 @@ public final class DragonTree {
           let left = try! units_snapEdge(l * units_LU_PER_PX + x.xLU)
           let right = try! units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           let baseline = t + x.baseline
-          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: left / s, y: top / s, width: (right - left) / s, height: (bottom - top) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: left, top: top, right: right, bottom: bottom), baseline: (baseline - top) / s, start: Double(x.start), end: Double(x.end)))
+          // P6b: the line's accessibility element as UIKit holds it in the view's live accessibilityElements, framed from the view's
+          // live position; a hidden view exposes none.
+          var accessible: DumpNodesLinesAccessible? = nil
+          if dragonVoiceOverReaches(tv, root), let j = tv.dragonAccessibleSpecs.firstIndex(of: k), let live = tv.accessibilityElements, j < live.count, let el = live[j] as? UIAccessibilityElement {
+            let f = el.accessibilityFrameInContainerSpace
+            accessible = DumpNodesLinesAccessible(name: el.accessibilityLabel ?? "", heading: el.accessibilityTraits.contains(.header) ? 1 : 0, frame: DumpNodesLinesAccessibleFrame(x: Double(r.minX + f.minX), y: Double(r.minY + f.minY), width: Double(f.width), height: Double(f.height)))
+          }
+          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: left / s, y: top / s, width: (right - left) / s, height: (bottom - top) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: left, top: top, right: right, bottom: bottom), baseline: (baseline - top) / s, start: Double(x.start), end: Double(x.end), accessible: accessible))
         }
       } else if let frags = inlineLines[id] {
         // An inline box's lines are its fragments, placed from the box view's live position; it has no text, so offsets 0 to 0.
         for f in frags {
           let e = [l + f.edges[0], t + f.edges[1], l + f.edges[2], t + f.edges[3]]
-          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: e[0] / s, y: e[1] / s, width: (e[2] - e[0]) / s, height: (e[3] - e[1]) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: e[0], top: e[1], right: e[2], bottom: e[3]), baseline: f.baseline / s, start: 0, end: 0))
+          lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: e[0] / s, y: e[1] / s, width: (e[2] - e[0]) / s, height: (e[3] - e[1]) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: e[0], top: e[1], right: e[2], bottom: e[3]), baseline: f.baseline / s, start: 0, end: 0, accessible: nil))
         }
       }
-      nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines))
+      // P6b: the view as one accessibility element of its own (a whole leaf, or a control), named and framed as UIKit reports it to VoiceOver.
+      var accessible: DumpNodesAccessible? = nil
+      if dragonVoiceOverReaches(v, root), v.isAccessibilityElement {
+        let f = UIAccessibility.convertFromScreenCoordinates(v.accessibilityFrame, in: root)
+        accessible = DumpNodesAccessible(name: v.accessibilityLabel ?? "", heading: v.accessibilityTraits.contains(.header) ? 1 : 0, frame: DumpNodesAccessibleFrame(x: Double(f.minX), y: Double(f.minY), width: Double(f.width), height: Double(f.height)))
+      }
+      nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines, accessible: accessible))
     }
-    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing, environment: environment)
+    // P6b: the order VoiceOver reads the views in, from the root's live accessibilityElements; a foreign view is named after the node
+    // view that hosts it.
+    var accessibleOrder: [String] = []
+    for e in root.accessibilityElements ?? [] {
+      if let n = e as? DragonNodeView { accessibleOrder.append(n.dragonId); continue }
+      var x = (e as? UIView)?.superview
+      while let c = x, !(c is DragonNodeView) { x = c.superview }
+      accessibleOrder.append(((x as? DragonNodeView)?.dragonId ?? "root") + "::foreign")
+    }
+    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, accessibleOrder: accessibleOrder, pixels: pixels, timing: timing, environment: environment)
   }
 }
 
@@ -1675,6 +1759,12 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
     private set
   var dragonAccessibleRects: List<DoubleArray> = emptyList()
     private set
+  /** The level of the heading the lines are under, or 0. */
+  var dragonAccessibleHeading = 0
+    private set
+  /** The index into specs of each line's virtual child (a truncated line's unpainted run has none). */
+  var dragonAccessibleSpecs: List<Int> = emptyList()
+    private set
   /** The line holding accessibility focus, or -1. */
   private var dragonAccessibleFocus = -1
   /** The line under the hover pointer, or -1. */
@@ -1682,24 +1772,30 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
 
   /**
    * P6b: each line's name (its code points, with the collapsible space it hangs at the line's end, as Chrome's InlineTextBox names
-   * it) and frame (its fragment, in device px from the view's top-left), each a virtual child of the view's node provider.
+   * it) and frame (its fragment, in device px from the view's top-left), each a virtual child of the view's node provider; under a
+   * heading (heading, its level, else 0) each is a heading too.
    */
-  fun dragonSetAccessibleLines(names: List<String>, rects: List<DoubleArray>) {
+  fun dragonSetAccessibleLines(names: List<String>, rects: List<DoubleArray>, specs: List<Int>, heading: Int) {
     dragonAccessibleNames = names
+    dragonAccessibleSpecs = specs
     dragonAccessibleRects = rects
+    dragonAccessibleHeading = heading
     dragonAccessibleFocus = -1
     dragonAccessibleHover = -1
     contentDescription = null
+    isAccessibilityHeading = false
     importantForAccessibility = if (names.isEmpty()) View.IMPORTANT_FOR_ACCESSIBILITY_NO else View.IMPORTANT_FOR_ACCESSIBILITY_YES
   }
 
   /**
    * P6b: the view as one element named with its text, for a leaf text-overflow truncates (for now): Chrome's InlineTextBoxes there
-   * are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text.
+   * are its hidden full run, its painted part and the ellipsis, not lines, and its StaticText is the text. Under a heading it is a
+   * heading too.
    */
-  fun dragonSetAccessibleWhole(text: String) {
-    dragonSetAccessibleLines(emptyList(), emptyList())
+  fun dragonSetAccessibleWhole(text: String, heading: Int) {
+    dragonSetAccessibleLines(emptyList(), emptyList(), emptyList(), heading)
     contentDescription = text
+    isAccessibilityHeading = heading > 0
     importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
   }
 
@@ -1743,6 +1839,7 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
       info.packageName = host.context.packageName
       info.className = "android.widget.TextView"
       info.text = dragonAccessibleNames[virtualViewId]
+      info.isHeading = dragonAccessibleHeading > 0
       val b = dragonLineBounds(virtualViewId)
       @Suppress("DEPRECATION")
       info.setBoundsInParent(b)
@@ -2114,9 +2211,13 @@ import dev.dragon.dump.DumpCaseViewport
 import dev.dragon.dump.DumpDevice
 import dev.dragon.dump.DumpEnvironment
 import dev.dragon.dump.DumpNodes
+import dev.dragon.dump.DumpNodesAccessible
+import dev.dragon.dump.DumpNodesAccessibleFrame
 import dev.dragon.dump.DumpNodesDeviceEdges
 import dev.dragon.dump.DumpNodesFrame
 import dev.dragon.dump.DumpNodesLines
+import dev.dragon.dump.DumpNodesLinesAccessible
+import dev.dragon.dump.DumpNodesLinesAccessibleFrame
 import dev.dragon.dump.DumpNodesLinesDeviceEdges
 import dev.dragon.dump.DumpNodesLinesFrame
 import dev.dragon.dump.DumpPixels
@@ -2206,7 +2307,9 @@ fun dragonSafeArea(container: android.view.View, scale: Double): SafeAreaInsets 
   val right = at[0] + container.width - container.paddingRight
   val bottom = at[1] + container.height - container.paddingBottom
   fun css(px: Int): Double = maxOf(0, px) / scale
-  return SafeAreaInsets(css(bars.top - top), css(right - (window.width - bars.right)), css(bottom - (window.height - bars.bottom)), css(bars.left - left))
+  // Each side's unsafe band is the window's own edge strip: a container reaching past the window's edge (a mount's media root
+  // larger than the stage) is not under a bar there.
+  return SafeAreaInsets(css(minOf(bars.top, bottom) - maxOf(top, 0)), css(minOf(right, window.width) - maxOf(left, window.width - bars.right)), css(minOf(bottom, window.height) - maxOf(top, window.height - bars.bottom)), css(minOf(bars.left, right) - maxOf(left, 0)))
 }
 
 /** css-env-1: input with its safe-area insets replaced by a mount's measured ones. */
@@ -2261,6 +2364,8 @@ class DragonTree(val context: Context) {
   val root = DragonRootView(context)
   private val views = HashMap<String, DragonNodeView>()
   private val order = ArrayList<String>()
+  /** P6b: the node views as the program builds them, which is DOM order. */
+  private val domOrder = ArrayList<android.view.View>()
   private val parents = HashMap<String, String?>()
   /** Per text view: the ascent, the descent, then each line's half-leading (its content top below the line top; INL1a). */
   private val textMetrics = HashMap<String, DoubleArray>()
@@ -2281,6 +2386,8 @@ class DragonTree(val context: Context) {
   fun companion(id: String, view: android.view.View) { companions.getOrPut(id) { ArrayList() }.add(view) }
   /** A built node's view, for the runtime writers (RT-1, RT-2, RT-11). */
   fun node(id: String): DragonNodeView? = views[id]
+  /** A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted. */
+  fun layoutParent(id: String): String? = parents[id]
 
   /** Each inline box's fragments (INL1a): left, top, right, bottom relative to the box's snapped edges, and the baseline from the top. */
   private val inlineLines = HashMap<String, List<DoubleArray>>()
@@ -2288,11 +2395,13 @@ class DragonTree(val context: Context) {
   fun boxNode(id: String, parent: String?, kind: String): DragonBoxView {
     val v = DragonBoxView(context, id, kind, parent)
     views[id] = v
+    domOrder.add(v)
     return v
   }
   fun textNode(id: String, parent: String?, kind: String): DragonTextView {
     val v = DragonTextView(context, id, kind, parent)
     views[id] = v
+    domOrder.add(v)
     // Visibility (T150a): the run follows its element, through an anonymous box, which inherits the element's value.
     var owner = parent?.let { views[it] as? DragonBoxView }
     if (owner != null && owner.dragonKind == "anonymous") owner = owner.dragonParent?.let { views[it] as? DragonBoxView }
@@ -2300,6 +2409,17 @@ class DragonTree(val context: Context) {
     owner.dragonTextLeaves.add(v)
     v.visibility = if (owner.dragonVisible) android.view.View.VISIBLE else android.view.View.INVISIBLE
     return v
+  }
+
+  /** The level of the nearest heading over a node in the DOM (the role module's dragonHeading), or 0. */
+  private fun headingOf(id: String): Int {
+    var at = views[id]?.dragonParent
+    while (at != null) {
+      val b = views[at] as? DragonBoxView ?: return 0
+      if (b.dragonHeadingLevel > 0) return b.dragonHeadingLevel
+      at = b.dragonParent
+    }
+    return 0
   }
 
   private fun isLine(r: LayoutRect): Boolean {
@@ -2573,9 +2693,11 @@ class DragonTree(val context: Context) {
       // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
       val size = units_platformFontSize(leaves[li].font.size)
       val specs = ArrayList<DragonLineSpec>()
-      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left.
+      // P6b: each painted fragment's accessible name and its rect in device px from the view's top-left, its LU edges snapped as
+      // the dump snaps the line's.
       val axNames = ArrayList<String>()
       val axRects = ArrayList<DoubleArray>()
+      val axSpecs = ArrayList<Int>()
       // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
       // points and glyph pens in zoomed px from the root.
       val geometry = ArrayList<DoubleArray>()
@@ -2642,7 +2764,12 @@ class DragonTree(val context: Context) {
             // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
             val nameEnd = if (line.breaks.isNotEmpty() && line.pieces.last() === piece) piece.visibleEnd else piece.end
             axNames.add(leafText.substring(from, utf16(nameEnd.toInt())))
-            axRects.add(doubleArrayOf(a.x / lu - e[0], a.y / lu - e[1], a.width / lu, a.height / lu))
+            val ax0 = units_snapEdge(a.x)
+            val ay0 = units_snapEdge(a.y)
+            val ax1 = units_snapEdge(a.x + a.width)
+            val ay1 = units_snapEdge(a.y + a.height)
+            axRects.add(doubleArrayOf(ax0 - e[0], ay0 - e[1], ax1 - ax0, ay1 - ay0))
+            axSpecs.add(specs.size)
             geometry.add(doubleArrayOf(a.x / lu, width / lu, a.y / lu))
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
             geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
@@ -2655,7 +2782,7 @@ class DragonTree(val context: Context) {
       if (vm != null) textMetrics[id] = vm else textMetrics.remove(id)
       // The leaf's face (Ahem or a bundled real face, as the measurer laid it out).
       tv.dragonConfigure(bridge, leafFont.family, size.toFloat(), specs, scale)
-      if (elided) tv.dragonSetAccessibleWhole(leafText) else tv.dragonSetAccessibleLines(axNames, axRects)
+      if (elided) tv.dragonSetAccessibleWhole(leafText, headingOf(id)) else tv.dragonSetAccessibleLines(axNames, axRects, axSpecs, headingOf(id))
       // TDEC-b: the after-text hooks get the engine geometry: the lines, the text's ascent and zoomed size, the container's strut
       // and its inline boxes' (the decorating fonts), and the text view's absolute device px origin.
       val cv = views[pId] as? DragonBoxView
@@ -2665,6 +2792,20 @@ class DragonTree(val context: Context) {
         for ((b, ib) in ifc.boxes.withIndex()) boxFonts[ib.id] = doubleArrayOf(ifc.boxMetrics[b].ascent / lu, ifc.boxMetrics[b].ascent / lu, ib.font.size)
         dragonAfterText(cv, tv, DragonTextGeometry(id, geometry, geometryCps, geometryPens, doubleArrayOf(vm[0], vm[0], leaves[li].font.size), doubleArrayOf(ifc.strut.ascent / lu, ifc.strut.ascent / lu, strut.font.size), boxFonts, doubleArrayOf(e[0], e[1]), scale))
       }
+    }
+    // P6b: TalkBack reads the views in DOM order, whatever view hosts each (PNT1) and wherever it sits: each exposed view (a text
+    // view with lines or exposed whole, or a box view that is one node for its subtree) is traversed after the one before it.
+    var previous: android.view.View? = null
+    for (v in domOrder) {
+      val exposed = (v is DragonTextView && (v.dragonAccessibleNames.isNotEmpty() || v.contentDescription != null)) || (v is DragonBoxView && v.contentDescription != null)
+      // A view no longer exposed (after a state change) leaves the chain.
+      if (!exposed) {
+        v.accessibilityTraversalAfter = android.view.View.NO_ID
+        continue
+      }
+      if (v.id == android.view.View.NO_ID) v.id = android.view.View.generateViewId()
+      v.accessibilityTraversalAfter = previous?.id ?: android.view.View.NO_ID
+      previous = v
     }
     // Each inline box's fragments, one per line it is on (the engine's "<box>:line<j>"), with that line's baseline.
     inlineLines.clear()
@@ -2721,19 +2862,75 @@ class DragonTree(val context: Context) {
           val left = units_snapEdge(l * units_LU_PER_PX + x.xLU)
           val right = units_snapEdge(l * units_LU_PER_PX + x.xLU + x.widthLU)
           val baseline = t + x.baseline
-          lines.add(DumpNodesLines(DumpNodesLinesFrame(left / s, top / s, (right - left) / s, (bottom - top) / s), DumpNodesLinesDeviceEdges(left, top, right, bottom), (baseline - top) / s, x.start.toDouble(), x.end.toDouble()))
+          // P6b: the line's virtual node as the view's live node provider builds it, framed from the view's live position; a view
+          // that is not visible exposes none.
+          var accessible: DumpNodesLinesAccessible? = null
+          val j = v.dragonAccessibleSpecs.indexOf(k)
+          val info = if (j < 0 || !dragonTalkBackReaches(view, root)) null else v.accessibilityNodeProvider?.createAccessibilityNodeInfo(j)
+          if (info != null) {
+            val bounds = android.graphics.Rect()
+            @Suppress("DEPRECATION")
+            info.getBoundsInParent(bounds)
+            accessible = DumpNodesLinesAccessible(info.text?.toString() ?: "", if (info.isHeading) 1.0 else 0.0, DumpNodesLinesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
+          }
+          lines.add(DumpNodesLines(DumpNodesLinesFrame(left / s, top / s, (right - left) / s, (bottom - top) / s), DumpNodesLinesDeviceEdges(left, top, right, bottom), (baseline - top) / s, x.start.toDouble(), x.end.toDouble(), accessible))
         }
       } else {
         // An inline box's lines are its fragments, placed from the box view's live position; it has no text, so offsets 0 to 0.
         for (f in inlineLines[id] ?: emptyList()) {
           val e = doubleArrayOf(l + f[0], t + f[1], l + f[2], t + f[3])
-          lines.add(DumpNodesLines(DumpNodesLinesFrame(e[0] / s, e[1] / s, (e[2] - e[0]) / s, (e[3] - e[1]) / s), DumpNodesLinesDeviceEdges(e[0], e[1], e[2], e[3]), f[4] / s, 0.0, 0.0))
+          lines.add(DumpNodesLines(DumpNodesLinesFrame(e[0] / s, e[1] / s, (e[2] - e[0]) / s, (e[3] - e[1]) / s), DumpNodesLinesDeviceEdges(e[0], e[1], e[2], e[3]), f[4] / s, 0.0, 0.0, null))
         }
       }
-      nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines))
+      // P6b: the view as one accessibility element of its own (a whole leaf, or a control), named and framed by the node info it gives TalkBack.
+      var accessible: DumpNodesAccessible? = null
+      if (dragonTalkBackReaches(view, root) && view.importantForAccessibility == android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES && view.accessibilityNodeProvider == null && view.contentDescription != null) {
+        val info = view.createAccessibilityNodeInfo()
+        val bounds = android.graphics.Rect()
+        @Suppress("DEPRECATION")
+        info.getBoundsInParent(bounds)
+        accessible = DumpNodesAccessible(info.contentDescription?.toString() ?: "", if (info.isHeading) 1.0 else 0.0, DumpNodesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
+      }
+      nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines, accessible))
     }
-    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing, environment)
+    // P6b: the order TalkBack reads the views in, from the live accessibilityTraversalAfter chain: from each view that follows none,
+    // through the views that follow it; a view TalkBack cannot reach now (not visible) is passed over.
+    val follows = HashMap<Int, ArrayList<String>>()
+    val heads = ArrayList<String>()
+    for (id in order) {
+      val vw = views[id] as? android.view.View ?: continue
+      if (vw.id == android.view.View.NO_ID) continue
+      val after = vw.accessibilityTraversalAfter
+      if (after != android.view.View.NO_ID) follows.getOrPut(after) { ArrayList() }.add(id) else if (vw.isImportantForAccessibility) heads.add(id)
+    }
+    val accessibleOrder = ArrayList<String>()
+    val seen = HashSet<String>()
+    fun chain(id: String) {
+      if (!seen.add(id)) return
+      val vw = views[id] as android.view.View
+      if (dragonTalkBackReaches(vw, root)) accessibleOrder.add(id)
+      for (next in follows[vw.id] ?: emptyList<String>()) chain(next)
+    }
+    for (h in heads) chain(h)
+    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, accessibleOrder, pixels, timing, environment)
   }
+}
+
+/**
+ * P6b: whether TalkBack can reach a view (it, or the virtual nodes it holds) under root: it and every ancestor up to root are
+ * visible, and no ancestor is an important node that reports no accessibility children (one node for its whole subtree, as an empty
+ * clip rect's label is, DragonBoxView.addChildrenForAccessibility).
+ */
+fun dragonTalkBackReaches(v: android.view.View, root: android.view.View): Boolean {
+  if (v.visibility != android.view.View.VISIBLE) return false
+  var c = v.parent as? android.view.View
+  while (c != null) {
+    if (c.visibility != android.view.View.VISIBLE) return false
+    if (c.isImportantForAccessibility && c.createAccessibilityNodeInfo().childCount == 0) return false
+    if (c === root) return true
+    c = c.parent as? android.view.View
+  }
+  return false
 }
 
 /**
@@ -3047,7 +3244,7 @@ export const STYLE_FIELDS = [
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
   'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout',
-  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
+  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'zoom',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -3097,6 +3294,22 @@ function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string)
   return `GridSpan_lines(${str('lines')}, ${gridLineValue(s.start, str)}, ${gridLineValue(s.end, str)})`;
 }
 
+/** The multicol field of a LayoutStyle (css-multicol-1; input.ts MulticolStyle), or null. */
+function multicolValue(lang: Lang, v: unknown): string {
+  if (v === undefined) throw new Error('LayoutStyle.multicol is missing; it is null where unused');
+  if (v === null) return lang === 'swift' ? 'nil' : 'null';
+  const m = v as import('@dragon/layout').MulticolStyle;
+  return `MulticolStyle(${doubleLit(m.count)}, ${engineValue(lang, m.width)})`;
+}
+
+/** The textBoxTrim field of a LayoutStyle (css-inline-3 §5.1; input.ts TextBoxTrim), or null. */
+function textBoxTrimValue(lang: Lang, v: unknown): string {
+  if (v === undefined) throw new Error('LayoutStyle.textBoxTrim is missing; it is null where unused');
+  if (v === null) return lang === 'swift' ? 'nil' : 'null';
+  const t = v as import('@dragon/layout').TextBoxTrim;
+  return `TextBoxTrim(${String(t.start)}, ${String(t.end)}, ${String(t.alphabetic)})`;
+}
+
 /** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
 function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: string) => string): string {
   if (v === undefined) throw new Error(`LayoutStyle.${field} is missing; it is null where unused`);
@@ -3127,6 +3340,9 @@ const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 
 
 /** The translated classes of the AspectRatioValue members with parts (input.ts); auto is the shared Auto class. */
 const RATIO_CLASSES: Readonly<Record<string, string>> = { ratio: 'AspectRatioValue_ratio', 'auto-ratio': 'AspectRatioValue_autoRatio' };
+
+/** The translated classes of the TextWrapStyle members with a zoom (input.ts); auto is the shared Auto class. */
+const WRAP_STYLE_CLASSES: Readonly<Record<string, string>> = { balance: 'TextWrapStyle_balance', pretty: 'TextWrapStyle_pretty' };
 
 /** A LengthCalc or a CalcExpr node that is not a plain value, as a constructor call; null for any other value. */
 function calcValue(lang: Lang, o: Record<string, unknown>): string | null {
@@ -3182,6 +3398,12 @@ function engineValue(lang: Lang, v: unknown): string {
     if (typeof r.width !== 'number' || typeof r.height !== 'number') throw new Error(`aspect ratio ${JSON.stringify(v)} lacks its parts`);
     return `${ratio}(${str(r.kind)}, ${doubleLit(r.width)}, ${doubleLit(r.height)})`;
   }
+  const w = v as { kind: string; zoom?: number };
+  const wrap = WRAP_STYLE_CLASSES[w.kind];
+  if (wrap !== undefined) {
+    if (typeof w.zoom !== 'number') throw new Error(`text-wrap-style ${JSON.stringify(v)} lacks its zoom`);
+    return `${wrap}(${str(w.kind)}, ${doubleLit(w.zoom)})`;
+  }
   const o = v as { kind: string; value?: number | string };
   if (o.kind === 'keyword') return `VerticalAlignKeywordValue(${str('keyword')}, ${str(o.value as string)})`;
   const cls = VALUE_CLASSES[o.kind];
@@ -3234,6 +3456,8 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
   const fieldValue = (st: import('@dragon/layout').LayoutStyle, f: (typeof STYLE_FIELDS)[number]): string => {
     const v = (st as unknown as Record<string, unknown>)[f];
+    if (f === 'multicol') return multicolValue(lang, v);
+    if (f === 'textBoxTrim') return textBoxTrimValue(lang, v);
     if (f === 'zoom') return engineArray(lang, 'Double', false, (v as readonly number[]).map(doubleLit));
     return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
   };
