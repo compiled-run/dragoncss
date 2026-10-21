@@ -1,5 +1,6 @@
 // REPL-a: the paint rects of a case's replaced boxes at one DPR (absolute device px), from the engine as the device computes them
-// (dragon expected-dump.ts replacedGeometries), and the decoded image of each image write. Computed once per sample context.
+// (dragon expected-dump.ts replacedGeometries), and the decoded image of each image write and the first frame of each video's
+// stream. Computed once per sample context.
 import type { ReplacedPaint, SnappedRect } from '@dragon/layout';
 import { hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, roundedShape, snapEdges } from '@dragon/layout';
 import { borderDevicePx, programInput, replacedGeometries } from 'dragon';
@@ -10,15 +11,25 @@ import type { RgbaImage } from '../native-compare.ts';
 import type { Arc } from './radius.ts';
 import { radiusFacts, rectArcs } from './radius.ts';
 import type { PaintSampleContext } from './types.ts';
+import { decodeTwoTone } from '../videos/two-tone.ts';
+
+/** The first frame of a lane video's stream; a stream whose frame the lanes do not know exactly fails the case. */
+function videoFrame(id: string, base64: string): RgbaImage {
+  try {
+    return decodeTwoTone(new Uint8Array(Buffer.from(base64, 'base64')));
+  } catch (e) {
+    throw new Error(`video ${id}: a lane video's stream must be two-tone (videos/two-tone.ts): ${(e as Error).message}`);
+  }
+}
 
 /**
- * A replaced box: its paint rects, its decoded image (null for a web view) and the snapped rects of every box and line laid out
+ * A replaced box: its paint rects, its decoded image (a video's first frame; null for a web view) and the snapped rects of every box and line laid out
  * after it, which paint over it (CSS2 Appendix E: later boxes in tree order paint later; positioned boxes are placed last).
  */
 export type ReplacedSamplesBox = {
   readonly paint: ReplacedPaint;
   readonly image: RgbaImage | null;
-  /** MEDIA-EL: whether the box holds a video player, which covers its drawn rect only (foreign-view.ts maskedAt). */
+  /** MEDIA-EL: whether the box holds a video player, whose letterbox shows the box's background (foreign-view.ts). */
   readonly video: boolean;
   readonly later: readonly SnappedRect[];
   /** The later boxes that hide whatever is under them: an opaque background-color over the border box, and no clipping ancestor. */
@@ -67,8 +78,9 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
   for (const n of ctx.program.nodes) {
     const paint = paints.get(n.id);
     if (paint === undefined) continue;
-    const w = n.writes.find((x) => x.kind === 'replaced-image');
-    const image = w === undefined || w.kind !== 'replaced-image' ? null : decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d)));
+    const w = n.writes.find((x) => x.kind === 'replaced-image' || x.kind === 'video-view');
+    // MEDIA-EL slice 2: a video's image is its stream's first frame, which every lane stream holds exactly (videos/two-tone.ts).
+    const image = w === undefined ? null : w.kind === 'replaced-image' ? decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d))) : w.kind === 'video-view' ? videoFrame(n.id, w.data) : null;
     const at = order.get(n.id) as number;
     const later = snapped.slice(at + 1);
     boxes.set(n.id, { paint, image, video: n.writes.some((x) => x.kind === 'video-view'), later, cover: later.filter((r) => opaque(r.id)), clip: imageClip(ctx, n.id, snapped[at] as SnappedRect, out.boxes[at] as { width: number; height: number }, borders.get(n.id) ?? [0, 0, 0, 0]), pixelated: w !== undefined && w.kind === 'replaced-image' && w.pixelated });
