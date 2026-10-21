@@ -23,15 +23,12 @@ const SIDES = ['top', 'right', 'bottom', 'left'] as const;
  */
 export type InkText = {
   readonly text: ResolvedText;
+  /** The element whose child the text is (its owner, at any depth of inline boxes below its container). */
+  readonly parent: ResolvedElement;
   readonly container: ResolvedElement;
   readonly reach: Readonly<Record<Side, readonly Reach[]>>;
   readonly order: number;
   readonly moved: string | null;
-  /**
-   * Whether tree order is its paint order against every other text: no box on its path to the root is positioned, floated, a
-   * z-indexed flex or grid item, or a flex or grid item among siblings with an order other than 0.
-   */
-  readonly treeOrdered: boolean;
 };
 
 /** A drawn shadow: css px offsets and blur, and its colour's alpha (null for currentcolor, which every target refuses). */
@@ -119,12 +116,18 @@ export class MeetCheck {
   private readonly memo = new Map<string, Meeting | null>();
 
   private readonly parents: ReadonlyMap<ResolvedElement, ResolvedElement>;
+  private readonly reordering: ReadonlySet<ResolvedElement>;
   private readonly slack: number;
   private readonly blurSlack: number;
   private readonly minScale: number;
 
-  constructor(parents: ReadonlyMap<ResolvedElement, ResolvedElement>, slack: number, blurSlack: number, minScale: number) {
+  /**
+   * reordering: the boxes that may paint out of tree order against their siblings' subtrees (positioned, floated, or a z-indexed or
+   * reordered flex or grid item).
+   */
+  constructor(parents: ReadonlyMap<ResolvedElement, ResolvedElement>, reordering: ReadonlySet<ResolvedElement>, slack: number, blurSlack: number, minScale: number) {
     this.parents = parents;
+    this.reordering = reordering;
     this.slack = slack;
     this.blurSlack = blurSlack;
     this.minScale = minScale;
@@ -276,11 +279,25 @@ export class MeetCheck {
     return out;
   }
 
-  /** first comes before second in tree order (and paints first, where both are treeOrdered). */
+  /**
+   * Whether the pair paints in tree order: no box below their common ancestor, on either text's path, may paint out of tree order
+   * against its siblings' subtrees (positioned, floated, a reordered or z-indexed item, or a stacking context, text-shadow.ts survey). A reordering box at or above the common ancestor moves both texts together.
+   */
+  private treeOrdered(first: InkText, second: InkText): boolean {
+    const pf = this.chainOf(first.parent);
+    const pt = this.chainOf(second.parent);
+    const ps = new Set(pt);
+    const common = pf.find((e) => ps.has(e));
+    const below = (chain: readonly ResolvedElement[]): readonly ResolvedElement[] => (common === undefined ? chain : chain.slice(0, chain.indexOf(common)));
+    return ![...below(pf), ...below(pt)].some((e) => this.reordering.has(e));
+  }
+
+  /** first comes before second in tree order (and paints first, where the pair is tree-ordered). */
   private compute(first: InkText, second: InkText): Meeting | null {
     // Only the later text's inexact paint can land on the earlier text's; the earlier never paints over the later.
-    // Where tree order may not be paint order (positioning, floats, z-index or order on a path), either may paint over the other.
-    const ordered = first.treeOrdered && second.treeOrdered;
+    // Where tree order may not be paint order (positioning, floats, z-index or order below their common ancestor), either may paint
+    // over the other.
+    const ordered = this.treeOrdered(first, second);
     const risky = (x: InkText): boolean => SIDES.some((s) => x.reach[s].some((r) => r.risky));
     if (!risky(second) && (ordered || !risky(first))) return null;
     const moved = first.moved ?? second.moved;

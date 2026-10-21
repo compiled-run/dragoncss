@@ -212,6 +212,41 @@ function groupOf(el: ResolvedElement): string | null {
   return o !== null && o < 1 ? `opacity: ${o}` : null;
 }
 
+/** A longhand's resolved value as written, or null where Dragon resolves no such longhand. */
+const valueOf = (el: ResolvedElement, p: string): string | null => {
+  const v = (el.props as ReadonlyMap<string, ResolvedValue>).get(p);
+  return v === undefined ? null : valueToString(v.value);
+};
+
+/** will-change values that make a box a stacking context (css-will-change-1 §2.1: any property whose non-initial value would). */
+const STACKING_WILL_CHANGE = ['opacity', 'transform', 'translate', 'rotate', 'scale', 'perspective', 'filter', 'backdrop-filter', 'clip-path', 'mask', 'mask-image', 'isolation', 'mix-blend-mode', 'contain'];
+
+/**
+ * Why a box creates a stacking context without positioning (CSS 2.1 Appendix E, css-position-4 §stacking contexts), or null: opacity
+ * under 1, a transform or an individual transform, perspective, a filter or backdrop filter, a clip path, a mask, isolation: isolate,
+ * a blend mode, will-change naming one of them, or layout or paint containment (contain, a size container, content-visibility).
+ */
+export function stackingContextOf(el: ResolvedElement): string | null {
+  const group = groupOf(el);
+  if (group !== null) return group;
+  const not = (p: string, initial: string): string | null => {
+    const v = valueOf(el, p);
+    return v === null || v === initial ? null : `${p}: ${v}`;
+  };
+  for (const [p, initial] of [['translate', 'none'], ['rotate', 'none'], ['scale', 'none'], ['perspective', 'none'], ['filter', 'none'], ['backdrop-filter', 'none'], ['clip-path', 'none'], ['mask-image', 'none'], ['isolation', 'auto'], ['mix-blend-mode', 'normal']] as const) {
+    const why = not(p, initial);
+    if (why !== null) return why;
+  }
+  const will = elementWillChange(el).find((w) => STACKING_WILL_CHANGE.includes(w));
+  if (will !== undefined) return `will-change: ${will}`;
+  const contain = valueOf(el, 'contain') ?? 'none';
+  if (/\b(layout|paint|strict|content)\b/.test(contain)) return `contain: ${contain}`;
+  const container = valueOf(el, 'container-type') ?? 'normal';
+  if (container !== 'normal') return `container-type: ${container}`;
+  const visibility = valueOf(el, 'content-visibility') ?? 'visible';
+  return visibility === 'visible' ? null : `content-visibility: ${visibility}`;
+}
+
 /** Every text's ink and reach, and the parents of the tree's elements, for the check that no two texts' shadows meet. */
 type Others = { readonly inks: ReadonlyMap<ResolvedText, InkText>; readonly meet: MeetCheck };
 
@@ -234,18 +269,22 @@ function drawnShadows(shadows: readonly Shadow[]): DrawnShadow[] {
 type Shadowed = { readonly text: ResolvedText; readonly parent: ResolvedElement; readonly container: ResolvedElement; readonly clamped: boolean; readonly order: number; readonly group: string | null };
 
 /** The text leaves that draw each declared text-shadow list (declaring element first), and every box-painting element's tree order. */
-function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement, Shadowed[]>; readonly painters: number[]; readonly inks: Map<ResolvedText, InkText> } {
+function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement, Shadowed[]>; readonly painters: number[]; readonly inks: Map<ResolvedText, InkText>; readonly reordering: Set<ResolvedElement> } {
   const declared = new Map<ResolvedElement, Shadowed[]>();
   const painters: number[] = [];
   const inks = new Map<ResolvedText, InkText>();
+  const reordering = new Set<ResolvedElement>();
   let order = 0;
-  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null, orderedAbove: boolean): void => {
+  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null, itemReordered: boolean): void => {
     if (keyword(el.props, 'display') === 'none') return;
-    // Tree order stays paint order below a box that is not positioned or floated (orderedAbove covers z-index and order).
-    const ordered = orderedAbove && keyword(el.props, 'position') === 'static' && keyword(el.props, 'float') === 'none';
+    // A box that may paint out of tree order against its siblings' subtrees: positioned, floated, a flex or grid item that is
+    // z-indexed or among siblings with an order other than 0 (itemReordered), or a static box that creates a stacking context, which
+    // Chrome paints in the z-index 0 layer, after the in-flow inline content of its later siblings (stackingContextOf). MeetCheck
+    // reads these below a pair's common ancestor.
+    if (itemReordered || keyword(el.props, 'position') !== 'static' || keyword(el.props, 'float') !== 'none' || stackingContextOf(el) !== null) reordering.add(el);
     const itemsOf = /^(inline-)?(flex|grid)$/.test(keyword(el.props, 'display'));
     const reordered = itemsOf && el.children.some((c) => c.kind === 'element' && keyword(c.props, 'order') !== '0');
-    const childOrdered = (c: ResolvedElement): boolean => ordered && !(itemsOf && (reordered || keyword(c.props, 'z-index') !== 'auto'));
+    const childReordered = (c: ResolvedElement): boolean => itemsOf && (reordered || keyword(c.props, 'z-index') !== 'auto');
     // A relatively positioned (or sticky) inline box between a text and its block container moves the text off its line box.
     const inline = keyword(el.props, 'display') === 'inline';
     const position = keyword(el.props, 'position');
@@ -261,16 +300,16 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
     if (own !== null && !declared.has(own)) declared.set(own, []);
     const g = group ?? groupOf(el);
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c, own, g, container, clamped, moved, childOrdered(c));
+      if (c.kind === 'element') walk(c, own, g, container, clamped, moved, childReordered(c));
       else {
         order++;
         if (own !== null) (declared.get(own) as Shadowed[]).push({ text: c, parent: el, container, clamped, order, group: g });
-        if (c.text.trim() !== '') inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved, treeOrdered: ordered });
+        if (c.text.trim() !== '') inks.set(c, { text: c, parent: el, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved });
       }
     }
   };
-  walk(root, null, null, root, false, null, true);
-  return { declared, painters, inks };
+  walk(root, null, null, root, false, null, false);
+  return { declared, painters, inks, reordering };
 }
 
 /** Why the native targets refuse a list on its texts, or null when they draw it as Chrome does. */
@@ -314,8 +353,8 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
 /** Refuses each text-shadow list that a target does not draw as Chrome does, once per target at its declaration. */
 export function checkTextShadows(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: TxtFxFaults): void {
   if (faults.textShadowListAccepted) return;
-  const { declared, painters, inks } = survey(root);
-  const others: Others = { inks, meet: new MeetCheck(parentsOf(root), TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE) };
+  const { declared, painters, inks, reordering } = survey(root);
+  const others: Others = { inks, meet: new MeetCheck(parentsOf(root), reordering, TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE) };
   if (declared.size === 0) return;
   // The native work of the lists accepted so far, in declaration order (the document budget).
   const budget = { used: 0 };
