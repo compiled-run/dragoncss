@@ -95,6 +95,9 @@ describe('text-wrap and text-wrap-style', () => {
       ['overflow-x: hidden;', 'pretty', (r) => [text(r, 't', 'XX XX XX')], 'with overflow other than visible'],
       ['display: inline-block;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'with display: inline-block'],
       ['display: flow-root;', 'pretty', (r) => [text(r, 't', 'XX XX XX')], 'with display: flow-root'],
+      ['zoom: 2;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'under zoom (effective zoom 2)'],
+      ['contain: layout;', 'pretty', (r) => [text(r, 't', 'XX XX XX')], 'with contain or container-type'],
+      ['container-type: inline-size;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'with contain or container-type'],
     ];
     for (const [extra, kind, kids, why] of cases) {
       const d = `${extra} text-wrap-style: ${kind}`;
@@ -105,7 +108,7 @@ describe('text-wrap and text-wrap-style', () => {
     }
   });
 
-  it('refuses balance and pretty under a line-clamp container, as a grid item or column flex item, and in an inline-block', () => {
+  it('refuses balance and pretty under a line-clamp container, as a grid item or column flex item, in an inline-block and under an ancestor zoom', () => {
     const refused = ['android', 'ios', 'web'].map((t) => `${t} DRAGON_UNSUPPORTED_VALUE`);
     // The block a in o, or in a block m in o; o is the context under test.
     const compiled = (outer: string, kind: string, deep: boolean) => {
@@ -121,6 +124,7 @@ describe('text-wrap and text-wrap-style', () => {
       ['display: flex; flex-direction: column;', false, 'as a flex item of a column flex container'],
       ['display: flex; flex-direction: row-reverse;', false, 'as a flex item of a row-reverse flex container'],
       ['display: inline-block;', false, 'in a box with display: inline-block'],
+      ['zoom: 1.5;', true, 'under zoom (effective zoom 1.5)'],
     ];
     for (const kind of ['balance', 'pretty']) {
       for (const [outer, deep, why] of cases) {

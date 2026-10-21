@@ -27,6 +27,7 @@ export { createProjectWith, COMPILER_VERSION } from './project.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
 export { NO_FAULTS } from './faults.ts';
+export { NATIVE_DEVICE_DPRS } from './analysis/paint-values/gradient-phase.ts';
 export { iosProfile } from './profiles/ios.ts';
 export { webProfile } from './profiles/web.ts';
 export { androidProfile } from './profiles/android.ts';
@@ -48,7 +49,7 @@ export type { BackgroundResetLonghand } from './css/properties/background.ts';
 export { WRITING_MODE_RESET_LONGHANDS } from './css/properties/writing-mode.ts';
 export type { WritingModeResetLonghand } from './css/properties/writing-mode.ts';
 export type { Rgba8 } from './css/color.ts';
-export { parseComputedColor, serializeColor } from './css/color.ts';
+export { computedColorMatches, parseComputedColor, serializeColor } from './css/color.ts';
 export { WEB_CSS_PATH } from './emit/web-css.ts';
 export type { AtRuleContext } from './css/at-rules.ts';
 export { preprocessInput } from './css/escapes.ts';
@@ -70,7 +71,7 @@ export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, Progra
 export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
-export { clipPathInsets, clipPathRect } from './emit/paint/clip.ts';
+export { clipPathInsets, clipPathRect, clipShapeGeometry, clipShapeKind, clipShapeValues } from './emit/paint/clip.ts';
 export type { EmitCase } from './emit/native-support.ts';
 export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
 export type { SupportPlant } from './emit/native-support.ts';
@@ -112,6 +113,11 @@ function caseOf(compiled: object, assignment: Assignment, state: string | null =
 export function interactionPartitionOf(compiled: object, assignment: Assignment): InteractionPartition | null {
   const c = caseOf(compiled, assignment);
   return typeof c === 'string' ? null : c.partition;
+}
+
+/** SELD-R2 PR 5: whether an input can focus some element of the document; false means :focus and :focus-visible are forced-only. */
+export function focusReachableIn(compiled: object): boolean {
+  return internalRecord(compiled)?.focusReachable !== false;
 }
 
 /** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
@@ -433,7 +439,7 @@ export function animationFeatures(compiled: object): readonly string[] {
 export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
 export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandEnvironmentOf, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
-export { MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+export { CONTAINER_AT_RULE_FEATURE, MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
 // MQ-R2 (T067 R9): the device readings the device features answer from.
 export type { MediaDevice } from './media/index.ts';
 export { DESKTOP_DEVICE, TOUCH_DEVICE } from './media/index.ts';
@@ -441,7 +447,7 @@ import { bandStateProgram as deriveBandProgram } from './lower/band-program.ts';
 import { assignmentKey as keyOfAssignment } from './analysis/link.ts';
 import { bandAt as partitionBandAt, DESKTOP_DEVICE as DESKTOP_DEVICE_OF } from './media/index.ts';
 import type { MediaDevice } from './media/index.ts';
-import { MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
+import { CONTAINER_AT_RULE_FEATURE as CONTAINER_AT_RULE_FEATURE_KEY, MEDIA_AT_RULE_FEATURE as MEDIA_AT_RULE_FEATURE_KEY, mediaFeatureKey as mediaFeatureKeyOf } from './project.ts';
 import type { BandRuntimeFaults } from './lower/band-program.ts';
 import type { StateFaults, StateProgram } from './lower/state-program.ts';
 
@@ -452,12 +458,16 @@ export function nativeBands(compiled: object): { readonly table: import('@dragon
   return { table: record.bands.table, conditions: record.bands.conditions, initial: record.bands.initial };
 }
 
-/** The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, sorted; none without @media. */
+/**
+ * The media profile keys a compile's native output uses (T067 R13): the at-rule and each atom's feature, and at-rule:@container
+ * when @container rules apply in its bands (CQ), sorted; none without bands.
+ */
 export function mediaFeatures(compiled: object): readonly string[] {
   const record = internalRecord(compiled);
   if (record === undefined || record.bands === null || record.bands.partition.atoms.length === 0) return [];
+  const container = record.bands.container ? [CONTAINER_AT_RULE_FEATURE_KEY] : [];
   // The authored feature names, as the profile gate reads them (-webkit-device-pixel-ratio has its own row, though its atom is resolution's).
-  return [MEDIA_AT_RULE_FEATURE_KEY, ...[...new Set(record.bands.partition.atoms.map((a) => a.feature.base))].map(mediaFeatureKeyOf)].sort();
+  return [MEDIA_AT_RULE_FEATURE_KEY, ...container, ...[...new Set(record.bands.partition.atoms.map((a) => a.feature.base))].map(mediaFeatureKeyOf)].sort();
 }
 
 /**
@@ -510,7 +520,9 @@ export function nativeBandProgram(compiled: object, backend: NativeBackend, faul
 
 // SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
 export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
-export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledBox, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+// SELD-R2 PR 5: the native interaction gate's profile row keys (profile-rows.ts deriveInteractionRows).
+export { interactionContext, interactionRowFeature } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';
 export { NO_INTERACTION } from './analysis/match.ts';
 export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';

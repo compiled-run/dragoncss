@@ -1,0 +1,19 @@
+{
+  "case": "inline-replaced-img-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"text:text0","lines":[[0,2]]},
+    {"id":"text:text1","lines":[[0,2]]},
+    {"id":"edges:text0","lines":[[0,1]]},
+    {"id":"edges:text1","lines":[[0,1]]},
+    {"id":"natural:text0","lines":[[0,1]]},
+    {"id":"natural:text1","lines":[[0,1]]},
+    {"id":"block:text0","lines":[[0,1]]},
+    {"id":"block:text1","lines":[[0,1]]},
+    {"id":"tall:text0","lines":[[0,1]]},
+    {"id":"tall:text1","lines":[[0,1]]},
+    {"id":"wrap:text0","lines":[[0,2]]},
+    {"id":"wrap:text1","lines":[[1,3]]},
+    {"id":"wrap:text2","lines":[[1,2]]}
+  ]
+}

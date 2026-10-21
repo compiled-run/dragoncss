@@ -13,6 +13,8 @@ export type UnsupportedCode =
   | 'flex-wrap-indefinite-main'
   | 'flex-intrinsic-wrap-column'
   | 'replaced-out-of-flow'
+  | 'control-out-of-flow'
+  | 'grid-control'
   | 'line-break'
   | 'abspos-self-alignment'
   | 'grid-replaced'
@@ -36,6 +38,9 @@ export type UnsupportedCode =
   | 'text-indent'
   | 'word-break'
   | 'line-clamp'
+  | 'size-containment'
+  | 'float'
+  | 'sticky'
   | 'text-wrap-style';
 
 /** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */

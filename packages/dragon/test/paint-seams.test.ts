@@ -188,7 +188,7 @@ describe('EMS: native support', () => {
       expect(kotlin).toMatch(new RegExp(`var ${p} = .*\\n    set\\(value\\) \\{ field = value; invalidate\\(\\) \\}`));
     }
     expect(swift).toContain('public func dragonEnableClip()');
-    expect(kotlin).toContain('fun dragonBackground(v: DragonBoxView, c: DragonRGBA8)');
+    expect(kotlin).toContain('fun dragonBackground(v: DragonBoxView, c: DragonRGBA8, folded: Boolean = false)');
     expect(swift).toContain('public func node(_ id: String) -> DragonNodeView?');
     expect(kotlin).toContain('fun node(id: String): DragonNodeView?');
   });
@@ -297,11 +297,12 @@ describe('REPL-a foreign view: a production build loads the iframe src (R9)', ()
   });
   // #72 landing device run: every Dragon group draws its children unclipped, and a WebView drawn without a clip cleared the whole
   // window behind it on the emulator (blank captures of the iframe fixtures). The host group clips the web view to its frame.
-  it('the Android web view host group clips its web view to its frame, which no other Dragon group does', () => {
+  it('the Android web view and video host groups clip their view to their frame, which no other Dragon group does', () => {
     const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
     expect(body(kotlin, 'open class DragonGroup(ctx: Context) : ViewGroup(ctx) {')).toContain('\n    clipChildren = false\n');
-    const host = body(kotlin, 'class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {');
-    expect(host).toContain('\n  init {\n    clipChildren = true\n  }\n');
-    expect(kotlin.match(/clipChildren = true/g)).toEqual(['clipChildren = true']);
+    for (const signature of ['class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {', 'class DragonVideoHost(ctx: Context) : DragonGroup(ctx) {']) {
+      expect(body(kotlin, signature)).toContain('\n  init {\n    clipChildren = true\n  }\n');
+    }
+    expect(kotlin.match(/clipChildren = true/g)).toEqual(['clipChildren = true', 'clipChildren = true']);
   });
 });

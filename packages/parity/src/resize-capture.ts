@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { absoluteRects, layout } from '@dragon/layout';
 import type { Assignment, BandRuntimeFaults, Compiled, MediaDevice, NativeBackend, NativeProgram, PointerReadings, Rgba8, StateProgram } from 'dragon';
-import { DESKTOP_DEVICE, LONGHANDS, pointerBits, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
+import { DESKTOP_DEVICE, LONGHANDS, pointerBits, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, computedColorMatches, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
 import type { CapturedNode } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
@@ -465,8 +465,6 @@ function programBackground(p: NativeProgram, id: string): Rgba8 | null {
   return w === undefined || w.kind !== 'background-color' ? TRANSPARENT : w.color;
 }
 
-const sameColor = (a: Rgba8, b: Rgba8): boolean => (a.alpha === 0 && b.alpha === 0) || (a.r === b.r && a.g === b.g && a.b === b.b && a.alpha === b.alpha);
-
 export type ResizeReport = { readonly samples: number; readonly boxes: number; readonly colors: number; readonly dual: number; readonly oracle: number; readonly failures: readonly string[] };
 
 /** One resize case's host lanes at the given DPRs; every failure names the case, DPR, step and what differs. */
@@ -534,9 +532,8 @@ export function resizeCaseReport(c: ResizeCase, dprs: readonly number[] = RESIZE
           const want = programBackground(d.program, n.id);
           const text = n.computed['background-color'];
           if (want === null || text === undefined) continue;
-          const got = parseComputedColor(text);
           colors++;
-          if (got === null || !sameColor(got, want)) failures.push(`${at} ${n.id}: background-color chrome ${text}, dragon ${JSON.stringify(want)}`);
+          if (!(want.alpha === 0 && parseComputedColor(text)?.alpha === 0) && !computedColorMatches(text, want)) failures.push(`${at} ${n.id}: background-color chrome ${text}, dragon ${JSON.stringify(want)}`);
         }
       });
     }

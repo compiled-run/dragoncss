@@ -139,30 +139,44 @@ describe('off the list, a declaration or rule is still refused on every target',
   const OFF: Record<string, string> = {
     '-webkit-appearance off the compat keywords (Chrome may keep a legacy one)': '.a { -webkit-appearance: push-button; }',
     'column-count (lays out columns, which break-* then fragment)': '.a { column-count: 2; }',
-    '::-webkit-slider-thumb (decides how a range paints)': '.a::-webkit-slider-thumb { width: 16px; }',
-    '::-webkit-scrollbar-corner (not listed)': '.a::-webkit-scrollbar-corner { background: red; }',
-    'a ::-webkit-scrollbar rule (deferred)': '.a::-webkit-scrollbar { background-color: #eee; }',
-    'a ::-webkit-scrollbar-thumb rule (deferred)': '.a::-webkit-scrollbar-thumb { background-color: red; }',
-    'a ::-webkit-scrollbar-track rule (deferred)': '.a::-webkit-scrollbar-track { background-color: #333; }',
-    'a scrollbar rule hiding it with display': '.a::-webkit-scrollbar { display: none; }',
-    'a scrollbar rule hiding it with a zero width': '.a::-webkit-scrollbar { width: 0; }',
-    'a scrollbar rule hiding it with visibility (a refused declaration)': '.a::-webkit-scrollbar { visibility: hidden; }',
-    'a scrollbar rule hiding it with a zero max-width': '.a::-webkit-scrollbar { max-width: 0; }',
-    'a scrollbar rule hiding it with background: none': '.a::-webkit-scrollbar-thumb { background: none; }',
-    'a scrollbar rule hiding it with a zero inline-size': '.a::-webkit-scrollbar { inline-size: 0; }',
-    'a scrollbar rule hiding it inside a nested @media': '.a::-webkit-scrollbar { @media (min-width: 1px) { display: none; } }',
-    'a scrollbar rule setting a size, even a positive one (off the allowlist)': '.a::-webkit-scrollbar { width: 5px; }',
-    'a scrollbar rule with a colour that needs resolving': '.a::-webkit-scrollbar { background-color: var(--c, red); }',
-    'a scrollbar rule with a CSS-wide colour': '.a::-webkit-scrollbar { background-color: inherit; }',
-    'a transparent scrollbar track': '.a::-webkit-scrollbar-track { background: transparent; }',
-    'a scrollbar thumb with an alpha-0 colour': '.a::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0); }',
-    'a scrollbar thumb with a transparent border colour': '.a::-webkit-scrollbar-thumb { background-color: red; border-color: transparent; }',
-    'a scrollbar thumb with a refused declaration (border-radius)': '.a::-webkit-scrollbar-thumb { background-color: red; border-radius: 20px; }',
-    'a selector list that also styles a real element': '.a, .a::-webkit-scrollbar { width: 5px; }',
     'a scrollbar pseudo-element followed by a pseudo-class': '.a::-webkit-scrollbar:hover { width: 5px; }',
   };
   for (const [what, extra] of Object.entries(OFF)) {
     it(what, () => {
+      const c = compile(`${BASE}\n${extra}`, { web: {}, ...NATIVE });
+      expectCatalogued(c.diagnostics);
+      expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked', android: 'blocked' });
+      // A refusal for no target in particular, or one for each target (multicol refuses column-count: 2 per target).
+      const refused = errors(c.diagnostics);
+      expect(refused.some((d) => d.target === null) || ['web', 'ios', 'android'].every((t) => refused.some((d) => d.target === t))).toBe(true);
+      expect(c.diagnostics.some((d) => d.code === 'DRAGON_NOT_APPLICABLE_NATIVE')).toBe(false);
+    });
+  }
+
+  // NA-NATIVE ::-webkit-scrollbar (analysis/webkit-scrollbar.ts): on a scroll container, every scrollbar rule but one that hides the
+  // scrollbar draws a custom scrollbar, so it stays refused on every target (the hiding ones are proven in webkit-scrollbar.test.ts).
+  const SCROLLBAR_OFF: Record<string, string> = {
+    '::-webkit-scrollbar-corner (not listed)': '.a { overflow: auto; } .a::-webkit-scrollbar-corner { background: red; }',
+    'a ::-webkit-scrollbar rule (deferred)': '.a { overflow: auto; } .a::-webkit-scrollbar { background-color: #eee; }',
+    'a ::-webkit-scrollbar-thumb rule (deferred)': '.a { overflow: auto; } .a::-webkit-scrollbar-thumb { background-color: red; }',
+    'a ::-webkit-scrollbar-track rule (deferred)': '.a { overflow: auto; } .a::-webkit-scrollbar-track { background-color: #333; }',
+    'a scrollbar rule hiding it with a zero width': '.a { overflow: auto; } .a::-webkit-scrollbar { width: 0; }',
+    'a scrollbar rule hiding it with visibility (a refused declaration)': '.a { overflow: auto; } .a::-webkit-scrollbar { visibility: hidden; }',
+    'a scrollbar rule hiding it with a zero max-width': '.a { overflow: auto; } .a::-webkit-scrollbar { max-width: 0; }',
+    'a scrollbar rule hiding it with background: none': '.a { overflow: auto; } .a::-webkit-scrollbar-thumb { background: none; }',
+    'a scrollbar rule hiding it with a zero inline-size': '.a { overflow: auto; } .a::-webkit-scrollbar { inline-size: 0; }',
+    'a scrollbar rule hiding it inside a nested @media': '.a { overflow: auto; } .a::-webkit-scrollbar { @media (min-width: 1px) { display: none; } }',
+    'a scrollbar rule setting a size, even a positive one (off the allowlist)': '.a { overflow: auto; } .a::-webkit-scrollbar { width: 5px; }',
+    'a scrollbar rule with a colour that needs resolving': '.a { overflow: auto; } .a::-webkit-scrollbar { background-color: var(--c, red); }',
+    'a scrollbar rule with a CSS-wide colour': '.a { overflow: auto; } .a::-webkit-scrollbar { background-color: inherit; }',
+    'a transparent scrollbar track': '.a { overflow: auto; } .a::-webkit-scrollbar-track { background: transparent; }',
+    'a scrollbar thumb with an alpha-0 colour': '.a { overflow: auto; } .a::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0); }',
+    'a scrollbar thumb with a transparent border colour': '.a { overflow: auto; } .a::-webkit-scrollbar-thumb { background-color: red; border-color: transparent; }',
+    'a scrollbar thumb with a refused declaration (border-radius)': '.a { overflow: auto; } .a::-webkit-scrollbar-thumb { background-color: red; border-radius: 20px; }',
+    'a selector list that also styles a real element': '.a { overflow: auto; } .a, .a::-webkit-scrollbar { width: 5px; }',
+  };
+  for (const [what, extra] of Object.entries(SCROLLBAR_OFF)) {
+    it(`on a scroll container, ${what}`, () => {
       const c = compile(`${BASE}\n${extra}`, { web: {}, ...NATIVE });
       expectCatalogued(c.diagnostics);
       expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked', android: 'blocked' });
@@ -183,7 +197,7 @@ describe('off the list, a declaration or rule is still refused on every target',
 
 describe('a nested at-rule in a scrollbar rule', () => {
   it('keeps the rule refused everywhere, and its at-rule refusal keeps its related entries in a mixed project', () => {
-    const css = `${BASE}\n.a::-webkit-scrollbar { @media (min-width: 1px) { zoom: 2; } }`;
+    const css = `${BASE}\n.a::-webkit-scrollbar { @container (min-width: 1px) { zoom: 2; } }`;
     const atRule = (targets: object) => compile(css, targets).diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_NESTED_RULE' || d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     const webOnly = atRule({ web: {} });
     const mixed = atRule({ web: {}, ...NATIVE });

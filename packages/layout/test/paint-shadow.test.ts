@@ -7,7 +7,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { BackdropFill, ShadowInput, ShadowLayer } from '../src/paint-shadow.ts';
-import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape } from '../src/paint-shadow.ts';
+import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape, textShadowLayerOver, textShadowLayerOverTexts } from '../src/paint-shadow.ts';
+import { opacityAlpha8 } from '../src/paint.ts';
 
 const SQUARE = [0, 0, 0, 0, 0, 0, 0, 0];
 const shadow = (o: Partial<ShadowInput>): ShadowInput => ({ inset: false, x: 0, y: 0, blur: 0, spread: 0, r: 0, g: 0, b: 0, a: 255, ...o });
@@ -135,13 +136,13 @@ describe('paint-shadow: the device layers over a backdrop', () => {
     expect(() => encodeOver(0, 0, 0, 0, 0, -1, 0)).toThrow(/not 8-bit/);
     expect(() => encodeOver(0, 0, 0, 0, 0, 0, 0.5)).toThrow(/not 8-bit/);
   });
-  it('paints the backdrop fills in order over the white root, each at its pixel centre, with Skia 8-bit source-over', () => {
+  it('paints the backdrop fills in order over the white root, each at its pixel centre, with Skia\'s solid-colour blit', () => {
     const stage = fill(0, 0, 40, 30, SQUARE, 43, 58, 74, 255);
     const tint = fill(2, 2, 14, 10, [3, 3, 3, 3, 3, 3, 3, 3], 200, 100, 20, 128);
     expect(backdropAt([], 5, 5)).toEqual([255, 255, 255]);
     expect(backdropAt([stage], 5, 5)).toEqual([43, 58, 74]);
     expect(backdropAt([stage], 45, 5)).toEqual([255, 255, 255]);
-    // SkMulDiv255Round(200, 128) + SkMulDiv255Round(43, 127) = 100 + 21.
+    // SkMulDiv255Round(200, 128) + ((43 * 128) >> 8) = 100 + 21.
     expect(backdropAt([stage, tint], 6, 6)).toEqual([121, 50 + 29, 10 + 37]);
     // The rounded corner leaves its corner pixel to the fill beneath; a clear fill paints nothing.
     expect(backdropAt([stage, tint], 2, 2)).toEqual([43, 58, 74]);
@@ -149,6 +150,48 @@ describe('paint-shadow: the device layers over a backdrop', () => {
     expect(() => backdropAt([fill(0, 0, 4, 4, [1, 1], 0, 0, 0, 255)], 1, 1)).toThrow(/2 radii/);
     expect(() => backdropAt([fill(0, 0, 4, 4, SQUARE, 0, 0, 0, 255.5)], 1, 1)).toThrow(/not RGBA8/);
     expect(() => backdropAt([fill(0, 0, 4, 4, SQUARE, 256, 0, 0, 255)], 1, 1)).toThrow(/not RGBA8/);
+  });
+  // PNT1-opacity-b: native draws a folded fill as backdropAt over its ancestors and the fill itself. Device batch 3 (bf377f0a
+  // packages/parity/out/device-failures-*.json) recorded Chrome's interior bytes for opacity-fold and opacity-web over the stage
+  // rgb(40, 60, 80), and the native ones when the platform blended the translucent colour itself.
+  it('gives the Chrome bytes device batch 3 recorded for the folded fills, which the platform blends missed', () => {
+    const stage = fill(0, 0, 40, 40, SQUARE, 40, 60, 80, 255);
+    const cases: readonly { id: string; c: readonly number[]; o: number; chrome: readonly number[]; ios: readonly number[]; android: readonly number[] }[] = [
+      { id: 'of-a, ow-fold', c: [230, 80, 40], o: 0.3, chrome: [96, 65, 67], ios: [97, 66, 68], android: [97, 66, 68] },
+      { id: 'of-d', c: [250, 220, 60], o: 1 / 3, chrome: [109, 113, 73], ios: [110, 113, 73], android: [110, 113, 73] },
+      { id: 'of-j', c: [90, 200, 230], o: 0.62549, chrome: [71, 147, 173], ios: [71, 147, 174], android: [71, 148, 173] },
+    ];
+    const mdr = (a: number, b: number): number => {
+      const p = a * b + 128;
+      return (p + (p >> 8)) >> 8;
+    };
+    for (const k of cases) {
+      const a = opacityAlpha8(k.o);
+      expect(backdropAt([stage, fill(4, 4, 12, 12, SQUARE, k.c[0] as number, k.c[1] as number, k.c[2] as number, a)], 5, 5), k.id).toEqual(k.chrome);
+      // UIKit blends the colour in float, rounding once; Android premultiplies to bytes, then blends in float. Chrome floors dst * (256 - a) / 256.
+      const d = [40, 60, 80];
+      expect([0, 1, 2].map((i) => Math.round(((k.c[i] as number) * a + (d[i] as number) * (255 - a)) / 255)), `${k.id} ios`).toEqual(k.ios);
+      expect([0, 1, 2].map((i) => mdr(k.c[i] as number, a) + Math.round(((d[i] as number) * (255 - a)) / 255)), `${k.id} android`).toEqual(k.android);
+    }
+  });
+  it('gives the bytes Chrome 145 painted for a translucent fill over a translucent fill over an opaque one', () => {
+    // [opaque rgb, middle rgb, middle alpha, top rgb, top alpha, Chrome 145.0.7632.6 at DPR 1], from a sweep of 3000 such stacks
+    // (rgba() backgrounds of nested 4 px boxes), all of which backdropAt matched; SkMulDiv255Round of dst matched 795.
+    const shot: readonly (readonly number[])[] = [
+      [231, 238, 231, 97, 94, 243, 162, 95, 48, 228, 78, 130, 117, 235],
+      [64, 119, 165, 103, 125, 151, 40, 254, 54, 110, 139, 169, 83, 134],
+      [108, 52, 211, 88, 173, 177, 36, 252, 91, 28, 104, 164, 77, 133],
+      [184, 194, 149, 122, 243, 75, 44, 76, 214, 228, 93, 138, 206, 169],
+      [90, 50, 183, 11, 185, 25, 113, 16, 222, 154, 247, 16, 218, 152],
+      [14, 221, 142, 181, 227, 164, 115, 191, 124, 81, 87, 123, 189, 128],
+      [115, 25, 113, 94, 239, 226, 130, 58, 103, 29, 18, 100, 131, 160],
+      [15, 109, 22, 210, 14, 188, 73, 150, 141, 204, 116, 106, 108, 130],
+    ];
+    for (const v of shot) {
+      const n = (i: number): number => v[i] as number;
+      const fills = [fill(0, 0, 4, 4, SQUARE, n(0), n(1), n(2), 255), fill(0, 0, 4, 4, SQUARE, n(3), n(4), n(5), n(6)), fill(0, 0, 4, 4, SQUARE, n(7), n(8), n(9), n(10))];
+      expect(backdropAt(fills, 1, 1), v.join()).toEqual([n(11), n(12), n(13)]);
+    }
   });
   it('composites every pixel of the Over layers over their backdrop to Chrome\'s per-shadow blits', () => {
     const two = [shadow({ spread: 1, r: 255, a: 255 }), shadow({ x: -1, y: 1, blur: 3, spread: 0.5, r: 20, g: 40, b: 200, a: 77 })];
@@ -181,6 +224,49 @@ describe('paint-shadow: the device layers over a backdrop', () => {
         expect([0, 1, 2].map((k) => platformOver(e[k] as number, e[3] as number, b[k] as number)), `${x},${y}`).toEqual(chromeOver(ie, b, x, y));
       }
     }
+  });
+});
+
+describe('paint-shadow: a text layer over earlier texts', () => {
+  it('composites over an earlier text\'s shadows and opaque glyphs as Chrome paints them in tree order', () => {
+    const own = [shadow({ y: 2, blur: 4, a: 128 })];
+    const under = { cps: [88, 88], xs: [4, 14], size: 10, baseline: 18, shadows: [shadow({ y: -2, blur: 3, r: 200, a: 160 })], r: 0, g: 0, b: 0 };
+    // Far below the earlier text, nothing of it lies under the layer: the layer is textShadowLayerOver's.
+    expect(textShadowLayerOverTexts([88, 88], [4, 14], 10, 70, own, 1, NO_SHADOW_FAULTS, [], [under])).toEqual(textShadowLayerOver([88, 88], [4, 14], 10, 70, own, 1, NO_SHADOW_FAULTS, []));
+    const near = textShadowLayerOverTexts([88, 88], [4, 14], 10, 26, own, 1, NO_SHADOW_FAULTS, [], [under]);
+    const below = textShadowLayerOver(under.cps, under.xs, under.size, under.baseline, under.shadows, 1, NO_SHADOW_FAULTS, []);
+    // Chrome's pixel over a uniform colour: the layer encoded over a fill of it, composited.
+    const refs = new Map<string, ShadowLayer>();
+    const chrome = (c: readonly number[], x: number, y: number): number[] => {
+      const key = c.join(',');
+      const l = refs.get(key) ?? textShadowLayerOver([88, 88], [4, 14], 10, 26, own, 1, NO_SHADOW_FAULTS, [fill(-40, -40, 80, 80, SQUARE, c[0] as number, c[1] as number, c[2] as number, 255)]);
+      refs.set(key, l);
+      const e = px(l, x, y);
+      return [0, 1, 2].map((k) => platformOver(e[k] as number, e[3] as number, c[k] as number));
+    };
+    let glyph = 0;
+    let shadowed = 0;
+    for (let y = near.top; y < near.bottom; y++) {
+      for (let x = near.left; x < near.right; x++) {
+        const e = px(near, x, y);
+        if (e[3] === 0) continue;
+        // Ahem's ink boxes: 8px above the baseline and 2px below, one per 10px pen.
+        if (x >= 4 && x < 24 && y >= 10 && y < 20) {
+          // The earlier text's opaque glyph: the layer covers it whole, in Chrome's colour over the glyph.
+          glyph++;
+          expect(e[3], `${x},${y}`).toBe(255);
+          expect(e.slice(0, 3), `${x},${y}`).toEqual(chrome([0, 0, 0], x, y));
+          continue;
+        }
+        // Elsewhere the device shows the earlier text's shadow view over white, and the layer over that.
+        const inBelow = x >= below.left && x < below.right && y >= below.top && y < below.bottom;
+        const b = inBelow ? [0, 1, 2].map((k) => platformOver(px(below, x, y)[k] as number, px(below, x, y)[3] as number, 255)) : [255, 255, 255];
+        if (b.some((v) => v !== 255)) shadowed++;
+        expect([0, 1, 2].map((k) => platformOver(e[k] as number, e[3] as number, b[k] as number)), `${x},${y}`).toEqual(chrome(b, x, y));
+      }
+    }
+    expect(glyph).toBeGreaterThan(0);
+    expect(shadowed).toBeGreaterThan(0);
   });
 });
 

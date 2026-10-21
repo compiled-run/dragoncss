@@ -25,6 +25,10 @@
     {"id":"o:text1","data":" X ","lines":1,"units":[0,0,0],"blank":[]},
     {"id":"o:text2","data":" X","lines":1,"units":[0,0],"blank":[]},
     {"id":"o1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
-    {"id":"o2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+    {"id":"o2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"p:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"p1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"q1:text0","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"q2:text0","data":"X","lines":1,"units":[0],"blank":[]}
   ]
 }

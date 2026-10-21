@@ -96,6 +96,7 @@ describe('box-shadow: native refusals of what the companion view and the backdro
       [`.b { position: relative; box-shadow: ${SHADOW}; }`, null, 'position: relative'],
       [`.b { position: absolute; box-shadow: ${SHADOW}; } .a { position: relative; }`, null, 'position: absolute'],
       [`.b { transform: rotate(10deg); box-shadow: ${SHADOW}; }`, null, 'and a transform'],
+      [`.b { perspective: 100px; box-shadow: ${SHADOW}; }`, null, 'and a perspective'],
       [`.b { will-change: transform; box-shadow: ${SHADOW}; }`, null, 'and will-change: transform'],
       [`.b { will-change: opacity; box-shadow: ${SHADOW}; }`, null, 'and will-change: opacity'],
     ];
@@ -113,7 +114,7 @@ describe('box-shadow: native refusals of what the companion view and the backdro
   });
 
   it('refuses a shadow inside a transformed or compositing ancestor on ios and android, once per shadow, naming the ancestor', () => {
-    for (const [group, says] of [['transform: translate(1px, 2px)', 'a transform'], ['will-change: opacity', 'will-change: opacity'], ['will-change: transform', 'will-change: transform']]) {
+    for (const [group, says] of [['transform: translate(1px, 2px)', 'a transform'], ['perspective: 100px', 'a perspective'], ['will-change: opacity', 'will-change: opacity'], ['will-change: transform', 'will-change: transform']]) {
       const { c, input } = compileTree(`.a { ${group}; } .b { box-shadow: ${SHADOW}; }`);
       const refused = shadowRefusals(c);
       expect(refused.map((d) => d.target).sort(), group).toEqual(['android', 'ios']);

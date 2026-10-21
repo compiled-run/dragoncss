@@ -1,0 +1,10 @@
+{
+  "case": "opacity-group-over-group-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"og-a:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"og-c:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"og-f:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

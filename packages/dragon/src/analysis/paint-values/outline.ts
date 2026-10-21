@@ -3,8 +3,11 @@
 import type { Rgba8 } from '../../css/color.ts';
 import { serializeColor } from '../../css/color.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
+import { containsDescendants, paintContained } from '../containment.ts';
+import { elementMaskGradient } from '../mask.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
 import { isolates } from '../../css/properties/isolation.ts';
+import { blendModeOf } from '../../css/properties/fx.ts';
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from '../../lower/paint/colors.ts';
@@ -16,7 +19,7 @@ import type { ResolvedElement } from '../resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { stackingOf } from '../../lower/paint/stacking.ts';
 import { resolvedStackTree } from './stacking.ts';
-import { elementWillChange, transformsDescendants } from './transform.ts';
+import { elementWillChange, transformsDescendants, transformWord } from './transform.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
 const keywordOf = (el: ResolvedElement, p: string): string => {
@@ -90,18 +93,23 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
 
 /**
  * Why a layer item of the stacking tree (lower/paint/stacking.ts: a positioned box, a flex or grid item with a z-index, a box with
- * opacity below 1, a transform, will-change: transform or opacity, a clip-path, isolation: isolate or backface-visibility: hidden) paints in a layer of its own rather than in its context's flow.
+ * opacity below 1, a transform, will-change: transform or opacity, a clip-path, a mask image, isolation: isolate, backface-visibility:
+ * hidden, a backdrop-filter or a mix-blend-mode) paints in a layer of its own rather than in its context's flow.
  */
 function layerReason(el: ResolvedElement): string {
   const position = keywordOf(el, 'position');
   if (['relative', 'absolute', 'fixed', 'sticky'].includes(position)) return `position: ${position}`;
   const opacity = opacityOf((el.props.get('opacity') as ResolvedValue).value);
   if (opacity !== null && opacity < 1) return `opacity: ${opacity}`;
-  if (transformsDescendants(el)) return 'a transform';
+  if (transformsDescendants(el)) return transformWord(el);
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
+  if (containsDescendants(el)) return `contain: ${keywordOf(el, 'contain')}`;
+  if (elementMaskGradient(el) !== null) return 'a mask-image';
   if (isolates(el)) return 'isolation: isolate';
   if (backfaceHidden(el)) return 'backface-visibility: hidden';
+  const mode = blendModeOf(el.props.get('mix-blend-mode')?.value);
+  if (mode !== 'normal') return `mix-blend-mode: ${mode}`;
   // A static box's z-index makes it a layer item only as a flex or grid item (resolvedStackTree), the one reason left.
   const z = zIndexOf((el.props.get('z-index') as ResolvedValue).value);
   if (z !== null) return `z-index: ${z} on a flex or grid item`;
@@ -109,7 +117,7 @@ function layerReason(el: ResolvedElement): string {
 }
 
 const CLIPPING = ['hidden', 'clip', 'scroll', 'auto'];
-const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 'overflow-x')) || CLIPPING.includes(keywordOf(el, 'overflow-y'));
+const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 'overflow-x')) || CLIPPING.includes(keywordOf(el, 'overflow-y')) || paintContained(el);
 
 /**
  * Where the native outline paints. Dragon draws every outline in the root view after all the case's content, each

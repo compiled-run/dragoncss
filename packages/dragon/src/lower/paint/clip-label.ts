@@ -1,9 +1,11 @@
 // The accessibility label of a box its empty clip rect hides (MASK-CLIP, the visually-hidden pattern): the text of its subtree's text
 // leaves, the same strings the native text views label themselves with (DragonTextView.dragonSetText), in tree order, leaving out the
 // texts Chrome does not expose (visibility: hidden, analysis/paint-values/clip-label.ts hiddenTexts). Leaves of one inline formatting
-// context run together, so "Hello <b>world</b>" reads as written, and an atomic inline (inline-block, inline-flex, inline-grid) runs in
-// with them where it stands; each block's text is one phrase, phrases are joined by a space, as a screen reader reads the lines of
-// Chrome's tree one after another. Runs of ASCII white space collapse to one space, trimmed at each phrase's ends; a <br> is a space.
+// context run together, so "Hello <b>world</b>" reads as written; an atomic inline (inline-block, inline-flex, inline-grid) with text
+// stands where it is, set off by a space on each side; each block's text is one phrase, and phrases are joined by a space. That is
+// Chrome's name-from-contents text (third_party/blink/renderer/modules/accessibility/ax_node_object.cc
+// ShouldInsertSpaceBetweenObjectsIfNeeded: a space between objects in different block flows, or when either is atomic inline-level).
+// Runs of ASCII white space collapse to one space, trimmed at each phrase's ends; a <br> is a space.
 import type { InlineChild, LayoutBox, LayoutNode } from '@dragon/layout';
 
 const SPACES = /[ \t\n\r\f]+/g;
@@ -30,8 +32,10 @@ export function clipLabelOf(box: LayoutNode, hidden: ReadonlySet<string> = new S
     const run: string[] = [];
     for (const c of b.children) {
       if (c.kind === 'replaced') continue;
-      if (c.kind === 'box' && isAtomicInline(c)) run.push(clipLabelOf(c, hidden) ?? '');
-      else if (c.kind === 'box') {
+      if (c.kind === 'box' && isAtomicInline(c)) {
+        const own = clipLabelOf(c, hidden);
+        if (own !== null) run.push(` ${own} `);
+      } else if (c.kind === 'box' || c.kind === 'control') {
         flush(run);
         block(c);
       } else inline(c, run);

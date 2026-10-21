@@ -1,7 +1,7 @@
-// TXT2-i (notes/T149-txt2-spec.md R14): hyphens; -webkit-hyphens is refused as unknown, as Chrome 145 has
-// no such alias (css_properties.json5). The engine breaks as manual; auto lowers as manual
+// TXT2-i (notes/T149-txt2-spec.md R14): hyphens; -webkit-hyphens is dropped with a warning, as Chrome 145 has
+// no such alias (css_properties.json5) and drops it. The engine breaks as manual; auto lowers as manual
 // (Chrome hyphenates nothing without a content language), and none on text holding a soft hyphen is refused for every target. The
-// Chrome cases are text-hyphens (packages/parity/fixtures); this file holds the parsing, the refusal and the noneSoftHyphenAccepted plant.
+// Chrome cases are text-hyphens (packages/parity/fixtures); this file holds the parsing, the drop, the refusal and the noneSoftHyphenAccepted plant.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -41,11 +41,12 @@ const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VAL
 const SHY = 'XXX­XXX­XXX';
 
 describe('hyphens (css-text-3 §6.1)', () => {
-  it('parses none, manual and auto, and refuses -webkit-hyphens as an unknown property, as Chrome 145 drops it', () => {
+  it('parses none, manual and auto, and drops -webkit-hyphens with a warning, as Chrome 145 drops it', () => {
     for (const v of ['none', 'manual', 'auto']) {
       expect(parsed('hyphens', v)).toEqual([`hyphens: ${v}`]);
-      expect(parsed('-webkit-hyphens', v)).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
+      expect(parsed('-webkit-hyphens', v)).toEqual(['DRAGON_PROPERTY_DROPPED']);
     }
+    expect(parsed('-webkit-hyphens', 'always')).toEqual(['DRAGON_PROPERTY_DROPPED']);
     expect(parsed('hyphens', 'always')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
 
@@ -53,6 +54,13 @@ describe('hyphens (css-text-3 §6.1)', () => {
     expect(errorsAt('hyphens: manual', SHY)).toEqual([]);
     expect(errorsAt('hyphens: auto', SHY)).toEqual([]);
     expect(errorsAt('hyphens: none', 'XXX XXX XXX')).toEqual([]);
+  });
+
+  it('compiles -webkit-hyphens as a no-op: no error, and the soft hyphen still breaks as manual', () => {
+    for (const v of ['none', 'manual', 'auto', 'always', 'inherit']) expect(errorsAt(`-webkit-hyphens: ${v}`, SHY)).toEqual([]);
+    // Tailwind's hyphens-none: -webkit-hyphens is dropped, so hyphens: none alone decides, and is refused over a soft hyphen as without it.
+    expect(errorsAt('-webkit-hyphens: none; hyphens: none', SHY)).toEqual(REFUSED);
+    expect(errorsAt('hyphens: manual; -webkit-hyphens: none', SHY)).toEqual([]);
   });
 
   it('refuses none on text that holds a soft hyphen, on every target', () => {

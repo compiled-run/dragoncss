@@ -1,0 +1,14 @@
+{
+  "case": "clip-path-text-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"cut-a:text0","lines":[[0,1]]},
+    {"id":"cut-b:text0","lines":[[0,1]]},
+    {"id":"cut-c-kid:text0","lines":[[0,1]]},
+    {"id":"cut-d:text0","lines":[[0,1]]},
+    {"id":"cut-e:text0","lines":[[0,1]]},
+    {"id":"cut-f-kid:text0","lines":[[0,1]]},
+    {"id":"cut-f-hid:text0","lines":[[0,1]]},
+    {"id":"cut-g-hid:text0","lines":[[0,1]]}
+  ]
+}

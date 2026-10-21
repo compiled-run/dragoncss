@@ -2,6 +2,7 @@
 // Each feature owns faults/<feature>.ts: its fault type (one documented field per fault) and its all-off defaults, and one line in
 // FAULT_GROUPS, which is sorted by feature id. A fault name belongs to one feature (test/registry-claims.test.ts).
 import { BACKGROUND_BLEND_FAULTS } from './faults/background-blend.ts';
+import { BG2_PHASE_FAULTS } from './faults/bg2-phase.ts';
 import { BLOCKIFY_FAULTS } from './faults/blockify.ts';
 import { BORDER_IMAGE_FAULTS } from './faults/border-image.ts';
 import { BOX_DECORATION_FAULTS } from './faults/box-decoration.ts';
@@ -17,10 +18,12 @@ import { GEN_B_FAULTS } from './faults/gen-b.ts';
 import { GEN_C_FAULTS } from './faults/gen-c.ts';
 import { INL1A_FAULTS } from './faults/inl1a.ts';
 import { INL2A_FAULTS } from './faults/inl2a.ts';
+import { INTERACTION_FAULTS } from './faults/interaction.ts';
 import { MASK_FAULTS } from './faults/mask.ts';
 import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
+import { MULTICOL_FAULTS } from './faults/multicol.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from './faults/scroll-containment.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
@@ -47,6 +50,7 @@ import { VALUES_FAULTS } from './faults/values.ts';
 
 export const FAULT_GROUPS = {
   'background-blend': BACKGROUND_BLEND_FAULTS,
+  'bg2-phase': BG2_PHASE_FAULTS,
   blockify: BLOCKIFY_FAULTS,
   'border-image': BORDER_IMAGE_FAULTS,
   'box-decoration': BOX_DECORATION_FAULTS,
@@ -62,10 +66,12 @@ export const FAULT_GROUPS = {
   'gen-c': GEN_C_FAULTS,
   inl1a: INL1A_FAULTS,
   inl2a: INL2A_FAULTS,
+  interaction: INTERACTION_FAULTS,
   mask: MASK_FAULTS,
   media: MEDIA_FAULTS,
   'milestone-1': MILESTONE_1_FAULTS,
   'mq-r0': MQ_R0_FAULTS,
+  multicol: MULTICOL_FAULTS,
   ovfl: OVFL_FAULTS,
   'scroll-containment': SCROLL_CONTAINMENT_FAULTS,
   seld: SELD_FAULTS,

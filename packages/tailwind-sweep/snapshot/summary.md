@@ -4,29 +4,29 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 5482 (23.5%) | 17800 (76.4%) | 3 | 1 | 0 |
-| ios | 5463 (23.5%) | 17197 (73.9%) | 3 | 1 | 622 |
-| android | 5463 (23.5%) | 17197 (73.9%) | 3 | 1 | 622 |
+| web | 6427 (27.6%) | 16854 (72.4%) | 4 | 1 | 0 |
+| ios | 6427 (27.6%) | 16232 (69.7%) | 4 | 1 | 622 |
+| android | 6427 (27.6%) | 16232 (69.7%) | 4 | 1 | 622 |
 
-As published (before the shell pre-pass), the sheet compiles for web 5040, ios 5061 and android 5061 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 5943, ios 5983 and android 5983 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
 | category | utilities | web | ios | android |
 |---|---:|---|---|---|
-| layout | 1551 | 1464 / 85 / 2 / 0 / 0 | 1464 / 85 / 2 / 0 / 0 | 1464 / 85 / 2 / 0 / 0 |
+| layout | 1551 | 1490 / 59 / 2 / 0 / 0 | 1490 / 59 / 2 / 0 / 0 | 1490 / 59 / 2 / 0 / 0 |
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
-| sizing | 1015 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 | 924 / 91 / 0 / 0 / 0 |
-| typography | 261 | 229 / 32 / 0 / 0 / 0 | 229 / 32 / 0 / 0 / 0 | 229 / 32 / 0 / 0 / 0 |
-| colours | 14842 | 402 / 14440 / 0 / 0 / 0 | 402 / 13858 / 0 / 0 / 582 | 402 / 13858 / 0 / 0 / 582 |
+| sizing | 1015 | 925 / 90 / 0 / 0 / 0 | 925 / 90 / 0 / 0 / 0 | 925 / 90 / 0 / 0 / 0 |
+| typography | 261 | 232 / 29 / 0 / 0 / 0 | 232 / 29 / 0 / 0 / 0 | 232 / 29 / 0 / 0 / 0 |
+| colours | 14842 | 1260 / 13582 / 0 / 0 / 0 | 1260 / 13000 / 0 / 0 / 582 | 1260 / 13000 / 0 / 0 / 582 |
 | backgrounds | 151 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 |
 | borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
-| effects | 1178 | 63 / 1115 / 0 / 0 / 0 | 44 / 1134 / 0 / 0 / 0 | 44 / 1134 / 0 / 0 / 0 |
-| filters | 134 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 | 0 / 134 / 0 / 0 / 0 |
+| effects | 1178 | 68 / 1109 / 1 / 0 / 0 | 68 / 1109 / 1 / 0 / 0 | 68 / 1109 / 1 / 0 / 0 |
+| filters | 134 | 39 / 95 / 0 / 0 / 0 | 39 / 95 / 0 / 0 / 0 | 39 / 95 / 0 / 0 / 0 |
 | tables | 111 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 |
 | transitions-animation | 36 | 31 / 4 / 0 / 1 / 0 | 31 / 4 / 0 / 1 / 0 | 31 / 4 / 0 / 1 / 0 |
-| transforms | 680 | 87 / 593 / 0 / 0 / 0 | 87 / 593 / 0 / 0 / 0 | 87 / 593 / 0 / 0 / 0 |
+| transforms | 680 | 100 / 580 / 0 / 0 / 0 | 100 / 580 / 0 / 0 / 0 | 100 / 580 / 0 / 0 / 0 |
 | interactivity | 1246 | 304 / 942 / 0 / 0 / 0 | 304 / 904 / 0 / 0 / 38 | 304 / 904 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
 | accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
@@ -35,13 +35,23 @@ As published (before the shell pre-pass), the sheet compiles for web 5040, ios 5
 
 | blocked by | web | ios | android | families (web) |
 |---|---:|---:|---:|---:|
-| `value oklch()` | 6292 | 6292 | 6292 | 22 |
 | `profile mask-composite:intersect` | 6280 | 6280 | 6280 | 38 |
-| `at-rule @supports` | 1192 | 1192 | 1192 | 6 |
+| `profile border-top-color:<oklch()>` | 1430 | 1430 | 1430 | 5 |
 | `value background-image: conic-gradient(var(--tw-gradient-stops)) substitutes to "conic` | 937 | 937 | 937 | 4 |
+| `value color-mix()` | 870 | 870 | 870 | 3 |
+| `profile border-right-color:<oklch()>` | 858 | 858 | 858 | 3 |
+| `value oklch()` | 858 | 858 | 858 | 3 |
 | `property scrollbar-color` | 582 | 0 | 0 | 2 |
+| `profile border-bottom-color:<oklch()>` | 572 | 572 | 572 | 2 |
 | `value calc()` | 521 | 521 | 521 | 17 |
 | `value box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-o` | 298 | 298 | 298 | 2 |
+| `value filter: blur(40px) on <div> u is unsupported: Dragon draws only lists of the col` | 292 | 292 | 292 | 2 |
+| `profile accent-color:<oklch()>` | 286 | 286 | 286 | 1 |
+| `profile caret-color:<oklch()>` | 286 | 286 | 286 | 1 |
+| `profile color:<oklch()>` | 286 | 286 | 286 | 1 |
+| `profile fill:<oklch()>` | 286 | 286 | 286 | 1 |
+| `profile stroke:<oklch()>` | 286 | 286 | 286 | 1 |
+| `profile text-decoration-color:<oklch()>` | 286 | 286 | 286 | 1 |
 | `profile scroll-margin-top:<calc()>` | 260 | 260 | 260 | 8 |
 | `profile scroll-margin-right:<calc()>` | 195 | 195 | 195 | 6 |
 | `profile scroll-margin-bottom:<calc()>` | 130 | 130 | 130 | 4 |
@@ -51,27 +61,17 @@ As published (before the shell pre-pass), the sheet compiles for web 5040, ios 5
 | `property -webkit-backdrop-filter` | 74 | 74 | 74 | 9 |
 | `profile -webkit-border-vertical-spacing:<calc()>` | 64 | 64 | 64 | 2 |
 | `profile scroll-padding-bottom:<calc()>` | 64 | 64 | 64 | 2 |
-| `profile filter:<filter-value-list>` | 59 | 59 | 59 | 9 |
 | `property cursor` | 36 | 0 | 0 | 36 |
+| `at-rule @supports` | 32 | 32 | 32 | 2 |
 | `profile background-image:unset` | 26 | 26 | 26 | 3 |
-| `property columns` | 26 | 26 | 26 | 1 |
-| `property mix-blend-mode` | 18 | 18 | 18 | 18 |
+| `profile column-width:<non-initial-value>` | 13 | 13 | 13 | 1 |
 | `unproven context grid-column-start:<span-integer>` | 12 | 12 | 12 | 1 |
 | `unproven context grid-row-end:<span-integer>` | 12 | 12 | 12 | 1 |
 | `value scale: var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z) substitutes to "1 1` | 10 | 10 | 10 | 1 |
 | `profile letter-spacing:<calc()>` | 6 | 6 | 6 | 1 |
 | `value used line height` | 6 | 6 | 6 | 6 |
-| `profile contain:<non-initial-value>` | 5 | 5 | 5 | 5 |
-| `profile perspective:<length-px>` | 5 | 5 | 5 | 1 |
 | `profile scroll-margin-right:<length-rem>` | 4 | 4 | 4 | 4 |
 | `profile scroll-padding-top:<length-rem>` | 4 | 4 | 4 | 4 |
 | `profile height:fit-content` | 3 | 3 | 3 | 3 |
 | `profile height:max-content` | 3 | 3 | 3 | 3 |
 | `profile height:min-content` | 3 | 3 | 3 | 3 |
-| `profile scroll-padding-right:<length-rem>` | 3 | 3 | 3 | 3 |
-| `property -webkit-hyphens` | 3 | 3 | 3 | 3 |
-| `value border-top-left-radius: calc(infinity*1px) is unsupported: a calculation in a bo` | 3 | 3 | 3 | 3 |
-| `value translate: var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z) sub` | 3 | 3 | 3 | 3 |
-| `at-rule @media` | 2 | 2 | 2 | 2 |
-| `profile -webkit-border-horizontal-spacing:<length-rem>` | 2 | 2 | 2 | 2 |
-| `profile align-content:baseline` | 2 | 2 | 2 | 2 |

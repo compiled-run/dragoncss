@@ -38,8 +38,12 @@ function webText(css: string): string {
 
 describe('fragmentation', () => {
   it('registers five longhands after the counters and six legacy shorthands, with no layout or paint aspect', () => {
-    expect(LONGHANDS.slice(-5)).toEqual(['break-before', 'break-after', 'break-inside', 'orphans', 'widows']);
-    expect(SHORTHANDS.slice(-6)).toEqual(['page-break-before', 'page-break-after', 'page-break-inside', '-webkit-column-break-before', '-webkit-column-break-after', '-webkit-column-break-inside']);
+    // FX (backdrop-filter, mix-blend-mode), unicode-bidi and the batch 4c initial-only families register after them.
+    const fx = LONGHANDS.indexOf('backdrop-filter');
+    expect(LONGHANDS.slice(fx - 5, fx)).toEqual(['break-before', 'break-after', 'break-inside', 'orphans', 'widows']);
+    // anchor-position's position-try (batch 4c, #523) registers after them.
+    const pb = SHORTHANDS.indexOf('page-break-before');
+    expect(SHORTHANDS.slice(pb, pb + 6)).toEqual(['page-break-before', 'page-break-after', 'page-break-inside', '-webkit-column-break-before', '-webkit-column-break-after', '-webkit-column-break-inside']);
     for (const p of ['break-before', 'break-after', 'break-inside', 'orphans', 'widows'] as const) expect(PROPERTY_ASPECTS[p], p).toEqual({ layout: false, paint: false });
     expect(['orphans', 'widows'].every((p) => INHERITED.has(p as never))).toBe(true);
     expect(['break-before', 'break-after', 'break-inside'].some((p) => INHERITED.has(p as never))).toBe(false);

@@ -3,14 +3,18 @@
 // whose range the engine may refuse, so the compiler refuses it at build time. It mirrors overflowOf, propagated, refuseLineLevelBoxes,
 // readFlow and readChild structurally; the one value-dependent rule (a percentage height whose end margins may collapse through it)
 // is refused whenever it may apply. packages/parity/test/scroll-decidable.test.ts checks it against the engine.
-import type { InlineChild, LayoutBox, LayoutNode, ReplacedLeaf } from '@dragon/layout';
+import type { ControlBox, InlineChild, LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from '@dragon/layout';
+
+/** Whether a box is the containing block of its absolutely positioned descendants: positioned, or layout- or paint-contained (the
+ * engine's box.ts containsAbsolute; the core imports @dragon/layout for types only). */
+const containsAbsolute = (s: LayoutStyle): boolean => s.position !== 'static' || s.containLayout || s.containPaint;
 
 export type ScrollUndecided = { readonly containerId: string; readonly nodeId: string; readonly detail: string };
 
-type Child = LayoutBox | ReplacedLeaf | InlineChild;
+type Child = LayoutBox | ControlBox | ReplacedLeaf | InlineChild;
 
 const isNode = (k: Child): k is LayoutBox | ReplacedLeaf => k.kind === 'box' || k.kind === 'replaced';
-const outOfFlow = (k: LayoutNode): boolean => k.style.position === 'absolute';
+const outOfFlow = (k: LayoutNode): boolean => k.style.position === 'absolute' || k.style.position === 'fixed';
 const userScrolls = (b: LayoutNode): boolean => b.kind === 'box' && [b.style.overflowX, b.style.overflowY].some((o) => o === 'auto' || o === 'scroll');
 const scrollContainer = (b: LayoutNode): boolean => [b.style.overflowX, b.style.overflowY].some((o) => o === 'hidden' || o === 'auto' || o === 'scroll');
 const hasInlineContent = (b: LayoutBox): boolean => b.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br');
@@ -37,15 +41,23 @@ function lineLevel(b: LayoutBox): void {
   }
 }
 
-/** The absolutely positioned boxes whose containing block is b (none when b is static), as indexOf files them. */
+/** overflow.ts refuseFloat: a float in a block container (FLT). */
+function floatIn(b: LayoutBox): void {
+  if (b.style.display !== 'block' && b.style.display !== 'inline-block') return;
+  for (const k of b.children) if (isNode(k) && !outOfFlow(k) && k.style.float !== 'none') throw new Undecided(k.id, `a float in ${b.id}: its scrollable overflow is not decided here (FLT)`);
+}
+
+/** The absolutely positioned boxes whose containing block is b (none when b is static and not contained), as indexOf files them. */
 function oofsOf(b: LayoutNode): LayoutNode[] {
-  if (b.kind === 'replaced' || b.style.position === 'static') return [];
+  if (b.kind !== 'box' || !containsAbsolute(b.style)) return [];
   const out: LayoutNode[] = [];
   const walk = (p: LayoutBox): void => {
     for (const k of p.children) {
       if (!isNode(k)) continue;
-      if (outOfFlow(k)) out.push(k);
-      else if (k.kind === 'box' && k.style.position === 'static') walk(k);
+      // A fixed box's containing block is the viewport, and it is in no scrollable overflow (overflow.ts indexOf).
+      if (outOfFlow(k)) {
+        if (k.style.position === 'absolute') out.push(k);
+      } else if (k.kind === 'box' && !containsAbsolute(k.style)) walk(k);
     }
   };
   walk(b);
@@ -66,7 +78,7 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
     const grid = b.style.display === 'grid' || b.style.display === 'inline-grid';
     for (const k of b.children) {
       if (!isNode(k)) continue;
-      walk(k, outOfFlow(k) ? !(grid && b.style.position !== 'static') : known && !grid);
+      walk(k, k.style.position === 'fixed' || (outOfFlow(k) ? !(grid && containsAbsolute(b.style)) : known && !grid));
     }
   };
   walk(root, true);
@@ -75,23 +87,28 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
 
 /** overflowOf, without the scroll container's own flow (flow below). */
 function overflowOf(b: LayoutNode, unknown: ReadonlySet<string>): void {
-  if (b.kind === 'replaced') return;
+  // A tree with a form control is refused before this runs (firstControl).
+  if (b.kind !== 'box') return;
   if (unknown.has(b.id)) throw new Undecided(b.id, 'a percentage padding against a grid area: its basis is not decided here');
   lineLevel(b);
+  floatIn(b);
   for (const k of b.children) if (isNode(k) && !outOfFlow(k)) propagated(k, unknown);
   for (const k of oofsOf(b)) propagated(k, unknown);
 }
 
 function propagated(n: LayoutNode, unknown: ReadonlySet<string>): void {
-  if (n.kind === 'replaced' || scrollContainer(n) || (n.style.overflowX === 'clip' && n.style.overflowY === 'clip')) return;
+  if (n.kind === 'replaced' || scrollContainer(n) || (n.style.overflowX === 'clip' && n.style.overflowY === 'clip') || n.style.containLayout) return;
   overflowOf(n, unknown);
 }
 
-const fcRoot = (b: LayoutNode): boolean => b.kind === 'replaced' || b.style.display !== 'block' || scrollContainer(b);
+/** box.ts establishesFormattingContext, without the planted engine fault. */
+const fcRoot = (b: LayoutNode): boolean =>
+  b.kind === 'replaced' || b.style.display !== 'block' || scrollContainer(b) || b.style.containLayout || b.style.containPaint || b.style.containSize !== 'none';
 
 /** readFlow and readChild from a block flow: a percentage height whose end margins may collapse through it is refused. */
 function flow(b: LayoutBox): void {
   if (b.style.display !== 'block' || hasInlineContent(b)) return;
+  floatIn(b);
   for (const k of b.children) {
     if (!isNode(k) || outOfFlow(k) || k.kind === 'replaced' || fcRoot(k)) continue;
     flow(k);
@@ -102,13 +119,27 @@ function flow(b: LayoutBox): void {
   }
 }
 
+/** indexOf: the first form control of the tree, which the engine refuses wherever it is (FORM-a). */
+function firstControl(b: LayoutBox): ControlBox | null {
+  for (const k of b.children) {
+    if (k.kind === 'control') return k;
+    if (k.kind === 'box') {
+      const c = firstControl(k);
+      if (c !== null) return c;
+    }
+  }
+  return null;
+}
+
 /** Every auto or scroll container of a lowered tree whose scroll range the engine may refuse, in preorder, with the first reason. */
 export function undecidedScrollContainers(root: LayoutBox): ScrollUndecided[] {
   const out: ScrollUndecided[] = [];
   const unknown = unknownPadding(root);
+  const control = firstControl(root);
   const walk = (b: LayoutNode): void => {
     if (userScrolls(b) && b.kind === 'box') {
       try {
+        if (control !== null) throw new Undecided(control.id, 'a form control: its scrollable overflow is not decided here (FORM-a)');
         overflowOf(b, unknown);
         if (b.children.some((k) => isNode(k) && !outOfFlow(k))) flow(b);
       } catch (e) {

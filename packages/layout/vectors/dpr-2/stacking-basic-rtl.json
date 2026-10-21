@@ -35,6 +35,7 @@
    "style": {
     "display": "block",
     "position": "static",
+    "float": "none",
     "top": {
      "kind": "auto"
     },
@@ -149,8 +150,18 @@
      "value": 0
     },
     "lineClamp": 0,
+    "containLayout": false,
+    "containPaint": false,
+    "containSize": "none",
+    "containIntrinsicWidth": {
+     "kind": "none"
+    },
+    "containIntrinsicHeight": {
+     "kind": "none"
+    },
     "grid": null,
-    "gridItem": null
+    "gridItem": null,
+    "zoom": []
    },
    "strut": null,
    "marker": null,
@@ -162,6 +173,7 @@
      "style": {
       "display": "block",
       "position": "static",
+      "float": "none",
       "top": {
        "kind": "auto"
       },
@@ -276,8 +288,18 @@
        "value": 0
       },
       "lineClamp": 0,
+      "containLayout": false,
+      "containPaint": false,
+      "containSize": "none",
+      "containIntrinsicWidth": {
+       "kind": "none"
+      },
+      "containIntrinsicHeight": {
+       "kind": "none"
+      },
       "grid": null,
-      "gridItem": null
+      "gridItem": null,
+      "zoom": []
      },
      "strut": null,
      "marker": null,
@@ -289,6 +311,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -404,8 +427,18 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": null,
        "marker": null,
@@ -417,6 +450,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -532,8 +566,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -546,6 +590,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -661,8 +706,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -674,6 +729,7 @@
            "style": {
             "display": "block",
             "position": "relative",
+            "float": "none",
             "top": {
              "kind": "px",
              "value": 30
@@ -791,8 +847,18 @@
              "value": 0
             },
             "lineClamp": 0,
+            "containLayout": false,
+            "containPaint": false,
+            "containSize": "none",
+            "containIntrinsicWidth": {
+             "kind": "none"
+            },
+            "containIntrinsicHeight": {
+             "kind": "none"
+            },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": null,
            "marker": null,
@@ -807,6 +873,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -922,8 +989,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -936,6 +1013,7 @@
          "style": {
           "display": "flex",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1051,8 +1129,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1064,6 +1152,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -1179,8 +1268,18 @@
              "value": 0
             },
             "lineClamp": 0,
+            "containLayout": false,
+            "containPaint": false,
+            "containSize": "none",
+            "containIntrinsicWidth": {
+             "kind": "none"
+            },
+            "containIntrinsicHeight": {
+             "kind": "none"
+            },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": null,
            "marker": null,
@@ -1193,6 +1292,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -1308,8 +1408,18 @@
              "value": 0
             },
             "lineClamp": 0,
+            "containLayout": false,
+            "containPaint": false,
+            "containSize": "none",
+            "containIntrinsicWidth": {
+             "kind": "none"
+            },
+            "containIntrinsicHeight": {
+             "kind": "none"
+            },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": null,
            "marker": null,
@@ -1324,6 +1434,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 10
@@ -1442,8 +1553,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1456,6 +1577,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 40
@@ -1574,8 +1696,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1588,6 +1720,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 0
@@ -1706,8 +1839,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1720,6 +1863,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 100
@@ -1838,8 +1982,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1852,6 +2006,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 240
@@ -1970,8 +2125,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,

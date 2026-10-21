@@ -2,6 +2,7 @@
 // - the range value matrix (min, max, step, value attribute -> input.value and valueAsNumber);
 // - the range geometry matrix: input, container, track and thumb box models through CDP (DOM.getDocument pierce, DOM.getBoxModel);
 // - the button matrix: button, text and child element rects;
+// - the button contexts: a block button in block flow and as a short column flex item;
 // - the devolve probe at DPR 2: control pixels against a CSS twin box with the control's computed background and border;
 // - the UA shadow styles of the range's container, track and thumb (CSS.getMatchedStylesForNode, user-agent origin).
 // Writes packages/dragon/test/forms/chrome-145/*.json and packages/dragon/src/forms/{appearance,ua-shadow}.generated.ts.
@@ -364,6 +365,98 @@ async function captureButtons(browser: Browser, chrome: string): Promise<ButtonC
   return { chrome, cases };
 }
 
+// ---------------------------------------------------------------- button contexts
+
+/**
+ * A block button in the contexts the button matrix does not place it in (it holds every button as a row flex item): in normal
+ * block flow (its margins, a sibling's collapsing margin, a child's margin against the button's own formatting context) and as a
+ * column flex item shorter than its specified height (the automatic minimum from its content). Rects are LU in the page.
+ */
+type ContextSpec = {
+  readonly id: string;
+  readonly direction: Direction;
+  readonly wrapper: string;
+  readonly before: string | null;
+  readonly css: string;
+  readonly children: 'text' | 'element';
+  readonly childCss: string;
+};
+type ButtonContextCase = ContextSpec & {
+  readonly computed: { readonly boxSizing: string; readonly padding: readonly number[]; readonly border: readonly number[] };
+  readonly rects: { readonly wrapper: Rect; readonly before: Rect | null; readonly button: Rect; readonly text: Rect | null; readonly element: Rect | null };
+};
+
+const BLOCK_WRAPPER = 'width:200px';
+const COLUMN_WRAPPER = 'display:flex;flex-direction:column;align-items:flex-start;width:200px;height:20px';
+const CONTEXT_SPECS: readonly Omit<ContextSpec, 'id' | 'direction'>[] = [
+  { wrapper: BLOCK_WRAPPER, before: null, css: 'display:block;width:120px', children: 'text', childCss: '' },
+  { wrapper: BLOCK_WRAPPER, before: null, css: 'display:block;width:120px;margin:0 auto', children: 'text', childCss: '' },
+  { wrapper: BLOCK_WRAPPER, before: null, css: 'display:block;width:120px;margin-left:auto', children: 'text', childCss: '' },
+  { wrapper: BLOCK_WRAPPER, before: null, css: 'display:block;width:120px;margin-left:10px;margin-right:auto', children: 'text', childCss: '' },
+  { wrapper: BLOCK_WRAPPER, before: null, css: 'display:block;width:120px', children: 'element', childCss: 'margin-top:6px' },
+  { wrapper: BLOCK_WRAPPER, before: null, css: 'display:block;width:120px;padding:0;border:0', children: 'element', childCss: 'margin-top:6px;margin-bottom:3px' },
+  { wrapper: BLOCK_WRAPPER, before: 'height:5px;margin-bottom:10px', css: 'display:block;width:120px;margin-top:4px', children: 'text', childCss: '' },
+  { wrapper: BLOCK_WRAPPER, before: null, css: 'display:block;width:120px;height:40px;padding:0;border:0', children: 'element', childCss: 'margin-top:6px' },
+  { wrapper: COLUMN_WRAPPER, before: null, css: 'display:block;width:120px;height:50px', children: 'text', childCss: '' },
+  { wrapper: COLUMN_WRAPPER, before: null, css: 'display:block;width:120px;height:50px;padding:4px 9px 6px 3px;border:3px solid', children: 'text', childCss: '' },
+  { wrapper: COLUMN_WRAPPER, before: null, css: 'display:block;width:120px;height:50px', children: 'element', childCss: '' },
+  { wrapper: COLUMN_WRAPPER, before: null, css: 'display:block;width:120px;height:50px;flex-shrink:0', children: 'text', childCss: '' },
+  { wrapper: COLUMN_WRAPPER, before: null, css: 'display:block;width:120px;height:10px', children: 'text', childCss: '' },
+  { wrapper: COLUMN_WRAPPER, before: null, css: 'display:block;width:120px;height:50px;min-height:0', children: 'text', childCss: '' },
+];
+
+async function captureButtonContexts(browser: Browser, chrome: string): Promise<{ readonly chrome: string; readonly cases: readonly ButtonContextCase[] }> {
+  const cases: ButtonContextCase[] = [];
+  for (const direction of DIRECTIONS) {
+    const mine: ContextSpec[] = CONTEXT_SPECS.map((c, k) => ({ id: `c${k}`, direction, ...c }));
+    const inner = (c: ContextSpec): string => (c.children === 'text' ? 'XXX' : `<span class="e" style="${c.childCss}"></span>`);
+    const body = mine.map((c) => `<div class="w" id="w-${c.id}" style="${c.wrapper}">${c.before === null ? '' : `<div id="s-${c.id}" style="${c.before}"></div>`}<button id="${c.id}" style="${c.css}">${inner(c)}</button></div>`).join('\n');
+    const html = `<!DOCTYPE html><html><head><style>body{margin:0;font-size:10px}.w{margin:0 0 4px;border:1px solid}button{font:inherit;margin:0}.e{display:block;width:20px;height:8px}</style></head><body>\n${body}\n</body></html>`;
+    const page = await openPage(browser, html, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction, rootFont: 'ahem' });
+    const got = await page.evaluate((list: string[]) => {
+      const r = (d: DOMRect): number[] => [d.x, d.y, d.width, d.height];
+      return list.map((id) => {
+        const b = document.getElementById(id) as HTMLButtonElement;
+        const w = document.getElementById(`w-${id}`) as HTMLElement;
+        const s = document.getElementById(`s-${id}`);
+        const cs = getComputedStyle(b);
+        const text = b.firstChild !== null && b.firstChild.nodeType === Node.TEXT_NODE ? b.firstChild : null;
+        let textRect: number[] | null = null;
+        if (text !== null) {
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          textRect = r(range.getBoundingClientRect());
+        }
+        const e = b.querySelector('.e');
+        const px = (v: string): number => parseFloat(v);
+        return {
+          computed: {
+            boxSizing: cs.boxSizing,
+            padding: [px(cs.paddingTop), px(cs.paddingRight), px(cs.paddingBottom), px(cs.paddingLeft)],
+            border: [px(cs.borderTopWidth), px(cs.borderRightWidth), px(cs.borderBottomWidth), px(cs.borderLeftWidth)],
+          },
+          wrapper: r(w.getBoundingClientRect()),
+          before: s === null ? null : r(s.getBoundingClientRect()),
+          button: r(b.getBoundingClientRect()),
+          text: textRect,
+          element: e === null ? null : r(e.getBoundingClientRect()),
+        };
+      });
+    }, mine.map((c) => c.id));
+    for (const [k, c] of mine.entries()) {
+      const g = got[k] as (typeof got)[number];
+      const rect = (v: number[] | null, what: string): Rect | null => (v === null ? null : quadRect([v[0] as number, v[1] as number, 0, 0, (v[0] as number) + (v[2] as number), (v[1] as number) + (v[3] as number)], `${c.id} ${what}`));
+      cases.push({
+        ...c,
+        computed: { boxSizing: g.computed.boxSizing, padding: g.computed.padding.map((x) => lu(x, `${c.id} padding`)), border: g.computed.border.map((x) => lu(x, `${c.id} border`)) },
+        rects: { wrapper: rect(g.wrapper, 'wrapper') as Rect, before: rect(g.before, 'before'), button: rect(g.button, 'button') as Rect, text: rect(g.text, 'text'), element: rect(g.element, 'element') },
+      });
+    }
+    await page.context().close();
+  }
+  return { chrome, cases };
+}
+
 // ---------------------------------------------------------------- devolve probe (DPR 2)
 
 /** Chrome screenshots: 8-bit RGB or RGBA, non-interlaced, five scanline filters. Returns 0xRRGGBB per pixel. */
@@ -544,6 +637,7 @@ function jsonRows(head: Record<string, unknown>, key: string, rows: readonly unk
 const browser = await launchChrome();
 let captures: Captures;
 let uaShadow: Awaited<ReturnType<typeof captureUaShadow>>;
+let buttonContexts: Awaited<ReturnType<typeof captureButtonContexts>>;
 try {
   const chrome = browser.version();
   if (chrome !== CHROME_VERSION) throw new Error(`Chrome must be ${CHROME_VERSION}, got ${chrome}`);
@@ -552,6 +646,7 @@ try {
   await page.context().close();
   const rangeGeometry = await captureRangeGeometry(browser, chrome);
   const button = await captureButtons(browser, chrome);
+  buttonContexts = await captureButtonContexts(browser, chrome);
   uaShadow = await captureUaShadow(browser);
   const devolve = await captureDevolve(chrome);
   captures = { rangeValue, rangeGeometry, button, devolve };
@@ -563,6 +658,7 @@ const outputs: [string, string][] = [
   [`${OUT_DIR}/range-value.json`, jsonRows({ chrome: captures.rangeValue.chrome }, 'rows', captures.rangeValue.rows)],
   [`${OUT_DIR}/range-geometry.json`, jsonRows({ chrome: captures.rangeGeometry.chrome }, 'cases', captures.rangeGeometry.cases)],
   [`${OUT_DIR}/button.json`, jsonRows({ chrome: captures.button.chrome }, 'cases', captures.button.cases)],
+  [`${OUT_DIR}/button-contexts.json`, jsonRows({ chrome: buttonContexts.chrome }, 'cases', buttonContexts.cases)],
   [`${OUT_DIR}/devolve.json`, `${JSON.stringify(captures.devolve, null, 1)}\n`],
   [APPEARANCE_PATH, appearanceModule(captures.devolve)],
   [UA_SHADOW_PATH, uaShadowModule(uaShadow)],

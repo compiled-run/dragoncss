@@ -5,6 +5,7 @@ import type { LayoutStyle } from '@dragon/layout';
 const complete = {
   display: 'block',
   position: 'static',
+  float: 'none',
   top: { kind: 'auto' },
   right: { kind: 'auto' },
   bottom: { kind: 'auto' },
@@ -45,10 +46,10 @@ const complete = {
   columnGap: { kind: 'normal' },
   textAlign: 'start',
   verticalAlign: { kind: 'keyword', value: 'baseline' },
-  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, textWrapStyle: { kind: 'auto' },
+  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' },
   aspectRatio: { kind: 'auto' },
   grid: null,
-  gridItem: null,
+  gridItem: null, zoom: [],
 } as const satisfies LayoutStyle;
 
 const { boxSizing: _dropped, ...withoutBoxSizing } = complete;

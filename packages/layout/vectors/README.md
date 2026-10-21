@@ -20,7 +20,7 @@ Every field is required and there are no defaults: the compiler writes every val
 - The environment (V2 of the value model): `viewportUnits` `{ small, large, dynamic }`, each a `{ width, height }` in CSS px that viewport units of that kind read (plain `vw` reads `large`); `safeArea` `{ top, right, bottom, left }` in CSS px, the insets `env(safe-area-inset-*)` reads; `rootFontSize`, the root element's specified font size in CSS px, which `rem` reads. The compiler writes the reference environment: every size the viewport, no safe area, and the root's font size at text scale 1; a host writes the device's.
 - `root`: a `LayoutBox` `{ kind: "box", id, boxType: "element" | "anonymous", style: LayoutStyle, strut, marker, children }`. Children are all boxes (and replaced leaves) or all inline-level (text leaves, inline boxes and line breaks). The compiler wraps mixed content in anonymous boxes `<element>:anon<k>`; the engine never creates boxes. `strut` is the box's own `{ font, lineHeight }` when its children are inline-level (CSS2 §10.8.1), and null otherwise; every text leaf has the font and line-height of its parent, the strut or its inline box. `marker` is a list item's outside marker `{ id: "<item>::marker", kind: "symbol" | "text", symbol, text, font, lineHeight }` (T151 R14), laid out as the rect `<item>::marker`, and null otherwise.
 - An inline box is `{ kind: "inline", id, style, font, lineHeight, children }`: an element with `display: inline`, whose children are inline-level. A line break (`<br>`) is `{ kind: "br", id, font, lineHeight }`. The engine refuses both (`inline-box`) until the inline core lays them out.
-- `style` has all 49 `LayoutStyle` fields. `verticalAlign` is `{ kind: "keyword", value }` for a CSS2 §10.8.1 keyword, a length, a percentage or a calculation; the compiler writes `baseline`. `textOverflow` is `"clip"` or `"ellipsis"` (css-overflow-4 §3.1). `textIndent` is a length, a percentage of the line's available width or a calculation (css-text-3 §8.1); the compiler writes `{ kind: "px", value: 0 }` for none. `lineClamp` is 0, or the line after which a line-clamp container clamps (TXT2-g). `textWrapStyle` is `{ kind: "auto" }` (auto and stable), or `{ kind: "balance" | "pretty", zoom }` with zoom 1, which the environment pass multiplies by the device pixel ratio (css-text-4 §5.1, TXT-TW). Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers. An order that is not a whole number (a math function, which the compiler sends unrounded) is rounded half toward +infinity and clamped to the int range by the engine, as Blink's ComputeInteger does. `grid` is the grid container's tracks, placement flow and justify-items (input.ts GridContainerStyle) on a `display: "grid"` box and `null` elsewhere; `gridItem` is the resolved placement and justify-self (GridItemStyle) on each in-flow child of a grid container and `null` elsewhere.
+- `style` has all 55 `LayoutStyle` fields. `float` is `"none"`, `"left"` or `"right"` (CSS2 §9.5; FLT). `verticalAlign` is `{ kind: "keyword", value }` for a CSS2 §10.8.1 keyword, a length, a percentage or a calculation; the compiler writes `baseline`. `textOverflow` is `"clip"` or `"ellipsis"` (css-overflow-4 §3.1). `textIndent` is a length, a percentage of the line's available width or a calculation (css-text-3 §8.1); the compiler writes `{ kind: "px", value: 0 }` for none. `lineClamp` is 0, or the line after which a line-clamp container clamps (TXT2-g). `containLayout` and `containPaint` are booleans and `containSize` is `"none"`, `"inline-size"` or `"size"`, the containment that applies to the box (css-contain-2 §3; a `container-type: inline-size` box has `containSize` `"inline-size"` and lays out in a new formatting context, CQ); `containIntrinsicWidth` and `containIntrinsicHeight` are `{ kind: "none" }` or a length, the size a size-contained box takes in place of its contents. `textWrapStyle` is `{ kind: "auto" }` (auto and stable), or `{ kind: "balance" | "pretty", zoom }` with zoom 1, which the environment pass multiplies by the box's effective zoom (the device pixel ratio times its zoom chain) (css-text-4 §5.1, TXT-TW). Lengths are tagged `{ kind: "px", value }` (CSS px), `{ kind: "percent", value }` (100 is the whole basis), or keywords such as `{ kind: "auto" }`, `{ kind: "none" }`, `{ kind: "normal" }` and `{ kind: "content" }`, as each field allows. Enumerations are strings; flexGrow, flexShrink and order are numbers. An order that is not a whole number (a math function, which the compiler sends unrounded) is rounded half toward +infinity and clamped to the int range by the engine, as Blink's ComputeInteger does. `grid` is the grid container's tracks, placement flow and justify-items (input.ts GridContainerStyle) on a `display: "grid"` box and `null` elsewhere; `gridItem` is the resolved placement and justify-self (GridItemStyle) on each in-flow child of a grid container and `null` elsewhere.
 - `aspectRatio` is `{ kind: "auto" }`, or Blink's layout ratio `{ kind: "ratio" | "auto-ratio", width, height }` in raw LayoutUnit values (positive integers; `auto-ratio` is `auto && <ratio>`, which sizes the content box). A percentage height, min-height or max-height beside a ratio is refused.
 - The four border widths also take `{ kind: "device-px", value }`: an initial line width (no width declared, or a border shorthand that omits it), which Chrome keeps in device px at every pixel ratio (rule R5 below).
 - A text leaf is `{ kind: "text", id: "<element>:text<k>", text, font, lineHeight, whiteSpaceCollapse: "collapse", textWrapMode }`. The text is already collapsed, and the leaf carries every inherited text property itself. `font` is `{ family: "Ahem", size, specifiedSize, absoluteSize }`: `specifiedSize` is the specified font size as a calculation leaf or tree at zoom 1 (below), `absoluteSize` is false for a size derived through `em` or `%` from a keyword size (Chrome's 6px minimum logical font size applies to it), and `size` is the computed size the compiler found at the reference environment, which the environment pass recomputes. `lineHeight` is `normal`, a `number`, `px`, a `percent` of the font size, or a `calc`.
@@ -73,6 +73,7 @@ Input:
   "style": {
    "display": "block",
    "position": "static",
+   "float": "none",
    "top": {
     "kind": "auto"
    },
@@ -187,11 +188,21 @@ Input:
     "value": 0
    },
    "lineClamp": 0,
+   "containLayout": false,
+   "containPaint": false,
+   "containSize": "none",
+   "containIntrinsicWidth": {
+    "kind": "none"
+   },
+   "containIntrinsicHeight": {
+    "kind": "none"
+   },
    "textWrapStyle": {
     "kind": "auto"
    },
    "grid": null,
-   "gridItem": null
+   "gridItem": null,
+   "zoom": []
   },
   "strut": null,
   "marker": null,
@@ -203,6 +214,7 @@ Input:
     "style": {
      "display": "block",
      "position": "static",
+     "float": "none",
      "top": {
       "kind": "auto"
      },
@@ -318,11 +330,21 @@ Input:
       "value": 0
      },
      "lineClamp": 0,
+     "containLayout": false,
+     "containPaint": false,
+     "containSize": "none",
+     "containIntrinsicWidth": {
+      "kind": "none"
+     },
+     "containIntrinsicHeight": {
+      "kind": "none"
+     },
      "textWrapStyle": {
       "kind": "auto"
      },
      "grid": null,
-     "gridItem": null
+     "gridItem": null,
+     "zoom": []
     },
     "strut": {
      "font": {
@@ -428,7 +450,7 @@ Output with measurer `ahem/darwin-arm64`:
 
 Native lanes run at DPR 2 and 3 on both platforms, and at 2.625 on Android as a named extra (never a substitute). Chrome is captured at those ratios with `--force-device-scale-factor=N` and a context `deviceScaleFactor` of N (`pnpm run parity:dpr-capture`, into `packages/parity/expected-dpr/<platform>/dpr-<N>`), guarded by a zoom check: a 0.5px border must compute to 0.5px, 0.333333px and 0.380952px.
 
-**The zoom model** (`layout.ts` `zoomInput`). At DPR N the engine multiplies every CSS length by N on entry (`zoomCssPx`, in double), computes font sizes as `fround(fround(size) * N)` (`zoomFontSize`), applies the font rules to the zoomed size, and lays out in zoomed px with `devicePixelRatio` 1, so borders snap to whole zoomed px. A zoomed px is a device px: output LU are 1/64 device px, and CSS px = LU / (64 * N). At DPR 1 an input with no calculation and no font to resolve is used as given, so the model is the identity. A `device-px` border width is not multiplied.
+**The zoom model** (`layout.ts` `zoomInput`). At DPR N the engine multiplies every CSS length by N on entry (`zoomCssPx`, in double), computes font sizes as `fround(fround(size) * N)` (`zoomFontSize`), applies the font rules to the zoomed size, and lays out in zoomed px with `devicePixelRatio` 1, so borders snap to whole zoomed px. A zoomed px is a device px: output LU are 1/64 device px, and CSS px = LU / (64 * N). At DPR 1 an input with no calculation, no font to resolve and no zoom is used as given, so the model is the identity. A `device-px` border width is not multiplied. An element under CSS `zoom` (ZOOM) carries its zoom chain in `style.zoom`, the zooms that are not 1 from the root down, its lengths staying CSS px at zoom 1; its N is then Blink's effective zoom, `fround(fround(N * z1) * z2)...` (`effectiveZoom`), which its lengths, its font sizes and its text take.
 
 **The five engine rules** (Chrome 145.0.7632.6, notes/T010-p2-triage.md), applied at every DPR, DPR 1 included:
 

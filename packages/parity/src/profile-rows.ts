@@ -1,13 +1,14 @@
 // Profile rows derived from a parity run (M1): the single definition used by scripts/gen-profile-rows.ts and by the
 // committed profile-proof test in parity.test.ts.
 import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
-import { MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
+import { interactionContext, interactionRowFeature, MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
 import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { LanesFile } from './lanes.ts';
 import { carryDeviceLanes, hostLaneStale, ranIds, readLanesFile, staleLanes } from './lanes-file.ts';
 import { repoPath } from './paths.ts';
+import { traceScriptOfForced } from './cases.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import type { NativeTarget, TargetConfig } from './targets.ts';
 import { nativeTargets } from './targets.ts';
@@ -47,8 +48,11 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
       if (aspects.paint && dual.length === 0) continue;
       if (aspects.layout) proofs.push(proof('layout', 'linux-dragon-layout', layout));
       if (aspects.paint) proofs.push(proof('computed-value', 'chrome-dual', dual));
-      // No lane renders native paint in milestone 1, so a row with any paint aspect is capped at caveat.
-      rows.push({ feature, context, status: aspects.paint ? 'caveat' : 'exact', proofs });
+      // No lane renders native paint in milestone 1, so a row with any paint aspect is capped at caveat; so is a row whose claim
+      // rests on what the device measures but no device lane checks (PROFILE_NOTES).
+      const note = profileNoteFor(target, feature);
+      const status = aspects.paint || note === 'measuredSafeArea' ? 'caveat' : 'exact';
+      rows.push(note === null ? { feature, context, status, proofs } : { feature, context, status, proofs, note: PROFILE_NOTES[note] });
     } else {
       const dual = passing('chrome-dual');
       if (dual.length === 0) continue;
@@ -96,6 +100,60 @@ export function deriveAnimationRows(target: ProfileTarget, passing: readonly Pas
     const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
     const valueSubset = feature.slice(feature.indexOf(':') + 1);
     return { feature, context: ANIMATION_CONTEXT, status: 'exact', proofs: [{ aspect: 'computed-value', lane, valueSubset, context: ANIMATION_CONTEXT, cases: ids }] };
+  });
+}
+
+/**
+ * SELD-R2 PR 5: the device lanes a forced device case (forced-device.ts) must pass at every DPR before it proves an interaction row:
+ * the four device checks on the case itself (its state's programs drawn as a layout case), and device-traces on its group's script,
+ * whose forced steps put the device's interaction machine into that state.
+ */
+export const INTERACTION_ROW_LANES = [...DEVICE_CHECK_LANES, TRACE_LANE] as const;
+
+/** A force step of a device-traces script as keptForceSteps (trace-lane.ts) names it. */
+export const forceStepKey = (f: { readonly pseudo: string; readonly address: string }): string => `${f.pseudo}@${f.address}`;
+
+/** The pseudo-classes a forced device case forces that its group's device-traces script does not keep after the step cut (pure). */
+export function cutForceSteps(force: readonly { readonly pseudo: string; readonly address: string }[], kept: ReadonlySet<string>): string[] {
+  return force.map(forceStepKey).filter((k) => !kept.has(k));
+}
+
+/** A forced device case as the rows read it: its host case id, its device case id, the force steps its trace cut, its features. */
+export type ForcedRowCase = { readonly id: string; readonly device: string; readonly cut: readonly string[]; readonly features: readonly string[] };
+
+/**
+ * Why a forced device case is not device-proven on a target, or null when it passes every INTERACTION_ROW_LANES lane at every DPR
+ * (pure): the check lanes run its device id, device-traces its host case's group script, which must keep every step it forces.
+ */
+export function interactionDeviceBlocker(ev: DeviceEvidence, c: Pick<ForcedRowCase, 'id' | 'device' | 'cut'>): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  for (const lane of INTERACTION_ROW_LANES) {
+    const l = ev.lanes.find((x) => x.lane === lane);
+    if (l === undefined) return `${ev.target} has no ${lane} lane`;
+    const run = lane === TRACE_LANE ? traceScriptOfForced(c.id) : c.device;
+    if (!l.cases.has(run)) return `${run} is not run by ${ev.target} ${lane} at every DPR`;
+    if (l.failing.has(run)) return `${run} fails ${ev.target} ${lane}`;
+    if (lane === TRACE_LANE && c.cut.length > 0) return `${run} cuts the force steps ${c.cut.join(', ')} of ${c.device} at MAX_TRACE_STEPS`;
+  }
+  return null;
+}
+
+/**
+ * SELD-R2 PR 5 (step 5a): the native interaction rows in context interaction/forced-only, from the forced cases that pass the host
+ * lanes and force :focus or :focus-visible in a case with no focusable element. iOS and Android: exact, only for the cases that pass
+ * every INTERACTION_ROW_LANES lane on that target's committed device record. Web keeps its rows from deriveRows; no touch or mouse
+ * rows. A proof names the host cases (chrome-dual), whose device cases carry a state digest.
+ */
+export function deriveInteractionRows(target: ProfileTarget, passing: readonly ForcedRowCase[], device: DeviceEvidence | null): ProfileRow[] {
+  if (target === 'web' || device === null) return [];
+  const context = interactionContext('forced-only');
+  const allowed = (['focus', 'focus-visible'] as const).map(interactionRowFeature);
+  const proven = passing.filter((c) => interactionDeviceBlocker(device, c) === null);
+  const features = [...new Set(proven.flatMap((c) => c.features))].filter((f) => allowed.includes(f)).sort();
+  return features.map((feature) => {
+    const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const valueSubset = feature.slice(feature.indexOf(':') + 1);
+    return { feature, context, status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context, cases: ids }] };
   });
 }
 
