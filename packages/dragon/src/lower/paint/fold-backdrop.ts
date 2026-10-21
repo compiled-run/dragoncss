@@ -56,7 +56,8 @@ export function provableFoldBackdrops(root: ResolvedElement, moving: ReadonlySet
     const position = kw(el, 'position');
     const still = unscrolled && position !== 'fixed' && position !== 'sticky' && !moving.has(el.element.address) && keeps(el, PLACED);
     if (!paintsNothing(el)) painters.push({ el, bound: still && rivalPaint(el) });
-    const ok = pathPaint && ancestorPaint(el) && !moving.has(el.element.address);
+    // A negative z-index on the leaf or any ancestor paints the leaf beneath some ancestor's background (see beneath).
+    const ok = pathPaint && ancestorPaint(el) && !moving.has(el.element.address) && !beneath(el);
     const scrolls = ['overflow-x', 'overflow-y'].some((p) => ['auto', 'scroll'].includes(kw(el, p) ?? 'visible'));
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
@@ -77,8 +78,9 @@ export function provableFoldBackdrops(root: ResolvedElement, moving: ReadonlySet
 }
 
 /**
- * A negative z-index: the fill paints beneath the backgrounds of the ancestors inside its stacking context, so its backdrop is not
- * every ancestor's (emit/paint/background.ts dragonFoldBackdrop). Read whether or not it applies (a static non-item ignores it).
+ * A negative z-index on the fill or an ancestor: that box paints beneath the backgrounds of the boxes above it inside its stacking
+ * context, so the fill's backdrop is not every ancestor's (emit/paint/background.ts dragonFoldBackdrop). Read whether or not it
+ * applies (a static non-item ignores it), and on every box of the path, past the stacking context: both only refuse more.
  */
 function beneath(el: ResolvedElement): boolean {
   const v = el.props.get('z-index')?.value;

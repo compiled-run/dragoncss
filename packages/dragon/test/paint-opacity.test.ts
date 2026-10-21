@@ -206,6 +206,7 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     // A negative z-index paints the fill beneath the backgrounds of the ancestors in its stacking context, not over them all.
     expect(folded('.a { background-color: rgba(40, 60, 80, 0.5); } .b { position: relative; z-index: -1; }', lone)).toBe(false);
     expect(folded('.a { background-color: rgba(40, 60, 80, 0.5); } .b { position: relative; z-index: 1; }', lone)).toEqual([]);
+    expect(folded('.p { background-color: rgba(200, 0, 0, 0.5); } .a { position: relative; z-index: -1; }', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'])])])])).toBe(false);
     // 4: any other box that paints may lie under it, however flow, a margin, an offset, a wrap or a shrink places them, so the device
     // folds the fill only while its border box meets no such rival's (emit/paint/background.ts dragonFoldClear).
     expect(folded('')).toEqual(['s']);
