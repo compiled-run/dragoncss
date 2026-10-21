@@ -5,11 +5,14 @@
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
 import { isControlTag } from './elements/controls.ts';
+import { isReplacedTag, SVG_SHAPE_TAGS } from './elements/replaced.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
 import { isAnimationProperty } from '../css/properties/animation.ts';
+import type { AnimList } from '../css/properties/animation.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { Compound, InteractionPseudo, PseudoClass, Selector } from '../css/selectors.ts';
+import type { KeyframesRule } from '../css/at-rules/keyframes.ts';
 import type { Rule } from '../css/stylesheet.ts';
 import type { VarPart } from '../css/variables.ts';
 import type { CssValue } from '../css/values.ts';
@@ -17,6 +20,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { SupportProfile } from '../profiles/types.ts';
 import { provenContexts } from '../profiles/types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
+import { phrasingDataFor } from '../ua/datasets.ts';
 import type { Diagnostic, Origin } from '../types.ts';
 import type { ResolvedValue } from './computed.ts';
 import { initialValue } from './computed.ts';
@@ -119,18 +123,118 @@ export function isFocusable(el: LinkedElement): boolean {
   return !NEVER_FOCUSABLE.has(el.tag);
 }
 
-/** The overflow values that never make a box a scroll container, whatever the other axis computes to (css-overflow-3 §3.1). */
-const NEVER_SCROLLS: ReadonlySet<string> = new Set(['visible', 'clip', 'initial', 'unset', 'revert', 'revert-layer']);
+/** The document facts that decide whether an input can focus some element of it (focusReachable). */
+export type FocusDocument = {
+  readonly rules: readonly Rule[];
+  /** The linked cases; null when linking failed, which counts as having a focusable element. */
+  readonly cases: readonly { readonly root: LinkedElement }[] | null;
+  readonly keyframes: readonly KeyframesRule[];
+  readonly ua: UaDataset;
+  readonly faults: Pick<CompilerFaults, 'hiddenAxisUnpaired' | 'bodyPropagationAssumed'>;
+};
+
+type OverflowAxis = 'overflow-x' | 'overflow-y';
+/**
+ * How an overflow value can take part in making a scroll container (css-overflow-3 section 3.1): scroll is auto, scroll, inherit, a
+ * var() or any other value, which may compute to auto or scroll on its own; visible is visible, initial or unset; revert and
+ * revert-layer roll back to a value elsewhere, which may be hidden.
+ */
+type AxisClass = 'hidden' | 'visible' | 'clip' | 'revert' | 'scroll';
+const AXIS_CLASS: ReadonlyMap<string, AxisClass> = new Map([['hidden', 'hidden'], ['visible', 'visible'], ['initial', 'visible'], ['unset', 'visible'], ['clip', 'clip'], ['revert', 'revert'], ['revert-layer', 'revert']]);
+const axisClass = (v: CssValue): AxisClass => (v.kind === 'keyword' ? (AXIS_CLASS.get(v.value) ?? 'scroll') : 'scroll');
+const isOverflowAxis = (p: string): p is OverflowAxis => p === 'overflow-x' || p === 'overflow-y';
+// Chrome 145 makes the body the viewport's scroller instead of propagating its overflow when html or body has any containment.
+const BLOCKS_PROPAGATION: ReadonlySet<string> = new Set(['contain', 'content-visibility', 'container-type', 'will-change']);
+
+/** The overflow longhands of a rule in declaration order, each with its importance; a var() one is class scroll. */
+function overflowOf(r: Rule): { readonly axis: OverflowAxis; readonly cls: AxisClass; readonly important: boolean }[] {
+  const out: { axis: OverflowAxis; cls: AxisClass; important: boolean }[] = [];
+  for (const d of r.declarations) {
+    const important = d.important === true;
+    for (const lh of d.longhands) if (isOverflowAxis(lh.property)) out.push({ axis: lh.property, cls: axisClass(lh.value), important });
+    for (const p of d.pending?.longhands ?? []) if (isOverflowAxis(p)) out.push({ axis: p, cls: 'scroll', important });
+  }
+  return out;
+}
+
+/** The longhands a rule declares, var() ones included. */
+const declaredOf = (r: Rule): string[] => r.declarations.flatMap((d) => [...d.longhands.map((l) => l.property as string), ...(d.pending?.longhands ?? [])]);
+
+/** The element a rule's every selector can only match: the root (html or :root), body, or neither (null). */
+function pinnedTo(r: Rule): 'root' | 'body' | null {
+  const subjects = r.selectors.map((s) => (s.pseudoElement === null ? (s.parts[0]?.compound ?? null) : null));
+  const isRoot = (c: Compound | null): boolean => c !== null && (c.tag === 'html' || c.pseudos.some((p) => p.kind === 'root'));
+  if (subjects.length > 0 && subjects.every(isRoot)) return 'root';
+  if (subjects.length > 0 && subjects.every((c) => c !== null && c.tag === 'body' && !c.pseudos.some((p) => p.kind === 'root'))) return 'body';
+  return null;
+}
+
+/** Whether some selector of a rule may match the element with this tag, or the root when tag is html (fails closed). */
+const mayMatchTag = (r: Rule, tag: string): boolean => r.selectors.some((s) => {
+  const c = s.parts[0]?.compound;
+  return s.pseudoElement === null && (c === undefined || c.tag === null || c.tag === tag || (tag === 'html' && c.pseudos.some((p) => p.kind === 'root')));
+});
 
 /**
- * Whether a rule may make some element a scroll container with overflow auto or scroll, which Chrome 130 and later make keyboard
- * focusable when it has no focusable descendant: any overflow-x or overflow-y value but NEVER_SCROLLS (hidden on one axis computes
- * visible on the other to auto), or one set through var(). Whether the box overflows is not known statically, so this fails closed.
+ * Whether Chrome 145's UA sheet may give a box with this tag overflow hidden (hr does). A replaced element or an SVG shape is never
+ * a scroll container (probed: svg and img with overflow auto take no focus), and a tag outside the UA dataset may.
  */
-export function rulesMayScroll(rules: readonly Rule[]): boolean {
-  const scrolls = (lh: { readonly property: string; readonly value: CssValue }): boolean =>
-    (lh.property === 'overflow-x' || lh.property === 'overflow-y') && !(lh.value.kind === 'keyword' && NEVER_SCROLLS.has(lh.value.value));
-  return rules.some((r) => r.declarations.some((d) => d.longhands.some(scrolls) || (d.pending?.longhands ?? []).some((p) => p === 'overflow-x' || p === 'overflow-y')));
+function uaMayHide(ua: UaDataset, tag: string): boolean {
+  if (isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag) || GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return false;
+  const phrasing = phrasingDataFor(ua.platform);
+  const keyed = (table: { readonly [key: string]: { readonly [property: string]: string } }) => Object.entries(table).filter(([k]) => k === tag || k.startsWith(`${tag}[`)).map(([, v]) => v);
+  const rows = [...keyed(ua.computed), ...keyed(ua.elementKeyComputed), ...(phrasing.kind === 'ok' ? keyed(phrasing.data.phrasingKeyComputed) : [])];
+  return rows.length === 0 || rows.some((row) => row['overflow-x'] === 'hidden' || row['overflow-y'] === 'hidden');
+}
+
+/**
+ * Whether the rules may make some element a scroll container with overflow auto or scroll on an axis, which Chrome 130 and later
+ * make keyboard focusable when it has no focusable descendant. Whether the box overflows is not known statically, so this fails
+ * closed. Chrome 145 never focuses a box with both axes hidden (hidden beside clip computes hidden), nor the viewport, so these count:
+ * - any overflow value that may compute auto or scroll on its own (auto, scroll, inherit, var()), and any @keyframes of overflow;
+ * - hidden, unless each axis's value comes from the same rule on every element: every rule that sets hidden or visible on an axis
+ *   sets both axes, with one importance, and no rule sets hidden beside visible (hidden beside visible computes visible to auto). A
+ *   UA hidden (hr) counts as hidden; revert and revert-layer, and a transition with allow-discrete, count while hidden can occur.
+ * Overflow that propagates to the viewport (css-overflow-3 section 3.3) is skipped: a rule only html or :root matches, and a rule only
+ * body matches while html is visible on both axes and neither html nor body has containment. Body with its own overflow (html
+ * not visible) is a focusable scroller, so it counts.
+ */
+export function rulesMayScroll(doc: FocusDocument): boolean {
+  const { rules, cases } = doc;
+  if (doc.keyframes.some((k) => k.blocks.some((b) => b.values.some((v) => isOverflowAxis(v.property))))) return true;
+  // Viewport propagation is skipped only where every case has html as its root and one body, a child of html.
+  const elements = cases === null ? null : cases.map((c) => ({ root: c.root, all: preorder(c.root) }));
+  const plainTree = elements !== null && elements.every(({ root, all }) => {
+    const bodies = all.filter((n) => n.el.tag === 'body');
+    return root.tag === 'html' && all.filter((n) => n.el.tag === 'html').length === 1 && bodies.length === 1 && bodies[0]?.parent === root.address;
+  });
+  const htmlVisible = plainTree && (doc.faults.bodyPropagationAssumed || rules.every((r) => {
+    if (!mayMatchTag(r, 'html') && !mayMatchTag(r, 'body')) return true;
+    if (declaredOf(r).some((p) => BLOCKS_PROPAGATION.has(p))) return false;
+    return !mayMatchTag(r, 'html') || overflowOf(r).every((o) => o.cls === 'visible');
+  }) && doc.keyframes.every((k) => k.blocks.every((b) => b.values.every((v) => !BLOCKS_PROPAGATION.has(v.property)))));
+  const boxRules = rules.filter((r) => {
+    const pin = plainTree ? pinnedTo(r) : null;
+    return !(pin === 'root' || (pin === 'body' && htmlVisible));
+  });
+  const values = boxRules.map(overflowOf);
+  if (values.some((vs) => vs.some((o) => o.cls === 'scroll'))) return true;
+  const hiddenPossible = elements === null || values.some((vs) => vs.some((o) => o.cls === 'hidden')) ||
+    elements.some(({ all }) => all.some((n) => uaMayHide(doc.ua, n.el.tag)));
+  if (!hiddenPossible || doc.faults.hiddenAxisUnpaired) return false;
+  const allowsDiscrete = (l: AnimList | undefined): boolean =>
+    l !== undefined && (l.kind === 'wide' ? l.keyword !== 'initial' && l.keyword !== 'unset' : l.items.some((i) => !(i.kind === 'keyword' && i.value === 'normal')));
+  const discrete = rules.some((r) => r.declarations.some((d) => d.animation !== undefined && (d.animation.pending !== undefined || allowsDiscrete(d.animation.longhands.get('transition-behavior')))));
+  if (discrete) return true;
+  return values.some((vs) => {
+    if (vs.some((o) => o.cls === 'revert')) return true;
+    if (!vs.some((o) => o.cls === 'hidden' || o.cls === 'visible')) return false;
+    const last = (axis: OverflowAxis) => vs.filter((o) => o.axis === axis).at(-1);
+    const x = last('overflow-x');
+    const y = last('overflow-y');
+    if (x === undefined || y === undefined || vs.some((o) => o.important !== x.important)) return true;
+    return (x.cls === 'hidden' && y.cls === 'visible') || (x.cls === 'visible' && y.cls === 'hidden');
+  });
 }
 
 function preorder(root: LinkedElement): { el: LinkedElement; parent: string | null }[] {
@@ -470,16 +574,17 @@ export const anyFocusable = (cases: readonly { readonly root: LinkedElement }[] 
   cases === null || cases.some((c) => preorder(c.root).some((n) => isFocusable(n.el)));
 
 /** Whether an input can focus some element of a document: a focusable element in some case, or a rule that may make a scroller. */
-export const focusReachable = (rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null): boolean => anyFocusable(cases) || rulesMayScroll(rules);
+export const focusReachable = (doc: FocusDocument): boolean => anyFocusable(doc.cases) || rulesMayScroll(doc);
 
 /**
  * SELD-R2 PR 5 (seld-r2-pr5-design.md section 3): on each native target an interaction rule compiles only where the profile proves
  * each of its pseudo-classes, in context interaction/<input>, for every input that can reach that state in the document's cases;
  * otherwise it is refused, naming the missing rows. profileOf null (a derive compile) reads no profile, so every rule is refused.
  */
-export function gateInteractionFeatures(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, targets: readonly ('ios' | 'android')[], profileOf: ((t: 'ios' | 'android') => SupportProfile) | null, faults: Pick<CompilerFaults, 'interactionRowIgnored'>): Diagnostic[] {
+export function gateInteractionFeatures(doc: FocusDocument, targets: readonly ('ios' | 'android')[], profileOf: ((t: 'ios' | 'android') => SupportProfile) | null, faults: Pick<CompilerFaults, 'interactionRowIgnored'>): Diagnostic[] {
   const out: Diagnostic[] = [];
-  const focusable = focusReachable(rules, cases);
+  const focusable = focusReachable(doc);
+  const rules = doc.rules;
   for (const t of targets) {
     const profile = profileOf === null ? null : profileOf(t);
     for (const r of rules) {
