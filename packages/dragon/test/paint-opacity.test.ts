@@ -209,6 +209,21 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     for (const css of ['.s { box-shadow: 0 0 4px red; }', '.s { transform: translateX(4px); }']) expect(folded(css), css).toBe(false);
     expect(folded('.w { overflow: auto; height: 5px; }', (r) => [div(r, 'a', ['a'], [div(r, 'w', ['w'], [div(r, 's', ['s'])]), div(r, 'b', ['b'])])])).toBe(false);
     expect(folded('.w { overflow: hidden; height: 5px; }', (r) => [div(r, 'a', ['a'], [div(r, 'w', ['w'], [div(r, 's', ['s'])]), div(r, 'b', ['b'])])])).toEqual(['s']);
+    // A rival later in the tree than the fill is listed too; the device looks it up only once the fill is laid out.
+    expect(folded('', (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b']), div(r, 's', ['s'])])])).toEqual(['s']);
+    // A static transform on a wrapper that paints nothing moves a rival's paint off its layout box.
+    const wrapped: Tree = (r) => [div(r, 'a', ['a'], [div(r, 'w', ['w'], [div(r, 's', ['s'])]), div(r, 'b', ['b'])])];
+    for (const css of ['.w { transform: translateY(5px); }', '.w { rotate: 10deg; }', '.w { translate: 0 5px; }']) expect(folded(css, wrapped), css).toBe(false);
+    expect(folded('', wrapped)).toEqual(['s']);
+    // display: contents has no box: its colours paint nowhere and it has no native node to check.
+    const contents: Tree = (r) => [div(r, 'a', ['a'], [div(r, 'c', ['c']), div(r, 'b', ['b'])])];
+    expect(folded('.c { display: contents; background-color: rgb(255, 0, 0); }', contents)).toEqual([]);
+    // The glue skips the rival lookup while the fill is not laid out: as the tree is built, a later rival does not exist yet.
+    for (const f of [BACKGROUND_EMITTER.native.uikit.file ?? '', BACKGROUND_EMITTER.native['android-views'].file ?? '']) {
+      const clear = f.slice(f.indexOf('dragonFoldClear('));
+      expect(clear.indexOf('e[2] > e[0] && e[3] > e[1]')).toBeGreaterThan(-1);
+      expect(clear.indexOf('e[2] > e[0] && e[3] > e[1]')).toBeLessThan(clear.indexOf('t.node(id)'));
+    }
     // The rivals are listed ahead of the background write.
     const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } .s { height: 5px; background-color: rgb(200, 0, 0); } .b { ${leaf} opacity: 0.3; }`, sibling)), []);
     if (p.kind !== 'ready') throw new Error(p.reason);

@@ -19,8 +19,10 @@ const SWIFT_MEMBERS = String.raw`  /// The background colour the case or a runti
   /// The boxes whose border boxes a folded fill must not meet to draw folded, and the tree that holds them.
   public var dragonFoldRivals: [String] = []
   public weak var dragonFoldTree: DragonTree? = nil
-  /// The folded fills that check this box, synced again after its layout.
+  /// The folded fills that check this box, synced again after its layout when their clearance changes.
   public var dragonFoldWatchers: [String] = []
+  /// Whether this folded fill was clear of its rivals at its last sync.
+  public var dragonFoldWasClear = true
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -41,11 +43,13 @@ public func dragonFoldRivals(_ t: DragonTree, _ v: DragonBoxView, _ rivals: [Str
 }
 
 /// Whether no rival's border box meets the folded fill's at the last layout. Each rival keeps the fill as a watcher, so its own
-/// layout syncs the fill again.
+/// layout syncs the fill again. A fill not yet laid out (an empty border box, as while the tree is built and rivals later in it
+/// do not exist yet) is not clear and looks no rival up; its first layout checks them all.
 func dragonFoldClear(_ v: DragonBoxView) -> Bool {
   if v.dragonFoldRivals.isEmpty { return true }
   guard let t = v.dragonFoldTree else { return false }
   let e = v.dragonShape.edges
+  if !(e[2] > e[0] && e[3] > e[1]) { return false }
   var clear = true
   for id in v.dragonFoldRivals {
     guard let r = t.node(id) as? DragonBoxView else { fatalError("dragon: \(v.dragonId): its fold rival \(id) is not a box in the tree") }
@@ -62,8 +66,9 @@ func dragonFoldClear(_ v: DragonBoxView) -> Bool {
 /// folded fill clear of its rivals turns it off too, and the background stage draws its opaque image.
 public func dragonSyncBackground(_ v: DragonBoxView) {
   v.dragonFoldedImage = nil
+  v.dragonFoldWasClear = dragonFoldClear(v)
   if v.dragonVisible ? dragonRoundedPath(v, v.dragonShape, inner: false) == nil : v.dragonVisibilityCanvas {
-    if v.dragonBackgroundFolded && v.dragonVisible && dragonFoldClear(v) {
+    if v.dragonBackgroundFolded && v.dragonVisible && v.dragonFoldWasClear {
       v.backgroundColor = nil
       v.dragonFoldedImage = dragonFoldedFill(v)
     } else {
@@ -115,12 +120,13 @@ public func dragonPaintBackgroundStage(_ v: DragonBoxView, _ ctx: CGContext, _ s
   ctx.restoreGState()
 }
 
-/// After every layout: the native-or-rounded choice for the new shape, and again for each folded fill that checks this box.
+/// After every layout: the native-or-rounded choice for the new shape, and again for each folded fill that checks this box whose
+/// clearance it changed (the fill's image depends on its own box and backdrop only).
 public func dragonAfterLayoutBackground(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
   dragonSyncBackground(v)
   guard let t = v.dragonFoldTree else { return }
   for id in v.dragonFoldWatchers {
-    if let w = t.node(id) as? DragonBoxView, w !== v { dragonSyncBackground(w) }
+    if let w = t.node(id) as? DragonBoxView, w !== v, dragonFoldClear(w) != w.dragonFoldWasClear { dragonSyncBackground(w) }
   }
 }
 
@@ -140,8 +146,10 @@ const KOTLIN_MEMBERS = String.raw`  /** The background colour the case or a runt
   /** The boxes whose border boxes a folded fill must not meet to draw folded, and the tree that holds them. */
   var dragonFoldRivals: List<String> = emptyList()
   var dragonFoldTree: DragonTree? = null
-  /** The folded fills that check this box, synced again after its layout. */
+  /** The folded fills that check this box, synced again after its layout when their clearance changes. */
   val dragonFoldWatchers = ArrayList<String>()
+  /** Whether this folded fill was clear of its rivals at its last sync. */
+  var dragonFoldWasClear = true
 `;
 
 const KOTLIN = String.raw`package dev.dragon.views
@@ -173,12 +181,14 @@ fun dragonFoldRivals(t: DragonTree, v: DragonBoxView, rivals: List<String>) {
 
 /**
  * Whether no rival's border box meets the folded fill's at the last layout. Each rival keeps the fill as a watcher, so its own
- * layout syncs the fill again.
+ * layout syncs the fill again. A fill not yet laid out (an empty border box, as while the tree is built and rivals later in it do
+ * not exist yet) is not clear and looks no rival up; its first layout checks them all.
  */
 fun dragonFoldClear(v: DragonBoxView): Boolean {
   if (v.dragonFoldRivals.isEmpty()) return true
   val t = v.dragonFoldTree ?: return false
   val e = v.dragonShape.edges
+  if (!(e[2] > e[0] && e[3] > e[1])) return false
   var clear = true
   for (id in v.dragonFoldRivals) {
     val r = t.node(id) as? DragonBoxView ?: throw IllegalStateException("dragon: " + v.dragonId + ": its fold rival " + id + " is not a box in the tree")
@@ -197,8 +207,9 @@ fun dragonFoldClear(v: DragonBoxView): Boolean {
  */
 fun dragonSyncBackground(v: DragonBoxView) {
   v.dragonFoldedBitmap = null
+  v.dragonFoldWasClear = dragonFoldClear(v)
   val square = if (v.dragonVisible) dragonRoundedPath(v, v.dragonShape, false) == null else v.dragonVisibilityCanvas
-  if (square && v.dragonBackgroundFolded && v.dragonVisible && dragonFoldClear(v)) {
+  if (square && v.dragonBackgroundFolded && v.dragonVisible && v.dragonFoldWasClear) {
     v.background = null
     v.dragonFoldedBitmap = dragonFoldedFill(v)
   } else {
@@ -242,13 +253,16 @@ fun dragonPaintBackgroundStage(v: DragonBoxView, canvas: Canvas, shape: DragonBo
   canvas.drawPath(p, paint)
 }
 
-/** After every layout: the native-or-rounded choice for the new shape, and again for each folded fill that checks this box. */
+/**
+ * After every layout: the native-or-rounded choice for the new shape, and again for each folded fill that checks this box whose
+ * clearance it changed (the fill's image depends on its own box and backdrop only).
+ */
 fun dragonAfterLayoutBackground(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   dragonSyncBackground(v)
   val t = v.dragonFoldTree ?: return
   for (id in v.dragonFoldWatchers) {
     val w = t.node(id) as? DragonBoxView
-    if (w != null && w !== v) dragonSyncBackground(w)
+    if (w != null && w !== v && dragonFoldClear(w) != w.dragonFoldWasClear) dragonSyncBackground(w)
   }
 }
 

@@ -3,8 +3,10 @@
 // square, unclipped background colour. Every other box that paints anything is a rival: the device folds the fill only while no
 // rival's border box meets the fill's (emit/paint/background.ts dragonFoldClear, after every layout), so the proof needs each
 // rival's paint to stay inside its border box and to move only with a layout: no shadow, outline, text, replaced content or
-// control, no transform, filter or moving transform, and no scroll container or fixed or sticky box at or above it. A leaf with no
-// rival needs no geometry (the earlier, geometry-free proof). Anything else keeps the platform blend.
+// control, no transform, filter or moving transform, and no scroll container, fixed or sticky box, transform or filter at or above
+// it (a static transform on a wrapper that paints nothing still moves the rival's paint off its layout box). A box with no native
+// node (display: contents) paints nothing. A leaf with no rival needs no geometry (the earlier, geometry-free proof). Anything else
+// keeps the platform blend.
 import { isReplacedTag, SVG_SHAPE_TAGS } from '../../analysis/elements/replaced.ts';
 import { rounds } from '../../analysis/paint-values/outline.ts';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
@@ -35,6 +37,11 @@ const RIVAL: readonly (readonly [string, readonly string[]])[] = [
   ['transform', ['none']], ['rotate', ['none']], ['scale', ['none']], ['translate', ['none']], ['border-image-source', ['none']],
 ];
 
+/** Longhands every box at or above a rival must leave at these values: they move or spread paint off its layout box. */
+const PLACED: readonly (readonly [string, readonly string[]])[] = [
+  ['transform', ['none']], ['rotate', ['none']], ['scale', ['none']], ['translate', ['none']], ['filter', ['none']], ['backdrop-filter', ['none']],
+];
+
 /**
  * The leaves whose folded fill may have a provable backdrop (see the header), by address, each with its rivals' addresses (empty
  * where none paints, so no geometry is needed).
@@ -47,7 +54,7 @@ export function provableFoldBackdrops(root: ResolvedElement, moving: ReadonlySet
     if (kw(el, 'display') === 'none') return;
     const here = [...path, el];
     const position = kw(el, 'position');
-    const still = unscrolled && position !== 'fixed' && position !== 'sticky' && !moving.has(el.element.address);
+    const still = unscrolled && position !== 'fixed' && position !== 'sticky' && !moving.has(el.element.address) && keeps(el, PLACED);
     if (!paintsNothing(el)) painters.push({ el, bound: still && rivalPaint(el) });
     const ok = pathPaint && ancestorPaint(el) && !moving.has(el.element.address);
     const scrolls = ['overflow-x', 'overflow-y'].some((p) => ['auto', 'scroll'].includes(kw(el, p) ?? 'visible'));
@@ -71,15 +78,22 @@ export function provableFoldBackdrops(root: ResolvedElement, moving: ReadonlySet
 
 /** A rival's own paint: inside its border box (no shadow, outline, text, replaced content or control) and unmoved but by layout. */
 function rivalPaint(el: ResolvedElement): boolean {
-  if (selfPainting(el) || !keeps(el, RIVAL)) return false;
+  // An inline box paints line fragments, not one border box the device can check.
+  if (selfPainting(el) || !keeps(el, RIVAL) || kw(el, 'display') === 'inline') return false;
   return !el.children.some((c) => c.kind === 'text' && c.text.trim() !== '');
 }
 
-/** A box that paints nothing of its own (its children aside): no colour, image, border, outline, shadow, text or replaced content. */
+/**
+ * A box that paints nothing of its own (its children aside): no colour, image, border, outline, shadow, text or replaced content,
+ * or no box and no text (display: contents: no native node to check, and its colours paint nowhere; its text still paints, so it
+ * stays a rival, and one that refuses).
+ */
 function paintsNothing(el: ResolvedElement): boolean {
+  const text = el.children.some((c) => c.kind === 'text' && c.text.trim() !== '');
+  if (kw(el, 'display') === 'contents') return !text;
   if (selfPainting(el) || usedColors(el)['background-color'].alpha !== 0 || !keeps(el, INERT)) return false;
   if (!SIDES.every((s) => unpaintedBorder(el, s))) return false;
-  return el.children.every((c) => c.kind !== 'text' || c.text.trim() === '');
+  return !text;
 }
 
 function kw(el: ResolvedElement, p: string): string | null {
