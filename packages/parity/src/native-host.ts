@@ -793,7 +793,10 @@ class DragonActivity : Activity() {
     // An env phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
     val c = if (envPhase != null && envMounted != null) DragonCase(id, base.fixture, base.direction, base.compilerDigest, envMounted.machine.viewport.first, envMounted.machine.viewport.second, mapOf(scale to "device-env"), base.input, base.build) else base
     val t0: Long
-    val tree: DragonTree
+    var tree: DragonTree
+    // The state mount the tree comes from: its safe-area probe can render it again while the case settles (the insets measured
+    // once it is attached), and the case then settles and dumps the views now on screen.
+    var source: DragonStateMount? = null
     // A state mount on screen: its media root leaves the frame, and it stops observing the platform readings, after the dump.
     var mounted: DragonStateMount? = null
     var environment: DumpEnvironment? = null
@@ -802,6 +805,7 @@ class DragonActivity : Activity() {
       t0 = SystemClock.elapsedRealtimeNanos()
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
       if (envPhase == "scheme-back") {
         mounted = mount
         envMount = null
@@ -815,6 +819,7 @@ class DragonActivity : Activity() {
       // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
     } else {
       tree = DragonTree(this)
       c.build(tree)
@@ -911,6 +916,7 @@ class DragonActivity : Activity() {
     var drawnAt = -1
     fun settle(frames: Int) {
       Choreographer.getInstance().postFrameCallback {
+        source?.tree?.let { if (it !== tree) { tree = it; drawnAt = -1 } }
         if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
         if (drawnAt < 0 || frames < drawnAt + 2) {
           if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")
