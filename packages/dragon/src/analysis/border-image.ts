@@ -7,8 +7,8 @@
 // keeps it as written. A url() source, the other images and gradients, outsets and percentage widths are refused on every target
 // by name; what only the native raster cannot draw exactly (a corner or off-grid angle, a translucent or currentcolor stop, a px
 // stop position, stops that resolve to one offset, an inline, table, contents or list-item box, a rounded box, a background image
-// under it, a colour clipped inside the border box, and repeat, round or space on a box whose tiles paint-values/border-image-tiling.ts
-// cannot prove whole device px at every device scale) is refused on ios and android only.
+// under it, a colour clipped inside the border box, a box under an effective zoom other than 1, and repeat, round or space on a box
+// whose tiles paint-values/border-image-tiling.ts cannot prove whole device px at every device scale) is refused on ios and android only.
 // The values are checked computed, so one that arrives through var() or inherit is checked too.
 // -webkit-border-image is read as Chrome applies it (webkit-border-image.ts): the border image it sets is checked as above, and the
 // border widths it sets are the element's. One Dragon cannot read (a var() value, a width in a unit other than px), or two that

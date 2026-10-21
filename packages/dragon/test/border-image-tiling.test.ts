@@ -84,6 +84,17 @@ describe('tiled gradient border images (MISC-PAINT part 2)', () => {
     }
   });
 
+  it('refuses natively any drawn border image under an effective zoom other than 1, stretched or tiled; web keeps it', () => {
+    for (const [d, parent] of [[`${BOX} border-image: linear-gradient(red, blue) 8;`, 'zoom: 2;'], [`${BOX} zoom: 0.5; border-image: linear-gradient(red, blue) 8 round;`, ''], [`${BOX} zoom: 2; border-image: linear-gradient(red, blue) 8 repeat;`, 'zoom: 0.5;']] as const) {
+      const c = compile(d, parent);
+      const e = c.diagnostics.filter((x) => x.severity === 'error');
+      const want = parent === 'zoom: 0.5;' ? [] : ['android', 'ios'];
+      expect(e.map((x) => String(x.target)).sort(), d).toEqual(want);
+      for (const x of e) expect(x.message, d).toMatch(/^border-image-source on <div> a is unsupported: its effective zoom is (2|0\.5), and native draws a border image at zoom 1 only/);
+      expect(c.outputs.web.kind, d).toBe('ready');
+    }
+  });
+
   it('refuses a tiled box only on the target whose device scale leaves it off the device px grid', () => {
     // 44px is 115.5 device px at 2.625, so the border box is fractional there; at 2 and 3 it is whole.
     const e = errors('width: 44px; height: 32px; border: 8px solid; border-image: linear-gradient(red, blue) 8 repeat;');

@@ -16,6 +16,7 @@ import { environmentOf } from '../resolve.ts';
 import { borderImageOf, borderImageRefusal } from './border-image.ts';
 import type { WidthKeywords } from './gradient-phase.ts';
 import { NATIVE_DEVICE_DPRS, usedLower } from './gradient-phase.ts';
+import { effectiveZoom } from '../zoom.ts';
 
 const SIDE_NAMES = ['top', 'right', 'bottom', 'left'] as const;
 /** Displays whose box takes a px width and height as written. */
@@ -54,6 +55,8 @@ function exactSize(el: ResolvedElement, size: string, min: string, max: string):
  * cross size is never stretched. A display: contents parent hands the box to a context this does not follow.
  */
 export function exactBox(el: ResolvedElement, ancestors: readonly ResolvedElement[], kw: WidthKeywords): ExactBox | string {
+  // ZOOM: Chrome zooms the box and scales the slices by the effective zoom times the device scale; the proof reads zoom 1 only.
+  if ([...ancestors, el].reduce((z, e) => effectiveZoom(e, z), 1) !== 1) return 'its effective zoom is not 1';
   const display = keyword(el, 'display') ?? '';
   if (!SIZED.has(display)) return `its display (${display || 'other'}) does not take its size as written`;
   if ((keyword(el, 'writing-mode') ?? 'horizontal-tb') !== 'horizontal-tb') return 'its writing mode is not horizontal-tb';
@@ -234,22 +237,43 @@ export function tilingProblem(b: ExactBox, t: TilingInputs, dpr: number): string
 }
 
 /**
- * Refuses, on ios and android, every drawn gradient border image with a repeat other than stretch whose box Dragon cannot prove
- * exactly, or whose plan is unmodelled at a device scale of the target; planted fault borderImageTilingUnchecked accepts them.
+ * Refuses, on ios and android, every drawn gradient border image under an effective zoom other than 1, and every one with a repeat
+ * other than stretch whose box Dragon cannot prove exactly, or whose plan is unmodelled at a device scale of the target; planted
+ * fault borderImageTilingUnchecked accepts the tiled ones.
  */
 export function checkBorderImageTiling(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: BorderImageFaults): void {
   const native = targets.filter((t): t is 'ios' | 'android' => t === 'ios' || t === 'android');
-  if (native.length === 0 || faults.borderImageTilingUnchecked) return;
+  if (native.length === 0) return;
   const kw = environmentOf(root).ua.borderWidthKeywords;
-  const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[]): void => {
+  const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[], zoom: number): void => {
     if (keyword(el, 'display') === 'none') return;
-    check(el, ancestors);
-    for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el]);
+    const z = effectiveZoom(el, zoom);
+    check(el, ancestors, z);
+    for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el], z);
   };
-  const check = (el: ResolvedElement, ancestors: readonly ResolvedElement[]): void => {
+  const check = (el: ResolvedElement, ancestors: readonly ResolvedElement[], zoom: number): void => {
     const parts = borderImageOf(el);
     // Only a border image the other checks draw: a refused one is reported by them, and none draws nothing.
-    if (parts === null || (parts.repeat[0] === 'stretch' && parts.repeat[1] === 'stretch') || borderImageRefusal(el) !== null) return;
+    if (parts === null || borderImageRefusal(el) !== null) return;
+    // ZOOM: Chrome scales the slices and the gradient by the effective zoom times the device scale, and the native writes pass
+    // the device scale alone (emit/paint/border-image.ts), so a border image under a zoom other than 1 is not drawn natively.
+    if (zoom !== 1) {
+      const v = el.props.get('border-image-source' as Longhand) as ResolvedValue;
+      for (const t of native) {
+        const id = `${t}|border-image-zoom|${el.element.address}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+          origin: v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan),
+          target: t,
+          message: `border-image-source on <${el.element.tag}> ${el.element.address} is unsupported: its effective zoom is ${zoom}, and native draws a border image at zoom 1 only (MISC-PAINT)`,
+          manual: 'Remove zoom from the box and its ancestors, or remove the border image.',
+          basis: 'computed-value',
+        }));
+      }
+      return;
+    }
+    if ((parts.repeat[0] === 'stretch' && parts.repeat[1] === 'stretch') || faults.borderImageTilingUnchecked) return;
     const box = exactBox(el, ancestors, kw);
     let why: string | null = typeof box === 'string' ? `Dragon cannot prove its border box exactly: ${box}` : null;
     let problems: readonly (string | null)[] = [];
@@ -290,5 +314,5 @@ export function checkBorderImageTiling(root: ResolvedElement, targets: readonly 
       }));
     });
   };
-  walk(root, []);
+  walk(root, [], 1);
 }
