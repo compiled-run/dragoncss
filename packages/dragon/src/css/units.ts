@@ -89,6 +89,33 @@ export function lengthFeatureType(unit: string): string {
   return unitEntry(unit)?.featureType ?? `<length-${unit}>`;
 }
 
+/**
+ * FONT-UNITS: ex, ch and cap (css-values-4 §6.1.1) in a non-inherited layout length: the computed value keeps the unit, and the lowering
+ * hands the engine a font-metric leaf of the element's primary font (lower/ios-layout.ts), which it measures at the device's zoom as
+ * Chrome does (layout environment.ts fontMetricPxAt). Their conversion stays refused, so every paint parser that reads the registry
+ * refuses them, as does every property outside FONT_METRIC_LAYOUT_LONGHANDS (an inherited length would take the declaring element's
+ * font, which the web output's per-element declarations would not).
+ */
+export const FONT_METRIC_LAYOUT_UNITS: ReadonlySet<string> = new Set(['ex', 'ch', 'cap']);
+
+/** The longhands that take an ex, ch or cap length: the box's own sizes, margins, padding, insets, flex basis and gaps. */
+export const FONT_METRIC_LAYOUT_LONGHANDS: ReadonlySet<string> = new Set([
+  'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
+  'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+  'top', 'right', 'bottom', 'left', 'flex-basis', 'row-gap', 'column-gap',
+]);
+
+const FONT_METRIC_PROPERTY_REASON = 'Dragon resolves ex, ch and cap from the element\'s own font in its sizes, margins, padding, insets, flex-basis and gaps only; elsewhere the length is inherited or painted at a font size no build-time px value matches at every pixel ratio';
+
+/**
+ * The refusal of a unit in a declaration of property (a longhand, or a shorthand with its longhands), or null: unitRefusal, except
+ * that ex, ch and cap are admitted where every longhand the declaration sets is in FONT_METRIC_LAYOUT_LONGHANDS (or is a number).
+ */
+export function unitRefusalIn(unit: string, longhands: readonly string[]): { readonly reason: string; readonly fix: string } | null {
+  if (!FONT_METRIC_LAYOUT_UNITS.has(unit)) return unitRefusal(unit);
+  return longhands.length > 0 && longhands.every((p) => FONT_METRIC_LAYOUT_LONGHANDS.has(p) || p === 'flex-grow' || p === 'flex-shrink') ? null : { reason: FONT_METRIC_PROPERTY_REASON, fix: FONT_METRIC_FIX };
+}
+
 /** The refusal of a registered unit with no build-time conversion, or null. */
 export function unitRefusal(unit: string): { readonly reason: string; readonly fix: string } | null {
   if (LAYOUT_CONTAINER_UNITS.has(unit)) return null;

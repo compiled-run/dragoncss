@@ -210,6 +210,8 @@ export type EngineFaults = {
   readonly containedContentSized: boolean;
   /** CQ: an inline-size contained block joins its parent's block formatting context (margins collapse through it). */
   readonly containerJoinsFlow: boolean;
+  /** TXT-TW: text-wrap-style balance and pretty lay lines out greedily, as auto does (inline.ts wrapStyleLines). */
+  readonly wrapStyleGreedy: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -297,6 +299,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampEllipsisOnExactLastLine: false,
   containedContentSized: false,
   containerJoinsFlow: false,
+  wrapStyleGreedy: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */

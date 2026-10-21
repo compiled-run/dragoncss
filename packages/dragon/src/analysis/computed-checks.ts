@@ -53,6 +53,10 @@ import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
 import { checkZoom, effectiveZoom } from './zoom.ts';
+import { checkFontUnits } from './font-units.ts';
+import { checkIntrinsicSize } from './contain-intrinsic.ts';
+import type { ContainIntrinsicFaults } from '../faults/contain-intrinsic.ts';
+import { CONTAIN_INTRINSIC_FAULTS } from '../faults/contain-intrinsic.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkImageRendering, checkPixelatedTransformed } from './image-rendering.ts';
@@ -63,6 +67,12 @@ import { checkContainment } from './containment-checks.ts';
 import type { MulticolFaults } from '../faults/multicol.ts';
 import { MULTICOL_FAULTS } from '../faults/multicol.ts';
 import { checkMulticol } from './multicol.ts';
+import type { MotionFaults } from '../faults/motion.ts';
+import { MOTION_FAULTS } from '../faults/motion.ts';
+import { checkMotion } from './motion.ts';
+import type { FieldSizingFaults } from '../faults/field-sizing.ts';
+import { FIELD_SIZING_FAULTS } from '../faults/field-sizing.ts';
+import { checkFieldSizing } from './field-sizing.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
 import { isAcceptedMask, isDrawnMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
@@ -105,7 +115,8 @@ import { checkTransformContexts, elementWillChange } from './paint-values/transf
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
 import { checkFx } from './fx.ts';
-import { checkLineClamp, lineClampOf } from './line-clamp.ts';
+import { checkLineClamp, isLineClampContainer, lineClampOf } from './line-clamp.ts';
+import { parentsOf } from './text-shadow-apart.ts';
 import { checkResize } from './resize.ts';
 import { checkTouchAction, nativePanner, type NativePanner } from './touch-action.ts';
 
@@ -634,6 +645,72 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${at} ${beside} is not proven against Chrome yet`, manual: `Remove the text-indent from ${el.element.address}, or put its text in a block of its own with text-indent.`, basis: 'computed-value' }));
+  }
+}
+
+// TXT-TW (css-text-4 §5.1): text-wrap-style balance and pretty, which Chrome reads from the block container's own style, are laid out
+// by the engine's port of Chrome's passes (layout inline.ts wrapStyleLines) only where fixture group text-wrap proves them: one Ahem
+// text run of whole-px font size directly in a block container (no inline box, <br>, atomic inline, block sibling or list marker),
+// collapsed white space that wraps at normal opportunities, no letter- or word-spacing, soft hyphen or small caps, and no
+// text-indent, text-align: justify, line clamp or truncation; the block static, unfloated, with visible overflow, in a block or a
+// flex row, under no line-clamp container, at effective zoom 1 and with no containment. Every target refuses the rest at the
+// declaration, once per container.
+function checkTextWrapStyle(el: ResolvedElement, parent: ResolvedElement | null, ancestors: readonly ResolvedElement[], zoom: number, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean): void {
+  const value = el.props.get('text-wrap-style') as ResolvedValue;
+  const kind = keywordOf(value);
+  if ((kind !== 'balance' && kind !== 'pretty') || isInlineBox(el) || isContents(el) || !holdsInlineContent(el)) return;
+  const runs = inlineContexts(el, () => {});
+  const items = runs.flat();
+  const texts = items.filter((it): it is { readonly kind: 'text'; readonly text: ResolvedText } => it.kind === 'text');
+  const text = texts.length === 1 ? (texts[0] as { readonly text: ResolvedText }).text : null;
+  const display = displayKeyword(el);
+  const blockChild = boxKids(el).find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
+  type TextProp = Parameters<ResolvedText['props']['get']>[0];
+  const textKeyword = (p: TextProp): string => (text === null ? '' : keywordOf(text.props.get(p) as ResolvedValue));
+  const size = (el.props.get('font-size') as ResolvedValue).value;
+  const spacing = (p: TextProp): boolean => {
+    const v = text === null ? null : (text.props.get(p) as ResolvedValue).value;
+    return v !== null && !(v.kind === 'keyword' && v.value === 'normal') && !isZeroLength(v);
+  };
+  const clamp = ancestors.find(isLineClampContainer);
+  const parentDisplay = parent === null ? null : displayKeyword(parent);
+  const own = (p: string): string => keywordOf(el.props.get(p as Longhand) as ResolvedValue);
+  let beside = '';
+  // Chrome ends the paragraph at the clamp (ScoreLineBreaker reads lines_until_clamp) and balances a clamped block on its own branch.
+  if (clamp !== undefined) beside = `inside the line-clamp container <${clamp.element.tag}> ${clamp.element.address}`;
+  else if (['flex', 'grid', 'inline-flex', 'inline-grid'].includes(display)) beside = `with text directly in the ${display} container, which Chrome wraps in an anonymous item`;
+  else if (display === 'list-item') beside = 'on a list item';
+  else if (blockChild !== undefined) beside = `with text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, which Chrome wraps in anonymous blocks`;
+  else if (text === null || items.some((it) => it.kind !== 'text')) beside = 'beside an inline box, a <br>, an atomic inline or another text run';
+  else if (shapedAt(text.node.address)) beside = 'in a real face';
+  else if (!(size.kind === 'length' && size.unit === 'px' && Number.isInteger(size.value))) beside = 'at a font size other than whole px';
+  else if (textKeyword('white-space-collapse') !== 'collapse' || textKeyword('text-wrap-mode') !== 'wrap') beside = 'with preserved white space or without wrapping';
+  else if (textKeyword('overflow-wrap') !== 'normal' || textKeyword('word-break') !== 'normal' || keywordOf(el.props.get('line-break') as ResolvedValue) !== 'auto') beside = 'with overflow-wrap, word-break or line-break';
+  else if (spacing('letter-spacing') || spacing('word-spacing')) beside = 'with letter-spacing or word-spacing';
+  else if (keywordOf(el.props.get('font-variant-caps') as ResolvedValue) !== 'normal') beside = 'with font-variant-caps';
+  else if (text.text.includes('\u00ad')) beside = 'with a soft hyphen';
+  else if (!isZeroLength((el.props.get('text-indent') as ResolvedValue).value)) beside = 'with text-indent';
+  else if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') beside = 'with text-align: justify';
+  else if (lineClampOf(el) > 0) beside = 'with -webkit-line-clamp';
+  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) beside = 'with text-overflow: ellipsis';
+  // The contexts text-wrap-balance-ahem proves: a static, unfloated block with visible overflow, in a block or a flex row.
+  else if (display !== 'block') beside = `with display: ${display}`;
+  else if (own('float') !== 'none') beside = 'as a float';
+  else if (own('position') !== 'static') beside = `with position: ${own('position')}`;
+  else if (own('overflow-x') !== 'visible' || own('overflow-y') !== 'visible') beside = 'with overflow other than visible';
+  // ZOOM: the passes' penalties read the effective zoom (layout input.ts TextWrapStyle), which no case proves past the device scale.
+  else if (zoom !== 1) beside = `under zoom (effective zoom ${zoom})`;
+  else if (own('contain') !== 'none' || own('container-type') !== 'normal') beside = 'with contain or container-type';
+  else if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') beside = 'as a grid item';
+  else if (parentDisplay === 'flex' && keywordOf((parent as ResolvedElement).props.get('flex-direction') as ResolvedValue) !== 'row') beside = `as a flex item of a ${keywordOf((parent as ResolvedElement).props.get('flex-direction') as ResolvedValue)} flex container`;
+  else if (parentDisplay !== null && parentDisplay !== 'block' && parentDisplay !== 'flex') beside = `in a box with display: ${parentDisplay}`;
+  if (beside === '') return;
+  const id = `text-wrap-style|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `text-wrap-style: ${kind} on ${el.element.address} ${beside} is not proven against Chrome yet`, manual: `Use text-wrap-style: auto on ${el.element.address}, or put its text in a block of its own as one run of Ahem text.`, basis: 'computed-value' }));
   }
 }
 
@@ -1741,9 +1818,15 @@ function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets
   refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults & ContainIntrinsicFaults & MotionFaults & FieldSizingFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS, ...CONTAIN_INTRINSIC_FAULTS, ...MOTION_FAULTS, ...FIELD_SIZING_FAULTS }): void {
   const propagated = propagatedFrom(root);
   if (!faults.maskLayerAccepted) for (const m of [...maskBackdropRefusals(root), ...maskDecorationRefusals(root, analyzeDecorations(root).applied)]) refuseMask(m.el, targets, diagnostics, reported, m.refusal);
+  const parents = parentsOf(root);
+  const ancestorsOf = (el: ResolvedElement): ResolvedElement[] => {
+    const out: ResolvedElement[] = [];
+    for (let a = parents.get(el); a !== undefined; a = parents.get(a)) out.push(a);
+    return out;
+  };
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
   // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
@@ -1761,7 +1844,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkTransformExtra(el, targets, diagnostics, reported, faults);
       checkZoom(el, zoom, parentZoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
+      checkIntrinsicSize(el, targets, diagnostics, reported, faults);
       checkMulticol(el, targets, diagnostics, reported, faults);
+      checkMotion(el, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
       // A refusal reached through var() (an arc in d, say) is reported on shapes too; the profile pass stays with boxes.
       checkSubstitution(el, targets, diagnostics, reported, null, fonts);
@@ -1784,11 +1869,18 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
     checkZoom(el, zoom, parentZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
+    // Font-metric lengths taken from the parent (analysis/font-units.ts).
+    checkFontUnits(el, targets, diagnostics, reported);
     // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
+    checkIntrinsicSize(el, targets, diagnostics, reported, faults);
     // The multicol family, initial values only (analysis/multicol.ts).
     checkMulticol(el, targets, diagnostics, reported, faults);
     if (!here) checkImageRendering(el, targets, diagnostics, reported, faults);
+    // The motion path family, initial values only (analysis/motion.ts).
+    checkMotion(el, targets, diagnostics, reported, faults);
+    // field-sizing: content on a replaced element (analysis/field-sizing.ts).
+    checkFieldSizing(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
@@ -1810,6 +1902,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
+      checkTextWrapStyle(el, layoutParent, ancestorsOf(el), zoom, targets, diagnostics, reported, shapedAt);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
       checkWordBreak(el, targets, diagnostics, reported, faults);
       // NA-NATIVE: ::-webkit-scrollbar rules that draw a custom scrollbar (analysis/webkit-scrollbar.ts).

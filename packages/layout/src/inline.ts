@@ -3,9 +3,11 @@
 // at UAX #14 opportunities as Blink's break iterator applies them (linebreak.ts) and at every <br>, fitted with Blink's fit test
 // (linefit.ts), and each line box is sized from the strut and every inline box on it, aligned at their baselines (CSS2 §10.8.1).
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, ReplacedLeaf, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
+import type { CalcExpr, FontSpec, InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, LineHeightValue, LineStrut, MarginValue, NormalValue, NumberValue, PaddingValue, Px, ReplacedLeaf, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
+import { add, clampNegativeToZero, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toFloat, toPx, ZERO } from './units.ts';
+import type { WrapCandidate } from './text-wrap.ts';
+import { linePenaltyOf, scoreBreakPoints } from './text-wrap.ts';
 import type { Frag, Placed, Point } from './box.ts';
 import { hasPercent, resolveBorder, resolveLength } from './box.ts';
 import type { Ctx } from './block.ts';
@@ -1849,6 +1851,175 @@ function onlyBreakIn(ifc: Ifc, b: number, start: number, end: number): number {
   return br;
 }
 
+/** score_line_break_context.h kMaxLinesForBalance and kMaxLinesForOptimal: the lines one balance or pretty pass takes. */
+const MAX_LINES_FOR_BALANCE = 6;
+const MAX_LINES_FOR_OPTIMAL = 4;
+
+/**
+ * css-text-4 §5.1 text-wrap-style: balance and pretty as Blink 145 lays them out (inline_layout_algorithm.cc LineBreakStrategy), from
+ * the greedy lines of a context wrapStyleContext accepted. A greedy line that overflows suspends both passes (LineBreaker
+ * HandleOverflow disables the score and bisect line breakers), and one line needs neither. balance initiates at the block start:
+ * ScoreLineBreaker::BalanceBreakPoints when the paragraph ends within 6 lines, else, or when that finds too few break opportunities,
+ * ParagraphLineBreaker::AttemptParagraphBalancing (bisectedLines). pretty runs ScoreLineBreaker::OptimalBreakPoints over a window of
+ * 4 lines that slides with each line laid out, so only the paragraph's last 4 greedy lines are optimized, and only when the last one
+ * is shorter than a third of the line and has no break opportunity (ShouldOptimize). Planted fault wrapStyleGreedy keeps the greedy
+ * lines.
+ */
+function wrapStyleLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, greedy: Line[]): Line[] {
+  const style = box.style.textWrapStyle;
+  if (style.kind === 'auto') return greedy;
+  if (ctx.faults.wrapStyleGreedy || greedy.length <= 1 || overflowingLine(ctx, ifc, adv, greedy, available)) return greedy;
+  if (style.kind === 'balance') {
+    if (greedy.length <= MAX_LINES_FOR_BALANCE) {
+      const scored = scoredLines(ctx, box, ifc, adv, available, greedy, 0, style.zoom, true);
+      if (scored !== null) return scored;
+    }
+    const bisected = bisectedLines(ctx, box, ifc, adv, available, greedy, style.zoom);
+    return bisected === null ? greedy : bisected;
+  }
+  const last = greedy[greedy.length - 1] as Line;
+  const lastWidth = clampNegativeToZero(width(ctx, ifc, adv, last.start, last.visibleEnd));
+  if (!(lastWidth < divInt(available, 3)) || breaksInside(ifc, last)) return greedy;
+  const from = greedy.length > MAX_LINES_FOR_OPTIMAL ? greedy.length - MAX_LINES_FOR_OPTIMAL : 0;
+  const scored = scoredLines(ctx, box, ifc, adv, available, greedy, from, style.zoom, false);
+  return scored === null ? greedy : scored;
+}
+
+/**
+ * The contexts balance and pretty are proven in against Chrome: one Ahem text leaf in its block container's font directly in it
+ * (no inline box, <br> or atomic inline), collapsed white space that wraps at normal opportunities, no spacing, soft
+ * hyphen, small caps, text-indent, justification, line clamp or truncation, and no list marker. The compiler refuses the rest first
+ * (analysis/computed-checks.ts checkTextWrapStyle).
+ */
+function wrapStyleContext(ctx: Ctx, box: LayoutBox, ifc: Ifc, indent: LU, kind: string): void {
+  const leaf = ifc.leaves.length === 1 ? (ifc.leaves[0] as TextLeaf) : null;
+  const strut = box.strut;
+  let beside = '';
+  if (leaf === null || ifc.boxes.length > 0 || ifc.brs.length > 0 || ifc.atomics.length > 0) beside = 'beside anything but one text run';
+  else if (ifc.shaped || leaf.font.family !== AHEM_FACE_ID) beside = 'in a real face';
+  else if (strut === null || strut.font.family !== leaf.font.family || strut.font.size !== leaf.font.size) beside = 'in a font other than its block container\'s';
+  else if (ifc.mode !== 'collapse' || !ifc.wrap) beside = 'with preserved white space or without wrapping';
+  else if (ifc.anywhere || ifc.minAnywhere || leaf.overflowWrap !== 'normal' || leaf.wordBreak !== 'normal') beside = 'with overflow-wrap or word-break';
+  else if (!zeroSpacing(leaf.letterSpacing) || !zeroSpacing(leaf.wordSpacing)) beside = 'with letter-spacing or word-spacing';
+  else if (leaf.smallCaps) beside = 'in small caps';
+  else if (holdsSoftHyphen(ifc)) beside = 'with a soft hyphen';
+  else if (indent !== ZERO) beside = 'with text-indent';
+  else if (box.style.textAlign === 'justify') beside = 'with text-align: justify';
+  else if (box.style.lineClamp !== 0) beside = 'with -webkit-line-clamp';
+  else if (box.style.textOverflow === 'ellipsis' && (box.style.overflowX !== 'visible' || box.style.overflowY !== 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (box.marker !== null) beside = 'with a list marker';
+  if (beside !== '') unsupported('text-wrap-style', box.id, 'css-text-4 §5.1', `text-wrap-style: ${kind} on ${box.id} ${beside} is not proven against Chrome`);
+}
+
+function zeroSpacing(e: CalcExpr): boolean {
+  return e.kind === 'px' && e.value === 0;
+}
+
+function holdsSoftHyphen(ifc: Ifc): boolean {
+  for (const it of ifc.items) if (it.kind === 'char' && it.cp === SOFT_HYPHEN) return true;
+  return false;
+}
+
+/** Whether a line overflows the available width (LineBreaker HandleOverflow): the greedy breaker put one segment on it that does not fit. */
+function overflowingLine(ctx: Ctx, ifc: Ifc, adv: readonly LU[], lines: readonly Line[], available: LU): boolean {
+  const fit: FitFaults = { noEpsilon: ctx.faults.fitWithoutEpsilon, breakInsideWord: false };
+  for (const l of lines) if (!lineFits(ctx, ifc, adv, l.start, l.end, available, fit)) return true;
+  return false;
+}
+
+/** LineBreaker::CanBreakInside(const LineInfo&) for a line of one text item: a break opportunity inside it, before its end. */
+function breaksInside(ifc: Ifc, line: Line): boolean {
+  for (const b of ifc.boundaries) if (b.at > line.start && b.at < line.end) return true;
+  return false;
+}
+
+/**
+ * ScoreLineBreaker::Optimize over lines [from, end) (the paragraph's last lines): their break candidates as
+ * LineBreakCandidateContext::AppendLine and LineBreaker::AppendCandidates build them for one text item (a sentinel at the first
+ * line's start, one candidate per break opportunity after it, and the end of the text), positions in float px from the first line's
+ * start, then the score pass (text-wrap.ts). The lines before from stay; null
+ * where the pass finds too few opportunities.
+ */
+function scoredLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, lines: readonly Line[], from: number, zoom: number, balanced: boolean): Line[] | null {
+  const n = ifc.items.length;
+  const first = (lines[from] as Line).start;
+  const offsets: number[] = [first];
+  for (const b of ifc.boundaries) if (b.at > first && b.at < n) offsets.push(b.at);
+  offsets.push(n);
+  // ShapeResult::CachedPositionForOffset: the advance sum from the item's start ceiled to a LayoutUnit, made relative to the first
+  // line's start in float (SetBasePosition).
+  const base = Math.fround(0 - toFloat(width(ctx, ifc, adv, 0, first)));
+  const candidates: WrapCandidate[] = [{ offset: first, posNoBreak: 0, posIfBreak: 0, penalty: 0 }];
+  for (let k = 1; k < offsets.length; k++) {
+    const at = offsets[k] as number;
+    const end = visibleEndOf(ifc, offsets[k - 1] as number, at);
+    const posNoBreak = Math.fround(base + toFloat(width(ctx, ifc, adv, 0, at)));
+    candidates.push({ offset: at, posNoBreak, posIfBreak: Math.fround(base + toFloat(width(ctx, ifc, adv, 0, end))), penalty: 0 });
+  }
+  const line = clampNegativeToZero(available);
+  const fontSize = (box.strut as LineStrut).font.size;
+  const points = scoreBreakPoints(candidates, toFloat(add(line, fromRaw(1))), linePenaltyOf(toFloat(line), fontSize, zoom), zoom, balanced);
+  if (points === null) return null;
+  const out: Line[] = [];
+  for (let k = 0; k < from; k++) out.push(lines[k] as Line);
+  let start = first;
+  for (const p of points) {
+    const end = offsets[p] as number;
+    out.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: [], forced: end === n, justified: null });
+    start = end;
+  }
+  return out;
+}
+
+/**
+ * ParagraphLineBreaker::AttemptParagraphBalancing (paragraph_line_breaker.cc): gives up on text estimated at more than 12 lines (its
+ * length over how many spaces fit a line) or laid out greedily in more than 6, else bisects the available width, from 80% of the
+ * average line width up, in steps down to the zoom ceiled to a LayoutUnit, for the narrowest that keeps the greedy line count with no
+ * line overflowing. The lines are the greedy ones at that width; null where it gives up. A one-line paragraph never comes here.
+ */
+function bisectedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, greedy: readonly Line[], zoom: number): Line[] | null {
+  if (!(available > ZERO)) return null;
+  const font = (box.strut as LineStrut).font;
+  const space = ctx.measurer.measure(' ', fontOf(font));
+  if (!space.ok) return null;
+  const spaceWidth = toFloat(space.measure.width);
+  if (spaceWidth > 0) {
+    // EstimateNumLines: the text content's length over the whole spaces a line holds, ceiled (a zero quotient gives up).
+    const lineChars = Math.trunc(Math.fround(toFloat(available) / spaceWidth));
+    if (lineChars <= 0) return null;
+    const estimate = Math.trunc((textContentLength(ifc) + lineChars - 1) / lineChars);
+    if (estimate > MAX_LINES_FOR_BALANCE * 2) return null;
+  }
+  const numLines = greedy.length;
+  if (numLines > MAX_LINES_FOR_BALANCE) return null;
+  let total = ZERO;
+  for (const l of greedy) total = add(total, clampNegativeToZero(width(ctx, ifc, adv, l.start, l.visibleEnd)));
+  const average = divInt(total, numLines);
+  const epsilon = fromPxCeil(zoom);
+  let lower = fromFloatRound(Math.fround(toFloat(average) * Math.fround(0.8)));
+  let upper = available;
+  while (add(lower, epsilon) < upper) {
+    const middle = divInt(add(upper, lower), 2);
+    const lines = breakLines(ctx, ifc, adv, middle, ZERO);
+    if (lines.length <= numLines && !overflowingLine(ctx, ifc, adv, lines, middle)) upper = middle;
+    else lower = middle;
+  }
+  return breakLines(ctx, ifc, adv, upper, ZERO);
+}
+
+/** The length of the context's text content (InlineItemsData text_content): its characters without the collapsible spaces at its edges. */
+function textContentLength(ifc: Ifc): number {
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < ifc.items.length; i++) {
+    const it = ifc.items[i] as Item;
+    if (it.kind !== 'char' || it.cp === SPACE) continue;
+    if (first < 0) first = i;
+    last = i;
+  }
+  return first < 0 ? 0 : last + 1 - first;
+}
+
 // css-text-3 §8.1 (Blink LineBreaker::ComputeTextIndent, line_breaker.cc 811-822): the indent of a block container's first formatted
 // line, against the line's available inline size. What no Chrome case covers yet beside a nonzero indent is refused.
 function textIndentOf(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): LU {
@@ -1900,7 +2071,10 @@ function layoutAtomics(ctx: Ctx, ifc: Ifc, available: LU): AtomicLayout[] {
 function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly AtomicLayout[], available: LU): AtomicLine[] {
   const adv = atoms.map((a) => a.advance);
   const indent = textIndentOf(ctx, box, ifc, available);
-  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
+  const wrapStyle = box.style.textWrapStyle;
+  if (wrapStyle.kind !== 'auto') wrapStyleContext(ctx, box, ifc, indent, wrapStyle.kind);
+  const greedy = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
+  const broken = wrapStyle.kind === 'auto' ? greedy : wrapStyleLines(ctx, box, ifc, adv, available, greedy);
   const rtl = directionOf(ctx, box) === 'rtl';
   checkClampContext(ctx, box, ifc, atoms.length);
   const out: AtomicLine[] = [];
