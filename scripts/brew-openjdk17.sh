@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 # Installs Homebrew's openjdk@17 at the exact build the committed lanes.json host lanes record (layout-vectors-host:
-# "JRE 17.0.20.1+0; openjdk version "17.0.20.1" 2026-08-18"), not whatever `brew install openjdk@17` serves today. Homebrew moves
-# the formula to each new patch (17.0.21 on 2026-10-20), and a newer JDK fails every toolchain check against lanes.json.
+# "JRE 17.0.21+0; openjdk version "17.0.21" 2026-10-20"), not whatever `brew install openjdk@17` serves today. Homebrew moves the
+# formula to each new patch (17.0.20.1 to 17.0.21 on 2026-10-20), and a newer JDK fails every toolchain check against lanes.json.
 # The bottle comes from ghcr.io by its sha256 (old bottles stay there), so the JDK is Homebrew's own build of that version.
-# Changing the pin is a reviewed edit here plus a lanes-host regen that records the new toolchain.
+# Changing the pin is a reviewed edit here (the digests are in ghcr.io/v2/homebrew/core/openjdk/17/manifests/<version>) plus a
+# lanes-host regen that records the new toolchain.
 set -euo pipefail
-VERSION=17.0.20.1
-# The bottle digests of homebrew/core openjdk@17 17.0.20.1 (ghcr.io/v2/homebrew/core/openjdk/17/manifests/17.0.20.1).
-# A case, not an associative array: macOS's /bin/bash is 3.2.
+VERSION=17.0.21
+# The bottle digests of homebrew/core openjdk@17 17.0.21. A case, not an associative array: macOS's /bin/bash is 3.2.
 bottle_sha() {
   case "$1" in
-    x86_64_linux) echo c4d7d14b912a175747502a41875e8c70a2c30975748f4f8c5ab00c1ba954810e ;;
-    arm64_linux) echo 20700602d7849f1d4f860cb503573217dde83a0e22a860ea2b5dcb62ce842728 ;;
-    arm64_golden_gate) echo 93731f4508525325cd2b2359167c3ee66d45255920cc6519b9a9a7e43ec7f164 ;;
-    arm64_tahoe) echo 574e7c7169103e68312a87af27a6ce27de8f473031a22fd5babd4eeebb195c81 ;;
-    arm64_sequoia) echo 96b8ced169f8234f67aa01adef2d89a111a93cb1bdba464cf1972df3578dfb79 ;;
-    arm64_sonoma) echo 338ca05773a7a98670d26ca0475b238a02d888c65d643b727835265c873cb0bf ;;
+    x86_64_linux) echo 4e3e453ccfb614047819e1096afd1b32e2a6e26d3ff8c8e826303c81474111e9 ;;
+    arm64_linux) echo 4104441a45d10e6e45ababff0919b94449a0d6e3a5675b122d16f1a6e4cf9ed1 ;;
+    arm64_golden_gate) echo 733939db388c3cae83209853048598287c029abe919bf5a534221fd74512e2b5 ;;
+    arm64_tahoe) echo 21dd7b1302c58dd79f58544797001715ac991146c8e33021ba978d08c0d84f6f ;;
+    arm64_sequoia) echo 5a59888c492e4d04c29ce6ab4ae5b8d3f7f620aedd73e7b2e20c1f615558ad87 ;;
   esac
 }
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_UPGRADE=1 HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
