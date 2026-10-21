@@ -87,6 +87,7 @@
     "visibility": { "values": ["hidden", "visible"] },
     "background-image": { "values": [{ "v": "url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR42mMwTpuJFTEMLQkAyvtMgX0NuLUAAAAASUVORK5CYII=\")", "lane": "BG-IMG" }, "linear-gradient(red, blue)", "none"] },
     "font-style": { "values": ["italic", "normal"] },
+    "font-synthesis": { "values": ["none", "weight style small-caps"] },
     "outline": { "values": ["none", "0", "2px solid blue"] },
     "border-color": { "values": ["#ccc", "transparent"] },
     "flex-direction": { "ctx": "flex", "values": ["column", "row"] },
