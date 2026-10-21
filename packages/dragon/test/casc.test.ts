@@ -7,6 +7,10 @@ import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { evaluateSupports, parseSupportsCondition } from '../src/css/at-rules/supports.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { Diagnostic } from '../src/types.ts';
+import type { LinkedElement, LinkedText } from '../src/analysis/link.ts';
+import { usedKeys } from '../src/analysis/context.ts';
+import { resolveTree } from '../src/analysis/resolve.ts';
+import { referenceDataset } from '../src/ua/datasets.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 
 type K = 'ios' | 'android' | 'web';
@@ -202,6 +206,26 @@ describe('CSS-wide keywords against the support profiles (CASC)', () => {
   it('a keyword is checked as the value it computes to in its own context', () => {
     // width: inherit takes the body's auto here, which no declaration needs; from a px width it takes a proven px width.
     expect(errors('body { width: 50px; } .a { width: inherit; }')).toEqual([]);
+  });
+  it('an inherited border or outline width is 0 where the parent style is none, as Chrome 145 computes it', () => {
+    // A 3px medium border here would draw on native where Chrome draws none.
+    expect(errors('.p { display: flex; } .a { border-top-style: solid; border-top-width: inherit; }')).toEqual([]);
+    expect(value(compile('body { border-top-width: 5px; outline-width: 5px; } .a { border-top-style: solid; border-top-width: inherit; outline-style: solid; outline-width: inherit; }').c, 'border-top-width')).toBe('0px');
+    expect(value(compile('body { border-top-width: 5px; border-top-style: solid; } .a { border-top-width: inherit; }').c, 'border-top-width')).toBe('5px');
+  });
+  it('a keyword is not unchanged where a later UA pass sets the longhand: font-weight: unset on h1', () => {
+    const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
+    const css = 'h1 { font-weight: unset; } div { font-weight: unset; }';
+    const rules = parseStylesheet(css, { source: SRC, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, [], [], [], [], [], NO_FAULTS, []);
+    const origin = { kind: 'unlocated', reason: 'test' } as const;
+    const el = (id: string, tag: string, children: (LinkedElement | LinkedText)[] = []): LinkedElement => ({
+      kind: 'element', address: id, instance: 'doc', owner: 'App', tag, classes: [], attributes: new Map(), children, node: { kind: 'element', id, tag, classes: [], attributes: [], children: [], origin },
+    });
+    const txt = (id: string): LinkedText => ({ kind: 'text', address: id, instance: 'doc', owner: 'App', text: 'Hi', node: { kind: 'text', id, text: 'Hi', origin } });
+    const root = resolveTree(el('html', 'html', [el('body', 'body', [el('h', 'h1', [txt('ht')]), el('d', 'div', [txt('dt')])])]), rules, NO_FAULTS, { direction: 'ltr', rootFont: 'ahem', ua: referenceDataset() });
+    const unchanged = (address: string): boolean | undefined => usedKeys(root).find((u) => u.address === address && u.property === 'font-weight')?.resolved?.unchanged;
+    expect(unchanged('ht')).toBe(false);
+    expect(unchanged('dt')).toBe(true);
   });
   it('a keyword that computes to an unsupported value is refused, naming the value', () => {
     const e = errors('.a { all: initial; }');
