@@ -1,6 +1,6 @@
-// The families Dragon accepts at their initial values alone (css/properties/initial-only.ts): containment,
-// anchor-position (but its naming longhands, accepted at every value), svg-extra and view-transition (animation-extra is accepted at
-// every value, and interpolate-size refused only where native would interpolate a size keyword, analysis/animations.ts). Any other computed value is refused on
+// The families Dragon accepts at their initial values alone (css/properties/initial-only.ts): containment, anchor-position (but
+// anchor-name and anchor-scope, accepted at every value), svg-extra and view-transition. animation-extra is not checked here: its
+// only refusal is analysis/animations.ts refuseKeywordSizeInterpolation. Any other computed value is refused on
 // every target, once per element and family. The values are checked computed, so one that arrives through var() or inherit is
 // refused too. container-type takes normal and, on a box the layout engine contains, inline-size. Scroll snapping
 // (css/properties/scroll-snap.ts) is accepted at any value except an active snap pair on iOS and Android (checkScrollSnap).

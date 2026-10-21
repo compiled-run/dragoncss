@@ -1,5 +1,6 @@
-// The anchor-position, svg-extra, view-transition and animation-extra families are accepted at their initial values alone, on every target; every
-// other value is kept (the grammar takes any value, so Dragon never drops what Chrome keeps) and refused where it applies. The Chrome
+// The anchor-position (but anchor-name and anchor-scope), svg-extra and view-transition families are accepted at their initial values
+// alone, on every target; animation-extra is accepted at every value but interpolate-size: allow-keywords where native would
+// interpolate a size keyword. Every other value is kept (the grammar takes any value, so Dragon never drops what Chrome keeps) and refused where it applies. The Chrome
 // cases are render-anchor-initial and the reject-* cases of fixture-groups/scroll-containment.ts
 // (packages/parity/fixtures); packages/parity/test/render-anchor-parse.test.ts pins the parse against Chrome 145. image-rendering registers
 // with them, and its values are image-rendering.test.ts's.
@@ -158,6 +159,9 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     expect(kw('.s { interpolate-size: allow-keywords; } .c { animation: g 1s; } @keyframes g { to { width: 10px; } }')).toEqual(native('b', 'an animation of width'));
     expect(kw('.s { interpolate-size: allow-keywords; width: 50px; animation: g 1s; } @keyframes g { to { width: auto; } }')).toEqual(native('a', 'an animation of width'));
     expect(kw('.s { interpolate-size: allow-keywords; height: 10px; transition: height 1s; }')).toEqual(native('a', 'a transition of height'));
+    // An interaction state that sets allow-keywords and a keyword size is checked too, not only the resting tree.
+    const hover = kw('.s { height: 10px; transition: height 1s; } .s:hover { height: auto; interpolate-size: allow-keywords; }').filter((m) => m.includes('interpolate-size'));
+    expect(hover).toEqual(native('a', 'a transition of height'));
     // Between lengths it interpolates as numeric-only does; with no motion, or numeric-only, it changes nothing.
     expect(kw('.s { interpolate-size: allow-keywords; width: 50px; animation: g 1s; } @keyframes g { to { width: 10px; } }')).toEqual([]);
     expect(kw('.s { interpolate-size: allow-keywords; transition: opacity 1s; }')).toEqual([]);

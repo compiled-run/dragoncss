@@ -66,8 +66,8 @@ export function parsePositionTry(tokens: readonly CssNode[], _base: Span): Parse
 
 /**
  * The longhands that only name anchors, or scope the names: anchor-name (none | <dashed-ident>#) and anchor-scope (none | all |
- * <dashed-ident>#). A name changes nothing until a box is anchored to it, and Dragon accepts no position-anchor, position-area or
- * anchor() that would anchor one, so it accepts every value of these two (measured pixel-identical to none in Chrome 145 at DPR 1,
+ * <dashed-ident>#). A name changes nothing until a box is anchored to it: position-anchor and position-area are refused here at any
+ * value but the initial one, and anchor() and anchor-size() only by the support profiles, so this accepts every value of these two (measured pixel-identical to none in Chrome 145 at DPR 1,
  * 2, 2.625 and 3). The rest stay refused at any value but the initial one (analysis/scroll-containment.ts).
  */
 export const ANCHOR_NAMING: readonly AnchorPositionLonghand[] = ['anchor-name', 'anchor-scope'];

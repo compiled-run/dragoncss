@@ -238,13 +238,13 @@ const FAMILIES = [
   family('bidi', BIDI_LONGHANDS, BIDI_SHORTHANDS, BIDI_INHERITED, BIDI_ASPECTS, BIDI_CONTAINER, BIDI_TEXT_ROLE),
   // css-images-3 §5.3: image-rendering, auto, -webkit-optimize-contrast and pixelated (nearest-neighbour imgs), after color-scheme.
   family('image-rendering', IMAGE_RENDERING_LONGHANDS, IMAGE_RENDERING_SHORTHANDS, IMAGE_RENDERING_INHERITED, IMAGE_RENDERING_ASPECTS, IMAGE_RENDERING_CONTAINER, IMAGE_RENDERING_TEXT_ROLE),
-  // css-anchor-position-1: the anchor positioning longhands and position-try, initial values only until Dragon anchors boxes, after image-rendering.
+  // css-anchor-position-1: the anchor positioning longhands and position-try, initial values only until Dragon anchors boxes (but anchor-name and anchor-scope, at every value), after image-rendering.
   family('anchor-position', ANCHOR_POSITION_LONGHANDS, ANCHOR_POSITION_SHORTHANDS, ANCHOR_POSITION_INHERITED, ANCHOR_POSITION_ASPECTS, ANCHOR_POSITION_CONTAINER, ANCHOR_POSITION_TEXT_ROLE),
   // SVG 2: baseline-shift and the SVG rendering hints, initial values only, after anchor-position.
   family('svg-extra', SVG_EXTRA_LONGHANDS, SVG_EXTRA_SHORTHANDS, SVG_EXTRA_INHERITED, SVG_EXTRA_ASPECTS, SVG_EXTRA_CONTAINER, SVG_EXTRA_TEXT_ROLE),
   // css-view-transitions-2: view-transition-name, -class and -group, initial values only until Dragon runs view transitions, after svg-extra.
   family('view-transition', VIEW_TRANSITION_LONGHANDS, VIEW_TRANSITION_SHORTHANDS, VIEW_TRANSITION_INHERITED, VIEW_TRANSITION_ASPECTS, VIEW_TRANSITION_CONTAINER, VIEW_TRANSITION_TEXT_ROLE),
-  // css-values-5 §8.2, scroll-animations-1 §4.2: interpolate-size and timeline-scope, initial values only, after view-transition.
+  // css-values-5 §8.2, scroll-animations-1 §4.2: interpolate-size and timeline-scope, every value (allow-keywords refused on native where it would interpolate a size keyword), after view-transition.
   family('animation-extra', ANIMATION_EXTRA_LONGHANDS, ANIMATION_EXTRA_SHORTHANDS, ANIMATION_EXTRA_INHERITED, ANIMATION_EXTRA_ASPECTS, ANIMATION_EXTRA_CONTAINER, ANIMATION_EXTRA_TEXT_ROLE),
 ] as const;
 

@@ -1486,7 +1486,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
         refuseAnimatedSafeAreaInsets(a, roots, nativeTargets, diagnostics, safeAreaReported);
-        refuseKeywordSizeInterpolation(a, roots, nativeTargets, diagnostics, keywordSizeReported, options.faults);
+        // An interaction state can set allow-keywords (or a keyword size) that the resting tree lacks.
+        refuseKeywordSizeInterpolation(a, r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)])), nativeTargets, diagnostics, keywordSizeReported, options.faults);
         refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
         // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only).
         if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, groupMotionReported);
