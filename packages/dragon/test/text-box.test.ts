@@ -81,6 +81,8 @@ describe('text-box-trim: refusals', () => {
       ['.a { text-box-trim: trim-both; position: absolute; }', own, 'it is position: absolute'],
       ['.a { text-box-trim: trim-both; overflow: hidden; }', own, 'its overflow is not visible'],
       ['.a { text-box-trim: trim-both; white-space: pre; }', own, 'its white space is preserved'],
+      ['.a { text-box-trim: trim-both; column-count: 2; }', own, 'it is a multi-column container'],
+      ['.a { text-box-trim: trim-both; text-wrap: balance; }', own, 'its text-wrap-style is balance, which no trimmed case proves'],
       ['.a { text-box-trim: trim-both; } .s { display: inline-block; }', (r) => [div(r, 'a', ['a'], [text(r, 't', 'XX '), el(r, 's', 'span', ['s'], [text(r, 'u', 'X')])])], 'it holds <span> s, which is display: inline-block; Chrome trims the first and last lines of nested blocks, which Dragon does not'],
     ];
     for (const [css, body, why] of cases) {

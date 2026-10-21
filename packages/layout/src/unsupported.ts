@@ -41,6 +41,8 @@ export type UnsupportedCode =
   | 'size-containment'
   | 'float'
   | 'sticky'
+  | 'text-wrap-style'
+  | 'multicol'
   | 'text-box-trim';
 
 /** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */

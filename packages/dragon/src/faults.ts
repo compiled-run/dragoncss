@@ -10,7 +10,10 @@ import { CASC_FAULTS } from './faults/casc.ts';
 import { CASC_LAYER_FAULTS } from './faults/casc-layer.ts';
 import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
+import { CONTAIN_INTRINSIC_FAULTS } from './faults/contain-intrinsic.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
+import { FIELD_SIZING_FAULTS } from './faults/field-sizing.ts';
+import { FONT_UNITS_FAULTS } from './faults/font-units.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
 import { FX_FAULTS } from './faults/fx.ts';
 import { GEN_A_FAULTS } from './faults/gen-a.ts';
@@ -22,6 +25,7 @@ import { INTERACTION_FAULTS } from './faults/interaction.ts';
 import { MASK_FAULTS } from './faults/mask.ts';
 import { MEDIA_FAULTS } from './faults/media.ts';
 import { MILESTONE_1_FAULTS } from './faults/milestone-1.ts';
+import { MOTION_FAULTS } from './faults/motion.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { MULTICOL_FAULTS } from './faults/multicol.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
@@ -59,7 +63,10 @@ export const FAULT_GROUPS = {
   'casc-layer': CASC_LAYER_FAULTS,
   'casc-property': CASC_PROPERTY_FAULTS,
   'cascade-var': CASCADE_VAR_FAULTS,
+  'contain-intrinsic': CONTAIN_INTRINSIC_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
+  'field-sizing': FIELD_SIZING_FAULTS,
+  'font-units': FONT_UNITS_FAULTS,
   fonts: FONTS_FAULTS,
   fx: FX_FAULTS,
   'gen-a': GEN_A_FAULTS,
@@ -71,6 +78,7 @@ export const FAULT_GROUPS = {
   mask: MASK_FAULTS,
   media: MEDIA_FAULTS,
   'milestone-1': MILESTONE_1_FAULTS,
+  motion: MOTION_FAULTS,
   'mq-r0': MQ_R0_FAULTS,
   multicol: MULTICOL_FAULTS,
   ovfl: OVFL_FAULTS,

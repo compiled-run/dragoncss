@@ -49,6 +49,9 @@ function refusal(el: ResolvedElement, parent: ResolvedElement | null, root: Reso
   if (prop(el, 'white-space-collapse') !== 'collapse') return 'its white space is preserved';
   if (prop(el, 'text-overflow') === 'ellipsis') return 'it has text-overflow: ellipsis';
   if (el.props.get('-webkit-line-clamp')?.value.kind === 'number') return 'it has a -webkit-line-clamp';
+  if (prop(el, 'column-count') !== 'auto' || prop(el, 'column-width') !== 'auto') return 'it is a multi-column container';
+  const wrap = prop(el, 'text-wrap-style');
+  if (wrap === 'balance' || wrap === 'pretty') return `its text-wrap-style is ${wrap}, which no trimmed case proves`;
   const edge = prop(el, 'text-box-edge');
   if (edge.startsWith('cap') || edge.startsWith('ex')) return `its text-box-edge is ${edge}, whose ${edge.startsWith('cap') ? 'cap height' : 'x-height'} over edge no Ahem fixture can tell from text`;
   const inner = (e: ResolvedElement): string | null => {
