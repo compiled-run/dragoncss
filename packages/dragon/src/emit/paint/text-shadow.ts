@@ -130,12 +130,13 @@ public func dragonPlaceTextShadow(_ v: DragonBoxView, _ id: String) {
   if tv.specs.count != g.lines.count { fatalError("dragon: \(id): a shadowed text view shows \(tv.specs.count) of \(g.lines.count) lines") }
   let s = g.scale
   let backdrop = dragonShadowBackdrop(v, own: true)
-  // The lines of the earlier texts beneath, in tree order; until each has had its text pass, its own pass places this text again.
+  // The lines of the earlier texts beneath, in tree order. One that has not had its text pass yet is left out, so the shadow still
+  // shows, and its own pass places this text again over it.
   var under: [TextLinePaint] = []
   if !spec.under.isEmpty {
     let tree = dragonTextShadowTree(v)
     for u in spec.under {
-      guard let found = dragonTextShadowFind(tree, u.text) else { return }
+      guard let found = dragonTextShadowFind(tree, u.text) else { continue }
       let (ug, utv) = found
       if utv.specs.count != ug.lines.count { fatalError("dragon: \(u.text): a text under a shadow shows \(utv.specs.count) of \(ug.lines.count) lines") }
       for j in 0..<ug.lines.count {
@@ -291,12 +292,13 @@ fun dragonPlaceTextShadow(v: DragonBoxView, id: String) {
   // The compiler accepts native text shadows on Ahem text (one glyph per code point); the text view draws one spec per line.
   if (tv.specs.size != g.lines.size) throw IllegalStateException("dragon: " + id + ": a shadowed text view shows " + tv.specs.size + " of " + g.lines.size + " lines")
   val backdrop = dragonShadowBackdrop(v, true)
-  // The lines of the earlier texts beneath, in tree order; until each has had its text pass, its own pass places this text again.
+  // The lines of the earlier texts beneath, in tree order. One that has not had its text pass yet is left out, so the shadow still
+  // shows, and its own pass places this text again over it.
   val under = ArrayList<TextLinePaint>()
   if (spec.under.isNotEmpty()) {
     val tree = dragonTextShadowTree(v)
     for (u in spec.under) {
-      val (ug, utv) = dragonTextShadowFind(tree, u.text) ?: return
+      val (ug, utv) = dragonTextShadowFind(tree, u.text) ?: continue
       if (utv.specs.size != ug.lines.size) throw IllegalStateException("dragon: " + u.text + ": a text under a shadow shows " + utv.specs.size + " of " + ug.lines.size + " lines")
       for (j in ug.lines.indices) {
         under.add(TextLinePaint(ArrayList(ug.cps[j].toList()), ArrayList(ug.pens[j].toList()), ug.textFont[2], utv.specs[j].baseline.toDouble() + ug.origin[1], ArrayList(u.shadows), u.r, u.g, u.b))

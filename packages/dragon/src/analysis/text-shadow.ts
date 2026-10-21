@@ -27,7 +27,7 @@ import { valueToString } from './resolve.ts';
 import { lineClampOf } from './line-clamp.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import type { DrawnShadow, InkText } from './text-shadow-apart.ts';
-import { MeetCheck, parentsOf, reachOf } from './text-shadow-apart.ts';
+import { GENERIC, MeetCheck, parentsOf, reachOf } from './text-shadow-apart.ts';
 
 /** One text shadow as the native targets draw it: css px lengths at zoom 1 and an sRGB RGBA8 colour. */
 export type TextShadowValue = { readonly x: number; readonly y: number; readonly blur: number; readonly color: Rgba8 };
@@ -95,8 +95,14 @@ export function textShadowWork(
   const advance = (size + Math.max(0, letterSpacing)) * s;
   const width = n * advance + spaces * Math.max(0, wordSpacing) * s;
   const layer = (width + lines * (2 * m + dx + 2)) * (size * s + 2 * m + dy + 2);
-  const masks = shadows.reduce((sum, x) => sum + n * (size * s + 2 * margin(x.blur) + 2) ** 2, 0);
+  const masks = shadows.reduce((sum, x) => sum + glyphMasksWork(n, size, x.blur), 0);
   return layer + masks;
+}
+
+/** The device px of n glyph masks of one shadow at the largest device scale, each grown by the blur's margin (textShadowWork). */
+function glyphMasksWork(n: number, size: number, blur: number): number {
+  const s = MAX_DEVICE_SCALE;
+  return n * (size * s + 2 * ((3 * blur * s) / 2 + 2) + 2) ** 2;
 }
 
 /** The word-separator characters word-spacing widens (css-text-3 § word-spacing). */
@@ -121,6 +127,20 @@ function workOf(shadows: readonly Shadow[], text: ResolvedText): number | string
   const work = textShadowWork(cps.length, spaces, size, spacing, wordSpacing, shadows.map((x) => ({ x: x.x.value, y: x.y.value, blur: x.blur.value })), singleLine(text) ? 1 : cps.length);
   if (work > TEXT_SHADOW_MAX_DEVICE_PX) return `${at} would raster about ${work} device px of shadow, over the ${TEXT_SHADOW_MAX_DEVICE_PX} the native shadow draws`;
   return work;
+}
+
+/**
+ * The device px an earlier text adds to a later text's layer: the masks of its glyphs, blurred for each of its shadows and plain
+ * for its glyphs (shadows, the zero shadow last), composited into the layer's backdrop (textShadowLayerOverTexts); the layer itself
+ * is the later text's.
+ */
+function maskWork(shadows: readonly Shadow[], text: ResolvedText): number | string {
+  const big = shadows.find((x) => x.blur.value > TEXT_SHADOW_MAX_BLUR_PX);
+  if (big !== undefined) return `has a blur of ${big.blur.value}px, over the ${TEXT_SHADOW_MAX_BLUR_PX}px the native shadow draws`;
+  const size = pxOf(keyword(text.props, 'font-size'));
+  if (size === null) return 'has a font size that is not in px';
+  const n = [...text.text].length;
+  return shadows.reduce((sum, x) => sum + glyphMasksWork(n, size, x.blur.value), 0);
 }
 
 /** The native drawing of an accepted list. */
@@ -214,6 +234,41 @@ function groupOf(el: ResolvedElement): string | null {
   return o !== null && o < 1 ? `opacity: ${o}` : null;
 }
 
+/** A longhand's resolved value as written, or null where Dragon resolves no such longhand. */
+const valueOf = (el: ResolvedElement, p: string): string | null => {
+  const v = (el.props as ReadonlyMap<string, ResolvedValue>).get(p);
+  return v === undefined ? null : valueToString(v.value);
+};
+
+/** will-change values that make a box a stacking context (css-will-change-1 §2.1: any property whose non-initial value would). */
+const STACKING_WILL_CHANGE = ['opacity', 'transform', 'translate', 'rotate', 'scale', 'perspective', 'filter', 'backdrop-filter', 'clip-path', 'mask', 'mask-image', 'isolation', 'mix-blend-mode', 'contain'];
+
+/**
+ * Why a box creates a stacking context without positioning (CSS 2.1 Appendix E, css-position-4 §stacking contexts), or null: opacity
+ * under 1, a transform or an individual transform, perspective, a filter or backdrop filter, a clip path, a mask, isolation: isolate,
+ * a blend mode, will-change naming one of them, or layout or paint containment (contain, a size container, content-visibility).
+ */
+export function stackingContextOf(el: ResolvedElement): string | null {
+  const group = groupOf(el);
+  if (group !== null) return group;
+  const not = (p: string, initial: string): string | null => {
+    const v = valueOf(el, p);
+    return v === null || v === initial ? null : `${p}: ${v}`;
+  };
+  for (const [p, initial] of [['translate', 'none'], ['rotate', 'none'], ['scale', 'none'], ['perspective', 'none'], ['filter', 'none'], ['backdrop-filter', 'none'], ['clip-path', 'none'], ['mask-image', 'none'], ['isolation', 'auto'], ['mix-blend-mode', 'normal']] as const) {
+    const why = not(p, initial);
+    if (why !== null) return why;
+  }
+  const will = elementWillChange(el).find((w) => STACKING_WILL_CHANGE.includes(w));
+  if (will !== undefined) return `will-change: ${will}`;
+  const contain = valueOf(el, 'contain') ?? 'none';
+  if (/\b(layout|paint|strict|content)\b/.test(contain)) return `contain: ${contain}`;
+  const container = valueOf(el, 'container-type') ?? 'normal';
+  if (container !== 'normal') return `container-type: ${container}`;
+  const visibility = valueOf(el, 'content-visibility') ?? 'visible';
+  return visibility === 'visible' ? null : `content-visibility: ${visibility}`;
+}
+
 /** Every text's ink and reach, and the parents of the tree's elements, for the check that no two texts' shadows meet. */
 type Others = { readonly inks: ReadonlyMap<ResolvedText, InkText>; readonly facts: ReadonlyMap<ResolvedText, Shadowed>; readonly meet: MeetCheck };
 
@@ -236,19 +291,23 @@ function drawnShadows(shadows: readonly Shadow[]): DrawnShadow[] {
 type Shadowed = { readonly text: ResolvedText; readonly parent: ResolvedElement; readonly container: ResolvedElement; readonly clamped: boolean; readonly order: number; readonly group: string | null };
 
 /** The text leaves that draw each declared text-shadow list (declaring element first), and every box-painting element's tree order. */
-function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement, Shadowed[]>; readonly painters: number[]; readonly inks: Map<ResolvedText, InkText>; readonly facts: Map<ResolvedText, Shadowed> } {
+function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement, Shadowed[]>; readonly painters: number[]; readonly inks: Map<ResolvedText, InkText>; readonly facts: Map<ResolvedText, Shadowed>; readonly reordering: Set<ResolvedElement> } {
   const declared = new Map<ResolvedElement, Shadowed[]>();
   const painters: number[] = [];
   const inks = new Map<ResolvedText, InkText>();
   const facts = new Map<ResolvedText, Shadowed>();
+  const reordering = new Set<ResolvedElement>();
   let order = 0;
-  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null, orderedAbove: boolean): void => {
+  const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null, itemReordered: boolean): void => {
     if (keyword(el.props, 'display') === 'none') return;
-    // Tree order stays paint order below a box that is not positioned or floated (orderedAbove covers z-index and order).
-    const ordered = orderedAbove && keyword(el.props, 'position') === 'static' && keyword(el.props, 'float') === 'none';
+    // A box that may paint out of tree order against its siblings' subtrees: positioned, floated, a flex or grid item that is
+    // z-indexed or among siblings with an order other than 0 (itemReordered), or a static box that creates a stacking context, which
+    // Chrome paints in the z-index 0 layer, after the in-flow inline content of its later siblings (stackingContextOf). MeetCheck
+    // reads these below a pair's common ancestor.
+    if (itemReordered || keyword(el.props, 'position') !== 'static' || keyword(el.props, 'float') !== 'none' || stackingContextOf(el) !== null) reordering.add(el);
     const itemsOf = /^(inline-)?(flex|grid)$/.test(keyword(el.props, 'display'));
     const reordered = itemsOf && el.children.some((c) => c.kind === 'element' && keyword(c.props, 'order') !== '0');
-    const childOrdered = (c: ResolvedElement): boolean => ordered && !(itemsOf && (reordered || keyword(c.props, 'z-index') !== 'auto'));
+    const childReordered = (c: ResolvedElement): boolean => itemsOf && (reordered || keyword(c.props, 'z-index') !== 'auto');
     // A relatively positioned (or sticky) inline box between a text and its block container moves the text off its line box.
     const inline = keyword(el.props, 'display') === 'inline';
     const position = keyword(el.props, 'position');
@@ -264,23 +323,36 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
     if (own !== null && !declared.has(own)) declared.set(own, []);
     const g = group ?? groupOf(el);
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c, own, g, container, clamped, moved, childOrdered(c));
+      if (c.kind === 'element') walk(c, own, g, container, clamped, moved, childReordered(c));
       else {
         order++;
         const fact: Shadowed = { text: c, parent: el, container, clamped, order, group: g };
         if (own !== null) (declared.get(own) as Shadowed[]).push(fact);
         if (c.text.trim() === '') continue;
-        inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved, treeOrdered: ordered });
+        inks.set(c, { text: c, parent: el, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved });
         facts.set(c, fact);
       }
     }
   };
-  walk(root, null, null, root, false, null, true);
-  return { declared, painters, inks, facts };
+  walk(root, null, null, root, false, null, false);
+  return { declared, painters, inks, facts, reordering };
 }
 
 /** A glyph drawn as a shadow of no offset or blur (its work in a layer that composites it, as textShadowLayerOverTexts draws it). */
 const ZERO_SHADOW: Shadow = { inset: false, x: { value: 0, unit: 'px' }, y: { value: 0, unit: 'px' }, blur: { value: 0, unit: 'px' }, spread: { value: 0, unit: 'px' }, color: { r: 0, g: 0, b: 0, alpha: 255 } };
+
+/**
+ * Why the device does not draw an earlier text's glyphs into a later text's layer as Chrome draws them, or null: as for its own
+ * shadows (glyphRefusal), and a stroke or small capitals, which the layer's plain Ahem fills leave out.
+ */
+function underGlyphRefusal(t: Shadowed, decorated: ReadonlySet<string>): string | null {
+  const own = glyphRefusal(t, decorated);
+  if (own !== null) return own;
+  const at = `text ${t.text.node.address}`;
+  if (keyword(t.parent.props, '-webkit-text-stroke-width') !== '0px') return `${at} is stroked, which the device does not draw under a later text's shadow`;
+  if (keyword(t.parent.props, 'font-variant-caps') !== 'normal') return `${at} has small capitals, which the device does not draw under a later text's shadow`;
+  return null;
+}
 
 /**
  * Why the native shadow model does not draw a text's glyphs as Chrome does, or null: Chrome draws Ahem past 600 in synthetic bold
@@ -315,25 +387,33 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
     // Where this text and another meet, the later-painted one's blurred or translucent paint must land on the earlier's as the
     // device composites it: its layer encoded over Chrome's paint of the earlier text (MeetCheck.composes).
     const self = others.inks.get(text);
+    // The earlier texts this one composites over, and their work in one line's layer.
+    let unders = 0;
+    let underWork = 0;
     if (self !== undefined) {
       for (const u of others.inks.values()) {
         if (u === self) continue;
         const why = others.meet.refusal(self, u);
         if (why === null) continue;
         const fact = others.facts.get(u.text) as Shadowed;
-        const under = others.meet.composes(self, u) ? (realFaceAt(u.text.node.address) ? `text ${u.text.node.address} is in a real face, whose glyphs the device does not model under a shadow` : glyphRefusal(fact, decorated)) : why;
+        const not = others.meet.compositeRefusal(self, u);
+        const under = not === GENERIC ? why : not !== null ? not : realFaceAt(u.text.node.address) ? `text ${u.text.node.address} is in a real face, whose glyphs the device does not model under a shadow` : underGlyphRefusal(fact, decorated);
         if (under === null) {
-          // The later of the two encodes over the earlier's shadows and glyphs: its work grows by theirs.
+          // The later of the two encodes over the earlier's shadows and glyphs: its layer's work grows by theirs.
           if (u.order < self.order) {
-            const w = workOf([...shadowList(fact.parent), ZERO_SHADOW], u.text);
+            const w = maskWork([...shadowList(fact.parent), ZERO_SHADOW], u.text);
             if (typeof w === 'string') return `${at} meets text ${u.text.node.address}, which ${w}`;
-            pending += w;
+            unders++;
+            underWork += w;
           }
           continue;
         }
         return `${at}: ${why}${under === why ? '' : `, and the device cannot composite them: ${under}`}`;
       }
     }
+    // The device rasters every earlier text's lines again for each line of this one, and places this text again after each
+    // earlier text's own text pass (emit/paint/text-shadow.ts).
+    if (unders > 0) pending += (unders + 1) * (singleLine(text) ? 1 : [...text.text].length) * underWork;
     const work = workOf(shadows, text);
     if (typeof work === 'string') return work;
     if (budget.used + pending + work > TEXT_SHADOW_MAX_DOCUMENT_DEVICE_PX) return `the document's text shadows would raster over the ${TEXT_SHADOW_MAX_DOCUMENT_DEVICE_PX} device px the native targets draw`;
@@ -347,8 +427,8 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
 /** Refuses each text-shadow list that a target does not draw as Chrome does, once per target at its declaration. */
 export function checkTextShadows(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: TxtFxFaults): void {
   if (faults.textShadowListAccepted) return;
-  const { declared, painters, inks, facts } = survey(root);
-  const others: Others = { inks, facts, meet: new MeetCheck(parentsOf(root), TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE) };
+  const { declared, painters, inks, facts, reordering } = survey(root);
+  const others: Others = { inks, facts, meet: new MeetCheck(parentsOf(root), reordering, TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE) };
   if (declared.size === 0) return;
   // The native work of the lists accepted so far, in declaration order (the document budget).
   const budget = { used: 0 };
@@ -411,12 +491,16 @@ export function nativeTextUnders(root: ResolvedElement): ReadonlyMap<string, rea
   return composites(root).unders;
 }
 
-/** nativeTextUnders, and the elements whose text lies under another's layer. */
-function composites(root: ResolvedElement): { readonly unders: ReadonlyMap<string, readonly TextShadowUnder[]>; readonly beneath: ReadonlySet<ResolvedElement> } {
+/**
+ * nativeTextUnders, the elements whose text lies under another's layer, and the elements on either text's path below a composited
+ * pair's common ancestor (whose motion moves one text against the other's layer).
+ */
+function composites(root: ResolvedElement): { readonly unders: ReadonlyMap<string, readonly TextShadowUnder[]>; readonly beneath: ReadonlySet<ResolvedElement>; readonly apart: ReadonlySet<ResolvedElement> } {
   const out = new Map<string, readonly TextShadowUnder[]>();
   const beneath = new Set<ResolvedElement>();
-  const { inks, facts } = survey(root);
-  const meet = new MeetCheck(parentsOf(root), TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE);
+  const apart = new Set<ResolvedElement>();
+  const { inks, facts, reordering } = survey(root);
+  const meet = new MeetCheck(parentsOf(root), reordering, TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE);
   const all = [...inks.values()].sort((a, b) => a.order - b.order);
   for (let i = 0; i < all.length; i++) {
     const self = all[i] as InkText;
@@ -428,58 +512,67 @@ function composites(root: ResolvedElement): { readonly unders: ReadonlyMap<strin
       if (meet.refusal(self, u) === null) continue;
       const parent = (facts.get(u.text) as Shadowed).parent;
       beneath.add(parent);
+      for (const path of meet.below(u, self)) for (const e of path) apart.add(e);
       const shadows = shadowList(parent);
       unders.push({ text: u.text.node.address, color: glyphColor(parent), shadows: listRefusal(shadows) === null ? textShadowValues(shadows, u.text.node.address) : [] });
     }
     if (unders.length > 0) out.set(self.text.node.address, unders);
   }
-  return { unders: out, beneath };
+  return { unders: out, beneath, apart };
 }
 
 const GLYPH_COLOR = ['color', '-webkit-text-fill-color'];
+const MOTION = ['transform', 'translate', 'rotate', 'scale', 'opacity'];
 
 /**
- * Refuses, on the native targets, an animation with a color or -webkit-text-fill-color keyframe, or a listed transition of either,
- * on an element holding text another text's layer composites over, or on any of its ancestors (which it may inherit the colour
- * from): the device draws that text's glyphs into the layer in their resting colour (nativeTextUnders). roots are the resolved roots
- * of the analysed cases; the caller runs it per @media band, with one reported set.
+ * Refuses, on the native targets, an animation or a listed transition that a composited layer does not follow, since the layer
+ * holds the earlier text at rest (nativeTextUnders): of color or -webkit-text-fill-color on an element holding text another text's
+ * layer composites over, or on any of its ancestors (which it may inherit the colour from); and of transform, translate, rotate,
+ * scale or opacity on either text's path below the pair's common ancestor, which moves or fades one text against the other's layer
+ * without a text pass. roots are the resolved roots of the analysed cases; the caller runs it per @media band, with one reported set.
  */
 export function refuseAnimatedShadowUnders(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   if (nativeTargets.length === 0) return;
-  // The elements whose colour may reach a text beneath a layer, by address, with that text's element.
-  const reaches = new Map<string, { readonly el: ResolvedElement; readonly under: string }>();
+  // The elements whose glyph colour or motion a layer holds at rest, by address, with what it holds.
+  const colours = new Map<string, { readonly el: ResolvedElement; readonly what: string }>();
+  const motions = new Map<string, { readonly el: ResolvedElement; readonly what: string }>();
   for (const root of roots) {
     const parents = parentsOf(root);
-    for (const el of composites(root).beneath) {
+    const c = composites(root);
+    for (const el of c.beneath) {
       let at: ResolvedElement | undefined = el;
       while (at !== undefined) {
-        if (!reaches.has(at.element.address)) reaches.set(at.element.address, { el: at, under: el.element.address });
+        if (!colours.has(at.element.address)) colours.set(at.element.address, { el: at, what: `another text's shadow composites over the text of ${el.element.address}, which the device draws into the shadow in its resting colour` });
         at = parents.get(at);
       }
     }
+    for (const el of c.apart) {
+      if (!motions.has(el.element.address)) motions.set(el.element.address, { el, what: `it holds a text that another text's shadow composites over or under, and the device composites them at rest` });
+    }
   }
-  if (reaches.size === 0) return;
+  if (colours.size === 0 && motions.size === 0) return;
   for (const c of analysis.cases) {
     for (const ea of c.elements.values()) {
-      const reach = reaches.get(ea.address);
-      if (reach === undefined) continue;
-      const { el, under } = reach;
-      const animated = ea.animations.some((a) => a.name !== 'none' && (analysis.keyframes.get(a.name)?.blocks ?? []).some((b) => b.values.some((v) => GLYPH_COLOR.includes(v.property))));
-      const transitioned = GLYPH_COLOR.some((p) => ea.listings.get(p as Longhand)?.mode === 'listed');
-      if (!animated && !transitioned) continue;
-      const longhand = animated ? 'animation-name' : 'transition-property';
-      const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
-      for (const t of nativeTargets) {
-        const id = `${t}|${ea.address}|text-shadow-under`;
-        if (reported.has(id)) continue;
-        reported.add(id);
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-          origin: d === undefined ? el.element.node.origin : authored(d.valueSpan),
-          target: t,
-          message: `${animated ? 'an animation' : 'a transition'} of the glyph colour on ${ea.address}: another text's shadow composites over the text of ${under}, which the ${t} device draws into the shadow in its resting colour (TXT-FX)`,
-          manual: `Remove the ${animated ? 'animation' : 'transition'} from ${ea.address}, or the text-shadow that meets the text of ${under}, or build for web.`,
-          basis: 'computed-value',
-        }));
+      for (const [held, props, label] of [[colours, GLYPH_COLOR, 'the glyph colour'], [motions, MOTION, 'its motion or opacity']] as const) {
+        const reach = held.get(ea.address);
+        if (reach === undefined) continue;
+        const animated = ea.animations.some((a) => a.name !== 'none' && (analysis.keyframes.get(a.name)?.blocks ?? []).some((b) => b.values.some((v) => (props as readonly string[]).includes(v.property))));
+        const transitioned = props.some((p) => ea.listings.get(p as Longhand)?.mode === 'listed');
+        if (!animated && !transitioned) continue;
+        const longhand = animated ? 'animation-name' : 'transition-property';
+        const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+        for (const t of nativeTargets) {
+          const id = `${t}|${ea.address}|text-shadow-under|${label}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+            origin: d === undefined ? reach.el.element.node.origin : authored(d.valueSpan),
+            target: t,
+            message: `${animated ? 'an animation' : 'a transition'} of ${label} on ${ea.address}: ${reach.what} (TXT-FX, ${t})`,
+            manual: `Remove the ${animated ? 'animation' : 'transition'} from ${ea.address}, or the text-shadow that meets its text, or build for web.`,
+            basis: 'computed-value',
+          }));
+        }
       }
     }
   }

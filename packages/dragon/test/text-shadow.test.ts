@@ -305,6 +305,30 @@ describe('text-shadow', () => {
     expect(animated('.q { transition: color 1s; }', css.replace('margin: 0;', 'margin: 0 0 60px;'))).toEqual([]);
   });
 
+  it('composites over an earlier text only where its path paints and clips nothing, its glyphs are plain and nothing moves either', () => {
+    // u, wrapped in w, then a shadow from t reaching up over it.
+    const pair = (r: SourceRef) => [el(r, 'w', 'div', ['w'], [el(r, 'u', 'div', ['u'], [text(r, 'x', 'XX')])]), el(r, 't', 'div', ['t'], [text(r, 'y', 'XX')])];
+    const t = '.t { text-shadow: 0 -10px 6px rgba(200, 0, 0, 0.6); }';
+    expect(errorsIn(t, pair)).toEqual([]);
+    // An earlier text with four shadows of its own adds its glyph to the layer's work, not to its list.
+    expect(errorsIn(`${t} .u { text-shadow: 1px 1px red, 2px 2px red, 3px 3px red, 4px 4px red; }`, pair)).toEqual([]);
+    // A stacking context paints the earlier text after the later one's shadow; a clip cuts its shadows; a box's own paint is not in
+    // the layer's backdrop; a stroke or small capitals are not plain glyphs.
+    for (const w of ['isolation: isolate', 'overflow: hidden', 'background-color: rgb(250, 230, 200)', 'border-top: 1px solid red', 'clip-path: inset(0)']) {
+      expect(errorsIn(`${t} .w { ${w}; }`, pair), w).toEqual(NATIVE_REFUSED);
+    }
+    for (const u of ['-webkit-text-stroke: 1px black', 'font-variant-caps: small-caps']) {
+      expect(errorsIn(`${t} .u { ${u}; }`, pair).filter((e) => e.startsWith('ios') || e.startsWith('android')), u).toEqual(expect.arrayContaining(NATIVE_REFUSED));
+      const msg = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${t} .u { ${u}; }`, pair)).diagnostics.find((d) => d.target === 'ios' && d.message.startsWith('text-shadow'));
+      expect(msg?.message, u).toMatch(/the device cannot composite them: text u:text0 (is stroked|has small capitals)/);
+    }
+    // Moving or fading either text below the pair's common ancestor leaves the layer composited at rest.
+    const errors = (css: string): string[] => project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${t} ${css}`, pair)).diagnostics.filter((d) => d.severity === 'error' && (d.target === 'ios' || d.target === 'android')).map((d) => `${String(d.target)} ${/of its motion or opacity on (\w+)/.exec(d.message)?.[1] ?? d.message}`).sort();
+    expect(errors('.w { transition: transform 1s; }')).toEqual(['android w', 'ios w']);
+    expect(errors('@keyframes k { to { opacity: 0.5; } } .t { animation: k 1s; }')).toEqual(['android t', 'ios t']);
+    expect(errors('@keyframes k { to { transform: translateX(4px); } } body { animation: k 1s; }')).toEqual([]);
+  });
+
   it('refuses a shadow a relatively positioned inline box, a negative margin inside, or a shrinking px width may move into another text', () => {
     const shadow = 'text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);';
     // A span pulled up against the previous block (landing's repro).
@@ -337,6 +361,48 @@ describe('text-shadow', () => {
     expect(refused(`.a { ${shadow} } .p { position: relative; z-index: -1; }`, two('a', 'p', 'w'))).toEqual(NATIVE_REFUSED);
     // Without any of them the later plain block covers the shadow, as in Chrome.
     expect(refused(`.a { line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'w'))).toEqual([]);
+  });
+
+  it('decides tree order per pair, from the boxes below the pair\'s common ancestor: a positioned ancestor of both moves them together', () => {
+    // The shadowed heading over a paragraph under body { position: relative } or a relatively positioned wrapper of both: the
+    // paragraph still paints later and covers the shadow.
+    const h = '.h { font-size: 20px; margin: 0 0 10px; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }';
+    const heading = (r: SourceRef) => [el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')]), el(r, 'p', 'p', [], [text(r, 'u', 'XX')])];
+    expect(errorsIn(`body { position: relative; } ${h}`, heading)).toEqual([]);
+    const wrapped = (r: SourceRef) => [el(r, 'w', 'div', ['w'], heading(r))];
+    expect(errorsIn(`.w { position: relative; } ${h}`, wrapped)).toEqual([]);
+    expect(errorsIn(`.w { position: relative; z-index: 1; } ${h}`, wrapped)).toEqual([]);
+    expect(errorsIn(`.w { float: left; width: 100px; } ${h}`, wrapped)).toEqual([]);
+    // A positioned box below the common ancestor, around the paragraph alone, may paint it first: refused, body relative or not.
+    const one = (r: SourceRef) => [el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')]), el(r, 'w', 'div', ['w'], [el(r, 'p', 'p', [], [text(r, 'u', 'XX')])])];
+    expect(errorsIn(`.w { position: relative; z-index: -1; } ${h}`, one)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`body { position: relative; } .w { position: relative; z-index: -1; } ${h}`, one)).toEqual(NATIVE_REFUSED);
+    // Landing's five order cases, with each trigger below a positioned common ancestor (the wrapper w, and body): still refused.
+    const shadow = 'text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);';
+    const two = (cls: string, plain: string, wrap: string) => (r: SourceRef) => [el(r, 'f', 'div', wrap.split(' '), [el(r, 'a', 'div', [cls], [text(r, 't', 'XX')]), el(r, 'b', 'div', [plain], [text(r, 'u', 'XX')])])];
+    const refused = (css: string, body: (r: SourceRef) => TreeNode[]): string[] => [...new Set(errorsIn(`body { position: relative; } .r { position: relative; } ${css}`, body))];
+    expect(refused(`.f { display: flex; } .a { order: 1; ${shadow} }`, two('a', 'p', 'f r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.f { display: flex; } .a { z-index: 1; ${shadow} }`, two('a', 'p', 'f r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.f { display: flex; } .a { ${shadow} } .p { z-index: -1; }`, two('a', 'p', 'f r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { position: relative; line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { ${shadow} } .p { float: left; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
+    expect(refused(`.a { ${shadow} } .p { position: relative; z-index: -1; }`, two('a', 'p', 'r'))).toEqual(NATIVE_REFUSED);
+    // A static box that creates a stacking context paints in the z-index 0 layer, after the later paragraph's glyphs (landing's
+    // repros): the heading's shadow lands over them in Chrome, so each is refused, under a positioned body as well.
+    for (const box of ['isolation: isolate;', 'filter: brightness(1);', 'clip-path: inset(0);', 'will-change: opacity;', 'contain: paint;', 'contain: layout;', 'container-type: inline-size;', 'mask-image: linear-gradient(red, red);', 'perspective: 100px;', 'translate: 0;']) {
+      expect([...new Set(errorsIn(`${h} .h { ${box} }`, heading))], box).toEqual(NATIVE_REFUSED);
+      expect([...new Set(errorsIn(`body { position: relative; } ${h} .h { ${box} }`, heading))], box).toEqual(NATIVE_REFUSED);
+    }
+    // Translucent unshadowed text in a group (opacity under 1, or a transform), then a later text with a hard shadow: the group
+    // paints after the shadow, its translucent glyphs over it.
+    const later = (r: SourceRef) => [el(r, 'g', 'div', ['g'], [text(r, 't', 'XX')]), el(r, 's', 'div', ['s'], [text(r, 'u', 'XX')])];
+    const hard = '.g { line-height: 12px; color: rgba(0, 0, 0, 0.5); } .s { line-height: 12px; text-shadow: 0 -6px 0 #000; }';
+    expect([...new Set(errorsIn(hard, later))]).toEqual([]);
+    expect([...new Set(errorsIn(`${hard} .g { opacity: 0.99; }`, later))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(`${hard} .g { transform: translateX(0px); }`, later))]).toEqual(NATIVE_REFUSED);
+    // And without a trigger below it, the positioned wrapper changes nothing.
+    expect(refused(`.a { line-height: 12px; ${shadow} } .p { line-height: 12px; }`, two('a', 'p', 'r'))).toEqual([]);
+    expect(refused(`.f { display: flex; } .a { ${shadow} }`, two('a', 'p', 'f r'))).toEqual([]);
   });
 
   it('refuses a column flex item that may shrink below its text (min-height 0), and keeps one at min-height auto', () => {
