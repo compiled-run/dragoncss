@@ -514,6 +514,54 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   }
 }
 
+// TXT-TW (css-text-4 §5.1): text-wrap-style balance and pretty, which Chrome reads from the block container's own style, are laid out
+// by the engine's port of Chrome's passes (layout inline.ts wrapStyleLines) only where fixture group text-wrap proves them: one Ahem
+// text run of whole-px font size directly in a block container (no inline box, <br>, atomic inline, block sibling or list marker),
+// collapsed white space that wraps at normal opportunities, no letter- or word-spacing, soft hyphen or small caps, and no
+// text-indent, text-align: justify, line clamp or truncation. Every target refuses the rest at the declaration, once per container.
+function checkTextWrapStyle(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean): void {
+  const value = el.props.get('text-wrap-style') as ResolvedValue;
+  const kind = keywordOf(value);
+  if ((kind !== 'balance' && kind !== 'pretty') || isInlineBox(el) || isContents(el) || !holdsInlineContent(el)) return;
+  const runs = inlineContexts(el, () => {});
+  const items = runs.flat();
+  const texts = items.filter((it): it is { readonly kind: 'text'; readonly text: ResolvedText } => it.kind === 'text');
+  const text = texts.length === 1 ? (texts[0] as { readonly text: ResolvedText }).text : null;
+  const display = displayKeyword(el);
+  const blockChild = boxKids(el).find((c): c is ResolvedElement => c.kind === 'element' && displayKeyword(c) !== 'none' && !isInlineBox(c) && !isAtomic(c));
+  type TextProp = Parameters<ResolvedText['props']['get']>[0];
+  const textKeyword = (p: TextProp): string => (text === null ? '' : keywordOf(text.props.get(p) as ResolvedValue));
+  const size = (el.props.get('font-size') as ResolvedValue).value;
+  const spacing = (p: TextProp): boolean => {
+    const v = text === null ? null : (text.props.get(p) as ResolvedValue).value;
+    return v !== null && !(v.kind === 'keyword' && v.value === 'normal') && !isZeroLength(v);
+  };
+  let beside = '';
+  if (['flex', 'grid', 'inline-flex', 'inline-grid'].includes(display)) beside = `with text directly in the ${display} container, which Chrome wraps in an anonymous item`;
+  else if (display === 'list-item') beside = 'on a list item';
+  else if (blockChild !== undefined) beside = `with text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, which Chrome wraps in anonymous blocks`;
+  else if (text === null || items.some((it) => it.kind !== 'text')) beside = 'beside an inline box, a <br>, an atomic inline or another text run';
+  else if (shapedAt(text.node.address)) beside = 'in a real face';
+  else if (!(size.kind === 'length' && size.unit === 'px' && Number.isInteger(size.value))) beside = 'at a font size other than whole px';
+  else if (textKeyword('white-space-collapse') !== 'collapse' || textKeyword('text-wrap-mode') !== 'wrap') beside = 'with preserved white space or without wrapping';
+  else if (textKeyword('overflow-wrap') !== 'normal' || textKeyword('word-break') !== 'normal' || keywordOf(el.props.get('line-break') as ResolvedValue) !== 'auto') beside = 'with overflow-wrap, word-break or line-break';
+  else if (spacing('letter-spacing') || spacing('word-spacing')) beside = 'with letter-spacing or word-spacing';
+  else if (keywordOf(el.props.get('font-variant-caps') as ResolvedValue) !== 'normal') beside = 'with font-variant-caps';
+  else if (text.text.includes('\u00ad')) beside = 'with a soft hyphen';
+  else if (!isZeroLength((el.props.get('text-indent') as ResolvedValue).value)) beside = 'with text-indent';
+  else if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') beside = 'with text-align: justify';
+  else if (lineClampOf(el) > 0) beside = 'with -webkit-line-clamp';
+  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) beside = 'with text-overflow: ellipsis';
+  if (beside === '') return;
+  const id = `text-wrap-style|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  const origin = value.declaration !== null ? authored(value.declaration.valueSpan) : el.element.node.origin;
+  for (const t of targets) {
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `text-wrap-style: ${kind} on ${el.element.address} ${beside} is not proven against Chrome yet`, manual: `Use text-wrap-style: auto on ${el.element.address}, or put its text in a block of its own as one run of Ahem text.`, basis: 'computed-value' }));
+  }
+}
+
 // TXT2-i (css-text-3 §6.1): the engine always breaks as hyphens: manual, after a soft hyphen with a hyphen shown. auto is the same
 // in Chrome without a content language (notes/T149-txt2-spec.md R14), and none is the same on text without a soft hyphen; none on
 // text that holds one is refused for every target until the engine honours it. Planted fault noneSoftHyphenAccepted accepts it.
@@ -1205,6 +1253,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
+      checkTextWrapStyle(el, targets, diagnostics, reported, shapedAt);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
       checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
       // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).

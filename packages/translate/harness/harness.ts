@@ -55,6 +55,7 @@ import type {
   SizeValue,
   TextAlign,
   TextOverflow,
+  TextWrapStyle,
   TextLeaf,
   TextWrapMode,
   WhiteSpaceCollapse,
@@ -645,12 +646,26 @@ function aspectRatioValue(v: JsonValue, path: string): AspectRatioValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+function textWrapStyleValue(v: JsonValue, path: string): TextWrapStyle {
+  const k = kindOf(v, path);
+  if (k === 'auto') {
+    obj(v, ['kind'], path);
+    return { kind: 'auto' };
+  }
+  if (k === 'balance' || k === 'pretty') {
+    const o = obj(v, ['kind', 'zoom'], path);
+    const zoom = numField(o, 'zoom', path);
+    return k === 'balance' ? { kind: 'balance', zoom } : { kind: 'pretty', zoom };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 const STYLE_KEYS: readonly string[] = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'textWrapStyle', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -853,6 +868,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     textIndent: paddingValue(f('textIndent'), p('textIndent')),
     lineClamp: num(f('lineClamp'), p('lineClamp')),
+    textWrapStyle: textWrapStyleValue(f('textWrapStyle'), p('textWrapStyle')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -1026,7 +1042,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'wrapStyleGreedy',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1117,6 +1133,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampHeightIncludesHiddenLines: b('clampHeightIncludesHiddenLines'),
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
+    wrapStyleGreedy: b('wrapStyleGreedy'),
   };
 }
 

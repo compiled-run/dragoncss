@@ -183,6 +183,16 @@ export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
 /**
+ * css-text-4 §5.1 text-wrap-style of a block container, which Blink reads from the block's own style (inline_layout_algorithm.cc
+ * LineBreakStrategy): auto breaks greedily (stable is auto); balance and pretty run Blink's own line-breaking passes (inline.ts
+ * wrapStyleLines), whose penalties read the block's effective zoom (ScoreLineBreaker::SetupParameters). zoom is 1 in the compiler's
+ * input; the environment pass multiplies it by the device pixel ratio, as Chrome's effective zoom is the device scale factor.
+ */
+export type TextWrapStyle =
+  | Auto
+  | { readonly kind: 'balance'; readonly zoom: number }
+  | { readonly kind: 'pretty'; readonly zoom: number };
+/**
  * css-text-3 §8.1 text-indent: <length-percentage>, negative allowed, on the first formatted line of a block container. A percentage
  * is of the line's available inline size, and of nothing (0) at min-content and max-content (Blink LineBreaker::ComputeTextIndent).
  */
@@ -353,6 +363,7 @@ export type LayoutStyle = {
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
    */
   readonly lineClamp: number;
+  readonly textWrapStyle: TextWrapStyle;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */

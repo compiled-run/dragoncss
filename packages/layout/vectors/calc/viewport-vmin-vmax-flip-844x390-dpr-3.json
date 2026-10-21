@@ -149,6 +149,9 @@
      "value": 0
     },
     "lineClamp": 0,
+    "textWrapStyle": {
+     "kind": "auto"
+    },
     "grid": null,
     "gridItem": null
    },
@@ -276,6 +279,9 @@
        "value": 0
       },
       "lineClamp": 0,
+      "textWrapStyle": {
+       "kind": "auto"
+      },
       "grid": null,
       "gridItem": null
      },
@@ -417,6 +423,9 @@
          "value": 0
         },
         "lineClamp": 0,
+        "textWrapStyle": {
+         "kind": "auto"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -559,6 +568,9 @@
          "value": 0
         },
         "lineClamp": 0,
+        "textWrapStyle": {
+         "kind": "auto"
+        },
         "grid": null,
         "gridItem": null
        },

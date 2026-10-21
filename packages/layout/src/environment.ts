@@ -45,6 +45,7 @@ import type {
   SafeAreaInsets,
   SizeValue,
   TextLeaf,
+  TextWrapStyle,
   TrackBreadth,
   TrackRepeater,
   TrackSize,
@@ -321,8 +322,16 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     columnGap: resolveGap(s.columnGap, env),
     verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
     textIndent: envPadding(s.textIndent, env),
+    textWrapStyle: resolveTextWrapStyle(s.textWrapStyle, env),
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
   };
+}
+
+/** text-wrap-style balance and pretty at the block's effective zoom, a float: the device pixel ratio (ComputedStyle::EffectiveZoom). */
+function resolveTextWrapStyle(v: TextWrapStyle, env: Env): TextWrapStyle {
+  if (v.kind === 'balance') return { kind: 'balance', zoom: Math.fround(v.zoom * env.zoom) };
+  if (v.kind === 'pretty') return { kind: 'pretty', zoom: Math.fround(v.zoom * env.zoom) };
+  return v;
 }
 
 function resolveVerticalAlign(v: VerticalAlignValue, env: Env): VerticalAlignValue {

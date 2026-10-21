@@ -202,6 +202,8 @@ export type EngineFaults = {
   readonly clampEllipsisMissingWhenLineFits: boolean;
   /** TXT2-g: line N gets an ellipsis even when it is the last line (Blink relayouts without the clamp when nothing follows). */
   readonly clampEllipsisOnExactLastLine: boolean;
+  /** TXT-TW: text-wrap-style balance and pretty lay lines out greedily, as auto does (inline.ts wrapStyleLines). */
+  readonly wrapStyleGreedy: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -287,6 +289,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampHeightIncludesHiddenLines: false,
   clampEllipsisMissingWhenLineFits: false,
   clampEllipsisOnExactLastLine: false,
+  wrapStyleGreedy: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
