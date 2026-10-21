@@ -21,7 +21,7 @@ export type OrdinalNode = {
   readonly box: 'box' | 'contents' | 'none';
   /** Its display is list-item (the box is a LayoutListItem). Meaningful only with box 'box'. */
   readonly listItem: boolean;
-  /** Its style applies style containment (contain: style, content or strict), which makes it a list owner. */
+  /** Its style applies style containment (contain: style, content or strict, or a size or inline-size container-type): a list owner. */
   readonly styleContainment: boolean;
   /** The static attributes; a missing name is an absent attribute, '' a present empty one. */
   readonly attributes: ReadonlyMap<string, string>;

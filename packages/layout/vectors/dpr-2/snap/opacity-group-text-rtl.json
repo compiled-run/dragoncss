@@ -1,0 +1,705 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 17408
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 17408
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 17408
+  },
+  {
+   "id": "row1",
+   "parent": "stage",
+   "x": 2048,
+   "y": 1024,
+   "width": 47104,
+   "height": 4096
+  },
+  {
+   "id": "og-a",
+   "parent": "row1",
+   "x": 43008,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-a:text0",
+   "parent": "og-a",
+   "x": 2048,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "og-a:text0:line0",
+   "parent": "og-a:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "sp1a",
+   "parent": "row1",
+   "x": 40960,
+   "y": 0,
+   "width": 2048,
+   "height": 4096
+  },
+  {
+   "id": "og-b",
+   "parent": "row1",
+   "x": 36864,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-b:text0",
+   "parent": "og-b",
+   "x": 2048,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "og-b:text0:line0",
+   "parent": "og-b:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "sp1b",
+   "parent": "row1",
+   "x": 35840,
+   "y": 0,
+   "width": 1024,
+   "height": 4096
+  },
+  {
+   "id": "og-d",
+   "parent": "row1",
+   "x": 31744,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-d:text0",
+   "parent": "og-d",
+   "x": 0,
+   "y": 0,
+   "width": 4096,
+   "height": 2048
+  },
+  {
+   "id": "og-d:text0:line0",
+   "parent": "og-d:text0",
+   "x": 0,
+   "y": 0,
+   "width": 4096,
+   "height": 2048
+  },
+  {
+   "id": "row2",
+   "parent": "stage",
+   "x": 2048,
+   "y": 6656,
+   "width": 47104,
+   "height": 4096
+  },
+  {
+   "id": "og-e",
+   "parent": "row2",
+   "x": 43008,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-e:text0",
+   "parent": "og-e",
+   "x": 2048,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "og-e:text0:line0",
+   "parent": "og-e:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "sp2a",
+   "parent": "row2",
+   "x": 40960,
+   "y": 0,
+   "width": 2048,
+   "height": 4096
+  },
+  {
+   "id": "og-f",
+   "parent": "row2",
+   "x": 36864,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-f:text0",
+   "parent": "og-f",
+   "x": 0,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-f:text0:line0",
+   "parent": "og-f:text0",
+   "x": 0,
+   "y": 0,
+   "width": 4096,
+   "height": 2048
+  },
+  {
+   "id": "og-f:text0:line1",
+   "parent": "og-f:text0",
+   "x": 2048,
+   "y": 2048,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "sp2b",
+   "parent": "row2",
+   "x": 35840,
+   "y": 0,
+   "width": 1024,
+   "height": 4096
+  },
+  {
+   "id": "og-g",
+   "parent": "row2",
+   "x": 31744,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-g:text0",
+   "parent": "og-g",
+   "x": 2048,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "og-g:text0:line0",
+   "parent": "og-g:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "row3",
+   "parent": "stage",
+   "x": 2048,
+   "y": 12288,
+   "width": 47104,
+   "height": 4096
+  },
+  {
+   "id": "og-h",
+   "parent": "row3",
+   "x": 43008,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-h:text0",
+   "parent": "og-h",
+   "x": 2048,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "og-h:text0:line0",
+   "parent": "og-h:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "sp3a",
+   "parent": "row3",
+   "x": 40960,
+   "y": 0,
+   "width": 2048,
+   "height": 4096
+  },
+  {
+   "id": "og-i",
+   "parent": "row3",
+   "x": 36864,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-i:text0",
+   "parent": "og-i",
+   "x": 2048,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "og-i:text0:line0",
+   "parent": "og-i:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "sp3b",
+   "parent": "row3",
+   "x": 35840,
+   "y": 0,
+   "width": 1024,
+   "height": 4096
+  },
+  {
+   "id": "og-j",
+   "parent": "row3",
+   "x": 31744,
+   "y": 0,
+   "width": 4096,
+   "height": 4096
+  },
+  {
+   "id": "og-j:text0",
+   "parent": "og-j",
+   "x": 2048,
+   "y": 0,
+   "width": 2048,
+   "height": 4096
+  },
+  {
+   "id": "og-j:text0:line0",
+   "parent": "og-j:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "og-j:text0:line1",
+   "parent": "og-j:text0",
+   "x": 0,
+   "y": 2048,
+   "width": 2048,
+   "height": 2048
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 272,
+   "width": 800,
+   "height": 272
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 272,
+   "width": 800,
+   "height": 272
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 272,
+   "width": 800,
+   "height": 272
+  },
+  {
+   "id": "row1",
+   "left": 32,
+   "top": 16,
+   "right": 768,
+   "bottom": 80,
+   "width": 736,
+   "height": 64
+  },
+  {
+   "id": "og-a",
+   "left": 704,
+   "top": 16,
+   "right": 768,
+   "bottom": 80,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-a:text0",
+   "left": 736,
+   "top": 16,
+   "right": 768,
+   "bottom": 48,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "og-a:text0:line0",
+   "left": 736,
+   "top": 16,
+   "right": 768,
+   "bottom": 48,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "sp1a",
+   "left": 672,
+   "top": 16,
+   "right": 704,
+   "bottom": 80,
+   "width": 32,
+   "height": 64
+  },
+  {
+   "id": "og-b",
+   "left": 608,
+   "top": 16,
+   "right": 672,
+   "bottom": 80,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-b:text0",
+   "left": 640,
+   "top": 16,
+   "right": 672,
+   "bottom": 48,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "og-b:text0:line0",
+   "left": 640,
+   "top": 16,
+   "right": 672,
+   "bottom": 48,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "sp1b",
+   "left": 592,
+   "top": 16,
+   "right": 608,
+   "bottom": 80,
+   "width": 16,
+   "height": 64
+  },
+  {
+   "id": "og-d",
+   "left": 528,
+   "top": 16,
+   "right": 592,
+   "bottom": 80,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-d:text0",
+   "left": 528,
+   "top": 16,
+   "right": 592,
+   "bottom": 48,
+   "width": 64,
+   "height": 32
+  },
+  {
+   "id": "og-d:text0:line0",
+   "left": 528,
+   "top": 16,
+   "right": 592,
+   "bottom": 48,
+   "width": 64,
+   "height": 32
+  },
+  {
+   "id": "row2",
+   "left": 32,
+   "top": 104,
+   "right": 768,
+   "bottom": 168,
+   "width": 736,
+   "height": 64
+  },
+  {
+   "id": "og-e",
+   "left": 704,
+   "top": 104,
+   "right": 768,
+   "bottom": 168,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-e:text0",
+   "left": 736,
+   "top": 104,
+   "right": 768,
+   "bottom": 136,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "og-e:text0:line0",
+   "left": 736,
+   "top": 104,
+   "right": 768,
+   "bottom": 136,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "sp2a",
+   "left": 672,
+   "top": 104,
+   "right": 704,
+   "bottom": 168,
+   "width": 32,
+   "height": 64
+  },
+  {
+   "id": "og-f",
+   "left": 608,
+   "top": 104,
+   "right": 672,
+   "bottom": 168,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-f:text0",
+   "left": 608,
+   "top": 104,
+   "right": 672,
+   "bottom": 168,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-f:text0:line0",
+   "left": 608,
+   "top": 104,
+   "right": 672,
+   "bottom": 136,
+   "width": 64,
+   "height": 32
+  },
+  {
+   "id": "og-f:text0:line1",
+   "left": 640,
+   "top": 136,
+   "right": 672,
+   "bottom": 168,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "sp2b",
+   "left": 592,
+   "top": 104,
+   "right": 608,
+   "bottom": 168,
+   "width": 16,
+   "height": 64
+  },
+  {
+   "id": "og-g",
+   "left": 528,
+   "top": 104,
+   "right": 592,
+   "bottom": 168,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-g:text0",
+   "left": 560,
+   "top": 104,
+   "right": 592,
+   "bottom": 136,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "og-g:text0:line0",
+   "left": 560,
+   "top": 104,
+   "right": 592,
+   "bottom": 136,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "row3",
+   "left": 32,
+   "top": 192,
+   "right": 768,
+   "bottom": 256,
+   "width": 736,
+   "height": 64
+  },
+  {
+   "id": "og-h",
+   "left": 704,
+   "top": 192,
+   "right": 768,
+   "bottom": 256,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-h:text0",
+   "left": 736,
+   "top": 192,
+   "right": 768,
+   "bottom": 224,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "og-h:text0:line0",
+   "left": 736,
+   "top": 192,
+   "right": 768,
+   "bottom": 224,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "sp3a",
+   "left": 672,
+   "top": 192,
+   "right": 704,
+   "bottom": 256,
+   "width": 32,
+   "height": 64
+  },
+  {
+   "id": "og-i",
+   "left": 608,
+   "top": 192,
+   "right": 672,
+   "bottom": 256,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-i:text0",
+   "left": 640,
+   "top": 192,
+   "right": 672,
+   "bottom": 224,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "og-i:text0:line0",
+   "left": 640,
+   "top": 192,
+   "right": 672,
+   "bottom": 224,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "sp3b",
+   "left": 592,
+   "top": 192,
+   "right": 608,
+   "bottom": 256,
+   "width": 16,
+   "height": 64
+  },
+  {
+   "id": "og-j",
+   "left": 528,
+   "top": 192,
+   "right": 592,
+   "bottom": 256,
+   "width": 64,
+   "height": 64
+  },
+  {
+   "id": "og-j:text0",
+   "left": 560,
+   "top": 192,
+   "right": 592,
+   "bottom": 256,
+   "width": 32,
+   "height": 64
+  },
+  {
+   "id": "og-j:text0:line0",
+   "left": 560,
+   "top": 192,
+   "right": 592,
+   "bottom": 224,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "og-j:text0:line1",
+   "left": 560,
+   "top": 224,
+   "right": 592,
+   "bottom": 256,
+   "width": 32,
+   "height": 32
+  }
+ ]
+}

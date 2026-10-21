@@ -1,0 +1,1362 @@
+{
+ "schema": "dragon-resize-capture/1",
+ "case": "text-font-size-vw-boxes-rtl~resize",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2.625,
+ "direction": "rtl",
+ "start": {
+  "width": 400,
+  "height": 304
+ },
+ "steps": [
+  {
+   "kind": "resize",
+   "width": 304,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 352,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 304,
+   "height": 400
+  },
+  {
+   "kind": "resize",
+   "width": 368,
+   "height": 336
+  },
+  {
+   "kind": "resize",
+   "width": 320,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 400,
+   "height": 304
+  }
+ ],
+ "samples": [
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 214.35714721679688,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 204.35714721679688,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 368,
+     "y": 0,
+     "width": 32,
+     "height": 16,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 360,
+     "y": 16,
+     "width": 40,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 36,
+     "width": 400,
+     "height": 28,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 344,
+     "y": 36,
+     "width": 56,
+     "height": 28,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 64,
+     "width": 400,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "d1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 361.76190185546875,
+     "y": 64,
+     "width": 38.238094329833984,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "e",
+     "kind": "element",
+     "hasBox": true,
+     "x": 363.5238037109375,
+     "y": 83.11904907226562,
+     "width": 36.476192474365234,
+     "height": 18.238096237182617,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "f",
+     "kind": "element",
+     "hasBox": true,
+     "x": 376,
+     "y": 101.35714721679688,
+     "width": 24,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 121.35714721679688,
+     "width": 400,
+     "height": 51,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "g1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 328,
+     "y": 121.35714721679688,
+     "width": 56,
+     "height": 18,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    },
+    {
+     "id": "g2",
+     "kind": "element",
+     "hasBox": true,
+     "x": 368,
+     "y": 147.35714721679688,
+     "width": 32,
+     "height": 16,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g3",
+     "kind": "element",
+     "hasBox": true,
+     "x": 382,
+     "y": 163.35714721679688,
+     "width": 18,
+     "height": 9,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "h",
+     "kind": "element",
+     "hasBox": true,
+     "x": 310,
+     "y": 182.35714721679688,
+     "width": 70,
+     "height": 22,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 304,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 182.1666717529297,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 174.1666717529297,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 279.6845397949219,
+     "y": 0,
+     "width": 24.31547737121582,
+     "height": 12.154762268066406,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 272,
+     "y": 12.154762268066406,
+     "width": 32,
+     "height": 16,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 28.154762268066406,
+     "width": 304,
+     "height": 26.077381134033203,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 251.84524536132812,
+     "y": 28.154762268066406,
+     "width": 52.154762268066406,
+     "height": 26.077381134033203,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 54.23214340209961,
+     "width": 304,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "d1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 265.76190185546875,
+     "y": 54.23214340209961,
+     "width": 38.238094329833984,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "e",
+     "kind": "element",
+     "hasBox": true,
+     "x": 267.5238037109375,
+     "y": 73.35118865966797,
+     "width": 36.476192474365234,
+     "height": 18.238096237182617,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "f",
+     "kind": "element",
+     "hasBox": true,
+     "x": 285.76190185546875,
+     "y": 91.58928680419922,
+     "width": 18.238096237182617,
+     "height": 9.119048118591309,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 106.78571319580078,
+     "width": 304,
+     "height": 41.38095474243164,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "g1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 249.29762268066406,
+     "y": 106.78571319580078,
+     "width": 42.5476188659668,
+     "height": 14.148809432983398,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    },
+    {
+     "id": "g2",
+     "kind": "element",
+     "hasBox": true,
+     "x": 279.6845397949219,
+     "y": 127.01190948486328,
+     "width": 24.31547737121582,
+     "height": 12.154762268066406,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g3",
+     "kind": "element",
+     "hasBox": true,
+     "x": 286,
+     "y": 139.1666717529297,
+     "width": 18,
+     "height": 9,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "h",
+     "kind": "element",
+     "hasBox": true,
+     "x": 232,
+     "y": 156.1666717529297,
+     "width": 56,
+     "height": 18,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 352,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 197.0357208251953,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 188.23809814453125,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 323.8452453613281,
+     "y": 0,
+     "width": 28.154762268066406,
+     "height": 14.077381134033203,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 316.8035888671875,
+     "y": 14.077381134033203,
+     "width": 35.19643020629883,
+     "height": 17.595237731933594,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 31.672618865966797,
+     "width": 352,
+     "height": 27.035715103149414,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 297.9226379394531,
+     "y": 31.672618865966797,
+     "width": 54.0773811340332,
+     "height": 27.035715103149414,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 58.708335876464844,
+     "width": 352,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "d1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 313.76190185546875,
+     "y": 58.708335876464844,
+     "width": 38.238094329833984,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "e",
+     "kind": "element",
+     "hasBox": true,
+     "x": 315.5238037109375,
+     "y": 77.82738494873047,
+     "width": 36.476192474365234,
+     "height": 18.238096237182617,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "f",
+     "kind": "element",
+     "hasBox": true,
+     "x": 330.8809509277344,
+     "y": 96.06547546386719,
+     "width": 21.119047164916992,
+     "height": 10.559523582458496,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 113.66071319580078,
+     "width": 352,
+     "height": 46.18452453613281,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "g1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 288.6488037109375,
+     "y": 113.66071319580078,
+     "width": 49.27381134033203,
+     "height": 16.071428298950195,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    },
+    {
+     "id": "g2",
+     "kind": "element",
+     "hasBox": true,
+     "x": 323.8452453613281,
+     "y": 136.76785278320312,
+     "width": 28.154762268066406,
+     "height": 14.077381134033203,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g3",
+     "kind": "element",
+     "hasBox": true,
+     "x": 334,
+     "y": 150.84524536132812,
+     "width": 18,
+     "height": 9,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "h",
+     "kind": "element",
+     "hasBox": true,
+     "x": 272.8095397949219,
+     "y": 168.64285278320312,
+     "width": 61.595237731933594,
+     "height": 19.595237731933594,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 304,
+    "height": 400
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 187.92857360839844,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 179.92857360839844,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 279.6845397949219,
+     "y": 0,
+     "width": 24.31547737121582,
+     "height": 12.154762268066406,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 272,
+     "y": 12.154762268066406,
+     "width": 32,
+     "height": 16,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 28.154762268066406,
+     "width": 304,
+     "height": 26.077381134033203,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 251.84524536132812,
+     "y": 28.154762268066406,
+     "width": 52.154762268066406,
+     "height": 26.077381134033203,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 54.23214340209961,
+     "width": 304,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "d1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 265.76190185546875,
+     "y": 54.23214340209961,
+     "width": 38.238094329833984,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "e",
+     "kind": "element",
+     "hasBox": true,
+     "x": 256,
+     "y": 73.35118865966797,
+     "width": 48,
+     "height": 24,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "f",
+     "kind": "element",
+     "hasBox": true,
+     "x": 285.76190185546875,
+     "y": 97.35118865966797,
+     "width": 18.238096237182617,
+     "height": 9.119048118591309,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 112.54762268066406,
+     "width": 304,
+     "height": 41.38095474243164,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "g1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 249.29762268066406,
+     "y": 112.54762268066406,
+     "width": 42.5476188659668,
+     "height": 14.148809432983398,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    },
+    {
+     "id": "g2",
+     "kind": "element",
+     "hasBox": true,
+     "x": 279.6845397949219,
+     "y": 132.77381896972656,
+     "width": 24.31547737121582,
+     "height": 12.154762268066406,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g3",
+     "kind": "element",
+     "hasBox": true,
+     "x": 286,
+     "y": 144.92857360839844,
+     "width": 18,
+     "height": 9,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "h",
+     "kind": "element",
+     "hasBox": true,
+     "x": 232,
+     "y": 161.92857360839844,
+     "width": 56,
+     "height": 18,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 368,
+    "height": 336
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 368,
+     "height": 205.6607208251953,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 368,
+     "height": 196.46429443359375,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 338.56549072265625,
+     "y": 0,
+     "width": 29.434524536132812,
+     "height": 14.714285850524902,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 331.202392578125,
+     "y": 14.714285850524902,
+     "width": 36.7976188659668,
+     "height": 18.3988094329834,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 33.113094329833984,
+     "width": 368,
+     "height": 27.35714340209961,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 313.28570556640625,
+     "y": 33.113094329833984,
+     "width": 54.71428680419922,
+     "height": 27.35714340209961,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 60.470237731933594,
+     "width": 368,
+     "height": 20.077381134033203,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "d1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 327.8452453613281,
+     "y": 60.470237731933594,
+     "width": 40.154762268066406,
+     "height": 20.077381134033203,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "e",
+     "kind": "element",
+     "hasBox": true,
+     "x": 327.6845397949219,
+     "y": 80.54762268066406,
+     "width": 40.31547546386719,
+     "height": 20.154762268066406,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "f",
+     "kind": "element",
+     "hasBox": true,
+     "x": 345.9226379394531,
+     "y": 100.70238494873047,
+     "width": 22.077381134033203,
+     "height": 11.035714149475098,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 119.0952377319336,
+     "width": 368,
+     "height": 47.78571701049805,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "g1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 301.7738037109375,
+     "y": 119.0952377319336,
+     "width": 51.511905670166016,
+     "height": 16.71428680419922,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    },
+    {
+     "id": "g2",
+     "kind": "element",
+     "hasBox": true,
+     "x": 338.56549072265625,
+     "y": 143.1666717529297,
+     "width": 29.434524536132812,
+     "height": 14.714285850524902,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g3",
+     "kind": "element",
+     "hasBox": true,
+     "x": 350,
+     "y": 157.88095092773438,
+     "width": 18,
+     "height": 9,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "h",
+     "kind": "element",
+     "hasBox": true,
+     "x": 285.21429443359375,
+     "y": 176.07737731933594,
+     "width": 64.38690948486328,
+     "height": 20.386905670166016,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 320,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 185.5357208251953,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 177.5357208251953,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 294.4047546386719,
+     "y": 0,
+     "width": 25.595237731933594,
+     "height": 12.797618865966797,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 288,
+     "y": 12.797618865966797,
+     "width": 32,
+     "height": 16,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 28.797618865966797,
+     "width": 320,
+     "height": 26.3988094329834,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 267.202392578125,
+     "y": 28.797618865966797,
+     "width": 52.7976188659668,
+     "height": 26.3988094329834,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 55.19643020629883,
+     "width": 320,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "d1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 281.76190185546875,
+     "y": 55.19643020629883,
+     "width": 38.238094329833984,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "e",
+     "kind": "element",
+     "hasBox": true,
+     "x": 283.5238037109375,
+     "y": 74.31547546386719,
+     "width": 36.476192474365234,
+     "height": 18.238096237182617,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "f",
+     "kind": "element",
+     "hasBox": true,
+     "x": 300.8035888671875,
+     "y": 92.55357360839844,
+     "width": 19.196428298950195,
+     "height": 9.59523868560791,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 108.54762268066406,
+     "width": 320,
+     "height": 42.988094329833984,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "g1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 262.41070556640625,
+     "y": 108.54762268066406,
+     "width": 44.79166793823242,
+     "height": 14.791666984558105,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    },
+    {
+     "id": "g2",
+     "kind": "element",
+     "hasBox": true,
+     "x": 294.4047546386719,
+     "y": 129.73809814453125,
+     "width": 25.595237731933594,
+     "height": 12.797618865966797,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g3",
+     "kind": "element",
+     "hasBox": true,
+     "x": 302,
+     "y": 142.5357208251953,
+     "width": 18,
+     "height": 9,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "h",
+     "kind": "element",
+     "hasBox": true,
+     "x": 248,
+     "y": 159.5357208251953,
+     "width": 56,
+     "height": 18,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 214.35714721679688,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 204.35714721679688,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 368,
+     "y": 0,
+     "width": 32,
+     "height": 16,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 360,
+     "y": 16,
+     "width": 40,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "c",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 36,
+     "width": 400,
+     "height": 28,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 344,
+     "y": 36,
+     "width": 56,
+     "height": 28,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "d",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 64,
+     "width": 400,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "d1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 361.76190185546875,
+     "y": 64,
+     "width": 38.238094329833984,
+     "height": 19.119047164916992,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "e",
+     "kind": "element",
+     "hasBox": true,
+     "x": 363.5238037109375,
+     "y": 83.11904907226562,
+     "width": 36.476192474365234,
+     "height": 18.238096237182617,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "f",
+     "kind": "element",
+     "hasBox": true,
+     "x": 376,
+     "y": 101.35714721679688,
+     "width": 24,
+     "height": 12,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 121.35714721679688,
+     "width": 400,
+     "height": 51,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "g1",
+     "kind": "element",
+     "hasBox": true,
+     "x": 328,
+     "y": 121.35714721679688,
+     "width": 56,
+     "height": 18,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    },
+    {
+     "id": "g2",
+     "kind": "element",
+     "hasBox": true,
+     "x": 368,
+     "y": 147.35714721679688,
+     "width": 32,
+     "height": 16,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "g3",
+     "kind": "element",
+     "hasBox": true,
+     "x": 382,
+     "y": 163.35714721679688,
+     "width": 18,
+     "height": 9,
+     "computed": {
+      "background-color": "rgb(154, 208, 236)"
+     }
+    },
+    {
+     "id": "h",
+     "kind": "element",
+     "hasBox": true,
+     "x": 310,
+     "y": 182.35714721679688,
+     "width": 70,
+     "height": 22,
+     "computed": {
+      "background-color": "rgb(232, 211, 106)"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 12824
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 12824
+  },
+  {
+   "id": "x",
+   "parent": "body",
+   "x": 1680,
+   "y": 2016,
+   "width": 24360,
+   "height": 8792
+  },
+  {
+   "id": "k",
+   "parent": "x",
+   "x": 1260,
+   "y": 1680,
+   "width": 21840,
+   "height": 3248
+  },
+  {
+   "id": "row",
+   "parent": "x",
+   "x": 1260,
+   "y": 5432,
+   "width": 21840,
+   "height": 2352
+  },
+  {
+   "id": "ca",
+   "parent": "row",
+   "x": 0,
+   "y": 0,
+   "width": 6720,
+   "height": 2352
+  },
+  {
+   "id": "gap",
+   "parent": "row",
+   "x": 6720,
+   "y": 0,
+   "width": 1680,
+   "height": 2352
+  },
+  {
+   "id": "cb",
+   "parent": "row",
+   "x": 8400,
+   "y": 0,
+   "width": 6720,
+   "height": 2352
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 200,
+   "width": 1050,
+   "height": 200
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 200,
+   "width": 1050,
+   "height": 200
+  },
+  {
+   "id": "x",
+   "left": 26,
+   "top": 32,
+   "right": 407,
+   "bottom": 169,
+   "width": 381,
+   "height": 137
+  },
+  {
+   "id": "k",
+   "left": 46,
+   "top": 58,
+   "right": 387,
+   "bottom": 109,
+   "width": 341,
+   "height": 51
+  },
+  {
+   "id": "row",
+   "left": 46,
+   "top": 116,
+   "right": 387,
+   "bottom": 153,
+   "width": 341,
+   "height": 37
+  },
+  {
+   "id": "ca",
+   "left": 46,
+   "top": 116,
+   "right": 151,
+   "bottom": 153,
+   "width": 105,
+   "height": 37
+  },
+  {
+   "id": "gap",
+   "left": 151,
+   "top": 116,
+   "right": 177,
+   "bottom": 153,
+   "width": 26,
+   "height": 37
+  },
+  {
+   "id": "cb",
+   "left": 177,
+   "top": 116,
+   "right": 282,
+   "bottom": 153,
+   "width": 105,
+   "height": 37
+  }
+ ]
+}

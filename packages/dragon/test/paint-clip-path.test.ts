@@ -1,7 +1,7 @@
 // MASK-CLIP clip-path: the longhand (none or inset() with one to four length-or-percentage edges and no round, not inherited, initial
 // none, lengths computed to px and percentages kept, serialized in Chrome's shortest form), the refusals (every other shape, a url(),
 // another reference box, a round, a calculation or a viewport unit, on every target; natively, a clip beside a view outside the box
-// view, on an inline box, on html or body, and a clip over a box with text), the stacking context it makes, the lowering
+// view, on an inline box, and on html or body), the clip-text proof that clipped text stays accessible, the stacking context it makes, the lowering
 // (one write per box with an inset, after the other clip writes) and the emitted native code (the writers, the rect, the readback and
 // the plant).
 import { describe, expect, it } from 'vitest';
@@ -88,10 +88,12 @@ describe('clip-path: parse and computed values (Chrome 145 ClipPath::ParseSingle
   });
   it('refuses, on every target, every other shape, a url(), another reference box, a round, a calculation and a viewport unit', () => {
     const cases: readonly [string, string, RegExp][] = [
-      ['circle(50%)', 'circle(50%)', /inset\(\) only/],
-      ['ellipse(closest-side 10px at 0 0)', 'ellipse(closest-side 10px at 0 0)', /inset\(\) only/],
-      ['rect(0 0 0 0)', 'rect(0 0 0 0)', /inset\(\) only/],
-      ['polygon(0 0, 100% 0, 50% 100%)', 'polygon(0 0, 100% 0, 50% 100%)', /inset\(\) only/],
+      ['rect(0 0 0 0)', 'rect(0 0 0 0)', /polygon\(\) only/],
+      ['xywh(0 0 1px 1px)', 'xywh(0 0 1px 1px)', /polygon\(\) only/],
+      ['path("M0 0 L10 0 L5 10 Z")', 'path("M0 0 L10 0 L5 10 Z")', /polygon\(\) only/],
+      ['circle(1px) padding-box', 'padding-box', /border box only/],
+      ['circle(calc(1px + 1%))', 'calc(1px + 1%)', /calculation/],
+      ['polygon(0 0, 1vw 0, 0 1px)', '1vw', /viewport unit/],
       ['url(#c)', 'url(#c)', /not a url\(\) reference/],
       ['padding-box', 'padding-box', /border box only/],
       ['inset(1px) content-box', 'content-box', /border box only/],
@@ -123,7 +125,7 @@ describe('clip-path: native refusals', () => {
   it('refuses an em edge whose font size has no build-time value, saying so', () => {
     const errs = clipErrors(compile('.a { font-size: 1vw; clip-path: inset(1em); }', NATIVE));
     expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
-    expect(errs.find((d) => d.target === 'ios')?.message).toBe('a has clip-path: inset(1em), whose em edge has no build-time font size to compute it against; ios needs every inset edge in px or % at build time');
+    expect(errs.find((d) => d.target === 'ios')?.message).toBe('a has clip-path: inset(1em), whose em length has no build-time font size to compute it against; ios needs every shape length in px or % at build time');
     expectCatalogued(errs);
   });
   it('refuses a clip beside a view outside the box view, on an inline box and on html or body, natively only, and names it', () => {
@@ -145,32 +147,40 @@ describe('clip-path: native refusals', () => {
     const body = errors(compile('body { clip-path: inset(1px); }', NATIVE)).filter((d) => d.message.includes('has clip-path'));
     expect(body.map((d) => d.message)).toEqual(expect.arrayContaining([expect.stringMatching(/it is <body>, whose background is the canvas's/)]));
   });
-  it('refuses, natively, a clip over any text, which Chrome keeps in the accessibility tree; an inset of 0 or less hides overflowing and positioned text too', () => {
+  it('clips text natively, and writes the visible text the device proves accessible, as Chrome keeps it in the accessibility tree', () => {
     const run = (css: string) => clipErrors(compileInput(inputFor(BASE + css, textTree), ALL));
-    for (const v of ['inset(1px)', 'inset(0 0 0 10%)', 'inset(-2px 0 1px)', 'inset(50%)', 'inset(0)', 'inset(-4px)', 'inset(0 -1% 0 -2px)']) {
-      const errs = run(`.a { clip-path: ${v}; }`);
-      expect(errs.map((d) => [d.code, d.target]).sort(), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      expect(errs[0]?.message, v).toMatch(/but its text a:text0 can be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read/);
-      expect(errs[0]?.fix, v).toMatchObject({ manual: 'Clip a box without text, or move the text out of a.' });
-      expectCatalogued(errs);
+    for (const v of ['inset(1px)', 'inset(0 0 0 10%)', 'inset(-2px 0 1px)', 'inset(50%)', 'inset(0)', 'inset(-4px)', 'inset(0 -1% 0 -2px)', 'circle(50%)', 'polygon(0 0, 100% 0, 50% 100%)']) {
+      expect(run(`.a { clip-path: ${v}; }`), v).toEqual([]);
+      expect(run(`.a { -webkit-clip-path: ${v}; }`), v).toEqual([]);
     }
-    // The review's repros: text Chrome clips away under an inset of 0 or less, positioned out of the box or overflowing it.
-    const deepTree = (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY')])])])];
-    for (const css of ['.a { clip-path: inset(0); } .b { position: absolute; top: 100px; }', '.a { clip-path: inset(-2px); } .b { margin-top: 60px; }']) {
-      const errs = clipErrors(compileInput(inputFor(BASE + css, deepTree), ALL));
-      expect(errs.map((d) => d.target).sort(), css).toEqual(['android', 'ios']);
-      expect(errs[0]?.message, css).toContain('its text b:text0 can be clipped out of sight');
+    const clipText = (css: string, body: (r: SourceRef) => TreeNode[] = textTree) => {
+      const p = programs(css, body);
+      return [p.uikit, p['android-views']].map((prog) => prog.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'clip-text').map((w) => [n.id, w])));
+    };
+    // The box's own text and its descendants', in tree order, with the key the readback reports under.
+    for (const css of ['.a { clip-path: inset(1px); }', '.a { clip-path: circle(50%); }', '.p { position: static; } .a { -webkit-mask-image: linear-gradient(black, transparent); }']) {
+      for (const writes of clipText(css)) expect(writes, css).toEqual([['a', expect.objectContaining({ kind: 'clip-text', texts: ['XX', 'YY'], key: 'dragonClipText.exposed' })]]);
     }
-    // Text under display: none is in no accessibility tree; text deeper in the subtree is found too.
-    expect(clipErrors(compileInput(inputFor(`${BASE} .a { clip-path: inset(1px); } .b { display: none; }`, deepTree), NATIVE))).toEqual([]);
-    const deep = clipErrors(compileInput(inputFor(`${BASE} .a { clip-path: inset(1px); }`, deepTree), NATIVE));
-    expect(deep.map((d) => d.message)).toEqual(expect.arrayContaining([expect.stringContaining('its text b:text0 can be clipped')]));
+    // Text under visibility: hidden or display: none is in no accessibility tree; a box with no visible text gets no write.
+    for (const writes of clipText('.a { clip-path: inset(1px); } .b { visibility: hidden; }')) expect(writes).toEqual([['a', expect.objectContaining({ texts: ['XX'] })]]);
+    for (const writes of clipText('.a { clip-path: inset(1px); } .b { display: none; }')) expect(writes).toEqual([['a', expect.objectContaining({ texts: ['XX'] })]]);
+    for (const writes of clipText('.a { clip-path: inset(1px); }', tree)) expect(writes).toEqual([]);
+    for (const writes of clipText('.p { clip-path: inset(1px); } .a { visibility: hidden; }', tree)) expect(writes).toEqual([['p', expect.objectContaining({ texts: ['XX'] })]]);
   });
 });
 
 describe('clip-path: stacking and hit testing', () => {
   it('makes a stacking context in the z-index 0 layer, so a clipped flow box paints after its later in-flow sibling', () => {
     const p = programs('.a { clip-path: inset(1px); } .t { margin-top: -10px; }');
+    for (const prog of [p.uikit, p['android-views']]) {
+      const facts = (id: string) => prog.nodes.find((n) => n.id === id)?.facts['stacking'] as { createsContext: boolean; layer: string; paintOrder: number };
+      expect(facts('a').createsContext).toBe(true);
+      expect(facts('a').layer).toBe('positioned');
+      expect(facts('a').paintOrder).toBeGreaterThan(facts('t').paintOrder);
+    }
+  });
+  it('a gradient mask makes the same stacking context (css-masking-1 §7.1), so positioned content inside it stays in its masked paint', () => {
+    const p = programs('.p { position: static; } .a { mask-image: linear-gradient(black, transparent); } .t { margin-top: -10px; }');
     for (const prog of [p.uikit, p['android-views']]) {
       const facts = (id: string) => prog.nodes.find((n) => n.id === id)?.facts['stacking'] as { createsContext: boolean; layer: string; paintOrder: number };
       expect(facts('a').createsContext).toBe(true);
@@ -234,7 +244,7 @@ describe('clip-path: the clip rect and emission', () => {
         expect(clip).toContain('    v.layer.mask = m\n');
         expect(clip).toContain('out.append(("dragonClipPath.frame", v.layer.mask == nil || r.count != 4 ? .null');
       } else {
-        expect(all).toContain('    canvas.clipRect(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat())\n');
+        expect(all).toContain('    if (r != null) canvas.clipRect(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat())\n');
         expect(clip).toContain('out.add(Pair("dragonClipPath.rect", if (r == null) DumpJson.Null else DumpJson.Arr(r.map { DumpJson.Num(it) })))');
       }
       expect(clip).toContain(ios ? 'insets[2 * k] * scale + insets[2 * k + 1] / 100 * size }' : 'insets[2 * k] * scale + insets[2 * k + 1] / 100.0 * size\n');

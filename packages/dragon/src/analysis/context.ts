@@ -1,5 +1,6 @@
 // Row keys for the support profiles (M2): the feature (property plus value subset) and the formatting context it is used in.
 // checkSupport and scripts/gen-profile-rows.ts both call usedKeys, so a proof and a check always name the same key.
+import { containsDescendants } from './containment.ts';
 import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS, PROPERTY_ROLE } from '../css/properties.ts';
 import type { Declaration } from '../css/stylesheet.ts';
@@ -108,6 +109,12 @@ const isGridContainer = (el: ResolvedElement): boolean => keyword(el, 'display')
 export const isAtomicInline = (el: ResolvedElement): boolean => keyword(el, 'display') === 'inline-block' || keyword(el, 'display') === 'inline-flex' || keyword(el, 'display') === 'inline-grid';
 
 /**
+ * Whether a layout longhand lays nothing out at this element's value, so its row is keyed as a paint property's: container-name only
+ * names a query container, and container-type: normal makes none (css-conditional-5 §2).
+ */
+const layoutInert = (property: Longhand, el: ResolvedElement): boolean => property === 'container-name' || (property === 'container-type' && keyword(el, 'container-type') === 'normal');
+
+/**
  * The formatting context of an element-level longhand, with the direction of the box whose algorithm consumes it. Item
  * properties: the context the element's box takes part in (root, block, flex-row, flex-column, or display-none under a hidden
  * parent) and the parent's direction (the root's own). Container properties: the element's own flex line mode and direction.
@@ -116,7 +123,7 @@ export const isAtomicInline = (el: ResolvedElement): boolean => keyword(el, 'dis
 export function formattingContext(property: Longhand, el: ResolvedElement, ancestors: readonly ResolvedElement[]): FormattingContext {
   const role = PROPERTY_ROLE[property];
   if (role === 'text') throw new Error(`${property} is keyed per text node (textContext)`);
-  if (role === 'paint') return `paint/${directionFacet(el)}`;
+  if (role === 'paint' || layoutInert(property, el)) return `paint/${directionFacet(el)}`;
   const parent = ancestors.length === 0 ? null : (ancestors[ancestors.length - 1] as ResolvedElement);
   if (role === 'container') {
     const own = directionFacet(el);
@@ -151,11 +158,11 @@ export function pseudoContext(el: ResolvedElement, ancestors: readonly ResolvedE
   return empty ? `pseudo-empty-inline-in-${where}/${dir}` : `pseudo-inline-in-${where}/${dir}`;
 }
 
-/** CSS2 §10.1: the nearest positioned ancestor, or the initial containing block, whose direction is the root's. */
+/** CSS2 §10.1: the nearest positioned or contained ancestor (css-contain-2 §3.2), or the initial containing block, whose direction is the root's. */
 function containingBlockDirection(el: ResolvedElement, ancestors: readonly ResolvedElement[]): DirectionFacet {
   for (let i = ancestors.length - 1; i >= 0; i--) {
     const a = ancestors[i] as ResolvedElement;
-    if (keyword(a, 'position') !== 'static') return directionFacet(a);
+    if (keyword(a, 'position') !== 'static' || containsDescendants(a)) return directionFacet(a);
   }
   return directionFacet(ancestors.length === 0 ? el : (ancestors[0] as ResolvedElement));
 }

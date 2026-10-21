@@ -102,7 +102,9 @@ describe('mask: Chrome 145 parsing', () => {
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    expect(real.filter((it) => it.longhands !== null).length).toBe(36);
+    // The 36 accepted spellings (the initial values and -webkit-mask-composite's source-over), and border under -webkit-mask-clip and
+    // -webkit-mask-origin (aliases/mask.ts prefixedMaskBox).
+    expect(real.filter((it) => it.longhands !== null).length).toBe(38);
     expect(real.filter((it) => it.name === '-webkit-mask-composite' && it.longhands !== null).map((it) => it.v)).toEqual(['source-over', 'SOURCE-OVER']);
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(80);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));

@@ -148,7 +148,9 @@ Covers: each screen's root is a scroll container that respects the notch and hom
 
 **Refinement (researched default, fits the approved wording).** Use the web's own switch for the notch, as iOS Safari does:
 - Without `viewport-fit=cover`, the root is laid out inside the safe area, and `env(safe-area-inset-*)` is 0, as in a browser. A naive page is never clipped, and insets can never be applied twice.
-- With `viewport-fit=cover`, the root goes edge to edge and `env()` returns the real insets. The web output adds `viewport-fit=cover` to the viewport meta automatically when the author uses it.
+- With `viewport-fit=cover`, the root goes edge to edge and `env()` returns the real insets.
+- The web output is a stylesheet, not a document, so it emits no viewport meta: the host page's own `viewport-fit` decides, exactly as in a browser (ENV-SAFE, decided 2026-10-20).
+- Native has no meta, so the stage's placement is the switch. A mount's `env()` insets are how far the window's unsafe area (status bar, home indicator, cutout, Android system bars) reaches into its stage (`dragonSafeArea`). A stage the app lays out inside the safe area reads 0, like a page without cover. A stage laid out edge to edge reads the real insets, like a page with cover. Either way the insets apply once.
 
 ### 2.7 Additional by-design decisions
 
@@ -186,7 +188,7 @@ Class names: **design** (cannot happen), **default** (web meaning applied withou
 | P4 | Layout defaults that differ from CSS | design, test | Chrome built-in styles as lowest layer; every Taffy field explicit; web output explicit too | Linux: "unstyled" fixtures with no author CSS; unit: every Taffy field set |
 | P5 | Border radius, clipping, per-side borders on Android | design, error | Always emit rounded clip when radius and `overflow: hidden` are both set; per-side colours with radius and dashed borders are errors until a fixture passes | Sim (Android lane later): child overflowing a rounded corner; unit: error for per-side colours with radius |
 | P6 | Custom font names and weights | design, error | Name table read at build; same file bundled everywhere; missing weight is an error | Unit: missing-weight fixture produces the error; sim: registered family resolves to the bundled file |
-| P7 | Safe areas and Android edge-to-edge | default | Root inside the safe area unless `viewport-fit=cover`; `env()` is 0 without cover, so insets apply once | Sim: notch-device fixture with and without cover; Linux: `env()` resolves to 0 without cover |
+| P7 | Safe areas and Android edge-to-edge | default | Web: the host page's `viewport-fit` decides; native: the stage's placement does (inside the safe area reads 0, edge to edge reads the real insets), so insets apply once | Sim: notch-device fixture with the stage inside and under the bars; Linux: `env()` with injected insets (env-run.ts) |
 | P8 | `z-index` versus elevation (draw order versus touch) | design, error | `z-index` becomes sibling order; hit testing follows draw order; escaping the container is an error | Unit: resolved sibling order; sim: tap on overlapping siblings hits the top one; unit: escape error (C6) |
 | P9 | Text scaling breaks fixed layouts | test, warning | Generated largest-text-size state; warning on a text container with a fixed block size | Linux: largest-size variants compared with Chrome at the scaled root size; unit: fixed-height warning. Policy is owner decision 5 |
 | P10 | Dev works, release breaks | design, test | One compiler result; dev applier proven identical to generated Swift; no dev-only validation | Sim: dev and release property dumps identical on every fixture |

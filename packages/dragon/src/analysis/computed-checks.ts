@@ -4,9 +4,10 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { radiusLengths, roundsAnyCorner } from '../lower/paint/radius.ts';
 import { ProgramError } from '../lower/paint/types.ts';
+import { fontLoweringGap, viewportFontSize } from '../lower/ios-layout.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
-import { LONGHANDS } from '../css/properties.ts';
+import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import { exactLayoutRatio, featureOf, isMathValue } from '../css/values.ts';
 import { isPercentMath, mathContextFor, parseMath } from '../css/math.ts';
 import type { CssValue, FamilyKeyContext } from '../css/values.ts';
@@ -19,6 +20,7 @@ import { GEN_B_FAULTS } from '../faults/gen-b.ts';
 import type { Txt2dFaults } from '../faults/txt2-d.ts';
 import { TXT2_D_FAULTS } from '../faults/txt2-d.ts';
 import { checkWordBreak } from './break-all.ts';
+import { checkWebkitScrollbar } from './webkit-scrollbar.ts';
 import type { Txt2lbFaults } from '../faults/txt2-lb.ts';
 import { TXT2_LB_FAULTS } from '../faults/txt2-lb.ts';
 import { checkLineBreak } from './line-break.ts';
@@ -58,9 +60,16 @@ import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
+import { paintContained } from './containment.ts';
+import { checkContainment } from './containment-checks.ts';
+import type { MulticolFaults } from '../faults/multicol.ts';
+import { MULTICOL_FAULTS } from '../faults/multicol.ts';
+import { checkMulticol } from './multicol.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
-import { isAcceptedMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { isAcceptedMask, isDrawnMask, MASK_LONGHANDS } from '../css/properties/mask.ts';
+import { elementMaskGradient, maskBackdropRefusals, maskDecorationRefusals, maskRefusal, masksInside } from './mask.ts';
+import { compositesSubtree, transformsSubtree } from './paint-values/gradient.ts';
 import type { BorderImageFaults } from '../faults/border-image.ts';
 import { BORDER_IMAGE_FAULTS } from '../faults/border-image.ts';
 import { checkBorderImage } from './border-image.ts';
@@ -78,6 +87,7 @@ import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
+import { colorMatrixFilters } from '../css/properties/filter.ts';
 import { dashArrayOf } from '../css/properties/svg-dash.ts';
 import { analyzeDecorations } from './text-decoration.ts';
 import { checkTextShadows } from './text-shadow.ts';
@@ -94,6 +104,7 @@ import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
+import { checkFx } from './fx.ts';
 import { checkLineClamp, lineClampOf } from './line-clamp.ts';
 import { checkResize } from './resize.ts';
 import { checkTouchAction, nativePanner, type NativePanner } from './touch-action.ts';
@@ -129,6 +140,71 @@ function checkOverflow(el: ResolvedElement, targets: readonly string[], diagnost
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), target: t, message, manual: 'Use overflow: clip on both axes, or hidden.', basis: 'computed-value' }));
   }
 }
+
+/**
+ * CALC-2: a font size the native targets cannot lower (lower/ios-layout.ts fontLoweringGap): one Chrome takes of a parent font-size
+ * that follows the viewport, or a line-height on text whose em or % was taken of one. The line-height is checked only where the
+ * element lays out text (a text child, or an inline box), as lowerFont reads it only there. staleLineHeight: the element inherits
+ * an em or % line-height through an element (itself included) with its own font size, so the size it was taken of is not this one.
+ * Under such a size, an em the native paint programs read (radius, shadow, outline, transform) or the text and border lowering
+ * reads (spacing, border widths) stays relative too, and is refused here.
+ */
+function checkViewportFont(el: ResolvedElement, stale: ReadonlySet<Longhand>, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (targets.length === 0) return;
+  const get = (p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
+  const push = (key: string, message: string, manual: string): void => {
+    for (const t of targets) {
+      const id = `${t}|viewport-font|${key}|${el.element.address}`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: el.element.node.origin, target: t, message, manual, basis: 'computed-value' }));
+    }
+  };
+  // A refused calculation is reported where it is declared.
+  if (isRefusedMath(get('font-size')) || isRefusedMath(get('line-height'))) return;
+  const gap = fontLoweringGap(get('font-size'), get('line-height'), stale.has('line-height'));
+  const display = keywordOf(el.props.get('display') as ResolvedValue);
+  const laysOutText = el.children.some((c) => c.kind === 'text') || display === 'inline';
+  if (gap !== null && (gap.property === 'font-size' || laysOutText)) {
+    push('font', `${gap.property}: ${valueToString(get(gap.property))} on <${el.element.tag}> ${el.element.address} is not resolved on the device: ${gap.reason}`, `Set a px or vw ${gap.property} on <${el.element.tag}> ${el.element.address}.`);
+  }
+  // Any other inherited em length an ancestor took of a size that follows the viewport, where this element reads it.
+  const inherits = [...stale].filter((p) => p !== 'line-height' && (laysOutText || display === 'table' || display === 'inline-table')).sort();
+  if (inherits.length > 0) {
+    push('inherited-em', `${inherits.join(', ')} on <${el.element.tag}> ${el.element.address} ${inherits.length === 1 ? 'inherits an em' : 'inherit ems'} an ancestor took of a font-size that follows the viewport, which the native targets do not resolve yet`, `Use px or vw for ${inherits.join(', ')} where ${inherits.length === 1 ? 'it is' : 'they are'} declared, or set it on <${el.element.tag}> ${el.element.address}.`);
+  }
+  if (gap?.property === 'font-size' || viewportFontSize(get('font-size')) === null) return;
+  const relative = EM_UNDER_VIEWPORT_FONT.filter((p) => EM_IN_VALUE.test(valueToString(get(p))));
+  if (relative.length > 0) {
+    push('em', `${relative.join(', ')} on <${el.element.tag}> ${el.element.address} ${relative.length === 1 ? 'reads' : 'read'} em of a font-size that follows the viewport, which the native ${relative.length === 1 ? 'target does' : 'targets do'} not resolve there yet`, `Use px or vw for ${relative.join(', ')} on <${el.element.tag}> ${el.element.address}.`);
+  }
+}
+
+/** CALC-2: the lengths whose em the native lowering needs as px (paint programs, text spacing, border widths). */
+const EM_UNDER_VIEWPORT_FONT: readonly Longhand[] = [
+  ...RADIUS_LONGHANDS,
+  'box-shadow', 'outline-width', 'outline-offset', 'transform', 'transform-origin', 'letter-spacing', 'word-spacing',
+  'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing',
+];
+const EM_IN_VALUE = /\dem(?![\w-])/i;
+
+/**
+ * CALC-2: the inherited lengths an element reads relative to a font size other than the one Chrome took them of: an em, % or
+ * calculated line-height, or another inherited length still holding em (one an ancestor declared under a size that follows the
+ * viewport, since under a px size computeLengths makes it px), inherited through an element (this one included) with its own size.
+ */
+function staleInherited(el: ResolvedElement, parent: ReadonlySet<Longhand>): ReadonlySet<Longhand> {
+  const ownSize = (el.props.get('font-size') as ResolvedValue).origin !== 'inherited';
+  const out = new Set<Longhand>();
+  for (const [p, v] of el.props) {
+    if (v.origin !== 'inherited' || !INHERITED.has(p) || !(ownSize || parent.has(p))) continue;
+    if (p === 'line-height' ? relativeLineHeight(v.value) : EM_IN_VALUE.test(valueToString(v.value))) out.add(p);
+  }
+  return out;
+}
+
+/** An em, % or calculated line-height, which an element computes against its own font size only when that is px (CALC-2). */
+const relativeLineHeight = (v: CssValue): boolean => !((v.kind === 'keyword' && v.value === 'normal') || v.kind === 'number' || (v.kind === 'length' && v.unit === 'px'));
 
 const isScrollKeyword = (k: string): boolean => k === 'hidden' || k === 'auto' || k === 'scroll';
 
@@ -187,6 +263,36 @@ function checkRoundedScrollContainer(el: ResolvedElement, propagated: ResolvedEl
     if (reported.has(id)) continue;
     reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: 'Round a wrapper outside the scroll container, or use overflow: hidden.' }));
+  }
+}
+
+/**
+ * css-overscroll-1: Chrome 145 stops scroll chaining on an axis at a scroll container whose overscroll-behavior there is contain or
+ * none, even when its content fits or the axis is hidden (a wheel probe moves the outer scroller 0 px, against 720 with auto). A
+ * native scroll view hands such a drag on to a native scroll view around it (it takes no drag without a range, and has none on a
+ * hidden axis), and Dragon cannot show the range at compile time. So contain or none on an axis is refused on ios and android
+ * where a native scroll view around the box scrolls that axis; with none around, nothing chains and native matches Chrome.
+ * around: the native scroll views around el, outermost first, not el's own (analysis/touch-action.ts nativePanner).
+ */
+function checkOverscrollChaining(el: ResolvedElement, around: readonly NativePanner[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0 || around.length === 0) return;
+  const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
+  // Only a scroll container's overscroll-behavior applies: a box with overflow visible or clip on both axes, display: contents and
+  // a non-replaced inline are none.
+  if (!['overflow-x', 'overflow-y'].some((p) => ['hidden', 'auto', 'scroll'].includes(kw(p as Longhand)))) return;
+  const d = kw('display');
+  if (d === 'contents' || d === 'none' || (d === 'inline' && el.element.tag !== 'img' && el.element.tag !== 'svg')) return;
+  const p = (['overscroll-behavior-x', 'overscroll-behavior-y'] as const).find((q) => kw(q) !== 'auto' && around.some((a) => (q === 'overscroll-behavior-x' ? a.x : a.y)));
+  if (p === undefined) return;
+  const panner = [...around].reverse().find((a) => (p === 'overscroll-behavior-x' ? a.x : a.y)) as NativePanner;
+  const v = el.props.get(p) as ResolvedValue;
+  const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  const message = `${p}: ${kw(p)} on ${el.element.address}, inside the scroll container ${panner.address}: Chrome stops a drag on ${el.element.address} from scrolling ${panner.address} even when its content fits or the axis is hidden, and a native scroll view hands such a drag on, so Dragon compiles contain and none only where no native scroll view around the box scrolls that axis`;
+  for (const t of nativeTargets) {
+    const id = `${t}|overscroll-chaining|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: `Remove ${p} from ${el.element.address}, or set it to auto.`, basis: 'computed-value' }));
   }
 }
 
@@ -505,7 +611,7 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
   else if (blockChild !== undefined) beside = `with text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, which Chrome wraps in anonymous blocks`;
   else if (texts.some((it) => keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse')) beside = 'with preserved white space';
   else if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') beside = 'with text-align: justify';
-  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && clipsOverflow(el)) beside = 'with text-overflow: ellipsis';
   else if (runs.some((r) => r.some((it) => it.kind === 'atomic'))) beside = 'beside an atomic inline';
   if (beside === '') return;
   const id = `text-indent|${el.element.address}`;
@@ -540,21 +646,28 @@ function checkHyphens(el: ResolvedElement, targets: readonly string[], diagnosti
   }
 }
 
-// FX (filter-effects-1 §5): no target draws a filter yet, and a filter such as opacity(0) or brightness(0) can hide text, so a filter
-// other than none is refused for every target where it applies (filter is not inherited). Planted fault filterListAccepted accepts it.
+// FX (filter-effects-1 §5): a filter can hide or recolour text, so a filter other than none is refused for every target where it
+// applies (filter is not inherited) unless it is a list of the colour-matrix functions Dragon draws (PNT1-filter, css/properties
+// filter.ts colorMatrixFilters), on an element that is not an SVG shape. On native such a list is drawn only on a group the overlay
+// pre-composites, which analysis/paint-values/effects.ts checkTranslucent decides. Planted fault filterListAccepted accepts any list.
 function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: FxFaults): void {
   const v = el.props.get('filter') as ResolvedValue;
-  if (faults.filterListAccepted || (v.value.kind === 'keyword' && v.value.value === 'none')) return;
+  if (faults.filterListAccepted) return;
+  const read = colorMatrixFilters(v.value);
+  if (read.kind === 'none') return;
+  const shape = isSvgShapeTag(el.element.tag);
+  if (read.kind === 'list' && !shape) return;
   const id = `filter|${el.element.address}`;
   if (reported.has(id)) return;
   reported.add(id);
   const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+  const why = shape || read.kind === 'list' ? 'Dragon draws no filter on an SVG shape (FX)' : `Dragon draws only lists of the colour-matrix functions grayscale, sepia, saturate, invert, opacity, brightness and contrast (FX), and ${read.reason}`;
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `filter: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no filter yet (FX); only none is accepted`,
-      manual: `Remove the filter from ${el.element.address}, or set filter: none.`,
+      message: `filter: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: ${why}`,
+      manual: `Remove the filter from ${el.element.address}, set filter: none, or use only grayscale(), sepia(), saturate(), invert(), opacity(), brightness() and contrast() with number or percentage amounts.`,
       basis: 'computed-value',
     }));
   }
@@ -567,7 +680,12 @@ function checkFilter(el: ResolvedElement, targets: readonly string[], diagnostic
  */
 function truncatesOwnLines(el: ResolvedElement, propagated: ResolvedElement | null): boolean {
   if (el === propagated || isInlineBox(el) || isContents(el) || ['flex', 'grid', 'inline-grid'].includes(displayKeyword(el))) return false;
-  return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible');
+  return clipsOverflow(el);
+}
+
+/** Whether a box clips its overflow: an overflow other than visible, or paint containment, which clips as overflow: clip does (css-contain-2 §3.4). */
+function clipsOverflow(el: ResolvedElement): boolean {
+  return !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible') || paintContained(el);
 }
 
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
@@ -1138,53 +1256,100 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
   }
 }
 
-// MASK-CLIP (css-masking-1 §7): no target draws a mask yet, and a mask image can hide text, so a mask longhand other than its initial
-// value (or -webkit-mask-composite's source-over) is refused for every target where it applies (none is inherited), once per element.
-// With every longhand accepted, mask-image is none and Chrome applies no mask. Planted fault maskLayerAccepted accepts every value.
-function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults): void {
+// MASK-CLIP (css-masking-1 §7): Dragon draws a gradient mask-image with every other mask longhand initial or accepted (-webkit-mask-composite's
+// source-over, css/properties/mask.ts); any other value is refused for every target where it applies (none is inherited), once per element. With every longhand initial,
+// mask-image is none and Chrome applies no mask. A drawn gradient mask is refused on the native targets where the device mask would
+// differ from Chrome's (analysis/mask.ts maskRefusal), and inside a box whose transform or composited layer moves its raster
+// (masksInside). Planted fault maskLayerAccepted accepts every value.
+function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults, propagated: ResolvedElement | null, svg: boolean): void {
   if (faults.maskLayerAccepted) return;
-  const p = MASK_LONGHANDS.find((q) => !isAcceptedMask(q, (el.props.get(q) as ResolvedValue).value));
-  if (p === undefined) return;
-  const id = `mask|${el.element.address}`;
-  if (reported.has(id)) return;
-  reported.add(id);
-  const v = el.props.get(p) as ResolvedValue;
+  // No target draws a mask on an SVG shape, which has no box view (its <svg> draws it), so a shape takes initial values only.
+  const p = MASK_LONGHANDS.find((q) => !(svg ? isAcceptedMask : isDrawnMask)(q, (el.props.get(q) as ResolvedValue).value));
+  if (p !== undefined) {
+    const id = `mask|${el.element.address}`;
+    if (reported.has(id)) return;
+    reported.add(id);
+    const v = el.props.get(p) as ResolvedValue;
+    const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+    for (const t of targets) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin,
+        target: t,
+        message: svg
+          ? `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no mask on an SVG shape (MASK-CLIP); only the initial value is accepted`
+          : `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws only a mask-image of one linear or radial gradient with lengths in px or absolute units (MASK-CLIP), with every other mask longhand at its initial value`,
+        manual: `Remove the mask from ${el.element.address}, or set mask-image to one gradient and leave the other mask longhands initial.`,
+        basis: 'computed-value',
+      }));
+    }
+    return;
+  }
+  const g = elementMaskGradient(el);
+  if (g === null) return;
+  const refusal = maskRefusal(el, g, propagated);
+  if (refusal !== null) refuseMask(el, targets, diagnostics, reported, refusal);
+}
+
+/** A native refusal of the gradient mask of el, once per target. */
+function refuseMask(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, refusal: { readonly fact: string; readonly manual: string }): void {
+  const v = el.props.get('mask-image') as ResolvedValue;
   const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
   for (const t of targets) {
+    if (t === 'web') continue;
+    const id = `${t}|mask-gradient|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted`,
-      manual: `Remove the mask from ${el.element.address}, or set mask: none.`,
+      message: `mask-image: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported on ${t}: ${refusal.fact}; ${t} masks the box view and the views inside it with a raster of the gradient`,
+      manual: refusal.manual,
       basis: 'computed-value',
     }));
   }
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & TextBoxFaults & BoxDecorationFaults & BackgroundBlendFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...TEXT_BOX_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS }): void {
+/** The masked boxes inside a box whose transform or composited layer moves the raster origin of every mask under it (R4, R13). */
+function checkMasksInside(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: MaskFaults, propagated: ResolvedElement | null): void {
+  if (faults.maskLayerAccepted) return;
+  const transformed = transformsSubtree(el);
+  if (!transformed && !compositesSubtree(el, propagated)) return;
+  for (const m of masksInside(el)) {
+    refuseMask(m, targets, diagnostics, reported, transformed
+      ? { fact: `it is inside ${el.element.address}, whose transform is not the identity; Chrome rasterises the mask with the transform in the shader matrix, and the native targets would resample the raster`, manual: `Remove the transform from ${el.element.address}, or move the masked box out of it.` }
+      : { fact: `it rasters in the composited layer of ${el.element.address} (will-change, or a scroll container), whose origin starts the dither, which Dragon does not model`, manual: `Remove will-change: transform and opacity, and overflow auto and scroll, from ${el.element.address}, or move the masked box out of it.` });
+  }
+}
+
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & TextBoxFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...TEXT_BOX_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS }): void {
   const propagated = propagatedFrom(root);
+  if (!faults.maskLayerAccepted) for (const m of [...maskBackdropRefusals(root), ...maskDecorationRefusals(root, analyzeDecorations(root).applied)]) refuseMask(m.el, targets, diagnostics, reported, m.refusal);
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
   // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null): void => {
+  // staleLh: the inherited em or % lengths an ancestor inherits over its own font size (checkViewportFont).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>): void => {
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
       checkSvg(el, targets, diagnostics, reported);
       checkFilter(el, targets, diagnostics, reported, faults);
-      checkMask(el, targets, diagnostics, reported, faults);
+      checkMask(el, targets, diagnostics, reported, faults, propagated, true);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
       checkZoom(el, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
+      checkMulticol(el, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
+    const stale = staleInherited(el, staleLh);
     checkOverflow(el, targets, diagnostics, reported);
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
+    if (!here) checkOverscrollChaining(el, around, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     const self = nativePanner(el, propagated);
     const panners = self === null ? around : [...around, self];
@@ -1195,8 +1360,10 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
     checkZoom(el, targets, diagnostics, reported);
-    // The overscroll, containment and container-query families, initial values only (analysis/scroll-containment.ts).
+    // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
+    // The multicol family, initial values only (analysis/multicol.ts).
+    checkMulticol(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
@@ -1205,11 +1372,14 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
+      checkViewportFont(el, stale, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
-      checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
+      checkWordBreak(el, targets, diagnostics, reported, faults);
+      // NA-NATIVE: ::-webkit-scrollbar rules that draw a custom scrollbar (analysis/webkit-scrollbar.ts).
+      checkWebkitScrollbar(el, diagnostics, reported);
       // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).
       checkLineBreak(el, targets, diagnostics, reported, shapedAt, faults);
       checkHyphens(el, targets, diagnostics, reported, faults);
@@ -1224,7 +1394,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFontStretch(el, targets, diagnostics, reported, shapedAt, faults);
       checkFontFeatures(el, targets, diagnostics, reported, shapedAt, faults);
     }
-    checkMask(el, targets, diagnostics, reported, faults);
+    checkMask(el, targets, diagnostics, reported, faults, propagated, false);
+    if (!here) checkMasksInside(el, targets, diagnostics, reported, faults, propagated);
     checkBorderImage(el, targets, diagnostics, reported, faults);
     checkBoxDecoration(el, targets, diagnostics, reported, faults);
     checkBackgroundBlend(el, targets, diagnostics, reported, faults);
@@ -1234,14 +1405,18 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
     const boxParent = isContents(el) ? layoutParent : el;
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale);
   };
-  walk(root, false, 'viewport', [], null);
+  walk(root, false, 'viewport', [], null, new Set());
   // SCROLL-SNAP: a scroll container that snaps to a snap area, which native does not yet (analysis/scroll-containment.ts).
   checkScrollSnap(root, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, faults);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
+  // FX-0: backdrop-filter and mix-blend-mode on native only where Chrome changes no pixel (analysis/fx.ts).
+  checkFx(root, propagated, targets, diagnostics, reported);
+  // css-contain-2: containment Dragon does not lay out (analysis/containment-checks.ts).
+  checkContainment(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
   checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);

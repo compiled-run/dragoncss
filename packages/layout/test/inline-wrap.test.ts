@@ -90,9 +90,9 @@ describe('word-break: break-all (TXT2-d)', () => {
   it('breakAllIgnored lays it out as normal', () => {
     expect(lines(60, [leaf('t', 'aa bbbbbbbbbb cc', { wordBreak: 'break-all' })], 't', { ...NO_ENGINE_FAULTS, breakAllIgnored: true })).toEqual([[0, 2 * G], [0, 10 * G], [0, 2 * G]]);
   });
-  it('breakAllOpportunities adds every letter and digit pair to the base and keeps the base', () => {
-    const cps = [...'a1 b-c'].map((c) => c.codePointAt(0) as number);
-    expect(breakAllOpportunities(cps, [3, 5])).toEqual([1, 3, 5]);
+  it('breakAllOpportunities breaks between letters and digits and after a space, never before one', () => {
+    const cps = [...'a1 bc'].map((c) => c.codePointAt(0) as number);
+    expect(breakAllOpportunities(box('b', {}), cps, true)).toEqual([1, 3, 4]);
   });
 });
 
@@ -103,9 +103,10 @@ describe('word-break: keep-all (TXT2-d)', () => {
 });
 
 describe('refusals', () => {
-  it('word-break auto-phrase, and break-all over anything but ASCII letters, digits and spaces, are word-break (TXT2-d); mixed values in one context are refused', () => {
+  it('word-break auto-phrase is word-break, break-all over punctuation is laid out (TXT-BREAK-2); mixed values in one context are refused', () => {
     expect(lines(45, [leaf('t', 'aa', { wordBreak: 'auto-phrase' })], 't')).toBe('word-break');
-    for (const t of ['a-b', 'a.b', 'a/b', 'a(b)']) expect(lines(45, [leaf('t', t, { wordBreak: 'break-all' })], 't'), t).toBe('word-break');
+    for (const t of ['a-b', 'a.b', 'a/b', 'a(b)']) expect(lines(45, [leaf('t', t, { wordBreak: 'break-all' })], 't'), t).not.toBe('word-break');
+    expect(lines(45, [leaf('t', 'a\u0153b', { wordBreak: 'break-all' })], 't')).toBe('text-glyph');
     expect(lines(45, [leaf('t', 'aa ', { wordBreak: 'break-all' }), leaf('u', 'bb', {})], 't')).toBe('mixed-text-wrap-mode');
     expect(lines(45, [leaf('t', 'aa ', {}), leaf('u', 'bb', { overflowWrap: 'anywhere' })], 't')).toBe('mixed-text-wrap-mode');
     expect(lines(45, [leaf('t', 'aa', { overflowWrap: 'break-word', whiteSpaceCollapse: 'preserve' })], 't')).toBe('word-break');

@@ -142,8 +142,8 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
  * layers and pointer-events (T064 R13); a case whose program writes a transform is refused by name until SELD-R2b (T146) models
- * hit testing through transforms; so is a case with a stacking context below the root (an integer z-index or an opacity below 1,
- * PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
+ * hit testing through transforms; so is a case with a stacking context below the root (an integer z-index, an opacity below 1 or a
+ * filter, PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
  * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
  * mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not
  * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP), and one with an outside text
@@ -159,7 +159,7 @@ export function hitRefusal(n: NativeCase): string | null {
   if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
   // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
   // hit test does not model yet.
-  const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset')).map((x) => x.id);
+  const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset' || w.kind === 'clip-path-shape')).map((x) => x.id);
   if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
   // PNT1: a stacking context below the root paints its layer in z-order, which rt-hit.ts does not order yet.
   // A normal-flow layer (backface-visibility: hidden) paints after its host's flow, which rt-hit.ts does not order either.
@@ -253,7 +253,7 @@ export const IDENTITY_MANIFEST = 'packages/parity/expected-hit/identity-base.jso
  * shadow group (shadow-*, calib-shadow-*, reject-shadow-*), PNT1's outline group (outline-*, reject-outline-*) and T150a's visibility
  * group (visibility-*), which landed after it.
  */
-export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-|fragmentation-)[^/]*$/;
+export const IDENTITY_NEW = /(^|\/)(hit-|reject-pointer-events-|interaction-|reject-interaction-|transform-|reject-transform-|ctx-proof-|radius-|reject-radius-|opacity-|stacking-|shadow-|calib-shadow-|reject-shadow-|outline-|reject-outline-|visibility-|user-select-|resize-|touch-action-|appearance-|ui-colors-|user-modify-|speak-|fragmentation-|container-inline-size|reject-container-type-inline|cq-|reject-cq-)[^/]*$/;
 /** Base files a later ruling moves beyond the pointer-events key: each must hash (key removed) to its post-ruling sha256 instead. */
 export const IDENTITY_RULED: Readonly<Record<string, { readonly sha256: string; readonly ruling: string }>> = {
   'packages/parity/emitted/media-range.css': { sha256: '3836abedb74609093db7d06cafb085aa04376d6ada3b20ed142eecf654b79226', ruling: 'MQ-R0 (PM 2026-10-04): the fractional-width @media bands are emitted' },
@@ -305,22 +305,42 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   // Batch 3: TXT2-lb's line-break, text-wrap-style, TXT2-tal's text-align-last, hyphens and tab-size.
   ['line-break', 'auto'], ['text-wrap-style', 'auto'], ['text-align-last', 'auto'], ['hyphens', 'manual'], ['tab-size', '8'],
 ];
-/** The paint, transform and mask longhands added after the base, at their initial values (filter none, mask-image none and the like). */
+/** The paint, transform, mask and border-image longhands added after the base, at their initial values (filter none, mask-image none and the like). */
 const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['text-shadow', 'none'], ['filter', 'none'], ['backface-visibility', 'visible'], ['transform-style', 'flat'], ['transform-box', 'view-box'],
   ['clip', 'auto'], ['clip-path', 'none'], ['mask-image', 'none'], ['-webkit-mask-position-x', '0%'], ['-webkit-mask-position-y', '0%'],
   ['mask-size', 'auto'], ['mask-repeat', 'repeat'], ['mask-origin', 'border-box'], ['mask-clip', 'border-box'], ['mask-composite', 'add'],
-  ['mask-mode', 'match-source'],
+  ['mask-mode', 'match-source'], ['border-image-source', 'none'], ['border-image-slice', '100%'], ['border-image-width', '1'],
+  ['border-image-outset', '0'], ['border-image-repeat', 'stretch'],
   // Batch 3: #446's translate, rotate and scale, #459's background-blend-mode, #445's scrollbar longhands, #449's isolation,
   // #458's box-decoration-break and #455's color-scheme.
   ['translate', 'none'], ['rotate', 'none'], ['scale', 'none'], ['background-blend-mode', 'normal'], ['scrollbar-width', 'auto'],
   ['scrollbar-gutter', 'auto'], ['isolation', 'auto'], ['box-decoration-break', 'slice'], ['color-scheme', 'normal'],
 ];
-const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
-const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
+/**
+ * The table, counters, zoom, perspective, scrolling and containment longhands added after the base, at their initial values
+ * (perspective-origin at 50% 50% in emitted CSS; in a capture JSON_PERSPECTIVE_ORIGIN strips it, since Chrome resolves it to px).
+ */
+const LAYOUT_SINCE_BASE: readonly (readonly [string, string])[] = [
+  ['table-layout', 'auto'], ['border-collapse', 'separate'], ['-webkit-border-horizontal-spacing', '0px'], ['-webkit-border-vertical-spacing', '0px'],
+  ['caption-side', 'top'], ['empty-cells', 'show'], ['quotes', 'auto'], ['counter-reset', 'none'], ['counter-set', 'none'],
+  ['counter-increment', 'none'], ['zoom', '1'], ['perspective', 'none'], ['perspective-origin', '50% 50%'],
+  ['overscroll-behavior-x', 'auto'], ['overscroll-behavior-y', 'auto'], ['overscroll-behavior-inline', 'auto'], ['overscroll-behavior-block', 'auto'],
+  ['overflow-anchor', 'auto'], ['scroll-padding-(?:top|right|bottom|left|inline-start|inline-end|block-start|block-end)', 'auto'],
+  ['scroll-margin-(?:top|right|bottom|left|inline-start|inline-end|block-start|block-end)', '0px'], ['scroll-snap-type', 'none'],
+  ['scroll-snap-align', 'none'], ['scroll-snap-stop', 'normal'], ['contain', 'none'], ['content-visibility', 'visible'],
+  ['contain-intrinsic-(?:width|height|inline-size|block-size)', 'none'], ['container-type', 'normal'], ['container-name', 'none'],
+];
+const JSON_TEXT = new RegExp(`,\\n[ ]*"(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE, ...LAYOUT_SINCE_BASE].map(([k, v]) => `${k}": "${v}`).join('|')})"`, 'g');
+/** perspective-origin in a capture: Chrome's computed value is the resolved 50% 50% in px, which depends on the box's size. */
+const JSON_PERSPECTIVE_ORIGIN = /,\n[ ]*"perspective-origin": "[^"\n]*"/g;
+const CSS_TEXT = new RegExp(`^[ ]*(?:${[...TEXT_SINCE_BASE, ...PAINT_SINCE_BASE, ...LAYOUT_SINCE_BASE].map(([k, v]) => `${k}: ${v}`).join('|')});\\n`, 'gm');
 /** touch-action, also added after the base, at its initial auto only: any other value stays in the text. */
 const JSON_TOUCH_ACTION = /,\n[ ]*"touch-action": "auto"/g;
 const CSS_TOUCH_ACTION = /^[ ]*touch-action: auto;\n/gm;
+/** FX's backdrop-filter and mix-blend-mode, also added after the base, at their initial values only, in LONGHANDS order. */
+const JSON_FX = /,\n[ ]*"backdrop-filter": "none",\n[ ]*"mix-blend-mode": "normal"/g;
+const CSS_FX = /^[ ]*backdrop-filter: none;\n[ ]*mix-blend-mode: normal;\n/gm;
 /**
  * The text fill and stroke colours, also added after the base, only where they draw what color draws: currentcolor in emitted CSS,
  * and in a capture's computed object the object's own color (Chrome resolves currentcolor). Any other colour stays in the text.
@@ -338,10 +358,10 @@ function withoutTextColors(json: string): string {
 const JSON_APPEARANCE = /,\n[ ]*"appearance": "none"/g;
 const CSS_APPEARANCE = /^[ ]*appearance: none;\n/gm;
 /**
- * caret-color and accent-color, also added after the base, at auto only (and -webkit-user-modify at read-only): in a capture caret-color's auto is the computed object's
+ * caret-color and accent-color, also added after the base, at auto only (-webkit-user-modify at read-only, speak at normal): in a capture caret-color's auto is the computed object's
  * color (Chrome resolves it), so a caret-color is removed there only where it equals that color. Any other value stays in the text.
  */
-const JSON_ACCENT = /,\n[ ]*"(?:accent-color": "auto|-webkit-user-modify": "read-only)"/g;
+const JSON_ACCENT = /,\n[ ]*"(?:accent-color": "auto|-webkit-user-modify": "read-only|speak": "normal)"/g;
 const CSS_UI_COLORS = /^[ ]*(?:caret-color|accent-color): auto;\n/gm;
 function withoutCaretColor(json: string): string {
   return json.replace(/"computed": \{[^{}]*\}/g, (block) => {
@@ -403,12 +423,12 @@ export function withoutPointerEvents(path: string, text: string): string {
   const type = genBType(path);
   if (path.endsWith('.json')) {
     const genB = new RegExp(`,\\n[ ]*"content": "normal",\\n[ ]*"list-style-type": "${type}",\\n[ ]*"list-style-position": "outside",\\n[ ]*"list-style-image": "none"`, 'g');
-    const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(genB, '').replace(SVG_JSON, '');
+    const stripped = withoutCaretColor(withoutTextColors(text)).replace(JSON_KEYS, '').replace(JSON_EFFECTS, '').replace(JSON_VISIBILITY, '').replace(JSON_USER_SELECT, '').replace(JSON_RESIZE, '').replace(JSON_TEXT, '').replace(JSON_PERSPECTIVE_ORIGIN, '').replace(JSON_TOUCH_ACTION, '').replace(JSON_APPEARANCE, '').replace(JSON_ACCENT, '').replace(JSON_FX, '').replace(genB, '').replace(SVG_JSON, '');
     return (BG2_BASE_CAPTURES.includes(path) ? stripped : stripped.replace(JSON_BG2, '')).replace(JSON_FRAGMENTATION, '');
   }
   if (path.endsWith('.css')) {
     const genB = new RegExp(`^[ ]*content: normal;\\n[ ]*list-style-type: ${type};\\n[ ]*list-style-position: outside;\\n[ ]*list-style-image: none;\\n`, 'gm');
-    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TEXT_COLORS, '').replace(CSS_TOUCH_ACTION, '').replace(CSS_APPEARANCE, '').replace(CSS_UI_COLORS, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
+    return text.replace(CSS_KEYS, '').replace(CSS_EFFECTS, '').replace(CSS_VISIBILITY, '').replace(CSS_USER_SELECT, '').replace(CSS_RESIZE, '').replace(CSS_TEXT, '').replace(CSS_TEXT_COLORS, '').replace(CSS_TOUCH_ACTION, '').replace(CSS_APPEARANCE, '').replace(CSS_UI_COLORS, '').replace(CSS_FX, '').replace(genB, '').replace(CSS_BG2, '').replace(SVG_CSS, '').replace(/compilation [0-9a-f]{64}/g, 'compilation <digest>');
   }
   throw new Error(`${path}: the identity check reads only .json captures and .css outputs`);
 }

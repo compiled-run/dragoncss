@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.q { container-type: inline-size; }
+.Q { CONTAINER: card / INLINE-SIZE; }
+.v { --t: inline-size; container-type: var(--t); }
+.n { container-name: card wide card; }
+.box { padding: 2px; border: 1px solid #1a1a2e; background-color: #e8d36a; }
+.m { margin-top: 6px; margin-bottom: 4px; background-color: #9ad0ec; }
+.ib { display: inline-block; }
+.rel { position: relative; height: 40px; width: 200px; }
+.abs { position: absolute; top: 4px; left: 10px; }
+.row { display: flex; width: 200px; }
+.grow { flex-grow: 1; }
+.grid { display: grid; grid-template-columns: auto auto 1fr; width: 200px; }
+.mc { width: min-content; }
+.w { width: 70px; }
+.if { display: inline-flex; }
+.g { display: grid; grid-template-columns: 30px 40px; column-gap: 5px; }
+.ig { display: inline-grid; grid-template-columns: repeat(2, 20px) auto; column-gap: 3px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="plain" class="box"><div data-dragon-id="plain-k" class="m n">XX</div></div>
+<div data-dragon-id="flow" class="box q n"><div data-dragon-id="flow-k" class="m">XX</div></div>
+<div data-dragon-id="flow-bare" class="Q"><div data-dragon-id="flow-bare-k" class="m">XX XX</div></div>
+<div data-dragon-id="line">X<span data-dragon-id="line-a" class="ib box q n">XX XX</span>X<span data-dragon-id="line-b" class="ib box v">XXX</span>X<span data-dragon-id="line-c" class="ib box q w">XX XX XX XX</span>X<span data-dragon-id="line-d" class="ib box">XX</span>X</div>
+<div data-dragon-id="rel" class="rel box"><div data-dragon-id="rel-a" class="abs box q n"><div data-dragon-id="rel-a-t">XX XX</div><div data-dragon-id="rel-a-k" class="abs box">X</div></div></div>
+<div data-dragon-id="row" class="row box"><div data-dragon-id="row-a" class="box q n">XX XX</div><div data-dragon-id="row-b" class="box q grow">XX</div><div data-dragon-id="row-c" class="box n">XXX</div></div>
+<div data-dragon-id="grid" class="grid box"><div data-dragon-id="grid-a" class="box q n">XXXX</div><div data-dragon-id="grid-b" class="box">XX</div><div data-dragon-id="grid-c" class="box q">XX XX</div></div>
+<div data-dragon-id="mc" class="box q mc">XX XX</div>
+<div data-dragon-id="nest-p">X<div data-dragon-id="nest" class="ib box q"><div data-dragon-id="nest-t">X<div data-dragon-id="nest-k" class="ib box q">XX</div>X</div><div data-dragon-id="nest-l" class="box w">XX</div></div>X</div>
+<div data-dragon-id="flexq-p">X<div data-dragon-id="flexq" class="if q"><div data-dragon-id="flexq-a" class="box q">XX</div><div data-dragon-id="flexq-b" class="box">XXX</div></div>X</div>
+<div data-dragon-id="st" class="rel box"><div data-dragon-id="st-q" class="box q"><div data-dragon-id="st-k" class="abs box">X</div></div></div>
+<div data-dragon-id="cg-p">X<div data-dragon-id="cg" class="ig box q"><div data-dragon-id="cg-a">XXXXXXXX</div><div data-dragon-id="cg-b">X</div><div data-dragon-id="cg-c">XX XX</div></div>X</div>
+<div data-dragon-id="cg-mc" class="g box q mc"><div data-dragon-id="cg-mc-a">XX</div><div data-dragon-id="cg-mc-b">XXXXXXXXXX</div></div>
+<div data-dragon-id="row2" class="row box"><div data-dragon-id="row2-g" class="g box q"><div data-dragon-id="row2-a">XX</div></div><div data-dragon-id="row2-b" class="box">X</div></div>
+</body>
+</html>

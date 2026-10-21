@@ -82,12 +82,15 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'clip-rect-ignored': ['clip-rect-basic', 'clip-rect-sr-only'],
   // MASK-CLIP: clip-path-basic's clip edges (rule clip:<id>:path-*) show the box's paint outside the inset rect when the writer is ignored.
   'clip-path-ignored': ['clip-path-basic'],
+  // MASK-CLIP: mask-gradient's masked boxes (rule gradient:<id>:mask) paint at full alpha when the mask writer is ignored.
+  'mask-ignored': ['mask-gradient'],
   'radius-square': ['radius-basic'],
   // calib-shadow-blur's small blurs change the sampled shadow pixels under a 1 device px shift.
   'shadow-offset-1': ['calib-shadow-blur'],
-  // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha; stacking-basic samples the interiors of
+  // PNT1: opacity-basic's translucent boxes paint opaque when the writer ignores the alpha, and so do opacity-group-text's
+  // pre-composited groups (the overlay composites at byte 255, PNT1-opacity-b); stacking-basic samples the interiors of
   // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
-  'alpha-ignored': ['opacity-basic'],
+  'alpha-ignored': ['opacity-basic', 'opacity-group-text'],
   'order-swap': ['stacking-basic'],
   // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
@@ -137,6 +140,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'double-solid': /^(border:|radius:[^:]+:[a-z-]+-stripe)/,
   'clip-rect-ignored': /^interior:cut-/,
   'clip-path-ignored': /^clip:cut-[^:]+:path-/,
+  'mask-ignored': /^gradient:[^:]+:mask$/,
   // Square corners paint the box's colour where Chrome's rounded corner shows the backdrop: the radius rule catches it.
   'radius-square': /^radius:/,
   // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.

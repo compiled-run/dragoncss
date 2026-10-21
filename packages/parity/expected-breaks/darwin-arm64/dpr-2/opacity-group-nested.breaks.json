@@ -1,0 +1,8 @@
+{
+  "case": "opacity-group-nested",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"on-f:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "case": "containment-layout",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"cnt:text0","lines":[[0,5]]},
+    {"id":"str-t:text0","lines":[[0,9]]},
+    {"id":"line:text0","lines":[[0,1]]},
+    {"id":"ib-l:text0","lines":[[0,2]]},
+    {"id":"ib-p:text0","lines":[[0,2]]},
+    {"id":"ib-n:text0","lines":[[0,2]]},
+    {"id":"ib-s:text0","lines":[[0,2]]},
+    {"id":"ib-i:text0","lines":[[0,3],[3,5]]},
+    {"id":"line:text1","lines":[[0,1]]},
+    {"id":"inl:text0","lines":[[0,6]]},
+    {"id":"row-l:text0","lines":[[0,2]]},
+    {"id":"row-p:text0","lines":[[0,2]]},
+    {"id":"row-n:text0","lines":[[0,2]]},
+    {"id":"lastline:text0","lines":[[0,1]]},
+    {"id":"last-a:text0","lines":[[0,2]]},
+    {"id":"last-b:text0","lines":[[0,3]]},
+    {"id":"lastline:text1","lines":[[0,1]]},
+    {"id":"ilp:text0","lines":[[0,6]]},
+    {"id":"sh:text0","lines":[[0,2]]}
+  ]
+}
