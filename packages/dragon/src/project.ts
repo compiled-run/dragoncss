@@ -15,7 +15,8 @@ import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
 import type { ContainerCondition, Declaration, EnclosedRules, LonghandValue, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
-import { splitNotApplicable } from './css/not-applicable.ts';
+import { browserOnlyDiagnostic, splitNotApplicable, withoutRepeatedBrowserOnly } from './css/not-applicable.ts';
+import { browserOnlyEntry } from './profiles/browser-only-native.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
@@ -494,6 +495,12 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
+          // BROWSER-ONLY: a listed property is an error of its own on native, never "unsupported yet".
+          const browserOnly = t === 'web' ? null : browserOnlyEntry(lh.property);
+          if (browserOnly !== null) {
+            diagnostics.push(browserOnlyDiagnostic(browserOnly, authored(d.valueSpan), t, `${lh.property}: ${valueToString(lh.value)}${setBy(d, lh.property)}`));
+            continue;
+          }
           // checkOutline refuses these outline styles on native wherever they paint; a zero-width one paints nothing.
           if (t !== 'web' && nativeOutlinePending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
@@ -1490,7 +1497,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         // A target's messages list the contexts of the bands it is resolved in.
         const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
         checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
-        diagnostics.splice(valuesAt, 0, ...values);
+        diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),

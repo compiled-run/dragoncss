@@ -73,6 +73,7 @@ import { BORDER_IMAGE_FAULTS } from '../faults/border-image.ts';
 import { checkBorderImage } from './border-image.ts';
 import type { Diagnostic, Origin } from '../types.ts';
 import { isolates } from '../css/properties/isolation.ts';
+import { browserOnlyEntry } from '../profiles/browser-only-native.ts';
 import type { BoxDecorationFaults } from '../faults/box-decoration.ts';
 import { BOX_DECORATION_FAULTS } from '../faults/box-decoration.ts';
 import { checkBoxDecoration } from './box-decoration.ts';
@@ -1277,6 +1278,8 @@ function checkSubstitution(el: ResolvedElement, targets: readonly string[], diag
     for (const t of targets) {
       const profile = profileOf(t);
       if (provenContexts(profile, feature).length > 0) continue;
+      // BROWSER-ONLY: analysis/scroll-containment.ts reports the computed value on native as browser-only.
+      if (t !== 'web' && browserOnlyEntry(p) !== null) continue;
       const id = `${t}|substitution|${span.source.uri}|${span.start}|${feature}`;
       if (reported.has(id)) continue;
       reported.add(id);

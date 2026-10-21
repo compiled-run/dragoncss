@@ -211,10 +211,14 @@ const project = createProjectWith(
   { faults: NO_FAULTS, profiles: 'enforce', direction: ENVIRONMENT.direction, platform: REFERENCE_PLATFORM, rootFont: ENVIRONMENT.rootFont },
 );
 
-/** One probe's outcome on one target: supported, not applicable on native (an info-level verdict and no error), or its first blocking code. */
-type Verdict = { readonly kind: 'ok' } | { readonly kind: 'na' } | { readonly kind: 'context'; readonly code: string } | { readonly kind: 'refused'; readonly code: string; readonly message: string };
+/**
+ * One probe's outcome on one target: supported, not applicable on native (an info-level verdict and no error), browser-only on native
+ * (every error is DRAGON_BROWSER_ONLY_NATIVE, the owner's browser-only list in profiles/browser-only-native.ts), or its first blocking code.
+ */
+type Verdict = { readonly kind: 'ok' } | { readonly kind: 'na' } | { readonly kind: 'browser-only' } | { readonly kind: 'context'; readonly code: string } | { readonly kind: 'refused'; readonly code: string; readonly message: string };
 
 const NA_CODE = /NOT_APPLICABLE|NA_NATIVE/;
+const BROWSER_ONLY_CODE = 'DRAGON_BROWSER_ONLY_NATIVE';
 /** Warnings that mark a native output as partial (drawn, but without the element's behaviour or accessibility role), so the probe counts as unsupported. */
 const PARTIAL_CODES = new Set(['DRAGON_CONTROL_STATIC_NATIVE']);
 /** Codes about the probe's own document rather than the CSS under test; one of them is a fault in this script's input. */
@@ -255,6 +259,7 @@ function runProbe(p: Probe, body: string): { readonly [T in Target]: Verdict } {
     const partial = t === 'web' ? undefined : mine.find((d) => PARTIAL_CODES.has(d.code));
     if (first === undefined && partial !== undefined) out[t] = { kind: 'refused', code: partial.code, message: partial.message };
     else if (first === undefined) out[t] = t !== 'web' && mine.some((d) => d.severity === 'info' && NA_CODE.test(d.code)) ? { kind: 'na' } : { kind: 'ok' };
+    else if (t !== 'web' && errors.every((d) => d.code === BROWSER_ONLY_CODE)) out[t] = { kind: 'browser-only' };
     else if (errors.every((d) => d.code === 'DRAGON_UNPROVEN_CONTEXT')) out[t] = { kind: 'context', code: first.code };
     else out[t] = { kind: 'refused', code: first.code, message: first.message };
   }
@@ -295,6 +300,16 @@ function supportedShare(row: Row, t: Target): number {
   return row.probes.filter((p) => p.verdict[t].kind === 'ok').length / row.probes.length;
 }
 const nativeShare = (row: Row): number => Math.min(supportedShare(row, 'ios'), supportedShare(row, 'android'));
+
+/**
+ * A browser-only row leaves the native denominator: the compiler reports some probe browser-only on both native targets and every
+ * other probe compiles there (the initial value of view-transition-name, say). The owner ruled the list itself (2026-10-21), so no
+ * input entry is needed; a row with any other native error stays in the denominator.
+ */
+const browserOnlyOnNative = (r: Row): boolean => {
+  const fine = (v: Verdict): boolean => v.kind === 'ok' || v.kind === 'browser-only';
+  return r.probes.every((p) => fine(p.verdict.ios) && fine(p.verdict.android)) && r.probes.some((p) => p.verdict.ios.kind === 'browser-only' && p.verdict.android.kind === 'browser-only');
+};
 
 // The native profiles are written by profile:rows from the committed device records. A tree whose records changed after its profiles
 // were written (a device record commit before the regen after it) measures the profiles of the old records, so it is refused.
@@ -437,7 +452,7 @@ function main(): void {
   // native targets; web keeps it, since web still refuses it. An approved row the compiler does not yet mark stays and is warned.
   const naOnNative = (r: Row): boolean => r.probes.every((p) => p.verdict.ios.kind === 'na' && p.verdict.android.kind === 'na');
   for (const r of rows) if (r.na === 'approved' && !naOnNative(r)) warnings.push(`${r.id}: owner-approved NA-NATIVE, but the compiler does not report every probe not applicable on iOS and Android, so it stays in the native denominator`);
-  const onNative = props.filter((r) => !(r.na === 'approved' && naOnNative(r)));
+  const onNative = props.filter((r) => !(r.na === 'approved' && naOnNative(r)) && !browserOnlyOnNative(r));
   const notProposedNa = onNative.filter((r) => r.na !== 'proposed');
   const headline = {
     web: weighted(props, (r) => supportedShare(r, 'web')),
@@ -455,6 +470,8 @@ function main(): void {
   for (const r of rows) {
     // An owner-approved NA-NATIVE row the compiler reports not applicable has left the native denominator: no lane can move it.
     if (r.na === 'approved' && naOnNative(r)) continue;
+    // A browser-only row has left the native denominator too: native can never support it.
+    if (browserOnlyOnNative(r)) continue;
     const inLane = new Map<string, number>();
     for (const p of r.probes) {
       const native = p.verdict.ios.kind === 'ok' && p.verdict.android.kind === 'ok';
@@ -498,6 +515,8 @@ function cell(row: Row, t: Target): string {
   const n = row.probes.length;
   const ok = row.probes.filter((p) => p.verdict[t].kind === 'ok').length;
   const na = row.probes.filter((p) => p.verdict[t].kind === 'na').length;
+  const browserOnly = row.probes.filter((p) => p.verdict[t].kind === 'browser-only').length;
+  if (browserOnly > 0 && ok + browserOnly === n) return 'browser-only';
   const firstBad = row.probes.map((p) => p.verdict[t]).find((v) => v.kind === 'refused' || v.kind === 'context');
   const code = firstBad === undefined ? '' : ` ${(firstBad as { code: string }).code.replace(/^DRAGON_/, '')}`;
   if (na === n) return 'n/a';
@@ -537,13 +556,13 @@ function render(a: RenderArgs): string {
   L.push(`- Of the ${a.top.length} properties used on at least ${pct(a.input.tailBelow)} of page loads, ${full} compile on native for every probed value, ${part} for some values, and ${a.top.length - full - part} for none.`);
   L.push(`- Music player (north star): ${a.nsNative} of ${a.nsTotal} declarations compile on both native targets.`);
   L.push('');
-  L.push('How the headline is computed: for every CSS property chromestatus reports (current counters only), its share of page loads times the share of its probe declarations that compile with no error on the target, summed and divided by the summed shares. On iOS and Android, an owner-approved NA-NATIVE property the compiler reports not applicable on both is left out of the sums. Native is the lower of iOS and Android. A property used on 90% of pages that compiles for 3 of its 4 probed values adds 0.9 x 3/4. Shares overlap (one page uses many properties), so this is a usage-weighted average, not a share of pages.');
+  L.push('How the headline is computed: for every CSS property chromestatus reports (current counters only), its share of page loads times the share of its probe declarations that compile with no error on the target, summed and divided by the summed shares. On iOS and Android, an owner-approved NA-NATIVE property the compiler reports not applicable on both is left out of the sums, and so is a browser-only property (some probe is a DRAGON_BROWSER_ONLY_NATIVE build error on both and the rest compile). Native is the lower of iOS and Android. A property used on 90% of pages that compiles for 3 of its 4 probed values adds 0.9 x 3/4. Shares overlap (one page uses many properties), so this is a usage-weighted average, not a share of pages.');
   L.push('');
   L.push('## Method');
   L.push('');
   L.push(`- **Usage.** Chrome's UseCounter data from chromestatus: CSS properties (${a.css.source}, fetched ${a.css.fetched}) and features such as selectors, at-rules and value functions (${a.feat.source}, fetched ${a.feat.fetched}), as the share of page loads. Counters whose last report predates ${a.input.currentSince} are dropped as retired. Where chromestatus has no counter (calc(), :hover, elements), the share is a Web Almanac figure, cited per row; these are 2022/2024 crawls, so treat them as rough. Rows used on under ${pct(a.input.tailBelow)} of page loads are tail.`);
   L.push('- **Dragon status.** Every row has one or more probe declarations (common real-world values, curated in data/coverage-rank-input.json), each compiled through the public compiler for web, iOS and Android in the parity environment, with support profiles enforced. A probe is supported on a target when it compiles there with no error. An alias without curated samples is probed with its target property\'s samples, written under the alias name (Chrome resolves an alias at parse time). Other properties without curated samples are probed with their webref initial value, which is sound only because Dragon refuses an unknown property whatever its value; the script warns when that assumption breaks. Nothing here restates a status: rerun the script and the table follows the code.');
-  L.push('- **Status codes.** `yes` = every probe compiles; `k/n` = k of n probes do; `no CODE` = none, with the first blocking diagnostic; `UNPROVEN_CONTEXT` means the value exists in the profile but not in the probe\'s context; `n/a` = an info-level not-applicable-on-native verdict.');
+  L.push('- **Status codes.** `yes` = every probe compiles; `k/n` = k of n probes do; `no CODE` = none, with the first blocking diagnostic; `UNPROVEN_CONTEXT` means the value exists in the profile but not in the probe\'s context; `n/a` = an info-level not-applicable-on-native verdict; `browser-only` = the probes that do not compile are DRAGON_BROWSER_ONLY_NATIVE build errors (browser behaviour native never has, such as view transitions), so the row is out of the native denominator.');
   L.push('- **Lanes.** Each row (or each probe value) is assigned to one candidate lane. A lane\'s **reach** is the usage it would move to supported on native: the summed share of every row, times the share of that row\'s probes that fail on native and belong to the lane. **Size** is S (one PR, about a day), M (2 PRs) or L (4 or more), weighted 1, 2 and 4; **score** = reach / weight. TW is the number of Tailwind 4.3.3 utilities whose first iOS blocker falls in the lane (packages/tailwind-sweep/snapshot); NS counts the north-star declarations it would unblock on native. Lane sizes, dependencies and assignments are judgement and live in the input file.');
   L.push('- **NA-NATIVE.** Rows the owner approved are marked `NA (owner-approved)` and leave the native denominator of every native figure while the compiler reports them not applicable on both native targets. Rows on the PM\'s proposed list are marked `NA (proposed)`; the further candidates found here are `NA? (candidate)` and need the owner\'s per-entry review. Neither counts as supported, and only the proposed list also leaves the denominator, in the second headline figure.');
   L.push('');
