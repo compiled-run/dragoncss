@@ -35,9 +35,10 @@ describe('element keys (ELB-2)', () => {
     expect(light.userAgentUnmodelled['button']?.ltr).toEqual({ cursor: 'default' });
     expect(light.userAgentUnmodelled['input']?.ltr).toEqual({ cursor: 'text' });
     expect(light.userAgentUnmodelled['a[href]']?.ltr).toMatchObject({ cursor: 'pointer', 'text-decoration-line': 'underline' });
-    // GEN-b (T151 R13): list-style-type is a longhand now, so ol's decimal is a declared UA value, no longer unmodelled.
-    expect(light.userAgentUnmodelled['ol']?.ltr).toEqual({ 'unicode-bidi': 'isolate' });
-    expect(light.userAgentDeclared['ol']?.ltr).toMatchObject({ 'list-style-type': 'decimal' });
+    // GEN-b (T151 R13): list-style-type is a longhand now, so ol's decimal is a declared UA value, no longer unmodelled; so is its
+    // unicode-bidi isolate since unicode-bidi is one (css/properties/bidi.ts).
+    expect(light.userAgentUnmodelled['ol']?.ltr).toEqual({});
+    expect(light.userAgentDeclared['ol']?.ltr).toMatchObject({ 'list-style-type': 'decimal', 'unicode-bidi': 'isolate' });
     expect(light.userAgentUnmodelled['span']).toEqual({ ltr: {}, rtl: {} });
     // FORM-a: appearance is a declared longhand, kept off the reference element, so Chrome's form-control adjustment still shows
     // as a forced display: inline-block.

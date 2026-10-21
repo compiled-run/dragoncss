@@ -181,6 +181,8 @@ const SUBSET = [
   ...FRAGMENTATION_LONGHANDS, ...FRAGMENTATION_SHORTHANDS,
   // FX: backdrop-filter (filter-effects-2 §3) and mix-blend-mode (compositing-1 §3.2), after color-scheme, as LONGHANDS registers them.
   'backdrop-filter', 'mix-blend-mode',
+  // unicode-bidi (css-writing-modes-4 §2.2), after color-scheme, as LONGHANDS registers it.
+  'unicode-bidi',
 ] as const;
 
 /**
