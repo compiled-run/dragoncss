@@ -2,8 +2,9 @@
 // SYNTAX_OVERRIDES, css/properties/initial-only.ts; the SVG-inert-b longhands, css/properties/svg.ts, take every value and are not
 // here): Dragon drops no value Chrome keeps, and every value Dragon accepts as initial
 // computes in Chrome to the initial values of the longhands it sets, as Dragon's own longhands do. Every other value is kept and then
-// refused (analysis/scroll-containment.ts), so only the accepted values' computed values are compared. Each planted reading must be
-// caught.
+// refused (analysis/scroll-containment.ts), so only the accepted values' computed values are compared. image-rendering parses its
+// three Chrome 145 keywords (properties/image-rendering.ts) and drops the rest, each of which Chrome must drop too. Each planted
+// reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -34,16 +35,16 @@ function item(name: string, v: string): Item {
 }
 
 const VALUES: { readonly [name: string]: readonly string[] } = {
-  'image-rendering': ['auto', 'AUTO', 'smooth', 'high-quality', 'pixelated', 'crisp-edges', 'optimizeSpeed', 'optimizeQuality', '-webkit-optimize-contrast', 'auto auto', 'none'],
+  'image-rendering': ['auto', 'AUTO', 'smooth', 'high-quality', 'pixelated', 'PIXELATED', 'crisp-edges', '-moz-crisp-edges', 'optimizeSpeed', 'optimizeQuality', '-webkit-optimize-contrast', '-WEBKIT-Optimize-Contrast', 'auto auto', 'none'],
   'anchor-name': ['none', 'NONE', '--a', '--a, --b', 'none, --a', 'a', 'none none'],
   'anchor-scope': ['none', 'None', 'all', '--a', '--a, --b', 'none --a'],
   'position-anchor': ['none', 'NONE', 'normal', 'auto', '--a', 'match-parent', 'none none'],
   'position-area': ['none', 'NONE', 'top', 'top left', 'span-all', 'center', 'none none'],
   'position-try-order': ['normal', 'NORMAL', 'most-width', 'most-height', 'most-block-size', 'most-inline-size', 'none'],
   'position-try-fallbacks': ['none', 'None', 'flip-block', '--a', 'flip-block, --a', 'top', 'none none'],
-  'position-try': ['none', 'NONE', 'normal none', 'Normal None', 'none normal', 'normal', 'most-width --a', 'flip-block', 'normal none none'],
+  'position-try': ['none', 'NONE', 'normal none', 'Normal None', 'none normal', 'normal', 'NORMAL', 'most-width', 'most-width --a', 'flip-block', 'normal none none'],
   'position-visibility': ['anchors-visible', 'ANCHORS-VISIBLE', 'anchor-visible', 'always', 'no-overflow', 'anchors-visible no-overflow', 'none'],
-  'baseline-shift': ['0', '0px', '0PX', '-0', '0em', '0%', 'sub', 'super', '2px', '10%', 'baseline'],
+  'baseline-shift': ['0', '0px', '0PX', '-0', '0em', '0vw', '0%', 'sub', 'super', '2px', '10%', 'baseline', 'top', 'center', 'bottom', 'none', 'BASELINE', 'calc(0px)', 'calc(1px - 1px)', 'calc(0em)', 'calc(0%)', 'calc(0px + 0%)', 'calc(1px)'],
   'shape-rendering': ['auto', 'AUTO', 'optimizeSpeed', 'crispEdges', 'geometricPrecision', 'none'],
   'color-interpolation': ['srgb', 'sRGB', 'SRGB', 'auto', 'linearRGB', 'none'],
   'color-interpolation-filters': ['linearrgb', 'linearRGB', 'auto', 'sRGB', 'none'],
@@ -52,12 +53,14 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   'view-transition-name': ['none', 'NONE', 'auto', 'match-element', 'card', '--card', 'none none'],
   'view-transition-class': ['none', 'None', 'a', 'a b', 'none a'],
   'view-transition-group': ['normal', 'NORMAL', 'contain', 'nearest', 'card', 'none'],
-  'interpolate-size': ['numeric-only', 'NUMERIC-ONLY', 'allow-keywords', 'auto'],
+  'interpolate-size': ['numeric-only', 'NUMERIC-ONLY', 'allow-keywords', 'auto', 'none'],
   'timeline-scope': ['none', 'NONE', 'all', '--t', '--a, --b', 'none --a'],
 };
 
 /** How many of VALUES Dragon accepts as initial (pinned so a parser change that accepts more or fewer is seen). */
-const ACCEPTED = 59;
+const ACCEPTED = 56;
+/** How many of VALUES Dragon drops, as Chrome 145 does (pinned likewise). */
+const DROPPED = 22;
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
@@ -77,12 +80,17 @@ describe('image-rendering, anchor positioning and svg-extra: Chrome 145 parsing'
     const real = Object.entries(VALUES).flatMap(([name, vs]) => vs.map((v) => item(name, v)));
     const planted: { readonly name: string; readonly items: Item[] }[] = [
       { name: 'renderingDropped', items: [{ name: 'image-rendering', v: 'pixelated', code: 'DRAGON_CSS_INVALID_VALUE', longhands: null }] },
+      { name: 'crispEdgesAccepted', items: [{ name: 'image-rendering', v: 'crisp-edges', code: null, longhands: [['image-rendering', 'crisp-edges']] }] },
       { name: 'pixelatedReadAsInitial', items: [{ name: 'image-rendering', v: 'pixelated', code: null, longhands: [['image-rendering', 'auto']] }] },
       { name: 'anchorAutoReadAsInitial', items: [{ name: 'position-anchor', v: 'auto', code: null, longhands: [['position-anchor', 'none']] }] },
       { name: 'tryFallbackReadAsInitial', items: [{ name: 'position-try', v: 'flip-block', code: null, longhands: [['position-try-order', 'normal'], ['position-try-fallbacks', 'none']] }] },
       { name: 'shiftReadAsInitial', items: [{ name: 'baseline-shift', v: '2px', code: null, longhands: [['baseline-shift', '0px']] }] },
       { name: 'viewNameReadAsInitial', items: [{ name: 'view-transition-name', v: 'card', code: null, longhands: [['view-transition-name', 'none']] }] },
       { name: 'keywordsReadAsInitial', items: [{ name: 'interpolate-size', v: 'allow-keywords', code: null, longhands: [['interpolate-size', 'numeric-only']] }] },
+      { name: 'zeroPercentReadAsInitial', items: [{ name: 'baseline-shift', v: '0%', code: null, longhands: [['baseline-shift', '0px']] }] },
+      { name: 'lengthCalcReadAsInitial', items: [{ name: 'baseline-shift', v: 'calc(1px)', code: null, longhands: [['baseline-shift', '0px']] }] },
+      { name: 'tryOrderAloneKept', items: [{ name: 'position-try', v: 'most-width', code: null, longhands: [['position-try-order', 'most-width'], ['position-try-fallbacks', 'none']] }] },
+      { name: 'geometricPrecisionDropped', items: [{ name: 'shape-rendering', v: 'geometricPrecision', code: 'DRAGON_CSS_INVALID_VALUE', longhands: null }] },
       { name: 'webrefVisibilityAccepted', items: [{ name: 'position-visibility', v: 'anchor-visible', code: null, longhands: [['position-visibility', 'anchors-visible']] }] },
     ];
     const sets = [real, ...planted.map((p) => p.items)];
@@ -107,7 +115,10 @@ describe('image-rendering, anchor positioning and svg-extra: Chrome 145 parsing'
       await browser.close();
     }
     expect(judge(real, seen[0] as Seen[])).toEqual([]);
-    expect(real.filter((it) => it.code !== null)).toEqual([]);
+    // Every value Dragon drops is judged against Chrome above (Chrome must drop it too); only DRAGON_CSS_INVALID_VALUE drops one.
+    expect(real.filter((it) => it.code !== null && it.code !== 'DRAGON_CSS_INVALID_VALUE')).toEqual([]);
+    expect(real.filter((it) => it.code !== null).length).toBe(DROPPED);
+    expect(real.filter((it) => it.name === 'image-rendering' && it.code === 'DRAGON_CSS_INVALID_VALUE').map((it) => it.v)).toEqual(['smooth', 'high-quality', 'crisp-edges', '-moz-crisp-edges', 'optimizeSpeed', 'optimizeQuality', 'auto auto', 'none']);
     expect(real.filter((it) => it.longhands !== null).length).toBe(ACCEPTED);
     expect((seen[0] as Seen[]).filter((s) => s.parsed).length).toBeGreaterThan(100);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));

@@ -223,7 +223,7 @@ const FAMILIES = [
   family('fx', FX_LONGHANDS, FX_SHORTHANDS, FX_INHERITED, FX_ASPECTS, FX_CONTAINER, FX_TEXT_ROLE),
   // css-writing-modes-4 §2.2: unicode-bidi, where it reorders nothing on native, after color-scheme.
   family('bidi', BIDI_LONGHANDS, BIDI_SHORTHANDS, BIDI_INHERITED, BIDI_ASPECTS, BIDI_CONTAINER, BIDI_TEXT_ROLE),
-  // css-images-3 §5.3: image-rendering, initial value only until Dragon draws images another way than smoothly, after color-scheme.
+  // css-images-3 §5.3: image-rendering, auto, -webkit-optimize-contrast and pixelated (nearest-neighbour imgs), after color-scheme.
   family('image-rendering', IMAGE_RENDERING_LONGHANDS, IMAGE_RENDERING_SHORTHANDS, IMAGE_RENDERING_INHERITED, IMAGE_RENDERING_ASPECTS, IMAGE_RENDERING_CONTAINER, IMAGE_RENDERING_TEXT_ROLE),
   // css-anchor-position-1: the anchor positioning longhands and position-try, initial values only until Dragon anchors boxes, after image-rendering.
   family('anchor-position', ANCHOR_POSITION_LONGHANDS, ANCHOR_POSITION_SHORTHANDS, ANCHOR_POSITION_INHERITED, ANCHOR_POSITION_ASPECTS, ANCHOR_POSITION_CONTAINER, ANCHOR_POSITION_TEXT_ROLE),

@@ -1,6 +1,7 @@
 // The containment family, which Dragon accepts at its initial values alone, the container-query family (container-type at
-// inline-size too), scroll snapping, which it accepts wherever nothing snaps, and the image-rendering,
-// anchor-position, svg-extra, view-transition and animation-extra families, which it accepts at their initial values alone.
+// inline-size too), scroll snapping, which it accepts wherever nothing snaps, the anchor-position,
+// svg-extra, view-transition and animation-extra families, which it accepts at their initial values alone, and image-rendering:
+// pixelated over an image layer.
 
 export type ScrollContainmentFaults = {
   /** An active snap pair (a scroll container with a snap type and a snap area) is accepted on iOS and Android, though neither snaps. */
@@ -15,7 +16,7 @@ export type ScrollContainmentFaults = {
   readonly containerSelfQueried: boolean;
   /** CQ: a cqw or cqi length reads its container's width as the viewport less the shift, without its min-width and max-width clamp. */
   readonly containerUnitUnclamped: boolean;
-  /** An image-rendering other than auto is accepted, though no target draws an image other than smoothly. */
+  /** image-rendering: pixelated is accepted on iOS and Android over an image layer they draw smoothly (analysis/image-rendering.ts). */
   readonly imageRenderingAccepted: boolean;
   /** An anchor positioning longhand other than its initial value is accepted, though no target anchors a box. */
   readonly anchorPositionAccepted: boolean;

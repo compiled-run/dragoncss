@@ -1287,6 +1287,12 @@ export function foldNumber(n: MathNode): number {
   return evaluateOperator(values, n.op);
 }
 
+/** A calculation's value with each literal scaled by its unit's factor ('' for a number, '%' for a percentage, else the unit). */
+export function foldScaled(n: MathNode, scale: (unit: string) => number): number {
+  if (isLit(n)) return n.value * scale(n.unit);
+  return evaluateOperator(n.args.map((a) => foldScaled(a, scale)), n.op);
+}
+
 // ---------------------------------------------------------------- serialization (css-values-4 §10.12, Blink CustomCSSText)
 
 /** How a number is written: Blink's six significant digits. Rounding lives in css/color.ts and the engine, so callers pass it. */

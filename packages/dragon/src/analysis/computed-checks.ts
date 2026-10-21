@@ -55,6 +55,7 @@ import { checkTransformExtra } from './transform-extra.ts';
 import { checkZoom, effectiveZoom } from './zoom.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
+import { checkImageRendering, checkPixelatedTransformed } from './image-rendering.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
 import { paintContained } from './containment.ts';
@@ -1747,6 +1748,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     // The multicol family, initial values only (analysis/multicol.ts).
     checkMulticol(el, targets, diagnostics, reported, faults);
+    if (!here) checkImageRendering(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
@@ -1801,6 +1803,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale, inside, display === 'contents' ? parentDisplay : display, zoom);
   };
   walk(root, false, 'viewport', [], null, new Set(), null, null, 1);
+  checkPixelatedTransformed(root, targets, diagnostics, reported, faults);
   // SCROLL-SNAP: a scroll container that snaps to a snap area, which native does not yet (analysis/scroll-containment.ts).
   checkScrollSnap(root, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, faults);
   // FLT: floats beside what the engine does not move (checkFloats).

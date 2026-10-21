@@ -7,7 +7,7 @@
 import type { PropertyAspect } from '../properties.ts';
 import type { CssValue } from '../values.ts';
 import type { InitialOnlyParser } from './initial-only.ts';
-import { initialOnlyLonghand, kwInitial } from './initial-only.ts';
+import { initialOnlyLonghand, keywordLonghand, kwInitial } from './initial-only.ts';
 
 export const ANIMATION_EXTRA_LONGHANDS = ['interpolate-size', 'timeline-scope'] as const;
 export const ANIMATION_EXTRA_SHORTHANDS = [] as const;
@@ -26,4 +26,8 @@ export const ANIMATION_EXTRA_INITIAL: { readonly [P in AnimationExtraLonghand]: 
   'timeline-scope': kwInitial('none'),
 };
 
-export const ANIMATION_EXTRA_VALUE_PARSERS = Object.fromEntries(ANIMATION_EXTRA_LONGHANDS.map((p) => [p, initialOnlyLonghand(p, ANIMATION_EXTRA_INITIAL[p])])) as { readonly [P in AnimationExtraLonghand]: InitialOnlyParser };
+export const ANIMATION_EXTRA_VALUE_PARSERS: { readonly [P in AnimationExtraLonghand]: InitialOnlyParser } = {
+  // Chrome 145 parses numeric-only and allow-keywords and drops any other value.
+  'interpolate-size': keywordLonghand('interpolate-size', ANIMATION_EXTRA_INITIAL['interpolate-size'], ['numeric-only', 'allow-keywords']),
+  'timeline-scope': initialOnlyLonghand('timeline-scope', ANIMATION_EXTRA_INITIAL['timeline-scope']),
+};
