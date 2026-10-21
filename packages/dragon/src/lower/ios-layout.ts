@@ -49,6 +49,7 @@ import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
@@ -89,8 +90,12 @@ function keyword<T extends string>(id: string, get: Get, p: Longhand, allowed: r
   return fail(id, p, v, allowed.join(' | '));
 }
 
-/** What the lowering of one element reads besides its values: its font sizes for em and rem, and the compiler faults. */
-type Lowering = { readonly em: number | null; readonly emSize: CalcExpr | null; readonly rem: number | null; readonly faults: CompilerFaults };
+/**
+ * What the lowering of one element reads besides its values: its font sizes for em and rem, its primary font (lowerFont, read
+ * lazily by an ex, ch or cap length; null where none is lowered), and the compiler faults.
+ */
+type Lowering = { readonly em: number | null; readonly emSize: CalcExpr | null; readonly rem: number | null; readonly font: (() => FontSpec) | null; readonly faults: CompilerFaults };
+type StyleFonts = { readonly em: number | null; readonly emSize?: CalcExpr | null; readonly rem: number | null; readonly font?: () => FontSpec };
 
 const VIEWPORT_AXIS: { readonly [unit: string]: 'width' | 'height' | 'min' | 'max' } = { vw: 'width', vi: 'width', vh: 'height', vb: 'height', vmin: 'min', vmax: 'max' };
 
@@ -105,6 +110,17 @@ function lengthPercentage(id: string, get: Get, p: Longhand, range: LengthCalc['
   if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' }, range };
   // CALC-2: an em under a font size that follows the viewport stays an em leaf over that size, which the engine resolves.
   if (v.kind === 'length' && v.unit === 'em' && l.emSize !== null) return { kind: 'calc', expr: { kind: 'em', value: v.value, fontSize: l.emSize }, range };
+  // css-values-4 §6.1.1: ex, ch and cap read the element's own primary font, which the engine measures at the device's zoom
+  // (environment.ts fontMetricPxAt). The parse admits them only in non-inherited layout lengths (css/units.ts unitRefusalIn).
+  if (v.kind === 'length' && FONT_METRIC_LAYOUT_UNITS.has(v.unit)) {
+    if (l.font === null) return fail(id, p, v, 'an ex, ch or cap length only on an element whose font is lowered');
+    const font = l.font();
+    // Only Ahem's metrics at a px size are proven against Chrome (fixture font-units-ahem); a real face or a size that follows
+    // the viewport is refused natively until a Chrome case proves it.
+    if (font.family !== AHEM_FACE || font.specifiedSize.kind !== 'px') return fail(id, p, v, 'an ex, ch or cap length over Ahem at a px font size');
+    if (l.faults.fontMetricAsEm) return { kind: 'calc', expr: { kind: 'em', value: v.value, fontSize: font.specifiedSize }, range };
+    return { kind: 'calc', expr: { kind: 'font-metric', value: v.value, metric: v.unit as 'ex' | 'ch' | 'cap', font }, range };
+  }
   if (v.kind !== 'other' || !MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) return null;
   const context = mathContextFor(p);
   const parsed = 'refused' in context ? null : parseMath(v.text, context);
@@ -297,10 +313,10 @@ export function rootFontSizeOf(root: ResolvedElement): number {
 export type LastBaselineContext = { readonly items: boolean; readonly self: boolean };
 const NO_LAST_BASELINE: LastBaselineContext = { items: false, self: false };
 
-export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null, lastBaseline: LastBaselineContext = NO_LAST_BASELINE): LayoutStyle {
+export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, mode: LowerMode | null = null): LayoutStyle {
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
-  const fonts = { ...emOf(get('font-size')), rem: rootFontSize };
+  const fonts: StyleFonts = { ...emOf(get('font-size')), rem: rootFontSize, ...(mode === null ? {} : { font: () => lowerFont(id, get, mode).font }) };
   return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el), appliedContainment(el));
 }
 
@@ -381,8 +397,8 @@ function containInlineSize(id: string, get: Get): boolean {
  * lineClamp: N for a line-clamp container, decided in analysis from the specified display (analysis/line-clamp.ts lineClampOf), else
  * 0; an anonymous box and a replaced element never clamp.
  */
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly emSize?: CalcExpr | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0, containment: Containment = NO_CONTAINMENT): LayoutStyle {
-  const l: Lowering = { em: fonts.em, emSize: fonts.emSize ?? null, rem: fonts.rem, faults };
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: StyleFonts, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0, containment: Containment = NO_CONTAINMENT): LayoutStyle {
+  const l: Lowering = { em: fonts.em, emSize: fonts.emSize ?? null, rem: fonts.rem, font: fonts.font ?? null, faults };
   // css-contain-2 §3.4: paint containment clips the contents to the padding box as overflow: clip does, on an axis that does not already clip.
   const overflow = (p: 'overflow-x' | 'overflow-y'): Overflow => {
     const v = keyword<Overflow>(id, get, p, OVERFLOW_VALUES);
@@ -621,7 +637,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     throw new LoweringError(block.element.address, 'display', `block-level <${block.element.tag}> ${block.element.address} inside inline box ${id} (CSS2 §9.2.1.1 block-in-inline) is not laid out`);
   }
   // An inline box is never a grid item (a grid blockifies its children, analysis/blockify.ts), so last baseline stays refused on it.
-  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
+  return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE, l.mode), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, l)) };
 }
 
 /** A block container's inline-level child: an atomic inline is a box among its inline content (INL2a), the rest lowerInline. */
@@ -665,14 +681,14 @@ const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', '
  * overflow clip (the UA's img and iframe rule) clips only its own content, so the engine takes it as visible; its children are
  * fallback content, which a replaced element never renders.
  */
-function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals, gridParent: GridContainer | null): ReplacedLeaf {
+function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals, gridParent: GridContainer | null, mode: LowerMode): ReplacedLeaf {
   const id = el.element.address;
   const raw: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const get: Get = (p) => {
     const v = raw(p);
     return (p === 'overflow-x' || p === 'overflow-y') && v.kind === 'keyword' && v.value === 'clip' ? { kind: 'keyword', value: 'visible' } : v;
   };
-  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { ...emOf(raw('font-size')), rem: rootFontSize }, { items: false, self: gridParent !== null });
+  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { ...emOf(raw('font-size')), rem: rootFontSize, font: () => lowerFont(id, raw, mode).font }, { items: false, self: gridParent !== null });
   // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
   if (own.display === 'grid' || own.display === 'inline-grid') throw new LoweringError(id, 'display', `display: ${own.display} on the replaced element ${id} is not supported`);
   // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
@@ -712,7 +728,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);
-  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null });
+  const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null }, l.mode);
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible.
   const own: LayoutStyle = id === l.propagated ? { ...lowered, overflowX: 'visible', overflowY: 'visible' } : lowered;
   // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely
@@ -736,7 +752,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   for (const c of kids) {
     if (!isInlineLevel(c)) {
       flush();
-      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images, grid) : lowerBox(c as ResolvedElement, l, grid));
+      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images, grid, l.mode) : lowerBox(c as ResolvedElement, l, grid));
     } else if (wrap) {
       if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
       run.push(c);
