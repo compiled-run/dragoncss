@@ -37,6 +37,7 @@ import { LINE_BREAK_ASPECTS, LINE_BREAK_CONTAINER, LINE_BREAK_INHERITED, LINE_BR
 import { HYPHENS_ASPECTS, HYPHENS_CONTAINER, HYPHENS_INHERITED, HYPHENS_LONGHANDS, HYPHENS_SHORTHANDS, HYPHENS_TEXT_ROLE } from './properties/hyphens.ts';
 import { TEXT_WRAP_ASPECTS, TEXT_WRAP_CONTAINER, TEXT_WRAP_INHERITED, TEXT_WRAP_LONGHANDS, TEXT_WRAP_SHORTHANDS, TEXT_WRAP_TEXT_ROLE } from './properties/text-wrap.ts';
 import { TAB_SIZE_ASPECTS, TAB_SIZE_CONTAINER, TAB_SIZE_INHERITED, TAB_SIZE_LONGHANDS, TAB_SIZE_SHORTHANDS, TAB_SIZE_TEXT_ROLE } from './properties/tab-size.ts';
+import { TEXT_JUSTIFY_ASPECTS, TEXT_JUSTIFY_CONTAINER, TEXT_JUSTIFY_INHERITED, TEXT_JUSTIFY_LONGHANDS, TEXT_JUSTIFY_SHORTHANDS, TEXT_JUSTIFY_TEXT_ROLE } from './properties/text-justify.ts';
 import { TEXT_ALIGN_LAST_ASPECTS, TEXT_ALIGN_LAST_CONTAINER, TEXT_ALIGN_LAST_INHERITED, TEXT_ALIGN_LAST_LONGHANDS, TEXT_ALIGN_LAST_SHORTHANDS, TEXT_ALIGN_LAST_TEXT_ROLE } from './properties/text-align-last.ts';
 import { FONT_VARIANT_ASPECTS, FONT_VARIANT_CONTAINER, FONT_VARIANT_INHERITED, FONT_VARIANT_LONGHANDS, FONT_VARIANT_SHORTHANDS, FONT_VARIANT_TEXT_ROLE } from './properties/font-variant.ts';
 import { FONT_TUNING_ASPECTS, FONT_TUNING_CONTAINER, FONT_TUNING_INHERITED, FONT_TUNING_LONGHANDS, FONT_TUNING_SHORTHANDS, FONT_TUNING_TEXT_ROLE } from './properties/font-tuning.ts';
@@ -146,6 +147,8 @@ const FAMILIES = [
   family('text-wrap', TEXT_WRAP_LONGHANDS, TEXT_WRAP_SHORTHANDS, TEXT_WRAP_INHERITED, TEXT_WRAP_ASPECTS, TEXT_WRAP_CONTAINER, TEXT_WRAP_TEXT_ROLE),
   // css-text-3 §7.2: text-align-last, after text-break.
   family('text-align-last', TEXT_ALIGN_LAST_LONGHANDS, TEXT_ALIGN_LAST_SHORTHANDS, TEXT_ALIGN_LAST_INHERITED, TEXT_ALIGN_LAST_ASPECTS, TEXT_ALIGN_LAST_CONTAINER, TEXT_ALIGN_LAST_TEXT_ROLE),
+  // css-text-3 §7.4: text-justify, after text-align-last.
+  family('text-justify', TEXT_JUSTIFY_LONGHANDS, TEXT_JUSTIFY_SHORTHANDS, TEXT_JUSTIFY_INHERITED, TEXT_JUSTIFY_ASPECTS, TEXT_JUSTIFY_CONTAINER, TEXT_JUSTIFY_TEXT_ROLE),
   // css-fonts-4 §6.4-§6.11: the font-variant longhands and shorthand, after text-break.
   family('font-variant', FONT_VARIANT_LONGHANDS, FONT_VARIANT_SHORTHANDS, FONT_VARIANT_INHERITED, FONT_VARIANT_ASPECTS, FONT_VARIANT_CONTAINER, FONT_VARIANT_TEXT_ROLE),
   // css-fonts-4 §6.3, §6.13, §7.1: font-kerning, font-optical-sizing and font-language-override, after text-break.
@@ -233,7 +236,7 @@ if (new Set(LONGHANDS).size !== LONGHANDS.length || new Set(SHORTHANDS).size !==
  * The inherited text properties every resolved text node carries itself (goal.md principle 3), each with an inherited Origin,
  * so the lowering reads only the text node.
  */
-export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'letter-spacing', 'word-spacing', 'overflow-wrap', 'word-break'] as const satisfies readonly Longhand[];
+export const TEXT_LONGHANDS = ['font-family', 'font-size', 'line-height', 'color', 'text-align', 'white-space-collapse', 'text-wrap-mode', 'direction', 'letter-spacing', 'word-spacing', 'overflow-wrap', 'word-break', 'text-justify'] as const satisfies readonly Longhand[];
 
 export type TextLonghand = (typeof TEXT_LONGHANDS)[number];
 

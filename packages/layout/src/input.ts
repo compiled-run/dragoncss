@@ -388,6 +388,12 @@ export type TextWrapMode = 'wrap' | 'nowrap';
 /** css-text-3 §5.5 overflow-wrap (word-wrap is its alias). */
 export type OverflowWrap = 'normal' | 'break-word' | 'anywhere';
 /** css-text-3 §5.2 word-break; auto-phrase, and break-all over anything but ASCII letters, digits and spaces, are refused (code word-break, TXT2-d). */
+/**
+ * css-text-3 §7.4 text-justify: the justification opportunities a justified line takes in this text (Blink 145
+ * CheckJustificationOpportunity): auto and inter-word after each space in Latin text, inter-character after every character but a
+ * line's last, none nowhere. inline.ts justifyLine refuses what no Chrome case covers.
+ */
+export type TextJustify = 'auto' | 'none' | 'inter-word' | 'inter-character';
 export type WordBreak = 'normal' | 'break-all' | 'keep-all' | 'break-word' | 'auto-phrase';
 
 /** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */
@@ -414,6 +420,7 @@ export type TextLeaf = {
    * run of lowercase letters uppercased at 70% of the font size, rounded (HarfBuzzShaper::ShapeSegment, SmallCapsFontData).
    */
   readonly smallCaps: boolean;
+  readonly textJustify: TextJustify;
 };
 
 /** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */

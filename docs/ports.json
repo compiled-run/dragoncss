@@ -2492,7 +2492,8 @@
         { "file": "packages/layout/src/inline.ts", "symbol": "justifyLine", "use": "port" },
         { "file": "packages/layout/src/shaping.ts", "symbol": "spacingAfterGlyph", "use": "port" },
         { "file": "packages/layout/src/text.ts", "symbol": "wordSpacingAfter", "use": "port" },
-        { "file": "packages/layout/test/justify.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/justify.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/test/text-justify.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -3996,7 +3997,8 @@
         { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/transform-extra.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/text-justify.ts", "symbol": "parseTextJustify", "use": "port" }
       ]
     },
     {
@@ -4029,7 +4031,9 @@
         { "lines": "35-123", "symbol": null, "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/inline.ts", "symbol": "justifyLine", "use": "port" }
+        { "file": "packages/layout/src/inline.ts", "symbol": "justifyLine", "use": "port" },
+        { "file": "packages/dragon/src/css/properties/text-justify.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/test/text-justify.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

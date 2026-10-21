@@ -109,6 +109,8 @@ const SUBSET = [
   'text-wrap-style', 'text-wrap',
   // css-text-3 §7.2: text-align-last, after word-wrap, as LONGHANDS registers it.
   'text-align-last',
+  // css-text-3 §7.4: text-justify, after text-align-last, as LONGHANDS registers it.
+  'text-justify',
   // css-fonts-4 §6.4-§6.11: the font-variant longhands, then the font-variant shorthand, after word-wrap, as LONGHANDS registers them.
   'font-variant-ligatures', 'font-variant-caps', 'font-variant-alternates', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-position', 'font-variant-emoji', 'font-variant',
   // css-fonts-4 §6.3, §7.1, §6.13: font-kerning, font-optical-sizing and font-language-override, after word-wrap, as LONGHANDS registers them.
@@ -233,6 +235,10 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // css-ui-4 §6.2 adds a second caret-shape colour; Chrome 145 parses one auto or <color> and drops two
   // (packages/parity/test/ui-colors-parse.test.ts).
   'caret-color': 'auto | <color>',
+  // Blink TextJustify::ParseSingleValue (longhands_custom.cc): one keyword, distribute as the legacy inter-character
+  // (properties/text-justify.ts computes it so); css-text-4's ruby and no-compress are not parsed. Pinned against Chrome by
+  // packages/parity/test/text-justify-parse.test.ts.
+  'text-justify': 'auto | none | inter-word | inter-character | distribute',
   // webref has no -webkit-user-modify. Chrome 145 parses read-only, read-write and read-write-plaintext-only; Dragon accepts
   // read-only and refuses the other two (properties/user-modify.ts), so the grammar takes any value and the parser decides.
   '-webkit-user-modify': '<any-value>',

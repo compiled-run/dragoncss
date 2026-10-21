@@ -1,10 +1,14 @@
-// Fixture group text-justify (TXT2, text-align: justify; css-text-3 §7.3 and §7.4 with text-align-last and text-justify auto):
+// Fixture group text-justify (TXT2, text-align: justify; css-text-3 §7.3 and §7.4 with text-align-last auto):
 // Ahem lines the engine expands at their spaces to the LayoutUnit (even splits, the 16.16 remainder, spaces in inline boxes, a
-// forced break, an overflowing line, the last line), and real-font Latin paragraphs in the reference sans-serif, in both directions.
+// forced break, an overflowing line, the last line), and real-font Latin paragraphs in the reference sans-serif, in both directions;
+// TXT2-tj adds Ahem lines under each text-justify value, mixed across inline boxes, inherited, unjustified and in a flex row.
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout } from './define.ts';
 
 export const TEXT_JUSTIFY: readonly FixtureSpec[] = [
   layout('text-justify-ahem', ['ltr', 'rtl']),
   layout('text-justify-latin', ['ltr', 'rtl']),
+  layout('text-justify-values-ahem', ['ltr', 'rtl']),
+  // ltr only: an rtl line mixing inter-character with another text-justify is refused (inline.ts justifyLine).
+  layout('text-justify-mixed-ahem', ['ltr']),
 ];
