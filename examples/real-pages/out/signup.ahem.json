@@ -1,0 +1,854 @@
+{
+ "id": "signup",
+ "mode": "ahem",
+ "rounds": 3,
+ "firstOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "lastOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "found": [
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": null,
+   "where": ":invalid",
+   "line": 70,
+   "message": ":invalid is not supported",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": null,
+   "where": ":placeholder-shown",
+   "line": 70,
+   "message": ":placeholder-shown is not supported",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": null,
+   "where": ":disabled",
+   "line": 100,
+   "message": ":disabled depends on user interaction or document state, which a later package models as runtime state",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "outline: none",
+   "line": 65,
+   "message": ":focus is not supported on ios: no passing device proof of selector:pseudo-class(:focus) in interaction/keyboard, selector:pseudo-class(:focus) in interaction/mouse, selector:pseudo-class(:focus) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "background: var(--primary-pressed)",
+   "line": 98,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "outline: none",
+   "line": 99,
+   "message": ":focus-visible is not supported on ios: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/keyboard, selector:pseudo-class(:focus-visible) in interaction/mouse, selector:pseudo-class(:focus-visible) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "outline: none",
+   "line": 65,
+   "message": ":focus is not supported on android: no passing device proof of selector:pseudo-class(:focus) in interaction/keyboard, selector:pseudo-class(:focus) in interaction/mouse, selector:pseudo-class(:focus) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "background: var(--primary-pressed)",
+   "line": 98,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "outline: none",
+   "line": 99,
+   "message": ":focus-visible is not supported on android: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/keyboard, selector:pseudo-class(:focus-visible) in interaction/mouse, selector:pseudo-class(:focus-visible) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<form data-dragon-id=\"form\"> <div class=\"row\" data-dragon-id=\"row\"><div class=\"field\" data-dragon-id=\"field\"><label for=\"first\" data-dragon-",
+   "line": null,
+   "message": "<form> form is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<label for=\"first\" data-dragon-id=\"label\">",
+   "line": null,
+   "message": "attribute for on label is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"first\" name=\"first\" autocomplete=\"given-name\" placeholder=\"Ada\" required=\"\" data-dragon-id=\"input\">",
+   "line": null,
+   "message": "attribute name on input is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"first\" name=\"first\" autocomplete=\"given-name\" placeholder=\"Ada\" required=\"\" data-dragon-id=\"input\">",
+   "line": null,
+   "message": "attribute autocomplete on input is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"first\" name=\"first\" autocomplete=\"given-name\" placeholder=\"Ada\" required=\"\" data-dragon-id=\"input\">",
+   "line": null,
+   "message": "attribute placeholder on input is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"first\" name=\"first\" autocomplete=\"given-name\" placeholder=\"Ada\" required=\"\" data-dragon-id=\"input\">",
+   "line": null,
+   "message": "attribute required on input is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<label for=\"last\" data-dragon-id=\"label-2\">",
+   "line": null,
+   "message": "attribute for on label-2 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"last\" name=\"last\" autocomplete=\"family-name\" placeholder=\"Lovelace\" required=\"\" data-dragon-id=\"input-2\">",
+   "line": null,
+   "message": "attribute name on input-2 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"last\" name=\"last\" autocomplete=\"family-name\" placeholder=\"Lovelace\" required=\"\" data-dragon-id=\"input-2\">",
+   "line": null,
+   "message": "attribute autocomplete on input-2 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"last\" name=\"last\" autocomplete=\"family-name\" placeholder=\"Lovelace\" required=\"\" data-dragon-id=\"input-2\">",
+   "line": null,
+   "message": "attribute placeholder on input-2 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"last\" name=\"last\" autocomplete=\"family-name\" placeholder=\"Lovelace\" required=\"\" data-dragon-id=\"input-2\">",
+   "line": null,
+   "message": "attribute required on input-2 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<label for=\"email\" data-dragon-id=\"label-3\">",
+   "line": null,
+   "message": "attribute for on label-3 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"email\" id=\"email\" name=\"email\" autocomplete=\"email\" placeholder=\"you@company.com\" required=\"\" data-dragon-id=\"input-3\">",
+   "line": null,
+   "message": "attribute name on input-3 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"email\" id=\"email\" name=\"email\" autocomplete=\"email\" placeholder=\"you@company.com\" required=\"\" data-dragon-id=\"input-3\">",
+   "line": null,
+   "message": "attribute autocomplete on input-3 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"email\" id=\"email\" name=\"email\" autocomplete=\"email\" placeholder=\"you@company.com\" required=\"\" data-dragon-id=\"input-3\">",
+   "line": null,
+   "message": "attribute placeholder on input-3 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"email\" id=\"email\" name=\"email\" autocomplete=\"email\" placeholder=\"you@company.com\" required=\"\" data-dragon-id=\"input-3\">",
+   "line": null,
+   "message": "attribute required on input-3 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<label for=\"password\" data-dragon-id=\"label-4\">",
+   "line": null,
+   "message": "attribute for on label-4 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"password\" id=\"password\" name=\"password\" autocomplete=\"new-password\" minlength=\"8\" required=\"\" data-dragon-id=\"input-4\">",
+   "line": null,
+   "message": "attribute name on input-4 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"password\" id=\"password\" name=\"password\" autocomplete=\"new-password\" minlength=\"8\" required=\"\" data-dragon-id=\"input-4\">",
+   "line": null,
+   "message": "attribute autocomplete on input-4 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"password\" id=\"password\" name=\"password\" autocomplete=\"new-password\" minlength=\"8\" required=\"\" data-dragon-id=\"input-4\">",
+   "line": null,
+   "message": "attribute minlength on input-4 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"password\" id=\"password\" name=\"password\" autocomplete=\"new-password\" minlength=\"8\" required=\"\" data-dragon-id=\"input-4\">",
+   "line": null,
+   "message": "attribute required on input-4 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<label for=\"role\" data-dragon-id=\"label-5\">",
+   "line": null,
+   "message": "attribute for on label-5 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<select id=\"role\" name=\"role\" data-dragon-id=\"select\"><option value=\"\" data-dragon-id=\"option\">Choose one</option><option value=\"eng\" data-d",
+   "line": null,
+   "message": "<select> select is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<select id=\"role\" name=\"role\" data-dragon-id=\"select\">",
+   "line": null,
+   "message": "attribute name on select is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"\" data-dragon-id=\"option\">Choose one</option>",
+   "line": null,
+   "message": "<option> option is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"\" data-dragon-id=\"option\">",
+   "line": null,
+   "message": "attribute value on option is not supported: its rendering effect belongs to the form-control package FORM-a",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"eng\" data-dragon-id=\"option-2\">Engineering</option>",
+   "line": null,
+   "message": "<option> option-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"eng\" data-dragon-id=\"option-2\">",
+   "line": null,
+   "message": "attribute value on option-2 is not supported: its rendering effect belongs to the form-control package FORM-a",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"design\" data-dragon-id=\"option-3\">Design</option>",
+   "line": null,
+   "message": "<option> option-3 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"design\" data-dragon-id=\"option-3\">",
+   "line": null,
+   "message": "attribute value on option-3 is not supported: its rendering effect belongs to the form-control package FORM-a",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"pm\" data-dragon-id=\"option-4\">Product</option>",
+   "line": null,
+   "message": "<option> option-4 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<option value=\"pm\" data-dragon-id=\"option-4\">",
+   "line": null,
+   "message": "attribute value on option-4 is not supported: its rendering effect belongs to the form-control package FORM-a",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"checkbox\" name=\"terms\" required=\"\" data-dragon-id=\"input-5\">",
+   "line": null,
+   "message": "attribute name on input-5 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"checkbox\" name=\"terms\" required=\"\" data-dragon-id=\"input-5\">",
+   "line": null,
+   "message": "attribute required on input-5 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": null,
+   "where": "::placeholder",
+   "line": 61,
+   "message": "::placeholder is accepted only when no element can host it, but input may: <input> with a placeholder attribute has a ::placeholder (the form-control package FORM)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"first\" data-dragon-id=\"input\">",
+   "line": null,
+   "message": "<input> input of type text is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"text\" id=\"last\" data-dragon-id=\"input-2\">",
+   "line": null,
+   "message": "<input> input-2 of type text is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"email\" id=\"email\" data-dragon-id=\"input-3\">",
+   "line": null,
+   "message": "<input> input-3 of type email is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"password\" id=\"password\" data-dragon-id=\"input-4\">",
+   "line": null,
+   "message": "<input> input-4 of type password is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"checkbox\" data-dragon-id=\"input-5\">",
+   "line": null,
+   "message": "<input> input-5 of type checkbox is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<button type=\"submit\" class=\"submit\" data-dragon-id=\"submit\">Create account</button>",
+   "line": null,
+   "message": "display: inline-block on <button> submit makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<button type=\"submit\" class=\"submit\" data-dragon-id=\"submit\">Create account</button>",
+   "line": null,
+   "message": "display: inline-block on <button> submit makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<button type=\"submit\" class=\"submit\" data-dragon-id=\"submit\">Create account</button>",
+   "line": null,
+   "message": "display: inline-block on <button> submit makes it an inline-level control, which waits for the RF-INL package (atomic inlines)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"submit\" class=\"submit\" data-dragon-id=\"submit\">Create account</button>",
+   "line": null,
+   "message": "<button> submit needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"submit\" class=\"submit\" data-dragon-id=\"submit\">Create account</button>",
+   "line": null,
+   "message": "<button> submit needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<input type=\"checkbox\" data-dragon-id=\"input-5\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> input-5 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<input type=\"checkbox\" data-dragon-id=\"input-5\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> input-5 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<input type=\"checkbox\" data-dragon-id=\"input-5\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> input-5 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "var(--primary)",
+   "line": 84,
+   "message": "accent-color:<hex-color> on input-5 is used in the flex-row/ltr context, which is not proven (proven: block/ltr, block/rtl); accent-color values proven in flex-row/ltr: <named-color>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "var(--primary)",
+   "line": 84,
+   "message": "accent-color:<hex-color> on input-5 is used in the flex-row/ltr context, which is not proven (proven: block/ltr, block/rtl); accent-color values proven in flex-row/ltr: <named-color>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "var(--primary)",
+   "line": 84,
+   "message": "accent-color:<hex-color> on input-5 is used in the flex-row/ltr context, which is not proven (proven: block/ltr, block/rtl); accent-color values proven in flex-row/ltr: <named-color>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.875rem",
+   "line": 83,
+   "message": "font-size:<length-rem> on span:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-beside-inline/ltr: <clamp()> or <length-px>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.875rem",
+   "line": 83,
+   "message": "font-size:<length-rem> on span:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-beside-inline/ltr: <clamp()> or <length-px>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.875rem",
+   "line": 83,
+   "message": "font-size:<length-rem> on span:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-beside-inline/ltr: <clamp()> or <length-px>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "500",
+   "line": 44,
+   "message": "font-weight:<number> on span:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-as-anonymous-flex-item/row/ltr, text-as-anonymous-flex-item/row/rtl, text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/column/rtl, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl, text-in-inline/ltr, text-in-inline/rtl); no font-weight value is proven in text-beside-inline/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "500",
+   "line": 44,
+   "message": "font-weight:<number> on span:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-as-anonymous-flex-item/row/ltr, text-as-anonymous-flex-item/row/rtl, text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/column/rtl, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl, text-in-inline/ltr, text-in-inline/rtl); no font-weight value is proven in text-beside-inline/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "500",
+   "line": 44,
+   "message": "font-weight:<number> on span:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-as-anonymous-flex-item/row/ltr, text-as-anonymous-flex-item/row/rtl, text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/column/rtl, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl, text-in-inline/ltr, text-in-inline/rtl); no font-weight value is proven in text-beside-inline/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.875rem",
+   "line": 83,
+   "message": "font-size:<length-rem> on a:text0 is used in the text-in-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-in-inline/ltr: <calc()>, <clamp()>, <length-px>, <length-vw>, <max()>, <percentage>, initial, larger, small, smaller, unset or xx-small",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.875rem",
+   "line": 83,
+   "message": "font-size:<length-rem> on a:text0 is used in the text-in-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-in-inline/ltr: <calc()>, <clamp()>, <length-px>, <length-vw>, <max()>, <percentage>, initial, larger, small, smaller, unset or xx-small",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.875rem",
+   "line": 83,
+   "message": "font-size:<length-rem> on a:text0 is used in the text-in-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-in-inline/ltr: <calc()>, <clamp()>, <length-px>, <length-vw>, <max()>, <percentage>, larger, small, smaller or xx-small",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "100%",
+   "line": 88,
+   "message": "width:<percentage> on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "100%",
+   "line": 88,
+   "message": "width:<percentage> on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "100%",
+   "line": 88,
+   "message": "width:<percentage> on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0",
+   "line": 90,
+   "message": "border-top-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-top-style values proven in atomic-inline/ltr: solid; border sets border-top-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0",
+   "line": 90,
+   "message": "border-top-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-top-style values proven in atomic-inline/ltr: solid; border sets border-top-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0",
+   "line": 90,
+   "message": "border-top-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-top-style values proven in atomic-inline/ltr: solid; border sets border-top-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0",
+   "line": 90,
+   "message": "border-right-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-right-style values proven in atomic-inline/ltr: solid; border sets border-right-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0",
+   "line": 90,
+   "message": "border-right-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-right-style values proven in atomic-inline/ltr: solid; border sets border-right-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0",
+   "line": 90,
+   "message": "border-right-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-right-style values proven in atomic-inline/ltr: solid; border sets border-right-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0",
+   "line": 90,
+   "message": "border-bottom-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-bottom-style values proven in atomic-inline/ltr: solid; border sets border-bottom-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0",
+   "line": 90,
+   "message": "border-bottom-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-bottom-style values proven in atomic-inline/ltr: solid; border sets border-bottom-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0",
+   "line": 90,
+   "message": "border-bottom-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-bottom-style values proven in atomic-inline/ltr: solid; border sets border-bottom-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0",
+   "line": 90,
+   "message": "border-left-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-left-style values proven in atomic-inline/ltr: solid; border sets border-left-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0",
+   "line": 90,
+   "message": "border-left-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-left-style values proven in atomic-inline/ltr: solid; border sets border-left-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0",
+   "line": 90,
+   "message": "border-left-style:none (set by border: 0) on submit is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); border-left-style values proven in atomic-inline/ltr: solid; border sets border-left-style, which is unproven here, so write border-top-width: 0px; border-right-width: 0px; border-bottom-width: 0px; border-left-width: 0px instead of border",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.8125rem",
+   "line": 102,
+   "message": "font-size:<length-rem> on divider:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.8125rem",
+   "line": 102,
+   "message": "font-size:<length-rem> on divider:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.8125rem",
+   "line": 102,
+   "message": "font-size:<length-rem> on divider:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.875rem",
+   "line": 105,
+   "message": "font-size:<length-rem> on footer-link:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-beside-inline/ltr: <clamp()> or <length-px>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.875rem",
+   "line": 105,
+   "message": "font-size:<length-rem> on footer-link:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-beside-inline/ltr: <clamp()> or <length-px>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.875rem",
+   "line": 105,
+   "message": "font-size:<length-rem> on footer-link:text0 is used in the text-beside-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-beside-inline/ltr: <clamp()> or <length-px>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.875rem",
+   "line": 105,
+   "message": "font-size:<length-rem> on a-3:text0 is used in the text-in-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-in-inline/ltr: <calc()>, <clamp()>, <length-px>, <length-vw>, <max()>, <percentage>, initial, larger, small, smaller, unset or xx-small",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.875rem",
+   "line": 105,
+   "message": "font-size:<length-rem> on a-3:text0 is used in the text-in-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-in-inline/ltr: <calc()>, <clamp()>, <length-px>, <length-vw>, <max()>, <percentage>, initial, larger, small, smaller, unset or xx-small",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.875rem",
+   "line": 105,
+   "message": "font-size:<length-rem> on a-3:text0 is used in the text-in-inline/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-in-inline/ltr: <calc()>, <clamp()>, <length-px>, <length-vw>, <max()>, <percentage>, larger, small, smaller or xx-small",
+   "round": 2
+  }
+ ]
+}

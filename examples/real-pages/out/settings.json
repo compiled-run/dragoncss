@@ -1,0 +1,962 @@
+{
+ "id": "settings",
+ "mode": "authored",
+ "rounds": 3,
+ "firstOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "lastOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "found": [
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": null,
+   "where": ":checked",
+   "line": 147,
+   "message": ":checked depends on user interaction or document state, which a later package models as runtime state",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": null,
+   "where": "transition: transform 0.25s ease",
+   "line": 145,
+   "message": "transition in a rule that styles ::after is not supported yet: no frame fixture proves a transition or animation of a generated box (state-dependent generated content (GEN-d8))",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "background: var(--separator)",
+   "line": 104,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "outline: 2px solid var(--link)",
+   "line": 149,
+   "message": ":focus-visible is not supported on ios: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/keyboard, selector:pseudo-class(:focus-visible) in interaction/mouse, selector:pseudo-class(:focus-visible) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "opacity: 0.6",
+   "line": 162,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "background: var(--separator)",
+   "line": 104,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "outline: 2px solid var(--link)",
+   "line": 149,
+   "message": ":focus-visible is not supported on android: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/keyboard, selector:pseudo-class(:focus-visible) in interaction/mouse, selector:pseudo-class(:focus-visible) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "opacity: 0.6",
+   "line": 162,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"checkbox\" class=\"switch\" checked=\"\" aria-label=\"Show previews\" data-dragon-id=\"switch-2\">",
+   "line": null,
+   "message": "attribute checked on switch-2 is not supported: its rendering effect is not proven neutral (it is not in the rendering-neutral table, packages/dragon/src/attributes.ts)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "system-ui, sans-serif",
+   "line": 31,
+   "message": "font-family: system-ui , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem, inherit, revert or unset",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "system-ui, sans-serif",
+   "line": 31,
+   "message": "font-family: system-ui , sans-serif is unsupported (support profile m1-s5); supported font-family values: Ahem, inherit, revert or unset",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "system-ui, sans-serif",
+   "line": 31,
+   "message": "font-family: system-ui , sans-serif is unsupported (support profile m1-s5); in text-as-anonymous-flex-item/row/ltr use Ahem or inherit; in text-in-block/ltr use Ahem, inherit or revert; in text-in-flex-item/row/ltr use Ahem or inherit",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "system-ui, sans-serif",
+   "line": 31,
+   "message": "font-family: system-ui , sans-serif is unsupported (support profile m1-s5); in text-as-anonymous-flex-item/row/ltr use Ahem or inherit; in text-in-block/ltr use Ahem, inherit or revert; in text-in-flex-item/row/ltr use Ahem or inherit",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Airplane Mode\" data-dragon-id=\"switch\">",
+   "line": null,
+   "message": "<input> switch of type checkbox is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "999px",
+   "line": 131,
+   "message": "switch rounds its corners and has a inset border side; rounded inset borders are PNT1b, which android does not draw yet (Blink draws its two shades along the rounded corners, which Dragon does not port)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "999px",
+   "line": 131,
+   "message": "switch rounds its corners and has a inset border side; rounded inset borders are PNT1b, which ios does not draw yet (Blink draws its two shades along the rounded corners, which Dragon does not port)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Show previews\" data-dragon-id=\"switch-2\">",
+   "line": null,
+   "message": "<input> switch-2 of type checkbox is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "999px",
+   "line": 131,
+   "message": "switch-2 rounds its corners and has a inset border side; rounded inset borders are PNT1b, which android does not draw yet (Blink draws its two shades along the rounded corners, which Dragon does not port)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "999px",
+   "line": 131,
+   "message": "switch-2 rounds its corners and has a inset border side; rounded inset borders are PNT1b, which ios does not draw yet (Blink draws its two shades along the rounded corners, which Dragon does not port)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch-2::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch-2::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch-2::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Focus mode\" data-dragon-id=\"switch-3\">",
+   "line": null,
+   "message": "<input> switch-3 of type checkbox is not supported: only type=range is laid out; other inputs wait for the FORM-b package",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "999px",
+   "line": 131,
+   "message": "switch-3 rounds its corners and has a inset border side; rounded inset borders are PNT1b, which android does not draw yet (Blink draws its two shades along the rounded corners, which Dragon does not port)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "999px",
+   "line": 131,
+   "message": "switch-3 rounds its corners and has a inset border side; rounded inset borders are PNT1b, which ios does not draw yet (Blink draws its two shades along the rounded corners, which Dragon does not port)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch-3::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch-3::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "\"\"",
+   "line": 136,
+   "message": "content: \"\" on switch-3::after is not supported yet: <input> is a form control: Chrome 145 generates the box on range, checkbox and button inputs but not on text inputs, select or textarea (GEN-P family2 before-on-void), which needs its own proof (the form-control package FORM)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"danger-button\" data-dragon-id=\"danger-button\">Sign out</button>",
+   "line": null,
+   "message": "<button> danger-button needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"danger-button\" data-dragon-id=\"danger-button\">Sign out</button>",
+   "line": null,
+   "message": "<button> danger-button needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Airplane Mode\" data-dragon-id=\"switch\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Airplane Mode\" data-dragon-id=\"switch\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Airplane Mode\" data-dragon-id=\"switch\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Show previews\" data-dragon-id=\"switch-2\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch-2 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Show previews\" data-dragon-id=\"switch-2\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch-2 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Show previews\" data-dragon-id=\"switch-2\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch-2 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Focus mode\" data-dragon-id=\"switch-3\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch-3 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Focus mode\" data-dragon-id=\"switch-3\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch-3 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<input type=\"checkbox\" class=\"switch\" aria-label=\"Focus mode\" data-dragon-id=\"switch-3\">",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: inset on <input> switch-3 comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: inset",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "blur(20px)",
+   "line": 42,
+   "message": "backdrop-filter: blur(20px) on <div> app-bar is not drawn on android yet (package FX): Dragon draws one only where Chrome changes no pixel, a list of blur() over a page that paints one opaque colour outside the box and does not animate, with only opaque fills and solid borders and no text inside it; here <div> app-bar has position sticky",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "blur(20px)",
+   "line": 42,
+   "message": "backdrop-filter: blur(20px) on <div> app-bar is not drawn on ios yet (package FX): Dragon draws one only where Chrome changes no pixel, a list of blur() over a page that paints one opaque colour outside the box and does not animate, with only opaque fills and solid borders and no text inside it; here <div> app-bar has position sticky",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "relative",
+   "line": 93,
+   "message": "row paints in a stacking context outside list, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "relative",
+   "line": 93,
+   "message": "row paints in a stacking context outside list, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "relative",
+   "line": 93,
+   "message": "row-2 paints in a stacking context outside list, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "relative",
+   "line": 93,
+   "message": "row-2 paints in a stacking context outside list, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "relative",
+   "line": 93,
+   "message": "row-3 paints in a stacking context outside list, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "relative",
+   "line": 93,
+   "message": "row-3 paints in a stacking context outside list, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "relative",
+   "line": 93,
+   "message": "row-4 paints in a stacking context outside list-2, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "relative",
+   "line": 93,
+   "message": "row-4 paints in a stacking context outside list-2, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "relative",
+   "line": 93,
+   "message": "row-5 paints in a stacking context outside list-2, whose overflow clip applies to it, and Chrome paints it after content ios would paint above it under that clip; ios would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "relative",
+   "line": 93,
+   "message": "row-5 paints in a stacking context outside list-2, whose overflow clip applies to it, and Chrome paints it after content android would paint above it under that clip; android would need a clip-chain view around it, which PNT1's hosting does not have yet",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "border-box",
+   "line": 26,
+   "message": "box-sizing:border-box on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "border-box",
+   "line": 26,
+   "message": "box-sizing:border-box on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "border-box",
+   "line": 26,
+   "message": "box-sizing:border-box on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 40,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.5px solid var(--separator)",
+   "line": 43,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 0.5px solid var(--separator)) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.5px solid var(--separator)",
+   "line": 43,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 0.5px solid var(--separator)) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.5px solid var(--separator)",
+   "line": 43,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 0.5px solid var(--separator)) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.5px solid var(--separator)",
+   "line": 43,
+   "message": "border-bottom-style:solid (set by border-bottom: 0.5px solid var(--separator)) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.5px solid var(--separator)",
+   "line": 43,
+   "message": "border-bottom-style:solid (set by border-bottom: 0.5px solid var(--separator)) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.5px solid var(--separator)",
+   "line": 43,
+   "message": "border-bottom-style:solid (set by border-bottom: 0.5px solid var(--separator)) on app-bar is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "44px",
+   "line": 90,
+   "message": "min-height:<length-px> on row is used in the relative-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); min-height values proven in relative-in-block/ltr: <calc()>, <clamp()>, <max()> or <min()>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "44px",
+   "line": 90,
+   "message": "min-height:<length-px> on row is used in the relative-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); min-height values proven in relative-in-block/ltr: <calc()>, <clamp()>, <max()> or <min()>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "44px",
+   "line": 90,
+   "message": "min-height:<length-px> on row is used in the relative-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); min-height values proven in relative-in-block/ltr: <calc()>, <clamp()>, <max()> or <min()>",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "system-ui, sans-serif",
+   "line": 31,
+   "message": "font-family:<platform> on icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-as-anonymous-flex-item/row/ltr: <pinned>, Ahem or inherit",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "ellipsis",
+   "line": 120,
+   "message": "text-overflow:ellipsis on label is used in the flex-row/ltr context, which is not proven (proven: block/ltr); no text-overflow value is proven in flex-row/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "ellipsis",
+   "line": 120,
+   "message": "text-overflow:ellipsis on label is used in the flex-row/ltr context, which is not proven (proven: block/ltr); no text-overflow value is proven in flex-row/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "ellipsis",
+   "line": 120,
+   "message": "text-overflow:ellipsis on label is used in the flex-row/ltr context, which is not proven (proven: block/ltr); no text-overflow value is proven in flex-row/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "system-ui, sans-serif",
+   "line": 31,
+   "message": "font-family:<platform> on label:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: <pinned>, Ahem or inherit",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "none",
+   "line": 126,
+   "message": "appearance:none (set by -webkit-appearance: none) on switch is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl); no appearance value is proven in relative-in-flex-row/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "none",
+   "line": 126,
+   "message": "appearance:none (set by -webkit-appearance: none) on switch is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl); no appearance value is proven in relative-in-flex-row/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "none",
+   "line": 126,
+   "message": "appearance:none (set by -webkit-appearance: none) on switch is used in the relative-in-flex-row/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl); no appearance value is proven in relative-in-flex-row/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "\"\"",
+   "line": 96,
+   "message": "content:<string> on row-2::before is used in the pseudo-abspos-in-flex/ltr context, which is not proven (proven: block/ltr, block/rtl, pseudo-abspos-in-block/ltr, pseudo-abspos-in-block/rtl, pseudo-block/ltr, pseudo-block/rtl, pseudo-empty-inline-in-block/ltr, pseudo-flex-item/column/ltr, pseudo-flex-item/column/rtl, pseudo-flex-item/row/ltr, pseudo-flex-item/row/rtl, pseudo-inline-in-block/ltr, pseudo-inline-in-block/rtl); no content value is proven in pseudo-abspos-in-flex/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "\"\"",
+   "line": 96,
+   "message": "content:<string> on row-2::before is used in the pseudo-abspos-in-flex/ltr context, which is not proven (proven: block/ltr, block/rtl, pseudo-abspos-in-block/ltr, pseudo-abspos-in-block/rtl, pseudo-block/ltr, pseudo-block/rtl, pseudo-empty-inline-in-block/ltr, pseudo-flex-item/column/ltr, pseudo-flex-item/column/rtl, pseudo-flex-item/row/ltr, pseudo-flex-item/row/rtl, pseudo-inline-in-block/ltr, pseudo-inline-in-block/rtl); no content value is proven in pseudo-abspos-in-flex/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "\"\"",
+   "line": 96,
+   "message": "content:<string> on row-2::before is used in the pseudo-abspos-in-flex/ltr context, which is not proven (proven: block/ltr, block/rtl, pseudo-abspos-in-block/ltr, pseudo-abspos-in-block/rtl, pseudo-block/ltr, pseudo-block/rtl, pseudo-empty-inline-in-block/ltr, pseudo-flex-item/column/ltr, pseudo-flex-item/column/rtl, pseudo-flex-item/row/ltr, pseudo-flex-item/row/rtl, pseudo-inline-in-block/ltr, pseudo-inline-in-block/rtl); no content value is proven in pseudo-abspos-in-flex/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "2px solid var(--link)",
+   "line": 149,
+   "message": "switch has an outline inside the overflow clip of list, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; android draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "2px solid var(--link)",
+   "line": 149,
+   "message": "switch has an outline inside the overflow clip of list, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; ios draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "2px solid var(--link)",
+   "line": 149,
+   "message": "switch-2 has an outline inside the overflow clip of list-2, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; android draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "2px solid var(--link)",
+   "line": 149,
+   "message": "switch-2 has an outline inside the overflow clip of list-2, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; ios draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "2px solid var(--link)",
+   "line": 149,
+   "message": "switch-3 has an outline inside the overflow clip of list-2, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; android draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "2px solid var(--link)",
+   "line": 149,
+   "message": "switch-3 has an outline inside the overflow clip of list-2, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context; ios draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.6",
+   "line": 162,
+   "message": "danger-button has opacity 0.6; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: danger-button is a <button>, a control, replaced or svg box",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.6",
+   "line": 162,
+   "message": "danger-button has opacity 0.6; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: danger-button is a <button>, a control, replaced or svg box",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "blur(20px)",
+   "line": 42,
+   "message": "backdrop-filter: blur(20px) on <div> app-bar is not drawn on ios yet (package FX): Dragon draws one only where Chrome changes no pixel, a list of blur() over a page that paints one opaque colour outside the box and does not animate, with only opaque fills and solid borders and no text inside it; here switch has an animation or transition, which can repaint the box or its backdrop while it runs",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "blur(20px)",
+   "line": 42,
+   "message": "backdrop-filter: blur(20px) on <div> app-bar is not drawn on android yet (package FX): Dragon draws one only where Chrome changes no pixel, a list of blur() over a page that paints one opaque colour outside the box and does not animate, with only opaque fills and solid borders and no text inside it; here switch has an animation or transition, which can repaint the box or its backdrop while it runs",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "background-color 0.25s ease",
+   "line": 133,
+   "message": "transition on background-color of switch would start when the screen size changes; transitions started by size changes are not built yet (package MQ-Rt)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "background-color 0.25s ease",
+   "line": 133,
+   "message": "transition on background-color of switch would start when the screen size changes; transitions started by size changes are not built yet (package MQ-Rt)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "background-color 0.25s ease",
+   "line": 133,
+   "message": "transition on background-color of switch-2 would start when the screen size changes; transitions started by size changes are not built yet (package MQ-Rt)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "background-color 0.25s ease",
+   "line": 133,
+   "message": "transition on background-color of switch-2 would start when the screen size changes; transitions started by size changes are not built yet (package MQ-Rt)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "background-color 0.25s ease",
+   "line": 133,
+   "message": "transition on background-color of switch-3 would start when the screen size changes; transitions started by size changes are not built yet (package MQ-Rt)",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "background-color 0.25s ease",
+   "line": 133,
+   "message": "transition on background-color of switch-3 would start when the screen size changes; transitions started by size changes are not built yet (package MQ-Rt)",
+   "round": 2
+  }
+ ]
+}

@@ -1,0 +1,359 @@
+{
+ "id": "article",
+ "mode": "ahem",
+ "rounds": 3,
+ "firstOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "lastOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "found": [
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "opacity: 0.6",
+   "line": 60,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "opacity: 0.6",
+   "line": 60,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<code data-dragon-id=\"code\">layout:vectors</code>",
+   "line": null,
+   "message": "<code> code is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<pre data-dragon-id=\"pre\"><code data-dragon-id=\"code-2\">function layout(node) { const size = measure(node); return place(node, size); }<",
+   "line": null,
+   "message": "<pre> pre is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_ELEMENT",
+   "severity": "error",
+   "target": null,
+   "where": "<code data-dragon-id=\"code-2\">function layout(node) { const size = measure(node); return place(node, size); }</code>",
+   "line": null,
+   "message": "<code> code-2 is not supported (supported: html, body, div, p, h1, h2, h3, h4, h5, h6, section, article, header, footer, nav, main, aside, ul, ol, li, blockquote, figure, figcaption, address, hr, dl, dt, dd, span, a, label, br, img, iframe, svg, video, path, rect, circle, button, input, b, strong, em, i)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": null,
+   "where": "var(--measure)",
+   "line": 41,
+   "message": "max-width: var(--measure) substitutes to \"68ch\": max-width: 68ch is unsupported: it is measured from the primary font at its rendered size, which Chrome rounds to 0.01px after device zoom, so no single build-time px value is exact at every pixel ratio",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "flex",
+   "line": 31,
+   "message": "display:flex on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no display value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "flex",
+   "line": 31,
+   "message": "display:flex on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no display value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "flex",
+   "line": 31,
+   "message": "display:flex on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no display value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "border-box",
+   "line": 16,
+   "message": "box-sizing:border-box on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "border-box",
+   "line": 16,
+   "message": "box-sizing:border-box on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "border-box",
+   "line": 16,
+   "message": "box-sizing:border-box on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 12px) 16px 12px",
+   "line": 34,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 12px) 16px 12px) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1px solid var(--rule)",
+   "line": 35,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 1px solid var(--rule)) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1px solid var(--rule)",
+   "line": 35,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 1px solid var(--rule)) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1px solid var(--rule)",
+   "line": 35,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 1px solid var(--rule)) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1px solid var(--rule)",
+   "line": 35,
+   "message": "border-bottom-style:solid (set by border-bottom: 1px solid var(--rule)) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1px solid var(--rule)",
+   "line": 35,
+   "message": "border-bottom-style:solid (set by border-bottom: 1px solid var(--rule)) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1px solid var(--rule)",
+   "line": 35,
+   "message": "border-bottom-style:solid (set by border-bottom: 1px solid var(--rule)) on site-header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.6",
+   "line": 60,
+   "message": "a has opacity 0.6; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: it is inside site-header, which has position sticky",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.6",
+   "line": 60,
+   "message": "a has opacity 0.6; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: it is inside site-header, which has position sticky",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.6",
+   "line": 60,
+   "message": "a-2 has opacity 0.6; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: it is inside site-header, which has position sticky",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.6",
+   "line": 60,
+   "message": "a-2 has opacity 0.6; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: it is inside site-header, which has position sticky",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<a data-dragon-id=\"a-3\">right-to-left support</a>",
+   "line": null,
+   "message": "opacity: 0.6 on the inline box <a> a-3 makes it a stacking context: the native runtime places an inline box's content beside its view, not in it, until INL1b, so the group would be dropped",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<a data-dragon-id=\"a-3\">right-to-left support</a>",
+   "line": null,
+   "message": "opacity: 0.6 on the inline box <a> a-3 makes it a stacking context: the native runtime places an inline box's content beside its view, not in it, until INL1b, so the group would be dropped",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.6",
+   "line": 60,
+   "message": "a-3 has opacity 0.6; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: a-3 has display inline, not a plain block or inline-block box",
+   "round": 2
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.6",
+   "line": 60,
+   "message": "a-3 has opacity 0.6; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: a-3 has display inline, not a plain block or inline-block box",
+   "round": 2
+  }
+ ]
+}
