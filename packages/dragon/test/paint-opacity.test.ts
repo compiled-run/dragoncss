@@ -169,8 +169,15 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     expect([`${leaf} opacity: 0.3;`, `${leaf} opacity: 0.999;`, `${leaf} opacity: 0.00196;`].map((d) => [bg(d).w.color.alpha, bg(d).w.folded])).toEqual([[77, true], [255, undefined], [0, undefined]]);
     expect(plain.w.folded).toBeUndefined();
     const { n, w } = bg(`${leaf} opacity: 0.3;`);
-    expect(BACKGROUND_EMITTER.lines.uikit('v0', n, w)).toEqual(['  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded: true)']);
-    expect(BACKGROUND_EMITTER.lines['android-views']('v0', n, w)).toEqual(['  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded = true)']);
+    expect(BACKGROUND_EMITTER.lines.uikit('v0', n, w)).toEqual(['  dragonFoldRivals(t, v0, [])', '  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded: true)']);
+    expect(BACKGROUND_EMITTER.lines['android-views']('v0', n, w)).toEqual(['  dragonFoldRivals(t, v0, listOf())', '  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded = true)']);
+    // The fill is a layer hosted under its stacking root (stacking.ts), so its backdrop is read by the tree's box parents, never
+    // by its superviews, which skip the ancestors between.
+    for (const f of [BACKGROUND_EMITTER.native.uikit.file ?? '', BACKGROUND_EMITTER.native['android-views'].file ?? '']) {
+      expect(f).toMatch(/\n {2}(let|val) fills = JsArray\(dragonFoldBackdrop\(v\)\)\n/);
+      expect(f).not.toMatch(/= JsArray\(dragonShadowBackdrop/);
+      expect(f.slice(f.indexOf('dragonFoldBackdrop('))).toContain('t.layoutParent(');
+    }
     expect(BACKGROUND_EMITTER.lines.uikit('v0', plain.n, plain.w)).toEqual([`  dragonBackground(v0, DragonRGBA8(10, 20, 30, ${plain.w.color.alpha}))`]);
     // The state runtime has no folded writer, as it has no opacity writer: such a node is refused by name.
     expect(() => nodeLit('swift', n)).toThrow(StateEmitError);
