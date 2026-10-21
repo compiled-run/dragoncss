@@ -468,6 +468,21 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       // INL2a with TXT2: how Blink justifies a line around an atomic inline has no Chrome comparison yet (inline.ts checkAtomicContext).
       const atom = run.find((it) => it.kind === 'atomic');
       if (atom !== undefined && atom.kind === 'atomic') refuse(el, 'justify-atomic', `text-align: justify on ${el.element.address} with the atomic inline ${atom.el.element.address} is not laid out yet`, `Use another text-align on ${el.element.address}, or make ${atom.el.element.address} a block.`);
+      // css-text-3 §7.4: text-justify: inter-character is laid out over Ahem text of Latin-1 characters but U+00AD, after nothing or
+      // after a text whose last character has an opportunity after it (Blink expands before a character after one without, which
+      // no Chrome case measures); inline.ts justifyLine refuses the same where it occurs on a line.
+      const justifyOf = (t: ResolvedText): string => keywordOf(t.props.get('text-justify') as ResolvedValue);
+      // Whether the text's last character has an opportunity after it: always under inter-character, after a space or no-break
+      // space under auto and inter-word (CheckJustificationOpportunity), never under none.
+      const opportunityAfter = (t: ResolvedText): boolean => justifyOf(t) === 'inter-character' || (justifyOf(t) !== 'none' && /[ \u00a0]$/.test(t.text));
+      texts.forEach((t, k) => {
+        if (justifyOf(t) !== 'inter-character') return;
+        const why = realFaceAt(t.node.address) ? 'in a real face'
+          : [...t.text].some((c) => (c.codePointAt(0) as number) > 0xff || c === '\u00ad') ? 'holding a character outside Latin-1 or a soft hyphen'
+          : k > 0 && !opportunityAfter(texts[k - 1] as ResolvedText) ? `after ${(texts[k - 1] as ResolvedText).node.address}, whose text-justify ${justifyOf(texts[k - 1] as ResolvedText)} leaves no opportunity after its last character`
+          : null;
+        if (why !== null) refuse(el, 'justify-inter-character', `text-justify: inter-character on ${t.node.address} ${why}, in the justified ${el.element.address}, is not laid out yet`, `Use text-justify: auto on ${t.node.address}, or another text-align on ${el.element.address}.`);
+      });
     }
     const wrapOf = (t: ResolvedText): string => keywordOf(t.props.get('text-wrap-mode') as ResolvedValue);
     const first = texts[0];

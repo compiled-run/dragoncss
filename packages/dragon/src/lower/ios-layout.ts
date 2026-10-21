@@ -40,6 +40,7 @@ import type {
   TextWrapMode,
   OverflowWrap,
   WordBreak,
+  TextJustify,
   VerticalAlignKeyword,
   VerticalAlignValue,
   WhiteSpaceCollapse,
@@ -446,15 +447,19 @@ function lowerText(t: ResolvedText, mode: LowerMode): TextLeaf {
   if (overflowWrap.kind !== 'keyword' || !OVERFLOW_WRAP.includes(overflowWrap.value)) return fail(id, 'overflow-wrap', overflowWrap, OVERFLOW_WRAP.join(' | '));
   const wordBreak = get('word-break');
   if (wordBreak.kind !== 'keyword' || !WORD_BREAK.includes(wordBreak.value)) return fail(id, 'word-break', wordBreak, WORD_BREAK.join(' | '));
+  const justify = get('text-justify');
+  if (justify.kind !== 'keyword' || !TEXT_JUSTIFY.includes(justify.value)) return fail(id, 'text-justify', justify, TEXT_JUSTIFY.join(' | '));
   return {
     kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerSpacing(id, 'letter-spacing', get('letter-spacing')), wordSpacing: lowerSpacing(id, 'word-spacing', get('word-spacing')),
-    overflowWrap: overflowWrap.value as OverflowWrap, wordBreak: wordBreak.value as WordBreak, smallCaps: t.smallCaps,
+    overflowWrap: overflowWrap.value as OverflowWrap, wordBreak: wordBreak.value as WordBreak, smallCaps: t.smallCaps, textJustify: justify.value as TextJustify,
   };
 }
 
 /** The overflow-wrap and word-break values the engine reads (input.ts OverflowWrap, WordBreak); it refuses auto-phrase, and break-all over anything but ASCII letters, digits and spaces (TXT2-d). */
 const OVERFLOW_WRAP: readonly string[] = ['normal', 'break-word', 'anywhere'] satisfies readonly OverflowWrap[];
 const WORD_BREAK: readonly string[] = ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'] satisfies readonly WordBreak[];
+/** The text-justify values the engine reads (input.ts TextJustify; css/properties/text-justify.ts computes distribute to inter-character). */
+const TEXT_JUSTIFY: readonly string[] = ['auto', 'none', 'inter-word', 'inter-character'] satisfies readonly TextJustify[];
 
 /** css-text-3 §8.1 and §8.2: a computed word-spacing or letter-spacing as the engine reads it, px (normal is 0); a percentage or calculation is not lowered yet. */
 function lowerSpacing(id: string, property: 'letter-spacing' | 'word-spacing', v: CssValue): Px {
@@ -526,7 +531,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const id = c.element.address;
   const own = lowerFont(id, (p) => (c.props.get(p) as ResolvedValue).value, l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, textJustify: 'auto' };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = boxChildren(c);

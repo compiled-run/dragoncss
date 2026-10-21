@@ -28,6 +28,7 @@ import { HYPHENS_LONGHANDS } from '../../dragon/src/css/properties/hyphens.ts';
 import { TEXT_WRAP_LONGHANDS } from '../../dragon/src/css/properties/text-wrap.ts';
 import { TAB_SIZE_LONGHANDS } from '../../dragon/src/css/properties/tab-size.ts';
 import { TEXT_ALIGN_LAST_LONGHANDS } from '../../dragon/src/css/properties/text-align-last.ts';
+import { TEXT_JUSTIFY_LONGHANDS } from '../../dragon/src/css/properties/text-justify.ts';
 import { FONT_VARIANT_LONGHANDS } from '../../dragon/src/css/properties/font-variant.ts';
 import { FONT_TUNING_LONGHANDS } from '../../dragon/src/css/properties/font-tuning.ts';
 import { FONT_STRETCH_LONGHANDS } from '../../dragon/src/css/properties/font-stretch.ts';
@@ -49,10 +50,10 @@ import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
 
 /**
- * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration) and its
- * smallCaps where it is false (the TXT-FONTFEAT small-caps migration), every box's marker where it is null (the GEN-c migration:
- * LayoutBox.marker is required), and every LayoutStyle's lineClamp removed where it is 0 (the TXT2-g migration: a style is the
- * object that carries textOverflow).
+ * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration), its
+ * smallCaps where it is false (the TXT-FONTFEAT small-caps migration) and its textJustify where it is 'auto' (the TXT2-tj
+ * migration), every box's marker where it is null (the GEN-c migration: LayoutBox.marker is required), and every LayoutStyle's
+ * lineClamp removed where it is 0 (the TXT2-g migration: a style is the object that carries textOverflow).
  */
 function withoutWrapKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(withoutWrapKeys);
@@ -61,7 +62,7 @@ function withoutWrapKeys(v: unknown): unknown {
   const leaf = o['kind'] === 'text';
   const box = o['kind'] === 'box';
   const style = 'textOverflow' in o;
-  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(box && k === 'marker' && x === null) && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(leaf && k === 'textJustify' && x === 'auto') && !(box && k === 'marker' && x === null) && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
 }
 
 /**
@@ -297,11 +298,13 @@ describe('BASE pins', () => {
     expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
     expect(withoutWrapKeys({ kind: 'text', smallCaps: true })).toEqual({ kind: 'text', smallCaps: true });
     expect(withoutWrapKeys({ kind: 'text', smallCaps: false })).toEqual({ kind: 'text' });
+    expect(withoutWrapKeys({ kind: 'text', textJustify: 'auto' })).toEqual({ kind: 'text' });
+    expect(withoutWrapKeys({ kind: 'text', textJustify: 'none' })).toEqual({ kind: 'text', textJustify: 'none' });
     expect(withoutWrapKeys({ kind: 'box', marker: null })).toEqual({ kind: 'box' });
     expect(withoutWrapKeys({ kind: 'box', marker: { kind: 'text' } })).toEqual({ kind: 'box', marker: { kind: 'text' } });
   });
   /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize, touch-action-values' touch-action, TXT-FX's text fill, stroke and shadow, the font-variant, font-tuning, font-stretch and font-features longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'background-blend-mode', 'vector-effect', 'box-decoration-break', ...LINE_BREAK_LONGHANDS, ...HYPHENS_LONGHANDS, ...TEXT_WRAP_LONGHANDS, ...TAB_SIZE_LONGHANDS, ...TEXT_ALIGN_LAST_LONGHANDS, 'scrollbar-width', 'scrollbar-gutter', 'color-scheme', 'translate', 'rotate', 'scale', 'isolation', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', ...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS, ...FRAGMENTATION_LONGHANDS];
+  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'background-blend-mode', 'vector-effect', 'box-decoration-break', ...LINE_BREAK_LONGHANDS, ...HYPHENS_LONGHANDS, ...TEXT_WRAP_LONGHANDS, ...TAB_SIZE_LONGHANDS, ...TEXT_ALIGN_LAST_LONGHANDS, ...TEXT_JUSTIFY_LONGHANDS, 'scrollbar-width', 'scrollbar-gutter', 'color-scheme', 'translate', 'rotate', 'scale', 'isolation', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', ...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS, ...FRAGMENTATION_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));

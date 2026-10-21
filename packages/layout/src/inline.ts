@@ -1555,11 +1555,12 @@ export function maybeCjkIdeographOrSymbol(cp: number): boolean {
   return false;
 }
 
-// css-text-3 §7.3 and §7.4 with text-align-last and text-justify at their initial auto, as Blink 145 justifies Latin text
+// css-text-3 §7.3 and §7.4 with text-align-last at its initial auto, as Blink 145 justifies Latin text
 // (ApplyJustificationInternal, justification_utils.cc 398-492; ShapeResultSpacing::ExpansionSetup and NextExpansion,
 // shape_result_spacing.cc 34-117; CheckJustificationOpportunity, justification_opportunity.cc 35-123). Every line but the last and
-// one ending in a forced break expands when it has free space: each space or no-break space in its visible content is one
-// opportunity after it; the free space in 16.16 (InlineLayoutUnit) divided by the count, truncated, goes to each opportunity in
+// one ending in a forced break expands when it has free space: by each character's text-justify, text-justify auto and inter-word
+// give each space or no-break space in its visible content one opportunity after it, inter-character every character but the
+// line's last, and none no opportunity; the free space in 16.16 (InlineLayoutUnit) divided by the count, truncated, goes to each opportunity in
 // logical order and the last takes what is left. A line without an opportunity, or without free space, is start-aligned.
 function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], line: Line, last: boolean, available: LU): Justified | null {
   if (box.style.textAlign !== 'justify' || last || line.forced) return null;
@@ -1578,7 +1579,6 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
     const it = ifc.items[i] as Item;
     if (it.kind === 'char' && maybeCjkIdeographOrSymbol(it.cp)) unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on a line holding U+${it.cp.toString(16).toUpperCase()}, a CJK ideograph or symbol Chrome expands around, is not proven against Chrome`);
   }
-  let count = 0;
   let first = -1;
   let final = -1;
   for (let i = line.start; i < line.visibleEnd; i++) {
@@ -1587,27 +1587,68 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
     if (first < 0) first = i;
     final = i;
     if (it.cp === TAB || it.cp === LINE_FEED) unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify on a line holding a preserved tab or line feed is not proven against Chrome');
-    if (treatAsSpace(it.cp)) count++;
+    if ((ifc.leaves[it.leaf] as TextLeaf).textJustify === 'inter-character') interCharacterContext(box, ifc, it);
   }
   if (first < 0) return null;
   // Blink counts an opportunity at a line's edge differently from where it spends it (allows_leading_expansion and
   // allows_trailing_expansion false); collapsible white space never puts one there, and no fixture measures one.
   if (treatAsSpace((ifc.items[first] as Item).cp) || treatAsSpace((ifc.items[final] as Item).cp)) unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify on a line that starts or ends with a space Chrome keeps is not proven against Chrome');
   if ((ifc.items[final] as Item).cp === SOFT_HYPHEN) unsupported('text-align', box.id, 'css-text-3 §7.3', 'text-align: justify on a hyphenated line is not proven against Chrome');
+  // ShapeResultSpacing::ExpansionSetup over the line in logical order, each character by its own text's text-justify
+  // (CheckJustificationOpportunity): the context starts after an opportunity (no leading expansion), and the trailing opportunity
+  // after the last character is dropped (no trailing expansion).
+  let afterOpportunity = true;
+  let count = 0;
+  const opportunities: boolean[] = [];
+  for (let i = line.start; i < line.visibleEnd; i++) {
+    const it = ifc.items[i] as Item;
+    if (it.kind !== 'char') {
+      opportunities.push(false);
+      continue;
+    }
+    // Planted fault textJustifyAuto justifies every text as auto.
+    const method = ctx.faults.textJustifyAuto ? 'auto' : (ifc.leaves[it.leaf] as TextLeaf).textJustify;
+    let after = false;
+    if (method === 'none') afterOpportunity = false;
+    else if (method === 'inter-character') {
+      // Blink also expands before this character when the one before it had no opportunity after it (a character of a text with
+      // another text-justify); no Chrome case measures that.
+      if (!afterOpportunity) unsupported('text-align', box.id, 'css-text-3 §7.4', `text-justify: inter-character on ${(ifc.leaves[it.leaf] as TextLeaf).id} after a character of another text-justify with no opportunity after it is not proven against Chrome`);
+      afterOpportunity = true;
+      after = true;
+    } else if (treatAsSpace(it.cp)) {
+      afterOpportunity = true;
+      after = true;
+    } else afterOpportunity = false;
+    if (after) count++;
+    opportunities.push(after);
+  }
+  if (afterOpportunity && count > 0) count--;
   if (count === 0) return null;
   const total = free * 1024;
   const each = inlineDivInt(total, count);
   const expansions: number[] = [];
   let seen = 0;
-  for (let i = line.start; i < line.visibleEnd; i++) {
-    const it = ifc.items[i] as Item;
-    if (it.kind === 'char' && treatAsSpace(it.cp)) {
+  for (const after of opportunities) {
+    if (after && seen < count) {
       seen++;
       expansions.push(seen === count ? total - (count - 1) * each : each);
     } else expansions.push(0);
   }
   const runs = ifc.shaped ? shapedJustifiedRuns(line, expansions) : ahemJustifiedRuns(box, ifc, line, expansions);
   return { runs, expansions };
+}
+
+/**
+ * The text text-justify: inter-character is proven over (fixture group text-justify, text-justify-values-ahem): Ahem text of Latin-1
+ * characters, none of them default-ignorable (U+00AD), so every character is a normal one with an opportunity after it
+ * (CheckJustificationOpportunity: no cursive script and no atomic inline beside it).
+ */
+function interCharacterContext(box: LayoutBox, ifc: Ifc, it: Item): void {
+  const t = ifc.leaves[it.leaf] as TextLeaf;
+  if (ifc.shaped) unsupported('text-align', box.id, 'css-text-3 §7.4', `text-justify: inter-character on ${t.id} in a real face is not proven against Chrome`);
+  if (it.cp > 0xff || it.cp === SOFT_HYPHEN) unsupported('text-align', box.id, 'css-text-3 §7.4', `text-justify: inter-character on ${t.id} holding U+${it.cp.toString(16).toUpperCase()} is not proven against Chrome`);
+  if (ifc.atomics.length > 0) unsupported('text-align', box.id, 'css-text-3 §7.4', `text-justify: inter-character on ${t.id} beside an atomic inline is not proven against Chrome`);
 }
 
 /**

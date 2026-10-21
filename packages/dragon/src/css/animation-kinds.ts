@@ -53,6 +53,7 @@ import { TAB_SIZE_ANIMATION } from './animation-kinds/tab-size.ts';
 import { TABLE_ANIMATION } from './animation-kinds/table.ts';
 import { TEXT_ANIMATION } from './animation-kinds/text.ts';
 import { TEXT_ALIGN_LAST_ANIMATION } from './animation-kinds/text-align-last.ts';
+import { TEXT_JUSTIFY_ANIMATION } from './animation-kinds/text-justify.ts';
 import { TEXT_BREAK_ANIMATION } from './animation-kinds/text-break.ts';
 import { TEXT_DECORATION_ANIMATION } from './animation-kinds/text-decoration.ts';
 import { TEXT_FILL_STROKE_ANIMATION } from './animation-kinds/text-fill-stroke.ts';
@@ -122,6 +123,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...TABLE_ANIMATION,
   ...TEXT_ANIMATION,
   ...TEXT_ALIGN_LAST_ANIMATION,
+  ...TEXT_JUSTIFY_ANIMATION,
   ...TEXT_BREAK_ANIMATION,
   ...TEXT_DECORATION_ANIMATION,
   ...TEXT_FILL_STROKE_ANIMATION,

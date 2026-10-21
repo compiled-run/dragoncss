@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.j { text-align: justify; }
+.w55 { width: 55px; }
+.w67 { width: 67.3px; }
+.w73 { width: 73px; }
+.auto { text-justify: auto; }
+.word { text-justify: inter-word; }
+.none { text-justify: none; }
+.char { text-justify: inter-character; }
+.dist { text-justify: distribute; }
+.row { display: flex; width: 150px; }
+.row > div { width: 55px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="auto" class="j w55 auto">XX XX XXX X</div>
+<div data-dragon-id="word" class="j w55 word">XX XX XXX X</div>
+<div data-dragon-id="none" class="j w55 none">XX XX XXX X</div>
+<div data-dragon-id="char" class="j w55 char">XX XX XXX X</div>
+<div data-dragon-id="rem" class="j w67 char">XXX XX X XXXX XX</div>
+<div data-dragon-id="dist" class="j w67 dist">X XX XXX XXXXX X</div>
+<div data-dragon-id="mixn" class="j w73">XX <span data-dragon-id="sn" class="none">X X </span>XXXX XX X</div>
+<div data-dragon-id="mixc" class="j w73 char">XX X<span data-dragon-id="sc" class="auto">X XX </span>XXX X XX</div>
+<div data-dragon-id="inh" class="j w55 char"><div data-dragon-id="inhc">XXX X XX XXXX X</div></div>
+<div data-dragon-id="off" class="w55 char">XX XX XXX X</div>
+<div data-dragon-id="row" class="row j"><div data-dragon-id="rc" class="char">XX XX XXX X</div><div data-dragon-id="rn" class="none">XX XX XXX X</div></div>
+</body>
+</html>
