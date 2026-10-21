@@ -13,11 +13,13 @@ export const CONTROL_TAGS: readonly string[] = ['button', 'input'];
 /**
  * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it); an input's
  * do, and only type=range (ASCII case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is
- * refused (computed-checks.ts).
+ * refused (computed-checks.ts). A disabled button or range (match.ts isActuallyDisabled) reads its own key: html.css's
+ * :disabled rules give it other colours (FORM-c).
  */
-export function controlUaKey(tag: string, type: string | undefined): ControlKey | null {
-  if (tag === 'button') return 'button';
-  if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : 'input';
+export function controlUaKey(tag: string, type: string | undefined, disabled: boolean = false): ControlKey | null {
+  if (tag === 'button') return disabled ? 'button:disabled' : 'button';
+  if (tag === 'input' && isRangeType(type)) return disabled ? 'input[type=range]:disabled' : 'input[type=range]';
+  if (tag === 'input') return 'input';
   return null;
 }
 
