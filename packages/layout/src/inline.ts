@@ -3,7 +3,7 @@
 // at UAX #14 opportunities as Blink's break iterator applies them (linebreak.ts) and at every <br>, fitted with Blink's fit test
 // (linefit.ts), and each line box is sized from the strut and every inline box on it, aligned at their baselines (CSS2 §10.8.1).
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
+import type { FontSpec, InlineBox, InlineChild, LayoutBox, LineBreak, LineHeightValue, LineStrut, MarginValue, MulticolStyle, NormalValue, NumberValue, PaddingValue, Px, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
 import type { Frag, Placed, Point } from './box.ts';
@@ -25,6 +25,7 @@ import { atomicContribution, isAtomicInline, layoutAtomic } from './inline-box.t
 import type { TruncSource } from './truncate.ts';
 import { truncateLine } from './truncate.ts';
 import { graphemeBreaks } from './grapheme.ts';
+import { balanceColumns, columnGeometry, columnOffsets } from './multicol.ts';
 
 const SPACE = 0x20;
 const ZWSP = 0x200b;
@@ -1769,7 +1770,69 @@ export function placeLines(ctx: Ctx, box: LayoutBox, available: LU): PlacedLine[
 }
 
 export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): PlacedLine[] {
+  if (box.style.multicol !== null) return multicolLines(ctx, box, ifc, available).lines.map((l) => l.line);
   return placeAtomicLines(ctx, box, ifc, layoutAtomics(ctx, ifc, available), available).map((l) => l.line);
+}
+
+/** The lines of a multi-column container in their columns (multicol.ts), and the block size of its columns. */
+type ColumnLines = { readonly lines: readonly AtomicLine[]; readonly height: LU };
+
+/**
+ * css-multicol-1 §3 and §7: the lines break at the column inline size, the columns are balanced over their block sizes, and each
+ * column's lines move to its column: inline by the column's offset (from the content box's right edge in rtl), block to the top.
+ */
+function multicolLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): ColumnLines {
+  const m = box.style.multicol as MulticolStyle;
+  checkMulticolContext(box, ifc);
+  const g = columnGeometry(m, box.style.columnGap, (box.strut as LineStrut).font.size, available);
+  const lines = placeAtomicLines(ctx, box, ifc, [], g.width).map((l) => l.line);
+  const columns = balanceColumns(lines.map((l) => l.height), g.count);
+  const offsets = columnOffsets(g, columns.starts.length);
+  const rtl = directionOf(ctx, box) === 'rtl';
+  const out: AtomicLine[] = [];
+  for (let c = 0; c < columns.starts.length; c++) {
+    const from = columns.starts[c] as number;
+    const to = c + 1 < columns.starts.length ? (columns.starts[c + 1] as number) : lines.length;
+    const offset = offsets[c] as LU;
+    const dx = rtl ? sub(sub(available, offset), g.width) : offset;
+    for (let j = from; j < to; j++) {
+      const line = lines[j] as PlacedLine;
+      out.push({ line: shiftLine(line, dx, sub(ZERO, (lines[from] as PlacedLine).top)), atomics: [], atomicRects: [] });
+    }
+  }
+  return { lines: out, height: columns.height };
+}
+
+function shiftRect(r: Rect, dx: LU, dy: LU): Rect {
+  return { x: add(r.x, dx), y: add(r.y, dy), width: r.width, height: r.height };
+}
+
+function shiftLine(line: PlacedLine, dx: LU, dy: LU): PlacedLine {
+  const pieces = line.pieces.map((p): LinePiece => ({ ...p, x: add(p.x, dx), top: add(p.top, dy) }));
+  return { ...line, top: add(line.top, dy), baseline: add(line.baseline, dy), pieces, boxRects: line.boxRects.map((r) => shiftRect(r, dx, dy)), breakRects: line.breakRects.map((r) => shiftRect(r, dx, dy)) };
+}
+
+/**
+ * The multi-column containers the engine lays out: one inline formatting context of collapsible text without inline boxes or
+ * atomic inlines, an auto block size, a px or normal column gap, overflow visible and no line clamp. The compiler refuses the
+ * rest; these guard the engine's own inputs.
+ */
+function checkMulticolContext(box: LayoutBox, ifc: Ifc): void {
+  const s = box.style;
+  const minHeight = s.minHeight;
+  if (ifc.atomics.length > 0) refuseMulticol(box, 'holds an atomic inline');
+  if (ifc.boxes.length > 0) refuseMulticol(box, 'holds an inline box');
+  if (ifc.mode !== 'collapse') refuseMulticol(box, 'preserves white space');
+  if (s.lineClamp !== 0) refuseMulticol(box, 'clamps its lines');
+  if (s.overflowX !== 'visible' || s.overflowY !== 'visible') refuseMulticol(box, 'clips its overflow');
+  const zeroMin = minHeight.kind === 'auto' || (minHeight.kind === 'px' && minHeight.value === 0);
+  if (s.height.kind !== 'auto' || s.maxHeight.kind !== 'none' || !zeroMin) refuseMulticol(box, 'has a specified block size');
+  if (s.columnGap.kind !== 'px' && s.columnGap.kind !== 'normal') refuseMulticol(box, 'has a percentage or calculated column gap');
+  if (s.textIndent.kind !== 'px') refuseMulticol(box, 'has a percentage or calculated text-indent');
+}
+
+function refuseMulticol(box: LayoutBox, what: string): never {
+  return unsupported('multicol', box.id, 'css-multicol-1 §3', `the multi-column container ${box.id} ${what}, which is not yet proven against Chrome`);
 }
 
 /** Lays out the atomic inlines of a formatting context whose content box is available wide (CSS2 §10.3.9). */
@@ -2222,7 +2285,8 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
   const ifc = buildIfc(ctx, box);
   const atoms = layoutAtomics(ctx, ifc, available);
   // Without atomic inlines the lines are placeIfcLines' own, the function the native runtime and the break vectors call.
-  const atomicLines = atoms.length === 0 ? placeIfcLines(ctx, box, ifc, available).map((line): AtomicLine => ({ line, atomics: [], atomicRects: [] })) : placeAtomicLines(ctx, box, ifc, atoms, available);
+  const columns = box.style.multicol === null ? null : multicolLines(ctx, box, ifc, available);
+  const atomicLines = columns !== null ? columns.lines : atoms.length === 0 ? placeIfcLines(ctx, box, ifc, available).map((line): AtomicLine => ({ line, atomics: [], atomicRects: [] })) : placeAtomicLines(ctx, box, ifc, atoms, available);
   const lines = atomicLines.map((l) => l.line);
   const fragments: Fragments = { placed: new Map() };
   collectFragments(ctx, ifc, atoms, atomicLines, origin, directionOf(ctx, box) === 'rtl' ? available : ZERO, fragments);
@@ -2230,7 +2294,17 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
   placeTopFragments(inlineChildren(box), fragments, placed);
   const last = lines[lines.length - 1];
   const first = lines[0];
+  if (columns !== null) return { height: columns.height, placed, firstBaseline: columnBaseline(lines, true), lastBaseline: columnBaseline(lines, false), lines: lines.length };
   return { height: clampedLinesHeight(ctx, box, lines), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
+}
+
+/** ColumnLayoutAlgorithm::PropagateBaselineFromChild: the highest first baseline of the columns, or the lowest last baseline. */
+function columnBaseline(lines: readonly PlacedLine[], first: boolean): LU | null {
+  let out: LU | null = null;
+  for (const l of lines) {
+    if (out === null || (first ? l.baseline < out : l.baseline > out)) out = l.baseline;
+  }
+  return out;
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content breaks only at <br>s, so it is the widest forced line; min-content takes every

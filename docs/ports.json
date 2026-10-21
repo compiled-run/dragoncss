@@ -1062,7 +1062,8 @@
         { "lines": "3631-3649", "symbol": null, "source": "cited" },
         { "lines": "793-851", "symbol": null, "source": "cited" },
         { "lines": "1148-1159", "symbol": null, "source": "cited" },
-        { "lines": "1220-1231", "symbol": null, "source": "cited" }
+        { "lines": "1220-1231", "symbol": null, "source": "cited" },
+        { "lines": "3007-3191", "symbol": "BlockLayoutAlgorithm::FinalizeForFragmentation", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
@@ -1074,7 +1075,9 @@
         { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" },
         { "file": "packages/layout/src/line-clamp.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/inline.ts", "symbol": "checkClampContext", "use": "port" },
-        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/multicol.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1661,7 +1664,8 @@
         { "lines": "762-804", "symbol": "ComputeMinMaxInlineSizes", "source": "located" },
         { "lines": "1016-1231", "symbol": "ComputeReplacedSizeInternal", "source": "located" },
         { "lines": "1518-1545", "symbol": "ComputePadding", "source": "cited" },
-        { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" }
+        { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" },
+        { "lines": "1294-1325", "symbol": "ResolveUsedColumnCount", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
@@ -1676,7 +1680,8 @@
         { "file": "packages/layout/src/ratio.ts", "symbol": "transferredInlineMinMax", "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedContribution", "use": "port" },
-        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" }
+        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" },
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -4063,6 +4068,57 @@
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
         { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/column_layout_algorithm.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "83d23b9610725041c7321c5baff25254b1090749564030283edf2b78b5ccbfc2",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "235-246", "symbol": "CombinedColumnGapSize", "source": "cited" },
+        { "lines": "266-301", "symbol": "ColumnLayoutAlgorithm::Layout", "source": "cited" },
+        { "lines": "843-1243", "symbol": "ColumnLayoutAlgorithm::LayoutLine", "source": "cited" },
+        { "lines": "1578-1601", "symbol": "ColumnLayoutAlgorithm::PropagateBaselineFromChild", "source": "cited" },
+        { "lines": "1614-1810", "symbol": "ColumnLayoutAlgorithm::ResolveColumnAutoBlockSizeInternal", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/multicol.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/geometry/layout_unit_diffuser.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "f361ac44bc101c4cf643d7dd54569c1ee1d75829ff65d2a7810e6e0e0949b172",
+      "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
+      "ranges": [
+        { "lines": "38-82", "symbol": "LayoutUnitDiffuser", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/fragmentation_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "d6dc0f2b2889aeeab8178d1626d61f3397b93f7f42505798a92383c823dafe04",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "983-1053", "symbol": "PropagateSpaceShortage", "source": "cited" },
+        { "lines": "1133-1240", "symbol": "MovePastBreakpoint", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" }
       ]
     }
   ],

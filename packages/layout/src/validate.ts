@@ -175,6 +175,7 @@ export const styleSchema = obj({
   textOverflow: lit('clip', 'ellipsis'),
   textIndent: tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...calc }),
   lineClamp: count0,
+  multicol: nullable(obj({ count: count0, width: tagged({ ...px(0), ...auto }) })),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -241,6 +242,7 @@ export type ValidationErrorCode =
   | 'mixed-children'
   | 'text-in-flex'
   | 'grid-shape'
+  | 'multicol-shape'
   | 'uncollapsed-text'
   | 'leaf-font'
   | 'anonymous-shape'
@@ -509,6 +511,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
     // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
     if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
+    if (isRecord(style)) checkMulticol(style, false, path, errors);
     const kids = childrenOf(value, path, errors);
     if (kids === null) return;
     kids.forEach((child: unknown, i: number) => {
@@ -531,6 +534,7 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
       if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
+      checkMulticol(style, false, path, errors);
     }
     return;
   }
@@ -556,6 +560,16 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
   if (isRecord(style)) checkGrid(style, children, path, errors);
+  if (isRecord(style)) checkMulticol(style, style['display'] === 'block', path, errors);
+}
+
+/** css-multicol-1 §2: only a block container is a multi-column container, and column-count and column-width are not both auto. */
+function checkMulticol(style: Record<string, unknown>, blockContainer: boolean, path: string, errors: ValidationError[]): void {
+  const m = style['multicol'];
+  if (!isRecord(m)) return;
+  if (!blockContainer) errors.push({ path: `${path}.style.multicol`, code: 'multicol-shape', message: 'only a block container (display block) is a multi-column container' });
+  const width = m['width'];
+  if (m['count'] === 0 && isRecord(width) && width['kind'] === 'auto') errors.push({ path: `${path}.style.multicol`, code: 'multicol-shape', message: 'a multi-column container has a column-count or a column-width; with both auto multicol is null' });
 }
 
 /** Blink kGridMaxTracks (core/style/grid_area.h): the most tracks a grid axis has, and the largest line magnitude. */
@@ -867,6 +881,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip',
   lineClamp: 0,
+  multicol: null,
   grid: null,
 };
 

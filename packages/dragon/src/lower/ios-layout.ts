@@ -368,6 +368,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
     textIndent: textIndent(id, get, l),
     lineClamp,
+    // css-multicol-1: the compiler writes no multi-column container yet; column-count and column-width are not lowered.
+    multicol: null,
     grid: null,
     gridItem: null,
   };

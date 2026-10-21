@@ -52,7 +52,7 @@ import { repoPath } from '../src/paths.ts';
  * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration) and its
  * smallCaps where it is false (the TXT-FONTFEAT small-caps migration), every box's marker where it is null (the GEN-c migration:
  * LayoutBox.marker is required), and every LayoutStyle's lineClamp removed where it is 0 (the TXT2-g migration: a style is the
- * object that carries textOverflow).
+ * object that carries textOverflow) and its multicol where it is null (the multicol migration).
  */
 function withoutWrapKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(withoutWrapKeys);
@@ -61,7 +61,7 @@ function withoutWrapKeys(v: unknown): unknown {
   const leaf = o['kind'] === 'text';
   const box = o['kind'] === 'box';
   const style = 'textOverflow' in o;
-  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(box && k === 'marker' && x === null) && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(box && k === 'marker' && x === null) && !(style && k === 'lineClamp' && x === 0) && !(style && k === 'multicol' && x === null)).map(([k, x]) => [k, withoutWrapKeys(x)]));
 }
 
 /**

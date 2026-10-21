@@ -648,6 +648,9 @@ const clampsLines = (box: LayoutBox, last: LU | null): boolean => box.style.line
 
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = box.children;
+  if (box.style.multicol !== null && ((box.strut === null && kids.length > 0) || a.marker !== null)) {
+    unsupported('multicol', box.id, 'css-multicol-1 §3', `the multi-column container ${box.id} ${a.marker !== null ? 'is a list item' : 'holds block-level boxes'}, which is not yet proven against Chrome`);
+  }
   if (box.strut !== null) {
     // CSS2 §9.2.1.1: the compiler wraps inline content beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
     const r = layoutInline(ctx, box, a.contentWidth, a.origin);
@@ -697,7 +700,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let inline: BlockLevelInline;
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext).
-    const newFormattingContext = kid.kind === 'replaced' || kid.style.display !== 'block' || isScrollContainer(kid.style);
+    // css-multicol-1 §2: a multi-column container establishes a new block formatting context.
+    const newFormattingContext = kid.kind === 'replaced' || kid.style.display !== 'block' || isScrollContainer(kid.style) || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).

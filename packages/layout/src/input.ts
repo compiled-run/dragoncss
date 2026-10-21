@@ -128,6 +128,12 @@ export type AspectRatioValue =
  * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
  * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
+/**
+ * css-multicol-1 §3: column-count (0 for auto) and column-width (auto or a px length), not both auto. The engine balances the
+ * columns (column-fill: balance) of a container that holds one inline formatting context, with the gap from columnGap.
+ */
+export type MulticolStyle = { readonly count: number; readonly width: Px | Auto };
+
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
 /** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
 export type Position = 'static' | 'relative' | 'absolute';
@@ -353,6 +359,8 @@ export type LayoutStyle = {
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
    */
   readonly lineClamp: number;
+  /** css-multicol-1 §3 on a block container: its columns; null when column-count and column-width are both auto. */
+  readonly multicol: MulticolStyle | null;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */

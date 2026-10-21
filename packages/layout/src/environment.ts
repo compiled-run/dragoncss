@@ -37,6 +37,7 @@ import type {
   MaxSizeValue,
   InlineSizeValue,
   MinSizeValue,
+  MulticolStyle,
   PaddingValue,
   Percent,
   PixelsAndPercent,
@@ -213,6 +214,8 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
     s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.flexBasis, s.rowGap, s.columnGap, s.textIndent,
   ];
   for (const v of lengths) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
+  const m = s.multicol;
+  if (m !== null && m.width.kind === 'px' && !inCssLengthRange(m.width.value)) return true;
   return gridNeedsEnvironment(s.grid);
 }
 
@@ -321,6 +324,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     columnGap: resolveGap(s.columnGap, env),
     verticalAlign: resolveVerticalAlign(s.verticalAlign, env),
     textIndent: envPadding(s.textIndent, env),
+    multicol: s.multicol === null ? null : resolveMulticol(s.multicol, env),
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
   };
 }
@@ -465,6 +469,12 @@ function resolveBasis(v: FlexBasisValue, env: Env): FlexBasisValue {
   if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
+}
+
+/** css-multicol-1 §3.1: a px column-width zooms as a length; column-count is a number. */
+function resolveMulticol(m: MulticolStyle, env: Env): MulticolStyle {
+  const w = m.width;
+  return { count: m.count, width: w.kind === 'px' ? lengthPx(w, env.zoom) : w };
 }
 
 function resolveGap(v: GapValue, env: Env): GapValue {

@@ -17,6 +17,7 @@ export type IntrinsicKind = 'min' | 'max';
 // part (CSS2 §9.3.1).
 export function intrinsicContentInlineSize(ctx: Ctx, box: LayoutBox, kind: IntrinsicKind): LU {
   const kids = box.children;
+  if (box.style.multicol !== null) unsupported('multicol', box.id, 'css-multicol-1 §3.4', `the ${kind}-content size of the multi-column container ${box.id} is not yet proven against Chrome`);
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);

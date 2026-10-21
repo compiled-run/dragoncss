@@ -23,6 +23,7 @@ import type {
   GridAutoRepeat,
   GridContainerStyle,
   GridItemStyle,
+  MulticolStyle,
   GridLine,
   GridLineName,
   GridSelfAlign,
@@ -650,7 +651,7 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'multicol', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -789,6 +790,22 @@ function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
   };
 }
 
+function decodeMulticol(v: JsonValue, path: string): MulticolStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['count', 'width'], path);
+  const count = numField(o, 'count', path);
+  if (!Number.isInteger(count) || count < 0) return fail(`${path}.count: expected a column count of at least 0, got ${count}`);
+  const w = field(o, 'width', path);
+  const k = kindOf(w, `${path}.width`);
+  if (k === 'auto') {
+    obj(w, ['kind'], `${path}.width`);
+    if (count === 0) return fail(`${path}: column-count and column-width are both auto`);
+    return { count, width: { kind: 'auto' } };
+  }
+  if (k !== 'px') return fail(`${path}.width: unknown kind ${k}`);
+  return { count, width: { kind: 'px', value: numField(obj(w, ['kind', 'value'], `${path}.width`), 'value', `${path}.width`) } };
+}
+
 function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
   if (v.kind === 'null') return null;
   const o = obj(v, ['column', 'row', 'justifySelf'], path);
@@ -853,6 +870,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     textIndent: paddingValue(f('textIndent'), p('textIndent')),
     lineClamp: num(f('lineClamp'), p('lineClamp')),
+    multicol: decodeMulticol(f('multicol'), p('multicol')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
