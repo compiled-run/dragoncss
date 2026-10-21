@@ -91,7 +91,8 @@ import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
-import { checkLineClamp, lineClampOf } from './line-clamp.ts';
+import { checkLineClamp, isLineClampContainer, lineClampOf } from './line-clamp.ts';
+import { parentsOf } from './text-shadow-apart.ts';
 import { checkResize } from './resize.ts';
 import { checkTouchAction, nativePanner, type NativePanner } from './touch-action.ts';
 
@@ -518,8 +519,9 @@ function checkTextIndent(el: ResolvedElement, targets: readonly string[], diagno
 // by the engine's port of Chrome's passes (layout inline.ts wrapStyleLines) only where fixture group text-wrap proves them: one Ahem
 // text run of whole-px font size directly in a block container (no inline box, <br>, atomic inline, block sibling or list marker),
 // collapsed white space that wraps at normal opportunities, no letter- or word-spacing, soft hyphen or small caps, and no
-// text-indent, text-align: justify, line clamp or truncation. Every target refuses the rest at the declaration, once per container.
-function checkTextWrapStyle(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean): void {
+// text-indent, text-align: justify, line clamp or truncation; the block static, unfloated, with visible overflow, in a block or a
+// flex row, under no line-clamp container. Every target refuses the rest at the declaration, once per container.
+function checkTextWrapStyle(el: ResolvedElement, parent: ResolvedElement | null, ancestors: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean): void {
   const value = el.props.get('text-wrap-style') as ResolvedValue;
   const kind = keywordOf(value);
   if ((kind !== 'balance' && kind !== 'pretty') || isInlineBox(el) || isContents(el) || !holdsInlineContent(el)) return;
@@ -536,8 +538,13 @@ function checkTextWrapStyle(el: ResolvedElement, targets: readonly string[], dia
     const v = text === null ? null : (text.props.get(p) as ResolvedValue).value;
     return v !== null && !(v.kind === 'keyword' && v.value === 'normal') && !isZeroLength(v);
   };
+  const clamp = ancestors.find(isLineClampContainer);
+  const parentDisplay = parent === null ? null : displayKeyword(parent);
+  const own = (p: string): string => keywordOf(el.props.get(p as Longhand) as ResolvedValue);
   let beside = '';
-  if (['flex', 'grid', 'inline-flex', 'inline-grid'].includes(display)) beside = `with text directly in the ${display} container, which Chrome wraps in an anonymous item`;
+  // Chrome ends the paragraph at the clamp (ScoreLineBreaker reads lines_until_clamp) and balances a clamped block on its own branch.
+  if (clamp !== undefined) beside = `inside the line-clamp container <${clamp.element.tag}> ${clamp.element.address}`;
+  else if (['flex', 'grid', 'inline-flex', 'inline-grid'].includes(display)) beside = `with text directly in the ${display} container, which Chrome wraps in an anonymous item`;
   else if (display === 'list-item') beside = 'on a list item';
   else if (blockChild !== undefined) beside = `with text beside the block <${blockChild.element.tag}> ${blockChild.element.address}, which Chrome wraps in anonymous blocks`;
   else if (text === null || items.some((it) => it.kind !== 'text')) beside = 'beside an inline box, a <br>, an atomic inline or another text run';
@@ -552,6 +559,14 @@ function checkTextWrapStyle(el: ResolvedElement, targets: readonly string[], dia
   else if (keywordOf(el.props.get('text-align') as ResolvedValue) === 'justify') beside = 'with text-align: justify';
   else if (lineClampOf(el) > 0) beside = 'with -webkit-line-clamp';
   else if (keywordOf(el.props.get('text-overflow') as ResolvedValue) === 'ellipsis' && !['overflow-x', 'overflow-y'].every((p) => keywordOf(el.props.get(p as Longhand) as ResolvedValue) === 'visible')) beside = 'with text-overflow: ellipsis';
+  // The contexts text-wrap-balance-ahem proves: a static, unfloated block with visible overflow, in a block or a flex row.
+  else if (display !== 'block') beside = `with display: ${display}`;
+  else if (own('float') !== 'none') beside = 'as a float';
+  else if (own('position') !== 'static') beside = `with position: ${own('position')}`;
+  else if (own('overflow-x') !== 'visible' || own('overflow-y') !== 'visible') beside = 'with overflow other than visible';
+  else if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') beside = 'as a grid item';
+  else if (parentDisplay === 'flex' && keywordOf((parent as ResolvedElement).props.get('flex-direction') as ResolvedValue) !== 'row') beside = `as a flex item of a ${keywordOf((parent as ResolvedElement).props.get('flex-direction') as ResolvedValue)} flex container`;
+  else if (parentDisplay !== null && parentDisplay !== 'block' && parentDisplay !== 'flex') beside = `in a box with display: ${parentDisplay}`;
   if (beside === '') return;
   const id = `text-wrap-style|${el.element.address}`;
   if (reported.has(id)) return;
@@ -1208,6 +1223,12 @@ function checkMask(el: ResolvedElement, targets: readonly string[], diagnostics:
 
 export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & BoxDecorationFaults & BackgroundBlendFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS }): void {
   const propagated = propagatedFrom(root);
+  const parents = parentsOf(root);
+  const ancestorsOf = (el: ResolvedElement): ResolvedElement[] => {
+    const out: ResolvedElement[] = [];
+    for (let a = parents.get(el); a !== undefined; a = parents.get(a)) out.push(a);
+    return out;
+  };
   // scroller: the nearest ancestor scroll container's address (the viewport's, "the viewport", for the root), or null.
   // around: the native scroll views around el, outermost first (analysis/touch-action.ts).
   // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
@@ -1253,7 +1274,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkInline(el, targets, diagnostics, reported, shapedAt);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
-      checkTextWrapStyle(el, targets, diagnostics, reported, shapedAt);
+      checkTextWrapStyle(el, layoutParent, ancestorsOf(el), targets, diagnostics, reported, shapedAt);
       // TXT2-d: word-break values no Chrome case proves (analysis/break-all.ts).
       checkWordBreak(el, targets, diagnostics, reported, shapedAt, faults);
       // TXT2-lb: line-break strictness over text no Chrome case proves (analysis/line-break.ts).

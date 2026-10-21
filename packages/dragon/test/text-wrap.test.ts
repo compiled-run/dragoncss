@@ -88,6 +88,13 @@ describe('text-wrap and text-wrap-style', () => {
       ['text-align: justify;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'with text-align: justify'],
       ['overflow: hidden; text-overflow: ellipsis;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'with text-overflow: ellipsis'],
       ['display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;', 'pretty', (r) => [text(r, 't', 'XX XX XX')], 'with -webkit-line-clamp'],
+      ['float: left;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'as a float'],
+      ['position: absolute;', 'pretty', (r) => [text(r, 't', 'XX XX XX')], 'with position: absolute'],
+      ['position: relative;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'with position: relative'],
+      ['overflow: auto;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'with overflow other than visible'],
+      ['overflow-x: hidden;', 'pretty', (r) => [text(r, 't', 'XX XX XX')], 'with overflow other than visible'],
+      ['display: inline-block;', 'balance', (r) => [text(r, 't', 'XX XX XX')], 'with display: inline-block'],
+      ['display: flow-root;', 'pretty', (r) => [text(r, 't', 'XX XX XX')], 'with display: flow-root'],
     ];
     for (const [extra, kind, kids, why] of cases) {
       const d = `${extra} text-wrap-style: ${kind}`;
@@ -95,6 +102,34 @@ describe('text-wrap and text-wrap-style', () => {
       const errors = c.diagnostics.filter((x) => x.severity === 'error' && x.message.startsWith(`text-wrap-style: ${kind} on a `));
       expect(errors.map((x) => `${String(x.target)} ${x.code}`).sort(), d).toEqual(refused);
       for (const x of errors) expect(x.message, d).toContain(why);
+    }
+  });
+
+  it('refuses balance and pretty under a line-clamp container, as a grid item or column flex item, and in an inline-block', () => {
+    const refused = ['android', 'ios', 'web'].map((t) => `${t} DRAGON_UNSUPPORTED_VALUE`);
+    // The block a in o, or in a block m in o; o is the context under test.
+    const compiled = (outer: string, kind: string, deep: boolean) => {
+      const css = `body { font-family: Ahem; font-size: 10px; } .o { ${outer} } .s { width: 100px; text-wrap-style: ${kind}; }`;
+      const a = (r: SourceRef): TreeNode => el(r, 'a', 'div', ['s'], [text(r, 't', 'XX XXX XX XXXX XX X XXX')]);
+      return project().compile(inputFor(css, (r) => [el(r, 'o', 'div', ['o'], [deep ? el(r, 'm', 'div', [], [a(r)]) : a(r)])]));
+    };
+    const clamp = 'display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 100px;';
+    const cases: readonly (readonly [string, boolean, string])[] = [
+      [clamp, false, 'inside the line-clamp container <div> o'],
+      [clamp, true, 'inside the line-clamp container <div> o'],
+      ['display: grid;', false, 'as a grid item'],
+      ['display: flex; flex-direction: column;', false, 'as a flex item of a column flex container'],
+      ['display: flex; flex-direction: row-reverse;', false, 'as a flex item of a row-reverse flex container'],
+      ['display: inline-block;', false, 'in a box with display: inline-block'],
+    ];
+    for (const kind of ['balance', 'pretty']) {
+      for (const [outer, deep, why] of cases) {
+        const errors = compiled(outer, kind, deep).diagnostics.filter((x) => x.severity === 'error' && x.message.startsWith(`text-wrap-style: ${kind} on a `));
+        expect(errors.map((x) => `${String(x.target)} ${x.code}`).sort(), `${kind} ${outer} ${deep}`).toEqual(refused);
+        for (const x of errors) expect(x.message, `${kind} ${outer}`).toContain(why);
+      }
+      // The proven contexts: a block in a block, and a flex item of a row.
+      for (const outer of ['', 'display: flex;']) expect(compiled(outer, kind, false).diagnostics.filter((x) => x.severity === 'error'), `${kind} ${outer}`).toEqual([]);
     }
   });
 });
