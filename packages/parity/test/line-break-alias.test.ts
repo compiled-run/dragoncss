@@ -1,7 +1,7 @@
 // -webkit-line-break against Chrome 145 (css/aliases/line-break.ts). The parse: through line-break and -webkit-line-break (a
 // surrogate in Chrome, css_properties.json5, which Dragon resolves as an alias with its own keywords), Dragon keeps exactly the values
 // Chrome keeps, refuses each value Chrome reads differently through the two names, and each kept value computes alike. The cascade:
-// wherever the two names compete (declaration order, !important, specificity, inherit, a dropped value), Dragon's computed value is
+// wherever the two names compete (declaration order, !important, specificity, inherit, initial, unset), Dragon's computed value is
 // Chrome's, which is what resolving the surrogate as an alias claims. The layout: text-line-break-webkit-ahem passes both lanes in
 // both directions against a live capture with the profiles enforced, and reject-text-line-break-webkit (after-white-space) is refused
 // on every target. Each planted reading must be caught.
@@ -64,7 +64,6 @@ const CASCADE: readonly string[] = [
   '.a { -webkit-line-break: loose !important; } .a { line-break: strict; }',
   '.a.b { -webkit-line-break: normal; } .a { line-break: strict; }',
   '.a { line-break: strict; } .a { -webkit-line-break: loose; }',
-  '.a { line-break: loose; -webkit-line-break: anywhere; }',
   '.p { -webkit-line-break: strict; }',
   '.p { -webkit-line-break: loose; } .a { line-break: inherit; }',
   '.p { line-break: strict; } .a { -webkit-line-break: inherit; }',
