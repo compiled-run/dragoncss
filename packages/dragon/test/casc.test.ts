@@ -57,10 +57,13 @@ describe('@supports conditions', () => {
     // A grammar naming a type it does not define is undecided, not a crash.
     expect(decide('(width: calc-size(auto, size))')).toMatch(/names a type it does not define/);
     // A dropped value is trusted only when the grammar lists every keyword in it: Chrome keeps legacy keywords the grammar lacks.
-    for (const decl of ['overflow: overlay', 'height: -webkit-fill-available', 'width: -webkit-fit-content', 'text-align: -webkit-center', 'color: -webkit-link', 'position: -webkit-sticky', 'width: foo']) {
+    for (const decl of ['overflow: overlay', 'text-align: -webkit-center', 'color: -webkit-link', 'position: -webkit-sticky', 'width: foo']) {
       const keyword = (decl.split(': ')[1] as string);
       expect(decide(`not (${decl})`), decl).toBe(`Dragon cannot tell whether Chrome keeps (${decl}) (Chrome may keep "${keyword}" for ${decl.split(':')[0]}, a keyword the CSS grammar Dragon checks does not list)`);
     }
+    // Chrome's prefixed sizing keywords are in the grammar now (css/size-keywords.ts): -webkit-fill-available computes to stretch,
+    // which no web row proves for height.
+    expect(decide('not (height: -webkit-fill-available)')).toBe('Dragon cannot tell whether Chrome keeps (height: -webkit-fill-available) (height:stretch is not a value Dragon has proven Chrome 145 keeps)');
     expect(decide('(foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\) \(foo is not supported/);
     // An undecidable operand refuses the condition even where the decided one settles it.
     expect(decide('(width: 1px 2px) and (foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);
@@ -168,6 +171,14 @@ describe('all', () => {
     expect(codes(compile('.a { all: red; }').c)).toEqual(['DRAGON_CSS_INVALID_VALUE null']);
     expect(codes(compile('.a { all: initial initial; }').c)).toEqual(['DRAGON_CSS_INVALID_VALUE null']);
     expect(codes(compile('.a { all: var(--k); }').c)).toEqual(['DRAGON_UNSUPPORTED_VALUE null']);
+  });
+  it('a longhand a later declaration of the same rule overrides needs no support, unless it is the more important one', () => {
+    const refused = (css: string): string[] => compile(css, { profiles: 'enforce' }).c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.startsWith('font-family: initial')).map((d) => String(d.target));
+    expect(refused('.a { font-family: initial; }').sort()).toEqual(['android', 'ios', 'web']);
+    expect(refused('.a { all: initial; font-family: Ahem; }')).toEqual([]);
+    expect(refused('.a { all: initial !important; font-family: Ahem !important; }')).toEqual([]);
+    expect(refused('.a { all: initial !important; font-family: Ahem; }').sort()).toEqual(['android', 'ios', 'web']);
+    expect(refused('.a { font-family: Ahem; } .a { all: initial; }').sort()).toEqual(['android', 'ios', 'web']);
   });
 });
 

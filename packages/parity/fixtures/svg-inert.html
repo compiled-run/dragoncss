@@ -9,11 +9,16 @@ svg { display: block; margin-bottom: 4px; }
 .m { marker-start: none; marker-mid: none; marker-end: none; }
 .cr { clip-rule: EVENODD; }
 .v { --rule: evenodd; clip-rule: var(--rule); marker-end: none; }
+.b { stop-color: red; stop-opacity: 0.5; flood-color: currentcolor; flood-opacity: 150%; lighting-color: rgb(0, 0, 255); mask-type: alpha; text-anchor: end; dominant-baseline: central; alignment-baseline: before-edge; }
+.bar { height: 10px; background-color: rgb(30, 90, 200); }
+.b2 { text-anchor: MIDDLE; dominant-baseline: use-script; alignment-baseline: middle; stop-opacity: 20%; }
 </style>
 </head>
 <body data-dragon-id="body">
 <div data-dragon-id="wrap" class="wrap">
 <svg data-dragon-id="s1" class="s1" width="380" height="80"><path data-dragon-id="p1" d="M10 10 H90 V70 H30 V30 H70 V50 H10 Z"/><path data-dragon-id="p2" class="m cr" d="M120 10 H200 V70 H140 V30 H180 V50 H120 Z"/><path data-dragon-id="p3" clip-rule="evenodd" marker-mid="none" stroke-linejoin="round" d="M230 70 L260 10 L290 70 L320 10 L350 70"/><circle data-dragon-id="p4" class="v" marker-start="none" cx="350" cy="25" r="14"/></svg>
+<svg data-dragon-id="s2" class="b" width="380" height="60" fill="rgb(200, 40, 40)"><rect data-dragon-id="q1" x="10" y="10" width="60" height="40"/><rect data-dragon-id="q2" class="b2" stop-color="green" flood-opacity="0.3" mask-type="alpha" x="90" y="10" width="60" height="40"/><circle data-dragon-id="q3" text-anchor="middle" dominant-baseline="hanging" alignment-baseline="central" lighting-color="red" cx="200" cy="30" r="20"/></svg>
+<div data-dragon-id="t" class="b bar"></div>
 </div>
 </body>
 </html>

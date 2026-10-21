@@ -1,0 +1,20 @@
+{
+  "case": "inline-replaced-img",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"text:text0","data":"ab","lines":1,"units":[0,0],"blank":[]},
+    {"id":"text:text1","data":"cd","lines":1,"units":[0,0],"blank":[]},
+    {"id":"edges:text0","data":"a","lines":1,"units":[0],"blank":[]},
+    {"id":"edges:text1","data":"b","lines":1,"units":[0],"blank":[]},
+    {"id":"natural:text0","data":"a","lines":1,"units":[0],"blank":[]},
+    {"id":"natural:text1","data":"b","lines":1,"units":[0],"blank":[]},
+    {"id":"block:text0","data":"a","lines":1,"units":[0],"blank":[]},
+    {"id":"block:text1","data":"b","lines":1,"units":[0],"blank":[]},
+    {"id":"tall:text0","data":"a","lines":1,"units":[0],"blank":[]},
+    {"id":"tall:text1","data":"b","lines":1,"units":[0],"blank":[]},
+    {"id":"wrap:text0","data":"a ","lines":1,"units":[0,0],"blank":[]},
+    {"id":"wrap:text1","data":" b ","lines":1,"units":[0,0,0],"blank":[0]},
+    {"id":"wrap:text2","data":" c","lines":1,"units":[0,0],"blank":[0]}
+  ]
+}

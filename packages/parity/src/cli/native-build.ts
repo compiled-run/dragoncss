@@ -6,7 +6,7 @@
 // must build on both targets, into their own directories; the device-pixels lane must then catch them.
 import { readFileSync } from 'node:fs';
 import { checkFloor, parseApiVersions, parseDexdump } from '../api-floor.ts';
-import { layoutCases } from '../dpr.ts';
+import { deviceCheckCaseIds } from '../targets.ts';
 import type { BuildPlant } from '../native-host.ts';
 import { BUILD_PLANTS, buildAndroid, buildIos, NATIVE_CONFIG, run } from '../native-host.ts';
 import { SUPPORT_PLANTS } from 'dragon';
@@ -32,13 +32,14 @@ const plantEffect = (p: string): string => (p === 'single-run-baseline' ? 'every
 
 /** The floor plants must fail the build; a raster plant must build. */
 const floorPlant = plant !== null && !(SUPPORT_PLANTS as readonly string[]).includes(plant) ? plant : null;
-const declared = layoutCases().reduce((n, f) => n + f.cases.length, 0);
+// The app holds the device check cases: the layout device cases, then the forced device cases (SELD-R2 PR 5).
+const declared = deviceCheckCaseIds().length;
 
 if (target === 'ios') {
   try {
     const r = buildIos({ plant });
     for (const l of r.log) console.log(`native:build ios: ${l}`);
-    console.log(`native:build ios: ${r.cases} cases (layoutCases() ${declared}); source sha256 ${r.sourceSha256}`);
+    console.log(`native:build ios: ${r.cases} cases (deviceCheckCaseIds() ${declared}); source sha256 ${r.sourceSha256}`);
     console.log(`native:build ios: ${r.artifact}`);
     if (floorPlant !== null) {
       console.error('native:build ios: the planted iOS 16-only reference built; the floor check did not catch it');
@@ -77,7 +78,7 @@ if (target === 'ios') {
   const targetSdk = /^targetSdkVersion:'(\d+)'/m.exec(badging.out)?.[1];
   const raw = badging.out.split('\n').filter((l) => /^(?:min|target)?[sS]dkVersion:/.test(l)).join(' ');
   console.log(`native:build android: aapt2 dump badging: ${raw} (floor ${sdk}, target ${targetSdk})`);
-  console.log(`native:build android: ${r.cases} cases (layoutCases() ${declared}); source sha256 ${r.sourceSha256}`);
+  console.log(`native:build android: ${r.cases} cases (deviceCheckCaseIds() ${declared}); source sha256 ${r.sourceSha256}`);
   console.log(`native:build android: ${r.artifact}`);
   const api = parseApiVersions(readFileSync(r.tools.apiVersions, 'utf8'));
   const dumps = r.dexes.map((d) => {

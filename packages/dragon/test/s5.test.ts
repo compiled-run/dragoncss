@@ -219,17 +219,19 @@ describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in 
 });
 
 describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in their target', () => {
-  it('display: inline-table on ios and web renders as one block listing both targets; the objects stay one per target; formatDiagnostic is unchanged', () => {
-    const c = both().compile(inputFor('.g { display: inline-table; }', (r) => [div(r, 'g', ['g'])]));
-    expect(c.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'web']]);
+  // The native targets share their rows, so their messages match; web's alternatives differ (no inherit in block flow).
+  const natives = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } });
+  it('display: inline-table on android and ios renders as one block listing both targets; the objects stay one per target; formatDiagnostic is unchanged', () => {
+    const c = natives().compile(inputFor('.g { display: inline-table; }', (r) => [div(r, 'g', ['g'])]));
+    expect(c.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
     const grouped = formatDiagnostics(c.diagnostics, c.sources);
     const single = formatDiagnostic(c.diagnostics[0] as Diagnostic, c.sources);
-    expect(single.split('\n')[0]).toMatch(/: error DRAGON_UNSUPPORTED_VALUE \[ios\]: display: inline-table is unsupported/);
-    expect(grouped.split('\n')[0]).toBe(single.split('\n')[0]?.replace('[ios]', '[ios, web]'));
+    expect(single.split('\n')[0]).toMatch(/: error DRAGON_UNSUPPORTED_VALUE \[android\]: display: inline-table is unsupported/);
+    expect(grouped.split('\n')[0]).toBe(single.split('\n')[0]?.replace('[android]', '[android, ios]'));
     expect(grouped.split('\n').slice(1)).toEqual(single.split('\n').slice(1));
     expect(grouped.match(/DRAGON_UNSUPPORTED_VALUE/g)?.length).toBe(1);
     // Diagnostics that differ in more than the target stay separate blocks, each exactly as formatDiagnostic renders it.
-    const two = both().compile(inputFor('.g { display: inline-table; shape-outside: circle(); }', (r) => [div(r, 'g', ['g'])]));
+    const two = natives().compile(inputFor('.g { display: inline-table; shape-outside: circle(); }', (r) => [div(r, 'g', ['g'])]));
     expect(formatDiagnostics(two.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY'), two.sources)).toBe(formatDiagnostic(two.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY') as Diagnostic, two.sources));
   });
 });
@@ -237,7 +239,8 @@ describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in t
 describe('T005 rec 6: unsupported-value and unproven-context messages list the supported alternatives in context, from the profile rows', () => {
   it('display: inline-table in block flow lists block, contents, flex, grid, list-item, none and the CSS-wide keywords proven there (GEN-b, CASC, casc-all inherit)', () => {
     const c = both().compile(inputFor('.g { display: inline-table; }', (r) => [div(r, 'g', ['g'])]));
-    for (const d of c.diagnostics) expect(d.message).toMatch(/^display: inline-table is unsupported \(support profile m1-s5\); in block\/ltr use block, contents, flex, grid, inherit, list-item, none, revert or revert-layer$/);
+    // display: inline is proven in block flow on both (an inline-level child of a block); inherit there on native only.
+    for (const d of c.diagnostics) expect(d.message).toBe(`display: inline-table is unsupported (support profile m1-s5); in block/ltr use block, contents, flex, grid, ${d.target === 'web' ? '' : 'inherit, '}inline, list-item, none, revert or revert-layer`);
   });
   it('margin-right: 6mm in block flow lists the margin-right values proven there', () => {
     const c = both().compile(inputFor(`${FONT} .a { margin-right: 6mm; }`, (r) => [div(r, 'a', ['a'])]));
