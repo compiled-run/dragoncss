@@ -1,0 +1,14 @@
+{
+  "case": "block-in-inline-ignored",
+  "dpr": 2,
+  "texts": [
+    {"id":"d1:text0","lines":[[0,26],[26,53]]},
+    {"id":"d2:text0","lines":[[0,1]]},
+    {"id":"d3:text0","lines":[[0,1]]},
+    {"id":"d4:text0","lines":[[0,1]]},
+    {"id":"d5:text0","lines":[[0,1]]},
+    {"id":"d6:text0","lines":[[0,1]]},
+    {"id":"c7:text0","lines":[[0,1]]},
+    {"id":"d8:text0","lines":[[0,1]]}
+  ]
+}
