@@ -326,12 +326,12 @@ describe('profile diagnostics name the alias as written', () => {
   };
   it('an unsupported value says which alias set it', () => {
     expect(messages('body { margin: 0 } .a { -webkit-box-sizing: unset }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
-      // ctx-proof-inherit proves box-sizing: inherit, so unset is the alias value still without a row.
-      'DRAGON_UNSUPPORTED_VALUE box-sizing: unset (set by -webkit-box-sizing: unset) is unsupported (support profile m1-s5); in block/ltr use border-box, content-box or inherit',
+      // casc-all proves box-sizing: unset in inline flow only, so in block flow the alias value is an unproven context.
+      'DRAGON_UNPROVEN_CONTEXT box-sizing:unset (set by -webkit-box-sizing: unset) on a is used in the block/ltr context, which is not proven (proven: inline/ltr, inline/rtl); box-sizing values proven in block/ltr: border-box, content-box, inherit, initial or revert',
     ]);
   });
   it('an unproven context names the alias shorthand that set the longhand', () => {
-    const [m, ...rest] = messages('body { margin: 0 } .p { display: flex } .a { -webkit-flex: 3 }', 'rtl', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
+    const [m, ...rest] = messages('body { margin: 0 } .p { display: flex; flex-direction: column } .a { -webkit-flex: 3 }', 'rtl', (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
     expect(rest).toEqual([]);
     expect(m).toMatch(/^DRAGON_UNPROVEN_CONTEXT flex-basis:<percentage> \(set by -webkit-flex: 3\) on .* -webkit-flex sets flex-basis, which is unproven here, so write flex-grow: 3; flex-shrink: 1 instead of -webkit-flex$/);
   });
