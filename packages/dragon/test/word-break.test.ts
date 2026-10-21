@@ -1,6 +1,6 @@
-// TXT2-d compiler (analysis/break-all.ts): word-break break-all over ASCII letters, digits and spaces and keep-all are accepted over
-// Ahem; break-all over any other character, and either value over text in a real face, are refused on every target at the word-break
-// declaration; each planted fault accepts what it names.
+// TXT2-d and TXT-BREAK-2 compiler (analysis/break-all.ts): word-break break-all over the Latin set and keep-all are accepted in any
+// face (the engine lays Latin-1 out in a real face; Ahem covers ASCII); break-all over any other character, or U+00AD, is refused on
+// every target at the word-break declaration; the planted fault accepts it.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
@@ -27,30 +27,23 @@ function refusals(family: string, wordBreak: string, value: string, faults: Comp
   const css = `body { font-family: ${family}; font-size: 10px; } .w { word-break: ${wordBreak}; }`;
   const tree = (r: SourceRef) => [el(r, 'd', 'div', ['w'], [text(r, 't0', value)])];
   const out = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} }, fonts: MAP }, { faults, profiles: 'derive', direction: 'ltr' }).compile(withLato(inputFor(css, tree)));
-  return out.diagnostics.filter((d) => d.message.includes('(TXT2-d)')).map((d) => `${d.code} ${String(d.target)} ${d.message}`);
+  return out.diagnostics.filter((d) => d.message.includes('(TXT-BREAK-2)')).map((d) => `${d.code} ${String(d.target)} ${d.message}`);
 }
 
-describe('word-break break-all and keep-all (TXT2-d)', () => {
-  it('accepts break-all over ASCII letters, digits and spaces, and keep-all over anything, in Ahem', () => {
+describe('word-break break-all and keep-all (TXT2-d, TXT-BREAK-2)', () => {
+  it('accepts break-all over the Latin set and keep-all over anything, in any face', () => {
     expect(refusals('Ahem', 'break-all', 'XY12 ZW34 xx')).toEqual([]);
+    expect(refusals('Ahem', 'break-all', 'XX-XX X.X X/X X(X) X\u00a0X \u00e9\u00df \u2014\u201cX\u201d')).toEqual([]);
     expect(refusals('Ahem', 'keep-all', 'XX-XX XX/XX X.X')).toEqual([]);
     expect(refusals('Ahem', 'normal', 'XX-XX')).toEqual([]);
+    for (const wb of ['break-all', 'keep-all']) expect(refusals('Lato', wb, 'Ab-cd \u00e9t\u00e9'), wb).toEqual([]);
   });
-  it('refuses break-all over any other character on every target; breakAllOutsideAsciiAccepted accepts it', () => {
-    for (const [value, cp] of [['XX-XX', '002D'], ['X.X', '002E'], ['X/X', '002F'], ['X\u00a0X', '00A0']] as const) {
-      const message = `word-break: break-all on d:text0, which holds U+${cp}: break-all is laid out over ASCII letters, digits and spaces only (TXT2-d)`;
-      expect(refusals('Ahem', 'break-all', value), value).toEqual([`DRAGON_UNSUPPORTED_VALUE ios ${message}`, `DRAGON_UNSUPPORTED_VALUE web ${message}`]);
-      expect(refusals('Ahem', 'break-all', value, { ...NO_FAULTS, breakAllOutsideAsciiAccepted: true }), value).toEqual([]);
+  it('refuses break-all over a character outside the Latin set, or U+00AD, on every target; breakAllOutsideSetAccepted accepts it', () => {
+    for (const [family, value, cp] of [['Ahem', 'X\u0153X', '0153'], ['Ahem', 'X\u00adX', '00AD'], ['Lato', 'A\u20acb', '20AC']] as const) {
+      const message = `word-break: break-all on d:text0, which holds U+${cp}: break-all is laid out over Latin text only (TXT-BREAK-2)`;
+      expect(refusals(family, 'break-all', value), value).toEqual([`DRAGON_UNSUPPORTED_VALUE ios ${message}`, `DRAGON_UNSUPPORTED_VALUE web ${message}`]);
+      expect(refusals(family, 'break-all', value, { ...NO_FAULTS, breakAllOutsideSetAccepted: true }), value).toEqual([]);
     }
-  });
-  it('refuses break-all and keep-all over text in a real face on every target; wordBreakOnRealFaceAccepted accepts them', () => {
-    for (const wb of ['break-all', 'keep-all']) {
-      expect(refusals('Lato', wb, 'Ab cd'), wb).toEqual([
-        `DRAGON_UNSUPPORTED_VALUE ios word-break: ${wb} on d:text0, which is drawn in a real face: word-break ${wb} is laid out over Ahem only (TXT2-d)`,
-        `DRAGON_UNSUPPORTED_VALUE web word-break: ${wb} on d:text0, which is drawn in a real face: word-break ${wb} is laid out over Ahem only (TXT2-d)`,
-      ]);
-      expect(refusals('Lato', wb, 'Ab cd', { ...NO_FAULTS, wordBreakOnRealFaceAccepted: true }), wb).toEqual([]);
-    }
-    expect(refusals('Lato', 'normal', 'Ab cd')).toEqual([]);
+    expect(refusals('Ahem', 'keep-all', 'X\u0153X')).toEqual([]);
   });
 });

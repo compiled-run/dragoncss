@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 11896
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 11896
+  },
+  {
+   "id": "x",
+   "parent": "body",
+   "x": 39680,
+   "y": 1680,
+   "width": 25840,
+   "height": 8536
+  },
+  {
+   "id": "k",
+   "parent": "x",
+   "x": 1580,
+   "y": 1832,
+   "width": 22680,
+   "height": 1680
+  },
+  {
+   "id": "e",
+   "parent": "x",
+   "x": 1160,
+   "y": 4184,
+   "width": 23520,
+   "height": 1512
+  },
+  {
+   "id": "f",
+   "parent": "x",
+   "x": 1160,
+   "y": 5696,
+   "width": 23520,
+   "height": 1680
+  },
+  {
+   "id": "fa",
+   "parent": "f",
+   "x": 18480,
+   "y": 0,
+   "width": 5040,
+   "height": 1680
+  },
+  {
+   "id": "fb",
+   "parent": "f",
+   "x": 13440,
+   "y": 0,
+   "width": 5040,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 186,
+   "width": 1050,
+   "height": 186
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 186,
+   "width": 1050,
+   "height": 186
+  },
+  {
+   "id": "x",
+   "left": 620,
+   "top": 26,
+   "right": 1024,
+   "bottom": 160,
+   "width": 404,
+   "height": 134
+  },
+  {
+   "id": "k",
+   "left": 645,
+   "top": 55,
+   "right": 999,
+   "bottom": 81,
+   "width": 354,
+   "height": 26
+  },
+  {
+   "id": "e",
+   "left": 638,
+   "top": 92,
+   "right": 1006,
+   "bottom": 115,
+   "width": 368,
+   "height": 23
+  },
+  {
+   "id": "f",
+   "left": 638,
+   "top": 115,
+   "right": 1006,
+   "bottom": 142,
+   "width": 368,
+   "height": 27
+  },
+  {
+   "id": "fa",
+   "left": 927,
+   "top": 115,
+   "right": 1006,
+   "bottom": 142,
+   "width": 79,
+   "height": 27
+  },
+  {
+   "id": "fb",
+   "left": 848,
+   "top": 115,
+   "right": 927,
+   "bottom": 142,
+   "width": 79,
+   "height": 27
+  }
+ ]
+}

@@ -1,7 +1,8 @@
 // TXT2-d (fixture-groups/text-word-break.ts, notes/T149-txt2-spec.md R15): word-break break-all and keep-all over Ahem against Chrome
-// 145. The fixtures pass both lanes (letters in both directions, digits and punctuation left to right), the engine plant
+// 145, with TXT-BREAK-2's text-break-all-ahem, -letters and -lato and text-break-hyphen-lato (fixture-groups/text-break.ts). The
+// fixtures pass both lanes (letters in both directions, digits and punctuation left to right), the engine plant
 // breakAllIgnored makes the engine differ from Chrome's committed captures at DPR 1, 2, 3 and 2.625, and the compiler plant
-// breakAllOutsideAsciiAccepted lets reject-text-break-all compile.
+// breakAllOutsideSetAccepted lets reject-text-break-all compile.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { EngineFaults } from '@dragon/layout';
@@ -32,7 +33,14 @@ const specOf = (id: string) => {
   return f;
 };
 
-const LAYOUT = [['text-word-break-ahem', ['ltr', 'rtl']], ['text-word-break-digits-ahem', ['ltr']]] as const;
+const LAYOUT = [
+  ['text-word-break-ahem', ['ltr', 'rtl']],
+  ['text-word-break-digits-ahem', ['ltr']],
+  ['text-break-all-ahem', ['ltr']],
+  ['text-break-all-letters', ['ltr', 'rtl']],
+  ['text-break-all-lato', ['ltr']],
+  ['text-break-hyphen-lato', ['ltr']],
+] as const;
 
 describe('the text-word-break fixtures', () => {
   // DRAGON_LIVE_AUTHORED=1 captures Chrome live instead of reading the committed capture (before the first regen of a new fixture).
@@ -51,8 +59,8 @@ describe('the text-word-break fixtures', () => {
       expect(out.status).toBe('pass');
     }, 300_000);
   }
-  it('breakAllOutsideAsciiAccepted lets reject-text-break-all through', async () => {
-    const out = await runFixture(specOf('reject-text-break-all'), browser, { authored: authored(), faults: { ...NO_FAULTS, breakAllOutsideAsciiAccepted: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+  it('breakAllOutsideSetAccepted lets reject-text-break-all through', async () => {
+    const out = await runFixture(specOf('reject-text-break-all'), browser, { authored: authored(), faults: { ...NO_FAULTS, breakAllOutsideSetAccepted: true }, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
     expect(out.status).toBe('fail');
   }, 300_000);
 });

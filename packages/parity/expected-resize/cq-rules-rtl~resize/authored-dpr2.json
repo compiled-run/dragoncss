@@ -1,0 +1,2884 @@
+{
+ "schema": "dragon-resize-capture/1",
+ "case": "cq-rules-rtl~resize",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2,
+ "direction": "rtl",
+ "start": {
+  "width": 400,
+  "height": 304
+ },
+ "steps": [
+  {
+   "kind": "resize",
+   "width": 304,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 320,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 328,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 336,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 352,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 360,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 368,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 376,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 384,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 392,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 344,
+   "height": 304
+  },
+  {
+   "kind": "resize",
+   "width": 400,
+   "height": 304
+  }
+ ],
+ "samples": [
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 384,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 332,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 28,
+     "y": 12,
+     "width": 344,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 32,
+     "y": 22,
+     "width": 340,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 332,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 32,
+     "y": 33,
+     "width": 340,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 400,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 390,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 390,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 304,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 74,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 304,
+     "height": 74,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 288,
+     "height": 64,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 2,
+     "width": 276,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 282,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 282,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 276,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 282,
+     "y": 22,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 282,
+     "y": 22,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 32,
+     "width": 276,
+     "height": 32,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 33,
+     "width": 276,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 282,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 282,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 53,
+     "width": 276,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 282,
+     "y": 53,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 282,
+     "y": 53,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 64,
+     "width": 304,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 294,
+     "y": 64,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 294,
+     "y": 64,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 320,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 74,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 320,
+     "height": 74,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 304,
+     "height": 64,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 2,
+     "width": 292,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 298,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 298,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 292,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 298,
+     "y": 22,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 298,
+     "y": 22,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 32,
+     "width": 292,
+     "height": 32,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 33,
+     "width": 292,
+     "height": 20,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 298,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 298,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 53,
+     "width": 292,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 298,
+     "y": 53,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 298,
+     "y": 53,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 64,
+     "width": 320,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 310,
+     "y": 64,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 310,
+     "y": 64,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 328,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 328,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 312,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 2,
+     "width": 300,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 306,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 306,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 12,
+     "width": 300,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 306,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 306,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 300,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 23,
+     "width": 300,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 306,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 306,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 33,
+     "width": 300,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 306,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 306,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 328,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 318,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 318,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 336,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 336,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 336,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 320,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 2,
+     "width": 308,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 314,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 314,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 12,
+     "width": 300,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 314,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 314,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 308,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 23,
+     "width": 308,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 314,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 314,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 33,
+     "width": 300,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 314,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 314,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 336,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 326,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 326,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 352,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 352,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 336,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 300,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 330,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 330,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 12,
+     "width": 316,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 330,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 330,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 324,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 300,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 330,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 330,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 33,
+     "width": 316,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 330,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 330,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 352,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 342,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 342,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 360,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 360,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 360,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 344,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 308,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 338,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 338,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 12,
+     "width": 324,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 338,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 338,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 332,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 308,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 338,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 338,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 33,
+     "width": 324,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 338,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 338,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 360,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 350,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 350,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 368,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 368,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 368,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 352,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 316,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 12,
+     "width": 332,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 340,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 316,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 33,
+     "width": 332,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 368,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 358,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 358,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 376,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 376,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 376,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 360,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 324,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 12,
+     "width": 348,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 22,
+     "width": 340,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 324,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 33,
+     "width": 340,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 376,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 366,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 366,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 384,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 384,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 368,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 316,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 36,
+     "y": 12,
+     "width": 320,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 28,
+     "y": 22,
+     "width": 328,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 316,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 36,
+     "y": 33,
+     "width": 320,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 346,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 346,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 384,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 374,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 374,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 392,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 392,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 392,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 376,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 324,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 36,
+     "y": 12,
+     "width": 328,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 28,
+     "y": 22,
+     "width": 336,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 324,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 36,
+     "y": 33,
+     "width": 328,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 354,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 354,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 392,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 382,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 382,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 344,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 344,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 344,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 328,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 2,
+     "width": 316,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 322,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 322,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 12,
+     "width": 308,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 322,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 322,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 22,
+     "width": 316,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 16,
+     "y": 23,
+     "width": 316,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 204, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 322,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 322,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 24,
+     "y": 33,
+     "width": 308,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 0, 204)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 322,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 322,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 344,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 334,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 334,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  },
+  {
+   "size": {
+    "width": 400,
+    "height": 304
+   },
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 54,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "page",
+     "kind": "element",
+     "hasBox": true,
+     "x": 8,
+     "y": 0,
+     "width": 384,
+     "height": 44,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "p-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 332,
+     "y": 2,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(0, 204, 0)"
+     }
+    },
+    {
+     "id": "p-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 2,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 28,
+     "y": 12,
+     "width": 344,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "p-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "p-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 12,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "card",
+     "kind": "element",
+     "hasBox": true,
+     "x": 32,
+     "y": 22,
+     "width": 340,
+     "height": 22,
+     "computed": {
+      "background-color": "rgba(0, 0, 0, 0)"
+     }
+    },
+    {
+     "id": "c-a",
+     "kind": "element",
+     "hasBox": true,
+     "x": 332,
+     "y": 23,
+     "width": 40,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(204, 0, 204)"
+     }
+    },
+    {
+     "id": "c-a:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-a:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 23,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b",
+     "kind": "element",
+     "hasBox": true,
+     "x": 32,
+     "y": 33,
+     "width": 340,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "c-b:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 362,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "c-b:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 362,
+     "y": 33,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 44,
+     "width": 400,
+     "height": 10,
+     "computed": {
+      "background-color": "rgb(136, 136, 136)"
+     }
+    },
+    {
+     "id": "out:text0",
+     "kind": "text",
+     "hasBox": true,
+     "x": 390,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    },
+    {
+     "id": "out:text0:line0",
+     "kind": "line",
+     "hasBox": true,
+     "x": 390,
+     "y": 44,
+     "width": 10,
+     "height": 10,
+     "computed": null
+    }
+   ]
+  }
+ ]
+}

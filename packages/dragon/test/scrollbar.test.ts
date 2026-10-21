@@ -106,7 +106,7 @@ describe('scrollbar on native', () => {
       expect(SCROLL_EMITTER.applied(null as never, b, hidden as never, 2, null as never)).toBe(false);
     }
     expect(SCROLL_EMITTER.native.uikit.file).toContain('if !(sv.scrollsX && sv.showsHorizontalScrollIndicator) && !(sv.scrollsY && sv.showsVerticalScrollIndicator) { out.append(("dragonScroll.indicators", .bool(false))) }');
-    expect(SCROLL_EMITTER.native['android-views'].file).toContain('return if (sv.barsOnTouch(sv.scrollsX) || sv.barsOnTouch(sv.scrollsY)) listOf(range) else listOf(range, Pair("dragonScroll.indicators", DumpJson.Bool(false)))');
+    expect(SCROLL_EMITTER.native['android-views'].file).toContain('if (!(sv.barsOnTouch(sv.scrollsX) || sv.barsOnTouch(sv.scrollsY))) out.add(Pair("dragonScroll.indicators", DumpJson.Bool(false)))');
     expect((SCROLL_EMITTER.native['android-views'].file ?? '').match(/ScrollBarEnabled = barsOnTouch\(scrolls[XY]\)/g)).toHaveLength(4);
   });
 

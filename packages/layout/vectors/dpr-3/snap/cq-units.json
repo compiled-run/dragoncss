@@ -1,0 +1,212 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 18048
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 18048
+  },
+  {
+   "id": "page",
+   "parent": "body",
+   "x": 1536,
+   "y": 0,
+   "width": 73728,
+   "height": 16128
+  },
+  {
+   "id": "p-a",
+   "parent": "page",
+   "x": 3840,
+   "y": 0,
+   "width": 33024,
+   "height": 1920
+  },
+  {
+   "id": "p-b",
+   "parent": "page",
+   "x": 3840,
+   "y": 1920,
+   "width": 23139,
+   "height": 1920
+  },
+  {
+   "id": "p-c",
+   "parent": "page",
+   "x": 12096,
+   "y": 3840,
+   "width": 5821,
+   "height": 1920
+  },
+  {
+   "id": "card",
+   "parent": "page",
+   "x": 3840,
+   "y": 5760,
+   "width": 65280,
+   "height": 10368
+  },
+  {
+   "id": "c-a",
+   "parent": "card",
+   "x": 0,
+   "y": 0,
+   "width": 24480,
+   "height": 1920
+  },
+  {
+   "id": "c-b",
+   "parent": "card",
+   "x": 0,
+   "y": 1920,
+   "width": 1920,
+   "height": 6528
+  },
+  {
+   "id": "c-c",
+   "parent": "card",
+   "x": 0,
+   "y": 8448,
+   "width": 28800,
+   "height": 1920
+  },
+  {
+   "id": "fix",
+   "parent": "body",
+   "x": 0,
+   "y": 16128,
+   "width": 38400,
+   "height": 1920
+  },
+  {
+   "id": "f-a",
+   "parent": "fix",
+   "x": 0,
+   "y": 0,
+   "width": 9600,
+   "height": 1920
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 282,
+   "width": 1200,
+   "height": 282
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 282,
+   "width": 1200,
+   "height": 282
+  },
+  {
+   "id": "page",
+   "left": 24,
+   "top": 0,
+   "right": 1176,
+   "bottom": 252,
+   "width": 1152,
+   "height": 252
+  },
+  {
+   "id": "p-a",
+   "left": 84,
+   "top": 0,
+   "right": 600,
+   "bottom": 30,
+   "width": 516,
+   "height": 30
+  },
+  {
+   "id": "p-b",
+   "left": 84,
+   "top": 30,
+   "right": 446,
+   "bottom": 60,
+   "width": 362,
+   "height": 30
+  },
+  {
+   "id": "p-c",
+   "left": 213,
+   "top": 60,
+   "right": 304,
+   "bottom": 90,
+   "width": 91,
+   "height": 30
+  },
+  {
+   "id": "card",
+   "left": 84,
+   "top": 90,
+   "right": 1104,
+   "bottom": 252,
+   "width": 1020,
+   "height": 162
+  },
+  {
+   "id": "c-a",
+   "left": 84,
+   "top": 90,
+   "right": 467,
+   "bottom": 120,
+   "width": 383,
+   "height": 30
+  },
+  {
+   "id": "c-b",
+   "left": 84,
+   "top": 120,
+   "right": 114,
+   "bottom": 222,
+   "width": 30,
+   "height": 102
+  },
+  {
+   "id": "c-c",
+   "left": 84,
+   "top": 222,
+   "right": 534,
+   "bottom": 252,
+   "width": 450,
+   "height": 30
+  },
+  {
+   "id": "fix",
+   "left": 0,
+   "top": 252,
+   "right": 600,
+   "bottom": 282,
+   "width": 600,
+   "height": 30
+  },
+  {
+   "id": "f-a",
+   "left": 0,
+   "top": 252,
+   "right": 150,
+   "bottom": 282,
+   "width": 150,
+   "height": 30
+  }
+ ]
+}

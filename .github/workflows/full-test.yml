@@ -347,7 +347,7 @@ jobs:
         env:
           JAVA_HOME: /opt/homebrew/opt/openjdk@17
         run: |
-          brew install openjdk@17
+          bash scripts/brew-openjdk17.sh
           brew upgrade kotlin || brew install kotlin
           cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
           import { readFileSync } from 'node:fs';

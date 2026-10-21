@@ -2087,6 +2087,15 @@
      "value": 0
     },
     "lineClamp": 0,
+    "containLayout": false,
+    "containPaint": false,
+    "containSize": "none",
+    "containIntrinsicWidth": {
+     "kind": "none"
+    },
+    "containIntrinsicHeight": {
+     "kind": "none"
+    },
     "grid": null,
     "gridItem": null
    },
@@ -2214,6 +2223,15 @@
        "value": 0
       },
       "lineClamp": 0,
+      "containLayout": false,
+      "containPaint": false,
+      "containSize": "none",
+      "containIntrinsicWidth": {
+       "kind": "none"
+      },
+      "containIntrinsicHeight": {
+       "kind": "none"
+      },
       "grid": null,
       "gridItem": null
      },
@@ -2342,6 +2360,15 @@
          "value": 28
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -2515,6 +2542,15 @@
          "value": 12
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -2688,6 +2724,15 @@
          "value": -11
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -2857,6 +2902,15 @@
            "value": -11
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },

@@ -1,9 +1,10 @@
-// PNT2 (css-transforms-2 §6, §7): the 3D transform longhands are accepted at their initial values, and backface-visibility at
-// hidden too (css/properties/transform-extra.ts). Any other computed value is refused on every target where it applies, once per
-// element: preserve-3d and another reference box change what a transform draws. A hidden backface hides the box only once it faces
-// away, which no 2D transform makes it do, so what it changes is the paint order: Blink gives the box a paint layer of its own
-// (lower/paint/stacking.ts, a normal-flow layer). An inline box gets no such layer in Blink (LayoutInline::LayerTypeRequired ignores
-// backface-visibility), which Dragon's stack tree does not model, so hidden is refused there. The values are checked computed, so one that arrives through var() or inherit is checked too.
+// PNT2 (css-transforms-2 §6, §7): the 3D transform longhands are accepted at their initial values, backface-visibility at
+// hidden too, and perspective and perspective-origin at any value (css/properties/transform-extra.ts). Any other computed value is
+// refused on every target where it applies, once per element: preserve-3d and another reference box change what a transform draws.
+// A hidden backface hides the box only once it faces away, which no 2D transform makes it do, so what it changes is the paint order:
+// Blink gives the box a paint layer of its own (lower/paint/stacking.ts, a normal-flow layer). An inline box gets no such layer in
+// Blink (LayoutInline::LayerTypeRequired ignores backface-visibility), which Dragon's stack tree does not model, so hidden is refused
+// there. The values are checked computed, so one that arrives through var() or inherit is checked too.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { isInitialTransformExtra, TRANSFORM_EXTRA_INITIAL, TRANSFORM_EXTRA_LONGHANDS } from '../css/properties/transform-extra.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
@@ -17,7 +18,10 @@ export function checkTransformExtra(el: ResolvedElement, targets: readonly strin
   const display = (el.props.get('display') as ResolvedValue).value;
   const inline = display.kind === 'keyword' && display.value === 'inline';
   const hidden = (q: string, v: ResolvedValue['value']): boolean => q === 'backface-visibility' && v.kind === 'keyword' && v.value === 'hidden';
+  // perspective and perspective-origin are accepted: below a perspective every transform is 2D, so it projects nothing and acts as
+  // an identity transform (paint-values/transform.ts hasPerspective), and its origin moves nothing.
   const p = TRANSFORM_EXTRA_LONGHANDS.find((q) => {
+    if (q === 'perspective' || q === 'perspective-origin') return false;
     const v = (el.props.get(q) as ResolvedValue).value;
     return !isInitialTransformExtra(q, v) && !(hidden(q, v) && !inline);
   });

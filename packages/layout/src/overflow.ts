@@ -7,7 +7,7 @@ import type { Direction, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, LU_PER_PX, max, min, snapEdge, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
-import { blockMinMaxWith, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
+import { blockMinMaxWith, containsAbsolute, establishesFormattingContext, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
@@ -207,7 +207,7 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     ix.order.push(b);
     const content = clampNegativeToZero(sub(rect.width, sumEdges(border.left, border.right, padding.left, padding.right)));
     const paddingBoxWidth = clampNegativeToZero(sub(rect.width, add(border.left, border.right)));
-    const nextPositioned = b.style.position === 'static' ? positioned : b;
+    const nextPositioned = containsAbsolute(b.style) ? b : positioned;
     // A replaced leaf has no children (its fallback content never renders).
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
@@ -407,13 +407,16 @@ function gridInflowOf(ix: Index, id: string): OverflowRect {
 
 /**
  * ScrollableOverflowForPropagation: a child's border box, united with its own overflow unless it clips both axes (a scroll
- * container, or clip on both axes with its 0px clip margin at the padding box); a clip axis keeps the border box on that axis.
+ * container, or clip on both axes with its 0px clip margin at the padding box) or is layout contained; a clip axis keeps the border
+ * box on that axis.
  */
 function propagated(ix: Index, n: Node): OverflowRect {
   const own: OverflowRect = { x: ZERO, y: ZERO, width: n.rect.width, height: n.rect.height };
   const s = n.box.style;
-  // ScrollableOverflowForPropagation: a replaced box adds its border box (its content is never scrollable overflow).
-  if (n.box.kind === 'replaced' || isScrollContainer(s) || (s.overflowX === 'clip' && s.overflowY === 'clip')) return own;
+  // ScrollableOverflowForPropagation: a replaced box adds its border box (its content is never scrollable overflow), and so does a
+  // layout-contained box, whose contents' overflow is ink overflow only (css-contain-2 §3.2; Chrome 145: a 300x200 grandchild of a
+  // contain: layout child leaves a 100x50 scroll container's scroll size at 100x50).
+  if (n.box.kind === 'replaced' || isScrollContainer(s) || (s.overflowX === 'clip' && s.overflowY === 'clip') || s.containLayout) return own;
   let child = overflowOf(ix, n);
   if (s.overflowX === 'clip') child = { x: ZERO, y: child.y, width: n.rect.width, height: child.height };
   if (s.overflowY === 'clip') child = { x: child.x, y: ZERO, width: child.width, height: n.rect.height };
@@ -554,8 +557,8 @@ type Flow = {
 };
 
 /** layoutContents' formattingContextRoot for a child of a block flow. */
-function isFcRoot(b: LayoutNode): boolean {
-  return b.kind === 'replaced' || b.style.display !== 'block' || isScrollContainer(b.style);
+function isFcRoot(ix: Index, b: LayoutNode): boolean {
+  return b.kind === 'replaced' || establishesFormattingContext(b.style, ix.ctx.faults);
 }
 
 function flowOf(ix: Index, n: Node): Flow {
@@ -610,7 +613,7 @@ function readFlow(ix: Index, n: Node): Flow {
 }
 
 function isRootOrFc(ix: Index, n: Node): boolean {
-  return n.parent === null || n.parent.style.display === 'flex' || isFcRoot(n.box) || isOutOfFlow(ix.ctx, n.box);
+  return n.parent === null || n.parent.style.display === 'flex' || isFcRoot(ix, n.box) || isOutOfFlow(ix.ctx, n.box);
 }
 
 /** What layoutContents returns about margins for a block-flow child: its escaping struts and whether it collapses through. */
@@ -619,7 +622,7 @@ type ChildMargins = { readonly escapeTop: Strut; readonly escapeBottom: Strut; r
 function readChild(ix: Index, n: Node): ChildMargins {
   const b = n.box;
   const none: ChildMargins = { escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false };
-  if (b.kind === 'replaced' || isFcRoot(b)) return none;
+  if (b.kind === 'replaced' || isFcRoot(ix, b)) return none;
   const vbp = sumEdges(n.border.top, n.border.bottom, n.padding.top, n.padding.bottom);
   const r = flowOf(ix, n);
   const height = n.rect.height;
