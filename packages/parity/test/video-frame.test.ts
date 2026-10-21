@@ -7,7 +7,10 @@ import { parseMp4 } from '../../dragon/src/videos/mp4.ts';
 import { decodeTwoTone, FIXTURE_STREAMS, mp4DataUrl, TWO_TONE_LUMA, twoToneMp4 } from '../src/videos/two-tone.ts';
 import { repoPath } from '../src/paths.ts';
 import type { DeviceEvidence } from '../src/profile-rows.ts';
-import { deriveVideoRows, VIDEO_FRAME_CASES } from '../src/profile-rows.ts';
+import { deriveVideoRows, VIDEO_FRAME_CASES, videoDeviceBlocker } from '../src/profile-rows.ts';
+import { DEVICE_CHECK_LANES } from '../src/lane-ids.ts';
+import type { TargetConfig } from '../src/targets.ts';
+import { nativeTargets } from '../src/targets.ts';
 import { PROFILE_NOTES, VIDEO_CONTEXT, VIDEO_STREAM_FEATURE } from 'dragon';
 
 const tone = (img: { width: number; data: Uint8Array }, x: number, y: number): number[] => [...img.data.slice((y * img.width + x) * 4, (y * img.width + x) * 4 + 4)];
@@ -55,22 +58,46 @@ describe('MEDIA-EL slice 2: two-tone streams', () => {
 });
 
 describe('MEDIA-EL slice 2: the native video row', () => {
-  const lane = (name: string, cases: readonly string[], failing: readonly string[] = []) => ({ lane: name, perCase: true, passed: failing.length === 0, cases: new Set(cases), failing: new Set(failing) });
-  const ev = (lanes: DeviceEvidence['lanes'], unavailable: string | null = null): DeviceEvidence => ({ target: 'android', unavailable, lanes });
+  // Evidence shaped like deviceEvidence's: every configured device lane, each running the ids its declaredLane gives it, so the
+  // state, anim, trace and env lanes never run the frame cases.
+  const config = nativeTargets().find((t) => t.target === 'android') as TargetConfig;
   const all = [...VIDEO_FRAME_CASES];
+  const ev = (o: { failing?: Readonly<Record<string, readonly string[]>>; drop?: string; aggregate?: string; unavailable?: string } = {}): DeviceEvidence => ({
+    target: 'android',
+    unavailable: o.unavailable ?? null,
+    lanes: config.lanes.filter((l) => l.kind === 'device' && l.lane !== o.drop).map((l) => ({
+      lane: l.lane,
+      perCase: l.lane !== o.aggregate,
+      passed: (o.failing?.[l.lane] ?? []).length === 0,
+      cases: new Set(l.sets[0]?.ids ?? []),
+      failing: new Set(o.failing?.[l.lane] ?? []),
+    })),
+  });
 
-  it('is a caveat through device-pixels when both frame cases pass every per-case device lane at every DPR', () => {
-    expect(deriveVideoRows('android', ev([lane('device-frames', all), lane('device-pixels', all)]))).toEqual([{
+  it('runs the frame cases on every DEVICE_CHECK_LANES lane, and on no state, anim, trace or env lane', () => {
+    for (const l of ev().lanes) {
+      for (const id of all) {
+        if ((DEVICE_CHECK_LANES as readonly string[]).includes(l.lane)) expect(l.cases.has(id), `${l.lane} ${id}`).toBe(true);
+        if (['device-states', 'device-anim', 'device-traces', 'device-env'].includes(l.lane)) expect(l.cases.has(id), `${l.lane} ${id}`).toBe(false);
+      }
+    }
+  });
+
+  it('is a caveat through device-pixels when both frame cases pass every DEVICE_CHECK_LANES lane', () => {
+    expect(videoDeviceBlocker(ev())).toBeNull();
+    expect(deriveVideoRows('android', ev())).toEqual([{
       feature: VIDEO_STREAM_FEATURE, context: VIDEO_CONTEXT, status: 'caveat', note: PROFILE_NOTES.untaggedVideoColour,
       proofs: [{ aspect: 'layout', lane: 'device-pixels', valueSubset: 'video[src]', context: VIDEO_CONTEXT, cases: all }],
     }]);
   });
 
-  it('is absent when a frame case fails or was not run, the record is unavailable or missing, and on web', () => {
-    expect(deriveVideoRows('android', ev([lane('device-pixels', all, ['replaced-video-frame'])]))).toEqual([]);
-    expect(deriveVideoRows('android', ev([lane('device-pixels', ['replaced-video-frame'])]))).toEqual([]);
-    expect(deriveVideoRows('android', ev([lane('device-pixels', all)], 'android device-pixels did not run'))).toEqual([]);
+  it('is absent when a frame case fails, a check lane is missing or aggregate, the record is unavailable or missing, and on web', () => {
+    expect(videoDeviceBlocker(ev({ failing: { 'device-pixels': ['replaced-video-frame-rtl'] } }))).toBe('replaced-video-frame-rtl fails android device-pixels');
+    expect(videoDeviceBlocker(ev({ drop: 'device-lines' }))).toBe('android has no device-lines lane');
+    expect(videoDeviceBlocker(ev({ aggregate: 'device-applied' }))).toBe('android device-applied records no per-case results');
+    expect(videoDeviceBlocker(ev({ unavailable: 'android device-pixels did not run' }))).toBe('android device-pixels did not run');
+    expect(deriveVideoRows('android', ev({ failing: { 'device-frames': ['replaced-video-frame'] } }))).toEqual([]);
     expect(deriveVideoRows('ios', null)).toEqual([]);
-    expect(deriveVideoRows('web', ev([lane('device-pixels', all)]))).toEqual([]);
+    expect(deriveVideoRows('web', ev())).toEqual([]);
   });
 });

@@ -1455,8 +1455,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const read = compileImages(roots, config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
       // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
       const videos = compileVideos(roots, diagnostics);
-      // The parity lanes play every stream on native to prove the first frame; every other compile follows the profile.
+      // The parity lanes play every stream on native to prove the first frame, lane-only until the profile has the row (as SVG-a2's
+      // values); every other compile follows the profile.
       if (options.profiles === 'enforce' && !options.interactionLanes) gateVideoStreams(videos.streams, targets, profiles, diagnostics);
+      else if (options.profiles === 'enforce') {
+        const own: Diagnostic[] = [];
+        gateVideoStreams(videos.streams, targets, profiles, own);
+        laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || own.some((d) => d.target === t));
+      }
       images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);

@@ -177,13 +177,28 @@ export function deriveMediaRows(target: ProfileTarget, passing: readonly { reado
 /** MEDIA-EL slice 2: the cases whose frame points prove a native player shows a stream's first frame where Chrome paints it. */
 export const VIDEO_FRAME_CASES = ['replaced-video-frame', 'replaced-video-frame-rtl'] as const;
 
+/** Why the frame cases are not device-proven on a target, or null when each runs and passes every DEVICE_CHECK_LANES lane at every DPR. */
+export function videoDeviceBlocker(ev: DeviceEvidence): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  for (const lane of DEVICE_CHECK_LANES) {
+    const l = ev.lanes.find((x) => x.lane === lane);
+    if (l === undefined) return `${ev.target} has no ${lane} lane`;
+    if (!l.perCase) return `${ev.target} ${lane} records no per-case results`;
+    for (const id of VIDEO_FRAME_CASES) {
+      if (!l.cases.has(id)) return `${id} is not run by ${ev.target} ${lane} at every DPR`;
+      if (l.failing.has(id)) return `${id} fails ${ev.target} ${lane}`;
+    }
+  }
+  return null;
+}
+
 /**
  * MEDIA-EL slice 2: the native row of a video with a stream (project.ts gateVideoStreams), only when every VIDEO_FRAME_CASES case
- * passes every per-case device lane of the target's committed record, device-pixels included (promotionBlocker). A caveat: the
- * lanes' frames have neutral chroma (PROFILE_NOTES.untaggedVideoColour). Web plays the stream itself and has no row.
+ * passes every DEVICE_CHECK_LANES lane of the target's committed record, device-pixels included (videoDeviceBlocker). A caveat:
+ * the lanes' frames have neutral chroma (PROFILE_NOTES.untaggedVideoColour). Web plays the stream itself and has no row.
  */
 export function deriveVideoRows(target: ProfileTarget, device: DeviceEvidence | null): ProfileRow[] {
-  if (target === 'web' || device === null || promotionBlocker(device, VIDEO_FRAME_CASES, true) !== null) return [];
+  if (target === 'web' || device === null || videoDeviceBlocker(device) !== null) return [];
   const proof: Proof = { aspect: 'layout', lane: 'device-pixels', valueSubset: VIDEO_STREAM_FEATURE.slice(VIDEO_STREAM_FEATURE.indexOf(':') + 1), context: VIDEO_CONTEXT, cases: [...VIDEO_FRAME_CASES] };
   return [{ feature: VIDEO_STREAM_FEATURE, context: VIDEO_CONTEXT, status: 'caveat', proofs: [proof], note: PROFILE_NOTES.untaggedVideoColour }];
 }
