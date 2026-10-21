@@ -11,6 +11,7 @@ import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
 import { REFERENCE_PLATFORM } from '../platform.ts';
 import type { SamplePoint } from '../samples.ts';
+import { isScanlineRule } from '../samples.ts';
 import { caseRootX } from './gradient.ts';
 import type { PaintSampleContext, PaintSamples } from './types.ts';
 
@@ -116,14 +117,40 @@ export function borderImagePoints(ctx: PaintSampleContext): SamplePoint[] {
   return out;
 }
 
-/** The base rule kinds a border image decides inside its box: its border bands and edges, its interior and its corners. */
+/** The base rule kinds a border image may decide inside its box: its border bands and edges, its interior and its corners. */
 const REPLACED = new Set(['border', 'edge', 'interior', 'radius']);
+/** How far, in device px, a kept base point stays from every pixel a border image piece touches. */
+const CLEAR = INSET + 1;
+
+/** Per case, each border image box's piece rects in device px [left, top, right, bottom), every pixel a piece touches. */
+const covers = new WeakMap<PaintSampleContext, ReadonlyMap<string, readonly (readonly number[])[]>>();
+function coversOf(ctx: PaintSampleContext): ReadonlyMap<string, readonly (readonly number[])[]> {
+  const hit = covers.get(ctx);
+  if (hit !== undefined) return hit;
+  const borders = new Map(ctx.boxes.map((b) => [b.id, [b.border.top, b.border.right, b.border.bottom, b.border.left] as [number, number, number, number]]));
+  const out = new Map<string, (readonly number[])[]>();
+  for (const { id, plan } of borderImagePlans(ctx.program, ctx.viewport, ctx.dpr, borders)) {
+    out.set(id, plan.layers.map((l) => {
+      const p = l.placement;
+      return [plan.originX + Math.max(Math.floor(p.destX / 64), p.clipLeft), plan.originY + Math.max(Math.floor(p.destY / 64), p.clipTop), plan.originX + Math.min(Math.ceil((p.destX + p.destWidth) / 64), p.clipRight), plan.originY + Math.min(Math.ceil((p.destY + p.destHeight) / 64), p.clipBottom)];
+    }));
+  }
+  covers.set(ctx, out);
+  return out;
+}
 
 export const BORDER_SAMPLES: PaintSamples = {
   name: 'border',
+  // A border image box keeps the base points its image does not paint (CLEAR px from every piece): the border band a narrower
+  // image width leaves open, and the interior when the image has no fill. Chrome draws no border style under the image, so those
+  // pixels show what the box paints under its border (its background), as the device does. An edge scanline reads past its point,
+  // so a border image box keeps none.
   keep: (pt, ctx) => {
     const [kind, id] = pt.rule.split(':');
-    return !(REPLACED.has(kind ?? '') && id !== undefined && borderImageIds(ctx.program).has(id));
+    if (!REPLACED.has(kind ?? '') || id === undefined || !borderImageIds(ctx.program).has(id)) return true;
+    if (isScanlineRule(pt.rule)) return false;
+    const rects = coversOf(ctx).get(id) ?? [];
+    return rects.every((r) => pt.x + CLEAR <= (r[0] as number) || pt.x - CLEAR >= (r[2] as number) || pt.y + CLEAR <= (r[1] as number) || pt.y - CLEAR >= (r[3] as number));
   },
   points: borderImagePoints,
 };

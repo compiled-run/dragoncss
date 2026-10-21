@@ -4,8 +4,11 @@
 // (packages/parity/fixtures); packages/parity/test/border-image-parse.test.ts pins the parse against Chrome.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import { emitNativeSupport, SUPPORT_PLANTS } from '../src/emit/native-support.ts';
+import type { GradientImage } from '@dragon/layout';
+import { borderImageStopsModelled } from '@dragon/layout';
+import { stopsResolveApart } from '../src/analysis/paint-values/stop-offsets.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { initialValue, valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -141,7 +144,7 @@ describe('border-image', () => {
     expect(errorsAt('border-image: linear-gradient(red, blue) 1 round; border-top: 1px solid')).toEqual(REFUSED);
   });
 
-  it('refuses every other border image on every target by name, once where it applies', () => {
+  it('refuses every border image part 1 draws on no target, on every target by name, once where it applies', () => {
     const cases: readonly (readonly [string, RegExp])[] = [
       ['border-image-source: url(b.png)', /^border-image-source: url\(b\.png\) on <div> a is unsupported: a url\(\) border image is not drawn yet/],
       ['border-image: url(b.png) 30 round', /^border-image-source: url\(b\.png\) on <div> a is unsupported: a url\(\) border image/],
@@ -149,13 +152,6 @@ describe('border-image', () => {
       ['border-image-source: repeating-linear-gradient(red, blue 10%)', /a repeating-linear-gradient\(\) border image is not drawn yet/],
       ['border-image-source: conic-gradient(red, blue)', /a conic-gradient\(\) border image is not drawn yet/],
       ['border-image-source: linear-gradient(red, 30%, blue)', /the gradient: colour hints/],
-      ['border-image-source: linear-gradient(to top right, red, blue)', /a gradient to a corner/],
-      ['border-image-source: linear-gradient(10.005deg, red, blue)', /off the 0\.01deg grid/],
-      ['border-image-source: linear-gradient(currentcolor, blue)', /a currentcolor stop/],
-      ['border-image-source: linear-gradient(rgba(255, 0, 0, 0.5), blue)', /a translucent stop/],
-      ['border-image-source: linear-gradient(transparent, blue)', /a translucent stop/],
-      ['border-image-source: linear-gradient(red 4px, blue)', /a stop position in px/],
-      ['border-image-source: linear-gradient(red 50%, blue 50%)', /stops all sit at one offset/],
       ['border-image: linear-gradient(red, blue) 1 / 10%', /^border-image-width: 10% on <div> a is unsupported: a percentage border image width/],
       ['border-image: linear-gradient(red, blue) 1 / 1em', /a border image width in em/],
       ['border-image: linear-gradient(red, blue) 1 / 1 / 2px', /^border-image-outset: 2px on <div> a is unsupported: a border image outset/],
@@ -163,10 +159,6 @@ describe('border-image', () => {
       ['border-image: linear-gradient(red, blue) 1 round', /^border-image-repeat: round on <div> a is unsupported: border-image-repeat round is not drawn yet/],
       ['border-image: linear-gradient(red, blue) 1 stretch space', /border-image-repeat stretch space is not drawn yet/],
       ['border-image: linear-gradient(red, blue) 1 repeat', /border-image-repeat repeat/],
-      ['border-image: linear-gradient(red, blue) 1; border-radius: 4px', /on a rounded box/],
-      ['border-image: linear-gradient(red, blue) 1; background-image: linear-gradient(red, blue)', /over a background image/],
-      ['border-image: linear-gradient(red, blue) 1; display: list-item', /display list-item/],
-      ['border-image: linear-gradient(red, blue) 1; display: table-cell', /display table-cell/],
       ['-webkit-border-image: url(b.png) 10 / 4px', /^-webkit-border-image: /],
       ['-webkit-border-image: linear-gradient(red, blue) 1', /^-webkit-border-image: /],
     ];
@@ -177,6 +169,39 @@ describe('border-image', () => {
       expect(errors.map((x) => `${String(x.target)} ${x.code}`).sort(), d).toEqual(REFUSED);
       for (const x of errors) expect(x.message, d).toMatch(message);
     }
+    // What only the native raster cannot draw exactly is refused on ios and android; the web output keeps it as written.
+    const nativeCases: readonly (readonly [string, RegExp])[] = [
+      ['border-image-source: linear-gradient(to top right, red, blue)', /a gradient to a corner/],
+      ['border-image-source: linear-gradient(10.005deg, red, blue)', /off the 0\.01deg grid/],
+      ['border-image-source: linear-gradient(currentcolor, blue)', /a currentcolor stop/],
+      ['border-image-source: linear-gradient(rgba(255, 0, 0, 0.5), blue)', /a translucent stop/],
+      ['border-image-source: linear-gradient(transparent, blue)', /a translucent stop/],
+      ['border-image-source: linear-gradient(red 4px, blue)', /a stop position in px/],
+      ['border-image-source: linear-gradient(red 50%, blue 50%)', /the stops resolve to one offset/],
+      // The stops as the native raster resolves them (f32), not as written: these meet once resolved.
+      ['border-image-source: linear-gradient(red 50%, blue 50.000001%)', /the stops resolve to one offset/],
+      ['border-image-source: linear-gradient(red 150%, blue 150.000001%)', /the stops resolve to one offset/],
+      ['border-image-source: linear-gradient(red 60%, blue 20%)', /the stops resolve to one offset/],
+      ['border-image: linear-gradient(red, blue) 1; border-radius: 4px', /on a rounded box/],
+      ['border-image: linear-gradient(red, blue) 1; background-image: linear-gradient(red, blue)', /over a background image/],
+      ['border-image: linear-gradient(red, blue) 1; display: list-item', /display list-item/],
+      ['border-image: linear-gradient(red, blue) 1; display: table-cell', /display table-cell/],
+      // Chrome draws no border style under a border image, so a colour clipped inside the border box leaves the band open.
+      ['border-image: linear-gradient(red, blue) 10 / 4px; background: #fff; background-clip: padding-box', /a background colour clipped to the padding or content box/],
+      ['border-image: linear-gradient(red, blue) 10 / 4px; background-color: #fff; background-clip: content-box', /a background colour clipped to the padding or content box/],
+    ];
+    for (const [d, message] of nativeCases) {
+      const css = `body { font-family: Ahem; font-size: 10px; } .s { border: 2px solid #102030; ${d}; }`;
+      const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', [], [text(r, 't', 'XX')])])]));
+      const errors = c.diagnostics.filter((x) => x.severity === 'error');
+      expect(errors.map((x) => `${String(x.target)} ${x.code}`).sort(), d).toEqual(REFUSED.filter((x) => !x.startsWith('web ')));
+      for (const x of errors) expect(x.message, d).toMatch(message);
+      expect(c.outputs.web.kind, d).toBe('ready');
+    }
+    // A clip inside the border box with no colour to clip, or a border-box clip, is drawn.
+    expect(errorsAt('border-image: linear-gradient(red, blue) 10 / 4px; background-clip: padding-box')).toEqual([]);
+    expect(errorsAt('border-image: linear-gradient(red, blue) 10 / 4px; background: #fff; background-clip: border-box')).toEqual([]);
+    expect(errorsAt('border-image-source: linear-gradient(red 50%, blue 50.01%)')).toEqual([]);
     // A value that arrives through var() is refused as well.
     expect(errorsAt('--b: url(b.png); border-image-source: var(--b)')).toEqual(REFUSED);
     expect(errorsAt('--b: url(b.png) 30; -webkit-border-image: var(--b)')).toEqual(REFUSED);
@@ -201,6 +226,17 @@ describe('border-image', () => {
     expect(at('will-change: transform')).toEqual(native);
     expect(at('overflow: auto; height: 20px')).toEqual(native);
     expect(at('', 'will-change: opacity')).toEqual(native);
+  });
+
+  it('draws a border image on the body or html whose overflow the viewport takes, as the check and the lowering agree', () => {
+    for (const [root, body] of [['', 'overflow: auto;'], ['overflow: auto;', '']] as const) {
+      const css = `html { ${root} } body { font-family: Ahem; font-size: 10px; ${body} border: 4px solid #000; border-image: linear-gradient(red, blue) 2; }`;
+      const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', [], [text(r, 't', 'XX')])]));
+      expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code} ${d.message}`), `${root}|${body}`).toEqual([]);
+      const p = nativePrograms(c, []);
+      expect(p.kind === 'ready' ? 'ready' : p.reason, `${root}|${body}`).toBe('ready');
+      if (p.kind === 'ready') for (const b of ['uikit', 'android-views'] as const) expect(p.programs[b].nodes.some((n) => n.writes.some((w) => w.kind === 'border-image')), b).toBe(true);
+    }
   });
 
   it('refuses a -webkit-border-image that loses the cascade, since Chrome keeps the border widths it sets', () => {
@@ -276,5 +312,22 @@ describe('border-image native support', () => {
       expect(planted).toContain(on);
       expect(planted.replace(on, off)).toBe(own);
     }
+  });
+});
+
+describe('border image stops', () => {
+  it('the check resolves percent stops as the engine does (borderImageStopsModelled), so no accepted stops leave the device plan unmodelled', () => {
+    const image = (stops: readonly { unit: 'auto' | 'percent'; value: number }[]): GradientImage => ({ radial: false, repeating: false, direction: 'default', angleDeg: 180, slope: 0, sideX: 'none', sideY: 'none', circle: false, extent: 'farthest-corner', radiusX: { unit: 'px', value: 0 }, radiusY: { unit: 'px', value: 0 }, centerX: { unit: 'percent', value: 50 }, centerY: { unit: 'percent', value: 50 }, stops: stops.map((s, i) => ({ color: { r: 255 * (i % 2), g: 40, b: 255 * ((i + 1) % 2), alpha: 255 }, unit: s.unit, value: s.value })) });
+    const values = [-50, -0.0000001, 0, 0.0000001, 10, 33.3333, 49.9999999, 50, 50.000001, 50.00001, 99.9999999, 100, 100.0000001, 150, 150.000001, 150.0001, 200];
+    let checked = 0;
+    for (const a of values) {
+      for (const b of values) {
+        for (const stops of [[{ unit: 'percent' as const, value: a }, { unit: 'percent' as const, value: b }], [{ unit: 'percent' as const, value: a }, { unit: 'auto' as const, value: 0 }, { unit: 'percent' as const, value: b }], [{ unit: 'auto' as const, value: 0 }, { unit: 'percent' as const, value: a }, { unit: 'percent' as const, value: b }, { unit: 'auto' as const, value: 0 }]]) {
+          expect(stopsResolveApart(stops), JSON.stringify(stops)).toBe(borderImageStopsModelled(image(stops)));
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBe(values.length * values.length * 3);
   });
 });

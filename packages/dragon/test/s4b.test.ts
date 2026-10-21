@@ -135,6 +135,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       if (f.endsWith(join('src', 'css', 'chrome-number.ts'))) continue;
       // SVG-a1: analysis/elements/svg-path.ts reproduces Chrome's float32 path-number arithmetic (svg.test.ts pins it); only that file.
       if (f.endsWith(join('src', 'analysis', 'elements', 'svg-path.ts'))) continue;
+      // MISC-PAINT: analysis/paint-values/stop-offsets.ts resolves border image stops in float32 as the engine does (border-image.test.ts pins it against the engine); only that file.
+      if (f.endsWith(join('src', 'analysis', 'paint-values', 'stop-offsets.ts'))) continue;
       expect(readFileSync(f, 'utf8'), f).not.toMatch(/Math\.(round|floor|ceil|trunc|fround)|toFixed|toPrecision/);
     }
   });

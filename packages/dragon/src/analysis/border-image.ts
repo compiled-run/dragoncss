@@ -4,8 +4,11 @@
 // grid, opaque sRGB stops at percentages, any slices (numbers or percentages, fill or not), widths of numbers, px or auto, no outset
 // and border-image-repeat stretch, on a square block-level box with no background image that is neither transformed nor composited.
 // The native targets rasterise it with the translated Chrome nine-piece port (paint-gradient.ts planBorderImage); the web output
-// keeps it as written. Everything else is refused on every target by name: a url() source, the other images and gradients, a
-// translucent or currentcolor stop, a px stop position, outsets, percentage widths, repeat, round and space (MISC-PAINT part 2).
+// keeps it as written. A url() source, the other images and gradients, outsets, percentage widths, repeat, round and space are
+// refused on every target by name (MISC-PAINT part 2); what only the native raster cannot draw exactly (a corner or off-grid
+// angle, a translucent or currentcolor stop, a px stop position, stops that resolve to one offset, an inline, table, contents or
+// list-item box, a rounded box, a background image under it, a colour clipped inside the border box) is refused on ios and
+// android only.
 // The values are checked computed, so one that arrives through var() or inherit is checked too.
 // -webkit-border-image is refused even where it loses the cascade: Chrome's cascade applies the highest-priority one first, winning
 // or not (StyleCascade::ApplyWideOverlapping), and its WebkitBorderImage::ApplyValue sets border-*-width from a fixed-length width
@@ -65,7 +68,8 @@ export function checkBorderImage(el: ResolvedElement, targets: readonly string[]
   if (why === null) return;
   const v = el.props.get(why.at) as ResolvedValue;
   const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
-  for (const t of targets) {
+  // A native refusal is what only the native raster cannot draw exactly; the web output keeps the value as written.
+  for (const t of why.native ? targets.filter((x) => x !== 'web') : targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,

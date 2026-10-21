@@ -1339,9 +1339,13 @@ function luFromDouble(v: number): number {
   return luSat(truncOf(v * 64));
 }
 
-/** ComputeEdgeSlice: a number times the slice scale or a percentage of the image side, at most the side, rounded to a LayoutUnit. */
+/**
+ * ComputeEdgeSlice: a number times the slice scale or a percentage of the image side, at most the side, rounded to a LayoutUnit.
+ * A number is the style's Length::Fixed(round(number)): CSSToStyleMap's ConvertBorderImageSliceSide rounds it (std::round, half
+ * away from zero; a slice is never negative) before the zoom; a percentage is kept as written.
+ */
 function edgeSlice(s: BorderImageSlice, scale: number, maximum: number): number {
-  let resolved = s.unit === 'number' ? f32(f32(s.value) * scale) : f32(f32(maximum * f32(s.value)) / 100);
+  let resolved = s.unit === 'number' ? f32(f32(roundOf(s.value)) * scale) : f32(f32(maximum * f32(s.value)) / 100);
   if (maximum < resolved) resolved = maximum;
   return luFloat(luSat(roundOf(f32(resolved * 64))));
 }
@@ -1430,6 +1434,20 @@ function borderPlan(ox: number, oy: number, area: readonly number[], layers: rea
  * with fill. modelled is false where this port would not equal Chrome: a fractional layer origin, a gradient the shader port does
  * not model, or a translucent gradient (Chrome composites it over the box's background, which this raster does not hold).
  */
+/**
+ * Whether the native border image models a gradient's stops: the stops resolved as gradientDesc resolves them (AddStops, f32), the
+ * last after the first, and the shader gradientShader builds from them drawable and opaque, on a nominal 100 x 100 image (percent
+ * stops do not depend on its size). The compiler refuses a border image this is false for, so no plan built from it is unmodelled.
+ */
+export function borderImageStopsModelled(image: GradientImage): boolean {
+  const d = gradientDesc(image, 100, 100, 1);
+  if (!d.modelled) return false;
+  const n = d.offsets.length;
+  if (n < 2 || !((d.offsets[n - 1] as number) > (d.offsets[0] as number))) return false;
+  const shader = gradientShader(d, IDENTITY, NO_GRADIENT_FAULTS);
+  return shader.drawable && shader.opaque;
+}
+
 export function planBorderImage(p: BorderImagePaint, faults: GradientFaults): BackgroundPlan {
   const ox = faults.layerOriginIgnored ? 0 : p.layerX;
   const oy = faults.layerOriginIgnored ? 0 : p.layerY;

@@ -168,6 +168,14 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     }
   };
   walk(resolved);
+  // css-overflow-3 §3.3: the element whose overflow the viewport takes (html when not visible, else body), which is no scroll
+  // container of its own (as analysis/computed-checks.ts propagatedFrom decides it for the paint checks).
+  const visible = (el: ResolvedElement): boolean => (['overflow-x', 'overflow-y'] as const).every((p) => {
+    const v = (el.props.get(p) as { value: { kind: string; value?: string } } | undefined)?.value;
+    return v === undefined || (v.kind === 'keyword' && v.value === 'visible');
+  });
+  const body = resolved.children.find((c): c is ResolvedElement => c.kind === 'element' && c.element.tag === 'body');
+  const propagated = !visible(resolved) ? resolved : body !== undefined && !visible(body) ? body : null;
   // TDEC-b: the decorations each text leaf draws, which the text-decoration module writes on the leaf's container box.
   const decorations = analyzeDecorations(resolved).applied;
   // TXT-FX: the shadows each text leaf draws, which the text-shadow module writes on the leaf's container box.
@@ -180,7 +188,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, decorations, textShadows });
+    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, propagated, facts, images, transformMoves, decorations, textShadows });
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;

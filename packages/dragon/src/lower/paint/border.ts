@@ -66,19 +66,22 @@ export const BORDER_LOWERING: PaintLowering<BorderWrite> = {
     'border-image': [...BORDER_IMAGE_LONGHANDS],
   },
   // An anonymous box has no border and currentcolor borders of its enclosing element's color (CSS2 §9.2.1.1).
-  lower: ({ box, el, parentColor }) => {
-    const image = el === null ? null : borderImageWrite(box.id, el);
+  lower: ({ box, el, parentColor, propagated }) => {
+    const image = el === null ? null : borderImageWrite(box.id, el, propagated ?? null);
     return image === null ? borderWrites(box.id, el, parentColor) : [...borderWrites(box.id, el, parentColor), image];
   },
 };
 
-/** A box's border image write, or null when its source is none; a border image the checks refuse here is a compiler fault. */
-export function borderImageWrite(id: string, el: ResolvedElement): BorderImageWrite | null {
+/**
+ * A box's border image write, or null when its source is none; a border image the checks refuse here is a compiler fault.
+ * propagated is the element whose overflow the viewport takes, which is no composited scroll container (paint-values/border.ts).
+ */
+export function borderImageWrite(id: string, el: ResolvedElement, propagated: ResolvedElement | null = null): BorderImageWrite | null {
   const parts = borderImageOf(el);
   if (parts === null) return null;
   const why = borderImageRefusal(el);
   if (why !== null) throw new ProgramError(`${id}: a border image every target refuses reached the native lowering (${why.at}: ${why.reason})`);
-  if (compositesSubtree(el)) throw new ProgramError(`${id}: a border image in a composited layer the native check refuses (MISC-PAINT)`);
+  if (compositesSubtree(el, propagated)) throw new ProgramError(`${id}: a border image in a composited layer the native check refuses (MISC-PAINT)`);
   const g = borderImageGradient(parts.source as NonNullable<typeof parts.source>);
   if (g === null) throw new ProgramError(`${id}: a border image source that is not a linear gradient reached the native lowering`);
   const slope = g.direction === 'angle' ? linearSlope(g.angleDeg) : 0;

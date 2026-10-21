@@ -678,9 +678,10 @@
       "licence": "lgpl",
       "ruling": {
         "class": "A",
-        "basis": "css-backgrounds-3 background-position (an edge keyword with an offset measures from that edge) and Chrome observation; the LayoutUnit arithmetic is BSD background_image_geometry.cc ResolveXPosition",
+        "basis": "css-backgrounds-3 background-position (an edge keyword with an offset measures from that edge) and Chrome observation; the LayoutUnit arithmetic is BSD background_image_geometry.cc ResolveXPosition. A border-image-slice number is rounded to a whole image px (Chrome observation: the border-image-fractional fixture against Chrome 145, border-image-reference.test.ts); the slice arithmetic is BSD nine_piece_image_grid.cc ComputeEdgeSlice",
         "proof": [
-          "packages/layout/test/paint-gradient.test.ts#ResolveXPosition"
+          "packages/layout/test/paint-gradient.test.ts#ResolveXPosition",
+          "packages/layout/test/paint-gradient.test.ts#ConvertBorderImageSliceSide"
         ]
       },
       "licencePhrase": "GNU Library General Public License",
@@ -690,10 +691,12 @@
       "ranges": [
         { "lines": "195-213", "symbol": "CSSToStyleMap::MapFillPositionX", "source": "located" },
         { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" },
-        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" }
+        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" },
+        { "lines": "607-614", "symbol": "ConvertBorderImageSliceSide", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeSlice", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
       ]
     },

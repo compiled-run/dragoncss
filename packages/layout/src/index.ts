@@ -84,7 +84,7 @@ export { serializeTransform } from './rt-interpolate.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
 export type { BorderImageLength, BorderImagePaint, BorderImageSlice } from './nine-piece.ts';
-export { planBorderImage } from './nine-piece.ts';
+export { borderImageStopsModelled, planBorderImage } from './nine-piece.ts';
 export type { SvgBounds, SvgMatrix, SvgSegment, SvgShape, ViewBox } from './svg-geometry.ts';
 export { objectBoundingBox, tightBounds, viewBoxTransform } from './svg-geometry.ts';
 export type { ScrollRange, ScrollRangeRefusal, ScrollRangesResult } from './overflow.ts';

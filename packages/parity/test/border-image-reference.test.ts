@@ -19,6 +19,7 @@ import { DPRS } from '../src/dpr.ts';
 import { expectedEngine, nativeCases } from '../src/native-host.ts';
 import { borderImagePlans, borderImagePoints } from '../src/paint-samples/border.ts';
 import { caseBoxes, casePoints, committedPixels, rasterSize } from '../src/pixel-reference.ts';
+import { isScanlineRule } from '../src/samples.ts';
 
 type Tally = { pixels: number; differing: number; maxDelta: number; first: string | null };
 type Reading = 'none' | 'slicesSwapped' | 'fillIgnored' | 'widthsOne';
@@ -118,20 +119,29 @@ describe('MISC-PAINT border image reference raster against Chrome 145 (host stag
 });
 
 describe('MISC-PAINT border image device samples', () => {
-  it('sample every border image box at every DPR, replace its base points, and are caught by the border-image-offset-1 twin', () => {
+  it('sample every drawn border image box at every DPR, keep only the base points its image leaves unpainted, and are caught by the border-image-offset-1 twin', () => {
     expect(PLANT_CASES['border-image-offset-1']).toEqual(['border-image-gradient']);
     const engine = expectedEngine();
     let caught = 0;
-    for (const n of nativeCases().filter((c) => c.spec.id === 'border-image-gradient')) {
+    let kept = 0;
+    for (const n of nativeCases().filter((c) => c.spec.id === 'border-image-gradient' || c.spec.id === 'border-image-fractional')) {
       const program = n.programs['android-views'];
       const viewport = n.case.environment.viewport;
       for (const dpr of DPRS) {
         const points = casePoints(program, viewport, dpr);
-        const ids = new Set(borderImagePlans(program, viewport, dpr, borderDevicePx(engine, programInput(program, viewport, dpr))).map((p) => p.id));
-        for (const id of ids) {
-          expect(points.filter((p) => p.rule === `gradient:${id}`).length, `${n.case.id}@${dpr} ${id}`).toBeGreaterThan(0);
-          expect(points.filter((p) => /^(border|edge|interior|radius):/.test(p.rule) && p.rule.split(':')[1] === id), `${n.case.id}@${dpr} ${id}`).toEqual([]);
+        const plans = borderImagePlans(program, viewport, dpr, borderDevicePx(engine, programInput(program, viewport, dpr)));
+        for (const { id, plan } of plans) {
+          if (plan.layers.length > 0) expect(points.filter((p) => p.rule === `gradient:${id}`).length, `${n.case.id}@${dpr} ${id}`).toBeGreaterThan(0);
+          // The base points a border image box keeps are ones its image paints nothing at (the open border band, the unfilled
+          // interior), and no edge scanline.
+          for (const p of points.filter((q) => /^(border|edge|interior|radius):/.test(q.rule) && q.rule.split(':')[1] === id)) {
+            expect(isScanlineRule(p.rule), `${n.case.id}@${dpr} ${p.rule}`).toBe(false);
+            const painted = p.y >= plan.top && p.y < plan.bottom && p.x >= plan.left && p.x < plan.right ? (backgroundRow(plan, p.y, gradientFaults('none'))[(p.x - plan.left) * 4 + 3] as number) : 0;
+            expect(painted, `${n.case.id}@${dpr} ${p.rule} (${p.x},${p.y})`).toBe(0);
+            kept++;
+          }
         }
+        if (n.spec.id !== 'border-image-gradient') continue;
         // The plant's twin: every border image drawn 1 device px right changes some sampled Chrome pixel the rule names.
         const chrome = committedPixels(n.case.id, dpr);
         if (chrome === null) throw new Error(`${n.case.id}: no committed Chrome PNG at DPR ${dpr}`);
@@ -151,5 +161,6 @@ describe('MISC-PAINT border image device samples', () => {
       }
     }
     expect(caught).toBeGreaterThan(0);
+    expect(kept).toBeGreaterThan(0);
   }, 600_000);
 });
