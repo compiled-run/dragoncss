@@ -10,7 +10,8 @@
 // source-over), and so are the border image longhands (MISC-PAINT likewise), and appearance, written only where it is not none or on a
 // form control or range part (Chrome's UA sets auto on button, input and the slider thumb, so their none must be written), and
 // caret-color and accent-color, written on every element of a case where any element's is not auto (FORM-b). -webkit-user-modify is
-// never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag changes (TOUCH).
+// never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag changes (TOUCH),
+// and neither is font-size-adjust: Dragon accepts only its initial none, which no Chrome UA rule sets (TXT-FSA).
 // speak, like caret-color, is written on every element of a case where any element's is not normal (NA-NATIVE-2).
 // break-before, break-after and break-inside are written only where one is not auto, and orphans and widows, inherited, on every
 // element of a case where any element's is not 2: their initial values, which no Chrome UA rule sets (css-break-3).
@@ -360,7 +361,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
       const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || resolutions.some(writesAppearance);
       const breaks = resolutions.some(writesBreaks);
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p)) && (speak || p !== 'speak')).map((p) => declLine(el, p, under));
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && p !== 'font-size-adjust' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p)) && (speak || p !== 'speak')).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).

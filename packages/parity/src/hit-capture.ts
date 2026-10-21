@@ -344,6 +344,8 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['font-variation-settings', 'normal'], ['-webkit-text-stroke-width', '0px'],
   // Batch 3: TXT2-lb's line-break, text-wrap-style, TXT2-tal's text-align-last, hyphens and tab-size.
   ['line-break', 'auto'], ['text-wrap-style', 'auto'], ['text-align-last', 'auto'], ['hyphens', 'manual'], ['tab-size', '8'],
+  // TXT-FSA's font-size-adjust (never written to the web output, so only the captures gain it).
+  ['font-size-adjust', 'none'],
 ];
 /** The paint, transform, mask and border-image longhands added after the base, at their initial values (filter none, mask-image none and the like). */
 const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
