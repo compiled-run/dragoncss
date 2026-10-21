@@ -1,6 +1,6 @@
 // MISC-PAINT: the border image longhands, border-image and -webkit-border-image. Every target accepts a border image whose source is
 // none, and part 1's gradient border image (analysis/border-image.ts); the rest is kept and refused where it applies, by name. The
-// Chrome cases are border-image-initial, border-image-gradient, reject-border-image-source and reject-border-image-repeat
+// Chrome cases are border-image-initial, border-image-gradient, border-image-fractional, border-image-repeat, reject-border-image-source and reject-border-image-url
 // (packages/parity/fixtures); packages/parity/test/border-image-parse.test.ts pins the parse against Chrome.
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
@@ -141,7 +141,8 @@ describe('border-image', () => {
     ]) expect(errorsAt(d), d).toEqual([]);
     // A later border resets an earlier border image (and an earlier border does not reset a later one), as in Chrome.
     expect(errorsAt('border-image: url(b.png) 30 round; border: 1px solid')).toEqual([]);
-    expect(errorsAt('border-image: linear-gradient(red, blue) 1 round; border-top: 1px solid')).toEqual(REFUSED);
+    // A tiled border image on a box of no proven size is drawn on web and refused natively (border-image-tiling.ts).
+    expect(errorsAt('border-image: linear-gradient(red, blue) 1 round; border-top: 1px solid')).toEqual(REFUSED.filter((x) => !x.startsWith('web ')));
   });
 
   it('refuses every border image part 1 draws on no target, on every target by name, once where it applies', () => {
@@ -156,9 +157,6 @@ describe('border-image', () => {
       ['border-image: linear-gradient(red, blue) 1 / 1em', /a border image width in em/],
       ['border-image: linear-gradient(red, blue) 1 / 1 / 2px', /^border-image-outset: 2px on <div> a is unsupported: a border image outset/],
       ['border-image: linear-gradient(red, blue) 1 / 1 / 0.5', /a border image outset/],
-      ['border-image: linear-gradient(red, blue) 1 round', /^border-image-repeat: round on <div> a is unsupported: border-image-repeat round is not drawn yet/],
-      ['border-image: linear-gradient(red, blue) 1 stretch space', /border-image-repeat stretch space is not drawn yet/],
-      ['border-image: linear-gradient(red, blue) 1 repeat', /border-image-repeat repeat/],
       ['-webkit-border-image: url(b.png) 10 / 4px', /^-webkit-border-image: /],
       ['-webkit-border-image: linear-gradient(red, blue) 1', /^-webkit-border-image: /],
     ];
@@ -189,6 +187,10 @@ describe('border-image', () => {
       // Chrome draws no border style under a border image, so a colour clipped inside the border box leaves the band open.
       ['border-image: linear-gradient(red, blue) 10 / 4px; background: #fff; background-clip: padding-box', /a background colour clipped to the padding or content box/],
       ['border-image: linear-gradient(red, blue) 10 / 4px; background-color: #fff; background-clip: content-box', /a background colour clipped to the padding or content box/],
+      // MISC-PAINT part 2: a tiled border image on a box whose size Dragon cannot prove (border-image-tiling.ts).
+      ['border-image: linear-gradient(red, blue) 1 round', /^border-image-repeat: round on <div> a is unsupported: Dragon cannot prove its border box exactly/],
+      ['border-image: linear-gradient(red, blue) 1 stretch space', /^border-image-repeat: stretch space on <div> a is unsupported: Dragon cannot prove/],
+      ['border-image: linear-gradient(red, blue) 1 repeat', /^border-image-repeat: repeat on <div> a is unsupported: Dragon cannot prove/],
     ];
     for (const [d, message] of nativeCases) {
       const css = `body { font-family: Ahem; font-size: 10px; } .s { border: 2px solid #102030; ${d}; }`;
@@ -211,7 +213,7 @@ describe('border-image', () => {
     // The reject fixtures' messages (packages/parity/src/fixture-groups/border-image.ts).
     const shown = (css: string): string[] => project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; } .s { border: 4px solid #102030; ${css} }`, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])).diagnostics.filter((x) => x.severity === 'error').map((x) => x.message);
     expect(shown('border-image-source: radial-gradient(red, blue);').map((m) => m.startsWith('border-image-source: radial-gradient(red,blue) on <div> a is unsupported: '))).toEqual([true, true, true]);
-    expect(shown('border-image: linear-gradient(red, blue) 1 round;').map((m) => m.startsWith('border-image-repeat: round on <div> a is unsupported: '))).toEqual([true, true, true]);
+    expect(shown('border-image: url(b.png) 1;').map((m) => m.startsWith('border-image-source: url(b.png) on <div> a is unsupported: '))).toEqual([true, true, true]);
   });
 
   it('refuses a drawn border image on the native targets inside a transformed or composited subtree, and web keeps it', () => {
@@ -273,11 +275,12 @@ describe('border-image', () => {
     const css = 'body { font-family: Ahem; font-size: 10px; } .s { border-image: linear-gradient(red, blue) 1 / 4px round; } .c { border-image-repeat: inherit; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
     const at = c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0]).sort();
-    expect(at).toEqual(['border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a']);
+    // Refused natively only: web draws round (border-image-tiling.ts cannot prove the auto-sized box).
+    expect(at).toEqual(['border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a']);
     // The child's own source is none, so it draws nothing; inheriting the source too refuses it.
     const both = 'body { font-family: Ahem; font-size: 10px; } .s { border-image: linear-gradient(red, blue) 1 / 4px round; } .c { border-image: inherit; }';
     const d = project(NO_FAULTS).compile(inputFor(both, (r) => [el(r, 'a', 'div', ['s'], [el(r, 'b', 'div', ['c'], [text(r, 't', 'XX')])])]));
-    expect(d.diagnostics.filter((x) => x.severity === 'error').map((x) => x.message.split(' is unsupported')[0]).sort()).toEqual(['border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> b', 'border-image-repeat: round on <div> b', 'border-image-repeat: round on <div> b']);
+    expect(d.diagnostics.filter((x) => x.severity === 'error').map((x) => x.message.split(' is unsupported')[0]).sort()).toEqual(['border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> a', 'border-image-repeat: round on <div> b', 'border-image-repeat: round on <div> b']);
   });
 
   it('refuses every border image longhand in @keyframes, even at its initial value', () => {

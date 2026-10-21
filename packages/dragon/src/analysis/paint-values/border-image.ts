@@ -14,7 +14,7 @@ import { stopsResolveApart } from './stop-offsets.ts';
 /** native: the refusal is for ios and android only (the web output draws it as written); otherwise every target refuses it. */
 export type Refusal = { readonly at: BorderImageLonghand; readonly reason: string; readonly manual: string; readonly native: boolean };
 
-const MANUAL = 'Draw the border image as border-image: linear-gradient(<side or angle>, <opaque colours at percentages>) <slices> [/ <widths>] with no outset and stretch, or remove it.';
+const MANUAL = 'Draw the border image as border-image: linear-gradient(<side or angle>, <opaque colours at percentages>) <slices> [/ <widths>] [<repeat>] with no outset, or remove it.';
 
 /** The element's border image parts when its source is not none; null for none (nothing is drawn) and for a value Dragon does not read. */
 export function borderImageOf(el: ResolvedElement): BorderImageParts | null {
@@ -51,7 +51,6 @@ export function borderImageRefusal(el: ResolvedElement): Refusal | null {
     if (w.unit === 'length' && w.lengthUnit !== 'px') return all('border-image-width', `a border image width in ${w.lengthUnit} is not drawn yet`, 'Write the widths as numbers, px or auto.');
   }
   if (parts.outsets.some((o) => o.value !== 0)) return all('border-image-outset', 'a border image outset is not drawn yet: the native targets draw a box\'s paint inside its border box', 'Remove the outset.');
-  if (parts.repeat.some((r) => r !== 'stretch')) return all('border-image-repeat', `border-image-repeat ${parts.repeat[0] === parts.repeat[1] ? parts.repeat[0] : parts.repeat.join(' ')} is not drawn yet; part 1 stretches every piece`, 'Use border-image-repeat: stretch.');
   // What only the native raster cannot draw exactly.
   const spec = g.value;
   if (spec.direction === 'side' && spec.sideX !== 'none' && spec.sideY !== 'none') return native('border-image-source', 'a gradient to a corner takes its angle from atan2 and tan of the image size at paint time, libm results the native targets do not have', 'Write the gradient with an angle in degrees, on the 0.01deg grid.');

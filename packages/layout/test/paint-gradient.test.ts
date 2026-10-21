@@ -226,7 +226,7 @@ describe('edge offsets (notes/T074-bg2-spec.md R7)', () => {
 
 describe('border image slices and stops (MISC-PAINT)', () => {
   // A 60 x 46 CSS px border box with 8px borders at DPR 2, on whole device px.
-  const paint = (o: Partial<BorderImagePaint>): BorderImagePaint => ({ box: { x: 0, y: 0, width: 120 * 64, height: 92 * 64, borders: [16, 16, 16, 16].map((v) => v * 64), padding: [0, 0, 0, 0], obscures: [false, false, false, false] }, image: linear({}), slices: [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: 1 })), fill: false, widths: [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: 1 })), zoom: 2, tileSize: 512, layerX: 0, layerY: 0, ...o });
+  const paint = (o: Partial<BorderImagePaint>): BorderImagePaint => ({ box: { x: 0, y: 0, width: 120 * 64, height: 92 * 64, borders: [16, 16, 16, 16].map((v) => v * 64), padding: [0, 0, 0, 0], obscures: [false, false, false, false] }, image: linear({}), slices: [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: 1 })), fill: false, widths: [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: 1 })), zoom: 2, tileSize: 512, layerX: 0, layerY: 0, repeatX: 'stretch', repeatY: 'stretch', ...o });
   const n = (v: number) => [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: v }));
   it('rounds a number slice as ConvertBorderImageSliceSide does: 0.4 draws no piece, 0.4 fill only the middle', () => {
     const none = planBorderImage(paint({ slices: n(0.4) }), NO_GRADIENT_FAULTS);
@@ -255,5 +255,54 @@ describe('border image slices and stops (MISC-PAINT)', () => {
     expect(at(50, 50.000001)).toBe(false);
     expect(at(150, 150.000001)).toBe(false);
     expect(at(60, 20)).toBe(false);
+  });
+});
+
+describe('border image tiling (MISC-PAINT part 2: ComputeTileParameters and the paint-record tile)', () => {
+  // A border box of 80 x 64 CSS px with 16px borders (content 48 x 32), at a DPR, on whole device px.
+  const tiled = (dpr: number, slice: number, width: BorderImagePaint['widths'][number], repeatX: string, repeatY: string, fill = true): BorderImagePaint => ({ box: { x: 0, y: 0, width: 80 * dpr * 64, height: 64 * dpr * 64, borders: [0, 1, 2, 3].map(() => 16 * dpr * 64), padding: [0, 0, 0, 0], obscures: [false, false, false, false] }, image: linear({}), slices: [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: slice })), fill, widths: [0, 1, 2, 3].map(() => width), zoom: dpr, tileSize: 512, layerX: 0, layerY: 0, repeatX, repeatY });
+  const px8 = { unit: 'px' as const, value: 8 };
+  it('space: Blink adds the dest-px spacing to the tile in source px, so a 0.5 scale halves it (Chrome 145 draws it so)', () => {
+    const plan = planBorderImage(tiled(3, 16, px8, 'space', 'space'), NO_GRADIENT_FAULTS);
+    expect(plan.modelled).toBe(true);
+    // The top edge (kTopPiece, seventh): source 144 image px at scale 0.5 is 72 device px; 2 tiles fit 192 with spacing 16, scaled to 8.
+    const top = plan.layers[6] as (typeof plan.layers)[number];
+    expect(top.placement.direct).toBe(false);
+    expect([top.placement.periodX, top.placement.contentWidth, top.placement.periodY, top.placement.contentHeight, top.tileX, top.tileY]).toEqual([80, 72, 24, 24, 40, 0]);
+    // Spacing pixels are transparent; tile pixels are opaque.
+    const row = backgroundRow(plan, 10, NO_GRADIENT_FAULTS);
+    expect([row[(40 + 71) * 4 + 3], row[(40 + 72) * 4 + 3], row[(40 + 79) * 4 + 3], row[(40 + 80) * 4 + 3]]).toEqual([255, 0, 0, 255]);
+  });
+  it('repeat over an equal dest starts at the dest; round fits whole tiles or is resampled; stretch stays a direct draw', () => {
+    const rep = planBorderImage(tiled(2, 8, px8, 'repeat', 'stretch'), NO_GRADIENT_FAULTS);
+    expect(rep.modelled).toBe(true);
+    const top = rep.layers[6] as (typeof rep.layers)[number];
+    // Source 128 image px at scale 1 (slice 16, width 16) over a 128 px dest: phase 0, one tile from the dest's left, x 16.
+    expect([top.placement.periodX, top.tileX]).toEqual([128, 16]);
+    // Slice 32 / 8px: source 32 image px at scale 0.25 is 8 device px; 16 tiles fill the 128 px dest exactly.
+    const round = planBorderImage(tiled(2, 32, px8, 'round', 'round'), NO_GRADIENT_FAULTS);
+    expect(round.modelled).toBe(true);
+    // The left and right sources are empty (64 + 64 image px of a 128 px image), so find the top edge by its dest.
+    const roundTop = round.layers.find((l) => l.placement.destX === 16 * 64 && l.placement.destY === 0) as (typeof round.layers)[number];
+    expect([roundTop.placement.periodX, roundTop.placement.contentWidth]).toEqual([8, 8]);
+    // Slice 16 / 8px: 48 device px tiles round to 3 over 128, a scale of 0.44: resampled, unmodelled.
+    expect(planBorderImage(tiled(2, 16, px8, 'round', 'round'), NO_GRADIENT_FAULTS).modelled).toBe(false);
+    const stretch = planBorderImage(tiled(2, 8, px8, 'stretch', 'stretch'), NO_GRADIENT_FAULTS);
+    expect(stretch.layers.every((l) => l.placement.direct && l.placement.periodX === 0)).toBe(true);
+  });
+  it('leaves the plan unmodelled where the tile image is resampled: a fractional source, a scale that is not a power of two', () => {
+    expect(planBorderImage(tiled(2.625, 8, { unit: 'number', value: 1 }, 'repeat', 'repeat'), NO_GRADIENT_FAULTS).modelled).toBe(true);
+    // Slice 4 at DPR 2.625 is 10.5 image px: the side's tile scale 21 / 10.5 = 2, the top source 210 - 21 = 189 image px scaled 378.
+    expect(planBorderImage(tiled(2.625, 4, { unit: 'number', value: 1 }, 'round', 'stretch'), NO_GRADIENT_FAULTS).modelled).toBe(false);
+    // Slice 12 at DPR 2 with 16 device px widths: a 4 / 3 scale.
+    expect(planBorderImage(tiled(2, 12, px8, 'repeat', 'repeat'), NO_GRADIENT_FAULTS).modelled).toBe(false);
+    // A box whose width is half a device px off the grid.
+    const off = tiled(2, 8, { unit: 'number', value: 1 }, 'repeat', 'stretch');
+    expect(planBorderImage({ ...off, box: { ...off.box, width: off.box.width + 32 } }, NO_GRADIENT_FAULTS).modelled).toBe(false);
+  });
+  it('draws nothing of a space piece no tile fits (CalculateSpaceNeeded is nullopt)', () => {
+    // Slice 40 of an 80 x 64 image leaves a 0 px middle source on y; slice 32 / 8px leaves 16 image px x 0.25 = 4 device px tiles.
+    const plan = planBorderImage(tiled(2, 30, { unit: 'px', value: 60 }, 'space', 'space', false), NO_GRADIENT_FAULTS);
+    expect(plan.layers.length).toBeLessThan(8);
   });
 });

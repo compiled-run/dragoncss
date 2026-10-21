@@ -1,10 +1,10 @@
-// MISC-PAINT part 1: a gradient border image, Dragon-owned paint on the box view (the border module's border-image write). The case
+// MISC-PAINT: a gradient border image, Dragon-owned paint on the box view (the border module's border-image write). The case
 // code writes the image through the public writer; after every layout the translated paint-gradient.ts planBorderImage lays out
-// Chrome 145's nine pieces at the device scale (NinePieceImageGrid on the unsnapped border box, every piece stretched as
-// GradientGeneratedImage::Draw draws it) and backgroundRow rasterises them, over transparent, into one premultiplied device-pixel
+// Chrome 145's nine pieces at the device scale (NinePieceImageGrid on the unsnapped border box, each piece stretched as
+// GradientGeneratedImage::Draw draws it or tiled as GeneratedImage::DrawPattern does) and backgroundRow rasterises them, over transparent, into one premultiplied device-pixel
 // bitmap, as the gradient module does a background. The border stage draws it 1:1 with no filtering in place of the border styles:
 // Chrome paints no border style where a border image is set (BoxPainterBase::PaintBorder returns once NinePieceImagePainter::Paint
-// does). The checks admit only boxes the plan models exactly at every device scale (analysis/border-image.ts), so an unmodelled plan
+// does). The checks admit only boxes the plan models exactly at every device scale (analysis/border-image.ts, paint-values/border-image-tiling.ts), so an unmodelled plan
 // on the device is a compiler fault.
 import type { JsonValue } from '../expected-dump.ts';
 import type { BorderImageWrite } from '../../lower/paint/border.ts';
@@ -17,13 +17,13 @@ const str = (lang: Lang, k: string): string => (lang === 'swift' ? `JsString("${
 export function borderImageLine(lang: Lang, v: string, w: BorderImageWrite): string {
   const slices = w.slices.map((s) => `BorderImageSlice(${str(lang, s.unit)}, ${num(s.value)})`);
   const widths = w.widths.map((s) => `BorderImageLength(${str(lang, s.unit)}, ${num(s.value)})`);
-  if (lang === 'swift') return `  dragonSetBorderImage(${v}, DragonBorderImage(image: ${gradientImage(lang, w.gradient)}, slices: [${slices.join(', ')}], fill: ${w.fill}, widths: [${widths.join(', ')}], layerX: ${num(w.layerOrigin[0])}, layerY: ${num(w.layerOrigin[1])}))`;
-  return `  dragonSetBorderImage(${v}, DragonBorderImage(${gradientImage(lang, w.gradient)}, listOf(${slices.join(', ')}), ${w.fill}, listOf(${widths.join(', ')}), ${num(w.layerOrigin[0])}, ${num(w.layerOrigin[1])}))`;
+  if (lang === 'swift') return `  dragonSetBorderImage(${v}, DragonBorderImage(image: ${gradientImage(lang, w.gradient)}, slices: [${slices.join(', ')}], fill: ${w.fill}, widths: [${widths.join(', ')}], layerX: ${num(w.layerOrigin[0])}, layerY: ${num(w.layerOrigin[1])}, repeatX: ${str(lang, w.repeat[0])}, repeatY: ${str(lang, w.repeat[1])}))`;
+  return `  dragonSetBorderImage(${v}, DragonBorderImage(${gradientImage(lang, w.gradient)}, listOf(${slices.join(', ')}), ${w.fill}, listOf(${widths.join(', ')}), ${num(w.layerOrigin[0])}, ${num(w.layerOrigin[1])}, ${str(lang, w.repeat[0])}, ${str(lang, w.repeat[1])}))`;
 }
 
-/** The host side of the readback: the gradient's slope bits, the slice and width values, fill, and that the plan is modelled. */
+/** The host side of the readback: the gradient's slope bits, the slice and width values, fill, the repeat, and that the plan is modelled. */
 export function borderImageApplied(w: BorderImageWrite): JsonValue {
-  return { slope: slopeBits(w.gradient.slope), slices: w.slices.map((s) => s.value), fill: w.fill, widths: w.widths.map((s) => s.value), modelled: true };
+  return { slope: slopeBits(w.gradient.slope), slices: w.slices.map((s) => s.value), fill: w.fill, widths: w.widths.map((s) => s.value), repeat: [w.repeat[0], w.repeat[1]], modelled: true };
 }
 
 export const BORDER_IMAGE_SWIFT_MEMBERS = String.raw`  /// The border image the case code wrote (MISC-PAINT) and the raster of the last layout.
@@ -33,7 +33,7 @@ export const BORDER_IMAGE_SWIFT_MEMBERS = String.raw`  /// The border image the 
 
 export const BORDER_IMAGE_SWIFT = String.raw`
 /// A box's gradient border image (MISC-PAINT), as the case code writes it: the gradient, the slices and widths (top, right, bottom,
-/// left), fill, and the origin of the layer it rasters in.
+/// left), fill, the origin of the layer it rasters in, and border-image-repeat (horizontal, vertical).
 public final class DragonBorderImage {
   public let image: GradientImage
   public let slices: [BorderImageSlice]
@@ -41,8 +41,10 @@ public final class DragonBorderImage {
   public let widths: [BorderImageLength]
   public let layerX: Double
   public let layerY: Double
-  public init(image: GradientImage, slices: [BorderImageSlice], fill: Bool, widths: [BorderImageLength], layerX: Double, layerY: Double) {
-    self.image = image; self.slices = slices; self.fill = fill; self.widths = widths; self.layerX = layerX; self.layerY = layerY
+  public let repeatX: JsString
+  public let repeatY: JsString
+  public init(image: GradientImage, slices: [BorderImageSlice], fill: Bool, widths: [BorderImageLength], layerX: Double, layerY: Double, repeatX: JsString, repeatY: JsString) {
+    self.image = image; self.slices = slices; self.fill = fill; self.widths = widths; self.layerX = layerX; self.layerY = layerY; self.repeatX = repeatX; self.repeatY = repeatY
   }
 }
 
@@ -72,7 +74,7 @@ public func dragonAfterLayoutBorderImage(_ v: DragonBoxView, _ shape: DragonBoxS
   do {
     let lu = units_LU_PER_PX
     let box = BackgroundBox(shape.lu[0], shape.lu[1], shape.lu[2], shape.lu[3], JsArray(shape.borders.map { $0 * lu }), JsArray(shape.padding), JsArray([false, false, false, false]))
-    let paint = BorderImagePaint(box, p.image, JsArray(p.slices), p.fill, JsArray(p.widths), scale, try paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / lu, p.layerY)
+    let paint = BorderImagePaint(box, p.image, JsArray(p.slices), p.fill, JsArray(p.widths), scale, try paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / lu, p.layerY, p.repeatX, p.repeatY)
     let faults = try paintGradient_gradientFaults(JsString("none"))
     let plan = try paintGradient_planBorderImage(paint, faults)
     // The checks refuse every border image the plan does not model, so one here is a compiler fault, never an empty draw.
@@ -139,6 +141,7 @@ public func dragonAppliedBorderImage(_ v: DragonBoxView) -> DumpJsonObject {
     ("slices", .array(p.slices.map { .number($0.value) })),
     ("fill", .bool(p.fill)),
     ("widths", .array(p.widths.map { .number($0.value) })),
+    ("repeat", .array([.string(p.repeatX.description), .string(p.repeatY.description)])),
     ("modelled", .bool(v.dragonBorderImageRaster?.modelled ?? false)),
   ]))]
 }
@@ -168,9 +171,9 @@ export const BORDER_IMAGE_KOTLIN_MEMBERS = `  /** The border image the case code
 export const BORDER_IMAGE_KOTLIN = String.raw`
 /**
  * A box's gradient border image (MISC-PAINT), as the case code writes it: the gradient, the slices and widths (top, right, bottom,
- * left), fill, and the origin of the layer it rasters in.
+ * left), fill, the origin of the layer it rasters in, and border-image-repeat (horizontal, vertical).
  */
-class DragonBorderImage(val image: GradientImage, val slices: List<BorderImageSlice>, val fill: Boolean, val widths: List<BorderImageLength>, val layerX: Double, val layerY: Double)
+class DragonBorderImage(val image: GradientImage, val slices: List<BorderImageSlice>, val fill: Boolean, val widths: List<BorderImageLength>, val layerX: Double, val layerY: Double, val repeatX: String, val repeatY: String)
 
 /** The raster of one layout over the snapped border image area, in strips top to bottom (each bitmap and its top in page device px). */
 class DragonBorderImageRaster(val strips: List<Pair<Bitmap, Int>>, val left: Int, val modelled: Boolean)
@@ -195,7 +198,7 @@ fun dragonAfterLayoutBorderImage(v: DragonBoxView, shape: DragonBoxShape, scale:
   v.dragonBorderImageScale = scale
   val p = v.dragonBorderImage ?: return
   val box = BackgroundBox(shape.lu[0], shape.lu[1], shape.lu[2], shape.lu[3], JsArray(shape.borders.map { it * units_LU_PER_PX }.toMutableList()), JsArray(shape.padding.toMutableList()), JsArray(mutableListOf(false, false, false, false)))
-  val paint = BorderImagePaint(box, p.image, JsArray(p.slices.toMutableList()), p.fill, JsArray(p.widths.toMutableList()), scale, paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / units_LU_PER_PX, p.layerY)
+  val paint = BorderImagePaint(box, p.image, JsArray(p.slices.toMutableList()), p.fill, JsArray(p.widths.toMutableList()), scale, paintGradient_referenceTileSize(scale), p.layerX + shape.rootX / units_LU_PER_PX, p.layerY, p.repeatX, p.repeatY)
   val faults = paintGradient_gradientFaults("none")
   val plan = paintGradient_planBorderImage(paint, faults)
   // The checks refuse every border image the plan does not model, so one here is a compiler fault, never an empty draw.
@@ -252,6 +255,7 @@ fun dragonAppliedBorderImage(v: DragonBoxView): List<Pair<String, DumpJson>> {
     Pair("slices", DumpJson.Arr(p.slices.map { DumpJson.Num(it.value) })),
     Pair("fill", DumpJson.Bool(p.fill)),
     Pair("widths", DumpJson.Arr(p.widths.map { DumpJson.Num(it.value) })),
+    Pair("repeat", DumpJson.Arr(listOf(DumpJson.Str(p.repeatX), DumpJson.Str(p.repeatY)))),
     Pair("modelled", DumpJson.Bool(v.dragonBorderImageRaster?.modelled ?: false)),
   ))))
 }

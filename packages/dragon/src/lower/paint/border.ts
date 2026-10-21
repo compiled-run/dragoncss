@@ -5,6 +5,7 @@ import { SIDES } from '../../css/properties.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { borderImageGradient, borderImageOf, borderImageRefusal } from '../../analysis/paint-values/border-image.ts';
 import { compositesSubtree, linearSlope } from '../../analysis/paint-values/gradient.ts';
+import type { RepeatKeyword } from '../../css/properties/border-image.ts';
 import { BORDER_IMAGE_LONGHANDS } from '../../css/properties/border-image.ts';
 import { usedColors } from './colors.ts';
 import type { LoweredGradient, LoweredStop } from './gradient.ts';
@@ -22,7 +23,8 @@ export type BorderWrite =
   | BorderImageWrite;
 
 /**
- * MISC-PAINT part 1: a gradient border image, every piece stretched (analysis/border-image.ts admits nothing else). The device plans
+ * MISC-PAINT: a gradient border image, its pieces stretched or tiled by border-image-repeat (analysis/border-image.ts and
+ * paint-values/border-image-tiling.ts admit only what the native raster draws exactly). The device plans
  * it at every layout with the translated paint-gradient.ts planBorderImage on the engine's border box and device-px borders, and
  * draws its raster in place of the border styles in the border stage (emit/paint/border-image.ts).
  */
@@ -35,11 +37,13 @@ export type BorderImageWrite = {
   readonly widths: Sides<{ readonly unit: 'number' | 'px' | 'auto'; readonly value: number }>;
   /** The composited layer's origin in page device px: the root scroller's (0, 0) (compositesSubtree is refused natively). */
   readonly layerOrigin: readonly [number, number];
+  /** border-image-repeat, horizontal then vertical (MISC-PAINT part 2; a tiled piece is proven whole device px by border-image-tiling.ts). */
+  readonly repeat: readonly [RepeatKeyword, RepeatKeyword];
 };
 
 const BORDER_PAINT = 'Dragon draws each side as a band of its width: solid fills it; double draws two bands of a third of the width. A box with a visible dashed or dotted side is drawn as Blink 145 draws it in device px (translated paint-dash.ts): sides in Blink\'s paint order with its corner miters; dashes of 3 (under 3 device px thick) or 2 times the thickness with the gap fitted so a dash ends each side; dotted sides of 3 device px or less as square dots with whole end dots; thicker dotted sides as round dots with a fitted gap';
 
-const BORDER_IMAGE_PAINT = 'the translated paint-gradient.ts plans Chrome 145\'s nine pieces (NinePieceImageGrid on the border box at the device scale, every piece stretched by GradientGeneratedImage::Draw) and rasterises them into one premultiplied device-pixel image at every layout, drawn 1:1 with no interpolation in the border stage in place of the border styles';
+const BORDER_IMAGE_PAINT = 'the translated paint-gradient.ts plans Chrome 145\'s nine pieces (NinePieceImageGrid on the border box at the device scale, each piece stretched by GradientGeneratedImage::Draw or, under border-image-repeat, tiled 1:1 through the paint-record shader GeneratedImage::DrawPattern makes) and rasterises them into one premultiplied device-pixel image at every layout, drawn 1:1 with no interpolation in the border stage in place of the border styles';
 
 const BORDER_STYLES: readonly BorderStyleName[] = ['none', 'hidden', 'solid', 'dotted', 'dashed', 'double'];
 
@@ -102,6 +106,7 @@ export function borderImageWrite(id: string, el: ResolvedElement, propagated: Re
     fill: parts.fill,
     widths: widths as unknown as BorderImageWrite['widths'],
     layerOrigin: [0, 0],
+    repeat: [parts.repeat[0], parts.repeat[1]],
   };
 }
 

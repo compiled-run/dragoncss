@@ -1863,7 +1863,10 @@ function gradPaint(v: JsonValue, path: string): BackgroundPaint {
 
 /** A border image paint (paint-gradient.ts BorderImagePaint) from its JSON form. */
 function gradBorderImage(v: JsonValue, path: string): BorderImagePaint {
-  const o = obj(v, ['box', 'image', 'slices', 'fill', 'widths', 'zoom', 'tileSize', 'layerX', 'layerY'], path);
+  // MISC-PAINT part 2: repeatX and repeatY are optional (stretch when absent), so the part 1 vectors keep their form.
+  const tiled = v.kind === 'obj' && v.keys.length === 11;
+  const o = obj(v, tiled ? ['box', 'image', 'slices', 'fill', 'widths', 'zoom', 'tileSize', 'layerX', 'layerY', 'repeatX', 'repeatY'] : ['box', 'image', 'slices', 'fill', 'widths', 'zoom', 'tileSize', 'layerX', 'layerY'], path);
+  const rules = ['stretch', 'repeat', 'round', 'space'];
   const b = obj(field(o, 'box', path), ['x', 'y', 'width', 'height', 'borders'], `${path}.box`);
   const slices: BorderImageSlice[] = [];
   arr(field(o, 'slices', path), `${path}.slices`).forEach((x, i) => {
@@ -1887,6 +1890,8 @@ function gradBorderImage(v: JsonValue, path: string): BorderImagePaint {
     tileSize: numField(o, 'tileSize', path),
     layerX: numField(o, 'layerX', path),
     layerY: numField(o, 'layerY', path),
+    repeatX: tiled ? lit(field(o, 'repeatX', path), rules, `${path}.repeatX`) : 'stretch',
+    repeatY: tiled ? lit(field(o, 'repeatY', path), rules, `${path}.repeatY`) : 'stretch',
   };
 }
 

@@ -1,4 +1,4 @@
-// The border module's samples: MISC-PAINT part 1's gradient border images. For every box with a border-image write, the points the
+// The border module's samples: MISC-PAINT's gradient border images, stretched or tiled. For every box with a border-image write, the points the
 // TS reference (paint-gradient.ts planBorderImage and backgroundRow) rasterises exactly inside one of its nine pieces, each with a
 // (2 * INSET + 1)^2 neighbourhood the pieces paint exactly and opaquely, with rule gradient:<box> (check (c) compares the device
 // capture with Chrome's pixels there at GRADIENT_CHANNEL_DELTA, as it does a gradient background). The reference equals Chrome at
@@ -24,6 +24,7 @@ type BorderImageWrite = {
   readonly fill: boolean;
   readonly widths: BorderImagePaint['widths'];
   readonly layerOrigin: readonly [number, number];
+  readonly repeat: readonly [string, string];
 };
 
 /** The ids of a program's boxes with a border image. */
@@ -59,6 +60,8 @@ export function borderImagePlans(p: NativeProgram, viewport: { readonly width: n
       tileSize: referenceTileSize(dpr),
       layerX: w.layerOrigin[0] + rootX,
       layerY: w.layerOrigin[1],
+      repeatX: w.repeat[0],
+      repeatY: w.repeat[1],
     };
     const plan = planBorderImage(paint, faults);
     // The checks refuse every border image the plan does not model, so one here is a compiler fault (a planted fault may leave
