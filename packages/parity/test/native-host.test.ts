@@ -8,6 +8,7 @@ import { declaredLayoutCaseCount, MILESTONE_1_LAYOUT_CASES } from '../src/case-c
 import { atDpr, layoutCases } from '../src/dpr.ts';
 import { readHtmlFixture } from '../src/fixture-reader.ts';
 import { BACKEND_OF, emitCases, expectedEngine, nativeCases } from '../src/native-host.ts';
+import { deviceCheckCaseIds } from '../src/targets.ts';
 import { compileFixture, enforcedCompile } from '../src/pipeline.ts';
 import { containedNeedles, dotNames } from '../src/text-search.ts';
 import { deviceDprs, layoutCaseIds, vectorCaseIds } from '../src/targets.ts';
@@ -59,7 +60,8 @@ describe('expected dumps', () => {
         dumps += e.expectedDigests.length;
       }
     }
-    expect(dumps).toBe((['ios', 'android'] as const).reduce((n, t) => n + deviceDprs(t).length * vectorCaseIds().length, 0));
+    // SELD-R2 PR 5: the app holds the forced device cases after the layout device cases (targets.ts deviceCheckCaseIds).
+    expect(dumps).toBe((['ios', 'android'] as const).reduce((n, t) => n + deviceDprs(t).length * deviceCheckCaseIds().length, 0));
   }, 300_000);
   it('color-border-sides node long expects its initial border widths as 3 device px: 1 pt at scale 3 on iOS, 3 px on Android', () => {
     const n = cases.find((c) => c.case.id === 'color-border-sides');

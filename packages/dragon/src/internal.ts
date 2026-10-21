@@ -115,6 +115,11 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
+/** SELD-R2 PR 5: whether an input can focus some element of the document; false means :focus and :focus-visible are forced-only. */
+export function focusReachableIn(compiled: object): boolean {
+  return internalRecord(compiled)?.focusReachable !== false;
+}
+
 /** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
@@ -516,6 +521,8 @@ export function nativeBandProgram(compiled: object, backend: NativeBackend, faul
 // SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
 export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
 export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+// SELD-R2 PR 5: the native interaction gate's profile row keys (profile-rows.ts deriveInteractionRows).
+export { interactionContext, interactionRowFeature } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';
 export { NO_INTERACTION } from './analysis/match.ts';
 export type { InteractionCondition, WebInteraction } from './emit/web-css.ts';

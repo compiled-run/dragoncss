@@ -56,6 +56,15 @@ export function traceScriptIds(): string[] {
   return interactionGroups().map(traceScriptId);
 }
 
+/**
+ * The force steps a script keeps after the MAX_TRACE_STEPS cut, as "<pseudo>@<address>" (profile-rows.ts forceStepKey). None for an
+ * id that is no script, so a forced device case whose group has none proves nothing (profile-rows.ts cutForceSteps).
+ */
+export function keptForceSteps(id: string): ReadonlySet<string> {
+  const d = derive().find((x) => x.id === id);
+  return new Set((d?.steps ?? []).flatMap((s) => (s.kind === 'force' && s.address !== null ? [`${s.pseudo}@${s.address}`] : [])));
+}
+
 /** The scripts whose derived trace was cut at MAX_TRACE_STEPS, with how many steps were left out. */
 export function traceScriptCuts(): { readonly id: string; readonly omitted: number }[] {
   return derive().flatMap((d) => (d.cut > 0 ? [{ id: d.id, omitted: d.cut }] : []));

@@ -13,6 +13,8 @@ import type { Rule } from '../css/stylesheet.ts';
 import type { VarPart } from '../css/variables.ts';
 import type { CssValue } from '../css/values.ts';
 import type { CompilerFaults } from '../faults.ts';
+import type { SupportProfile } from '../profiles/types.ts';
+import { provenContexts } from '../profiles/types.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import type { Diagnostic, Origin } from '../types.ts';
 import type { ResolvedValue } from './computed.ts';
@@ -88,16 +90,44 @@ export function interactionStateOf(v: Pick<InteractionValue, 'hover' | 'active' 
 export const validTabindex = (v: string): boolean => /^[\t\n\f\r ]*[-+]?[0-9]/.test(v);
 
 /**
- * HTML §6.6.3 focusable areas among elements: a with href, form controls, and any element with a valid tabindex; never input
- * type=hidden. R9's general display: none clause waits for FORM-a (SELD-R2 PR 2).
+ * Tags Chrome 145 never focuses on their own: without a valid tabindex, contenteditable, or (for a) an href. Every other tag counts as
+ * focusable, so a tag added to the supported set fails closed until it is listed here.
+ */
+const NEVER_FOCUSABLE: ReadonlySet<string> = new Set([
+  'html', 'body', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
+  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'span', 'a', 'label', 'br', 'img',
+  'svg', 'path', 'rect', 'circle', 'b', 'strong', 'em', 'i',
+]);
+
+/**
+ * HTML §6.6.3 focusable areas among elements, as Chrome 145 focuses them: a with href, an iframe (a click into it focuses it), any
+ * element with a valid tabindex or a contenteditable other than false, and every tag not in NEVER_FOCUSABLE (form controls, and any
+ * other tag, fail closed); never input type=hidden. A keyboard-focusable scroller depends on computed overflow (rulesMayScroll).
+ * R9's general display: none clause waits for FORM-a (SELD-R2 PR 2).
  */
 export function isFocusable(el: LinkedElement): boolean {
   // input type=hidden is display: none in the UA sheet, so a tabindex does not make it focusable either.
   if (el.tag === 'input' && el.attributes.get('type')?.toLowerCase() === 'hidden') return false;
   const tabindex = el.attributes.get('tabindex');
   if (tabindex !== undefined && validTabindex(tabindex)) return true;
+  const editable = el.attributes.get('contenteditable');
+  if (editable !== undefined && editable.trim().toLowerCase() !== 'false') return true;
   if (el.tag === 'a') return el.attributes.has('href');
-  return el.tag === 'button' || el.tag === 'input' || el.tag === 'select' || el.tag === 'textarea';
+  return !NEVER_FOCUSABLE.has(el.tag);
+}
+
+/** The overflow values that never make a box a scroll container, whatever the other axis computes to (css-overflow-3 §3.1). */
+const NEVER_SCROLLS: ReadonlySet<string> = new Set(['visible', 'clip', 'initial', 'unset', 'revert', 'revert-layer']);
+
+/**
+ * Whether a rule may make some element a scroll container with overflow auto or scroll, which Chrome 130 and later make keyboard
+ * focusable when it has no focusable descendant: any overflow-x or overflow-y value but NEVER_SCROLLS (hidden on one axis computes
+ * visible on the other to auto), or one set through var(). Whether the box overflows is not known statically, so this fails closed.
+ */
+export function rulesMayScroll(rules: readonly Rule[]): boolean {
+  const scrolls = (lh: { readonly property: string; readonly value: CssValue }): boolean =>
+    (lh.property === 'overflow-x' || lh.property === 'overflow-y') && !(lh.value.kind === 'keyword' && NEVER_SCROLLS.has(lh.value.value));
+  return rules.some((r) => r.declarations.some((d) => d.longhands.some(scrolls) || (d.pending?.longhands ?? []).some((p) => p === 'overflow-x' || p === 'overflow-y')));
 }
 
 function preorder(root: LinkedElement): { el: LinkedElement; parent: string | null }[] {
@@ -351,32 +381,26 @@ export function selectorIsInteractive(s: Selector): boolean {
 /** Whether a rule only applies in some interaction state. */
 export const ruleIsInteractive = (r: Rule): boolean => r.selectors.some(selectorIsInteractive);
 
-/** The first interaction pseudo-class a rule's selectors test, in source order, arguments included. */
-export function firstInteractionPseudo(r: Rule): InteractionPseudo | null {
-  const inPseudo = (p: PseudoClass): InteractionPseudo | null => {
-    if (p.kind === 'interaction') return p.pseudo;
+/** Every interaction pseudo-class a rule's selectors test, once each, in source order, arguments included. */
+export function interactionPseudosOf(r: Rule): InteractionPseudo[] {
+  const out: InteractionPseudo[] = [];
+  const inPseudo = (p: PseudoClass): void => {
+    if (p.kind === 'interaction') {
+      if (!out.includes(p.pseudo)) out.push(p.pseudo);
+      return;
+    }
     const list = p.kind === 'is' || p.kind === 'not' || p.kind === 'has' ? p.selectors : p.kind === 'nth' && p.of !== null ? p.of : [];
-    for (const s of list) {
-      const found = inSelector(s);
-      if (found !== null) return found;
-    }
-    return null;
+    for (const s of list) inSelector(s);
   };
-  const inSelector = (s: Selector): InteractionPseudo | null => {
-    for (const part of s.parts) {
-      for (const p of part.compound.pseudos) {
-        const found = inPseudo(p);
-        if (found !== null) return found;
-      }
-    }
-    return null;
+  const inSelector = (s: Selector): void => {
+    for (const part of s.parts) for (const p of part.compound.pseudos) inPseudo(p);
   };
-  for (const s of r.selectors) {
-    const found = inSelector(s);
-    if (found !== null) return found;
-  }
-  return null;
+  for (const s of r.selectors) inSelector(s);
+  return out;
 }
+
+/** The first interaction pseudo-class a rule's selectors test, in source order, arguments included. */
+export const firstInteractionPseudo = (r: Rule): InteractionPseudo | null => interactionPseudosOf(r)[0] ?? null;
 
 /**
  * The declarations of interaction rules Dragon cannot resolve per state. direction is resolved before the cascade (logical.ts)
@@ -418,23 +442,58 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   return out;
 }
 
+/** SELD-R2 PR 5: the inputs an interaction row is proven for, each its own profile context interaction/<input>. */
+export const INTERACTION_INPUTS = ['forced-only', 'keyboard', 'mouse', 'touch'] as const;
+export type InteractionInput = (typeof INTERACTION_INPUTS)[number];
+export const interactionContext = (input: InteractionInput): string => `interaction/${input}`;
+export const interactionRowFeature = (pseudo: InteractionPseudo): string => `selector:pseudo-class(:${pseudo})`;
+
 /**
- * Native has no interaction runtime until SELD-R2 PR 3 (rt-interaction.ts) and PR 4 (the UIKit and Android glue), and no support
- * profile row: every interaction rule is refused on each native target. lanes: the parity lanes compile the states on native to
- * prove their resolution (forced cases), so they skip this refusal.
+ * The inputs that can put an element of a document into a pseudo-class. Any element can be hovered or pressed; :focus and
+ * :focus-visible need a focusable element, so with none they are reached only by forcing (forced-only), and with one a key, a click
+ * or a tap reaches them (keyboard, mouse, touch).
  */
-export function nativeInteractionRefusals(rules: readonly Rule[], targets: readonly ('ios' | 'android')[]): Diagnostic[] {
+export function interactionInputs(pseudo: InteractionPseudo, focusable: boolean): readonly InteractionInput[] {
+  if (pseudo === 'focus' || pseudo === 'focus-visible') return focusable ? ['keyboard', 'mouse', 'touch'] : ['forced-only'];
+  return ['mouse', 'touch'];
+}
+
+/** Whether a profile proves any interaction row for a pointer (mouse or touch), so a pointer reaches a compiled state (R13). */
+export const provesPointerRow = (profile: SupportProfile): boolean =>
+  profile.rows.some((r) => r.status !== 'unsupported' && r.feature.startsWith('selector:pseudo-class(') && (r.context === interactionContext('mouse') || r.context === interactionContext('touch')));
+
+/** Whether any case of a document has a focusable element; unknown cases (null) count as having one. */
+export const anyFocusable = (cases: readonly { readonly root: LinkedElement }[] | null): boolean =>
+  cases === null || cases.some((c) => preorder(c.root).some((n) => isFocusable(n.el)));
+
+/** Whether an input can focus some element of a document: a focusable element in some case, or a rule that may make a scroller. */
+export const focusReachable = (rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null): boolean => anyFocusable(cases) || rulesMayScroll(rules);
+
+/**
+ * SELD-R2 PR 5 (seld-r2-pr5-design.md section 3): on each native target an interaction rule compiles only where the profile proves
+ * each of its pseudo-classes, in context interaction/<input>, for every input that can reach that state in the document's cases;
+ * otherwise it is refused, naming the missing rows. profileOf null (a derive compile) reads no profile, so every rule is refused.
+ */
+export function gateInteractionFeatures(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, targets: readonly ('ios' | 'android')[], profileOf: ((t: 'ios' | 'android') => SupportProfile) | null, faults: Pick<CompilerFaults, 'interactionRowIgnored'>): Diagnostic[] {
   const out: Diagnostic[] = [];
+  const focusable = focusReachable(rules, cases);
   for (const t of targets) {
+    const profile = profileOf === null ? null : profileOf(t);
     for (const r of rules) {
-      const pseudo = firstInteractionPseudo(r);
+      const pseudos = interactionPseudosOf(r);
       const first = r.declarations[0];
-      if (pseudo === null || first === undefined) continue;
+      if (pseudos.length === 0 || first === undefined) continue;
+      const keys = pseudos.flatMap((p) => interactionInputs(p, focusable).map((i) => ({ feature: interactionRowFeature(p), context: interactionContext(i) })));
+      const missing = keys.filter((k) => profile === null || !provenContexts(profile, k.feature).includes(k.context));
+      if (missing.length === 0 || faults.interactionRowIgnored) continue;
+      const where = profile === null ? 'a derive compile reads no support profile' : `support profile ${profile.revision}`;
+      const m = missing[0] as { feature: string; context: string };
       out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
         origin: authored(first.span),
         target: t,
-        message: `:${pseudo} is not supported on ${t} yet: the native interaction runtime arrives with SELD-R2 PR 3 and PR 4`,
-        manual: `Style the state with a component state and a class, or target web only, until the ${t} interaction runtime lands.`,
+        message: `${pseudos.map((p) => `:${p}`).join(', ')} is not supported on ${t}: no passing device proof of ${missing.map((k) => `${k.feature} in ${k.context}`).join(', ')} (${where})`,
+        manual: `Style the state with a component state and a class, or target web only, until the ${t} profile proves it.`,
+        ...(profile === null ? {} : { profile: { target: t, profileRevision: profile.revision, feature: m.feature, context: m.context, status: 'unsupported' as const } }),
       }));
     }
   }

@@ -9,7 +9,8 @@ import { fontMapOf, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
 import type { FixtureSpec } from '../src/fixtures.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
-import { emitCases, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
+import { emitCases, forcedNativeCases, NATIVE_CONFIG, nativeCases } from '../src/native-host.ts';
+import { forcedDeviceCases } from '../src/forced-device.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 import { resizeCaseReport, resizeCases, resizeProgram } from '../src/resize-capture.ts';
 import { ANIMATION_CONTEXT, MEDIA_CAVEATS } from '../src/profile-rows.ts';
@@ -18,7 +19,11 @@ const cases = nativeCases();
 const byId = new Map(cases.map((n) => [n.case.id, n]));
 // MQ-R1: media rows are proven by resize cases, not layout cases; the last test here checks those on android.
 // Animation rows are proved by device-anim frame cases (deriveAnimationRows over the device records), not by layout cases.
-const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT && r.context !== ANIMATION_CONTEXT);
+// SELD-R2 PR 5: interaction rows are proved by forced device cases on each target's own device record (deriveInteractionRows), whose
+// fixtures keep other interaction rules the gate refuses; the interaction test below checks them.
+const isInteraction = (context: string): boolean => context.startsWith('interaction/');
+const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT && r.context !== ANIMATION_CONTEXT && !isInteraction(r.context));
+const promotedInteraction = androidProfile.rows.filter((r) => r.status !== 'unsupported' && isInteraction(r.context));
 const promotedMedia = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context === MEDIA_CONTEXT);
 
 /** The lane compile of native-host.ts nativeCompile, with the committed profiles enforced. */
@@ -52,7 +57,8 @@ describe('the android profile follows the iOS rule', () => {
     // the features and statuses they claim may not. MQ-R2 (T067 R9): the one planned difference among the others is a media row
     // iOS answers with a caveat that Android answers exactly.
     const exactOnAndroid = (r: (typeof iosProfile.rows)[number]) => r.context === MEDIA_CONTEXT && MEDIA_CAVEATS.ios.includes(r.feature) && !MEDIA_CAVEATS.android.includes(r.feature);
-    const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
+    // Interaction rows follow each target's own device record too (deriveInteractionRows), and are checked on their own below.
+    const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== ANIMATION_CONTEXT && !isInteraction(r.context));
     const claims = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context === ANIMATION_CONTEXT).map((r) => `${r.feature} ${r.status}`);
     expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows).map((r) => (exactOnAndroid(r) ? { ...r, status: 'exact' } : r)));
     expect(iosProfile.rows.filter(exactOnAndroid).map((r) => r.status)).toEqual(MEDIA_CAVEATS.ios.map(() => 'caveat'));
@@ -112,6 +118,28 @@ describe('the android profile follows the iOS rule', () => {
     const files = emitAndroidViewsCases(emitted);
     const text = files.map((f) => f.text).join('\n');
     for (const id of unforced) expect(text.includes(`// case ${id}\n`), id).toBe(true);
+  });
+
+  it('every case proving an android interaction row is a forced device case whose state programs are ready, which the gate accepts and the emitter generates', () => {
+    // A row's proof names the host forced case "<case>~ix<k>" (chrome-dual); its device case "<case>~fx<digest>" is what runs.
+    const deviceOf = new Map(forcedDeviceCases().map((f) => [f.hostId, f.case.id]));
+    const forced = new Map(forcedNativeCases().map((n) => [n.case.id, n]));
+    const proving = [...new Set(promotedInteraction.flatMap((r) => r.proofs.flatMap((p) => p.cases)))];
+    for (const id of proving) {
+      const n = forced.get(deviceOf.get(id) ?? '');
+      if (n === undefined) throw new Error(`${id} proves an android interaction row and is not a forced device case`);
+      expect(nativePrograms(n.compiled, n.case.assignment, n.case.interaction ?? null).kind, id).toBe('ready');
+      const c = enforcedOf(n.spec, n.case.environment.direction);
+      // The rows a case proves are ones the android gate accepts there: no android refusal names one of them.
+      for (const r of promotedInteraction.filter((x) => x.proofs.some((p) => p.cases.includes(id)))) {
+        expect(c.diagnostics.filter((x) => x.target === 'android' && x.message.includes(`${r.feature} in ${r.context}`)).map((x) => x.message), `${id} ${r.feature}`).toEqual([]);
+      }
+    }
+    const devices = proving.map((id) => deviceOf.get(id) as string);
+    const emitted = emitCases('android').filter((e) => devices.includes(e.id));
+    expect(emitted.map((e) => e.id).sort()).toEqual([...devices].sort());
+    const text = emitAndroidViewsCases(emitted).map((f) => f.text).join('\n');
+    for (const id of devices) expect(text.includes(`// case ${id}\n`), id).toBe(true);
   });
 
   it('every resize case proving a media row compiles for android unblocked, enforced, and runs its android-views band program on the resize lanes', () => {

@@ -24,7 +24,8 @@ import { repoPath } from '../src/paths.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { SAMPLE_RULES } from '../src/samples.ts';
 import type { NativeTarget, TargetConfig } from '../src/targets.ts';
-import { corpusSuites, declaredSuites, deviceCaseIds, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { corpusSuites, declaredSuites, deviceCaseIds, deviceCheckCaseIds, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
+import { forcedDeviceCaseIds } from '../src/forced-device.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { animSampleIds } from '../src/anim-samples.ts';
 
@@ -85,9 +86,10 @@ describe('native targets', () => {
     for (const l of ['device-frames', 'device-applied', 'device-lines', 'device-pixels']) {
       const a = lane(ios, l);
       const b = lane(android, l);
-      // TXT1a-2 phase R: the device cases are every layout case, a shaped one drawn in its bundled real faces.
+      // TXT1a-2 phase R: the device cases are every layout case, a shaped one drawn in its bundled real faces; SELD-R2 PR 5: the
+      // device check lanes then run the forced device cases (targets.ts deviceCheckCaseIds).
       expect(deviceCaseIds()).toEqual(ids);
-      expect(a?.sets.map((s) => [s.dpr, s.ids.length])).toEqual(SHARED_DPRS.map((d) => [d, deviceCaseIds().length]));
+      expect(a?.sets.map((s) => [s.dpr, s.ids])).toEqual(SHARED_DPRS.map((d) => [d, [...deviceCaseIds(), ...forcedDeviceCaseIds()]]));
       expect(b?.sets.filter((s) => s.role === 'shared')).toEqual(a?.sets);
       expect(b?.sets.filter((s) => s.role === 'extra').map((s) => [s.dpr, s.extra])).toEqual(EXTRA_DPRS.map((e) => [e.dpr, e.name]));
     }
@@ -312,8 +314,8 @@ describe('committed out/lanes.json', () => {
         // SELD-R1b: device-states runs the state script cases, every check; device-hit runs every hit case (the layout cases but
         // those the hit lane refuses by name, hit-capture.ts hitCases) and compares only hit points (b), the other counts exactly 0.
         // SELD-R2: device-traces runs every interaction script and compares only trace lines (b).
-        // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts deviceCaseIds), a shaped case in its bundled real faces since TXT1a-2 phase R.
-        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : deviceCaseIds().length;
+        // device-anim runs every frame sample (anim-samples.ts); the other device lanes run every device case (targets.ts deviceCheckCaseIds, with the forced device cases), a shaped case in its bundled real faces since TXT1a-2 phase R.
+        const cases = l.lane === STATE_LANE ? stateCaseCount(t.target) : l.lane === HIT_LANE ? hitCaseCount() : l.lane === TRACE_LANE ? traceScriptIds().length : l.lane === ANIM_LANE ? animSampleIds(t.target).length : deviceCheckCaseIds().length;
         for (const s of l.device?.sets ?? []) {
           expect([s.device.profileScale, s.device.appScale, s.dumps], `${t.target} ${l.lane} ${s.dpr}`).toEqual([s.dpr, s.dpr, s.cases]);
           // A record carried over a changed case list (async device lanes) ran the cases its RanCases names, not today's.
