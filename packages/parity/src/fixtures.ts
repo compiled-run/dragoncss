@@ -31,6 +31,7 @@ import { DISPLAY_CONTENTS } from './fixture-groups/display-contents.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
+import { FIELD_SIZING } from './fixture-groups/field-sizing.ts';
 import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
@@ -196,6 +197,7 @@ export const GROUPS = {
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
+  'field-sizing': FIELD_SIZING,
   filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
