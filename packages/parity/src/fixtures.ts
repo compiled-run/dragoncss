@@ -38,6 +38,7 @@ import { FILTER } from './fixture-groups/filter.ts';
 import { FIXED } from './fixture-groups/fixed.ts';
 import { FLOAT } from './fixture-groups/float.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
+import { FONT_UNITS } from './fixture-groups/font-units.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
 import { FRAGMENTATION } from './fixture-groups/fragmentation.ts';
 import { FX } from './fixture-groups/fx.ts';
@@ -210,6 +211,7 @@ export const GROUPS = {
   fixed: FIXED,
   float: FLOAT,
   'font-shorthand': FONT_SHORTHAND,
+  'font-units': FONT_UNITS,
   fonts: FONTS,
   fragmentation: FRAGMENTATION,
   fx: FX,

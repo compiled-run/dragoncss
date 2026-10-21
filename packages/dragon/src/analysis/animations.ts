@@ -14,7 +14,7 @@ import type { Longhand } from '../css/properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from '../css/properties.ts';
 import type { TransformFnDecl, TransformLengthDecl } from '../css/properties/transform.ts';
 import { inFloatRange, TRANSFORM_LIST_TYPE, transformFunctionsOf, willChangeFeatures } from '../css/properties/transform.ts';
-import { lengthToPx } from '../css/units.ts';
+import { FONT_METRIC_LAYOUT_UNITS, lengthToPx } from '../css/units.ts';
 import type { AnimItem, AnimLonghand, AnimList, EasingValue, SubstitutedAnimation } from '../css/properties/animation.ts';
 import { ANIM_INITIAL, ANIM_LIST_PROPERTIES, substitutedAnimationValue } from '../css/properties/animation.ts';
 import { shorthandHandler } from '../css/shorthands/index.ts';
@@ -233,6 +233,8 @@ export function animValueOf(v: CssValue): AnimValue {
   return { kind: 'env', text: v.kind === 'other' ? v.text : JSON.stringify(v) };
 }
 
+/** An ex, ch or cap length (css/units.ts FONT_METRIC_LAYOUT_UNITS), which only the layout lowering resolves. */
+const fontMetric = (v: CssValue): boolean => v.kind === 'length' && FONT_METRIC_LAYOUT_UNITS.has(v.unit);
 const sameValue = (a: AnimValue, b: AnimValue): boolean => JSON.stringify(a) === JSON.stringify(b);
 // color.cc Color::GetColorInterpolationSpace: Chrome animates a colour outside the legacy spaces, or one with a none component, in oklab.
 const oklabColor = (v: CssValue): boolean => v.kind === 'color' && v.oklab === true;
@@ -484,6 +486,10 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             const kind = animationKind(v.property);
             animated.add(`${ea.address}|${v.property}`);
             if (!admitted(kind)) continue;
+            if (fontMetric(v.value)) {
+              once(`kffm|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} is unsupported: Dragon's animation writer holds px and percentage endpoints, and an ex, ch or cap keyframe is not resolved to one yet`));
+              continue;
+            }
             // CALC-2: an element's font size may follow the viewport, so an em keyframe there has no px yet (refused below).
             const fs = valueAt(el, 'font-size').value;
             const followsViewport = !(fs.kind === 'length' && fs.unit === 'px');
@@ -558,6 +564,10 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           }
           if (!admitted(kind)) {
             once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
+            continue;
+          }
+          if (fontMetric(valueAt(ea, p).value) || fontMetric(valueAt(eb, p).value)) {
+            once(`tfm|${p}|${address}|${span.start}`, refuse(span, `${p} on ${address}: a transition from or to an ex, ch or cap length is unsupported: Dragon's animation writer holds px and percentage endpoints, and does not resolve a font-metric length to one yet`));
             continue;
           }
           if (p === 'background-color' && (foldedOpacity(ea) !== null || foldedOpacity(eb) !== null)) once(`tfold|${address}|${span.start}`, refuse(span, FOLD_ANIMATED(address)));
