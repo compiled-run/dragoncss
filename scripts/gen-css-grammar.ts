@@ -185,6 +185,8 @@ const SUBSET = [
   'counter-reset', 'counter-increment', 'counter-set', 'quotes',
   // NA-NATIVE-2: speak, after the counters, as LONGHANDS registers it.
   'speak',
+  // field-sizing (css-ui-4 §7.5), after speak, as LONGHANDS registers it. webref's keywords are Chrome 145's.
+  'field-sizing',
   // color-scheme (css-color-adjust-1 §2.1), after the counters family, as LONGHANDS registers it.
   'color-scheme',
   // MULTICOL: the multicol family (css/properties/multicol.ts), initial values only, after color-scheme, as LONGHANDS

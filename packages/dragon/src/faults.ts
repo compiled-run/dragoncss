@@ -11,6 +11,7 @@ import { CASC_LAYER_FAULTS } from './faults/casc-layer.ts';
 import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
+import { FIELD_SIZING_FAULTS } from './faults/field-sizing.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
 import { FX_FAULTS } from './faults/fx.ts';
 import { GEN_A_FAULTS } from './faults/gen-a.ts';
@@ -59,6 +60,7 @@ export const FAULT_GROUPS = {
   'casc-property': CASC_PROPERTY_FAULTS,
   'cascade-var': CASCADE_VAR_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
+  'field-sizing': FIELD_SIZING_FAULTS,
   fonts: FONTS_FAULTS,
   fx: FX_FAULTS,
   'gen-a': GEN_A_FAULTS,
