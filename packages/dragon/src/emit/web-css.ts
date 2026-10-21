@@ -20,7 +20,8 @@
 // the resolved one.
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';
-import { markerOf, rangePartOf } from '../analysis/resolve.ts';
+import { markerOf } from '../analysis/resolve.ts';
+import { rangePartOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';

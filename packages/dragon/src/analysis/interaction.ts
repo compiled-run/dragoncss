@@ -3,6 +3,7 @@
 // ever tested against, to a fixed point), builds the four dimensions (hover chains, active chains, focus with or without
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
+import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
 import { isControlTag } from './elements/controls.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
@@ -113,6 +114,8 @@ export function isFocusable(el: LinkedElement): boolean {
   const editable = el.attributes.get('contenteditable');
   if (editable !== undefined && editable.trim().toLowerCase() !== 'false') return true;
   if (el.tag === 'a') return el.attributes.has('href');
+  // A generated ::before, ::after or ::marker box is a pseudo-element, which nothing focuses.
+  if (GENERATED_TAGS.has(el.tag) || el.tag === MARKER_TAG) return false;
   return !NEVER_FOCUSABLE.has(el.tag);
 }
 

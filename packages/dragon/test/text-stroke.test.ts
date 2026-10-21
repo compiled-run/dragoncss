@@ -83,7 +83,7 @@ describe('-webkit-text-stroke on the native targets', () => {
     expect(support).toContain('Pair("deviceWidth", DumpJson.Num(dragonStrokePaint(paint)!!.strokeWidth.toDouble()))');
     expect(support).toContain('strokeWidth = (dragonStrokeWidth * scale).toFloat()');
     // The text view's scale is the device scale apply() runs at, not the zoomed input's devicePixelRatio (always 1).
-    expect(support).toContain('tv.dragonConfigure(bridge, size.toFloat(), specs, scale)');
+    expect(support).toContain('tv.dragonConfigure(bridge, leafFont.family, size.toFloat(), specs, scale)');
   });
 
   it('refuses on iOS and Android what the native view would stroke otherwise than Chrome, and leaves it to Chrome on web', () => {
