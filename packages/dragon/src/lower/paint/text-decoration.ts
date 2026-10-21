@@ -57,7 +57,7 @@ function inlineContent(box: LayoutBox): { readonly texts: string[]; readonly inl
       for (const k of c.children) visit(k);
     }
   };
-  for (const c of box.children) if (c.kind !== 'box' && c.kind !== 'replaced') visit(c);
+  for (const c of box.children) if (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') visit(c);
   return { texts, inlines };
 }
 

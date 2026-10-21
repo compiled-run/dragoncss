@@ -35,6 +35,7 @@
    "style": {
     "display": "block",
     "position": "static",
+    "float": "none",
     "top": {
      "kind": "auto"
     },
@@ -159,7 +160,8 @@
      "kind": "none"
     },
     "grid": null,
-    "gridItem": null
+    "gridItem": null,
+    "zoom": []
    },
    "strut": null,
    "marker": null,
@@ -171,6 +173,7 @@
      "style": {
       "display": "flex",
       "position": "static",
+      "float": "none",
       "top": {
        "kind": "auto"
       },
@@ -295,7 +298,8 @@
        "kind": "none"
       },
       "grid": null,
-      "gridItem": null
+      "gridItem": null,
+      "zoom": []
      },
      "strut": null,
      "marker": null,
@@ -307,6 +311,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -432,7 +437,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": null,
        "marker": null,
@@ -444,6 +450,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -569,7 +576,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": {
           "font": {
@@ -630,6 +638,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -755,7 +764,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -814,6 +824,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -939,7 +950,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -998,6 +1010,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -1123,7 +1136,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -1180,6 +1194,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -1305,7 +1320,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -1361,6 +1377,7 @@
          "style": {
           "display": "inline",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1485,7 +1502,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "font": {
           "family": "Ahem",
@@ -1543,6 +1561,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -1668,7 +1687,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -1724,6 +1744,7 @@
          "style": {
           "display": "inline",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1848,7 +1869,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "font": {
           "family": "Ahem",

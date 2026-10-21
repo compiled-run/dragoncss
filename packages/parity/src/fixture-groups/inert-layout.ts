@@ -2,12 +2,12 @@
 // block boxes, flex and grid items (blockified spans and inline-blocks among them) and positioned boxes, baseline on block and
 // relatively positioned boxes and on an inline box; inline.ts's reject pins a non-baseline value there (INL2). float on flex and
 // grid items, which it leaves in place, on absolutely positioned boxes, where it computes to none, and under display: none, and
-// none everywhere; clear everywhere, since Dragon lays out no float to clear (CSS2 §9.5.2).
+// none everywhere; clear everywhere but on a float, since the compiler keeps every in-flow box before the floats of its formatting context (CSS2 §9.5.2; fixture group float).
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
 export const INERT_LAYOUT: readonly FixtureSpec[] = [
   both('vertical-align-inert'),
   both('float-clear-inert'),
-  reject('reject-float-block', 'DRAGON_UNPROVEN_CONTEXT', 'left', 'float:left on f is used in the block/ltr context'),
+  reject('reject-float-block', 'DRAGON_UNSUPPORTED_VALUE', 'left', 'float: left on f beside the text or inline content of d'),
 ];

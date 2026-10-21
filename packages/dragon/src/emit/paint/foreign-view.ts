@@ -2,15 +2,24 @@
 // android.webkit.WebView (in a Dragon host group, so it takes a Dragon frame) on Android, configured for inline media that plays
 // without a gesture. The after-layout hook sets its frame from the content box DragonTree.apply computes. Lane and test builds
 // never load network content: the web view loads about:blank whatever the src. The readback is the class, the flags and the frame.
+// MEDIA-EL: a video's slot holds a clipping view over the content box (Chrome clips a video to it) and, inside it, the player's
+// view at the engine's destination rect, which is pixel-snapped as Chrome's VideoPainter snaps it: an AVPlayerLayer-backed view
+// (videoGravity resize, as the rect already has the stream's ratio) on UIKit, a TextureView a MediaPlayer renders into on
+// Android. The stream is written to a temporary file the player opens; lane and test builds never open it. The readback is the
+// classes, the gravity and both frames.
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 
 const SWIFT_MEMBERS = String.raw`  /// REPL-a foreign view: the platform web view over the content box, and the iframe src it stands for.
   public var dragonForeignView: UIView? = nil
   public var dragonForeignSrc: String? = nil
+  /// MEDIA-EL video: the clipping view over the content box, and the player's view inside it at the destination rect.
+  public var dragonVideoClip: UIView? = nil
+  public var dragonVideoView: DragonVideoPlayerView? = nil
 `;
 
-const SWIFT = String.raw`import UIKit
+const SWIFT = String.raw`import AVFoundation
+import UIKit
 import WebKit
 
 /// Whether a slot's web view loads its iframe src (R9). The parity lane and test hosts set it false at launch: they never load
@@ -32,17 +41,62 @@ public func dragonSetForeignView(_ v: DragonBoxView, src: String?) {
   web.load(URLRequest(url: url))
 }
 
-/// After every layout: the web view over the content box, in points relative to the box.
-public func dragonAfterLayoutForeignView(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
-  guard let web = v.dragonForeignView, let c = v.dragonReplacedContent else { return }
-  let s = CGFloat(scale)
-  web.frame = CGRect(x: CGFloat(c[0]) / s, y: CGFloat(c[1]) / s, width: CGFloat(c[2]) / s, height: CGFloat(c[3]) / s)
+/// MEDIA-EL: a view whose layer is an AVPlayerLayer.
+public final class DragonVideoPlayerView: UIView {
+  public override class var layerClass: AnyClass { AVPlayerLayer.self }
+  public var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
 }
 
-/// The readback of the foreign-view module: the web view's class, its media flags and its frame in whole device px / scale.
+/// Whether a video's player opens its stream (MEDIA-EL). The parity lane and test hosts set it false at launch, as they do for
+/// web views: what they prove is the player's frame and gravity.
+public var dragonVideoViewLoadsStream = true
+
+/// The slot's player: a clipping view holding an AVPlayerLayer view that stretches the stream over its frame; it opens the MP4
+/// bytes from a temporary file, or nothing in a lane or test host.
+public func dragonSetVideoView(_ v: DragonBoxView, _ base64: String) {
+  let clip = UIView(frame: .zero)
+  clip.clipsToBounds = true
+  clip.isUserInteractionEnabled = false
+  let video = DragonVideoPlayerView(frame: .zero)
+  video.playerLayer.videoGravity = .resize
+  clip.addSubview(video)
+  v.addSubview(clip)
+  v.dragonVideoClip = clip
+  v.dragonVideoView = video
+  guard dragonVideoViewLoadsStream else { return }
+  guard let data = Data(base64Encoded: base64) else { fatalError("dragon: \(v.dragonId): the video stream is not base64") }
+  let url = FileManager.default.temporaryDirectory.appendingPathComponent("dragon-video-\(UUID().uuidString).mp4")
+  // A stream that cannot be written leaves the player empty, as Chrome leaves a video whose stream fails to load.
+  guard (try? data.write(to: url)) != nil else { return }
+  video.playerLayer.player = AVPlayer(url: url)
+}
+
+/// After every layout: the web view over the content box, and a video's clip over it with the player at the destination rect,
+/// in points relative to the box and to the clip.
+public func dragonAfterLayoutForeignView(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
+  guard let c = v.dragonReplacedContent else { return }
+  let s = CGFloat(scale)
+  let content = CGRect(x: CGFloat(c[0]) / s, y: CGFloat(c[1]) / s, width: CGFloat(c[2]) / s, height: CGFloat(c[3]) / s)
+  v.dragonForeignView?.frame = content
+  guard let clip = v.dragonVideoClip, let video = v.dragonVideoView, let d = v.dragonReplacedDest else { return }
+  clip.frame = content
+  video.frame = CGRect(x: CGFloat(d[0] - c[0]) / s, y: CGFloat(d[1] - c[1]) / s, width: CGFloat(d[2]) / s, height: CGFloat(d[3]) / s)
+}
+
+/// The readback of the foreign-view module: the web view's class, its media flags and its frame, and a video's player class,
+/// gravity, clip frame and player frame, in whole device px / scale.
 public func dragonAppliedForeignView(_ v: DragonBoxView) -> DumpJsonObject {
-  guard let web = v.dragonForeignView as? WKWebView else { return [] }
   let s = v.dragonScale
+  let points = { (f: CGRect, what: String) -> DumpJson in .array([f.minX, f.minY, f.width, f.height].map { .number(dragonWholeDevicePx(Double($0) * s, "\(v.dragonId) \(what)") / s) }) }
+  if let clip = v.dragonVideoClip, let video = v.dragonVideoView {
+    return [("dragonVideoView", .object([
+      ("class", .string(NSStringFromClass(type(of: video.layer)))),
+      ("videoGravity", .string(video.playerLayer.videoGravity.rawValue)),
+      ("clip", points(clip.frame, "video clip")),
+      ("frame", points(video.frame, "video player")),
+    ]))]
+  }
+  guard let web = v.dragonForeignView as? WKWebView else { return [] }
   let f = web.frame
   let frame: [DumpJson] = [f.minX, f.minY, f.width, f.height].map { .number(dragonWholeDevicePx(Double($0) * s, "\(v.dragonId) web view") / s) }
   let config = web.configuration
@@ -58,11 +112,18 @@ public func dragonAppliedForeignView(_ v: DragonBoxView) -> DumpJsonObject {
 const KOTLIN_MEMBERS = String.raw`  /** REPL-a foreign view: the host group of the platform web view over the content box, and the iframe src it stands for. */
   var dragonForeignView: DragonForeignHost? = null
   var dragonForeignSrc: String? = null
+  /** MEDIA-EL video: the clipping group over the content box, holding the player's TextureView at the destination rect. */
+  var dragonVideoView: DragonVideoHost? = null
 `;
 
 const KOTLIN = String.raw`package dev.dragon.views
 
 import android.content.Context
+import android.graphics.SurfaceTexture
+import android.media.MediaPlayer
+import android.util.Base64
+import android.view.Surface
+import android.view.TextureView
 import android.webkit.WebView
 import dev.dragon.dump.DumpJson
 
@@ -105,16 +166,94 @@ fun dragonSetForeignView(v: DragonBoxView, src: String?) {
   web.loadUrl(if (dragonForeignViewLoadsSrc && src != null) src else "about:blank")
 }
 
-/** After every layout: the host group over the content box, in device px relative to the box. */
+/**
+ * After every layout: the web view's host group over the content box, and a video's clipping group over it with the player at
+ * the destination rect, in device px relative to the box and to the group.
+ */
 fun dragonAfterLayoutForeignView(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
-  val host = v.dragonForeignView ?: return
   val c = v.dragonReplacedContent ?: return
-  dragonSetFrame(host.dragonFrame, c[0], c[1], c[0] + c[2], c[1] + c[3], v.dragonId + " web view")
-  host.requestLayout()
+  v.dragonForeignView?.let { host ->
+    dragonSetFrame(host.dragonFrame, c[0], c[1], c[0] + c[2], c[1] + c[3], v.dragonId + " web view")
+    host.requestLayout()
+  }
+  val video = v.dragonVideoView ?: return
+  val d = v.dragonReplacedDest ?: return
+  dragonSetFrame(video.dragonFrame, c[0], c[1], c[0] + c[2], c[1] + c[3], v.dragonId + " video clip")
+  dragonSetFrame(video.dragonPlayerFrame, d[0] - c[0], d[1] - c[1], d[0] - c[0] + d[2], d[1] - c[1] + d[3], v.dragonId + " video player")
+  video.requestLayout()
 }
 
-/** The readback of the foreign-view module: the web view's class, its settings and its host frame in device px. */
+/**
+ * MEDIA-EL: a Dragon group over a video's content box that clips its one child, the player's TextureView, laid out at the
+ * destination rect (device px relative to the group), which a TextureView fills with the stream stretched over it.
+ */
+class DragonVideoHost(ctx: Context) : DragonGroup(ctx) {
+  /** The player's rect: left, top, right, bottom in device px relative to this group. */
+  val dragonPlayerFrame = IntArray(4)
+  var dragonPlayer: MediaPlayer? = null
+  init {
+    clipChildren = true
+  }
+  override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+    val w = dragonPlayerFrame[2] - dragonPlayerFrame[0]
+    val h = dragonPlayerFrame[3] - dragonPlayerFrame[1]
+    for (i in 0 until childCount) getChildAt(i).measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
+    setMeasuredDimension(dragonFrame[2] - dragonFrame[0], dragonFrame[3] - dragonFrame[1])
+  }
+  override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+    for (i in 0 until childCount) getChildAt(i).layout(dragonPlayerFrame[0], dragonPlayerFrame[1], dragonPlayerFrame[2], dragonPlayerFrame[3])
+  }
+}
+
+/**
+ * Whether a video's player opens its stream (MEDIA-EL). The parity lane and test hosts set it false at launch, as they do for web
+ * views: what they prove is the player's frame.
+ */
+var dragonVideoViewLoadsStream = true
+
+/**
+ * The slot's player: a clipping group holding a TextureView; once its surface exists a MediaPlayer opens the MP4 bytes from a cache
+ * file and, prepared, seeks to the start so the first frame shows, as Chrome shows a video it does not play. A lane or test host
+ * opens nothing.
+ */
+fun dragonSetVideoView(v: DragonBoxView, base64: String) {
+  val host = DragonVideoHost(v.context)
+  val texture = TextureView(v.context)
+  host.addView(texture)
+  v.addView(host)
+  v.dragonVideoView = host
+  if (!dragonVideoViewLoadsStream) return
+  val file = java.io.File.createTempFile("dragon-video", ".mp4", v.context.cacheDir)
+  file.writeBytes(Base64.decode(base64, Base64.DEFAULT))
+  texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+    override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
+      val player = MediaPlayer()
+      player.setDataSource(file.path)
+      player.setSurface(Surface(st))
+      player.setOnPreparedListener { it.seekTo(0) }
+      player.prepareAsync()
+      host.dragonPlayer = player
+    }
+    override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) {}
+    override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+      host.dragonPlayer?.release()
+      host.dragonPlayer = null
+      return true
+    }
+    override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
+  }
+}
+
+/** The readback of the foreign-view module: the web view's class, its settings and its host frame, and a video's player class, clip frame and player frame, in device px. */
 fun dragonAppliedForeignView(v: DragonBoxView): List<Pair<String, DumpJson>> {
+  v.dragonVideoView?.let { video ->
+    val player = video.getChildAt(0) as? TextureView ?: return emptyList()
+    return listOf(Pair("dragonVideoView", DumpJson.Obj(listOf(
+      Pair("class", DumpJson.Str(player.javaClass.name)),
+      Pair("clip", DumpJson.Arr(video.dragonFrame.map { DumpJson.Num(it.toDouble()) })),
+      Pair("frame", DumpJson.Arr(video.dragonPlayerFrame.map { DumpJson.Num(it.toDouble()) })),
+    ))))
+  }
   val host = v.dragonForeignView ?: return emptyList()
   val web = host.getChildAt(0) as? WebView ?: return emptyList()
   return listOf(Pair("dragonForeignView", DumpJson.Obj(listOf(
@@ -146,16 +285,37 @@ export const srcLit = (src: string | null, backend: 'uikit' | 'android-views'): 
   return `${out}"`;
 };
 
-export const FOREIGN_VIEW_EMITTER: PaintEmitter<'foreign-view'> = {
+/** The longest base64 run in one string literal: a JVM class file holds a string constant of at most 65535 bytes. */
+const STREAM_CHUNK = 32768;
+
+/**
+ * An MP4 stream's base64 as a Swift or Kotlin String expression. base64 is A-Z, a-z, 0-9, +, / and =, so it needs no escaping; a
+ * stream past one chunk is joined at run time from chunk literals, as Kotlin folds a + of literals into one constant.
+ */
+export const streamLit = (s: string, backend: 'uikit' | 'android-views'): string => {
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s)) throw new Error('video data is not base64');
+  const chunks: string[] = [];
+  for (let i = 0; i < s.length; i += STREAM_CHUNK) chunks.push(`"${s.slice(i, i + STREAM_CHUNK)}"`);
+  if (chunks.length <= 1) return chunks[0] ?? '""';
+  return backend === 'uikit' ? `[${chunks.join(', ')}].joined()` : `arrayOf(${chunks.join(', ')}).joinToString("")`;
+};
+
+export const FOREIGN_VIEW_EMITTER: PaintEmitter<'foreign-view' | 'video-view'> = {
   name: 'foreign-view',
-  kinds: ['foreign-view'],
+  kinds: ['foreign-view', 'video-view'],
   lines: {
-    uikit: (v, _n, w) => [`  dragonSetForeignView(${v}, src: ${srcLit(w.src, 'uikit')})`],
-    'android-views': (v, _n, w) => [`  dragonSetForeignView(${v}, ${srcLit(w.src, 'android-views')})`],
+    uikit: (v, _n, w) => (w.kind === 'video-view' ? [`  dragonSetVideoView(${v}, ${streamLit(w.data, 'uikit')})`] : [`  dragonSetForeignView(${v}, src: ${srcLit(w.src, 'uikit')})`]),
+    'android-views': (v, _n, w) => (w.kind === 'video-view' ? [`  dragonSetVideoView(${v}, ${streamLit(w.data, 'android-views')})`] : [`  dragonSetForeignView(${v}, ${srcLit(w.src, 'android-views')})`]),
   },
-  applied: (_e, backend, _w, dpr, g) => {
+  applied: (_e, backend, w, dpr, g) => {
     if (g.replaced === null) throw new Error('a foreign view on a box that is not replaced');
     const [x, y, width, height] = g.replaced.content as [number, number, number, number];
+    if (w.kind === 'video-view') {
+      const [dx, dy, dw, dh] = g.replaced.dest as [number, number, number, number];
+      return backend === 'uikit'
+        ? { class: 'AVPlayerLayer', videoGravity: 'AVLayerVideoGravityResize', clip: [x / dpr, y / dpr, width / dpr, height / dpr], frame: [(dx - x) / dpr, (dy - y) / dpr, dw / dpr, dh / dpr] }
+        : { class: 'android.view.TextureView', clip: [x, y, x + width, y + height], frame: [dx - x, dy - y, dx - x + dw, dy - y + dh] };
+    }
     return backend === 'uikit'
       ? { class: 'WKWebView', allowsInlineMediaPlayback: true, mediaTypesRequiringUserActionForPlayback: 0, frame: [x / dpr, y / dpr, width / dpr, height / dpr] }
       : { class: 'android.webkit.WebView', javaScriptEnabled: true, mediaPlaybackRequiresUserGesture: false, frame: [x, y, x + width, y + height] };

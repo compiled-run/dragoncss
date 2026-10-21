@@ -1,5 +1,5 @@
-// field-sizing (css-ui-4 §7.5): fixed and content compile on every target on every element Dragon lays out but a replaced one, since
-// Chrome applies content to form controls alone, which Dragon does not build; content on img, iframe or svg is refused. Parsed as
+// field-sizing (css-ui-4 §7.5): fixed and content compile on every target on every element Dragon lays out but a replaced element or
+// a form control, since Chrome applies content to form controls alone; content on img, iframe, svg, video, button or input is refused. Parsed as
 // Chrome 145 parses it (the two keywords, any ASCII case). The Chrome cases are field-sizing-values and reject-field-sizing-img
 // (packages/parity/fixtures).
 import { describe, expect, it } from 'vitest';
@@ -58,6 +58,17 @@ describe('field-sizing', () => {
     const refused = onSvg('field-sizing: content');
     expect(refused.map((m) => m.split(' ')[0])).toEqual(['android', 'ios', 'web']);
     for (const m of refused) expect(m).toContain('field-sizing: content on <svg> a is unsupported');
+  });
+  it('refuses content on a button and an input on every target, and fixed adds no refusal there', () => {
+    for (const tag of ['button', 'input']) {
+      const css = `.s { display: block; appearance: none; width: 20px; height: 10px; field-sizing: VALUE; }`;
+      const run = (v: string): string[] => {
+        const c = project(NO_FAULTS).compile(inputFor(css.replace('VALUE', v), (r) => [el(r, 'a', tag, ['s'])]));
+        return c.diagnostics.filter((d) => d.message.startsWith('field-sizing')).map((d) => `${String(d.target)} ${d.code}`).sort();
+      };
+      expect(run('fixed'), tag).toEqual([]);
+      expect(run('content'), tag).toEqual(REFUSED);
+    }
   });
   it('plants its fault: content compiles on a replaced element', () => {
     expect(onSvg('field-sizing: content', { ...NO_FAULTS, fieldSizingReplacedAccepted: true })).toEqual([]);

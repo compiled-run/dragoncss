@@ -1,7 +1,7 @@
-// field-sizing; Dragon refuses content on a replaced element.
+// field-sizing; Dragon refuses content on a replaced element or a form control.
 
 export type FieldSizingFaults = {
-  /** field-sizing: content is accepted on a replaced element, whose sizing no case proves it leaves alone. */
+  /** field-sizing: content is accepted on a replaced element or a form control, whose sizing no case proves it leaves alone. */
   readonly fieldSizingReplacedAccepted: boolean;
 };
 

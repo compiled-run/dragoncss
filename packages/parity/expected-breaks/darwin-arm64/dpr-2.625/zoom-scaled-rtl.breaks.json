@@ -1,0 +1,18 @@
+{
+  "case": "zoom-scaled-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]},
+    {"id":"b1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"c:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"t:text0","data":"XX XX XXX X","lines":2,"units":[0,0,0,0,0,0,1,1,1,1,1],"blank":[5]},
+    {"id":"t:text1","data":" XXXX XX XXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1],"blank":[0,8]},
+    {"id":"t1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"u:text0","data":" XX ","lines":1,"units":[0,0,0,0],"blank":[3]},
+    {"id":"u1:text0","data":"XX XXX","lines":2,"units":[0,0,0,1,1,1],"blank":[2]},
+    {"id":"u2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"v:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

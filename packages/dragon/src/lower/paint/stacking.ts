@@ -36,7 +36,7 @@ import { ProgramError } from './types.ts';
 /** One box of the stacking tree: its positioning, z-index (null for auto or where it has no effect), opacity and clip. */
 export type StackNode = {
   readonly id: string;
-  /** fixed and sticky come from the resolved tree only (the engine refuses them; POSX-f): both always make a stacking context. */
+  /** fixed (POSX-f) and sticky (POSX-s) always make a stacking context. */
   readonly position: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
   /** The z-index when it applies (a positioned box, or a flex or grid item: Blink StyleAdjuster), else null. */
   readonly z: number | null;
@@ -408,7 +408,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       id: b.id,
       position: b.style.position,
       z: b.style.position !== 'static' || item ? z : null,
-      ...(item && b.style.position !== 'absolute' ? { order: b.style.order } : {}),
+      ...(item && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? { order: b.style.order } : {}),
       opacity,
       transformed: el !== null && transformedForStacking(el),
       ...(el !== null && containsDescendants(el) ? { containsAbsolute: true } : {}),
@@ -427,7 +427,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
   const node = (b: LayoutNode, item: boolean): StackNode => {
     const el = elementOf(b);
     const container = FLEX_OR_GRID.includes(b.style.display);
-    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
+    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
     return own(b, el, item, b.kind === 'box' && b.marker !== null ? [...children, marker(b.marker)] : children);
   };
   return node(root, false);
@@ -443,7 +443,7 @@ const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak 
   const walk = (b: LayoutNode | InlineBox | LineBreak): void => {
     out.add(b);
     if (b.kind === 'box' && b.marker !== null) out.add(b.marker);
-    if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
+    if (b.kind === 'box' || b.kind === 'control' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
   };
   walk(root);
   return out;

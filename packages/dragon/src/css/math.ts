@@ -666,7 +666,8 @@ export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or
 // font-feature-settings and font-variation-settings: a setting's value is an <integer> or a <number> (css-fonts-4 §6.12, §7.2).
 // orphans and widows: Blink ConsumePositiveInteger takes a calculation that resolves to a number (properties/fragmentation.ts).
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber, as StrokeMiterlimit::ParseSingleValue does; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set', 'orphans', 'widows']);
+// font-size-adjust: a <number [0,∞]>, after an optional metric keyword (css-fonts-5 §2.6).
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set', 'orphans', 'widows', 'font-size-adjust']);
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
 // rotate (css-transforms-2 §4): its axis numbers are ConsumeNumber and its angle ConsumeAngle, so Chrome keeps calc(1) 0 0 45deg.
 const NUMBER_OR_ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['rotate']);
@@ -674,12 +675,12 @@ const NUMBER_OR_ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['rotate']);
 const NUMBER_OR_PERCENT_GRAMMAR: ReadonlySet<string> = new Set(['scale']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
-/** opacity, fill-opacity and stroke-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
+/** opacity, fill-opacity, stroke-opacity, stop-opacity and flood-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
 // stroke-width, stroke-dasharray and stroke-dashoffset take a unitless number too (SVG's quirk, Chrome StrokeWidth,
 // StrokeDasharray and StrokeDashoffset ::ParseSingleValue in SVG attribute mode), and so do the geometry properties cx, cy, r, x
 // and y and the corner radii rx and ry (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
 // tab-size is <number> | <length> (css-text-3 §4.2); its parser (properties/tab-size.ts) refuses every calculation.
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'tab-size']);
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stop-opacity', 'flood-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'tab-size']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
  * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), the table spacings (CSS2 §17.6.1
  * border-spacing), and every scroll-margin property (css-scroll-snap-1 §6, Blink ScrollMargin* ConsumeLength). */
@@ -1285,6 +1286,12 @@ export function foldNumber(n: MathNode): number {
   if (isLit(n)) return n.value;
   const values = n.args.map(foldNumber);
   return evaluateOperator(values, n.op);
+}
+
+/** A calculation's value with each literal scaled by its unit's factor ('' for a number, '%' for a percentage, else the unit). */
+export function foldScaled(n: MathNode, scale: (unit: string) => number): number {
+  if (isLit(n)) return n.value * scale(n.unit);
+  return evaluateOperator(n.args.map((a) => foldScaled(a, scale)), n.op);
 }
 
 // ---------------------------------------------------------------- serialization (css-values-4 §10.12, Blink CustomCSSText)

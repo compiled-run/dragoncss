@@ -1,0 +1,15 @@
+{
+  "case": "block-in-inline-ignored-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"d1:text0","data":"XXXXXXXXXXXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXXXXXXXXXXXXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[25]},
+    {"id":"d2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d4:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d5:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d6:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"c7:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"d8:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}
