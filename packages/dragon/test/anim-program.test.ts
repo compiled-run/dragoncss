@@ -102,6 +102,7 @@ describe('web output (R15)', () => {
 
   it('leaves an element without animation declarations, and a document without @keyframes, as before', () => {
     const plain = web('.a { width: 1px; } .a.on { width: 2px; }');
-    expect(plain).not.toMatch(/transition|animation|@keyframes/);
+    // The view-transition longhands are written at their initial values, as every longhand is; they are not transitions.
+    expect(plain).not.toMatch(/(?<!view-)transition|animation|@keyframes/);
   });
 });

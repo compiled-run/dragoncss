@@ -1,5 +1,5 @@
-// hyphens (css-text-3 §6.1): none | manual | auto, inherited, initial manual. -webkit-hyphens stays
-// unknown, as in Chrome 145 (css_properties.json5 lists no alias for hyphens).
+// hyphens (css-text-3 §6.1): none | manual | auto, inherited, initial manual. -webkit-hyphens is no
+// alias in Chrome 145 (css_properties.json5 lists none for hyphens), which drops it, so Dragon drops it too (css/chrome-dropped.ts).
 // The engine breaks after a soft hyphen and shows the hyphen, which is manual. Chrome hyphenates nothing under auto without a
 // content language (its macOS dictionary needs lang, which Dragon refuses, or a content-language pragma, which the parity fixture
 // reader refuses: parity test/hyphens-chrome.test.ts), so auto lowers as manual (notes/T149-txt2-spec.md R14).

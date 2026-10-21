@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { hitFacts, programInput, svgScenes } from 'dragon';
-import type { LayoutBox } from '../../layout/src/input.ts';
+import type { ControlBox, LayoutBox } from '../../layout/src/input.ts';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
@@ -15,12 +15,25 @@ import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import type { NativeCase } from './native-host.ts';
 import { nativeCases, referenceMeasurer } from './native-host.ts';
 import { repoPath } from './paths.ts';
+import { shapedCaseIds } from './text-latin-run.ts';
 
 export const HIT_CAPTURE_VERSION = 'dragon.hit-capture/2';
 const LU = 64;
 
 export const expectedHitDir = (): string => repoPath('packages/parity/expected-hit');
 export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/${caseId.replace(/#/g, '~')}.hit.json`;
+
+/**
+ * The hit captures at a device DPR beside the DPR-1 ones: Chrome launched at that forced device scale factor (launchChrome(dpr), as
+ * every DPR capture is), so it lays out and snaps text rects in device px, against the TS hit test at that DPR (expectedHitRuns, the
+ * device-hit lane's and the device-traces reference's model). interaction-combo's step point (2, 30) is on c's bottom edge, which at
+ * 2.625 is 78.75 device px, inside c's text rect snapped to device px (53 to 79): Chrome names c there, not DPR 1's d.
+ */
+export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
+  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl'] },
+];
+export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
+export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;
 
 /** A program's hit table at a DPR (rt-hit.ts hitTableOf, the function the device runs translated). */
 export function programHitTable(program: NativeCase['programs']['uikit'], facts: NonNullable<ReturnType<typeof hitFacts>>, viewport: { readonly width: number; readonly height: number }, dpr: number, faults: HitTableFaults = NO_HIT_TABLE_FAULTS): HitTable {
@@ -34,23 +47,37 @@ export function caseHitTable(n: NativeCase, faults: HitTableFaults = NO_HIT_TABL
   return programHitTable(n.programs.uikit, facts, n.case.environment.viewport, dpr, faults);
 }
 
-/** The derived grid of a table in LU (rt-hit.ts hitGrid), as [x, y] pairs. */
+/** The derived grid of a DPR-1 table in LU (rt-hit.ts hitGrid), as [x, y] pairs. */
 export function hitGrid(t: HitTable, viewport: { readonly width: number; readonly height: number }): [number, number][] {
-  return rtHitGrid(t, viewport.width * LU, viewport.height * LU).map((p): [number, number] => [p.x, p.y]);
+  return hitGridAt(t, viewport, 1);
+}
+
+/** The derived grid of a table laid out at a DPR, in that DPR's device LU (1/64 device px), as [x, y] pairs. */
+export function hitGridAt(t: HitTable, viewport: { readonly width: number; readonly height: number }, dpr: number): [number, number][] {
+  return rtHitGrid(t, viewport.width * dpr * LU, viewport.height * dpr * LU).map((p): [number, number] => [p.x, p.y]);
 }
 
 /**
  * A case's capture: the grid is not stored, since the hit table derives it; gridSha256 pins the grid it was taken on, and runs
  * holds Chrome's answer at each grid point in grid order, run-length encoded as [id index, count].
  */
-export type HitCapture = { readonly case: string; readonly chrome: string; readonly version: string; readonly viewport: { readonly width: number; readonly height: number }; readonly direction: 'ltr' | 'rtl'; readonly points: number; readonly gridSha256: string; readonly ids: readonly string[]; readonly runs: readonly (readonly [number, number])[] };
+export type HitCapture = { readonly case: string; readonly chrome: string; readonly version: string; readonly dpr?: number; readonly viewport: { readonly width: number; readonly height: number }; readonly direction: 'ltr' | 'rtl'; readonly points: number; readonly gridSha256: string; readonly ids: readonly string[]; readonly runs: readonly (readonly [number, number])[] };
 
 export const gridSha256 = (grid: readonly (readonly [number, number])[]): string => createHash('sha256').update(grid.map(([x, y]) => `${x},${y}`).join(';')).digest('hex');
 
 /** Chrome's elementFromPoint at every grid point of a case, on its authored rendering; each id is the element's data-dragon-id. */
 export async function captureHits(browser: Browser, n: NativeCase): Promise<HitCapture> {
-  const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
-  const hits = await elementsAtMemo(browser, n, grid);
+  return captureHitsAt(browser, n, 1);
+}
+
+/**
+ * captureHits at a device DPR, on a browser launchChrome(dpr) started: the grid of the case's table at that DPR, in device LU, each
+ * point given to Chrome in CSS px; a DPR capture names its DPR, a DPR-1 capture keeps the format it has always had.
+ */
+export async function captureHitsAt(browser: Browser, n: NativeCase, dpr: number): Promise<HitCapture> {
+  if (!Number.isFinite(dpr) || dpr <= 0) throw new Error(`${n.case.id}: the hit capture's DPR ${dpr} is not a positive number`);
+  const grid = hitGridAt(caseHitTable(n, NO_HIT_TABLE_FAULTS, dpr), n.case.environment.viewport, dpr);
+  const hits = await elementsAtMemo(browser, n, grid, dpr);
   const ids = [...new Set(hits)].sort();
   const runs: [number, number][] = [];
   for (const h of hits) {
@@ -59,18 +86,18 @@ export async function captureHits(browser: Browser, n: NativeCase): Promise<HitC
     if (last !== undefined && last[0] === k) last[1]++;
     else runs.push([k, 1]);
   }
-  return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, viewport: n.case.environment.viewport, direction: n.case.environment.direction, points: grid.length, gridSha256: gridSha256(grid), ids, runs };
+  return { case: n.case.id, chrome: CHROME_VERSION, version: HIT_CAPTURE_VERSION, ...(dpr === 1 ? {} : { dpr }), viewport: n.case.environment.viewport, direction: n.case.environment.direction, points: grid.length, gridSha256: gridSha256(grid), ids, runs };
 }
 
-/** The data-dragon-id Chrome hits at each grid point (1/64 px) of a case's authored page, '#none' where none. */
-async function elementsAt(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[]): Promise<string[]> {
-  const page = await openPage(browser, n.case.authoredHtml, n.case.environment);
+/** The data-dragon-id Chrome hits at each grid point (1/64 device px at dpr) of a case's authored page, '#none' where none. */
+async function elementsAt(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[], dpr: number): Promise<string[]> {
+  const page = await openPage(browser, n.case.authoredHtml, { ...n.case.environment, devicePixelRatio: dpr });
   try {
-    return await page.evaluate((pts) => pts.map(([x, y]) => {
-      const e = document.elementFromPoint(x / 64, y / 64);
+    return await page.evaluate(([pts, unit]) => pts.map(([x, y]) => {
+      const e = document.elementFromPoint(x / unit, y / unit);
       const el = e === null ? null : e.closest('[data-dragon-id]');
       return el === null ? '#none' : (el.getAttribute('data-dragon-id') as string);
-    }), grid);
+    }), [grid, dpr * 64] as const);
   } finally {
     await page.context().close();
   }
@@ -82,18 +109,23 @@ const HIT_CODE = ['packages/parity/src/hit-capture.ts', 'packages/parity/src/chr
 export const HIT_MEMO: MemoStats = { hits: 0, misses: 0 };
 
 /** elementsAt, remembered by its page and grid (chrome-memo.ts); a browser launchChrome did not start has flags the key cannot see. */
-function elementsAtMemo(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[]): Promise<string[]> {
+function elementsAtMemo(browser: Browser, n: NativeCase, grid: readonly (readonly [number, number])[], dpr: number): Promise<string[]> {
   const args = launchArgsOf(browser);
-  if (args === null) return elementsAt(browser, n, grid);
-  const env = n.case.environment;
-  return memoizedJson('hit', { html: injectHarness(n.case.authoredHtml, env), env, args, grid: gridSha256(grid) }, HIT_CODE, HIT_MEMO, () => elementsAt(browser, n, grid));
+  if (args === null) return elementsAt(browser, n, grid, dpr);
+  const env = dpr === 1 ? n.case.environment : { ...n.case.environment, devicePixelRatio: dpr };
+  return memoizedJson('hit', { html: injectHarness(n.case.authoredHtml, env), env, args, grid: gridSha256(grid) }, HIT_CODE, HIT_MEMO, () => elementsAt(browser, n, grid, dpr));
 }
 
 export const hitCaptureJson = (c: HitCapture): string => `${JSON.stringify({ ...c, runs: undefined }, null, 2).replace(/\n}$/, ',')}\n  "runs": ${JSON.stringify(c.runs)}\n}\n`;
 
 /** The committed capture of a case; a missing or malformed file throws, naming what is wrong. */
 export function committedHits(caseId: string): HitCapture {
-  const path = expectedHitPath(caseId);
+  return committedHitsAt(caseId, 1);
+}
+
+/** The committed capture of a case at a DPR (HIT_DPR_CAPTURES); one that names another DPR is malformed. */
+export function committedHitsAt(caseId: string, dpr: number): HitCapture {
+  const path = dpr === 1 ? expectedHitPath(caseId) : expectedHitDprPath(caseId, dpr);
   let raw: unknown;
   try {
     raw = JSON.parse(readFileSync(path, 'utf8'));
@@ -101,7 +133,7 @@ export function committedHits(caseId: string): HitCapture {
     throw new Error(`${caseId}: no readable hit capture at ${path} (${e instanceof Error ? e.message : String(e)}); run pnpm run parity:hit-capture`);
   }
   const c = raw as Partial<HitCapture>;
-  const ok = c.case === caseId && c.chrome === CHROME_VERSION && c.version === HIT_CAPTURE_VERSION && Number.isInteger(c.points) && typeof c.gridSha256 === 'string' && Array.isArray(c.ids) && c.ids.every((x) => typeof x === 'string') && Array.isArray(c.runs)
+  const ok = c.case === caseId && (dpr === 1 ? c.dpr === undefined : c.dpr === dpr) && c.chrome === CHROME_VERSION && c.version === HIT_CAPTURE_VERSION && Number.isInteger(c.points) && typeof c.gridSha256 === 'string' && Array.isArray(c.ids) && c.ids.every((x) => typeof x === 'string') && Array.isArray(c.runs)
     && c.runs.every((r) => Array.isArray(r) && r.length === 2 && Number.isInteger(r[0]) && Number.isInteger(r[1]) && (r[0] as number) >= 0 && (r[0] as number) < (c.ids as string[]).length && (r[1] as number) > 0)
     && c.runs.reduce((n, r) => n + (r[1] as number), 0) === c.points;
   if (!ok) throw new Error(`${caseId}: the hit capture at ${path} is malformed or from another Chrome or capture version`);
@@ -117,8 +149,14 @@ export type HitMismatch = { readonly case: string; readonly x: number; readonly 
 
 /** The TS hit test against a capture at every captured point; the grid must be the one the table derives now. */
 export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
-  const t = caseHitTable(n, tableFaults);
-  const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
+  return compareHitsAt(n, c, 1, faults, tableFaults);
+}
+
+/** compareHits at the capture's DPR: the TS hit test of the case laid out at that DPR, at every grid point in device LU. */
+export function compareHitsAt(n: NativeCase, c: HitCapture, dpr: number, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
+  if ((c.dpr ?? 1) !== dpr) throw new Error(`${n.case.id}: a capture at DPR ${c.dpr ?? 1} compared at DPR ${dpr}`);
+  const t = caseHitTable(n, tableFaults, dpr);
+  const grid = hitGridAt(caseHitTable(n, NO_HIT_TABLE_FAULTS, dpr), n.case.environment.viewport, dpr);
   const stale = grid.length !== c.points || gridSha256(grid) !== c.gridSha256;
   const mismatches: HitMismatch[] = [];
   if (stale) return { points: c.points, mismatches, stale };
@@ -145,11 +183,13 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
  * hit testing through transforms; so is a case with a stacking context below the root (an integer z-index, an opacity below 1 or a
  * filter, PNT1), whose layers rt-hit.ts orders as z-index auto, a case with an <svg> until SVG-a2 models its shapes, and one whose program
  * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
- * mis-hit; one holding an inline box or a <br> (INL1a) is refused as rt-hit.ts hitRefusal names it, since the hit table does not
- * model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP), and one with an outside text
- * ::marker (GEN-c), through whose box Chrome hits its list item.
+ * mis-hit; one holding an inline box or a <br> (INL1a) or a form control (FORM-a) is refused as rt-hit.ts hitRefusal names it, since
+ * the hit table does not model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP), and one
+ * with an outside text ::marker (GEN-c), through whose box Chrome hits its list item.
  */
 export function hitRefusal(n: NativeCase): string | null {
+  // TXT1a-2 phase R: a shaped case is a device case, but the hit lane keeps to the plain ones until its real-face hit points are proven.
+  if (shapedCaseIds().has(n.case.id)) return 'shaped text (text-latin-run.ts isShapedInput): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points';
   const nodes = n.programs.uikit.nodes;
   const moved = nodes.filter((x) => x.writes.some((w) => w.kind === 'transform')).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through transforms is SELD-R2b (T146)`;
@@ -180,14 +220,14 @@ export function hitRefusal(n: NativeCase): string | null {
   // model yet; Chrome hits no outside symbol marker at any captured point (list-markers-pseudo's disc and square items).
   const marked = textMarkerItems(input.root);
   if (marked.length > 0) return `outside text marker on ${marked.join(', ')}: Chrome hits a list item through its outside ::marker box, which rt-hit.ts does not model yet (GEN-c)`;
-  // INL1a: hitTableOf refuses an inline box or a <br> by name (rt-hit.ts), so such a case is left out with that reason.
+  // INL1a and FORM-a: hitTableOf refuses an inline box, a <br> or a form control by name (rt-hit.ts), so such a case is left out with that reason.
   return inputHitRefusal(input);
 }
 
 /** The ids of the boxes under root, in tree order, that carry an outside text marker. */
-function textMarkerItems(root: LayoutBox): string[] {
-  const own = root.marker?.kind === 'text' ? [root.id] : [];
-  return [...own, ...root.children.flatMap((c) => (c.kind === 'box' ? textMarkerItems(c) : []))];
+function textMarkerItems(root: LayoutBox | ControlBox): string[] {
+  const own = root.kind === 'box' && root.marker?.kind === 'text' ? [root.id] : [];
+  return [...own, ...root.children.flatMap((c) => (c.kind === 'box' || c.kind === 'control' ? textMarkerItems(c) : []))];
 }
 
 /** Every layout case the hit lane covers: all of them but the refused ones (hitRefusal). */
@@ -304,6 +344,8 @@ const TEXT_SINCE_BASE: readonly (readonly [string, string])[] = [
   ['font-variation-settings', 'normal'], ['-webkit-text-stroke-width', '0px'],
   // Batch 3: TXT2-lb's line-break, text-wrap-style, TXT2-tal's text-align-last, hyphens and tab-size.
   ['line-break', 'auto'], ['text-wrap-style', 'auto'], ['text-align-last', 'auto'], ['hyphens', 'manual'], ['tab-size', '8'],
+  // TXT-FSA's font-size-adjust (never written to the web output, so only the captures gain it).
+  ['font-size-adjust', 'none'],
 ];
 /** The paint, transform, mask and border-image longhands added after the base, at their initial values (filter none, mask-image none and the like). */
 const PAINT_SINCE_BASE: readonly (readonly [string, string])[] = [
@@ -381,12 +423,12 @@ const GEN_B_DECIMAL_FIXTURES: readonly string[] = ['block-elements-defaults'];
  * SVG-a1's svg family (fill, stroke, stroke-width, SVG-opacity's fill-opacity and stroke-opacity, and SVG-stroke's stroke-linecap,
  * stroke-linejoin, stroke-miterlimit and fill-rule, SVG-dash's stroke-dasharray and stroke-dashoffset, SVG-geometry's cx, cy, r, x
  * and y, SVG-paint-order's paint-order, SVG-rrect's rx and ry, SVG-vector-effect's vector-effect, and SVG-inert's clip-rule,
- * marker-start, marker-mid and marker-end), also added after the identity base, at its initial values only, in LONGHANDS order:
+ * marker-start, marker-mid and marker-end, and SVG-inert-b's stop, flood, lighting, mask-type, text-anchor and baseline longhands, and SVG-d's d), also added after the identity base, at its initial values only, in LONGHANDS order:
  * a base file has no SVG, so any other value stays in the text and the file no longer hashes to the base (svg.test.ts proves the
  * family's own values).
  */
-const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero"(?:,\n[ ]*"stroke-dasharray": "none",\n[ ]*"stroke-dashoffset": "0px"(?:,\n[ ]*"cx": "0px",\n[ ]*"cy": "0px",\n[ ]*"r": "0px",\n[ ]*"x": "0px",\n[ ]*"y": "0px"(?:,\n[ ]*"paint-order": "normal"(?:,\n[ ]*"rx": "auto",\n[ ]*"ry": "auto"(?:,\n[ ]*"vector-effect": "none"(?:,\n[ ]*"clip-rule": "nonzero",\n[ ]*"marker-start": "none",\n[ ]*"marker-mid": "none",\n[ ]*"marker-end": "none")?)?)?)?)?)?)?)?/g;
-const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n(?:[ ]*stroke-dasharray: none;\n[ ]*stroke-dashoffset: 0px;\n(?:[ ]*cx: 0px;\n[ ]*cy: 0px;\n[ ]*r: 0px;\n[ ]*x: 0px;\n[ ]*y: 0px;\n(?:[ ]*paint-order: normal;\n(?:[ ]*rx: auto;\n[ ]*ry: auto;\n(?:[ ]*vector-effect: none;\n(?:[ ]*clip-rule: nonzero;\n[ ]*marker-start: none;\n[ ]*marker-mid: none;\n[ ]*marker-end: none;\n)?)?)?)?)?)?)?)?/gm;
+const SVG_JSON = /,\n[ ]*"fill": "rgb\(0, 0, 0\)",\n[ ]*"stroke": "none",\n[ ]*"stroke-width": "1px"(?:,\n[ ]*"fill-opacity": "1",\n[ ]*"stroke-opacity": "1"(?:,\n[ ]*"stroke-linecap": "butt",\n[ ]*"stroke-linejoin": "miter",\n[ ]*"stroke-miterlimit": "4",\n[ ]*"fill-rule": "nonzero"(?:,\n[ ]*"stroke-dasharray": "none",\n[ ]*"stroke-dashoffset": "0px"(?:,\n[ ]*"cx": "0px",\n[ ]*"cy": "0px",\n[ ]*"r": "0px",\n[ ]*"x": "0px",\n[ ]*"y": "0px"(?:,\n[ ]*"paint-order": "normal"(?:,\n[ ]*"rx": "auto",\n[ ]*"ry": "auto"(?:,\n[ ]*"vector-effect": "none"(?:,\n[ ]*"clip-rule": "nonzero",\n[ ]*"marker-start": "none",\n[ ]*"marker-mid": "none",\n[ ]*"marker-end": "none"(?:,\n[ ]*"stop-color": "rgb\(0, 0, 0\)",\n[ ]*"stop-opacity": "1",\n[ ]*"flood-color": "rgb\(0, 0, 0\)",\n[ ]*"flood-opacity": "1",\n[ ]*"lighting-color": "rgb\(255, 255, 255\)",\n[ ]*"mask-type": "luminance",\n[ ]*"text-anchor": "start",\n[ ]*"dominant-baseline": "auto",\n[ ]*"alignment-baseline": "auto"(?:,\n[ ]*"d": "none")?)?)?)?)?)?)?)?)?)?/g;
+const SVG_CSS = /^[ ]*fill: rgb\(0, 0, 0\);\n[ ]*stroke: none;\n[ ]*stroke-width: 1px;\n(?:[ ]*fill-opacity: 1;\n[ ]*stroke-opacity: 1;\n(?:[ ]*stroke-linecap: butt;\n[ ]*stroke-linejoin: miter;\n[ ]*stroke-miterlimit: 4;\n[ ]*fill-rule: nonzero;\n(?:[ ]*stroke-dasharray: none;\n[ ]*stroke-dashoffset: 0px;\n(?:[ ]*cx: 0px;\n[ ]*cy: 0px;\n[ ]*r: 0px;\n[ ]*x: 0px;\n[ ]*y: 0px;\n(?:[ ]*paint-order: normal;\n(?:[ ]*rx: auto;\n[ ]*ry: auto;\n(?:[ ]*vector-effect: none;\n(?:[ ]*clip-rule: nonzero;\n[ ]*marker-start: none;\n[ ]*marker-mid: none;\n[ ]*marker-end: none;\n(?:[ ]*stop-color: rgb\(0, 0, 0\);\n[ ]*stop-opacity: 1;\n[ ]*flood-color: rgb\(0, 0, 0\);\n[ ]*flood-opacity: 1;\n[ ]*lighting-color: rgb\(255, 255, 255\);\n[ ]*mask-type: luminance;\n[ ]*text-anchor: start;\n[ ]*dominant-baseline: auto;\n[ ]*alignment-baseline: auto;\n(?:[ ]*d: none;\n)?)?)?)?)?)?)?)?)?)?/gm;
 const genBType = (path: string): string => (GEN_B_DECIMAL_FIXTURES.includes((path.split('/').pop() as string).split('.')[0]!.replace(/-rtl$/, '')) ? '(?:disc|decimal)' : 'disc');
 
 /**

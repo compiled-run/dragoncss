@@ -2,7 +2,7 @@
 // GATE_DEVICE_PX, (b) applied against expected exactly, (c) pixel samples against Chrome's pixels (channel delta GATE_CHANNEL_DELTA,
 // edge positions within GATE_DEVICE_PX, each line's glyph x centre and bottom edge within GATE_GLYPH_POSITION_DEVICE_PX), (d) frames against snapRect of
 // the TS engine frames exactly. Tolerances are imported only.
-import type { LayoutBox, LayoutInput, LayoutRect, Matrix2D, TransformFn, TransformLength, TransformOp, TransformOrigin } from '@dragon/layout';
+import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, Matrix2D, TransformFn, TransformLength, TransformOp, TransformOrigin } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX, mapPoint, markerTextId, paintTransformMatrix, snapEdges } from '@dragon/layout';
 import type { WebCapture } from './capture.ts';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX, GATE_GLYPH_POSITION_DEVICE_PX } from './compare.ts';
@@ -465,17 +465,17 @@ export type ReferenceCase = {
 function nodeKinds(input: LayoutInput): Map<string, DumpNode['kind']> {
   const out = new Map<string, DumpNode['kind']>();
   // INL1a: an inline box and a <br> are element nodes, and the text inside an inline box is a text node.
-  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
+  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox | ControlBox>): void => {
     out.set(c.id, c.kind === 'text' ? 'text' : 'element');
     if (c.kind === 'inline') for (const k of c.children) inline(k);
   };
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     out.set(b.id, b.boxType === 'anonymous' ? 'anonymous' : 'element');
     // GEN-c: a list item's marker is an element node, and a text marker's text a text node (native-program.ts).
-    if (b.marker !== null) out.set(b.marker.id, 'element');
-    if (b.marker !== null && b.marker.kind === 'text') out.set(markerTextId(b.marker.id), 'text');
+    if (b.kind === 'box' && b.marker !== null) out.set(b.marker.id, 'element');
+    if (b.kind === 'box' && b.marker !== null && b.marker.kind === 'text') out.set(markerTextId(b.marker.id), 'text');
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else inline(c);
     }
   };

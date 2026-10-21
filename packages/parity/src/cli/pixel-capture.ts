@@ -11,7 +11,7 @@ import { type MemoStats, memoized } from '../chrome-memo.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import type { ParityCase } from '../cases.ts';
 import { atDpr, DPRS, zoomGuard } from '../dpr.ts';
-import { nativeCases } from '../native-host.ts';
+import { deviceCheckCases } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import type { RasterPath } from '../pixel-reference.ts';
 import { decodePng, expectedPixelsDir, expectedPixelsPath, manifestText, PIXEL_MANIFEST, pixelManifest, rasterSize, requireSoftwareRaster } from '../pixel-reference.ts';
@@ -23,7 +23,8 @@ const recheck = recheckAt >= 0 ? Number(args[recheckAt + 1]) : null;
 if (recheck !== null && !(Number.isInteger(recheck) && recheck > 0)) throw new Error('--recheck takes a positive whole number');
 const platform = hostPlatform();
 if (platform !== REFERENCE_PLATFORM) throw new Error(`pixel captures are taken on the reference platform ${REFERENCE_PLATFORM}, not ${platform}`);
-const cases = nativeCases();
+// SELD-R2 PR 5: the device check lanes' cases, the forced device cases included (forced-device.ts).
+const cases = deviceCheckCases();
 
 async function shoot(browser: Browser, c: ParityCase, dpr: number): Promise<Buffer> {
   const page = await openPage(browser, c.authoredHtml, atDpr(c.environment, dpr));

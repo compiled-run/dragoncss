@@ -24,7 +24,7 @@ describe('validateLayoutInput', () => {
 
   it('rejects extra keys, unknown tags and bad enums', () => {
     const bad = clone(good) as unknown as { root: { style: Record<string, unknown> } };
-    bad.root.style['float'] = 'left';
+    bad.root.style['clear'] = 'left';
     bad.root.style['width'] = { kind: 'em', value: 2 };
     bad.root.style['display'] = 'inline-table';
     const r = validateLayoutInput(bad);
@@ -46,7 +46,7 @@ describe('validateLayoutInput', () => {
   it('S4b: rejects bad position and inset fields, a missing inset, and an absolutely positioned root', () => {
     const bad = clone(good) as unknown as { root: { style: Record<string, unknown>; children: { style: Record<string, unknown> }[] } };
     const kid = bad.root.children[0] as { style: Record<string, unknown> };
-    kid.style['position'] = 'fixed';
+    kid.style['position'] = 'running';
     kid.style['top'] = { kind: 'em', value: 1 };
     kid.style['left'] = { kind: 'px', value: Number.NaN };
     delete kid.style['bottom'];

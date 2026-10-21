@@ -105,6 +105,9 @@ describe('placeLines is exactly placeIfcLines(buildIfc(...)) (T058J2 (F))', () =
     // The text-latin vectors (vectors/text-latin/dpr-<d>, TXT1a-2's 11 shaped cases, INL1a-tags' 2, TXT-W1's 12 text-weight cases and TXT-W2's 4 real-face font-shorthand cases, faces and synthesis in ltr and rtl, TXT2-b's 2 text-spacing-lato cases, TXT2-c's white-space-lato case
     // TXT2's 2 text-justify-latin cases, TXT2-b's 3 word-spacing cases, TXT2-h's 2 text-indent-latin cases, TXT2-a's text-break-lato and TXT-BREAK-2's text-break-all-lato and text-break-hyphen-lato, at DPR 1, 2, 3 and 2.625) are the shaped ones.
     expect(shaped).toBe(files.filter((f) => f.slice(VECTORS.length).startsWith('text-latin/')).length);
-    expect(shaped).toBe((11 + 2 + 12 + 4 + 2 + 1 + 2 + 3 + 2 + 1 + 2) * 4);
+    // Batch 4c: TXT1a-2 phase R maps the real faces, so their font-family refusals became profile refusals and
+    // profilePendingCaseIds holds the shaped cases back at the DPR sets; only text-ahem-fractional (shaped since 4c) writes there.
+    // text-latin-declared and -rtl are shaped at DPR 1 since 4c. Batch 5 stops holding them back and restores the * 4.
+    expect(shaped).toBe(11 + 2 + 12 + 4 + 2 + 1 + 2 + 3 + 2 + 1 + 2 + 2 + 3);
   });
 });

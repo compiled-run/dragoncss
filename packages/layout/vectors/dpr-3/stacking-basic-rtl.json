@@ -35,6 +35,7 @@
    "style": {
     "display": "block",
     "position": "static",
+    "float": "none",
     "top": {
      "kind": "auto"
     },
@@ -159,7 +160,8 @@
      "kind": "none"
     },
     "grid": null,
-    "gridItem": null
+    "gridItem": null,
+    "zoom": []
    },
    "strut": null,
    "marker": null,
@@ -171,6 +173,7 @@
      "style": {
       "display": "block",
       "position": "static",
+      "float": "none",
       "top": {
        "kind": "auto"
       },
@@ -295,7 +298,8 @@
        "kind": "none"
       },
       "grid": null,
-      "gridItem": null
+      "gridItem": null,
+      "zoom": []
      },
      "strut": null,
      "marker": null,
@@ -307,6 +311,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -432,7 +437,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": null,
        "marker": null,
@@ -444,6 +450,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -569,7 +576,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -582,6 +590,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -707,7 +716,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -719,6 +729,7 @@
            "style": {
             "display": "block",
             "position": "relative",
+            "float": "none",
             "top": {
              "kind": "px",
              "value": 30
@@ -846,7 +857,8 @@
              "kind": "none"
             },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": null,
            "marker": null,
@@ -861,6 +873,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -986,7 +999,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -999,6 +1013,7 @@
          "style": {
           "display": "flex",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1124,7 +1139,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1136,6 +1152,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -1261,7 +1278,8 @@
              "kind": "none"
             },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": null,
            "marker": null,
@@ -1274,6 +1292,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -1399,7 +1418,8 @@
              "kind": "none"
             },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": null,
            "marker": null,
@@ -1414,6 +1434,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 10
@@ -1542,7 +1563,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1555,6 +1577,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 40
@@ -1683,7 +1706,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1696,6 +1720,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 0
@@ -1824,7 +1849,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1837,6 +1863,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 100
@@ -1965,7 +1992,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,
@@ -1978,6 +2006,7 @@
          "style": {
           "display": "block",
           "position": "absolute",
+          "float": "none",
           "top": {
            "kind": "px",
            "value": 240
@@ -2106,7 +2135,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
          "marker": null,

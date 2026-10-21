@@ -60,7 +60,8 @@ const PADDING_LONGHANDS: readonly Longhand[] = ['padding-top', 'padding-right', 
 function unroundedReplaced(el: ResolvedElement, tag: string, t: string): { readonly message: string; readonly manual: string } | null {
   const at = `<${tag}> ${el.element.address}`;
   if (tag !== 'img') {
-    return { message: `${at} rounds its corners, but ${t} draws a web view square (a rounded iframe is not supported yet)`, manual: 'Round a wrapper element with overflow: hidden around the frame instead.' };
+    const view = tag === 'video' ? 'a video player' : 'a web view';
+    return { message: `${at} rounds its corners, but ${t} draws ${view} square (a rounded ${tag} is not supported yet)`, manual: `Round a wrapper element with overflow: hidden around the ${tag === 'video' ? 'video' : 'frame'} instead.` };
   }
   const padded = PADDING_LONGHANDS.find((p) => {
     const v = (el.props.get(p) as ResolvedValue).value;

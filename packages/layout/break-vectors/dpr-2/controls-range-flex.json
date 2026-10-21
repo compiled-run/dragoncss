@@ -1,0 +1,8 @@
+{
+  "case": "controls-range-flex",
+  "dpr": 2,
+  "texts": [
+    {"id":"time-current:text0","lines":[[0,2]]},
+    {"id":"time-total:text0","lines":[[0,2]]}
+  ]
+}

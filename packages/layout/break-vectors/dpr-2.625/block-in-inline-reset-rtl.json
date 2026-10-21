@@ -1,0 +1,10 @@
+{
+  "case": "block-in-inline-reset-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"h1:text0","lines":[[0,1]]},
+    {"id":"m2:text0","lines":[[0,2]]},
+    {"id":"n3:text0","lines":[[0,1]]},
+    {"id":"m4:text0","lines":[[0,1]]}
+  ]
+}

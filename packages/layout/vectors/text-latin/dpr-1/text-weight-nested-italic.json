@@ -574,6 +574,7 @@
    "style": {
     "display": "block",
     "position": "static",
+    "float": "none",
     "top": {
      "kind": "auto"
     },
@@ -698,7 +699,8 @@
      "kind": "none"
     },
     "grid": null,
-    "gridItem": null
+    "gridItem": null,
+    "zoom": []
    },
    "strut": null,
    "marker": null,
@@ -710,6 +712,7 @@
      "style": {
       "display": "block",
       "position": "static",
+      "float": "none",
       "top": {
        "kind": "auto"
       },
@@ -834,7 +837,8 @@
        "kind": "none"
       },
       "grid": null,
-      "gridItem": null
+      "gridItem": null,
+      "zoom": []
      },
      "strut": null,
      "marker": null,
@@ -846,6 +850,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -971,7 +976,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -995,6 +1001,7 @@
          "style": {
           "display": "inline",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1119,7 +1126,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "font": {
           "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
@@ -1140,6 +1148,7 @@
            "style": {
             "display": "inline",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -1264,7 +1273,8 @@
              "kind": "none"
             },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "font": {
             "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
@@ -1322,6 +1332,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -1446,7 +1457,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -1470,6 +1482,7 @@
          "style": {
           "display": "inline",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1594,7 +1607,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "font": {
           "family": "sha256:bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a",
@@ -1650,6 +1664,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -1774,7 +1789,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -1798,6 +1814,7 @@
          "style": {
           "display": "inline",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1922,7 +1939,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "font": {
           "family": "sha256:948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d",

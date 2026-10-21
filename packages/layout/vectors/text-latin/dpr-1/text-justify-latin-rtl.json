@@ -2190,6 +2190,7 @@
    "style": {
     "display": "block",
     "position": "static",
+    "float": "none",
     "top": {
      "kind": "auto"
     },
@@ -2314,7 +2315,8 @@
      "kind": "none"
     },
     "grid": null,
-    "gridItem": null
+    "gridItem": null,
+    "zoom": []
    },
    "strut": null,
    "marker": null,
@@ -2326,6 +2328,7 @@
      "style": {
       "display": "block",
       "position": "static",
+      "float": "none",
       "top": {
        "kind": "auto"
       },
@@ -2450,7 +2453,8 @@
        "kind": "none"
       },
       "grid": null,
-      "gridItem": null
+      "gridItem": null,
+      "zoom": []
      },
      "strut": null,
      "marker": null,
@@ -2462,6 +2466,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -2587,7 +2592,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -2644,6 +2650,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -2769,7 +2776,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -2826,6 +2834,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -2951,7 +2960,8 @@
          "kind": "none"
         },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": {
         "font": {
@@ -3005,6 +3015,7 @@
          "style": {
           "display": "inline",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -3129,7 +3140,8 @@
            "kind": "none"
           },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "font": {
           "family": "sha256:288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",

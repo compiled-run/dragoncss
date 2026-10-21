@@ -1,0 +1,10 @@
+{
+  "case": "inline-replaced-svg-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"text:text0","lines":[[0,2]]},
+    {"id":"text:text1","lines":[[0,2]]},
+    {"id":"edges:text0","lines":[[0,1]]},
+    {"id":"edges:text1","lines":[[0,1]]}
+  ]
+}

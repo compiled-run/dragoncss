@@ -4,7 +4,7 @@
 import type { LayoutNode } from '@dragon/layout';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
 import type { AppliedDecoration } from '../../analysis/text-decoration.ts';
-import type { TextShadowValue } from '../../analysis/text-shadow.ts';
+import type { TextShadowUnder, TextShadowValue } from '../../analysis/text-shadow.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { Longhand } from '../../css/properties.ts';
 
@@ -46,6 +46,8 @@ export type BoxPaintContext = {
   readonly decorations: ReadonlyMap<string, readonly AppliedDecoration[]>;
   /** TXT-FX: every shadowed text leaf's shadows (analysis/text-shadow.ts nativeTextShadows), by text address. */
   readonly textShadows: ReadonlyMap<string, readonly TextShadowValue[]>;
+  /** TXT-FX: per shadowed text leaf, the earlier texts its layer composites over (analysis/text-shadow.ts nativeTextUnders). */
+  readonly textUnders: ReadonlyMap<string, readonly TextShadowUnder[]>;
 };
 
 /** A paint module's lowering: its write kinds with their vocabulary and longhands, and the writes of one box in emission order. */
