@@ -197,14 +197,13 @@ public final class DragonRootView: UIView {
   }
   required init?(coder: NSCoder) { fatalError("DragonRootView is built in code") }
 
-  /// P6b: the text views with lines and the views that are accessibility elements themselves (a whole leaf, a control), in DOM order, that VoiceOver
-  /// can reach now: shown, and not inside a view that is one element for its whole subtree.
+  /// P6b: the text views with lines and the views that are accessibility elements themselves (a whole leaf, a control), in DOM
+  /// order, that VoiceOver can reach now: shown, and not inside a view that is one element for its whole subtree. A box's foreign
+  /// view (an iframe's WKWebView, a video's player) follows its box, as an accessibility container of its own content.
   public override var accessibilityElements: [Any]? {
     get {
       if dragonAccessibleOrder.isEmpty { return super.accessibilityElements }
-      return dragonAccessibleOrder.filter { v in
-        let exposed = v.isAccessibilityElement || ((v as? DragonTextView)?.dragonAccessibleLines.isEmpty == false)
-        if !exposed { return false }
+      func reachable(_ v: UIView) -> Bool {
         var x: UIView? = v
         while let c = x, c !== self {
           if c.isHidden || c.alpha < 0.01 || c.accessibilityElementsHidden || (c !== v && c.isAccessibilityElement) { return false }
@@ -212,6 +211,12 @@ public final class DragonRootView: UIView {
         }
         return x != nil
       }
+      var out: [Any] = []
+      for v in dragonAccessibleOrder where reachable(v) {
+        if v.isAccessibilityElement || ((v as? DragonTextView)?.dragonAccessibleLines.isEmpty == false) { out.append(v) }
+        if let f = (v as? DragonBoxView)?.dragonForeignView, !v.isAccessibilityElement, reachable(f) { out.append(f) }
+      }
+      return out
     }
     set { super.accessibilityElements = newValue }
   }
@@ -1329,7 +1334,7 @@ public final class DragonTree {
           var accessible: DumpNodesLinesAccessible? = nil
           if !tv.isHidden, let j = tv.dragonAccessibleSpecs.firstIndex(of: k), let live = tv.accessibilityElements, j < live.count, let el = live[j] as? UIAccessibilityElement {
             let f = el.accessibilityFrameInContainerSpace
-            accessible = DumpNodesLinesAccessible(name: el.accessibilityLabel ?? "", frame: DumpNodesLinesAccessibleFrame(x: Double(r.minX + f.minX), y: Double(r.minY + f.minY), width: Double(f.width), height: Double(f.height)))
+            accessible = DumpNodesLinesAccessible(name: el.accessibilityLabel ?? "", heading: el.accessibilityTraits.contains(.header) ? 1 : 0, frame: DumpNodesLinesAccessibleFrame(x: Double(r.minX + f.minX), y: Double(r.minY + f.minY), width: Double(f.width), height: Double(f.height)))
           }
           lines.append(DumpNodesLines(frame: DumpNodesLinesFrame(x: left / s, y: top / s, width: (right - left) / s, height: (bottom - top) / s), deviceEdges: DumpNodesLinesDeviceEdges(left: left, top: top, right: right, bottom: bottom), baseline: (baseline - top) / s, start: Double(x.start), end: Double(x.end), accessible: accessible))
         }
@@ -1344,11 +1349,20 @@ public final class DragonTree {
       var accessible: DumpNodesAccessible? = nil
       if !v.isHidden, v.isAccessibilityElement {
         let f = UIAccessibility.convertFromScreenCoordinates(v.accessibilityFrame, in: root)
-        accessible = DumpNodesAccessible(name: v.accessibilityLabel ?? "", frame: DumpNodesAccessibleFrame(x: Double(f.minX), y: Double(f.minY), width: Double(f.width), height: Double(f.height)))
+        accessible = DumpNodesAccessible(name: v.accessibilityLabel ?? "", heading: v.accessibilityTraits.contains(.header) ? 1 : 0, frame: DumpNodesAccessibleFrame(x: Double(f.minX), y: Double(f.minY), width: Double(f.width), height: Double(f.height)))
       }
       nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines, accessible: accessible))
     }
-    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing, environment: environment)
+    // P6b: the order VoiceOver reads the views in, from the root's live accessibilityElements; a foreign view is named after the node
+    // view that hosts it.
+    var accessibleOrder: [String] = []
+    for e in root.accessibilityElements ?? [] {
+      if let n = e as? DragonNodeView { accessibleOrder.append(n.dragonId); continue }
+      var x = (e as? UIView)?.superview
+      while let c = x, !(c is DragonNodeView) { x = c.superview }
+      accessibleOrder.append(((x as? DragonNodeView)?.dragonId ?? "root") + "::foreign")
+    }
+    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, accessibleOrder: accessibleOrder, pixels: pixels, timing: timing, environment: environment)
   }
 }
 
@@ -2773,7 +2787,11 @@ class DragonTree(val context: Context) {
     var previous: android.view.View? = null
     for (v in domOrder) {
       val exposed = (v is DragonTextView && (v.dragonAccessibleNames.isNotEmpty() || v.contentDescription != null)) || (v is DragonBoxView && v.contentDescription != null)
-      if (!exposed) continue
+      // A view no longer exposed (after a state change) leaves the chain.
+      if (!exposed) {
+        v.accessibilityTraversalAfter = android.view.View.NO_ID
+        continue
+      }
       if (v.id == android.view.View.NO_ID) v.id = android.view.View.generateViewId()
       v.accessibilityTraversalAfter = previous?.id ?: android.view.View.NO_ID
       previous = v
@@ -2842,7 +2860,7 @@ class DragonTree(val context: Context) {
             val bounds = android.graphics.Rect()
             @Suppress("DEPRECATION")
             info.getBoundsInParent(bounds)
-            accessible = DumpNodesLinesAccessible(info.text?.toString() ?: "", DumpNodesLinesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
+            accessible = DumpNodesLinesAccessible(info.text?.toString() ?: "", if (info.isHeading) 1.0 else 0.0, DumpNodesLinesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
           }
           lines.add(DumpNodesLines(DumpNodesLinesFrame(left / s, top / s, (right - left) / s, (bottom - top) / s), DumpNodesLinesDeviceEdges(left, top, right, bottom), (baseline - top) / s, x.start.toDouble(), x.end.toDouble(), accessible))
         }
@@ -2860,11 +2878,30 @@ class DragonTree(val context: Context) {
         val bounds = android.graphics.Rect()
         @Suppress("DEPRECATION")
         info.getBoundsInParent(bounds)
-        accessible = DumpNodesAccessible(info.contentDescription?.toString() ?: "", DumpNodesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
+        accessible = DumpNodesAccessible(info.contentDescription?.toString() ?: "", if (info.isHeading) 1.0 else 0.0, DumpNodesAccessibleFrame((l + bounds.left) / s, (t + bounds.top) / s, bounds.width() / s, bounds.height() / s))
       }
       nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines, accessible))
     }
-    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing, environment)
+    // P6b: the order TalkBack reads the views in, from the live accessibilityTraversalAfter chain: from each view that follows none,
+    // through the views that follow it; a view TalkBack cannot reach now (not visible) is passed over.
+    val follows = HashMap<Int, ArrayList<String>>()
+    val heads = ArrayList<String>()
+    for (id in order) {
+      val vw = views[id] as? android.view.View ?: continue
+      if (vw.id == android.view.View.NO_ID) continue
+      val after = vw.accessibilityTraversalAfter
+      if (after != android.view.View.NO_ID) follows.getOrPut(after) { ArrayList() }.add(id) else if (vw.isImportantForAccessibility) heads.add(id)
+    }
+    val accessibleOrder = ArrayList<String>()
+    val seen = HashSet<String>()
+    fun chain(id: String) {
+      if (!seen.add(id)) return
+      val vw = views[id] as android.view.View
+      if (vw.visibility == android.view.View.VISIBLE) accessibleOrder.add(id)
+      for (next in follows[vw.id] ?: emptyList<String>()) chain(next)
+    }
+    for (h in heads) chain(h)
+    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, accessibleOrder, pixels, timing, environment)
   }
 }
 

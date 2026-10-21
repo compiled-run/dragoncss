@@ -222,10 +222,12 @@ export type AxProblem = { readonly id: string; readonly detail: string };
 /**
  * The device-lines accessibility check (P6b) against the model's lines (axLinesOfProgram), by text node. A text node the model
  * exposes line by line has an element per dumped line, in order, named as the model names that line (its code points with the
- * collapsible space it hangs at the line's end, none before a <br>; a11y-lines.test.ts proves the rule against Chrome) and framed on
- * the dumped line within GATE_DEVICE_PX on every edge, and the view is not an element itself. A leaf the model exposes whole (one
- * text-overflow truncates) has no line elements, and the view is one element named with the leaf's text and framed on the view. A
- * text node the model exposes nothing of (hidden, or a list marker's text) has no element at all.
+ * collapsible space it hangs at the line's end, none before a <br>; a11y-lines.test.ts proves the rule against Chrome), marked a
+ * heading exactly when the model's line is under one, and framed on the dumped line within GATE_DEVICE_PX on every edge, and the
+ * view is not an element itself. A leaf the model exposes whole (one text-overflow truncates) has no line elements, and the view is
+ * one element named with the leaf's text, marked a heading as the model's, and framed on the view. A text node the model exposes
+ * nothing of (hidden, or a list marker's text) has no element at all. The order a screen reader reads the text views in
+ * (accessibleOrder, less every other view) is the model's order of its text nodes, which is DOM order.
  */
 export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine[]): { readonly compared: number; readonly problems: readonly AxProblem[] } {
   const problems: AxProblem[] = [];
@@ -237,6 +239,9 @@ export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine
   const framed = (id: string, at: string, a: Frame, f: Frame): void => {
     const delta = [a.x - f.x, a.y - f.y, a.x + a.width - (f.x + f.width), a.y + a.height - (f.y + f.height)];
     if (delta.some((d) => Math.abs(d) * dpr > GATE_DEVICE_PX)) problems.push({ id, detail: `${at}: accessibility frame edge delta ${JSON.stringify(delta)} css px exceeds ${GATE_DEVICE_PX} device px` });
+  };
+  const marked = (id: string, at: string, a: { readonly heading: number }, l: AxLine): void => {
+    if (a.heading !== (l.heading > 0 ? 1 : 0)) problems.push({ id, detail: `${at}: ${a.heading === 1 ? 'read as a heading, but the model has it under none' : `not read as a heading, but the model has it under an h${l.heading}`}` });
   };
   for (const n of dump.nodes) {
     if (n.kind !== 'text') continue;
@@ -250,6 +255,7 @@ export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine
       if (a === null) problems.push({ id: n.id, detail: `${n.id}: the leaf is exposed whole, but the view is not an accessibility element` });
       else {
         if (a.name !== whole.name) problems.push({ id: n.id, detail: `${n.id}: named ${JSON.stringify(a.name)}, expected ${JSON.stringify(whole.name)}` });
+        marked(n.id, n.id, a, whole);
         framed(n.id, n.id, a.frame, n.frame);
       }
       continue;
@@ -269,30 +275,48 @@ export function checkAccessibleLines(dump: NativeDump, expected: readonly AxLine
       const at = `${n.id}:line${j}`;
       const a = l.accessible;
       if (a === null) return void problems.push({ id: n.id, detail: `${at}: no accessibility element exposes the line` });
-      const name = (want[j] as AxLine).name;
-      if (a.name !== name) problems.push({ id: n.id, detail: `${at}: named ${JSON.stringify(a.name)}, expected ${JSON.stringify(name)}` });
+      const m = want[j] as AxLine;
+      if (a.name !== m.name) problems.push({ id: n.id, detail: `${at}: named ${JSON.stringify(a.name)}, expected ${JSON.stringify(m.name)}` });
+      marked(n.id, at, a, m);
       framed(n.id, at, a.frame, l.frame);
     });
+  }
+  // The reading order: a device writes it (the schema allows null only in a ts-reference dump).
+  if (dump.accessibleOrder !== null) {
+    const texts = new Set(dump.nodes.filter((n) => n.kind === 'text').map((n) => n.id));
+    const read = dump.accessibleOrder.filter((id) => texts.has(id));
+    const model = modelOrder(expected);
+    if (read.join('\n') !== model.join('\n')) problems.push({ id: dump.case.id, detail: `reading order: the screen reader reads ${JSON.stringify(read)}, the model (DOM order) ${JSON.stringify(model)}` });
   }
   return { compared, problems };
 }
 
+/** The text nodes the model exposes, in the order a screen reader reads them (the model's, DOM order). */
+function modelOrder(expected: readonly AxLine[]): string[] {
+  return [...new Set(expected.map((l) => l.leaf))];
+}
+
 /**
  * A dump's nodes with the accessibility fields a correct device writes for the model's lines (checkAccessibleLines): each exposed
- * line's element named as the model names it and framed on the line, a whole leaf's view named with its text and framed on the view,
- * and nothing else. For the host tests' made-up device dumps.
+ * line's element named and marked as the model's and framed on the line, a whole leaf's view named with its text and framed on the
+ * view, and nothing else; and the reading order, the model's text nodes. For the host tests' made-up device dumps.
  */
-export function exposedAsModelled(nodes: readonly NativeDumpNode[], expected: readonly AxLine[]): NativeDumpNode[] {
+export function exposedAsModelled(dump: NativeDump, expected: readonly AxLine[]): NativeDump {
   const byLeaf = new Map<string, AxLine[]>();
   for (const l of expected) byLeaf.set(l.leaf, [...(byLeaf.get(l.leaf) ?? []), l]);
-  return nodes.map((n) => {
-    const want = n.kind === 'text' ? (byLeaf.get(n.id) ?? []) : [];
-    const whole = want.find((l) => l.whole === true);
-    const lined = whole === undefined && want.length === n.lines.length;
-    return {
-      ...n,
-      lines: n.lines.map((l, j) => ({ ...l, accessible: lined ? { name: (want[j] as AxLine).name, frame: l.frame } : null })),
-      accessible: whole === undefined ? null : { name: whole.name, frame: n.frame },
-    };
-  });
+  const mark = (l: AxLine): number => (l.heading > 0 ? 1 : 0);
+  return {
+    ...dump,
+    nodes: dump.nodes.map((n) => {
+      const want = n.kind === 'text' ? (byLeaf.get(n.id) ?? []) : [];
+      const whole = want.find((l) => l.whole === true);
+      const lined = whole === undefined && want.length === n.lines.length;
+      return {
+        ...n,
+        lines: n.lines.map((l, j) => ({ ...l, accessible: lined ? { name: (want[j] as AxLine).name, heading: mark(want[j] as AxLine), frame: l.frame } : null })),
+        accessible: whole === undefined ? null : { name: whole.name, heading: mark(whole), frame: n.frame },
+      };
+    }),
+    accessibleOrder: modelOrder(expected),
+  };
 }

@@ -1,4 +1,4 @@
-// dragon.native-dump/3 (native-strategy.md 3.2; MQ-R1 adds the environment record, MQ-R2 the device readings in it): the one schema description, the types inferred from it, and the validator, which
+// dragon.native-dump/4 (native-strategy.md 3.2; MQ-R1 adds the environment record, MQ-R2 the device readings in it, P6b the accessibility elements and reading order): the one schema description, the types inferred from it, and the validator, which
 // rejects a missing or extra key at every level, a missing node id, non-integer deviceEdges and nulls outside the reference lane.
 import { describe, expect, it } from 'vitest';
 import type { Field, FieldType, NativeDump } from '../src/native-dump.ts';
@@ -12,7 +12,7 @@ const frame = { x: 20, y: 20, width: 120, height: 40 };
 /** A device dump with every field present and non-null, as P5 writes it. */
 function deviceDump(): NativeDump {
   return {
-    schema: 'dragon.native-dump/3',
+    schema: 'dragon.native-dump/4',
     lane: 'ios-sim',
     case: { id: 'flex-row-gap', fixture: 'flex-row-gap', dpr: 3, viewport: { width: 400, height: 300 }, direction: 'ltr', compilerDigest: 'c0ffee', expectedDigest: 'beef' },
     device: { platform: 'ios', os: '26.5 (23F77)', model: 'iPhone 17', abi: 'arm64', scale: 3, toolchain: 'Xcode 27.0 (27A266a)', renderer: 'simulator-metal' },
@@ -20,8 +20,9 @@ function deviceDump(): NativeDump {
     nodes: [
       { id: 'html', parent: null, kind: 'element', native: 'UIView', frame, deviceEdges: edges, applied: {}, lines: [], accessible: null },
       { id: 'n3', parent: 'html', kind: 'element', native: 'UIView', frame, deviceEdges: edges, applied: { 'layer.cornerRadius': 8, backgroundColor: [0.2, 0.4, 1, 1] }, lines: [], accessible: null },
-      { id: 'n3:text0', parent: 'n3', kind: 'text', native: 'DragonTextView', frame, deviceEdges: edges, applied: {}, lines: [{ frame, deviceEdges: edges, baseline: 10.5, start: 0, end: 3, accessible: { name: 'abc', frame } }], accessible: { name: 'abc', frame } },
+      { id: 'n3:text0', parent: 'n3', kind: 'text', native: 'DragonTextView', frame, deviceEdges: edges, applied: {}, lines: [{ frame, deviceEdges: edges, baseline: 10.5, start: 0, end: 3, accessible: { name: 'abc', heading: 1, frame } }], accessible: { name: 'abc', heading: 0, frame } },
     ],
+    accessibleOrder: ['n3:text0'],
     pixels: { capture: 'drawHierarchy', colorSpace: 'sRGB', width: 1200, height: 900, sha256: 'abc', samples: [{ x: 240, y: 120, rgba: [51, 102, 255, 255], rule: 'interior:n3' }] },
     timing: { settleMs: 3, dumpMs: 1 },
     environment: { rootPx: [1200, 900], dpr: 3, media: [400, 300], band: 1, readings: READINGS },
@@ -59,12 +60,13 @@ describe('the schema description', () => {
     const edgeObjects = PATHS.filter((p) => p.path[p.path.length - 1] === 'deviceEdges');
     expect(edgeObjects.map((p) => p.path.join('.'))).toEqual(['nodes.2.deviceEdges', 'nodes.2.lines.0.deviceEdges']);
     for (const p of edgeObjects) expect(p.fields.map((f) => [f.name, f.type.kind])).toEqual([['left', 'integer'], ['top', 'integer'], ['right', 'integer'], ['bottom', 'integer']]);
-    expect(NATIVE_DUMP_SCHEMA.fields.map((f) => f.name)).toEqual(['schema', 'lane', 'case', 'device', 'units', 'nodes', 'pixels', 'timing', 'environment']);
+    expect(NATIVE_DUMP_SCHEMA.fields.map((f) => f.name)).toEqual(['schema', 'lane', 'case', 'device', 'units', 'nodes', 'accessibleOrder', 'pixels', 'timing', 'environment']);
   });
   it('MQ-R1 adds only the environment record: a /1 dump with the new schema id and a null environment (a layout case) validates', () => {
     const v1 = clone(deviceDump()) as unknown as Record<string, unknown>;
     delete v1['environment'];
-    expect(validateNativeDump({ ...v1, schema: 'dragon.native-dump/3', environment: null }).ok).toBe(true);
+    expect(validateNativeDump({ ...v1, schema: 'dragon.native-dump/4', environment: null }).ok).toBe(true);
+    expect(validateNativeDump({ ...v1, schema: 'dragon.native-dump/3', environment: null }).ok).toBe(false);
     expect(validateNativeDump({ ...v1, schema: 'dragon.native-dump/1', environment: null }).ok).toBe(false);
     expect(validateNativeDump(v1).ok).toBe(false);
     const env = (e: unknown) => validateNativeDump({ ...v1, environment: e }).ok;
@@ -86,6 +88,7 @@ describe('the schema description', () => {
     ref['lane'] = REFERENCE_LANE;
     ref['pixels'] = null;
     ref['timing'] = null;
+    ref['accessibleOrder'] = null;
     ref.case['expectedDigest'] = null;
     for (const l of ref.nodes[2]?.lines ?? []) Object.assign(l, { baseline: null, start: null, end: null });
     expect(validateNativeDump(ref)).toMatchObject({ ok: true });
@@ -143,7 +146,8 @@ describe('the validator', () => {
   });
   it('rejects wrong types, constants, enums, RGBA8 ranges and lengths', () => {
     const cases: [string, (d: Record<string, unknown>) => void, string][] = [
-      ['schema', (d) => (d['schema'] = 'dragon.native-dump/4'), 'bad-const'],
+      ['schema', (d) => (d['schema'] = 'dragon.native-dump/5'), 'bad-const'],
+      ['nodes[2].accessible.heading', (d) => ((((d['nodes'] as Record<string, unknown>[])[2] as Record<string, unknown>)['accessible'] as Record<string, unknown>)['heading'] = 2), 'out-of-range'],
       ['lane', (d) => (d['lane'] = 'robolectric'), 'bad-enum'],
       ['case.dpr', (d) => ((d['case'] as Record<string, unknown>)['dpr'] = '3'), 'wrong-type'],
       ['pixels.samples[0].rgba[0]', (d) => ((((d['pixels'] as Record<string, unknown>)['samples'] as Record<string, unknown>[])[0] as Record<string, unknown>)['rgba'] = [256, 0, 0, 255]), 'out-of-range'],

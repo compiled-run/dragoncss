@@ -16,6 +16,8 @@ export type DeviceEvidence = { readonly laneCode: string; readonly referenceData
 export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/anim-cases.ts',
   'packages/parity/src/anim-samples.ts',
+  // P6b: the accessibility model and check device-lines judges the elements with.
+  'packages/parity/src/ax-lines.ts',
   'packages/parity/src/compare.ts',
   'packages/parity/src/device-ci.ts',
   'packages/parity/src/cli/device-ci.ts',

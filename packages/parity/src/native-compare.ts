@@ -525,6 +525,7 @@ export function referenceDump(c: ReferenceCase, faults: ReferenceFaults = NO_REF
     device: { platform: c.platform, os: 'none', model: 'ts-engine', abi: 'none', scale: c.dpr, toolchain: 'packages/layout (TypeScript reference)', renderer: 'none' },
     units: 'css-px',
     nodes: nodes.map((n) => ({ ...n.node, lines: lines.get(n.id) ?? [] })),
+    accessibleOrder: null,
     pixels: null,
     timing: null,
     environment: null,

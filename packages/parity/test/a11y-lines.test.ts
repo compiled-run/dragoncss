@@ -57,6 +57,14 @@ const AX_DOCS: readonly AxDoc[] = [
     css: '.f { display: flex; flex-direction: column-reverse; } .m { position: relative; top: -40px; }',
     body: '<div data-dragon-id="a" class="f"><div data-dragon-id="b">BB</div><div data-dragon-id="c">CC</div></div><div data-dragon-id="d">DD</div><div data-dragon-id="e" class="m">EE</div>',
   },
+  // role and aria-level over the tag (lower/paint/role.ts headingOf): an h1 to h6 in each role it may take instead of heading (read as
+  // plain text) and in role heading, aria-level on an h2, role heading on a div with and without aria-level (2 by default), and a
+  // role list whose first token is not heading.
+  {
+    id: 'roles',
+    css: 'h1, h2, h3, h4, h5, h6 { font-size: 10px; margin: 0; font-weight: normal; }',
+    body: '<h1 data-dragon-id="a" role="note">AA</h1><h2 data-dragon-id="b" aria-level="4">BB</h2><div data-dragon-id="c" role="heading">CC</div><div data-dragon-id="d" role="heading" aria-level="5">DD</div><h3 data-dragon-id="e" role="group">EE</h3><h4 data-dragon-id="f" role="heading">FF</h4><h5 data-dragon-id="g" role="generic">GG</h5><h6 data-dragon-id="h" role="paragraph">HH</h6><h1 data-dragon-id="i" role="article">II</h1><div data-dragon-id="j" role="note heading">JJ</div>',
+  },
   {
     id: 'hidden',
     css: '.h { visibility: hidden; } .v { visibility: visible; }',
@@ -112,57 +120,86 @@ describe('per-line accessibility (P6b): native lines against Chrome InlineTextBo
   }, 120_000);
 });
 
+describe('headings Dragon cannot prove (P6b)', () => {
+  it('refuses another role on h1 to h6, a role list with heading after a role it does not know, and aria-level outside 1 to 6', () => {
+    const refused = (body: string): string[] => {
+      const project = createProjectWith(
+        { projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } },
+        { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: 'darwin-arm64', rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport },
+      );
+      return project.compile(fixtureToInput('a11y-refused', axHtml({ id: 'refused', css: '', body }))).diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE').map((x) => x.message);
+    };
+    expect(refused('<h1 data-dragon-id="a" role="button">AA</h1>')).toEqual(['a: role "button" on <h1> is not proven against Chrome\'s accessibility tree (a heading takes heading or one of note, group, generic, paragraph, article)']);
+    expect(refused('<h2 data-dragon-id="a" role="none">AA</h2>')).toHaveLength(1);
+    // An unnamed region on an h4 stays a heading in Chrome.
+    expect(refused('<h4 data-dragon-id="a" role="region">AA</h4>')).toHaveLength(1);
+    expect(refused('<div data-dragon-id="a" role="foo heading">AA</div>')).toHaveLength(1);
+    expect(refused('<h3 data-dragon-id="a" aria-level="7">AA</h3>')).toEqual(['a: aria-level "7" on the heading <h3> is not a level 1 to 6']);
+    expect(refused('<div data-dragon-id="a" role="heading" aria-level="x">AA</div>')).toHaveLength(1);
+    // Not headings, or proven: no refusal.
+    expect(refused('<div data-dragon-id="a" role="button" aria-level="9">AA</div><h4 data-dragon-id="b" role="note" aria-level="9">BB</h4>')).toEqual([]);
+  });
+});
+
 describe('the device-lines accessibility check (P6b)', () => {
   const frame = { x: 10, y: 20, width: 40, height: 10 };
   const edges = { left: 20, top: 40, right: 100, bottom: 60 };
-  type Accessible = { name: string; frame: typeof frame } | null;
+  type Accessible = { name: string; heading: number; frame: typeof frame } | null;
+  const el = (name: string, heading = 0, f = frame): Accessible => ({ name, heading, frame: f });
   const line = (start: number, end: number, accessible: Accessible) => ({ frame, deviceEdges: edges, baseline: 8, start, end, accessible });
   const node = (id: string, lines: ReturnType<typeof line>[], accessible: Accessible = null) => ({ id, parent: 'a', kind: 'text', native: 'DragonTextView', frame, deviceEdges: edges, applied: {}, lines, accessible });
-  const dump = (...texts: ReturnType<typeof node>[]): NativeDump =>
-    ({ case: { dpr: 2 }, nodes: [...texts, { id: 'a', parent: null, kind: 'element', native: 'DragonBoxView', frame, deviceEdges: edges, applied: {}, lines: [line(0, 0, null)], accessible: null }] }) as unknown as NativeDump;
+  const dump = (order: readonly string[], ...texts: ReturnType<typeof node>[]): NativeDump =>
+    ({ case: { id: 'ax', dpr: 2 }, nodes: [...texts, { id: 'a', parent: null, kind: 'element', native: 'DragonBoxView', frame, deviceEdges: edges, applied: {}, lines: [line(0, 0, null)], accessible: null }], accessibleOrder: order }) as unknown as NativeDump;
   const rect = [0, 0, 0, 0] as const;
-  // a:text0 wraps with a hanging space, b:text0 ends its first line at a <br> (no space in the name), c:text0 is truncated (whole),
-  // and h:text0 is hidden (no lines in the model).
+  // a:text0 wraps with a hanging space; b:text0, under an h2, ends its first line at a <br> (no space in the name); c:text0 is
+  // truncated (whole); h:text0 is hidden (no lines in the model).
   const model: AxLine[] = [
     { leaf: 'a:text0', name: 'AAAA ', rect, heading: 0 },
     { leaf: 'a:text0', name: 'BB', rect, heading: 0 },
-    { leaf: 'b:text0', name: 'CC', rect, heading: 0 },
-    { leaf: 'b:text0', name: 'DD', rect, heading: 0 },
+    { leaf: 'b:text0', name: 'CC', rect, heading: 2 },
+    { leaf: 'b:text0', name: 'DD', rect, heading: 2 },
     { leaf: 'c:text0', name: 'EEEE EEEE', rect, heading: 0, whole: true },
   ];
-  // A device frame may be off the line's by up to a device px (x by a quarter of a css px at DPR 2, here).
-  const good = (off = 0.25): NativeDump =>
+  const ORDER = ['a:text0', 'b:text0', 'c:text0'];
+  // A device frame may be off the line's by up to a device px (x by a quarter of a css px at DPR 2, here). The reading order may
+  // hold other views (a control, a web view), which the check passes over.
+  const good = (off = 0.25, order: readonly string[] = ['a', ...ORDER, 'f::foreign']): NativeDump =>
     dump(
-      node('a:text0', [line(0, 5, { name: 'AAAA ', frame }), line(5, 7, { name: 'BB', frame: { ...frame, x: 10 + off } })]),
-      node('b:text0', [line(0, 3, { name: 'CC', frame }), line(3, 5, { name: 'DD', frame })]),
-      node('c:text0', [line(0, 9, null), line(0, 4, null)], { name: 'EEEE EEEE', frame }),
+      order,
+      node('a:text0', [line(0, 5, el('AAAA ')), line(5, 7, el('BB', 0, { ...frame, x: 10 + off }))]),
+      node('b:text0', [line(0, 3, el('CC', 1)), line(3, 5, el('DD', 1))]),
+      node('c:text0', [line(0, 9, null), line(0, 4, null)], el('EEEE EEEE')),
       node('h:text0', [line(0, 2, null)]),
     );
-  it("passes lines named as the model names them (a hanging space kept, none before a <br>), a whole leaf's view, hidden text with no element", () => {
+  it("passes lines named and marked as the model's (a hanging space kept, none before a <br>), a whole leaf's view, hidden text with no element, DOM order", () => {
     expect(checkAccessibleLines(good(), model)).toEqual({ compared: 6, problems: [] });
   });
   it('writes what it passes for a made-up device dump (exposedAsModelled)', () => {
-    const bare = dump(...good().nodes.filter((n) => n.kind === 'text').map((n) => node(n.id, n.lines.map((l) => line(l.start ?? 0, l.end ?? 0, null)))));
-    expect(exposedAsModelled(bare.nodes, model)).toEqual(good(0).nodes);
+    const bare = dump([], ...good().nodes.filter((n) => n.kind === 'text').map((n) => node(n.id, n.lines.map((l) => line(l.start ?? 0, l.end ?? 0, null)))));
+    expect(exposedAsModelled(bare, model)).toEqual(good(0, ORDER));
   });
-  it("catches a dropped line, a wrong name, a frame off by more than a device px, a whole leaf's line element or missing view element, and exposed hidden text", () => {
+  it("catches a dropped line, a wrong name or heading mark, a frame off by more than a device px, a whole leaf's line element or missing view element, exposed hidden text, and another reading order", () => {
     const r = checkAccessibleLines(
       dump(
-        node('a:text0', [line(0, 5, null), line(5, 7, { name: 'BB', frame: { ...frame, width: 41 } })]),
-        node('b:text0', [line(0, 3, { name: 'CC ', frame }), line(3, 5, { name: 'DD', frame })], { name: 'CC DD', frame }),
-        node('c:text0', [line(0, 9, null), line(0, 4, { name: 'EEEE', frame })]),
-        node('h:text0', [line(0, 2, { name: 'HH', frame })]),
+        ['b:text0', 'a:text0', 'c:text0'],
+        node('a:text0', [line(0, 5, null), line(5, 7, el('BB', 1, { ...frame, width: 41 }))]),
+        node('b:text0', [line(0, 3, el('CC ', 1)), line(3, 5, el('DD'))], el('CC DD')),
+        node('c:text0', [line(0, 9, null), line(0, 4, el('EEEE'))]),
+        node('h:text0', [line(0, 2, el('HH'))]),
       ),
       model,
     );
     expect(r.problems.map((p) => p.detail)).toEqual([
       'a:text0:line0: no accessibility element exposes the line',
+      'a:text0:line1: read as a heading, but the model has it under none',
       'a:text0:line1: accessibility frame edge delta [0,0,1,0] css px exceeds 1 device px',
       'b:text0: the view is an accessibility element itself, named "CC DD"',
       'b:text0:line0: named "CC ", expected "CC"',
+      'b:text0:line1: not read as a heading, but the model has it under an h2',
       'c:text0:line1: the leaf is exposed whole, but an element exposes the line',
       'c:text0: the leaf is exposed whole, but the view is not an accessibility element',
       "h:text0:line0: the model exposes none of this text (hidden, or a marker's), but an element exposes the line",
+      'reading order: the screen reader reads ["b:text0","a:text0","c:text0"], the model (DOM order) ["a:text0","b:text0","c:text0"]',
     ]);
   });
 });

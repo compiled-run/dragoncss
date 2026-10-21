@@ -18,7 +18,8 @@ import type { DeviceRecord } from '../src/device-run.ts';
 import { ENV_LANE, evaluateStates, scriptCases, STATE_LANE } from '../src/device-lanes.ts';
 import { referenceDump } from '../src/native-compare.ts';
 import type { NativeDump } from '../src/native-dump.ts';
-import { BACKEND_OF, engineBoxes, expectedEngine, hostSources, nativeCompile } from '../src/native-host.ts';
+import { BACKEND_OF, engineBoxes, expectedEngine, hostSources, nativeCompile, referenceMeasurer } from '../src/native-host.ts';
+import { axLinesOfProgram, exposedAsModelled } from '../src/ax-lines.ts';
 import { resizeEmits, resizePrefixes } from '../src/resize-scripts.ts';
 import { captureResize, rendering as resizeRendering, resizeCases, scriptPoints } from '../src/resize-capture.ts';
 import { FIXTURES } from '../src/fixtures.ts';
@@ -43,7 +44,8 @@ function fakeDump(id: string, fixture: string, compilerDigest: string, program: 
   const m = expectedEngine();
   const ref = referenceDump({ platform: 'ios', caseId: id, fixture, dpr: DPR, direction: 'ltr', compilerDigest, input: programInput(program, viewport, DPR), engine: engineBoxes(program, viewport, DPR) });
   const e = expectedDump(program, id, viewport, DPR, m);
-  return {
+  // The accessibility elements and reading order a device gives are the model's (P6b, ax-lines.ts exposedAsModelled).
+  return exposedAsModelled({
     ...ref,
     lane: 'ios-sim',
     case: { ...ref.case, expectedDigest: expectedDigest(e) },
@@ -53,7 +55,7 @@ function fakeDump(id: string, fixture: string, compilerDigest: string, program: 
     pixels: { capture: 'drawHierarchy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * DPR), height: Math.ceil(viewport.height * DPR), sha256: 'fake', samples: [] },
     timing: { settleMs: 0, dumpMs: 0 },
     environment,
-  };
+  }, axLinesOfProgram(program, viewport, DPR, referenceMeasurer));
 }
 
 describe('the resize prefix scripts in the host apps', () => {

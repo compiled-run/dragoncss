@@ -1,4 +1,4 @@
-// dragon.native-dump/3 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
+// dragon.native-dump/4 (docs/research/native-strategy.md 3.2; notes/T002-device-lanes.md 1.2): one data description of every
 // field, its type, whether it is required and when it may be null. The TS types are inferred from it and the validator walks it,
 // so neither can drift from it; P4 emits the Swift and Kotlin encoders from the same description.
 
@@ -32,6 +32,8 @@ const obj = <const Fs extends readonly Field[]>(fields: Fs): { readonly kind: 'o
 const arr = <const X extends FieldType>(items: X, length: number | null = null): { readonly kind: 'array'; readonly items: X; readonly length: number | null } => ({ kind: 'array', items, length });
 
 const FRAME = obj([field('x', num, 'css px, absolute to the fixture root'), field('y', num, 'css px'), field('width', num, 'css px'), field('height', num, 'css px')]);
+/** 1 when the platform marks an accessibility element a heading (iOS the header trait, Android AccessibilityNodeInfo.isHeading), else 0. */
+const HEADING_MARK = { kind: 'integer', min: 0, max: 1 } as const;
 const DEVICE_EDGES = obj([field('left', int, 'device px'), field('top', int, 'device px'), field('right', int, 'device px'), field('bottom', int, 'device px')]);
 
 /** The lanes that write a dump: the two device lanes, and the TS engine plus snapRect reference (no text engine, no pixels). */
@@ -39,10 +41,11 @@ export const DUMP_LANES = ['ios-sim', 'android-emu', 'ts-reference'] as const;
 export const REFERENCE_LANE = 'ts-reference';
 
 /**
- * The schema id. /2 (MQ-R1, notes/T067 R6) adds the environment record; /3 (MQ-R2, R9) adds the device's readings to it. Every
- * earlier field is unchanged.
+ * The schema id. /2 (MQ-R1, notes/T067 R6) adds the environment record; /3 (MQ-R2, R9) adds the device's readings to it; /4 (P6b)
+ * adds the accessibility elements: each line's and each view's own, and the order a screen reader reads the views in. Every earlier
+ * field is unchanged.
  */
-export const NATIVE_DUMP_SCHEMA_ID = 'dragon.native-dump/3';
+export const NATIVE_DUMP_SCHEMA_ID = 'dragon.native-dump/4';
 
 export const NATIVE_DUMP_SCHEMA = obj([
   field('schema', { kind: 'const', value: NATIVE_DUMP_SCHEMA_ID }, 'the schema id'),
@@ -82,14 +85,17 @@ export const NATIVE_DUMP_SCHEMA = obj([
       orNull('end', { kind: 'integer', min: 0, max: null }, 'text offset after the line', 'reference-lane'),
       orNull('accessible', obj([
         field('name', str, 'the name a screen reader reads, from the live accessibility element (iOS) or node info (Android)'),
+        field('heading', HEADING_MARK, 'whether it is read as a heading'),
         field('frame', FRAME, 'its frame, css px, absolute, from the live element or node info'),
       ]), "the line's accessibility element (P6b); null for an inline box fragment, a line no element exposes (a hidden view's, a whole leaf's), and in a ts-reference dump", 'always'),
     ])), 'one entry per line box of a text node, in order; empty for other nodes'),
     orNull('accessible', obj([
       field('name', str, 'the name a screen reader reads, from the live view (iOS accessibilityLabel) or its node info (Android contentDescription)'),
+      field('heading', HEADING_MARK, 'whether it is read as a heading'),
       field('frame', FRAME, 'its frame, css px, absolute, from the live accessibilityFrame or node info'),
     ]), 'the view as one accessibility element of its own (P6b: a leaf text-overflow truncates is exposed whole; device-lines checks text views only); null for a view that is not one, a hidden view, and in a ts-reference dump', 'always'),
   ])), 'every laid-out node'),
+  orNull('accessibleOrder', arr(id), 'the node ids of the views a screen reader reads, in the order it reads them, from the live tree: iOS the root view\'s accessibilityElements, Android the accessibilityTraversalAfter chain (P6b)', 'reference-lane'),
   orNull('pixels', obj([
     field('capture', { kind: 'enum', values: ['drawHierarchy', 'PixelCopy'] }, 'the compositor capture; layer.render and View.draw are banned'),
     field('colorSpace', { kind: 'const', value: 'sRGB' }, 'the declared colour space'),

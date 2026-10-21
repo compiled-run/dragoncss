@@ -1416,22 +1416,22 @@ export function relabelledReferenceDump(target: NativeTarget, c: { readonly id: 
   const e = expectedDump(program, c.id, viewport, dpr, expectedEngine());
   const applied = new Map(e.nodes.map((x) => [x.id, x.applied]));
   const sha = createHash('sha256').update(c.id).digest('hex');
-  return {
+  // The accessibility elements and reading order are the model's (ax-lines.ts exposedAsModelled).
+  return exposedAsModelled({
     ...ref,
     lane: target === 'ios' ? 'ios-sim' : 'android-emu',
     case: { ...ref.case, expectedDigest: expectedDigest(e) },
     device: { platform: target, os: 'host encoder test', model: 'none', abi: 'host', scale: dpr, toolchain: 'host', renderer: 'none' },
-    // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0. The
-    // accessibility elements are the model's (ax-lines.ts exposedAsModelled).
-    nodes: exposedAsModelled(ref.nodes.map((x) => ({
+    // A text line's offsets are made up; an element line (an inline box fragment) has no own text, so a device writes 0 and 0.
+    nodes: ref.nodes.map((x) => ({
       ...x,
       native: e.nodes.find((y) => y.id === x.id)?.native ?? x.native,
       applied: applied.get(x.id) ?? {},
       lines: x.lines.map((l, j) => ({ ...l, baseline: l.frame.height * 0.8, start: x.kind === 'text' ? 3 * j : 0, end: x.kind === 'text' ? 3 * j + 2 : 0 })),
-    })), axLinesOfProgram(program, viewport, dpr, referenceMeasurer)),
+    })),
     pixels: { capture: target === 'ios' ? 'drawHierarchy' : 'PixelCopy', colorSpace: 'sRGB', width: Math.ceil(viewport.width * dpr), height: Math.ceil(viewport.height * dpr), sha256: sha, samples: [{ x: 1, y: 2, rgba: [255, 255, 255, 255], rule: `interior:${ref.nodes[0]?.id ?? 'root'}` }] },
     timing: { settleMs: 1.25, dumpMs: 0.5 },
-  } as NativeDump;
+  } as NativeDump, axLinesOfProgram(program, viewport, dpr, referenceMeasurer));
 }
 
 /** Compiles the encoder with a program that builds the dumps by typed constructors and prints each as one JSON line; returns the lines. */

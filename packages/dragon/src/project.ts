@@ -2,6 +2,7 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
+import { headingOf } from './lower/paint/role.ts';
 import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
@@ -392,6 +393,18 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
     if (n.kind === 'element') {
       if (!SUPPORTED_TAGS.has(n.tag)) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
+      }
+      // P6b: a heading's role and aria-level as Chrome reads them (lower/paint/role.ts headingOf); one Dragon cannot prove is refused.
+      const heading = headingOf(n.tag, (name) => {
+        const a = n.attributes.find((x) => x.name === name);
+        // A value that differs by state is bound at run time (null); a state with no value leaves the attribute absent.
+        const values = new Set((a?.value ?? []).map((c) => c.value));
+        if (values.size > 1) return null;
+        return [...values][0] ?? undefined;
+      });
+      if ('refusal' in heading) {
+        const at = n.attributes.find((x) => x.name === 'role' || x.name === 'aria-level');
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: at?.origin ?? n.origin, message: `${n.id}: ${heading.refusal}`, manual: 'Use h1 to h6 for a heading, with aria-level 1 to 6 if any; give an h1 to h6 a role only among note, group, generic, paragraph and article.' }));
       }
       for (const a of n.attributes) {
         const refusal = attributeRefusal(n.tag, a.name);

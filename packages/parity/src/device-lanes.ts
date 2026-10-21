@@ -190,10 +190,15 @@ export function evaluateCase(target: NativeTarget, n: CheckedCase, dpr: number, 
   for (const p of d.nodes.problems) fail('device-frames', 'frame-engine', p, idOf(p));
   for (const p of a.lines.problems) fail('device-lines', 'line-chrome', p, idOf(p));
   for (const p of d.lines.problems) fail('device-lines', 'line-engine', p, idOf(p));
-  // P6b: each text line's accessibility element, or a whole leaf's view, named as the model's lines and framed on the line or view
-  // (ax-lines.ts checkAccessibleLines). The lines it checks are the ones (d) compared, so it adds none to the count.
-  const ax = checkAccessibleLines(dump, axLinesOfProgram(programOf(n, target), env.viewport, dpr, referenceMeasurer));
-  for (const p of ax.problems) fail('device-lines', 'line-accessible', p.detail, p.id);
+  // P6b: each text line's accessibility element, or a whole leaf's view, named and marked as the model's lines and framed on the line
+  // or view, and the reading order (ax-lines.ts checkAccessibleLines). The lines it checks are the ones (d) compared, so it adds none
+  // to the count. A model the engine cannot lay out fails the lane rather than the run.
+  try {
+    const ax = checkAccessibleLines(dump, axLinesOfProgram(programOf(n, target), env.viewport, dpr, referenceMeasurer));
+    for (const p of ax.problems) fail('device-lines', 'line-accessible', p.detail, p.id);
+  } catch (e) {
+    fail('device-lines', 'line-accessible', `the accessibility model could not be built: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   // (b), the native classes and the expected digest.
   const expected: ExpectedApplied = new Map(ref.expected.nodes.map((x) => [x.id, x.applied]));
