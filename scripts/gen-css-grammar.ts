@@ -23,6 +23,11 @@ import { SCROLL_SNAP_LONGHANDS, SCROLL_SNAP_SHORTHANDS } from '../packages/drago
 import { CONTAINMENT_LONGHANDS, CONTAINMENT_SHORTHANDS } from '../packages/dragon/src/css/properties/containment.ts';
 import { CONTAINER_QUERY_LONGHANDS, CONTAINER_QUERY_SHORTHANDS } from '../packages/dragon/src/css/properties/container-query.ts';
 import { MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS } from '../packages/dragon/src/css/properties/multicol.ts';
+import { IMAGE_RENDERING_LONGHANDS } from '../packages/dragon/src/css/properties/image-rendering.ts';
+import { ANCHOR_POSITION_LONGHANDS, ANCHOR_POSITION_SHORTHANDS } from '../packages/dragon/src/css/properties/anchor-position.ts';
+import { SVG_EXTRA_LONGHANDS } from '../packages/dragon/src/css/properties/svg-extra.ts';
+import { VIEW_TRANSITION_LONGHANDS } from '../packages/dragon/src/css/properties/view-transition.ts';
+import { ANIMATION_EXTRA_LONGHANDS } from '../packages/dragon/src/css/properties/animation-extra.ts';
 
 type WebrefEntry = {
   name: string;
@@ -43,6 +48,12 @@ const INITIAL_ONLY_PROPERTIES = [
   ...OVERSCROLL_LONGHANDS, ...OVERSCROLL_SHORTHANDS,
   ...CONTAINMENT_LONGHANDS, ...CONTAINMENT_SHORTHANDS,
 ];
+
+/**
+ * The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families, accepted at their initial values
+ * alone, after color-scheme.
+ */
+const INITIAL_ONLY_TAIL = [...IMAGE_RENDERING_LONGHANDS, ...ANCHOR_POSITION_LONGHANDS, ...ANCHOR_POSITION_SHORTHANDS, ...SVG_EXTRA_LONGHANDS, ...VIEW_TRANSITION_LONGHANDS, ...ANIMATION_EXTRA_LONGHANDS];
 
 /** Longhands and shorthands the milestone-1 compiler reads. Support status lives in the profiles, not here. */
 const SUBSET = [
@@ -183,6 +194,9 @@ const SUBSET = [
   'backdrop-filter', 'mix-blend-mode',
   // unicode-bidi (css-writing-modes-4 §2.2), after color-scheme, as LONGHANDS registers it.
   'unicode-bidi',
+  // image-rendering, the anchor positioning longhands and position-try, the svg-extra, view-transition and animation-extra
+  // longhands (css/properties/initial-only.ts), after color-scheme, as LONGHANDS registers them.
+  ...INITIAL_ONLY_TAIL,
 ] as const;
 
 /**
@@ -274,6 +288,10 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // misses, and container-type takes anchored, which it lacks, so the grammar takes any value and the parser decides
   // (properties/container-query.ts). Pinned against Chrome by packages/parity/test/container-query-parse.test.ts.
   ...Object.fromEntries([...CONTAINER_QUERY_LONGHANDS, ...CONTAINER_QUERY_SHORTHANDS].map((p) => [p, '<any-value>'])),
+  // The image-rendering, anchor-position, svg-extra, view-transition and animation-extra families, the same way
+  // (analysis/scroll-containment.ts). webref has no color-rendering or buffered-rendering, which Chrome 145
+  // parses. Pinned against Chrome by packages/parity/test/render-anchor-parse.test.ts.
+  ...Object.fromEntries(INITIAL_ONLY_TAIL.map((p) => [p, '<any-value>'])),
   // Chrome 145 parses appearance as one keyword, and keeps two css-ui-4 does not list (base-select, slider-vertical). Dragon accepts
   // none, auto and the compat keywords, refuses those two and drops the rest (properties/appearance.ts), so the grammar takes any
   // value and the parser decides. Pinned against Chrome by packages/parity/test/appearance-parse.test.ts.
@@ -436,6 +454,13 @@ const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string
   'alignment-baseline': { initial: 'auto', inherited: 'no' },
   'stop-color': { initial: 'black', inherited: 'no' },
   'stop-opacity': { initial: '1', inherited: 'no' },
+  // Chrome 145 initial values where webref's differ or are missing (css_properties.json5, read back as computed values):
+  // position-anchor none (webref normal, which Chrome drops), position-visibility anchors-visible (webref anchor-visible, which
+  // Chrome drops), and color-rendering and buffered-rendering, which webref lacks.
+  'position-anchor': { initial: 'none', inherited: 'no' },
+  'position-visibility': { initial: 'anchors-visible', inherited: 'no' },
+  'color-rendering': { initial: 'auto', inherited: 'yes' },
+  'buffered-rendering': { initial: 'auto', inherited: 'no' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

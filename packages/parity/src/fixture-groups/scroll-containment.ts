@@ -11,6 +11,9 @@
 // container and a hidden content-visibility, which no target implements yet (the overscroll values are all supported:
 // fixture-groups/overscroll.ts; container types are the container-query group's). An active snap pair is refused on iOS and Android alone, which a reject case cannot express (it needs
 // every output blocked), so packages/dragon/test/scroll-containment.test.ts covers it.
+// render-anchor-initial sets image-rendering, the anchor positioning longhands and the svg-extra longhands at their initial values on boxes,
+// an absolutely positioned box and a flex row, with rejects of a pixelated image rendering, an anchor name and a crisp-edges shape
+// rendering.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -22,4 +25,8 @@ export const SCROLL_CONTAINMENT: readonly FixtureSpec[] = [
   both('scroll-snap-values'),
   reject('reject-contain-content-visibility', 'DRAGON_UNSUPPORTED_VALUE', 'hidden', 'content-visibility: hidden'),
   reject('reject-contain-size-flex', 'DRAGON_UNSUPPORTED_VALUE', 'strict', 'contain: strict on <div> f is unsupported'),
+  layout('render-anchor-initial', ['ltr', 'rtl']),
+  reject('reject-image-rendering', 'DRAGON_UNSUPPORTED_VALUE', 'pixelated', 'image-rendering: pixelated'),
+  reject('reject-anchor-name', 'DRAGON_UNSUPPORTED_VALUE', '--card', 'anchor-name: --card'),
+  reject('reject-shape-rendering', 'DRAGON_UNSUPPORTED_VALUE', 'crispEdges', 'shape-rendering: crispEdges'),
 ];

@@ -35,10 +35,11 @@ const errors = (c: ReturnType<typeof compile>): Diagnostic[] => c.diagnostics.fi
 const VALUES = ['normal', 'embed', 'isolate', 'bidi-override', 'isolate-override', 'plaintext'] as const;
 
 describe('unicode-bidi: registry and parse', () => {
-  it('is the last longhand, not inherited, with a layout aspect, initial normal, discrete in animations', () => {
-    expect(LONGHANDS[LONGHANDS.length - 1]).toBe('unicode-bidi');
-    // The multicol, speak, fragmentation and FX families landed after color-scheme first, so FX's mix-blend-mode precedes it.
-    expect(LONGHANDS[LONGHANDS.length - 2]).toBe('mix-blend-mode');
+  it('follows mix-blend-mode in the registry, not inherited, with a layout aspect, initial normal, discrete in animations', () => {
+    // The multicol, speak, fragmentation and FX families landed after color-scheme first, so FX's mix-blend-mode precedes it, and
+    // the image-rendering family (batch 4c, #523) follows it.
+    expect(LONGHANDS[LONGHANDS.indexOf('mix-blend-mode') + 1]).toBe('unicode-bidi');
+    expect(LONGHANDS[LONGHANDS.indexOf('unicode-bidi') + 1]).toBe('image-rendering');
     expect(INHERITED.has('unicode-bidi')).toBe(false);
     expect(PROPERTY_ASPECTS['unicode-bidi']).toEqual({ layout: true, paint: false });
     expect(grammar['unicode-bidi']?.initial).toBe('normal');

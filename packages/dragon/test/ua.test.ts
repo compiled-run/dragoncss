@@ -40,7 +40,8 @@ describe('captured Chrome defaults and the webref grammar', () => {
 describe('UA versus initial origin, per tag and longhand', () => {
   it('pins the longhands a Chrome UA rule sets', () => {
     expect(userAgentLonghands).toEqual({
-      html: [],
+      // Chrome 145 html.css :root { view-transition-name: root }.
+      html: ['view-transition-name'],
       body: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
       div: ['display'],
       p: ['display', 'margin-bottom', 'margin-top'],
@@ -96,6 +97,11 @@ describe('UA versus initial origin, per tag and longhand', () => {
       }
     });
   }
+  it('the root keeps its UA view-transition-name: root, which the capture holds computed (no declared row for the root)', () => {
+    expect(root.props.get('view-transition-name')).toMatchObject({ value: { kind: 'keyword', value: 'root' }, origin: 'user-agent' });
+    const b = body !== undefined && body.kind === 'element' ? body : null;
+    expect(b?.props.get('view-transition-name')).toMatchObject({ value: { kind: 'keyword', value: 'none' }, origin: 'initial' });
+  });
   it('the root display is blockified (css-display-3 §2.7), with initial origin', () => {
     expect(root.props.get('display')).toMatchObject({ value: { kind: 'keyword', value: 'block' }, origin: 'initial' });
   });
