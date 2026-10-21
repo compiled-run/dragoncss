@@ -439,7 +439,7 @@ export function animationFeatures(compiled: object): readonly string[] {
 export type { BandAnalysis, BandCase, BandRuntimeFaults } from './lower/band-program.ts';
 export { BAND_KEY, BAND_PROGRAM_VERSION, BAND_STATE, bandAtom, bandEnvironmentOf, bandOf, bandStateIndex, bandStateProgram, bandTableOf, BandProgramError, dependsOnViewport, ENV_INSTANCE, NO_BAND_RUNTIME_FAULTS, withBand } from './lower/band-program.ts';
 export type { InternalBands } from './project.ts';
-export { CONTAINER_AT_RULE_FEATURE, MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey } from './project.ts';
+export { CONTAINER_AT_RULE_FEATURE, MEDIA_AT_RULE_FEATURE, MEDIA_CONTEXT, mediaFeatureKey, VIDEO_CONTEXT, VIDEO_STREAM_FEATURE } from './project.ts';
 // MQ-R2 (T067 R9): the device readings the device features answer from.
 export type { MediaDevice } from './media/index.ts';
 export { DESKTOP_DEVICE, TOUCH_DEVICE } from './media/index.ts';

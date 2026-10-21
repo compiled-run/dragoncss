@@ -3,6 +3,7 @@
 // a src, or with preload none, never loads its metadata without playback and keeps the default object size (300x150).
 // Chrome paints the stream's first frame; the platform player the lowering mounts (lower/paint/foreign-view.ts) shows it too, which
 // the device lanes prove by opening the stream and sampling the frame against Chrome's (MEDIA-EL slice 2, replaced-video-frame).
+// A native target mounts that player only where its profile carries the device-proven row (project.ts gateVideoStreams).
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import { diagnostic } from '../diagnostics/catalogue.ts';
 import { parseDataUrl } from '../images/manifest.ts';
@@ -15,6 +16,11 @@ export type CompiledVideos = {
   readonly naturals: ReadonlyMap<string, NaturalSize>;
   /** The MP4 bytes of each such src, which the native player plays (lower/paint/video-view.ts). */
   readonly bytes: ReadonlyMap<string, Uint8Array>;
+  /**
+   * Each video element with a stream Chrome loads, once per element and src, for the native gate (project.ts gateVideoStreams):
+   * untagged as Mp4Facts says.
+   */
+  readonly streams: readonly { readonly address: string; readonly origin: Origin; readonly untagged: string | null }[];
 };
 
 /**
@@ -34,7 +40,7 @@ const essence = (type: string | null): string | null => (type === null ? null : 
 const shown = (src: string): string => (src.length > 64 ? `${src.slice(0, 48)}…` : src);
 
 /** Why a video src cannot compile, or its natural size and bytes. */
-export function readVideoSource(src: string): { readonly ok: true; readonly natural: NaturalSize; readonly bytes: Uint8Array } | { readonly ok: false; readonly reason: string; readonly manual: string } {
+export function readVideoSource(src: string): { readonly ok: true; readonly natural: NaturalSize; readonly bytes: Uint8Array; readonly untagged: string | null } | { readonly ok: false; readonly reason: string; readonly manual: string } {
   const manual = 'Give the video a data:video/mp4;base64 src of an H.264 MP4 (Baseline, Main or High, 8-bit 4:2:0, square pixels).';
   if (!/^\s*data:/i.test(src)) return { ok: false, reason: `its src ${shown(src)} is not a data: URL; Dragon reads every video at build time to size it as Chrome does from its stream`, manual };
   const d = parseDataUrl(src);
@@ -43,7 +49,7 @@ export function readVideoSource(src: string): { readonly ok: true; readonly natu
   if (essence(d.type) !== 'video/mp4') return { ok: false, reason: `its src is a data: URL of type ${d.type === null ? 'text/plain (none given)' : d.type}; Dragon reads video/mp4 only`, manual };
   const mp4 = parseMp4(d.bytes);
   if (!mp4.ok) return { ok: false, reason: `its src does not compile: ${mp4.reason}`, manual };
-  return { ok: true, natural: { width: mp4.facts.width, height: mp4.facts.height }, bytes: d.bytes };
+  return { ok: true, natural: { width: mp4.facts.width, height: mp4.facts.height }, bytes: d.bytes, untagged: mp4.facts.untagged };
 }
 
 function videoUses(roots: readonly ResolvedElement[]): ResolvedElement[] {
@@ -65,20 +71,23 @@ function srcOrigin(el: ResolvedElement): Origin {
 export function compileVideos(roots: readonly ResolvedElement[], diagnostics: Diagnostic[]): CompiledVideos {
   const naturals = new Map<string, NaturalSize>();
   const bytes = new Map<string, Uint8Array>();
+  const streams: CompiledVideos['streams'][number][] = [];
   const reported = new Set<string>();
   for (const el of videoUses(roots)) {
     if (!videoLoads(el)) continue;
     const src = el.element.attributes.get('src') as string;
     const read = readVideoSource(src);
+    const id = `${el.element.address}|${src}`;
+    const first = !reported.has(id);
+    reported.add(id);
     if (read.ok) {
       naturals.set(src, read.natural);
       bytes.set(src, read.bytes);
+      if (first) streams.push({ address: el.element.address, origin: srcOrigin(el), untagged: read.untagged });
       continue;
     }
-    const id = `${el.element.address}|${src}`;
-    if (reported.has(id)) continue;
-    reported.add(id);
+    if (!first) continue;
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: srcOrigin(el), message: `attribute src on ${el.element.address} is not supported: ${read.reason}`, manual: read.manual }));
   }
-  return { naturals, bytes };
+  return { naturals, bytes, streams };
 }
