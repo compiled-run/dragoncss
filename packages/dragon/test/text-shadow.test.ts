@@ -317,6 +317,12 @@ describe('text-shadow', () => {
     for (const w of ['isolation: isolate', 'overflow: hidden', 'background-color: rgb(250, 230, 200)', 'border-top: 1px solid red', 'clip-path: inset(0)']) {
       expect(errorsIn(`${t} .w { ${w}; }`, pair), w).toEqual(NATIVE_REFUSED);
     }
+    // A scroll container around the later text moves its layer against the earlier text; one that only clips does not.
+    const scroller = (r: SourceRef) => [el(r, 'u', 'div', ['u'], [text(r, 'x', 'XX')]), el(r, 'o', 'div', ['o'], [el(r, 't', 'div', ['t'], [text(r, 'y', 'XX')]), el(r, 'f', 'div', ['f'])])];
+    const sc = (overflow: string): string => `${t} .o { overflow: ${overflow}; height: 60px; margin-top: -20px; } .f { height: 300px; }`;
+    expect(errorsIn(sc('auto'), scroller)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(sc('scroll'), scroller)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(sc('hidden'), scroller)).toEqual([]);
     for (const u of ['-webkit-text-stroke: 1px black', 'font-variant-caps: small-caps']) {
       expect(errorsIn(`${t} .u { ${u}; }`, pair).filter((e) => e.startsWith('ios') || e.startsWith('android')), u).toEqual(expect.arrayContaining(NATIVE_REFUSED));
       const msg = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${t} .u { ${u}; }`, pair)).diagnostics.find((d) => d.target === 'ios' && d.message.startsWith('text-shadow'));

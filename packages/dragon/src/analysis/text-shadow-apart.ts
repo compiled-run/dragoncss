@@ -190,7 +190,7 @@ export class MeetCheck {
    * Why the device cannot composite t and u (composes), or null: GENERIC for the rule refusal() states (paint order, opaque glyphs,
    * on their lines, no list marker), or what on the earlier text's path below their common ancestor the layer does not model: a
    * clip (its shadows are cut there, and a scroll moves them) or a box's own paint (the layer's backdrop is the later text's
-   * ancestors' fills alone).
+   * ancestors' fills alone); or a scroll container on the later text's path, which moves the layer against the earlier text.
    */
   compositeRefusal(t: InkText, u: InkText): string | null {
     const [first, second] = t.order < u.order ? [t, u] : [u, t];
@@ -204,9 +204,15 @@ export class MeetCheck {
     const common = ct.find((e) => inSecond.has(e));
     const below = (chain: readonly ResolvedElement[]): readonly ResolvedElement[] => (common === undefined ? chain : chain.slice(0, chain.indexOf(common)));
     if ([...below(ct), ...below(cu)].some(marked)) return GENERIC;
-    for (const el of this.below(first, second)[0]) {
+    const [earlier, later] = this.below(first, second);
+    for (const el of earlier) {
       const why = clipsOrPaints(el);
       if (why !== null) return `${el.element.address}, holding text ${first.text.node.address}, ${why}`;
+    }
+    // A scroll container on the later text's path moves its layer, with the earlier text drawn into it, against that text.
+    for (const el of later) {
+      const scroll = (['overflow-x', 'overflow-y'] as const).map((p) => opt(el, p)).find((v) => v === 'auto' || v === 'scroll');
+      if (scroll !== undefined) return `${el.element.address}, holding text ${second.text.node.address}, scrolls it (overflow ${scroll}), which moves its shadow against text ${first.text.node.address} drawn into it`;
     }
     return null;
   }
