@@ -130,6 +130,12 @@ export type AspectRatioValue =
  * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
  * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
+/**
+ * css-multicol-1 §3: column-count (0 for auto) and column-width (auto or a px length), not both auto. The engine balances the
+ * columns (column-fill: balance) of a container that holds one inline formatting context, with the gap from columnGap.
+ */
+export type MulticolStyle = { readonly count: number; readonly width: Px | Auto };
+
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
 /**
  * CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4), and so does fixed, whose
@@ -195,6 +201,16 @@ export type AlignContent =
 export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
+/**
+ * css-text-4 §5.1 text-wrap-style of a block container, which Blink reads from the block's own style (inline_layout_algorithm.cc
+ * LineBreakStrategy): auto breaks greedily (stable is auto); balance and pretty run Blink's own line-breaking passes (inline.ts
+ * wrapStyleLines), whose penalties read the block's effective zoom (ScoreLineBreaker::SetupParameters). zoom is 1 in the compiler's
+ * input; the environment pass multiplies it by the block's effective zoom (the device pixel ratio times its zoom chain).
+ */
+export type TextWrapStyle =
+  | Auto
+  | { readonly kind: 'balance'; readonly zoom: number }
+  | { readonly kind: 'pretty'; readonly zoom: number };
 /**
  * css-text-3 §8.1 text-indent: <length-percentage>, negative allowed, on the first formatted line of a block container. A percentage
  * is of the line's available inline size, and of nothing (0) at min-content and max-content (Blink LineBreaker::ComputeTextIndent).
@@ -387,6 +403,9 @@ export type LayoutStyle = {
   readonly containSize: ContainSize;
   readonly containIntrinsicWidth: Px | NoneValue;
   readonly containIntrinsicHeight: Px | NoneValue;
+  readonly textWrapStyle: TextWrapStyle;
+  /** css-multicol-1 §3 on a block container: its columns; null when column-count and column-width are both auto. */
+  readonly multicol: MulticolStyle | null;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
