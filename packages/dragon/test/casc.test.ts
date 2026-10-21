@@ -169,6 +169,14 @@ describe('all', () => {
     expect(codes(compile('.a { all: initial initial; }').c)).toEqual(['DRAGON_CSS_INVALID_VALUE null']);
     expect(codes(compile('.a { all: var(--k); }').c)).toEqual(['DRAGON_UNSUPPORTED_VALUE null']);
   });
+  it('a longhand a later declaration of the same rule overrides needs no support, unless it is the more important one', () => {
+    const refused = (css: string): string[] => compile(css, { profiles: 'enforce' }).c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.startsWith('font-family: initial')).map((d) => String(d.target));
+    expect(refused('.a { font-family: initial; }').sort()).toEqual(['android', 'ios', 'web']);
+    expect(refused('.a { all: initial; font-family: Ahem; }')).toEqual([]);
+    expect(refused('.a { all: initial !important; font-family: Ahem !important; }')).toEqual([]);
+    expect(refused('.a { all: initial !important; font-family: Ahem; }').sort()).toEqual(['android', 'ios', 'web']);
+    expect(refused('.a { font-family: Ahem; } .a { all: initial; }').sort()).toEqual(['android', 'ios', 'web']);
+  });
 });
 
 describe('css-nesting-1', () => {

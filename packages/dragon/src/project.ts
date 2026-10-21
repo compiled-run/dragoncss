@@ -474,10 +474,13 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
     if (rule.selectors.every((s) => s.dropped)) continue;
     // MQ-a: a rule is checked only for the targets whose band it applies in.
     const ruleTargets = scope === null ? targets : targets.filter((t) => scope(rule).includes(t));
-    for (const d of rule.declarations) {
+    for (const [i, d] of rule.declarations.entries()) {
       if (seen.has(d)) continue;
       seen.add(d);
       for (const lh of d.longhands) {
+        // A later declaration of the same rule that sets the longhand with at least this importance wins wherever the rule
+        // matches (css-cascade-5 §6.1), so the value never applies: `all: initial; font-family: Ahem` needs no font-family: initial.
+        if (rule.declarations.slice(i + 1).some((o) => (o.important === true || d.important !== true) && o.longhands.some((x) => x.property === lh.property))) continue;
         const feature = featureOf(lh.property, lh.value, fonts);
         // checkFamilies reports an unmapped family.
         if (feature === 'font-family:<unmapped>') continue;
