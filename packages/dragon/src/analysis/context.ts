@@ -9,6 +9,7 @@ import type { FamilyKeyContext } from '../css/values.ts';
 import { GENERATED_TAGS } from './elements.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { markerOf } from './resolve.ts';
+import { isReplacedTag } from './elements/replaced.ts';
 
 /** The direction facet (docs/api.md §10.1): a left-to-right proof never covers right-to-left. */
 export type DirectionFacet = 'ltr' | 'rtl';
@@ -41,6 +42,7 @@ export type BoxContext =
   | 'block'
   | 'inline'
   | 'atomic-inline'
+  | 'float'
   | 'flex-row'
   | 'flex-column'
   | 'display-none'
@@ -55,14 +57,16 @@ export type BoxContext =
 /**
  * The context an element's box takes part in: the root, or its parent's formatting context. inline: an inline box (CSS2 §9.2.2),
  * which takes part in its block container's inline formatting context (a flex or grid item is blockified, so never inline); atomic-inline: an inline-block, inline-flex or inline-grid box (CSS2
- * §9.2.4), which sits on a line of that context as one item and is sized by shrink-to-fit (§10.3.9).
+ * §9.2.4), which sits on a line of that context as one item and is sized by shrink-to-fit (§10.3.9); float: a float in block flow (CSS2
+ * §9.5, FLT), which leaves the flow, is sized by shrink-to-fit (§10.3.5) and is placed beside the floats before it.
  */
-export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'grid' | 'display-none' | 'inline' | 'atomic-inline';
+export type ItemBase = 'root' | 'block' | 'flex-row' | 'flex-column' | 'grid' | 'display-none' | 'inline' | 'atomic-inline' | 'float';
 
 /**
  * Row contexts. Item properties of a positioned box carry the positioning scheme: a relative box its parent's context and
  * direction (its containing block); an absolute box the context and direction of its parent (which gives its static position)
- * and the direction of its containing block. Paint properties carry only the element's direction.
+ * and the direction of its containing block; a fixed box likewise, its containing block the viewport (POSX-f); a sticky box as a
+ * relative one (POSX-s). Paint properties carry only the element's direction.
  */
 /**
  * GEN-a (notes/T151-gen-spec.md R2, R8): the context of content on a ::before or ::after box, which decides how the box it
@@ -83,7 +87,9 @@ export type FormattingContext =
   | PseudoContext
   | `${BoxContext}/${DirectionFacet}`
   | `relative-in-${ItemBase}/${DirectionFacet}`
+  | `sticky-in-${ItemBase}/${DirectionFacet}`
   | `absolute-in-${ItemBase}/${DirectionFacet}/cb-${DirectionFacet}`
+  | `fixed-in-${ItemBase}/${DirectionFacet}/cb-${DirectionFacet}`
   | `paint/${DirectionFacet}`
   | TextContext;
 
@@ -105,8 +111,21 @@ const isFlexContainer = (el: ResolvedElement): boolean => keyword(el, 'display')
 /** Whether an element is a grid container: display grid, or inline-grid (an atomic inline, css-grid-2 §5.1). */
 const isGridContainer = (el: ResolvedElement): boolean => keyword(el, 'display') === 'grid' || keyword(el, 'display') === 'inline-grid';
 
-/** Whether an element is an atomic inline: display inline-block, inline-flex or inline-grid after blockification (css-display-3 §2.7). */
-export const isAtomicInline = (el: ResolvedElement): boolean => keyword(el, 'display') === 'inline-block' || keyword(el, 'display') === 'inline-flex' || keyword(el, 'display') === 'inline-grid';
+/**
+ * Whether an element is an atomic inline: display inline-block, inline-flex or inline-grid after blockification (css-display-3
+ * §2.7), or a replaced element with display inline or inline-block (§2.4, RF-INL).
+ */
+export const isAtomicInline = (el: ResolvedElement): boolean => {
+  const d = keyword(el, 'display');
+  if (isReplacedTag(el.element.tag)) return d === 'inline' || d === 'inline-block';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
+
+/**
+ * Whether an element floats in block flow (CSS2 §9.5): float other than none (an absolutely positioned box's computes to none,
+ * blockify.ts) under a parent that is no flex or grid container, where float has no effect (css-flexbox-1 §4, css-grid-2 §6).
+ */
+export const isFloatInFlow = (el: ResolvedElement, parent: ResolvedElement): boolean => keyword(el, 'float') !== 'none' && keyword(el, 'float') !== '' && !isFlexContainer(parent) && !isGridContainer(parent);
 
 /**
  * Whether a layout longhand lays nothing out at this element's value, so its row is keyed as a paint property's: container-name only
@@ -133,11 +152,15 @@ export function formattingContext(property: Longhand, el: ResolvedElement, ances
     const single = keyword(el, 'flex-wrap') === 'nowrap';
     return `flex-${axisFacet(el)}-${single ? 'single' : 'multi'}-line/${own}`;
   }
-  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : keyword(el, 'display') === 'inline' ? 'inline' : isAtomicInline(el) ? 'atomic-inline' : isFlexContainer(parent) ? `flex-${axisFacet(parent)}` : isGridContainer(parent) ? 'grid' : 'block';
+  const base: ItemBase = parent === null ? 'root' : keyword(parent, 'display') === 'none' ? 'display-none' : isFloatInFlow(el, parent) ? 'float' : isAtomicInline(el) ? 'atomic-inline' : keyword(el, 'display') === 'inline' ? 'inline' : isFlexContainer(parent) ? `flex-${axisFacet(parent)}` : isGridContainer(parent) ? 'grid' : 'block';
   const dir = directionFacet(parent === null ? el : parent);
   const position = keyword(el, 'position');
   if (position === 'relative') return `relative-in-${base}/${dir}`;
+  // POSX-s: a sticky box stays in flow, offset inside its parent's content box like a relative one (css-position-3 §3.4).
+  if (position === 'sticky') return `sticky-in-${base}/${dir}`;
   if (position === 'absolute') return `absolute-in-${base}/${dir}/cb-${containingBlockDirection(el, ancestors)}`;
+  // POSX-f: a fixed box's containing block is the viewport (CSS2 §10.1 item 3), in the root's direction.
+  if (position === 'fixed') return `fixed-in-${base}/${dir}/cb-${directionFacet(ancestors.length === 0 ? el : (ancestors[0] as ResolvedElement))}`;
   return `${base}/${dir}`;
 }
 
@@ -176,16 +199,16 @@ export function textContext(el: ResolvedElement, parent: ResolvedElement | null)
   if (isGridContainer(el)) return `text-as-anonymous-grid-item/${dir}`;
   // CSS2 §9.2.2: text in an inline box flows in the inline formatting context of the box's block container, and text beside an
   // inline box shares that context, whose line boxes the boxes size (§10.8): both are their own contexts, proven apart.
-  if (display === 'inline' && parent !== null) return `text-in-inline/${dir}`;
+  if (display === 'inline' && parent !== null && !isReplacedTag(el.element.tag)) return `text-in-inline/${dir}`;
   // CSS2 §9.2.4: text beside an atomic inline shares the line boxes the atomic sizes, its own context (INL2a).
   if (el.children.some((c) => c.kind === 'element' && isAtomicInline(c))) return `text-beside-atomic/${dir}`;
   if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') === 'inline')) return `text-beside-inline/${dir}`;
   // CSS2 §9.2.1.1: text beside block-level boxes is wrapped in an anonymous block.
   if (el.children.some((c) => c.kind === 'element' && keyword(c, 'display') !== 'none')) return `text-in-anonymous-block/${dir}`;
   // css-flexbox-1 §4.1: an absolutely positioned child of a flex container is not a flex item.
-  if (parent !== null && isFlexContainer(parent) && keyword(el, 'position') !== 'absolute') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
+  if (parent !== null && isFlexContainer(parent) && keyword(el, 'position') !== 'absolute' && keyword(el, 'position') !== 'fixed') return `text-in-flex-item/${axisFacet(parent)}/${dir}`;
   // css-grid-2 §9: an absolutely positioned child of a grid container is not a grid item.
-  if (parent !== null && isGridContainer(parent) && keyword(el, 'position') !== 'absolute') return `text-in-grid-item/${dir}`;
+  if (parent !== null && isGridContainer(parent) && keyword(el, 'position') !== 'absolute' && keyword(el, 'position') !== 'fixed') return `text-in-grid-item/${dir}`;
   return `text-in-block/${dir}`;
 }
 

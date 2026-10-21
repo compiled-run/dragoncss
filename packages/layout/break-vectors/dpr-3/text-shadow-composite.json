@@ -1,0 +1,12 @@
+{
+  "case": "text-shadow-composite",
+  "dpr": 3,
+  "texts": [
+    {"id":"p2:text0","lines":[[0,2]]},
+    {"id":"o1:text0","lines":[[0,2]]},
+    {"id":"h1:text0","lines":[[0,2]]},
+    {"id":"p1:text0","lines":[[0,3]]},
+    {"id":"l1:text0","lines":[[0,3]]},
+    {"id":"l1s:text0","lines":[[0,2]]}
+  ]
+}

@@ -3,7 +3,7 @@
 // decoration capture's geometry), the text's and the decorating font's ascent and zoomed size, lengths in css px times the DPR, and
 // for skip-ink auto the Ahem clips (layout text-decoration.ts ahemLineInk and skipInkClips over the shaped pens, letter-spacing included). Kept apart from
 // text-decoration.ts, which reads pixel-reference.ts (whose registry reads it), so a test can import it first.
-import type { InlineChild, LayoutBox, TextFont } from '@dragon/layout';
+import type { ControlBox, InlineChild, LayoutBox, TextFont } from '@dragon/layout';
 import { NO_ENGINE_FAULTS, pieceGlyphs, textDecoration as td, zoomInput } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
@@ -49,10 +49,10 @@ export function placedDecorations(p: NativeProgram, viewport: { readonly width: 
     fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
     for (const x of k.children) inline(x);
   };
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
     for (const k of b.children) {
-      if (k.kind === 'box') walk(k);
+      if (k.kind === 'box' || k.kind === 'control') walk(k);
       else if (k.kind !== 'replaced') inline(k);
     }
   };

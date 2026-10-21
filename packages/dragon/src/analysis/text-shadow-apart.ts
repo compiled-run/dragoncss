@@ -23,15 +23,12 @@ const SIDES = ['top', 'right', 'bottom', 'left'] as const;
  */
 export type InkText = {
   readonly text: ResolvedText;
+  /** The element whose child the text is (its owner, at any depth of inline boxes below its container). */
+  readonly parent: ResolvedElement;
   readonly container: ResolvedElement;
   readonly reach: Readonly<Record<Side, readonly Reach[]>>;
   readonly order: number;
   readonly moved: string | null;
-  /**
-   * Whether tree order is its paint order against every other text: no box on its path to the root is positioned, floated, a
-   * z-indexed flex or grid item, or a flex or grid item among siblings with an order other than 0.
-   */
-  readonly treeOrdered: boolean;
 };
 
 /** A drawn shadow: css px offsets and blur, and its colour's alpha (null for currentcolor, which every target refuses). */
@@ -86,6 +83,36 @@ const border = (el: ResolvedElement, s: Side): number => {
   return style === 'none' || style === 'hidden' ? 0 : Math.max(0, pxOf(prop(el, `border-${s}-width`)) ?? 0);
 };
 
+/** composeRefusal's answer for the rule refusal() already states. */
+export const GENERIC = 'generic';
+
+/** A longhand's computed text, or null where it does not resolve. */
+const opt = (el: ResolvedElement, p: string): string | null => {
+  const v = (el.props as ReadonlyMap<string, ResolvedValue>).get(p);
+  return v === undefined ? null : valueToString(v.value);
+};
+
+/** What a box on an earlier text's path does that a later layer composited over that text does not model, or null. */
+function clipsOrPaints(el: ResolvedElement): string | null {
+  for (const [p, ok] of [['overflow-x', 'visible'], ['overflow-y', 'visible'], ['clip-path', 'none'], ['clip', 'auto'], ['mask-image', 'none']] as const) {
+    const v = opt(el, p);
+    if (v !== null && v !== ok) return `clips its content (${p}: ${v}), which the device does not model under a later text's shadow`;
+  }
+  const contain = opt(el, 'contain');
+  if (contain !== null && /paint|strict|content/.test(contain)) return `clips its content (contain: ${contain}), which the device does not model under a later text's shadow`;
+  for (const [p, ok] of [['background-image', 'none'], ['box-shadow', 'none'], ['outline-style', 'none'], ['border-image-source', 'none']] as const) {
+    const v = opt(el, p);
+    if (v !== null && v !== ok) return `paints ${p}: ${v}, which the device does not paint beneath a later text's shadow`;
+  }
+  if (SIDES.some((s) => border(el, s) > 0)) return 'paints a border, which the device does not paint beneath a later text\'s shadow';
+  const bg = (el.props as ReadonlyMap<string, ResolvedValue>).get('background-color')?.value;
+  if (bg !== undefined && !(bg.kind === 'color' && bg.value.alpha === 0) && !(bg.kind === 'keyword' && bg.value === 'transparent')) return `paints a background colour, which the device does not paint beneath a later text's shadow`;
+  return null;
+}
+
+/** Whether a box is a list item that paints a marker. */
+const marked = (el: ResolvedElement): boolean => prop(el, 'display') === 'list-item' && (prop(el, 'list-style-type') !== 'none' || prop(el, 'list-style-image') !== 'none');
+
 /** Whether a box lays out in flow without painting a marker: block-level, an inline-block, or a list item without its marker. */
 function inFlow(el: ResolvedElement): boolean {
   if (prop(el, 'position') !== 'static' || prop(el, 'float') !== 'none') return false;
@@ -119,12 +146,18 @@ export class MeetCheck {
   private readonly memo = new Map<string, Meeting | null>();
 
   private readonly parents: ReadonlyMap<ResolvedElement, ResolvedElement>;
+  private readonly reordering: ReadonlySet<ResolvedElement>;
   private readonly slack: number;
   private readonly blurSlack: number;
   private readonly minScale: number;
 
-  constructor(parents: ReadonlyMap<ResolvedElement, ResolvedElement>, slack: number, blurSlack: number, minScale: number) {
+  /**
+   * reordering: the boxes that may paint out of tree order against their siblings' subtrees (positioned, floated, or a z-indexed or
+   * reordered flex or grid item).
+   */
+  constructor(parents: ReadonlyMap<ResolvedElement, ResolvedElement>, reordering: ReadonlySet<ResolvedElement>, slack: number, blurSlack: number, minScale: number) {
     this.parents = parents;
+    this.reordering = reordering;
     this.slack = slack;
     this.blurSlack = blurSlack;
     this.minScale = minScale;
@@ -141,7 +174,58 @@ export class MeetCheck {
     const m = this.memo.get(key) as Meeting | null;
     if (m === null) return null;
     const other = `text ${u.text.node.address}`;
-    return m.axis ? `its shadows and ${other} may meet (${m.cause}), and the device encodes each shadow over the backdrop alone` : `${other} may meet it: ${m.cause}`;
+    return m.axis ? `its shadows and ${other} may meet (${m.cause}), and the device composites one text's shadows over another's paint only where tree order is their paint order, their glyphs are opaque and neither is moved off its line` : `${other} may meet it: ${m.cause}`;
+  }
+
+  /**
+   * Whether the device composites t and u where they meet (emit/paint/text-shadow.ts): each later text's shadow layers are encoded
+   * over Chrome's paint of the earlier texts that may meet them, so the pair is drawn as Chrome draws it when tree order is their
+   * paint order, neither text's glyphs are translucent (the text view blends its own glyphs), and neither is moved off its line.
+   */
+  composes(t: InkText, u: InkText): boolean {
+    return this.compositeRefusal(t, u) === null;
+  }
+
+  /**
+   * Why the device cannot composite t and u (composes), or null: GENERIC for the rule refusal() states (paint order, opaque glyphs,
+   * on their lines, no list marker), or what on the earlier text's path below their common ancestor the layer does not model: a
+   * clip (its shadows are cut there, and a scroll moves them) or a box's own paint (the layer's backdrop is the later text's
+   * ancestors' fills alone); or a scroll container on the later text's path, which moves the layer against the earlier text.
+   */
+  compositeRefusal(t: InkText, u: InkText): string | null {
+    const [first, second] = t.order < u.order ? [t, u] : [u, t];
+    const inkRisky = (x: InkText): boolean => (x.reach.top[0] as Reach).risky;
+    if (!this.treeOrdered(first, second) || inkRisky(first) || inkRisky(second) || first.moved !== null || second.moved !== null) return GENERIC;
+    // A list item's marker paints glyphs the device does not model under a shadow: none may sit on either path below the pair's
+    // common ancestor.
+    const ct = this.chainOf(first.container);
+    const cu = this.chainOf(second.container);
+    const inSecond = new Set(cu);
+    const common = ct.find((e) => inSecond.has(e));
+    const below = (chain: readonly ResolvedElement[]): readonly ResolvedElement[] => (common === undefined ? chain : chain.slice(0, chain.indexOf(common)));
+    if ([...below(ct), ...below(cu)].some(marked)) return GENERIC;
+    const [earlier, later] = this.below(first, second);
+    for (const el of earlier) {
+      const why = clipsOrPaints(el);
+      if (why !== null) return `${el.element.address}, holding text ${first.text.node.address}, ${why}`;
+    }
+    // A scroll container on the later text's path moves its layer, with the earlier text drawn into it, against that text.
+    for (const el of later) {
+      const scroll = (['overflow-x', 'overflow-y'] as const).map((p) => opt(el, p)).find((v) => v === 'auto' || v === 'scroll');
+      if (scroll !== undefined) return `${el.element.address}, holding text ${second.text.node.address}, scrolls it (overflow ${scroll}), which moves its shadow against text ${first.text.node.address} drawn into it`;
+    }
+    return null;
+  }
+
+  /** The elements on each text's path from its parent up to, not including, the pair's common ancestor (earlier text first). */
+  below(t: InkText, u: InkText): readonly [readonly ResolvedElement[], readonly ResolvedElement[]] {
+    const [first, second] = t.order < u.order ? [t, u] : [u, t];
+    const pf = this.chainOf(first.parent);
+    const ps = this.chainOf(second.parent);
+    const inSecond = new Set(ps);
+    const common = pf.find((e) => inSecond.has(e));
+    const cut = (chain: readonly ResolvedElement[]): readonly ResolvedElement[] => (common === undefined ? chain : chain.slice(0, chain.indexOf(common)));
+    return [cut(pf), cut(ps)];
   }
 
   private chainOf(el: ResolvedElement): readonly ResolvedElement[] {
@@ -276,11 +360,25 @@ export class MeetCheck {
     return out;
   }
 
-  /** first comes before second in tree order (and paints first, where both are treeOrdered). */
+  /**
+   * Whether the pair paints in tree order: no box below their common ancestor, on either text's path, may paint out of tree order
+   * against its siblings' subtrees (positioned, floated, a reordered or z-indexed item, or a stacking context, text-shadow.ts survey). A reordering box at or above the common ancestor moves both texts together.
+   */
+  private treeOrdered(first: InkText, second: InkText): boolean {
+    const pf = this.chainOf(first.parent);
+    const pt = this.chainOf(second.parent);
+    const ps = new Set(pt);
+    const common = pf.find((e) => ps.has(e));
+    const below = (chain: readonly ResolvedElement[]): readonly ResolvedElement[] => (common === undefined ? chain : chain.slice(0, chain.indexOf(common)));
+    return ![...below(pf), ...below(pt)].some((e) => this.reordering.has(e));
+  }
+
+  /** first comes before second in tree order (and paints first, where the pair is tree-ordered). */
   private compute(first: InkText, second: InkText): Meeting | null {
     // Only the later text's inexact paint can land on the earlier text's; the earlier never paints over the later.
-    // Where tree order may not be paint order (positioning, floats, z-index or order on a path), either may paint over the other.
-    const ordered = first.treeOrdered && second.treeOrdered;
+    // Where tree order may not be paint order (positioning, floats, z-index or order below their common ancestor), either may paint
+    // over the other.
+    const ordered = this.treeOrdered(first, second);
     const risky = (x: InkText): boolean => SIDES.some((s) => x.reach[s].some((r) => r.risky));
     if (!risky(second) && (ordered || !risky(first))) return null;
     const moved = first.moved ?? second.moved;

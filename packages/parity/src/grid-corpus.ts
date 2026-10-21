@@ -145,9 +145,9 @@ function referenceMeasurer() {
 }
 
 /**
- * The first element floated in block flow, or null. Dragon lays out no float: the compiler accepts float only where it has no
- * effect (a flex or grid item, an absolutely positioned box), and the support profile refuses it elsewhere as
- * DRAGON_UNPROVEN_CONTEXT (reject-float-block). The corpus compiles with derived profiles, which skip that check, so it refuses here.
+ * The first element floated in block flow, or null. Dragon lays out a float in block flow only in the shapes fixture group float
+ * proves (FLT), and the support profile refuses its float context elsewhere as DRAGON_UNPROVEN_CONTEXT. The corpus compiles with
+ * derived profiles, which skip that check, so it refuses here.
  */
 function floatInFlow(root: Element): string | null {
   const decl = (style: string, name: string): string | null => {

@@ -59,16 +59,20 @@ export function interactionProgramOf(g: InteractionGroup, backend: NativeBackend
   return deriveInteractionProgram(sp, inputs);
 }
 
-/** The hit test of a group's live program at DPR 1: rt-hit over the program's engine input, with the (app, state)'s hit facts. */
-export function groupHit(g: InteractionGroup, inputs: readonly InteractionLevelInput[]): (program: NativeProgram, app: number, state: number, x: number, y: number) => string | null {
+/**
+ * The hit test of a group's live program at a DPR (the Chrome trace captures' is 1): rt-hit over the program's engine input laid out
+ * at that DPR, with the (app, state)'s hit facts, at the point (CSS px) in that DPR's device px, as the device machine hits.
+ */
+export function groupHit(g: InteractionGroup, inputs: readonly InteractionLevelInput[], dpr: number): (program: NativeProgram, app: number, state: number, x: number, y: number) => string | null {
+  if (!Number.isFinite(dpr) || dpr <= 0) throw new Error(`${g.id}: the hit test's DPR ${dpr} is not a positive number`);
   return (program, app, state, x, y) => {
     const n = g.cases[app] as NativeCase;
     const key = state < 0 ? null : (inputs[app] as InteractionLevelInput).partition.states[state]?.key;
     if (key === undefined) throw new Error(`${n.case.id}: no interaction state ${state}`);
     const facts = hitFacts(n.compiled, n.case.assignment, key);
     if (facts === null) throw new Error(`${n.case.id}: no hit facts for interaction state ${state}`);
-    const t = programHitTable(program, facts, n.case.environment.viewport, 1);
-    const id = t.ids[hitAt(prepareHit(t.nodes, { ignorePointerEventsNone: false, reversedOrder: false }), x * LU, y * LU)] as string;
+    const t = programHitTable(program, facts, n.case.environment.viewport, dpr);
+    const id = t.ids[hitAt(prepareHit(t.nodes, { ignorePointerEventsNone: false, reversedOrder: false }), x * (dpr * LU), y * (dpr * LU))] as string;
     // The view hit returns the document element when nothing else is hit; the hit names element addresses only.
     return (inputs[app] as InteractionLevelInput).partition.elements.some((e) => e.address === id) ? id : null;
   };
@@ -77,7 +81,7 @@ export function groupHit(g: InteractionGroup, inputs: readonly InteractionLevelI
 /** One point per element the hit test reaches in a case's none-state program, in element order: the first grid centre that hits it. */
 export function elementPoints(g: InteractionGroup, inputs: readonly InteractionLevelInput[], app: number, backend: NativeBackend): { readonly address: string; readonly x: number; readonly y: number }[] {
   const n = g.cases[app] as NativeCase;
-  const hit = groupHit(g, inputs);
+  const hit = groupHit(g, inputs, 1);
   const program = n.programs[backend];
   const found = new Map<string, { x: number; y: number }>();
   const { width, height } = n.case.environment.viewport;
@@ -211,7 +215,7 @@ export function checkInteractions(faults: InteractionFaults = rtInteraction.NO_I
         programs++;
         if (canonicalJsonText(interactionProgramAt(ip, app, k)) !== canonicalJsonText(want)) fail('delta', -1, `app ${app} state ${k}: base plus delta differs from the per-case program`);
       }));
-      const hit = groupHit(g, inputs);
+      const hit = groupHit(g, inputs, 1);
       const rt = new InteractionRuntime(ip, hit, faults);
       let model: InteractionSnapshot & { pending: boolean; keyboard: boolean } = { ...rt.snapshot(), pending: false, keyboard: false };
       let forced: (InteractionStep & { kind: 'force' }) | null = null;

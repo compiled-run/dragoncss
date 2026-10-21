@@ -10,7 +10,7 @@ import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
 import { markerStyleOf } from '../analysis/resolve.ts';
 import { analyzeDecorations } from '../analysis/text-decoration.ts';
 import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '../analysis/computed.ts';
-import { nativeTextShadows } from '../analysis/text-shadow.ts';
+import { nativeTextShadows, nativeTextUnders } from '../analysis/text-shadow.ts';
 import { textClipFillOf } from '../analysis/paint-values/gradient.ts';
 import { strokeColorOf, strokeWidthOf } from '../analysis/text-stroke.ts';
 import { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES } from '../fonts/synthetic-bold.ts';
@@ -174,6 +174,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   // TXT-FX: the shadows each text leaf draws, which the text-shadow module writes on the leaf's container box.
   const textShadows = nativeTextShadows(resolved);
   const foldBackdrops = provableFoldBackdrops(resolved, movingTransforms);
+  const textUnders = nativeTextUnders(resolved);
   const out: NodePaint[] = [];
   const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean): void => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
@@ -182,12 +183,12 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows });
+    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
-      if (c.kind === 'box' || c.kind === 'replaced') {
+      if (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') {
         visit(c, b.id, own, transformMoves);
         continue;
       }

@@ -3,7 +3,7 @@
 // lower case. A keyword other than none changes a form control's look, and an element without a native appearance (every tag
 // Dragon resolves: no button, input, select, textarea, meter or progress) uses none whatever it computes to (css-ui-4 §7.1.1), so
 // it paints nothing. It does change layout: Chrome turns an inline or inline-table box with appearance other than none into
-// inline-block, and a list-item or table box into block, which analysis/computed-checks.ts checkAppearance refuses, so the
+// inline-block, and a list-item or table box into block, which analysis/computed.ts appearanceDisplay applies, so the
 // property has a layout aspect. Dragon accepts none, auto and the css-ui-4 compat keywords,
 // pinned against Chrome by packages/parity/test/appearance-parse.test.ts. base-select and slider-vertical, which Chrome keeps, are
 // refused; every other keyword (push-button, inner-spin-button and the like) Chrome drops, and so does Dragon. The grammar takes any

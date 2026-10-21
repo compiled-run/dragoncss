@@ -1,17 +1,18 @@
 // REPL-a: the replaced elements the compiler resolves (CSS 2.2 §10.3.2, HTML §15.4). Each reads its UA defaults from a REPL-0
-// replaced key: an img with a src (img[src]), and an iframe, which Dragon renders as a platform web view in a slot it lays out.
+// replaced key: an img with a src (img[src]), an iframe, which Dragon renders as a platform web view in a slot it lays out, and a
+// video (MEDIA-EL), a platform player over the part of the slot its stream covers.
 import type { Longhand } from '../../css/properties.ts';
 import type { CssValue } from '../../css/values.ts';
 import { SVG_HANDLED_ATTRIBUTES, svgPresentationHints } from './svg.ts';
 import type { ReplacedKey } from '../../ua/datasets.ts';
 
-export const REPLACED_TAGS: readonly string[] = ['img', 'iframe', 'svg'];
+export const REPLACED_TAGS: readonly string[] = ['img', 'iframe', 'svg', 'video'];
 
 /** SVG-a1: the shapes an inline <svg> draws. They are its content, never boxes of their own (analysis/elements/svg.ts). */
 export const SVG_SHAPE_TAGS: readonly string[] = ['path', 'rect', 'circle'];
 
 /** The UA dataset key of a replaced tag or an SVG shape (the shapes ride in the replaced-key tables). */
-export const REPLACED_UA_KEYS: { readonly [tag: string]: ReplacedKey } = { img: 'img[src]', iframe: 'iframe', svg: 'svg', path: 'path', rect: 'rect', circle: 'circle' };
+export const REPLACED_UA_KEYS: { readonly [tag: string]: ReplacedKey } = { img: 'img[src]', iframe: 'iframe', svg: 'svg', video: 'video', path: 'path', rect: 'rect', circle: 'circle' };
 
 /** CSS 2.2 §10.3.2 and HTML §15.4.1: the default object size in CSS px, which sizes a replaced box with no natural size or ratio. */
 export const DEFAULT_OBJECT_SIZE = { width: 300, height: 150 } as const;
@@ -66,8 +67,8 @@ export function presentationalHints(tag: string, attributes: ReadonlyMap<string,
   const asValue = (d: Dimension): CssValue => (d.kind === 'length' ? { kind: 'length', value: d.value, unit: 'px' } : { kind: 'percentage', value: d.value });
   if (w !== null) out.set('width', asValue(w));
   if (h !== null) out.set('height', asValue(h));
-  // img only (HTML §15.4.5 "map to the aspect-ratio property (using dimension rules)"): auto w / h when both are lengths.
-  if (tag === 'img' && w !== null && h !== null && w.kind === 'length' && h.kind === 'length') out.set('aspect-ratio', { kind: 'ratio', auto: true, width: w.value, height: h.value });
+  // img and video (HTML §15.4.5 "map to the aspect-ratio property (using dimension rules)"): auto w / h when both are lengths.
+  if ((tag === 'img' || tag === 'video') && w !== null && h !== null && w.kind === 'length' && h.kind === 'length') out.set('aspect-ratio', { kind: 'ratio', auto: true, width: w.value, height: h.value });
   return out;
 }
 

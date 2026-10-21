@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
-import type { LayoutBox, LayoutRect } from '@dragon/layout';
+import type { ControlBox, LayoutBox, LayoutRect } from '@dragon/layout';
 import { AHEM_FONT_DATA, coveredCodePoints, coveredIndex, ELLIPSIS, LU_PER_PX, pieceGlyphs, platformFontSize, smallCapsCodePoint, snapEdges, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { borderDevicePx, programInput, syntheticBoldStroke } from 'dragon';

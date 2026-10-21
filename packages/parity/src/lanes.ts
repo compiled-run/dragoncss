@@ -22,7 +22,7 @@ import { REFERENCE_PLATFORM } from './platform.ts';
 import { enforcedCompile } from './pipeline.ts';
 import { profilePendingCaseIds } from './profile-pending.ts';
 import { SAMPLE_RULES } from './samples.ts';
-import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
+import { isShapedInput, joinHyphenRects, shapedCaseIds } from './text-latin-run.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 import type { Compared, DeviceSet, FaultRow, LaneFailure, TrustRow } from './device-lanes.ts';
 import type { DeviceLaneId } from './device-lanes.ts';
@@ -32,7 +32,7 @@ import { deviceEvidence, evidenceProblems } from './device-evidence.ts';
 import type { DeviceRecord } from './device-run.ts';
 import { TRUST_CASES } from './device-run.ts';
 import type { CaseSet, LaneConfig, LaneId, NativeTarget, TargetConfig } from './targets.ts';
-import { declaredLane, declaredSuites, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest, vectorCaseIds } from './targets.ts';
+import { declaredLane, declaredSuites, deviceCaseIds, extendedManifest, LANES, layoutCaseIds, m1CaseIds, NATIVE_TARGETS, p1Manifest, vectorCaseIds } from './targets.ts';
 
 export { caseCount, DEVICE_NOT_RUN, LANES_JSON, ranIds, ranOf, readLanesFile, staleCovers, staleLanes } from './lanes-file.ts';
 
@@ -150,6 +150,8 @@ function vectorSuites(lane: LaneConfig): (ReturnType<typeof declaredSuites>[numb
     'vectors-m2': top.filter((id) => !m1.has(id)).length,
     'vectors-dpr': lane.sets.filter((s) => s.role !== 'top-level').flatMap((s) => s.ids).filter((id) => pending.has(id)).length,
     'engine-dpr': vectorCaseIds().filter((id) => pending.has(id)).length * extendedManifest().dprSets.length,
+    // A pending shaped case keeps its DPR 1 vector (layout:vectors writes it) and has none at the DPR sets (layout:dpr-vectors).
+    'text-latin': [...shapedCaseIds()].filter((id) => pending.has(id)).length * extendedManifest().dprSets.length,
   };
   return declaredSuites(lane).map((s) => ({ ...s, cases: s.cases - (out[s.suite] ?? 0), pending: out[s.suite] ?? 0 }));
 }
@@ -370,8 +372,8 @@ export type ReferenceRow = { readonly dpr: number; readonly role: 'shared' | 'ex
 export function referenceProof(targets: readonly TargetConfig[], all: ReturnType<typeof layoutCases> = layoutCases()): { readonly target: NativeTarget; readonly rows: readonly ReferenceRow[] }[] {
   // TXT1a-2: the engine the device mirrors measures every face through HarfBuzz (native-host.ts referenceMeasurer).
   const measurer = referenceShapedMeasurer();
-  // The device cases (targets.ts vectorCaseIds): a shaped case is not drawn on devices until TXT1a-2 phase R.
-  const device = new Set(vectorCaseIds());
+  // The device cases (targets.ts deviceCaseIds): every layout case, a shaped one in its bundled real faces since TXT1a-2 phase R.
+  const device = new Set(deviceCaseIds());
   return targets.map((t) => ({
     target: t.target,
     rows: t.dprs.map((dpr): ReferenceRow => {
