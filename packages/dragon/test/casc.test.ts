@@ -101,7 +101,7 @@ describe('@supports in a stylesheet', () => {
 
   for (const [css, span, message] of [
     ['@supports selector(a > b) { .a { width: 20px; } }', '@supports selector(a > b) { .a { width: 20px; } }', '@supports selector(a > b) in the stylesheet is not supported: selector() is not evaluated'],
-    ['.a { @supports (display: flex) { width: 20px; } }', '@supports (display: flex) { width: 20px; }', '@supports in a rule block is not supported in milestone 1'],
+    ['.a { @supports (display: flex); }', '@supports (display: flex);', '@supports in a rule block is not supported in milestone 1'],
     ['@supports (display: flex);', '@supports (display: flex);', '@supports in the stylesheet is not supported in milestone 1'],
   ] as const) {
     it(`refuses ${css}`, () => {
@@ -145,5 +145,103 @@ describe('revert and revert-layer', () => {
   it('planted fault revertAsUnset: a p\'s reverted margin falls to its initial 0', () => {
     const css = '.a { margin: 0; } .a { margin: revert; }';
     expect(value(compile(css, { tag: 'p', faults: { ...NO_FAULTS, revertAsUnset: true } }).c, 'margin-top')).toBe('0px');
+  });
+});
+
+describe('all', () => {
+  const codes = (c: Compiled<K>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${String(d.target)}`);
+  it('sets every longhand but direction to its CSS-wide keyword, and a later declaration wins over it', () => {
+    const css = '.a { all: UNSET; }';
+    const d = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, [])[0]?.declarations[0];
+    expect(d?.property).toBe('all');
+    expect(d?.longhands.some((lh) => lh.property === 'direction')).toBe(false);
+    expect(d?.longhands.some((lh) => lh.property === 'display')).toBe(true);
+    expect(new Set(d?.longhands.map((lh) => JSON.stringify(lh.value)))).toEqual(new Set([JSON.stringify({ kind: 'keyword', value: 'unset' })]));
+    expect([...(d?.animation?.longhands.values() ?? [])].every((l) => l.kind === 'wide' && l.keyword === 'unset')).toBe(true);
+    const { c } = compile('.a { width: 20px; color: #ff0000; direction: rtl; } .a { all: initial; color: #00ff00; }');
+    expect(value(c, 'width')).toBe('auto');
+    expect(value(c, 'display')).toBe('inline');
+    expect(value(c, 'color')).toBe('rgb(0, 255, 0)');
+    expect(value(c, 'direction')).toBe('rtl');
+  });
+  it('takes only a CSS-wide keyword, and refuses var()', () => {
+    expect(codes(compile('.a { all: red; }').c)).toEqual(['DRAGON_CSS_INVALID_VALUE null']);
+    expect(codes(compile('.a { all: initial initial; }').c)).toEqual(['DRAGON_CSS_INVALID_VALUE null']);
+    expect(codes(compile('.a { all: var(--k); }').c)).toEqual(['DRAGON_UNSUPPORTED_VALUE null']);
+  });
+});
+
+describe('css-nesting-1', () => {
+  it('a nested rule reads & as :is() of its parent list, relative ones as descendants or after their combinator', () => {
+    const { c } = compile('.a { width: 10px; & { height: 3px; } :is(body) & { width: 20px; } }');
+    expect(value(c, 'width')).toBe('20px');
+    expect(value(c, 'height')).toBe('3px');
+    expect(value(compile('div { .a { width: 5px; } }').c, 'width')).toBe('auto');
+    expect(value(compile('body { > .a { width: 6px; } }').c, 'width')).toBe('6px');
+    expect(value(compile('body { div& { width: 7px; } }').c, 'width')).toBe('auto');
+    expect(value(compile('.a { body & { width: 8px; } }').c, 'width')).toBe('8px');
+  });
+  it('a nested selector takes the specificity of :is() of the parent list', () => {
+    // :is(.a, #z) .x is (1,1,0) even where .a matched, so it beats .q.r.s (0,3,0).
+    const { c } = compile('body, #z { .a { width: 9px; } } .a.a.a { width: 4px; }');
+    expect(value(c, 'width')).toBe('9px');
+  });
+  it('declarations after a nested rule keep their order', () => {
+    const { c } = compile('.a { width: 1px; & { width: 2px; } width: 3px; }');
+    expect(value(c, 'width')).toBe('3px');
+  });
+});
+
+describe('css-nesting-1 block splitting', () => {
+  it('a selector with no block is dropped up to its ";", and the declarations after it still apply', () => {
+    const css = '.a { & { width: 1px; } .b; height: 4px; }';
+    const diagnostics: Diagnostic[] = [];
+    const rules = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+    expect(diagnostics.map((d) => `${d.code} ${css.slice(d.origin.kind === 'authored' ? d.origin.span.start : 0, d.origin.kind === 'authored' ? d.origin.span.end : 0)}`)).toEqual(['DRAGON_CSS_PARSE .b']);
+    expect(rules.map((r) => r.declarations.map((d) => `${d.property}: ${d.text}`))).toEqual([['height: 4px'], ['width: 1px']]);
+  });
+  it('an identifier item with a {} block after other tokens is a rule, and a custom property keeps its block', () => {
+    const { c } = compile('.a { & { width: 1px; } div:not(.z)& { height: 5px; } --k: {x}; }');
+    expect(value(c, 'height')).toBe('5px');
+  });
+  it('a nested rule whose selector starts with a type and a colon is a rule, alone in its block', () => {
+    expect(value(compile('body { div:first-child { width: 9px; } }').c, 'width')).toBe('9px');
+    expect(value(compile('body { margin-left: 1px; div:not(.z) { width: 8px; } }').c, 'width')).toBe('8px');
+    expect(value(compile('body { div:is(.a) { width: 7px; } }').c, 'width')).toBe('7px');
+  });
+  it('a selector that ends with a combinator or has two in a row is dropped, nested or not', () => {
+    for (const css of ['body { > { width: 9px; } }', 'body { & > { width: 9px; } }', 'body { .a, > { width: 9px; } }', 'body { > > .a { width: 9px; } }', 'body > { width: 9px; }', 'body > > .a { width: 9px; }', 'body ~ + .a { width: 9px; }']) {
+      const diagnostics: Diagnostic[] = [];
+      const rules = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+      expect(diagnostics.map((d) => d.code), css).toEqual(['DRAGON_SELECTOR_DROPPED']);
+      expect(rules.filter((r) => r.selectors.some((x) => x.dropped !== true)).flatMap((r) => r.declarations.map((d) => d.text)), css).toEqual([]);
+    }
+    expect(value(compile('body { > .a { width: 6px; } }').c, 'width')).toBe('6px');
+  });
+  it('a nested rule with an invalid selector is diagnosed and dropped alone, and the declarations around it are kept', () => {
+    for (const css of ['.a { margin-left: 3px; .b:: { margin-left: 9px } height: 4px; }', '.a { margin-left: 3px; .a) {} height: 4px; }', '.a { margin-left: 3px; .b] {} height: 4px; }', '.a { margin-left: 3px; "x" {} height: 4px; }', '.a { margin-left: 3px; 1px {} height: 4px; }', '.a { margin-left: 3px; @ { } .b {} height: 4px; }', '.a { margin-left: 3px; .b {} margin-left 1px {} height: 4px; }', '.a { margin-left: 3px; @media (min-width: 1px) { & { .b:: {} } } height: 4px; }', '.a { margin-left: 3px; & { & { .b:: {} } } height: 4px; }']) {
+      const diagnostics: Diagnostic[] = [];
+      const rules = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+      expect(diagnostics.map((d) => d.code), css).toEqual(['DRAGON_CSS_PARSE']);
+      expect(rules[0]?.declarations.map((d) => `${d.property}: ${d.text}`), css).toEqual(['margin-left: 3px', 'height: 4px']);
+    }
+  });
+});
+
+describe('css-nesting-1 conditional rules', () => {
+  it('@media and @supports nested in a style rule apply to the parent while they hold, with & as the parent inside', () => {
+    const css = '.a { width: 1px; @media (min-width: 1px) { width: 2px; .b { height: 3px; } } }';
+    const diagnostics: Diagnostic[] = [];
+    const rules = parseStylesheet(css, { source: { uri: 's.css', revision: '', hash: '' }, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+    expect(diagnostics).toEqual([]);
+    expect(rules.map((r) => [r.selectors.map((x) => x.specificity.join()), r.condition?.map((c) => c.text) ?? [], r.declarations.map((d) => `${d.property}: ${d.text}`)])).toEqual([
+      [['0,1,0'], [], ['width: 1px']],
+      [['0,1,0'], ['(min-width: 1px)'], ['width: 2px']],
+      [['0,2,0'], ['(min-width: 1px)'], ['height: 3px']],
+    ]);
+    expect(value(compile('.a { width: 1px; @supports (display: flex) { width: 3px; } }').c, 'width')).toBe('3px');
+    expect(value(compile('.a { width: 1px; @supports (width: 1px 2px) { width: 3px; } }').c, 'width')).toBe('1px');
+    expect(value(compile('body { @supports (display: flex) { > .a { width: 4px; } } }').c, 'width')).toBe('4px');
+    expect(value(compile('.a { @supports (display: flex) { @supports (display: grid) { width: 5px; } } }').c, 'width')).toBe('5px');
   });
 });

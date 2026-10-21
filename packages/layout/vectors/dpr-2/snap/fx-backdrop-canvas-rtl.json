@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 9856
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 9856
+  },
+  {
+   "id": "x",
+   "parent": "body",
+   "x": 31360,
+   "y": 1536,
+   "width": 18560,
+   "height": 6784
+  },
+  {
+   "id": "k",
+   "parent": "x",
+   "x": 960,
+   "y": 1280,
+   "width": 16640,
+   "height": 2560
+  },
+  {
+   "id": "row",
+   "parent": "x",
+   "x": 960,
+   "y": 4224,
+   "width": 16640,
+   "height": 1792
+  },
+  {
+   "id": "ca",
+   "parent": "row",
+   "x": 11520,
+   "y": 0,
+   "width": 5120,
+   "height": 1792
+  },
+  {
+   "id": "gap",
+   "parent": "row",
+   "x": 10240,
+   "y": 0,
+   "width": 1280,
+   "height": 1792
+  },
+  {
+   "id": "cb",
+   "parent": "row",
+   "x": 5120,
+   "y": 0,
+   "width": 5120,
+   "height": 1792
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 154,
+   "width": 800,
+   "height": 154
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 154,
+   "width": 800,
+   "height": 154
+  },
+  {
+   "id": "x",
+   "left": 490,
+   "top": 24,
+   "right": 780,
+   "bottom": 130,
+   "width": 290,
+   "height": 106
+  },
+  {
+   "id": "k",
+   "left": 505,
+   "top": 44,
+   "right": 765,
+   "bottom": 84,
+   "width": 260,
+   "height": 40
+  },
+  {
+   "id": "row",
+   "left": 505,
+   "top": 90,
+   "right": 765,
+   "bottom": 118,
+   "width": 260,
+   "height": 28
+  },
+  {
+   "id": "ca",
+   "left": 685,
+   "top": 90,
+   "right": 765,
+   "bottom": 118,
+   "width": 80,
+   "height": 28
+  },
+  {
+   "id": "gap",
+   "left": 665,
+   "top": 90,
+   "right": 685,
+   "bottom": 118,
+   "width": 20,
+   "height": 28
+  },
+  {
+   "id": "cb",
+   "left": 585,
+   "top": 90,
+   "right": 665,
+   "bottom": 118,
+   "width": 80,
+   "height": 28
+  }
+ ]
+}

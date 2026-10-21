@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.box { height: 6px; margin: 2px; background-color: #cccccc; }
+.a, #b {
+  width: 40px;
+  .c { width: 20px; background-color: #3366cc; }
+  height: 10px;
+}
+.a.x { height: 14px; }
+.p {
+  width: 150px;
+  > .q { width: 30px; background-color: #aa0000; }
+  .r & { width: 120px; }
+  &.s { background-color: #00aa00; }
+  & + .t { width: 60px; }
+  .q:first-child, .q:last-child { height: 9px; }
+  background-color: #224466;
+}
+.u { .v { .w { width: 70px; background-color: #884400; } } }
+.k { & & { width: 33px; } }
+.m { color: #000000; &:not(.n) { width: 44px; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="ax" class="box a x"><div data-dragon-id="c1" class="box c"></div></div>
+<div data-dragon-id="bb" class="box" id="b"><div data-dragon-id="c2" class="box c"></div></div>
+<div data-dragon-id="r" class="r"><div data-dragon-id="ps" class="box p s"><div data-dragon-id="q1" class="box q"></div><div data-dragon-id="q2" class="box q"></div></div><div data-dragon-id="t" class="box t"></div></div>
+<div data-dragon-id="p2" class="box p"><div data-dragon-id="q3" class="box"><div data-dragon-id="q4" class="box q"></div></div></div>
+<div data-dragon-id="u" class="u"><div data-dragon-id="v" class="v"><div data-dragon-id="w" class="box w"></div></div></div>
+<div data-dragon-id="k1" class="box k"><div data-dragon-id="k2" class="box k"></div></div>
+<div data-dragon-id="m1" class="box m"></div><div data-dragon-id="m2" class="box m n"></div>
+</body>
+</html>

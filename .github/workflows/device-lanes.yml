@@ -253,8 +253,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           ls -l /dev/kvm
-      # JDK 17 from Homebrew; kotlinc pinned to the JetBrains release the committed host lane records (Homebrew's kotlin moves
-      # to each new release, and a newer kotlinc fails the toolchain check below).
+      # JDK 17 from Homebrew at the build the committed host lane records (scripts/brew-openjdk17.sh; Homebrew's openjdk@17 moves to
+      # each new patch); kotlinc pinned to the JetBrains release it records (Homebrew's kotlin moves to each new release). A newer
+      # JDK or kotlinc fails the toolchain check below.
       - name: JDK 17, kotlinc 2.4.20 and the Android SDK packages (the local Mac's versions)
         run: |
           retry() { for i in 1 2 3; do "$@" && return 0; echo "::warning::$* failed (attempt $i of 3)"; if [ "$i" -lt 3 ]; then sleep 20; fi; done; echo "::error::$* failed 3 times"; return 1; }
@@ -270,7 +271,7 @@ jobs:
           retry sdk_install > "$RUNNER_TEMP/sdk-install.log" 2>&1 &
           sdk_pid=$!
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          retry brew install openjdk@17
+          retry bash scripts/brew-openjdk17.sh
           echo "JAVA_HOME=$(brew --prefix openjdk@17)" >> "$GITHUB_ENV"
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
           retry curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip

@@ -1,0 +1,552 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 24576
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 24576
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 24576
+  },
+  {
+   "id": "row1",
+   "parent": "stage",
+   "x": 1024,
+   "y": 1024,
+   "width": 49152,
+   "height": 10240
+  },
+  {
+   "id": "row2",
+   "parent": "stage",
+   "x": 1024,
+   "y": 12288,
+   "width": 49152,
+   "height": 10240
+  },
+  {
+   "id": "cut-a",
+   "parent": "row1",
+   "x": 1024,
+   "y": 0,
+   "width": 10240,
+   "height": 8192
+  },
+  {
+   "id": "cut-a:text0",
+   "parent": "cut-a",
+   "x": 8192,
+   "y": 3072,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-a:text0:line0",
+   "parent": "cut-a:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-b",
+   "parent": "row1",
+   "x": 13312,
+   "y": 0,
+   "width": 10240,
+   "height": 8192
+  },
+  {
+   "id": "cut-b:text0",
+   "parent": "cut-b",
+   "x": 8192,
+   "y": 3072,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-b:text0:line0",
+   "parent": "cut-b:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-c",
+   "parent": "row1",
+   "x": 25600,
+   "y": 0,
+   "width": 10240,
+   "height": 8192
+  },
+  {
+   "id": "cut-c-kid",
+   "parent": "cut-c",
+   "x": 8192,
+   "y": 3072,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-c-kid:text0",
+   "parent": "cut-c-kid",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-c-kid:text0:line0",
+   "parent": "cut-c-kid:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-d",
+   "parent": "row1",
+   "x": 37888,
+   "y": 0,
+   "width": 10240,
+   "height": 8192
+  },
+  {
+   "id": "cut-d:text0",
+   "parent": "cut-d",
+   "x": 8192,
+   "y": 3072,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-d:text0:line0",
+   "parent": "cut-d:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-e",
+   "parent": "row2",
+   "x": 1024,
+   "y": 0,
+   "width": 10240,
+   "height": 8192
+  },
+  {
+   "id": "cut-e:text0",
+   "parent": "cut-e",
+   "x": 8192,
+   "y": 3072,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-e:text0:line0",
+   "parent": "cut-e:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-f",
+   "parent": "row2",
+   "x": 13312,
+   "y": 0,
+   "width": 10240,
+   "height": 8192
+  },
+  {
+   "id": "cut-f-kid",
+   "parent": "cut-f",
+   "x": 8192,
+   "y": 3072,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-f-kid:text0",
+   "parent": "cut-f-kid",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-f-kid:text0:line0",
+   "parent": "cut-f-kid:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-f-hid",
+   "parent": "cut-f",
+   "x": 8192,
+   "y": 5120,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-f-hid:text0",
+   "parent": "cut-f-hid",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-f-hid:text0:line0",
+   "parent": "cut-f-hid:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-g",
+   "parent": "row2",
+   "x": 25600,
+   "y": 0,
+   "width": 10240,
+   "height": 8192
+  },
+  {
+   "id": "cut-g-hid",
+   "parent": "cut-g",
+   "x": 8192,
+   "y": 3072,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-g-hid:text0",
+   "parent": "cut-g-hid",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "cut-g-hid:text0:line0",
+   "parent": "cut-g-hid:text0",
+   "x": 0,
+   "y": 0,
+   "width": 2048,
+   "height": 2048
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 384,
+   "width": 800,
+   "height": 384
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 384,
+   "width": 800,
+   "height": 384
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 384,
+   "width": 800,
+   "height": 384
+  },
+  {
+   "id": "row1",
+   "left": 16,
+   "top": 16,
+   "right": 784,
+   "bottom": 176,
+   "width": 768,
+   "height": 160
+  },
+  {
+   "id": "row2",
+   "left": 16,
+   "top": 192,
+   "right": 784,
+   "bottom": 352,
+   "width": 768,
+   "height": 160
+  },
+  {
+   "id": "cut-a",
+   "left": 32,
+   "top": 16,
+   "right": 192,
+   "bottom": 144,
+   "width": 160,
+   "height": 128
+  },
+  {
+   "id": "cut-a:text0",
+   "left": 160,
+   "top": 64,
+   "right": 192,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-a:text0:line0",
+   "left": 160,
+   "top": 64,
+   "right": 192,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-b",
+   "left": 224,
+   "top": 16,
+   "right": 384,
+   "bottom": 144,
+   "width": 160,
+   "height": 128
+  },
+  {
+   "id": "cut-b:text0",
+   "left": 352,
+   "top": 64,
+   "right": 384,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-b:text0:line0",
+   "left": 352,
+   "top": 64,
+   "right": 384,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-c",
+   "left": 416,
+   "top": 16,
+   "right": 576,
+   "bottom": 144,
+   "width": 160,
+   "height": 128
+  },
+  {
+   "id": "cut-c-kid",
+   "left": 544,
+   "top": 64,
+   "right": 576,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-c-kid:text0",
+   "left": 544,
+   "top": 64,
+   "right": 576,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-c-kid:text0:line0",
+   "left": 544,
+   "top": 64,
+   "right": 576,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-d",
+   "left": 608,
+   "top": 16,
+   "right": 768,
+   "bottom": 144,
+   "width": 160,
+   "height": 128
+  },
+  {
+   "id": "cut-d:text0",
+   "left": 736,
+   "top": 64,
+   "right": 768,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-d:text0:line0",
+   "left": 736,
+   "top": 64,
+   "right": 768,
+   "bottom": 96,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-e",
+   "left": 32,
+   "top": 192,
+   "right": 192,
+   "bottom": 320,
+   "width": 160,
+   "height": 128
+  },
+  {
+   "id": "cut-e:text0",
+   "left": 160,
+   "top": 240,
+   "right": 192,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-e:text0:line0",
+   "left": 160,
+   "top": 240,
+   "right": 192,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-f",
+   "left": 224,
+   "top": 192,
+   "right": 384,
+   "bottom": 320,
+   "width": 160,
+   "height": 128
+  },
+  {
+   "id": "cut-f-kid",
+   "left": 352,
+   "top": 240,
+   "right": 384,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-f-kid:text0",
+   "left": 352,
+   "top": 240,
+   "right": 384,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-f-kid:text0:line0",
+   "left": 352,
+   "top": 240,
+   "right": 384,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-f-hid",
+   "left": 352,
+   "top": 272,
+   "right": 384,
+   "bottom": 304,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-f-hid:text0",
+   "left": 352,
+   "top": 272,
+   "right": 384,
+   "bottom": 304,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-f-hid:text0:line0",
+   "left": 352,
+   "top": 272,
+   "right": 384,
+   "bottom": 304,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-g",
+   "left": 416,
+   "top": 192,
+   "right": 576,
+   "bottom": 320,
+   "width": 160,
+   "height": 128
+  },
+  {
+   "id": "cut-g-hid",
+   "left": 544,
+   "top": 240,
+   "right": 576,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-g-hid:text0",
+   "left": 544,
+   "top": 240,
+   "right": 576,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "cut-g-hid:text0:line0",
+   "left": 544,
+   "top": 240,
+   "right": 576,
+   "bottom": 272,
+   "width": 32,
+   "height": 32
+  }
+ ]
+}

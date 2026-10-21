@@ -14,7 +14,7 @@ import { AHEM_FACE_ID, fontMetricLengths, letterSpacingAfter, smallCapsCodePoint
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
-  add, floatAdd, floorToWholePx, fontMetricPx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, neg, platformFontSize, roundCoreTextMetricToWholePx,
+  add, floatAdd, floorToWholePx, fontMetricPx, fromPxCeil, fromRaw, inlineToFloat, inlineToLayoutUnitCeil, LU_PER_PX, neg, platformFontSize, roundCoreTextMetricToWholePx,
   roundFontMetricHalfUpToWholePx, sub, textRunLayoutUnit, toFloat, toPx, ZERO,
 } from './units.ts';
 
@@ -1198,11 +1198,12 @@ export function hyphenAdvance(item: ShapeItem): LineResult {
 
 /**
  * One item of a formatting context for the line breaker. A text item is one shaped text item: its shaped result, the item offsets
- * where a line may start (opportunities, ascending, inside the item), whether a line may start right after it (atEnd), and its
- * offset in the context's text content. A tag records whether the content character after it is a breakable space.
+ * where a line may start (opportunities, ascending, inside the item), whether a line may start right after it (atEnd), the
+ * offsets (up to its length, for after it) whose opportunity holds only when the line does not start one code point before them
+ * (leads), and its offset in the context's text content. A tag records whether the content character after it is a breakable space.
  */
 export type BreakItem =
-  | { readonly kind: 'text'; readonly item: ShapeItem; readonly result: ShapeResult; readonly opportunities: readonly number[]; readonly atEnd: boolean; readonly offset: number }
+  | { readonly kind: 'text'; readonly item: ShapeItem; readonly result: ShapeResult; readonly opportunities: readonly number[]; readonly atEnd: boolean; readonly leads: readonly number[]; readonly offset: number }
   | { readonly kind: 'open'; readonly offset: number }
   | { readonly kind: 'close'; readonly offset: number; readonly spaceBefore: boolean; readonly spaceAfter: boolean }
   | { readonly kind: 'br'; readonly offset: number };
@@ -1297,6 +1298,9 @@ function itemBreakable(b: LineBuild, index: number, offset: number): boolean {
   if (it.kind !== 'text') return false;
   // LineBreakType::kBreakCharacter under override_break_anywhere_ (line_breaker.cc:4536-4542): every grapheme cluster boundary.
   if (b.override) return offset >= it.result.end ? (b.anywhere.graphemeAtEnd[index] as boolean) : contains(b.anywhere.graphemes[index] as readonly number[], offset, 0);
+  // TXT-BREAK-2: a hyphen-minus before a Latin-1 letter breaks unless the line starts at the hyphen: Blink's break iterator reads the
+  // text from the line start, where UAX #14 LB20a holds the hyphen to the letter (inline.ts hyphenLeads).
+  if (contains(it.leads, offset, 0)) return b.lineStart !== it.offset + offset - 1;
   if (offset >= it.result.end) return it.atEnd;
   return contains(it.opportunities, offset, 0);
 }
@@ -1483,7 +1487,8 @@ function handleOverflow(b: LineBuild): void {
     if (it.kind !== 'text' || r.end === r.start) continue;
     if (toRewind < 0 && r.mayBreakInside) {
       const itemAvail = -toRewind;
-      const minAvail = r.width - 1;
+      // inline_size - 1 is LayoutUnit minus an int: one whole pixel (layout_unit.h operator-), not one LayoutUnit.
+      const minAvail = r.width - LU_PER_PX;
       if (minAvail <= 0) throw new BreakFailure('a zero-width text result overflows (BreakTextAtPreviousBreakOpportunity)');
       const before: MutableResult = { index: r.index, start: r.start, end: r.end, width: r.width, hyphen: r.hyphen, view: r.view, canBreakAfter: r.canBreakAfter, mayBreakInside: r.mayBreakInside, hangs: r.hangs };
       breakText(b, r, itemAvail < minAvail ? itemAvail : minAvail, itemAvail);

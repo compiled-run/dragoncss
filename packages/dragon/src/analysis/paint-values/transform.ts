@@ -6,10 +6,13 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { TransformFnDecl, TransformLengthDecl, TransformOriginDecl } from '../../css/properties/transform.ts';
 import { individualTransformOf, INDIVIDUAL_TRANSFORM_TYPE, INDIVIDUAL_TRANSFORMS, inFloatRange, lengthText, originText, skewsBox, TRANSFORM_LIST_TYPE, TRANSFORM_ORIGIN_TYPE, transformFunctionsOf, transformListText, transformOriginOf, willChangeFeatures } from '../../css/properties/transform.ts';
+import { filterApplies } from '../../css/properties/filter.ts';
+import { hasBackdropFilter } from '../../css/properties/fx.ts';
 import { lengthToPx } from '../../css/units.ts';
 import type { Diagnostic, Origin } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { containsDescendants } from '../containment.ts';
 import type { PaintValueContext, PaintValues } from './types.ts';
 
 /** A declared length in px, or unchanged when its font base is unknown (the font-size pre-pass), it is a percentage or it overflows. */
@@ -86,16 +89,37 @@ const keywordOf = (el: ResolvedElement, p: Longhand): string => {
   return v.kind === 'keyword' ? v.value : '';
 };
 
-/** Whether an element's transform or will-change makes it a containing block for positioned descendants (css-transforms-1 §3). */
-export function transformsDescendants(el: ResolvedElement): boolean {
-  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform');
+/**
+ * Whether an element's perspective is not none. With Dragon's 2D transforms below it, a perspective projects nothing (a point of the
+ * z = 0 plane keeps w = 1), so it acts as an identity transform: a stacking context and a containing block, measured pixel-identical
+ * to transform: translateX(0) in Chrome 145 with rotated, scaled and translated children at DPR 1 and 2.625 (css-transforms-2 §5).
+ */
+export function hasPerspective(el: ResolvedElement): boolean {
+  const v = el.props.get('perspective')?.value;
+  return v !== undefined && !(v.kind === 'keyword' && v.value === 'none');
 }
 
-/** Where to report a transform refusal: the transform declaration, else the will-change one, else the element. */
+/** What makes el transform its descendants, as the messages name it: a transform, or a perspective or backdrop-filter alone. */
+export function transformWord(el: ResolvedElement): string {
+  if (elementTransform(el).length > 0 || elementWillChange(el).includes('transform')) return 'a transform';
+  if (hasPerspective(el)) return 'a perspective';
+  return hasBackdropFilter(el.props.get('backdrop-filter')?.value) ? 'a backdrop-filter' : 'a transform';
+}
+
+/**
+ * Whether an element's transform, perspective, will-change or backdrop-filter makes it a containing block for positioned
+ * descendants (css-transforms-1 §3, filter-effects-2 §3: a backdrop-filter other than none does, as a filter does).
+ */
+export function transformsDescendants(el: ResolvedElement): boolean {
+  return elementTransform(el).length > 0 || elementWillChange(el).includes('transform') || hasPerspective(el) || hasBackdropFilter(el.props.get('backdrop-filter')?.value);
+}
+
+/** Where to report a transform refusal: the transform declaration, else the will-change, perspective or backdrop-filter one, else the element. */
 function transformOrigin(el: ResolvedElement): Origin {
-  for (const p of ['transform', ...INDIVIDUAL_TRANSFORMS, 'will-change'] as const) {
-    const v = el.props.get(p) as ResolvedValue;
-    const set = p === 'will-change' ? elementWillChange(el).includes('transform') : !(v.value.kind === 'keyword' && v.value.value === 'none');
+  for (const p of ['transform', ...INDIVIDUAL_TRANSFORMS, 'will-change', 'perspective', 'backdrop-filter'] as const) {
+    const v = el.props.get(p) as ResolvedValue | undefined;
+    if (v === undefined) continue;
+    const set = p === 'will-change' ? elementWillChange(el).includes('transform') : p === 'perspective' ? hasPerspective(el) : p === 'backdrop-filter' ? hasBackdropFilter(v.value) : !(v.value.kind === 'keyword' && v.value.value === 'none');
     if (v.declaration !== null && set) return authored(v.declaration.valueSpan);
   }
   return el.element.node.origin;
@@ -110,8 +134,7 @@ function transformOrigin(el: ResolvedElement): Origin {
  * that refusal.
  */
 export function checkTransformContexts(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const refuse = (el: ResolvedElement, what: string, message: string, manual: string): void => {
-    const origin = transformOrigin(el);
+  const refuse = (el: ResolvedElement, what: string, message: string, manual: string, origin: Origin = transformOrigin(el)): void => {
     for (const t of targets) {
       const id = `${t}|transform-${what}|${JSON.stringify(origin)}|${el.element.address}`;
       if (reported.has(id)) continue;
@@ -124,31 +147,50 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
     if (display === 'none') return;
     const position = keywordOf(el, 'position');
     const own = transformsDescendants(el);
+    // A filter other than none makes its box the containing block of absolute and fixed descendants too (filter-effects-1, the filter property).
+    const creator = own ? transformWord(el) : filtered(el) ? 'a filter' : null;
     const address = el.element.address;
     if (own) {
+      const what = transformWord(el);
       const tag = el.element.tag;
       // The properties are each accepted alone; together a rotation after a non-uniform scale can skew the box (css/properties/transform.ts).
       if (skewsBox(elementTransform(el))) refuse(el, 'skew', `the translate, rotate, scale and transform of ${address} compose to a rotation after a non-uniform scale, which skews the box: Android's View transform cannot express it (package PNT2-m)`, `Rotate ${address} before scaling it unevenly, or scale it evenly.`);
-      if (tag === 'html' || tag === 'body') refuse(el, 'root', `a transform on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
-      if (display !== 'block' && display !== 'flex') refuse(el, 'display', `a transform on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
-      if (position === 'static') {
-        const cb = absoluteDescendant(el);
-        if (cb !== null) refuse(el, 'containing-block', `a transform on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (css-transforms-1 §3), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the transform.`);
-      }
+      if (tag === 'html' || tag === 'body') refuse(el, 'root', `${what} on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
+      if (display !== 'block' && display !== 'flex') refuse(el, 'display', `${what} on ${address} with display: ${display} is not supported: Dragon transforms block and flex boxes`, `Give ${address} display: block or flex.`);
     }
-    if (position === 'fixed' && transformed !== null) refuse(transformed, 'fixed', `a transform on ${transformed.element.address} makes it the containing block of the fixed ${address} (css-transforms-1 §3; package POSX-f2)`, `Move ${address} outside ${transformed.element.address}.`);
-    for (const c of el.children) if (c.kind === 'element') walk(c, own ? el : transformed);
+    // A box with layout or paint containment is already the containing block, transformed or not (css-contain-2 §3.2).
+    if (creator !== null && position === 'static' && !containsDescendants(el)) {
+      const cb = absoluteDescendant(el);
+      if (cb !== null) refuse(el, 'containing-block', `${creator} on ${address} makes it the containing block of the absolutely positioned ${cb.element.address} (${creator === 'a filter' ? 'filter-effects-1, the filter property' : 'css-transforms-1 §3'}), which Dragon's layout does not model yet`, `Set position: relative on ${address}, so it is the containing block with or without the ${creator.slice(2)}.`, own ? transformOrigin(el) : filterOrigin(el));
+    }
+    if (position === 'fixed' && transformed !== null) {
+      const what = transformsDescendants(transformed) ? transformWord(transformed) : 'a filter';
+      refuse(transformed, 'fixed', `${what} on ${transformed.element.address} makes it the containing block of the fixed ${address} (${what === 'a filter' ? 'filter-effects-1, the filter property' : 'css-transforms-1 §3'}; package POSX-f2)`, `Move ${address} outside ${transformed.element.address}.`, what === 'a filter' ? filterOrigin(transformed) : transformOrigin(transformed));
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c, creator !== null ? el : transformed);
   };
   walk(root, null);
 }
 
-/** An absolutely positioned descendant whose containing block would be el (no positioned or transformed box between them), or null. */
+/** The filter declaration's value, or the element when the filter is not authored on it. */
+function filterOrigin(el: ResolvedElement): Origin {
+  const f = el.props.get('filter') as ResolvedValue | undefined;
+  return f !== undefined && f.declaration !== null ? authored(f.declaration.valueSpan) : el.element.node.origin;
+}
+
+/** Whether an element has a filter other than none (a hand-built element may carry no filter value). */
+function filtered(el: ResolvedElement): boolean {
+  const f = el.props.get('filter') as ResolvedValue | undefined;
+  return f !== undefined && filterApplies(f.value);
+}
+
+/** An absolutely positioned descendant whose containing block would be el (no positioned, transformed, filtered or contained box between them), or null. */
 function absoluteDescendant(el: ResolvedElement): ResolvedElement | null {
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c, 'display') === 'none') continue;
     const position = keywordOf(c, 'position');
     if (position === 'absolute') return c;
-    if (position !== 'static' || transformsDescendants(c)) continue;
+    if (position !== 'static' || transformsDescendants(c) || filtered(c) || containsDescendants(c)) continue;
     const deeper = absoluteDescendant(c);
     if (deeper !== null) return deeper;
   }

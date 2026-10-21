@@ -1,0 +1,14 @@
+{
+  "case": "text-break-all-letters-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","data":"XXXXXXXX XX","lines":3,"units":[0,0,0,0,0,1,1,1,1,1,2],"blank":[]},
+    {"id":"b:text0","data":"AB ","lines":1,"units":[0,0,0],"blank":[2]},
+    {"id":"b:text1","data":" IJ","lines":1,"units":[0,0,0],"blank":[0]},
+    {"id":"b1:text0","data":"CDEFGH","lines":2,"units":[0,0,0,1,1,1],"blank":[]},
+    {"id":"c:text0","data":"ABCDEFGH IJ","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1],"blank":[8]},
+    {"id":"r1:text0","data":"XXXXXX","lines":6,"units":[0,1,2,3,4,5],"blank":[]},
+    {"id":"r2:text0","data":"XX XX","lines":2,"units":[0,0,0,1,1],"blank":[2]}
+  ]
+}

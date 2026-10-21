@@ -1,0 +1,19 @@
+{
+  "case": "text-break-hyphen-lato",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"a:text0","data":"Jean-Étienne","lines":3,"units":[0,0,0,0,0,1,1,1,1,1,2,2],"blank":[]},
+    {"id":"b:text0","data":"Jean-Étienne","lines":3,"units":[0,0,0,0,1,1,1,1,1,2,2,2],"blank":[]},
+    {"id":"c:text0","data":"c’est-à-dire","lines":3,"units":[0,0,0,0,0,0,1,1,1,1,1,2],"blank":[]},
+    {"id":"d:text0","data":"Ok?-élan","lines":2,"units":[0,0,0,0,1,1,1,1],"blank":[]},
+    {"id":"e:text0","data":"ab--élan","lines":2,"units":[0,0,0,0,1,1,1,1],"blank":[]},
+    {"id":"f:text0","data":"ab--élan","lines":2,"units":[0,0,0,0,1,1,1,1],"blank":[]},
+    {"id":"g:text0","data":"x -élan","lines":2,"units":[0,0,1,1,1,1,1],"blank":[1]},
+    {"id":"h:text0","data":"Jean-Étienne et Marie-Ève","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[12]},
+    {"id":"i:text0","data":"ÆålØiÉGjH","lines":3,"units":[0,0,0,1,1,1,2,2,2],"blank":[]},
+    {"id":"j:text0","data":"ßÉöf-Jß","lines":3,"units":[0,0,1,1,1,2,2],"blank":[]},
+    {"id":"r1:text0","data":"ab--élan","lines":2,"units":[0,0,0,0,1,1,1,1],"blank":[]},
+    {"id":"r2:text0","data":"Jean-Étienne","lines":9,"units":[0,1,2,3,4,4,4,5,5,6,7,8],"blank":[]}
+  ]
+}

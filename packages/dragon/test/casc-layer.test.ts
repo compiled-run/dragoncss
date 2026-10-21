@@ -184,8 +184,8 @@ describe('CASC 3: revert-layer rolls back to the layers below', () => {
     const c = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }).compile(input);
     expect(c.diagnostics.map((d) => `${d.code}: ${d.message}`)).toEqual([]);
   });
-  it('a refused @layer nested in a style rule leaves the enclosed analysis of a top-level @container whole', () => {
-    const css = 'body { margin: 0; font-family: Ahem; font-size: 10px; }\n@container (min-width: 1px) { .a { display: inline-table; } }\n.b { width: 5px; @layer x { margin-right: 6mm; } }\n';
+  it('a refused @layer nested in a style rule leaves the enclosed analysis of a top-level @starting-style whole', () => {
+    const css = 'body { margin: 0; font-family: Ahem; font-size: 10px; }\n@starting-style { .a { display: inline-table; } }\n.b { width: 5px; @layer x { margin-right: 6mm; } }\n';
     const c = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }).compile(inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]));
     expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE', 'DRAGON_UNSUPPORTED_AT_RULE']);
     const [container, layer] = c.diagnostics as [Diagnostic, Diagnostic];

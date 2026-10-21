@@ -128,7 +128,7 @@ export const MILESTONE_1: readonly FixtureSpec[] = [
   layout('border-initial-width'),
   // GRID G1a proves display: grid in block and flex-row contexts; a grid item of a column flex container stays unproven.
   reject('reject-display-grid', 'DRAGON_UNPROVEN_CONTEXT', 'grid', 'display:grid on grid is used in the flex-column/ltr context, which is not proven'),
-  reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 40 59)'),
+  reject('reject-color-lab', 'DRAGON_UNSUPPORTED_VALUE', 'lab(50% 100 59 / 0.5)'),
   // M4: the implicitly filled longhand is named at the start of the message.
   reject('reject-shorthand-filled', 'DRAGON_UNPROVEN_CONTEXT', '3px', 'border-top-style:none'),
   reject('reject-unproven-context', 'DRAGON_UNPROVEN_CONTEXT', 'auto'),
