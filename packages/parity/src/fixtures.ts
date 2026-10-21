@@ -61,6 +61,7 @@ import { MEDIA_ENVIRONMENT } from './fixture-groups/media-environment.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { MOTION } from './fixture-groups/motion.ts';
 import { MULTICOL } from './fixture-groups/multicol.ts';
 import { OUTLINE } from './fixture-groups/outline.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
@@ -233,6 +234,7 @@ export const GROUPS = {
   'media-environment': MEDIA_ENVIRONMENT,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  motion: MOTION,
   multicol: MULTICOL,
   outline: OUTLINE,
   overflow: OVERFLOW,

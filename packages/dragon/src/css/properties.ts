@@ -58,6 +58,7 @@ import { BORDER_IMAGE_ASPECTS, BORDER_IMAGE_CONTAINER, BORDER_IMAGE_INHERITED, B
 import { FX_ASPECTS, FX_CONTAINER, FX_INHERITED, FX_LONGHANDS, FX_SHORTHANDS, FX_TEXT_ROLE } from './properties/fx.ts';
 import { TABLE_ASPECTS, TABLE_CONTAINER, TABLE_INHERITED, TABLE_LONGHANDS, TABLE_SHORTHANDS, TABLE_TEXT_ROLE } from './properties/table.ts';
 import { COUNTERS_ASPECTS, COUNTERS_CONTAINER, COUNTERS_INHERITED, COUNTERS_LONGHANDS, COUNTERS_SHORTHANDS, COUNTERS_TEXT_ROLE } from './properties/counters.ts';
+import { MOTION_ASPECTS, MOTION_CONTAINER, MOTION_INHERITED, MOTION_LONGHANDS, MOTION_SHORTHANDS, MOTION_TEXT_ROLE } from './properties/motion.ts';
 import { MULTICOL_ASPECTS, MULTICOL_CONTAINER, MULTICOL_INHERITED, MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS, MULTICOL_TEXT_ROLE } from './properties/multicol.ts';
 import { BIDI_ASPECTS, BIDI_CONTAINER, BIDI_INHERITED, BIDI_LONGHANDS, BIDI_SHORTHANDS, BIDI_TEXT_ROLE } from './properties/bidi.ts';
 import { COLOR_SCHEME_ASPECTS, COLOR_SCHEME_CONTAINER, COLOR_SCHEME_INHERITED, COLOR_SCHEME_LONGHANDS, COLOR_SCHEME_SHORTHANDS, COLOR_SCHEME_TEXT_ROLE } from './properties/color-scheme.ts';
@@ -218,6 +219,9 @@ const FAMILIES = [
   family('color-scheme', COLOR_SCHEME_LONGHANDS, COLOR_SCHEME_SHORTHANDS, COLOR_SCHEME_INHERITED, COLOR_SCHEME_ASPECTS, COLOR_SCHEME_CONTAINER, COLOR_SCHEME_TEXT_ROLE),
   // MULTICOL (css-multicol-1): the column longhands but column-gap, columns and column-rule, initial values only, after color-scheme.
   family('multicol', MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS, MULTICOL_INHERITED, MULTICOL_ASPECTS, MULTICOL_CONTAINER, MULTICOL_TEXT_ROLE),
+  // MOTION (css-motion-1 §2): offset-path, offset-distance, offset-position, offset-anchor and offset-rotate with the offset shorthand,
+  // initial values only, after multicol.
+  family('motion', MOTION_LONGHANDS, MOTION_SHORTHANDS, MOTION_INHERITED, MOTION_ASPECTS, MOTION_CONTAINER, MOTION_TEXT_ROLE),
   // NA-NATIVE-2: speak, Chrome's legacy aural property, after color-scheme.
   family('speak', SPEAK_LONGHANDS, SPEAK_SHORTHANDS, SPEAK_INHERITED, SPEAK_ASPECTS, SPEAK_CONTAINER, SPEAK_TEXT_ROLE),
   // css-break-3: the break properties, orphans and widows, every value, since Dragon lays out no fragmentation context, after counters.
