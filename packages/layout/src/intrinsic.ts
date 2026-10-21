@@ -30,6 +30,7 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   const w = box.style.containIntrinsicWidth;
   if (box.style.containSize !== 'none' && !ctx.faults.containedContentSized) return w.kind === 'px' ? fromCssPx(w.value) : box.style.display === 'grid' ? gridIntrinsicContentInlineSize(ctx, { ...box, children: [] }, kind) : ZERO;
   const kids = box.children;
+  if (box.style.multicol !== null) unsupported('multicol', box.id, 'css-multicol-1 §3.4', `the ${kind}-content size of the multi-column container ${box.id} is not yet proven against Chrome`);
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);

@@ -14,7 +14,7 @@ import type { Longhand } from '../css/properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from '../css/properties.ts';
 import type { TransformFnDecl, TransformLengthDecl } from '../css/properties/transform.ts';
 import { inFloatRange, TRANSFORM_LIST_TYPE, transformFunctionsOf, willChangeFeatures } from '../css/properties/transform.ts';
-import { lengthToPx } from '../css/units.ts';
+import { FONT_METRIC_LAYOUT_UNITS, lengthToPx } from '../css/units.ts';
 import type { AnimItem, AnimLonghand, AnimList, EasingValue, SubstitutedAnimation } from '../css/properties/animation.ts';
 import { ANIM_INITIAL, ANIM_LIST_PROPERTIES, substitutedAnimationValue } from '../css/properties/animation.ts';
 import { shorthandHandler } from '../css/shorthands/index.ts';
@@ -233,6 +233,8 @@ export function animValueOf(v: CssValue): AnimValue {
   return { kind: 'env', text: v.kind === 'other' ? v.text : JSON.stringify(v) };
 }
 
+/** An ex, ch or cap length (css/units.ts FONT_METRIC_LAYOUT_UNITS), which only the layout lowering resolves. */
+const fontMetric = (v: CssValue): boolean => v.kind === 'length' && FONT_METRIC_LAYOUT_UNITS.has(v.unit);
 const sameValue = (a: AnimValue, b: AnimValue): boolean => JSON.stringify(a) === JSON.stringify(b);
 // color.cc Color::GetColorInterpolationSpace: Chrome animates a colour outside the legacy spaces, or one with a none component, in oklab.
 const oklabColor = (v: CssValue): boolean => v.kind === 'color' && v.oklab === true;
@@ -484,6 +486,10 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             const kind = animationKind(v.property);
             animated.add(`${ea.address}|${v.property}`);
             if (!admitted(kind)) continue;
+            if (fontMetric(v.value)) {
+              once(`kffm|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} is unsupported: Dragon's animation writer holds px and percentage endpoints, and an ex, ch or cap keyframe is not resolved to one yet`));
+              continue;
+            }
             // CALC-2: an element's font size may follow the viewport, so an em keyframe there has no px yet (refused below).
             const fs = valueAt(el, 'font-size').value;
             const followsViewport = !(fs.kind === 'length' && fs.unit === 'px');
@@ -547,7 +553,9 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           if (listing.delay + listing.duration <= 0) continue;
           const from = endpointOf(p, valueAt(ea, p).value);
           const to = endpointOf(p, valueAt(eb, p).value);
-          if (sameValue(from, to)) continue;
+          // An ex, ch or cap length that reads the same in both states still moves when the font size changes between them.
+          const metricMoves = (fontMetric(valueAt(ea, p).value) || fontMetric(valueAt(eb, p).value)) && JSON.stringify(valueAt(ea, 'font-size').value) !== JSON.stringify(valueAt(eb, 'font-size').value);
+          if (sameValue(from, to) && !metricMoves) continue;
           const kind = animationKind(p);
           if (kind.kind === 'discrete') continue;
           const span = spanFor(after, 'transition-property');
@@ -558,6 +566,10 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           }
           if (!admitted(kind)) {
             once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
+            continue;
+          }
+          if (fontMetric(valueAt(ea, p).value) || fontMetric(valueAt(eb, p).value)) {
+            once(`tfm|${p}|${address}|${span.start}`, refuse(span, `${p} on ${address}: a transition from or to an ex, ch or cap length is unsupported: Dragon's animation writer holds px and percentage endpoints, and does not resolve a font-metric length to one yet`));
             continue;
           }
           if (p === 'background-color' && (foldedOpacity(ea) !== null || foldedOpacity(eb) !== null)) once(`tfold|${address}|${span.start}`, refuse(span, FOLD_ANIMATED(address)));
@@ -644,6 +656,65 @@ export function refuseAnimatedSafeAreaInsets(analysis: AnimationAnalysis, roots:
           reported.add(id);
           diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(d.valueSpan), target: t, message: `${what} of ${p} on ${ea.address}, whose value reads env(safe-area-inset-*): the native animator holds absolute endpoints, so a change of the measured insets (rotation, status bar) would snap or jump where Chrome animates it (ENV-SAFE)`, manual: `Remove the ${longhand === 'animation-name' ? 'animation' : 'transition'} of ${p}, or give ${p} a value without env().` }));
         }
+      }
+    }
+  }
+}
+
+/** The sizing longhands whose intrinsic size keywords interpolate-size: allow-keywords lets Chrome interpolate (css-values-5 §8.2); the logical ones resolve to these. */
+const KEYWORD_SIZED: readonly Longhand[] = ['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'flex-basis'];
+
+/**
+ * css-values-5 §8.2: under interpolate-size: allow-keywords Chrome interpolates a sizing longhand to and from an intrinsic size
+ * keyword (auto, min-content, fit-content), where numeric-only flips it at the midpoint. Native interpolates no such keyword, so it
+ * refuses allow-keywords on an element that transitions a sizing longhand, or whose animation keyframes one with a keyword or from
+ * or to the element's own keyword value. Anything else interpolates as with numeric-only, and web keeps it, since Chrome runs the
+ * animation.
+ * Planted fault animationExtraAccepted accepts it.
+ */
+export function refuseKeywordSizeInterpolation(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: { readonly animationExtraAccepted: boolean }): void {
+  if (faults.animationExtraAccepted || nativeTargets.length === 0) return;
+  const trees = roots.map((r) => byAddress(r));
+  const isKeyword = (v: CssValue | undefined): boolean => v !== undefined && v.kind === 'keyword';
+  for (const c of analysis.cases) {
+    for (const ea of c.elements.values()) {
+      const els = trees.flatMap((t) => {
+        const el = t.get(ea.address);
+        return el === undefined ? [] : [el];
+      });
+      const allowing = els.find((el) => {
+        const v = (el.props.get('interpolate-size') as ResolvedValue).value;
+        return v.kind === 'keyword' && v.value === 'allow-keywords';
+      });
+      if (allowing === undefined) continue;
+      const valuesOf = (p: Longhand): CssValue[] => els.map((el) => (el.props.get(p) as ResolvedValue).value);
+      let found: [Longhand, 'an animation' | 'a transition'] | null = null;
+      for (const [p, l] of ea.listings) {
+        if (found !== null || !KEYWORD_SIZED.includes(p) || l.mode !== 'listed' || l.delay + l.duration <= 0) continue;
+        // The states that start a transition (an interaction, a band, a case) need not be among these trees, so any transition of a
+        // sizing longhand counts: one of its endpoints may be a keyword.
+        found = [p, 'a transition'];
+      }
+      for (const a of ea.animations) {
+        if (found !== null || a.name === 'none' || !a.hasKeyframes) continue;
+        for (const b of analysis.keyframes.get(a.name)?.blocks ?? []) {
+          const v = b.values.find((x) => KEYWORD_SIZED.includes(x.property) && (isKeyword(x.value) || valuesOf(x.property).some(isKeyword)));
+          if (v !== undefined && found === null) found = [v.property, 'an animation'];
+        }
+      }
+      if (found === null) continue;
+      const [p, what] = found;
+      const at = allowing.props.get('interpolate-size') as ResolvedValue;
+      for (const t of nativeTargets) {
+        const id = `${t}|${ea.address}|interpolate-size`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+          origin: at.span !== null ? authored(at.span) : allowing.element.node.origin,
+          target: t,
+          message: `interpolate-size: allow-keywords on ${ea.address} lets Chrome interpolate ${what} of ${p} to and from an intrinsic size keyword, which the native animator does not interpolate (it would flip at the midpoint)`,
+          manual: `Remove interpolate-size: allow-keywords from ${ea.address}, or animate ${p} between lengths.`,
+        }));
       }
     }
   }

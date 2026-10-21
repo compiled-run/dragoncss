@@ -35,7 +35,7 @@ import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
-import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations } from './analysis/animations.ts';
+import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations, refuseKeywordSizeInterpolation } from './analysis/animations.ts';
 import { refuseZoomedAnimations } from './analysis/zoom.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
 import { refuseAnimatedFx } from './analysis/fx.ts';
@@ -65,7 +65,7 @@ import { emitWebCss } from './emit/web-css.ts';
 import type { WebFontContext, WebInteraction } from './emit/web-css.ts';
 import type { AtRuleContext } from './css/at-rules.ts';
 import type { FamilyKeyContext } from './css/values.ts';
-import { familyListText } from './css/values.ts';
+import { CSS_WIDE, familyListText } from './css/values.ts';
 import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
@@ -491,9 +491,13 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         const feature = featureOf(lh.property, lh.value, fonts);
         // checkFamilies reports an unmapped family.
         if (feature === 'font-family:<unmapped>') continue;
+        const wide = lh.value.kind === 'keyword' && CSS_WIDE.has(lh.value.value);
         for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
+          // CASC: a CSS-wide keyword's value depends on the element, so where the cases resolve it, checkContexts checks the value it
+          // computes to there; a keyword no case resolves is still refused here.
+          if (wide && (typeof used === 'function' ? used(t) : used).some((u) => u.declaration === d && u.property === lh.property && u.resolved !== undefined)) continue;
           // checkOutline refuses these outline styles on native wherever they paint; a zero-width one paints nothing.
           if (t !== 'web' && nativeOutlinePending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
@@ -930,8 +934,27 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
       for (const t of targets) {
         const profile = profileFor(options.supportProfiles, t);
         if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
-        const proven = provenContexts(profile, u.feature);
         const id = `${t}|${u.key}|${u.declaration.span.start}|${u.declaration.span.source.uri}`;
+        if (u.resolved !== undefined) {
+          // CASC: a CSS-wide keyword with no row of its own in this context is supported where it leaves the element's value
+          // unchanged, or where the value it computes to here has a row in this context.
+          if (u.resolved.unchanged || statusOf(profile, u.resolved.feature, u.context) !== 'unsupported') continue;
+          const key = `${id}|${u.resolved.feature}`;
+          if (reported.has(key)) continue;
+          reported.add(key);
+          const inCtx = supportedValuesIn(profile, u.property, u.context);
+          const where = provenContexts(profile, u.resolved.feature);
+          diagnostics.push(diagnostic(where.length > 0 ? 'DRAGON_UNPROVEN_CONTEXT' : 'DRAGON_UNSUPPORTED_VALUE', {
+            origin: authored(u.declaration.valueSpan),
+            target: t,
+            message: `${u.property}: ${u.feature.slice(u.property.length + 1)}${setBy(u.declaration, u.property)} on ${u.address} computes to ${valueToString(u.resolved.value)}, which is ${where.length > 0 ? `not proven in the ${u.context} context (proven: ${where.join(', ')})` : `unsupported (support profile ${profile.revision})`}; ${inCtx.length > 0 ? `in ${u.context} use ${list(inCtx)}` : `no ${u.property} value is proven in ${u.context}`}`,
+            manual: inCtx.length > 0 ? `Use one of: ${inCtx.join(', ')}.` : `Remove ${u.declaration.alias ?? u.declaration.property}; ${t} supports no value of ${u.property} in ${u.context} yet.`,
+            related: [{ origin: authored(u.declaration.span), message: `declaration ${u.declaration.alias ?? u.declaration.property}: ${u.declaration.text} applied to ${u.address}` }],
+            profile: { target: t, profileRevision: profile.revision, feature: u.resolved.feature, context: u.context, status: 'unsupported' },
+          }));
+          continue;
+        }
+        const proven = provenContexts(profile, u.feature);
         // checkValues reports a CSS value no context proves; an SVG presentation attribute has no rule, so it is reported here.
         if (proven.length === 0 && u.declaration.presentationHint === true && !reported.has(id)) {
           reported.add(id);
@@ -1450,6 +1473,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const groupMotionReported = new Set<string>();
       // ENV-SAFE: the measured insets change without a style change event, so native refuses animating a value that reads them.
       const safeAreaReported = new Set<string>();
+      const keywordSizeReported = new Set<string>();
       const textFillReported = new Set<string>();
       const fxReported = new Set<string>();
       const pixelatedReported = new Set<string>();
@@ -1462,6 +1486,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
         refuseAnimatedSafeAreaInsets(a, roots, nativeTargets, diagnostics, safeAreaReported);
+        // An interaction state can set allow-keywords (or a keyword size) that the resting tree lacks.
+        refuseKeywordSizeInterpolation(a, r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)])), nativeTargets, diagnostics, keywordSizeReported, options.faults);
         refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
         // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only).
         if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, groupMotionReported);

@@ -12,8 +12,10 @@
 // fixture-groups/overscroll.ts; container types are the container-query group's). An active snap pair is refused on iOS and Android alone, which a reject case cannot express (it needs
 // every output blocked), so packages/dragon/test/scroll-containment.test.ts covers it.
 // render-anchor-initial sets image-rendering, the anchor positioning longhands and the svg-extra longhands at their initial values on boxes,
-// an absolutely positioned box and a flex row, with rejects of an anchor name and a crisp-edges shape rendering
-// (image-rendering: pixelated is drawn, fixture-groups/replaced.ts replaced-pixelated).
+// an absolutely positioned box and a flex row; render-anchor-names sets the names nothing can look up (anchor-name, anchor-scope,
+// timeline-scope) and interpolate-size: allow-keywords off animation, in another ASCII case, escaped and inherited, on the same
+// boxes; with rejects of a position area (beside an anchor name) and a crisp-edges shape rendering (image-rendering: pixelated is
+// drawn, fixture-groups/replaced.ts replaced-pixelated).
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -26,6 +28,7 @@ export const SCROLL_CONTAINMENT: readonly FixtureSpec[] = [
   reject('reject-contain-content-visibility', 'DRAGON_UNSUPPORTED_VALUE', 'hidden', 'content-visibility: hidden'),
   reject('reject-contain-size-flex', 'DRAGON_UNSUPPORTED_VALUE', 'strict', 'contain: strict on <div> f is unsupported'),
   layout('render-anchor-initial', ['ltr', 'rtl']),
-  reject('reject-anchor-name', 'DRAGON_UNSUPPORTED_VALUE', '--card', 'anchor-name: --card'),
+  layout('render-anchor-names', ['ltr', 'rtl']),
+  reject('reject-position-area', 'DRAGON_UNSUPPORTED_VALUE', 'top', 'position-area: top'),
   reject('reject-shape-rendering', 'DRAGON_UNSUPPORTED_VALUE', 'crispEdges', 'shape-rendering: crispEdges'),
 ];

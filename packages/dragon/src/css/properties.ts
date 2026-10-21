@@ -37,6 +37,7 @@ import { LINE_BREAK_ASPECTS, LINE_BREAK_CONTAINER, LINE_BREAK_INHERITED, LINE_BR
 import { HYPHENS_ASPECTS, HYPHENS_CONTAINER, HYPHENS_INHERITED, HYPHENS_LONGHANDS, HYPHENS_SHORTHANDS, HYPHENS_TEXT_ROLE } from './properties/hyphens.ts';
 import { TEXT_WRAP_ASPECTS, TEXT_WRAP_CONTAINER, TEXT_WRAP_INHERITED, TEXT_WRAP_LONGHANDS, TEXT_WRAP_SHORTHANDS, TEXT_WRAP_TEXT_ROLE } from './properties/text-wrap.ts';
 import { TAB_SIZE_ASPECTS, TAB_SIZE_CONTAINER, TAB_SIZE_INHERITED, TAB_SIZE_LONGHANDS, TAB_SIZE_SHORTHANDS, TAB_SIZE_TEXT_ROLE } from './properties/tab-size.ts';
+import { TEXT_BOX_ASPECTS, TEXT_BOX_CONTAINER, TEXT_BOX_INHERITED, TEXT_BOX_LONGHANDS, TEXT_BOX_SHORTHANDS, TEXT_BOX_TEXT_ROLE } from './properties/text-box.ts';
 import { TEXT_ALIGN_LAST_ASPECTS, TEXT_ALIGN_LAST_CONTAINER, TEXT_ALIGN_LAST_INHERITED, TEXT_ALIGN_LAST_LONGHANDS, TEXT_ALIGN_LAST_SHORTHANDS, TEXT_ALIGN_LAST_TEXT_ROLE } from './properties/text-align-last.ts';
 import { FONT_VARIANT_ASPECTS, FONT_VARIANT_CONTAINER, FONT_VARIANT_INHERITED, FONT_VARIANT_LONGHANDS, FONT_VARIANT_SHORTHANDS, FONT_VARIANT_TEXT_ROLE } from './properties/font-variant.ts';
 import { FONT_TUNING_ASPECTS, FONT_TUNING_CONTAINER, FONT_TUNING_INHERITED, FONT_TUNING_LONGHANDS, FONT_TUNING_SHORTHANDS, FONT_TUNING_TEXT_ROLE } from './properties/font-tuning.ts';
@@ -58,11 +59,13 @@ import { BORDER_IMAGE_ASPECTS, BORDER_IMAGE_CONTAINER, BORDER_IMAGE_INHERITED, B
 import { FX_ASPECTS, FX_CONTAINER, FX_INHERITED, FX_LONGHANDS, FX_SHORTHANDS, FX_TEXT_ROLE } from './properties/fx.ts';
 import { TABLE_ASPECTS, TABLE_CONTAINER, TABLE_INHERITED, TABLE_LONGHANDS, TABLE_SHORTHANDS, TABLE_TEXT_ROLE } from './properties/table.ts';
 import { COUNTERS_ASPECTS, COUNTERS_CONTAINER, COUNTERS_INHERITED, COUNTERS_LONGHANDS, COUNTERS_SHORTHANDS, COUNTERS_TEXT_ROLE } from './properties/counters.ts';
+import { MOTION_ASPECTS, MOTION_CONTAINER, MOTION_INHERITED, MOTION_LONGHANDS, MOTION_SHORTHANDS, MOTION_TEXT_ROLE } from './properties/motion.ts';
 import { MULTICOL_ASPECTS, MULTICOL_CONTAINER, MULTICOL_INHERITED, MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS, MULTICOL_TEXT_ROLE } from './properties/multicol.ts';
 import { BIDI_ASPECTS, BIDI_CONTAINER, BIDI_INHERITED, BIDI_LONGHANDS, BIDI_SHORTHANDS, BIDI_TEXT_ROLE } from './properties/bidi.ts';
 import { COLOR_SCHEME_ASPECTS, COLOR_SCHEME_CONTAINER, COLOR_SCHEME_INHERITED, COLOR_SCHEME_LONGHANDS, COLOR_SCHEME_SHORTHANDS, COLOR_SCHEME_TEXT_ROLE } from './properties/color-scheme.ts';
 import { MASK_ASPECTS, MASK_CONTAINER, MASK_INHERITED, MASK_LONGHANDS, MASK_SHORTHANDS, MASK_TEXT_ROLE } from './properties/mask.ts';
 import { APPEARANCE_ASPECTS, APPEARANCE_CONTAINER, APPEARANCE_INHERITED, APPEARANCE_LONGHANDS, APPEARANCE_SHORTHANDS, APPEARANCE_TEXT_ROLE } from './properties/appearance.ts';
+import { FIELD_SIZING_ASPECTS, FIELD_SIZING_CONTAINER, FIELD_SIZING_INHERITED, FIELD_SIZING_LONGHANDS, FIELD_SIZING_SHORTHANDS, FIELD_SIZING_TEXT_ROLE } from './properties/field-sizing.ts';
 import { SPEAK_ASPECTS, SPEAK_CONTAINER, SPEAK_INHERITED, SPEAK_LONGHANDS, SPEAK_SHORTHANDS, SPEAK_TEXT_ROLE } from './properties/speak.ts';
 import { USER_MODIFY_ASPECTS, USER_MODIFY_CONTAINER, USER_MODIFY_INHERITED, USER_MODIFY_LONGHANDS, USER_MODIFY_SHORTHANDS, USER_MODIFY_TEXT_ROLE } from './properties/user-modify.ts';
 import { UI_COLORS_ASPECTS, UI_COLORS_CONTAINER, UI_COLORS_INHERITED, UI_COLORS_LONGHANDS, UI_COLORS_SHORTHANDS, UI_COLORS_TEXT_ROLE } from './properties/ui-colors.ts';
@@ -156,6 +159,8 @@ const FAMILIES = [
   family('text-wrap', TEXT_WRAP_LONGHANDS, TEXT_WRAP_SHORTHANDS, TEXT_WRAP_INHERITED, TEXT_WRAP_ASPECTS, TEXT_WRAP_CONTAINER, TEXT_WRAP_TEXT_ROLE),
   // css-text-3 §7.2: text-align-last, after text-break.
   family('text-align-last', TEXT_ALIGN_LAST_LONGHANDS, TEXT_ALIGN_LAST_SHORTHANDS, TEXT_ALIGN_LAST_INHERITED, TEXT_ALIGN_LAST_ASPECTS, TEXT_ALIGN_LAST_CONTAINER, TEXT_ALIGN_LAST_TEXT_ROLE),
+  // css-inline-3 §5: text-box-trim, text-box-edge and the text-box shorthand, after text-align-last.
+  family('text-box', TEXT_BOX_LONGHANDS, TEXT_BOX_SHORTHANDS, TEXT_BOX_INHERITED, TEXT_BOX_ASPECTS, TEXT_BOX_CONTAINER, TEXT_BOX_TEXT_ROLE),
   // css-fonts-4 §6.4-§6.11: the font-variant longhands and shorthand, after text-break.
   family('font-variant', FONT_VARIANT_LONGHANDS, FONT_VARIANT_SHORTHANDS, FONT_VARIANT_INHERITED, FONT_VARIANT_ASPECTS, FONT_VARIANT_CONTAINER, FONT_VARIANT_TEXT_ROLE),
   // css-fonts-4 §6.3, §6.13, §7.1: font-kerning, font-optical-sizing and font-language-override, after text-break.
@@ -218,8 +223,13 @@ const FAMILIES = [
   family('color-scheme', COLOR_SCHEME_LONGHANDS, COLOR_SCHEME_SHORTHANDS, COLOR_SCHEME_INHERITED, COLOR_SCHEME_ASPECTS, COLOR_SCHEME_CONTAINER, COLOR_SCHEME_TEXT_ROLE),
   // MULTICOL (css-multicol-1): the column longhands but column-gap, columns and column-rule, initial values only, after color-scheme.
   family('multicol', MULTICOL_LONGHANDS, MULTICOL_SHORTHANDS, MULTICOL_INHERITED, MULTICOL_ASPECTS, MULTICOL_CONTAINER, MULTICOL_TEXT_ROLE),
+  // MOTION (css-motion-1 §2): offset-path, offset-distance, offset-position, offset-anchor and offset-rotate with the offset shorthand,
+  // initial values only, after multicol.
+  family('motion', MOTION_LONGHANDS, MOTION_SHORTHANDS, MOTION_INHERITED, MOTION_ASPECTS, MOTION_CONTAINER, MOTION_TEXT_ROLE),
   // NA-NATIVE-2: speak, Chrome's legacy aural property, after color-scheme.
   family('speak', SPEAK_LONGHANDS, SPEAK_SHORTHANDS, SPEAK_INHERITED, SPEAK_ASPECTS, SPEAK_CONTAINER, SPEAK_TEXT_ROLE),
+  // css-ui-4 §7.5: field-sizing, which changes nothing without a form control, after speak.
+  family('field-sizing', FIELD_SIZING_LONGHANDS, FIELD_SIZING_SHORTHANDS, FIELD_SIZING_INHERITED, FIELD_SIZING_ASPECTS, FIELD_SIZING_CONTAINER, FIELD_SIZING_TEXT_ROLE),
   // css-break-3: the break properties, orphans and widows, every value, since Dragon lays out no fragmentation context, after counters.
   family('fragmentation', FRAGMENTATION_LONGHANDS, FRAGMENTATION_SHORTHANDS, FRAGMENTATION_INHERITED, FRAGMENTATION_ASPECTS, FRAGMENTATION_CONTAINER, FRAGMENTATION_TEXT_ROLE),
   // FX (filter-effects-2 §3, compositing-1 §3.2): backdrop-filter and mix-blend-mode, drawn on native only where Chrome changes no pixel, after color-scheme.
@@ -228,13 +238,13 @@ const FAMILIES = [
   family('bidi', BIDI_LONGHANDS, BIDI_SHORTHANDS, BIDI_INHERITED, BIDI_ASPECTS, BIDI_CONTAINER, BIDI_TEXT_ROLE),
   // css-images-3 §5.3: image-rendering, auto, -webkit-optimize-contrast and pixelated (nearest-neighbour imgs), after color-scheme.
   family('image-rendering', IMAGE_RENDERING_LONGHANDS, IMAGE_RENDERING_SHORTHANDS, IMAGE_RENDERING_INHERITED, IMAGE_RENDERING_ASPECTS, IMAGE_RENDERING_CONTAINER, IMAGE_RENDERING_TEXT_ROLE),
-  // css-anchor-position-1: the anchor positioning longhands and position-try, initial values only until Dragon anchors boxes, after image-rendering.
+  // css-anchor-position-1: the anchor positioning longhands and position-try, initial values only until Dragon anchors boxes (but anchor-name and anchor-scope, at every value), after image-rendering.
   family('anchor-position', ANCHOR_POSITION_LONGHANDS, ANCHOR_POSITION_SHORTHANDS, ANCHOR_POSITION_INHERITED, ANCHOR_POSITION_ASPECTS, ANCHOR_POSITION_CONTAINER, ANCHOR_POSITION_TEXT_ROLE),
   // SVG 2: baseline-shift and the SVG rendering hints, initial values only, after anchor-position.
   family('svg-extra', SVG_EXTRA_LONGHANDS, SVG_EXTRA_SHORTHANDS, SVG_EXTRA_INHERITED, SVG_EXTRA_ASPECTS, SVG_EXTRA_CONTAINER, SVG_EXTRA_TEXT_ROLE),
   // css-view-transitions-2: view-transition-name, -class and -group, initial values only until Dragon runs view transitions, after svg-extra.
   family('view-transition', VIEW_TRANSITION_LONGHANDS, VIEW_TRANSITION_SHORTHANDS, VIEW_TRANSITION_INHERITED, VIEW_TRANSITION_ASPECTS, VIEW_TRANSITION_CONTAINER, VIEW_TRANSITION_TEXT_ROLE),
-  // css-values-5 §8.2, scroll-animations-1 §4.2: interpolate-size and timeline-scope, initial values only, after view-transition.
+  // css-values-5 §8.2, scroll-animations-1 §4.2: interpolate-size and timeline-scope, every value (allow-keywords refused on native where it would interpolate a size keyword), after view-transition.
   family('animation-extra', ANIMATION_EXTRA_LONGHANDS, ANIMATION_EXTRA_SHORTHANDS, ANIMATION_EXTRA_INHERITED, ANIMATION_EXTRA_ASPECTS, ANIMATION_EXTRA_CONTAINER, ANIMATION_EXTRA_TEXT_ROLE),
 ] as const;
 

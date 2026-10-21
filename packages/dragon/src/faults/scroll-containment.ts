@@ -24,7 +24,7 @@ export type ScrollContainmentFaults = {
   readonly svgExtraAccepted: boolean;
   /** A view-transition longhand other than its initial value is accepted, though no target runs view transitions. */
   readonly viewTransitionAccepted: boolean;
-  /** An interpolate-size or timeline-scope other than its initial value is accepted, though no target implements it. */
+  /** interpolate-size: allow-keywords is accepted on native on an element whose transition or animation would interpolate a size keyword. */
   readonly animationExtraAccepted: boolean;
 };
 

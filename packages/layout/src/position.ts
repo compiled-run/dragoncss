@@ -11,6 +11,7 @@ import {
   hasPercent,
   inlineMinMaxOf,
   lengthWidth,
+  NO_STRETCH,
   resolveBorder,
   resolveInlineLengthWith,
   resolveLength,
@@ -231,7 +232,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   const heightBasis: HeightBasis = { kind: 'definite', value: cb.height };
   let forced: LU | null = null;
   if (s.height.kind === 'auto' && bothBlockInsets && !ratioSetsAbsoluteHeight(box)) {
-    forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMaxWith(box, heightBasis, vbp, ctx.faults)), vbp);
+    forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMaxWith(box, heightBasis, vbp, ctx.faults, NO_STRETCH)), vbp);
   }
   const r = layoutContents(ctx, box, {
     cbInline: cb.width,
@@ -241,6 +242,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
     heightBasis,
     formattingContextRoot: true,
     bfcLineOffset: ZERO,
+    blockStretch: NO_STRETCH,
   });
   const u = axisOffset(inlineAxis, width);
   const v = axisOffset(blockAxis, r.frag.height);
