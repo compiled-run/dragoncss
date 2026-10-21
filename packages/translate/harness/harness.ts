@@ -147,6 +147,8 @@ import type { ScriptStep, TransitionListing, TransitionState } from '../../layou
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
+import type { SelectFacts } from '../../layout/src/rt-select.ts';
+import { selectAnswers, selectionTableOf } from '../../layout/src/rt-select.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, OriginTable, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
@@ -2094,6 +2096,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // hit suite (SELD-R1b, T047 RT-9): the hit table, derived grid and answers of a layout vector's input.
     case 'rt-hit':
       return rtHitResult(a);
+    // select suite (T154 slice 2a): carets, caret rects and selected text over a selection case's points and drags.
+    case 'rt-select':
+      return rtSelectResult(a);
     // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
     case 'rt-animator':
       return rtAnimatorResult(a);
@@ -2534,6 +2539,22 @@ function rtHitResult(a: readonly JsonValue[]): string {
   const t = hitTableOf(input, m.measurer, facts, HIT_TABLE_CLEAN);
   const zoom = input.devicePixelRatio * 64;
   return q(hitRuns(t, hitGrid(t, input.viewport.width * zoom, input.viewport.height * zoom), HIT_CLEAN));
+}
+
+// ---------------------------------------------------------------- select suite (T154 slice 2a)
+
+/** A selection read: [op, platform, input, [body, paragraphs, unselectable, hidden, floats], points, drags] -> selectAnswers over the input's table. */
+function rtSelectResult(a: readonly JsonValue[]): string {
+  if (a.length !== 6) return fail('rt-select: expected [op, platform, input, facts, points, drags]');
+  const platform = str(item(a, 1, '$'), '$[1]');
+  const input = decodeInput(item(a, 2, '$'));
+  const f = arr(item(a, 3, '$'), '$[3]');
+  if (f.length !== 5) return fail('$[3]: expected [body, paragraphs, unselectable, hidden, floats]');
+  const facts: SelectFacts = { body: str(item(f, 0, '$[3]'), '$[3][0]'), paragraphs: strList(f, 1), unselectable: strList(f, 2), hidden: strList(f, 3), floats: strList(f, 4) };
+  const m = measurerFor(platform);
+  if (m.kind !== 'ok') return fail(`rt-select: no measurer for ${platform}`);
+  const t = selectionTableOf(input, m.measurer, facts);
+  return q(selectAnswers(t, numbers(item(a, 4, '$'), '$[4]'), numbers(item(a, 5, '$'), '$[5]')));
 }
 
 // ---------------------------------------------------------------- animator suite (ANIM-b1 3b, T065 R16)

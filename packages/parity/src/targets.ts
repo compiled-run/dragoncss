@@ -136,6 +136,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'band', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/band/cases.json').cases.length },
     // MQ-R2 (T067 R9): one pointer case per input-device source set (packages/layout/rt-vectors/pointer/cases.json).
     { corpus: 'p1', suite: 'pointer', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/pointer/cases.json').cases.length },
+    // T154 slice 2b-1: one select case per selection document (packages/layout/rt-vectors/select/cases.json).
+    { corpus: 'p1', suite: 'select', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/select/cases.json').cases.length },
     // A shaped case's vectors are the text-latin suite's (TXT1a-2), so engine-dpr counts the plain ones.
     { corpus: 'extended', suite: 'engine-dpr', cases: vectorCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
