@@ -68,6 +68,7 @@ import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import { appliedContainment } from '../analysis/containment.ts';
+import { INTRINSIC_AUTO_TYPE } from '../css/properties/containment.ts';
 import type { Containment } from '../css/properties/containment.ts';
 import { videoLoads } from '../videos/compile.ts';
 import type { ImageNaturals } from '../images/compile.ts';
@@ -425,6 +426,24 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
   return keyword(id, get, p, allowed);
 }
 
+/**
+ * contain-intrinsic-width or -height as the engine reads it (LayoutStyle containIntrinsicWidth, containIntrinsicHeight): a px
+ * length, or none for none and auto none. auto with a px fallback lowers to its fallback, which is the size only while no size has
+ * been remembered: analysis/contain-intrinsic.ts refuses auto on a box size containment applies to, so it reaches the engine only
+ * where the engine does not read it. Planted fault intrinsicSizeDropped lowers every value as none.
+ */
+function intrinsicSize(id: string, get: Get, p: 'contain-intrinsic-width' | 'contain-intrinsic-height', faults: CompilerFaults): Px | { readonly kind: 'none' } {
+  const v = get(p);
+  if (faults.intrinsicSizeDropped || (v.kind === 'keyword' && v.value === 'none')) return { kind: 'none' };
+  if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
+  if (v.kind === 'other' && v.type === INTRINSIC_AUTO_TYPE) {
+    const fallback = /^auto (\S+)px$/.exec(v.text);
+    if (v.text === 'auto none') return { kind: 'none' };
+    if (fallback !== null) return { kind: 'px', value: Number(fallback[1]) };
+  }
+  return fail(id, p, v, 'none | px | auto none | auto px');
+}
+
 // css-conditional-5 §2.1: container-type: inline-size gives the box inline-size containment and an independent formatting context;
 // analysis/scroll-containment.ts refuses every other value but normal, and inline-size on an inline box or a replaced element.
 function containInlineSize(id: string, get: Get): boolean {
@@ -502,9 +521,9 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     containPaint: containment.paint,
     // container-type: inline-size is inline-size containment too; contain: size covers both axes already.
     containSize: containment.size !== 'none' ? containment.size : containInlineSize(id, get) ? 'inline-size' : 'none',
-    // contain-intrinsic-width and -height accept none alone (analysis/scroll-containment.ts), a size containment of 0.
-    containIntrinsicWidth: { kind: 'none' },
-    containIntrinsicHeight: { kind: 'none' },
+    // css-sizing-4 §5.2: the content size a size-contained box takes (analysis/contain-intrinsic.ts refuses auto where it applies).
+    containIntrinsicWidth: intrinsicSize(id, get, 'contain-intrinsic-width', faults),
+    containIntrinsicHeight: intrinsicSize(id, get, 'contain-intrinsic-height', faults),
     grid: null,
     gridItem: null,
     zoom,
