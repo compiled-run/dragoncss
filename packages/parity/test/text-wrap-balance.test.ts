@@ -9,8 +9,8 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
 import { NO_FAULTS } from 'dragon';
-import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
-import { FIXTURES } from '../src/fixtures.ts';
+import { CHROME_VERSION, launchChrome, openPage } from '../src/chrome.ts';
+import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
 import type { FixtureOutcome } from '../src/pipeline.ts';
 import { liveAuthored, runFixture } from '../src/pipeline.ts';
 import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
@@ -62,9 +62,10 @@ describe('TXT-TW: text-wrap-style balance and pretty equal live Chrome', () => {
 
   it('in Chrome, every block computes its text-wrap-style and breaks its lines where the engine does', async () => {
     const html = readFileSync(new URL(`../fixtures/${ID}.html`, import.meta.url), 'utf8');
-    const page = await browser.newPage();
+    // openPage injects the harness's Ahem face and waits for it to load, as the fixture's lanes do.
+    const page = await openPage(browser, html, ENVIRONMENT);
     try {
-      await page.setContent(html);
+      expect(await page.evaluate('document.fonts.check("10px Ahem")')).toBe(true);
       // A string expression: this test project has no DOM types. Each block's lines are its runs of non-space characters that share
       // a top, from the first to the last of each run.
       const seen = (await page.evaluate(`Object.fromEntries(${JSON.stringify(Object.keys(EXPECTED))}.map((id) => {
@@ -90,7 +91,7 @@ describe('TXT-TW: text-wrap-style balance and pretty equal live Chrome', () => {
         expect(seen[id]?.lines, id).toEqual(lines);
       }
     } finally {
-      await page.close();
+      await page.context().close();
     }
     expect(engineLines('ltr', 1)).toEqual(EXPECTED);
   }, 120_000);
