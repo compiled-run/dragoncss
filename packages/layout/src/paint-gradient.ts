@@ -11,7 +11,7 @@
 // The cc raster tiles, the dither and the shader matrix start at the box's composited layer (R4), an input. Every exported
 // function is a translated engine root, proven TS = Swift = Kotlin by packages/layout/paint-vectors/gradient.
 import { ccTileIndex, ccTileSize, ccTileStart, ditherOffset, fma32, roundHalfEven } from './paint-dither.ts';
-import { floorOf, froundOf, truncOf } from './rt-easing.ts';
+import { floorOf, froundOf, roundOf, truncOf } from './rt-easing.ts';
 
 /** Planted faults: each must make the Chrome pixel oracle or a device lane fail. */
 export type GradientFaults = {
@@ -904,6 +904,14 @@ export type LayerPlacement = {
    * the picture shader, whose tile image has its own origin (the dither and the shader matrix start at the tile).
    */
   readonly direct: boolean;
+  /**
+   * MISC-PAINT part 2: a tiled border image piece through the picture shader repeats its tile image every periodX by periodY device
+   * px from (tileX, tileY), and paints only its first contentWidth by contentHeight (the rest is space-rule spacing); 0 for no tiling.
+   */
+  readonly periodX: number;
+  readonly periodY: number;
+  readonly contentWidth: number;
+  readonly contentHeight: number;
 };
 
 const LU_MAX = 2147483647;
@@ -1078,6 +1086,10 @@ export function layerPlacement(box: BackgroundBox, g: LayerGeometry, zoom: numbe
     srcY: 0 - phaseY,
     singleTile: single,
     direct,
+    periodX: 0,
+    periodY: 0,
+    contentWidth: 0,
+    contentHeight: 0,
   };
 }
 
@@ -1262,10 +1274,18 @@ export function backgroundRow(plan: BackgroundPlan, py: number, faults: Gradient
       const l = plan.layers[i] as PlannedLayer;
       if (!inLayer(l.placement, x, y)) continue;
       if (!l.placement.direct) {
-        // The tile image pixel (over transparent, dithered from the tile's origin), then the image shader over dst.
+        // The tile image pixel (over transparent, dithered from the tile's origin), then the image shader over dst. A tiled border
+        // image piece repeats the tile image (SkTileMode::kRepeat) and leaves its spacing transparent.
         const m = tileMatrix(l.shader, 0, 0);
         if (m === null) continue;
-        dst = imageSrcOver(shadePixel(l.shader, m, x - l.tileX, y - l.tileY, 0, 0, CLEAR, faults), dst);
+        let ix = x - l.tileX;
+        let iy = y - l.tileY;
+        const pX = l.placement.periodX;
+        const pY = l.placement.periodY;
+        if (pX > 0) ix = ix - floorOf(ix / pX) * pX;
+        if (pY > 0) iy = iy - floorOf(iy / pY) * pY;
+        if ((pX > 0 && ix >= l.placement.contentWidth) || (pY > 0 && iy >= l.placement.contentHeight)) continue;
+        dst = imageSrcOver(shadePixel(l.shader, m, ix, iy, 0, 0, CLEAR, faults), dst);
         continue;
       }
       if (!(valid[i] as boolean)) continue;
@@ -1298,4 +1318,390 @@ function imageSrcOver(src: readonly number[], dst: readonly number[]): readonly 
 /** The cc raster tile size Chrome 145 uses on the capture host (macOS, device scale factor 2 or more): ccTileSize. */
 export function referenceTileSize(zoom: number): number {
   return ccTileSize(true, zoom);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// MISC-PAINT: a border image whose source is a gradient, every piece stretched (css-backgrounds-3 §6), as Chrome 145 paints it:
+// NinePieceImagePainter::Paint and PaintPieces (nine_piece_image_painter.cc) and the grid (nine_piece_image_grid.cc:
+// ComputeEdgeSlice, ComputeEdgeWidth, SnapEdgeWidths and the piece rects), each piece drawn by GradientGeneratedImage::Draw
+// (gradient_generated_image.cc), which draws its src -> dest directly with RectToRect as the shader's local matrix. The image is
+// the border image area at its unsnapped size (the generated image's default object size); every piece is one direct layer of
+// backgroundRow over transparent. The area is the border box: border-image-outset is not modelled. A tiled piece (repeat, round,
+// space) is tiledPiece below.
+/** A border-image-slice side: a <number> (image px, which are CSS px for a gradient) or a <percentage> of the image's size. */
+export type BorderImageSlice = { readonly unit: 'number' | 'percent'; readonly value: number };
+/** A border-image-width side: a multiple of the border width, CSS px, or auto (the slice's own size). */
+export type BorderImageLength = { readonly unit: 'number' | 'px' | 'auto'; readonly value: number };
+
+/**
+ * A box's border image: the box (its borders whole device px as LU; padding and obscures are not read), the gradient, the slices
+ * and widths (top, right, bottom, left), whether the middle is filled, at a zoom, on its composited layer (as BackgroundPaint).
+ */
+export type BorderImagePaint = {
+  readonly box: BackgroundBox;
+  readonly image: GradientImage;
+  readonly slices: readonly BorderImageSlice[];
+  readonly fill: boolean;
+  readonly widths: readonly BorderImageLength[];
+  readonly zoom: number;
+  readonly tileSize: number;
+  readonly layerX: number;
+  readonly layerY: number;
+  /** border-image-repeat, horizontal then vertical: stretch, repeat, round or space (MISC-PAINT part 2). */
+  readonly repeatX: string;
+  readonly repeatY: string;
+};
+
+/** gfx::SizeF's clamp: a side of 8 float epsilons or less is 0. */
+function sizeClamp(v: number): number {
+  return v > 9.5367431640625e-7 ? v : 0;
+}
+
+/** LayoutUnit(double): saturated_cast<int>(value * 64) with the product in double. */
+function luFromDouble(v: number): number {
+  return luSat(truncOf(v * 64));
+}
+
+/**
+ * ComputeEdgeSlice: a number times the slice scale or a percentage of the image side, at most the side, rounded to a LayoutUnit.
+ * A number is the style's Length::Fixed(round(number)): CSSToStyleMap's ConvertBorderImageSliceSide rounds it (std::round, half
+ * away from zero; a slice is never negative) before the zoom; a percentage is kept as written.
+ */
+function edgeSlice(s: BorderImageSlice, scale: number, maximum: number): number {
+  let resolved = s.unit === 'number' ? f32(f32(roundOf(s.value)) * scale) : f32(f32(maximum * f32(s.value)) / 100);
+  if (maximum < resolved) resolved = maximum;
+  return luFloat(luSat(roundOf(f32(resolved * 64))));
+}
+
+/** ComputeEdgeWidth in raw LU: a number of border widths (double), auto (the slice in zoomed CSS px, float), or a zoomed px length. */
+function edgeWidthLu(w: BorderImageLength, border: number, imageSide: number, zoom: number): number {
+  if (w.unit === 'number') return luFromDouble(w.value * border);
+  if (w.unit === 'auto') return luFromFloat(imageSide);
+  return luFromFloat(f32(w.value * zoom));
+}
+
+/** SnapEdgeWidths on one axis: [start, end] whole device px from raw LU widths and the snapped area's whole px size. */
+function snapEdgePair(start: number, end: number, size: number): readonly number[] {
+  if (luSat(size * 64 - luSat(start + end)) <= 1) {
+    const s = luRound(start);
+    return [s, size - s];
+  }
+  return [floorOf(start / 64), floorOf(end / 64)];
+}
+
+/** Subrect: [x, y, width, height] floats inside a base rect, a negative offset measured from its right or bottom; the size clamped as gfx::RectF does. */
+function subrectF(bx: number, by: number, bw: number, bh: number, ox: number, oy: number, w: number, h: number): readonly number[] {
+  const baseX = ox < 0 ? f32(bx + bw) : bx;
+  const baseY = oy < 0 ? f32(by + bh) : by;
+  return [f32(baseX + ox), f32(baseY + oy), sizeClamp(w), sizeClamp(h)];
+}
+
+/**
+ * GradientGeneratedImage::Draw of one piece, src -> dest ([x, y, width, height] floats): the visible src (src within the image),
+ * RectToRect(src, dest) as the shader's local matrix, and the visible dest it maps to, drawn directly; null when nothing is drawn.
+ */
+function piece(desc: GradientDesc, w: number, h: number, q: readonly number[], faults: GradientFaults): PlannedLayer | null {
+  const sl = q[0] as number;
+  const st = q[1] as number;
+  const sr = f32(sl + (q[2] as number));
+  const sb = f32(st + (q[3] as number));
+  const vl = sl < 0 ? 0 : sl;
+  const vt = st < 0 ? 0 : st;
+  const vr = w < sr ? w : sr;
+  const vb = h < sb ? h : sb;
+  if (vl >= vr || vt >= vb) return null;
+  const dl = q[4] as number;
+  const dt = q[5] as number;
+  const m = matRectToRect(sl, st, sr, sb, dl, dt, f32(dl + (q[6] as number)), f32(dt + (q[7] as number)));
+  if (m === null) return null;
+  // mapRect of a scale-translate matrix: each edge times the scale plus the translation, sorted.
+  const x0 = f32(f32(vl * m.sx) + m.tx);
+  const x1 = f32(f32(vr * m.sx) + m.tx);
+  const y0 = f32(f32(vt * m.sy) + m.ty);
+  const y1 = f32(f32(vb * m.sy) + m.ty);
+  const left = minNum(x0, x1);
+  const right = maxNum(x0, x1);
+  const top = minNum(y0, y1);
+  const bottom = maxNum(y0, y1);
+  const placement: LayerPlacement = {
+    destX: left * 64,
+    destY: top * 64,
+    destWidth: (right - left) * 64,
+    destHeight: (bottom - top) * 64,
+    clipLeft: floorOf(left),
+    clipTop: floorOf(top),
+    clipRight: -floorOf(-right),
+    clipBottom: -floorOf(-bottom),
+    tileWidth: (right - left) * 64,
+    tileHeight: (bottom - top) * 64,
+    srcX: 0,
+    srcY: 0,
+    singleTile: true,
+    direct: true,
+    periodX: 0,
+    periodY: 0,
+    contentWidth: 0,
+    contentHeight: 0,
+  };
+  return { placement, shader: gradientShader(desc, m, faults), tileX: 0, tileY: 0 };
+}
+
+/** A border-image-repeat keyword as a rule: 0 stretch, 1 repeat, 2 round, 3 space (anything else is refused by the compiler). */
+function repeatRule(k: string): number {
+  if (k === 'repeat') return 1;
+  if (k === 'round') return 2;
+  if (k === 'space') return 3;
+  return 0;
+}
+
+/**
+ * CalculateSpaceNeeded and ComputeTileParameters (nine_piece_image_painter.cc) on one axis: [scale factor, phase, spacing], floats; an empty list where space
+ * fits no tile (CalculateSpaceNeeded returns nullopt and the piece is not drawn).
+ */
+function tileParameters(rule: number, dst: number, src: number): readonly number[] {
+  if (rule === 2) {
+    const reps = maxNum(1, roundOf(f32(dst / src)));
+    return [f32(dst / f32(src * reps)), 0, 0];
+  }
+  if (rule === 1) return [1, f32(f32(dst - src) / 2), 0];
+  if (rule === 3) {
+    const count = floorOf(f32(dst / src));
+    if (count === 0) return [];
+    // space /= repeat_tiles_count + 1.0: a float over a double, narrowed back to float.
+    const space = f32(f32(dst - f32(src * count)) / (count + 1));
+    return [1, space, space];
+  }
+  return [1, 0, 0];
+}
+
+/** Whether v is a power of two (2^-8 to 2^8), so that it and its reciprocal scale floats exactly. */
+function powerOfTwo(v: number): boolean {
+  let p = 1 / 256;
+  for (let i = 0; i <= 16; i++) {
+    if (v === p) return true;
+    p = p * 2;
+  }
+  return false;
+}
+
+/**
+ * One tiled piece (q: src, dest, tile scale, horizontal and vertical rule), as PaintPieces hands it to DrawImageTiled and
+ * GeneratedImage::DrawPattern (generated_image.cc) records it: the src rect plus spacing is a paint-record shader tile, repeated,
+ * through T(phase) S(scale) T(tile origin); cc rasters it as SkPictureShader (src/shaders/SkPictureShader.cpp CachedImageInfo::Make)
+ * does, at ceil(scale * tile size) px with the raster scale
+ * size / tile, and the image shader samples it. The port models it only where that raster is the tile 1:1 at whole device px
+ * (scale a power of two, every tile, content and phase edge a whole px), where each dest pixel is one tile image pixel; [] marks
+ * any other tiling unmodelled, and null a piece Blink does not draw.
+ */
+function tiledPiece(desc: GradientDesc, q: readonly number[], faults: GradientFaults): readonly PlannedLayer[] | null {
+  const sx = q[0] as number;
+  const sy = q[1] as number;
+  const sw = q[2] as number;
+  const sh = q[3] as number;
+  const dx = q[4] as number;
+  const dy = q[5] as number;
+  const dw = q[6] as number;
+  const dh = q[7] as number;
+  const hp = tileParameters(q[10] as number, dw, f32(sw * (q[8] as number)));
+  const vp = tileParameters(q[11] as number, dh, f32(sh * (q[9] as number)));
+  if (hp.length === 0 || vp.length === 0) return null;
+  const scaleX = f32((q[8] as number) * (hp[0] as number));
+  const scaleY = f32((q[9] as number) * (vp[0] as number));
+  const phaseX = f32(dx + f32((hp[1] as number) - f32(sx * scaleX)));
+  const phaseY = f32(dy + f32((vp[1] as number) - f32(sy * scaleY)));
+  const tileW = f32(sw + (hp[2] as number));
+  const tileH = f32(sh + (vp[2] as number));
+  // pattern_matrix.preTranslate(tile origin): the device position of the tile image's first pixel.
+  const originX = f32(phaseX + f32(scaleX * sx));
+  const originY = f32(phaseY + f32(scaleY * sy));
+  // GetFixedScaleBounds: the raster size, and the raster scale it gives.
+  const rasterW = f32(scaleX * tileW);
+  const rasterH = f32(scaleY * tileH);
+  const cols = -floorOf(-rasterW);
+  const rows = -floorOf(-rasterH);
+  const contentW = f32(scaleX * sw);
+  const contentH = f32(scaleY * sh);
+  const unmodelled: readonly PlannedLayer[] = [];
+  if (!(scaleX > 0 && scaleY > 0) || !powerOfTwo(scaleX) || !powerOfTwo(scaleY)) return unmodelled;
+  if (cols !== rasterW || rows !== rasterH || cols < 1 || rows < 1 || f32(rasterW * rasterH) > 4194304) return unmodelled;
+  if (f32(cols / tileW) !== scaleX || f32(rows / tileH) !== scaleY) return unmodelled;
+  if (floorOf(contentW) !== contentW || floorOf(contentH) !== contentH || floorOf(originX) !== originX || floorOf(originY) !== originY) return unmodelled;
+  if (floorOf(dx) !== dx || floorOf(dy) !== dy || floorOf(dw) !== dw || floorOf(dh) !== dh) return unmodelled;
+  // The tile image: SkPictureShader scales the canvas by the raster scale over the picture recorded at the tile's origin, and
+  // DrawTile fills the src rect with the gradient (local matrix identity), dithered from the tile image's own origin.
+  const local = mat(scaleX, 0, f32(scaleX * -sx), 0, scaleY, f32(scaleY * -sy));
+  const placement: LayerPlacement = {
+    destX: dx * 64,
+    destY: dy * 64,
+    destWidth: dw * 64,
+    destHeight: dh * 64,
+    clipLeft: dx,
+    clipTop: dy,
+    clipRight: dx + dw,
+    clipBottom: dy + dh,
+    tileWidth: cols * 64,
+    tileHeight: rows * 64,
+    srcX: 0,
+    srcY: 0,
+    singleTile: true,
+    direct: false,
+    periodX: cols,
+    periodY: rows,
+    contentWidth: contentW,
+    contentHeight: contentH,
+  };
+  const layer: PlannedLayer = { placement, shader: gradientShader(desc, local, faults), tileX: originX, tileY: originY };
+  return [layer];
+}
+
+/** A border image's plan over its snapped area ([left, top, right, bottom] in the layer's space), with no colour. */
+function borderPlan(ox: number, oy: number, area: readonly number[], layers: readonly PlannedLayer[], tileSize: number, modelled: boolean): BackgroundPlan {
+  const l = area[0] as number;
+  const t = area[1] as number;
+  const r = maxNum(l, area[2] as number);
+  const b = maxNum(t, area[3] as number);
+  return { originX: ox, originY: oy, left: l + ox, top: t + oy, right: r + ox, bottom: b + oy, color: [0, 0, 0, 0], colorLeft: 0, colorTop: 0, colorRight: 0, colorBottom: 0, layers, tileSize, modelled };
+}
+
+/**
+ * The raster plan of a gradient border image with every piece stretched (the plan backgroundRow draws over transparent, with no
+ * colour): the snapped border box, the grid's slices and snapped widths, and the nine pieces in Blink's order, the middle only
+ * with fill. modelled is false where this port would not equal Chrome: a fractional layer origin, a gradient the shader port does
+ * not model, or a translucent gradient (Chrome composites it over the box's background, which this raster does not hold).
+ */
+/**
+ * Whether the native border image models a gradient's stops: the stops resolved as gradientDesc resolves them (AddStops, f32), the
+ * last after the first, and the shader gradientShader builds from them drawable and opaque, on a nominal 100 x 100 image (percent
+ * stops do not depend on its size). The compiler refuses a border image this is false for, so no plan built from it is unmodelled.
+ */
+export function borderImageStopsModelled(image: GradientImage): boolean {
+  const d = gradientDesc(image, 100, 100, 1);
+  if (!d.modelled) return false;
+  const n = d.offsets.length;
+  if (n < 2 || !((d.offsets[n - 1] as number) > (d.offsets[0] as number))) return false;
+  const shader = gradientShader(d, IDENTITY, NO_GRADIENT_FAULTS);
+  return shader.drawable && shader.opaque;
+}
+
+export function planBorderImage(p: BorderImagePaint, faults: GradientFaults): BackgroundPlan {
+  const ox = faults.layerOriginIgnored ? 0 : p.layerX;
+  const oy = faults.layerOriginIgnored ? 0 : p.layerY;
+  const empty: BackgroundPlan = { originX: 0, originY: 0, left: 0, top: 0, right: 0, bottom: 0, color: [0, 0, 0, 0], colorLeft: 0, colorTop: 0, colorRight: 0, colorBottom: 0, layers: [], tileSize: p.tileSize, modelled: false };
+  if (floorOf(ox) !== ox || floorOf(oy) !== oy) return empty;
+  let modelled = true;
+  const b = p.box.borders;
+  // style.BorderTopWidth() and the others: whole device px.
+  const bt = floorOf((b[0] as number) / 64);
+  const br = floorOf((b[1] as number) / 64);
+  const bb = floorOf((b[2] as number) / 64);
+  const bl = floorOf((b[3] as number) / 64);
+  // The border box in its layer's space, then ToPixelSnappedRect.
+  const ax = luSat(p.box.x - ox * 64 + (faults.offsetOne ? 64 : 0));
+  const ay = luSat(p.box.y - oy * 64);
+  const aw = p.box.width;
+  const ah = p.box.height;
+  const area = snapLtrb(ax, ay, aw, ah);
+  const areaX = area[0] as number;
+  const areaY = area[1] as number;
+  const areaW = maxNum(0, (area[2] as number) - areaX);
+  const areaH = maxNum(0, (area[3] as number) - areaY);
+  const layers: PlannedLayer[] = [];
+  // The image: the unsnapped area as a SizeF; CSSGradientValue::GetImage makes none for an empty size, and nothing is drawn.
+  const w = sizeClamp(luFloat(aw));
+  const h = sizeClamp(luFloat(ah));
+  if (w === 0 || h === 0) return borderPlan(ox, oy, area, layers, p.tileSize, modelled);
+  // The slice scale: the image size over the size at zoom 1 (ScaleSize by 1 / zoom, a float).
+  const inv = f32(1 / p.zoom);
+  const scaleX = f32(w / sizeClamp(f32(w * inv)));
+  const scaleY = f32(h / sizeClamp(f32(h * inv)));
+  const sliceTop = edgeSlice(p.slices[0] as BorderImageSlice, scaleY, h);
+  const sliceRight = edgeSlice(p.slices[1] as BorderImageSlice, scaleX, w);
+  const sliceBottom = edgeSlice(p.slices[2] as BorderImageSlice, scaleY, h);
+  const sliceLeft = edgeSlice(p.slices[3] as BorderImageSlice, scaleX, w);
+  const autoX = f32(p.zoom / scaleX);
+  const autoY = f32(p.zoom / scaleY);
+  let wTop = edgeWidthLu(p.widths[0] as BorderImageLength, bt, f32(sliceTop * autoY), p.zoom);
+  let wRight = edgeWidthLu(p.widths[1] as BorderImageLength, br, f32(sliceRight * autoX), p.zoom);
+  let wBottom = edgeWidthLu(p.widths[2] as BorderImageLength, bb, f32(sliceBottom * autoY), p.zoom);
+  let wLeft = edgeWidthLu(p.widths[3] as BorderImageLength, bl, f32(sliceLeft * autoX), p.zoom);
+  // css-backgrounds-3 §6.4: widths that overlap are reduced by min(area / sum) on both axes (std::min of the two quotients).
+  const fw = f32(areaW / luFloat(luSat(wLeft + wRight)));
+  const fh = f32(areaH / luFloat(luSat(wTop + wBottom)));
+  const factor = fh < fw ? fh : fw;
+  if (factor < 1) {
+    wTop = luFromFloat(f32(luFloat(wTop) * factor));
+    wRight = luFromFloat(f32(luFloat(wRight) * factor));
+    wBottom = luFromFloat(f32(luFloat(wBottom) * factor));
+    wLeft = luFromFloat(f32(luFloat(wLeft) * factor));
+  }
+  const hx = snapEdgePair(wLeft, wRight, areaW);
+  const vy = snapEdgePair(wTop, wBottom, areaH);
+  const left = hx[0] as number;
+  const right = hx[1] as number;
+  const top = vy[0] as number;
+  const bottom = vy[1] as number;
+  const desc = gradientDesc(p.image, w, h, p.zoom);
+  const drawTop = sliceTop > 0 && top > 0;
+  const drawRight = sliceRight > 0 && right > 0;
+  const drawBottom = sliceBottom > 0 && bottom > 0;
+  const drawLeft = sliceLeft > 0 && left > 0;
+  const esw = sizeClamp(f32(w - sizeClamp(f32(sliceLeft + sliceRight))));
+  const esh = sizeClamp(f32(h - sizeClamp(f32(sliceTop + sliceBottom))));
+  const edw = maxNum(0, areaW - (left + right));
+  const edh = maxNum(0, areaH - (top + bottom));
+  // Edge::Scale: the snapped width over the slice of a drawable side, else 1.
+  const scaleTop = drawTop ? f32(top / sliceTop) : 1;
+  const scaleRight = drawRight ? f32(right / sliceRight) : 1;
+  const scaleBottom = drawBottom ? f32(bottom / sliceBottom) : 1;
+  const scaleLeft = drawLeft ? f32(left / sliceLeft) : 1;
+  const rx = repeatRule(p.repeatX);
+  const ry = repeatRule(p.repeatY);
+  // SetDrawInfoMiddle: the middle's tile scale, the zoom unless a side sets it, and dest / source on a stretched axis.
+  let midX = drawTop ? scaleTop : drawBottom ? scaleBottom : f32(p.zoom);
+  let midY = drawLeft ? scaleLeft : drawRight ? scaleRight : f32(p.zoom);
+  if (esw > 0 && esh > 0) {
+    if (rx === 0) midX = f32(edw / esw);
+    if (ry === 0) midY = f32(edh / esh);
+  }
+  const pieces: (readonly number[])[] = [];
+  // kTopLeftPiece, kBottomLeftPiece, kLeftPiece, kTopRightPiece, kBottomRightPiece, kRightPiece, kTopPiece, kBottomPiece, kMiddlePiece:
+  // [src, dest] pairs, each [x, y, width, height], then the tile scale and the horizontal and vertical rules (corners stretch).
+  const corner = [1, 1, 0, 0];
+  if (drawTop && drawLeft) pieces.push([...subrectF(0, 0, w, h, 0, 0, sliceLeft, sliceTop), ...subrectF(areaX, areaY, areaW, areaH, 0, 0, left, top), ...corner]);
+  if (drawBottom && drawLeft) pieces.push([...subrectF(0, 0, w, h, 0, -sliceBottom, sliceLeft, sliceBottom), ...subrectF(areaX, areaY, areaW, areaH, 0, -bottom, left, bottom), ...corner]);
+  const leftSrc = subrectF(0, 0, w, h, 0, sliceTop, sliceLeft, esh);
+  const leftDst = subrectF(areaX, areaY, areaW, areaH, 0, top, left, edh);
+  if (drawLeft && (leftSrc[3] as number) > 0 && (leftDst[3] as number) > 0) pieces.push([...leftSrc, ...leftDst, scaleLeft, scaleLeft, 0, ry]);
+  if (drawTop && drawRight) pieces.push([...subrectF(0, 0, w, h, -sliceRight, 0, sliceRight, sliceTop), ...subrectF(areaX, areaY, areaW, areaH, -right, 0, right, top), ...corner]);
+  if (drawBottom && drawRight) pieces.push([...subrectF(0, 0, w, h, -sliceRight, -sliceBottom, sliceRight, sliceBottom), ...subrectF(areaX, areaY, areaW, areaH, -right, -bottom, right, bottom), ...corner]);
+  const rightSrc = subrectF(0, 0, w, h, -sliceRight, sliceTop, sliceRight, esh);
+  const rightDst = subrectF(areaX, areaY, areaW, areaH, -right, top, right, edh);
+  if (drawRight && (rightSrc[3] as number) > 0 && (rightDst[3] as number) > 0) pieces.push([...rightSrc, ...rightDst, scaleRight, scaleRight, 0, ry]);
+  const topSrc = subrectF(0, 0, w, h, sliceLeft, 0, esw, sliceTop);
+  const topDst = subrectF(areaX, areaY, areaW, areaH, left, 0, edw, top);
+  if (drawTop && (topSrc[2] as number) > 0 && (topDst[2] as number) > 0) pieces.push([...topSrc, ...topDst, scaleTop, scaleTop, rx, 0]);
+  const bottomSrc = subrectF(0, 0, w, h, sliceLeft, -sliceBottom, esw, sliceBottom);
+  const bottomDst = subrectF(areaX, areaY, areaW, areaH, left, -bottom, edw, bottom);
+  if (drawBottom && (bottomSrc[2] as number) > 0 && (bottomDst[2] as number) > 0) pieces.push([...bottomSrc, ...bottomDst, scaleBottom, scaleBottom, rx, 0]);
+  if (p.fill && esw > 0 && esh > 0 && edw > 0 && edh > 0) pieces.push([...subrectF(0, 0, w, h, sliceLeft, sliceTop, esw, esh), ...subrectF(areaX, areaY, areaW, areaH, left, top, edw, edh), midX, midY, rx, ry]);
+  for (const q of pieces) {
+    // ShouldTile: a corner (its rules are stretch here) or a piece stretched on both axes is drawn directly.
+    if ((q[10] as number) !== 0 || (q[11] as number) !== 0) {
+      const t = tiledPiece(desc, q, faults);
+      if (t === null) continue;
+      if (t.length === 0) {
+        modelled = false;
+        continue;
+      }
+      const drawnTile = t[0] as PlannedLayer;
+      if (!drawnTile.shader.drawable || !drawnTile.shader.opaque) modelled = false;
+      layers.push(drawnTile);
+      continue;
+    }
+    const drawn = piece(desc, w, h, q, faults);
+    if (drawn === null) continue;
+    if (!drawn.shader.drawable || !drawn.shader.opaque) modelled = false;
+    layers.push(drawn);
+  }
+  return borderPlan(ox, oy, area, layers, p.tileSize, modelled);
 }

@@ -29,12 +29,11 @@
     "engine": 20258,
     "library": 22000,
     "rt": 55362,
-    "hit": 3400,
+    "hit": 3336,
     "animator": 30,
     "interaction": 21,
     "band": 27,
-    "pointer": 1537,
-    "select": 5
+    "pointer": 1537
   },
   "engineSplit": {
     "ok": 14257,
@@ -44,17 +43,16 @@
     "harnessError": 0
   },
   "digests": {
-    "vectors": "9a0ac02ae38102c8ccd6eb8f66f1ca4c646eb72a65398666c708ae1f8475bb71",
+    "vectors": "07193a2237c26471513e9cfe95b97799611eb0091da8510ddf98e4fa66993fc0",
     "units": "41c7a09c581011303f9896e233dfca4bc1bfc33266b817af269199de755508a7",
-    "engine": "748d18371f9e123c3f4473a68e0ed10d9e4c70ace2773a45b51da4d90fea037a",
+    "engine": "3dbcd8f82e406316a3b1508a8b1df3131daeec83398613f6c1a5458f0f508e94",
     "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d",
     "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
-    "hit": "6899c8dbba71e89beabed007ad47334f1d9d03af5e4ac21ba7540f0437eb68c8",
-    "animator": "b88418b19d27ad94e47bed7c696dd2042c4fa91fd111bed05f916cac8790bd21",
+    "hit": "c073f7e1e5dd92f949e4941da4483873bd98f72aea80ea6a69d0b437ec3a8c54",
+    "animator": "caba5397c6a29e6a8e3601e71e2d58867a19acd326dae8503fdf5b609e19b030",
     "interaction": "f97585c89a98da73b70b9c08ccb5fd9d912b204367bd75e5f6ccdf1987b9e662",
     "band": "4769309d2fe3df09c6e125ae33c0f629e8eb50f69cff11021b3e37b86f8446ab",
-    "pointer": "171598a0f34bbcf9532b89a9ddeb93fc32ab44ffc36dd3255f595dab61a84d2c",
-    "select": "b87547efcbd38efe5a71cee6e241de0fa886a04f592090a4dd1ebfcab3c15f8b"
+    "pointer": "171598a0f34bbcf9532b89a9ddeb93fc32ab44ffc36dd3255f595dab61a84d2c"
   },
-  "digest": "fba3189d74429e0c36e09928fe01b8c3a6a59994b534353e2df6275c780b82ac"
+  "digest": "a4779361054f55d0375eb374dcb218cbf53b7b85cda29690016101309bc1fe6a"
 }

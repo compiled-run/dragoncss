@@ -712,6 +712,7 @@
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/color.ts", "symbol": "colorMix", "use": "port" }
       ]
     },
@@ -743,9 +744,10 @@
       "licence": "lgpl",
       "ruling": {
         "class": "A",
-        "basis": "css-backgrounds-3 background-position (an edge keyword with an offset measures from that edge) and Chrome observation; the LayoutUnit arithmetic is BSD background_image_geometry.cc ResolveXPosition",
+        "basis": "css-backgrounds-3 background-position (an edge keyword with an offset measures from that edge) and Chrome observation; the LayoutUnit arithmetic is BSD background_image_geometry.cc ResolveXPosition. A border-image-slice number is rounded to a whole image px (Chrome observation: the border-image-fractional fixture against Chrome 145, border-image-reference.test.ts); the slice arithmetic is BSD nine_piece_image_grid.cc ComputeEdgeSlice",
         "proof": [
-          "packages/layout/test/paint-gradient.test.ts#ResolveXPosition"
+          "packages/layout/test/paint-gradient.test.ts#ResolveXPosition",
+          "packages/layout/test/paint-gradient.test.ts#ConvertBorderImageSliceSide"
         ]
       },
       "licencePhrase": "GNU Library General Public License",
@@ -755,11 +757,29 @@
       "ranges": [
         { "lines": "195-213", "symbol": "CSSToStyleMap::MapFillPositionX", "source": "located" },
         { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" },
-        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" }
+        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" },
+        { "lines": "607-614", "symbol": "ConvertBorderImageSliceSide", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" },
-        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeSlice", "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/webkit-border-image.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/css/resolver/style_cascade.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2019 The Chromium Authors",
+      "fileSha256": "940cc401c9035ea077048f30673819da6cfe0f56dd9eb4cb4113ec72987e749b",
+      "headerSha256": "6e6783d47a153255b68b713122a42dfe119d3314535fc6492f04634165375f75",
+      "ranges": [
+        { "lines": "690-773", "symbol": "StyleCascade::ApplyWideOverlapping", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/webkit-border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2047,6 +2067,56 @@
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/nine_piece_image_grid.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "a4ba8c27b80ceec03d96a83abc78bc77d12a2aae1d967a815b58fe6d62fb0fe8",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "15-24", "symbol": "ComputeEdgeWidth", "source": "located" },
+        { "lines": "26-39", "symbol": "ComputeEdgeSlice", "source": "located" },
+        { "lines": "50-75", "symbol": "SnapEdgeWidths", "source": "located" },
+        { "lines": "79-157", "symbol": "NinePieceImageGrid::NinePieceImageGrid", "source": "located" },
+        { "lines": "161-191", "symbol": "Subrect", "source": "located" },
+        { "lines": "193-366", "symbol": "NinePieceImageGrid::SetDrawInfoCorner", "source": "located" },
+        { "lines": "368-383", "symbol": "NinePieceImageGrid::GetNinePieceDrawInfo", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/nine-piece.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeWidthLu", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeSlice", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "snapEdgePair", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "subrectF", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBorderImage", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/nine_piece_image_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "b8c2a67569424d6eb981a5c169bc60fad6d133ecf14d98b1b4afaa79111709df",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "23-36", "symbol": "CalculateSpaceNeeded", "source": "located" },
+        { "lines": "38-73", "symbol": "ComputeTileParameters", "source": "located" },
+        { "lines": "75-85", "symbol": "ShouldTile", "source": "located" },
+        { "lines": "87-177", "symbol": "PaintPieces", "source": "located" },
+        { "lines": "181-240", "symbol": "NinePieceImagePainter::Paint", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/nine-piece.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBorderImage", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tileParameters", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tiledPiece", "use": "port" }
       ]
     },
     {
@@ -3770,6 +3840,22 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/shaders/SkPictureShader.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 Google Inc.",
+      "fileSha256": "4b08868b10e194e7bf143722ff9efb854296e0a4ac505f378a51b43c643d38af",
+      "headerSha256": "09fb410fe807746e5c9d267a697de002ac415d5dd13d48c20717ab180ccb1f05",
+      "ranges": [
+        { "lines": "180-242", "symbol": "SkPictureShader::CachedImageInfo::Make", "source": "located" },
+        { "lines": "259-289", "symbol": "SkPictureShader::rasterShader", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tiledPiece", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -3931,6 +4017,21 @@
       "dragon": [
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/units.ts", "symbol": "layoutRatio", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/graphics/generated_image.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2012 Google Inc. All rights reserved.",
+      "fileSha256": "7278d544cdf795217890999722d7d14e51b4534aff9a5a3488269eea211b44e0",
+      "headerSha256": "9223f4874a0ea140744989276f607e1fea653341d252dd94c077112dd953ffd2",
+      "ranges": [
+        { "lines": "43-72", "symbol": "GeneratedImage::DrawPattern", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tiledPiece", "use": "port" }
       ]
     },
     {
@@ -4305,7 +4406,8 @@
         { "file": "scripts/gen-css-grammar.ts", "symbol": "FIELD_OVERRIDES", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/properties/transform-extra.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/webkit-border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

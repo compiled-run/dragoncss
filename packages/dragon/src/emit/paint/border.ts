@@ -4,6 +4,7 @@
 // side painter in device px, which joins same-colour sides without a miter); a box with a visible double side keeps the band painter.
 // A rounded box whose four sides are double in one colour is drawn as Blink's two rings (paint-radius.ts borderDoubleRings); a double
 // side under 3 device px is solid (BorderEdge::EffectiveStyle).
+import { BORDER_IMAGE_KOTLIN, BORDER_IMAGE_KOTLIN_IMPORTS, BORDER_IMAGE_KOTLIN_MEMBERS, BORDER_IMAGE_PLANT, BORDER_IMAGE_SWIFT, BORDER_IMAGE_SWIFT_MEMBERS, borderImageApplied, borderImageLine } from './border-image.ts';
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
@@ -22,6 +23,8 @@ public let dragonDashFaults = DashFaults(false, false)
 /// box with a visible dashed or dotted side, or only solid visible sides, is drawn by Blink's side painter (paint-dash.ts, which
 /// models no radii), every other box by the band painter.
 public func dragonPaintBorderStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
+  // MISC-PAINT: a border image replaces the border styles (BoxPainterBase::PaintBorder).
+  if dragonPaintBorderImage(v, ctx, shape) { return }
   if let outer = dragonRoundedPath(v, shape, inner: false), let inner = dragonRoundedPath(v, shape, inner: true) {
     let r = dragonRadiusShape(v, shape) ?? [Double](repeating: 0, count: 16)
     if dragonDrawRoundedDouble(v, ctx, shape, Array(r[0..<8])) { return }
@@ -158,6 +161,7 @@ public func dragonDrawRoundedBorders(_ ctx: CGContext, _ o: CGRect, _ outer: CGP
 /// After every layout: the side widths in points from the engine's device px.
 public func dragonAfterLayoutBorder(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
   v.dragonBorderWidths = shape.borders.map { $0 / scale }
+  dragonAfterLayoutBorderImage(v, shape, scale)
 }
 
 /// The readback of the border module: widths in points, styles and colours.
@@ -166,7 +170,7 @@ public func dragonAppliedBorder(_ v: DragonBoxView) -> DumpJsonObject {
     ("dragonBorder.widths", .array(v.dragonBorderWidths.map { .number($0) })),
     ("dragonBorder.styles", .array(v.dragonBorderStyles.map { .string($0) })),
     ("dragonBorder.colors", .array(v.dragonBorderColors.map(dragonRGBAJson))),
-  ]
+  ] + dragonAppliedBorderImage(v)
 }
 
 /// A polygon path from x, y pairs in device px.
@@ -274,7 +278,7 @@ public func dragonDrawBorders(_ ctx: CGContext, _ o: CGRect, _ w: [CGFloat], _ s
     ctx.restoreGState()
   }
 }
-`;
+${BORDER_IMAGE_SWIFT}`;
 
 const KOTLIN_MEMBERS = String.raw`  /** Whole device px, top right bottom left, from the engine at the device scale. */
   var dragonBorderWidths = intArrayOf(0, 0, 0, 0)
@@ -287,7 +291,7 @@ const KOTLIN_MEMBERS = String.raw`  /** Whole device px, top right bottom left, 
 
 const KOTLIN = String.raw`package dev.dragon.views
 
-import android.graphics.Canvas
+${BORDER_IMAGE_KOTLIN_IMPORTS}import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -309,6 +313,8 @@ val DRAGON_DASH_FAULTS = DashFaults(false, false)
  * models no radii), every other box by the band painter.
  */
 fun dragonPaintBorderStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
+  // MISC-PAINT: a border image replaces the border styles (BoxPainterBase::PaintBorder).
+  if (dragonPaintBorderImage(v, canvas, shape)) return
   val outer = dragonRoundedPath(v, shape, false)
   val inner = dragonRoundedPath(v, shape, true)
   if (outer != null && inner != null) {
@@ -455,6 +461,7 @@ fun dragonDrawRoundedBorders(canvas: Canvas, w: Float, h: Float, outer: Path, in
 fun dragonAfterLayoutBorder(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   val px = shape.borders
   v.dragonBorderWidths = intArrayOf(dragonCheckedInt(px[0], v.dragonId + " border top"), dragonCheckedInt(px[1], v.dragonId + " border right"), dragonCheckedInt(px[2], v.dragonId + " border bottom"), dragonCheckedInt(px[3], v.dragonId + " border left"))
+  dragonAfterLayoutBorderImage(v, shape, scale)
 }
 
 /** The readback of the border module: widths in device px, styles and colours. */
@@ -462,7 +469,7 @@ fun dragonAppliedBorder(v: DragonBoxView): List<Pair<String, DumpJson>> = listOf
   Pair("dragonBorder.widthsPx", DumpJson.Arr(v.dragonBorderWidths.map { DumpJson.Num(it.toDouble()) })),
   Pair("dragonBorder.styles", DumpJson.Arr(v.dragonBorderStyles.map { DumpJson.Str(it) })),
   Pair("dragonBorder.colors", DumpJson.Arr(v.dragonBorderColors.map { dragonRGBAJson(it) })),
-)
+) + dragonAppliedBorderImage(v)
 
 /** A polygon path from x, y pairs in device px. */
 fun dragonPolygon(pts: List<Double>): Path {
@@ -563,11 +570,11 @@ fun dragonDrawBorders(canvas: Canvas, w: Float, h: Float, widths: IntArray, styl
     canvas.restore()
   }
 }
-`;
+${BORDER_IMAGE_KOTLIN}`;
 
-export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'border-colors', 'dash-phase-1' | 'dash-gap-unfitted' | 'double-solid'> = {
+export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'border-colors' | 'border-image', 'dash-phase-1' | 'dash-gap-unfitted' | 'double-solid' | 'border-image-offset-1'> = {
   name: 'border',
-  kinds: ['border-widths', 'border-styles', 'border-colors'],
+  kinds: ['border-widths', 'border-styles', 'border-colors', 'border-image'],
   lines: {
     uikit: (v, _n, w) => {
       switch (w.kind) {
@@ -577,6 +584,8 @@ export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'b
           return [`  ${v}.dragonBorderStyles = [${w.styles.map(keywordLit).join(', ')}]`];
         case 'border-colors':
           return [`  ${v}.dragonBorderColors = [${w.colors.map(rgbaLit).join(', ')}]`];
+        case 'border-image':
+          return [borderImageLine('swift', v, w)];
       }
     },
     'android-views': (v, _n, w) => {
@@ -587,6 +596,8 @@ export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'b
           return [`  ${v}.dragonBorderStyles = arrayOf(${w.styles.map(keywordLit).join(', ')})`];
         case 'border-colors':
           return [`  ${v}.dragonBorderColors = arrayOf(${w.colors.map(rgbaLit).join(', ')})`];
+        case 'border-image':
+          return [borderImageLine('kotlin', v, w)];
       }
     },
   },
@@ -599,15 +610,18 @@ export const BORDER_EMITTER: PaintEmitter<'border-widths' | 'border-styles' | 'b
         return [...w.styles];
       case 'border-colors':
         return w.colors.map((c) => [c.r, c.g, c.b, c.alpha]);
+      case 'border-image':
+        return borderImageApplied(w);
     }
   },
   native: {
-    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, stages: { border: 'dragonPaintBorderStage' }, afterLayout: 'dragonAfterLayoutBorder', applied: 'dragonAppliedBorder' },
-    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, stages: { border: 'dragonPaintBorderStage' }, afterLayout: 'dragonAfterLayoutBorder', applied: 'dragonAppliedBorder' },
+    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS + BORDER_IMAGE_SWIFT_MEMBERS, file: SWIFT, stages: { border: 'dragonPaintBorderStage' }, afterLayout: 'dragonAfterLayoutBorder', applied: 'dragonAppliedBorder' },
+    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS + BORDER_IMAGE_KOTLIN_MEMBERS, file: KOTLIN, stages: { border: 'dragonPaintBorderStage' }, afterLayout: 'dragonAfterLayoutBorder', applied: 'dragonAppliedBorder' },
   },
   plants: [
     { name: 'dash-phase-1', replace: { uikit: ['DashFaults(false, false)', 'DashFaults(true, false)'], 'android-views': ['DashFaults(false, false)', 'DashFaults(true, false)'] } },
     { name: 'dash-gap-unfitted', replace: { uikit: ['DashFaults(false, false)', 'DashFaults(false, true)'], 'android-views': ['DashFaults(false, false)', 'DashFaults(false, true)'] } },
     { name: 'double-solid', replace: { uikit: ['public let dragonDoublePlantSolid: Bool = false\n', 'public let dragonDoublePlantSolid: Bool = true\n'], 'android-views': ['const val DRAGON_DOUBLE_PLANT_SOLID = false\n', 'const val DRAGON_DOUBLE_PLANT_SOLID = true\n'] } },
+    BORDER_IMAGE_PLANT,
   ],
 };

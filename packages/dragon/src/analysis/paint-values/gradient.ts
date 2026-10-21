@@ -875,7 +875,7 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
 };
 
 /** Whether a box has a corner with both radii above zero. */
-function roundedBox(el: ResolvedElement): boolean {
+export function roundedBox(el: ResolvedElement): boolean {
   return RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
     return c !== null && c[0].value > 0 && c[1].value > 0;
