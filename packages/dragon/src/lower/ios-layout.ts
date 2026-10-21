@@ -39,6 +39,7 @@ import type {
   TextAlign,
   TextIndentValue,
   TextOverflow,
+  TextWrapStyle,
   TextLeaf,
   TextWrapMode,
   OverflowWrap,
@@ -524,10 +525,20 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     // css-sizing-4 §5.2: the content size a size-contained box takes (analysis/contain-intrinsic.ts refuses auto where it applies).
     containIntrinsicWidth: intrinsicSize(id, get, 'contain-intrinsic-width', faults),
     containIntrinsicHeight: intrinsicSize(id, get, 'contain-intrinsic-height', faults),
+    textWrapStyle: textWrapStyle(id, get),
     grid: null,
     gridItem: null,
     zoom,
   };
+}
+
+// css-text-4 §5.1: stable lays out as auto; balance and pretty are the engine's passes at zoom 1, which the environment pass zooms
+// (computed-checks.ts checkTextWrapStyle refuses the contexts they are not proven in).
+function textWrapStyle(id: string, get: Get): TextWrapStyle {
+  const k = keyword<'auto' | 'stable' | 'balance' | 'pretty'>(id, get, 'text-wrap-style', ['auto', 'stable', 'balance', 'pretty']);
+  if (k === 'balance') return { kind: 'balance', zoom: 1 };
+  if (k === 'pretty') return { kind: 'pretty', zoom: 1 };
+  return { kind: 'auto' };
 }
 
 /** Runs a grid lowering step, reporting its refusal as a LoweringError on the element. */

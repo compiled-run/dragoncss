@@ -12,10 +12,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
 - `cc/paint/draw_looper.cc`: Copyright 2024 The Chromium Authors
 - `cc/paint/paint_op_buffer_iterator.cc`: Copyright 2017 The Chromium Authors
-- `cc/paint/render_surface_filters.cc`: Copyright 2012 The Chromium Authors
-- `cc/paint/scoped_raster_flags.h`: Copyright 2017 The Chromium Authors
 - `cc/trees/layer_tree_settings.cc`: Copyright 2011 The Chromium Authors
-- `skia/ext/skcms_ext.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/animation/animation_time_delta.h`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/animation/css/css_keyframe_effect_model.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/animation/interpolation_effect.cc`: Copyright 2014 The Chromium Authors
@@ -29,7 +26,6 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/css/parser/css_parser_fast_paths.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/parser/css_parser_impl.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/computed_style_utils.cc`: Copyright 2017 The Chromium Authors
-- `third_party/blink/renderer/core/css/properties/css_color_function_parser.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/css_parsing_utils.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/shorthands/shorthands_custom.cc`: Copyright 2019 The Chromium Authors
@@ -42,7 +38,6 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/block_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/box_fragment_builder.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/core/layout/exclusions/exclusion_space.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
@@ -54,17 +49,20 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/grid/grid_placement.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_track_collection.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_track_sizing_algorithm.cc`: Copyright 2025 The Chromium Authors
-- `third_party/blink/renderer/core/layout/ink_overflow.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/fragment_item.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/inline_items_builder.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/inline_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/justification_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/line_break_candidate.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/line_break_candidate.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_truncator.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/logical_line_builder.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/core/layout/layout_block_flow_hot.cc`: Copyright 2022 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/paragraph_line_breaker.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/score_line_break_context.h`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/score_line_breaker.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.h`: Copyright 2016 The Chromium Authors
@@ -107,7 +105,6 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/platform/geometry/contoured_rect.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/path_builder.cc`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/platform/geometry/physical_size.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/platform/graphics/compositing/paint_chunks_to_cc_layer.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/platform/text/capitalize.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data_generator.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/platform/text/character_property_data.h`: Copyright 2016 The Chromium Authors
@@ -116,7 +113,6 @@ Those files are under the licences below, with the copyright lines from their he
 - `ui/base/pointer/pointer_device.cc`: Copyright 2013 The Chromium Authors
 - `ui/base/pointer/pointer_device.h`: Copyright 2012 The Chromium Authors
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
-- `ui/gfx/color_conversions.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/color_utils.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
 - `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors
@@ -156,17 +152,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Skia: BSD 3-Clause (the Skia LICENSE file) (skia-bsd)
 
-- `third_party/skia/include/core/SkColorSpace.h`: Copyright 2016 Google Inc.
 - `third_party/skia/include/core/SkPaint.h`: Copyright 2006 The Android Open Source Project
-- `third_party/skia/modules/skcms/skcms.cc`: Copyright 2018 Google Inc.
 - `third_party/skia/src/base/SkTSort.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkAnalyticEdge.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlitRow_D32.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/core/SkBlitter_A8.cpp`: Copyright 2006 The Android Open Source Project
-- `third_party/skia/src/core/SkBlitter_ARGB32.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMask.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMaskFilterImpl.cpp`: Copyright 2006 The Android Open Source Project
-- `third_party/skia/src/core/SkColor.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkColorData.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkDraw.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkEdgeBuilder.cpp`: Copyright 2011 Google Inc.
@@ -190,10 +182,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkScan_AntiPath.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkStrikeSpec.cpp`: Copyright 2019 The Android Open Source Project
 - `third_party/skia/src/core/SkStroke.cpp`: Copyright 2008 The Android Open Source Project
-- `third_party/skia/src/core/SkSwizzlePriv.h`: Copyright 2016 Google Inc.
 - `third_party/skia/src/core/SkTextFormatParams.h`: Copyright 2010 The Android Open Source Project
-- `third_party/skia/src/effects/colorfilters/SkComposeColorFilter.cpp`: Copyright 2023 Google LLC
-- `third_party/skia/src/effects/colorfilters/SkMatrixColorFilter.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/opts/SkBlitRow_opts.h`: Copyright 2015 Google Inc.
 - `third_party/skia/src/opts/SkRasterPipeline_opts.h`: Copyright 2018 Google Inc.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
@@ -290,7 +279,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/core/css/css_unicode_range_value.cc`: Copyright (C) 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face_cache.cc`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face_cache.h`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
-- `third_party/blink/renderer/core/editing/iterators/text_iterator.cc`: Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.; Copyright (C) 2005 Alexey Proskuryakov.
 - `third_party/blink/renderer/platform/fonts/font_family.cc`: Copyright (C) 2004, 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/color.cc`: Copyright (C) 2003, 2004, 2005, 2006, 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/gradient.cc`: Copyright (C) 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2013 Google Inc. All rights reserved.
@@ -434,7 +422,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Chromium files with a BSD licence in their own header (header-bsd-7)
 
-- `third_party/blink/renderer/modules/accessibility/ax_node_object.cc`: Copyright (C) 2012, Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_description.cc`: Copyright (C) 2007 Nicholas Shanks <contact@nickshanks.com>; Copyright (C) 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_metrics.cc`: Copyright (C) 2005, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2006 Alexey Proskuryakov
 - `third_party/blink/renderer/platform/fonts/simple_font_data.cc`: Copyright (C) 2005, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2006 Alexey Proskuryakov

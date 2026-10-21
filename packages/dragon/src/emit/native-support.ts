@@ -3054,7 +3054,7 @@ export const STYLE_FIELDS = [
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
   'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout',
-  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
+  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'grid', 'gridItem', 'zoom',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -3135,6 +3135,9 @@ const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 
 /** The translated classes of the AspectRatioValue members with parts (input.ts); auto is the shared Auto class. */
 const RATIO_CLASSES: Readonly<Record<string, string>> = { ratio: 'AspectRatioValue_ratio', 'auto-ratio': 'AspectRatioValue_autoRatio' };
 
+/** The translated classes of the TextWrapStyle members with a zoom (input.ts); auto is the shared Auto class. */
+const WRAP_STYLE_CLASSES: Readonly<Record<string, string>> = { balance: 'TextWrapStyle_balance', pretty: 'TextWrapStyle_pretty' };
+
 /** A LengthCalc or a CalcExpr node that is not a plain value, as a constructor call; null for any other value. */
 function calcValue(lang: Lang, o: Record<string, unknown>): string | null {
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
@@ -3188,6 +3191,12 @@ function engineValue(lang: Lang, v: unknown): string {
   if (ratio !== undefined) {
     if (typeof r.width !== 'number' || typeof r.height !== 'number') throw new Error(`aspect ratio ${JSON.stringify(v)} lacks its parts`);
     return `${ratio}(${str(r.kind)}, ${doubleLit(r.width)}, ${doubleLit(r.height)})`;
+  }
+  const w = v as { kind: string; zoom?: number };
+  const wrap = WRAP_STYLE_CLASSES[w.kind];
+  if (wrap !== undefined) {
+    if (typeof w.zoom !== 'number') throw new Error(`text-wrap-style ${JSON.stringify(v)} lacks its zoom`);
+    return `${wrap}(${str(w.kind)}, ${doubleLit(w.zoom)})`;
   }
   const o = v as { kind: string; value?: number | string };
   if (o.kind === 'keyword') return `VerticalAlignKeywordValue(${str('keyword')}, ${str(o.value as string)})`;
