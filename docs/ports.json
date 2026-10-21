@@ -4372,11 +4372,98 @@
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
         { "lines": "902-928", "symbol": null, "source": "cited" },
-        { "lines": "331-351", "symbol": "InlineLayoutAlgorithm::GetLineClampState", "source": "located" }
+        { "lines": "331-351", "symbol": "InlineLayoutAlgorithm::GetLineClampState", "source": "located" },
+        { "lines": "58-222", "symbol": "LineBreakStrategy", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
-        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/inline.ts", "symbol": "wrapStyleLines", "use": "port" },
+        { "file": "packages/layout/src/input.ts", "symbol": "TextWrapStyle", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/score_line_breaker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "ad19690239c7dbc5bf12cd37589eb85e21e2b4541f21b772ff321580c0f7e020",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "57-160", "symbol": "ScoreLineBreaker::OptimalBreakPoints", "source": "located" },
+        { "lines": "162-166", "symbol": "ScoreLineBreaker::BalanceBreakPoints", "source": "located" },
+        { "lines": "168-225", "symbol": "ScoreLineBreaker::Optimize", "source": "located" },
+        { "lines": "267-289", "symbol": "ScoreLineBreaker::SetupParameters", "source": "located" },
+        { "lines": "291-368", "symbol": "ScoreLineBreaker::ComputeScores", "source": "located" },
+        { "lines": "370-401", "symbol": "ScoreLineBreaker::ComputeBreakPoints", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": "linePenaltyOf", "use": "port" },
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": "scoreBreakPoints", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/line_break_candidate.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "40c3a2b3c03aad98ef55f4064605fcc20226daa1cebfe30c0404b338ffa6e816",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "95-172", "symbol": "LineBreakCandidateContext::AppendLine", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/line_break_candidate.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "9af383a0d0b627515ee77dcfb9e32f193625e052f4619386af546db4806eeef3",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "24-57", "symbol": "LineBreakCandidate", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": "WrapCandidate", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/score_line_break_context.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "2f04b3238810a58f3afaaa143a93affee8601e3456fb276b3902a4837439f40e",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "17-17", "symbol": "kMaxLinesForBalance", "source": "located" },
+        { "lines": "18-18", "symbol": "kMaxLinesForOptimal", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "MAX_LINES_FOR_BALANCE", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/paragraph_line_breaker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "8b7ad973c8568c29611a06f0a2edd7142fbcb3fef9a398d46ee1083e04563879",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "126-140", "symbol": "EstimateNumLines", "source": "located" },
+        { "lines": "145-232", "symbol": "ParagraphLineBreaker::AttemptParagraphBalancing", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "bisectedLines", "use": "port" }
       ]
     },
     {

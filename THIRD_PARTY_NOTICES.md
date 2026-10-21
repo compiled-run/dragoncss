@@ -63,10 +63,15 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/inline_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/justification_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/line_break_candidate.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/line_break_candidate.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_truncator.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/logical_line_builder.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/paragraph_line_breaker.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/score_line_break_context.h`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/score_line_breaker.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_block_flow_hot.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors

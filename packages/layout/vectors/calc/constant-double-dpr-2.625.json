@@ -159,6 +159,9 @@
     "containIntrinsicHeight": {
      "kind": "none"
     },
+    "textWrapStyle": {
+     "kind": "auto"
+    },
     "multicol": null,
     "grid": null,
     "gridItem": null,
@@ -297,6 +300,9 @@
       },
       "containIntrinsicHeight": {
        "kind": "none"
+      },
+      "textWrapStyle": {
+       "kind": "auto"
       },
       "multicol": null,
       "grid": null,
@@ -467,6 +473,9 @@
         },
         "containIntrinsicHeight": {
          "kind": "none"
+        },
+        "textWrapStyle": {
+         "kind": "auto"
         },
         "multicol": null,
         "grid": null,
@@ -642,6 +651,9 @@
         },
         "containIntrinsicHeight": {
          "kind": "none"
+        },
+        "textWrapStyle": {
+         "kind": "auto"
         },
         "multicol": null,
         "grid": null,

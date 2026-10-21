@@ -23,6 +23,7 @@ import { CONTAINER_QUERY_ANIMATION } from './animation-kinds/container-query.ts'
 import { CONTAINMENT_ANIMATION } from './animation-kinds/containment.ts';
 import { COUNTERS_ANIMATION } from './animation-kinds/counters.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
+import { FIELD_SIZING_ANIMATION } from './animation-kinds/field-sizing.ts';
 import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
@@ -43,6 +44,7 @@ import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
 import { MASK_ANIMATION } from './animation-kinds/mask.ts';
+import { MOTION_ANIMATION } from './animation-kinds/motion.ts';
 import { MULTICOL_ANIMATION } from './animation-kinds/multicol.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
 import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
@@ -102,6 +104,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...CONTAINMENT_ANIMATION,
   ...COUNTERS_ANIMATION,
   ...EFFECTS_ANIMATION,
+  ...FIELD_SIZING_ANIMATION,
   ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,
   ...FLOAT_ANIMATION,
@@ -122,6 +125,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
   ...MASK_ANIMATION,
+  ...MOTION_ANIMATION,
   ...MULTICOL_ANIMATION,
   ...OUTLINE_ANIMATION,
   ...OVERFLOW_ANIMATION,

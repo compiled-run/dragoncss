@@ -181,6 +181,7 @@ export const styleSchema = obj({
   containSize: lit('none', 'inline-size', 'size'),
   containIntrinsicWidth: tagged({ ...px(0), none: {} }),
   containIntrinsicHeight: tagged({ ...px(0), none: {} }),
+  textWrapStyle: tagged({ ...auto, balance: { zoom: positive }, pretty: { zoom: positive } }),
   multicol: nullable(obj({ count: count0, width: tagged({ ...px(0), ...auto }) })),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
@@ -911,7 +912,7 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem' | 'zoom'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'textWrapStyle' | 'gridItem' | 'zoom'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
   float: 'none',
@@ -966,7 +967,8 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its
-// id is "<parent id>:anon<k>", and it inherits direction, text-align and text-indent while every other field is its initial value.
+// id is "<parent id>:anon<k>", and it inherits direction, text-align, text-indent and text-wrap-style while every other field is
+// its initial value.
 function checkAnonymous(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[], parentId: string | null): void {
   const bad = (message: string): void => {
     errors.push({ path, code: 'anonymous-shape', message });

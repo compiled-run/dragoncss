@@ -37,7 +37,7 @@ import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { relativeColorGrammarText } from './color.ts';
 import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
-import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
+import { mathFunctionRefusal, normalizeUnit, unitRefusalIn } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
 import type { AnimationDeclValue } from './properties/animation.ts';
@@ -997,8 +997,9 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     return { kind: 'invalid', reason: 'Chrome takes only baseline or first baseline here (css_parsing_utils.cc ConsumeFirstBaseline)' };
   }
   const values: CssValue[] = pair === null ? [] : [pair];
+  const declared: readonly string[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
   for (const t of pair === null ? tokens : []) {
-    const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
+    const unitRefused = t.type === 'Dimension' ? unitRefusalIn(normalizeUnit(String(t['unit'])), declared) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
     if (unitRefused !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }) };
     }

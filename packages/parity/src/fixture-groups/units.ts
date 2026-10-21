@@ -9,9 +9,10 @@ export const UNITS: readonly FixtureSpec[] = [
   layout('units-rem'),
   layout('units-rem-root'),
   both('units-rem-positioned'),
-  // V1 of the value model (fixture group values) supports vw and calc(): these two keep their reject coverage on values it still refuses.
+  // V1 of the value model (fixture group values) supports vw and calc(), and FONT-UNITS ex, ch and cap in an element's own sizes:
+  // these keep their reject coverage on values it still refuses.
   reject('reject-unit-vw', 'DRAGON_UNSUPPORTED_VALUE', '50svw', 'width: 50svw is unsupported: small, large and dynamic viewport units'),
-  reject('reject-unit-ex', 'DRAGON_UNSUPPORTED_VALUE', '3ex', 'height: 3ex is unsupported: it is measured from the primary font'),
+  reject('reject-unit-ex', 'DRAGON_UNSUPPORTED_VALUE', '3ic', 'height: 3ic is unsupported: it is measured from the primary font'),
   reject('reject-unit-lh', 'DRAGON_UNSUPPORTED_VALUE', '2lh', 'height: 2lh is unsupported: it is the used line height'),
   reject('reject-unit-calc', 'DRAGON_UNSUPPORTED_VALUE', 'round(10px, 3px)', 'width: round(10px,3px) is unsupported: round() is a css-values-4 stepped-value function'),
 ];
