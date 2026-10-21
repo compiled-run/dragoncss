@@ -674,12 +674,12 @@ const NUMBER_OR_ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['rotate']);
 const NUMBER_OR_PERCENT_GRAMMAR: ReadonlySet<string> = new Set(['scale']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
-/** opacity, fill-opacity and stroke-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
+/** opacity, fill-opacity, stroke-opacity, stop-opacity and flood-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
 // stroke-width, stroke-dasharray and stroke-dashoffset take a unitless number too (SVG's quirk, Chrome StrokeWidth,
 // StrokeDasharray and StrokeDashoffset ::ParseSingleValue in SVG attribute mode), and so do the geometry properties cx, cy, r, x
 // and y and the corner radii rx and ry (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
 // tab-size is <number> | <length> (css-text-3 §4.2); its parser (properties/tab-size.ts) refuses every calculation.
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'tab-size']);
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stop-opacity', 'flood-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'tab-size']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
  * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), the table spacings (CSS2 §17.6.1
  * border-spacing), and every scroll-margin property (css-scroll-snap-1 §6, Blink ScrollMargin* ConsumeLength). */

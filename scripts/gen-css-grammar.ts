@@ -397,6 +397,13 @@ const SYNTAX_OVERRIDES: { readonly [property: string]: string } = {
   // region values), and orphans and widows as a positive integer with calc() rounded (properties/fragmentation.ts), so the grammar
   // takes any value and the parser decides. Pinned by packages/parity/test/fragmentation-parse.test.ts.
   ...Object.fromEntries([...FRAGMENTATION_LONGHANDS, ...FRAGMENTATION_SHORTHANDS].map((p) => [p, '<any-value>'])),
+  // SVG-inert-b: Blink's alignment-baseline and dominant-baseline keywords (css_properties.json5), SVG 1.1's: webref's css-inline-3
+  // grammar has no auto (Chrome's initial) and lacks before-edge, after-edge, use-script, no-change and reset-size, and adds text-top
+  // and text-bottom, which Chrome rejects. Pinned against Chrome by packages/parity/test/svg-inert-parse.test.ts.
+  'alignment-baseline': 'auto | baseline | alphabetic | ideographic | middle | central | mathematical | hanging | before-edge | after-edge | text-before-edge | text-after-edge',
+  'dominant-baseline': 'auto | alphabetic | ideographic | middle | central | mathematical | hanging | text-before-edge | text-after-edge | use-script | no-change | reset-size',
+  // webref's stop-color is css-color's legacy alias entry without fields; Blink parses one <color> (css_properties.json5).
+  'stop-color': '<color>',
 };
 
 /**
@@ -422,6 +429,11 @@ const FIELD_OVERRIDES: { readonly [property: string]: { readonly initial: string
   // webref's column-width entry is css-sizing-4's extension, without fields; css-multicol-1 §3.1 and Chrome 145: initial auto, not
   // inherited.
   'column-width': { initial: 'auto', inherited: 'no' },
+  // SVG-inert-b: Blink's alignment-baseline initial is auto (css_properties.json5), not css-inline-3's baseline, and webref's stop-color
+  // and stop-opacity have no fields; Blink's are black and 1, neither inherited (SVG 2 §14.2.2).
+  'alignment-baseline': { initial: 'auto', inherited: 'no' },
+  'stop-color': { initial: 'black', inherited: 'no' },
+  'stop-opacity': { initial: '1', inherited: 'no' },
 };
 
 const propsByName = new Map(css.properties.map((p) => [p.name, p]));

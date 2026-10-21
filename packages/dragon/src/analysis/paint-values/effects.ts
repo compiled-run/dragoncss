@@ -412,9 +412,10 @@ export function refuseAnimatedGroups(analysis: AnimationAnalysis, roots: readonl
 
 export const EFFECTS_VALUES: PaintValues = {
   name: 'effects',
-  // SVG-opacity: fill-opacity and stroke-opacity compute as opacity does (css-fill-stroke-3 §3.4, §4.4).
+  // SVG-opacity: fill-opacity and stroke-opacity compute as opacity does (css-fill-stroke-3 §3.4, §4.4), and (SVG-inert-b) so do
+  // stop-opacity and flood-opacity.
   compute: (props, ctx) => {
-    for (const p of ['opacity', 'fill-opacity', 'stroke-opacity'] as const) {
+    for (const p of ['opacity', 'fill-opacity', 'stroke-opacity', 'stop-opacity', 'flood-opacity'] as const) {
       const v = props.get(p);
       if (v === undefined || (v.value.kind !== 'number' && v.value.kind !== 'percentage')) continue;
       const n = opacityOf(v.value);
