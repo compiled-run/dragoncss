@@ -61,6 +61,8 @@ describe('@keyframes', () => {
     // The refusals that delete the declaration carry the edit their catalogue entry needs.
     expect(diagnostics.filter((d) => d.code !== 'DRAGON_UNSUPPORTED_VALUE').every((d) => d.fix !== null && 'edits' in d.fix && d.fix.edits.length === 1)).toBe(true);
     expect(rules[0]?.blocks.map((b) => b.values.length)).toEqual([0, 1]);
+    // Chrome 145 ignores the container longhands in keyframes too (probed), though css_properties.json5 leaves them valid there.
+    expect(parse('@keyframes k { from { container-type: inline-size; container: a; container-name: b } }').diagnostics.map((d) => d.message)).toEqual(['container-type', 'container', 'container-name'].map((p) => `${p} has no effect inside @keyframes in Chrome; remove it`));
   });
 
   it('reports a keyframe easing that is not one timing function, and refuses linear() (ANIM-L)', () => {

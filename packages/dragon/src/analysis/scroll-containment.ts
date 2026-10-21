@@ -1,57 +1,103 @@
-// The families Dragon accepts at their initial values alone (css/properties/initial-only.ts). Any other computed value is refused on
+// The families Dragon accepts at their initial values alone (css/properties/initial-only.ts): containment,
+// anchor-position, svg-extra, view-transition and animation-extra. Any other computed value is refused on
 // every target, once per element and family. The values are checked computed, so one that arrives through var() or inherit is
-// refused too. Scroll snapping (css/properties/scroll-snap.ts) is accepted at any value except an active snap pair on iOS and
-// Android (checkScrollSnap).
+// refused too. container-type takes normal and, on a box the layout engine contains, inline-size. Scroll snapping
+// (css/properties/scroll-snap.ts) is accepted at any value except an active snap pair on iOS and Android (checkScrollSnap).
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { isInitialValue } from '../css/properties/initial-only.ts';
 import type { Longhand } from '../css/properties.ts';
-import { CONTAINER_QUERY_INITIAL, CONTAINER_QUERY_LONGHANDS } from '../css/properties/container-query.ts';
-import { CONTAINMENT_INITIAL, CONTAINMENT_LONGHANDS } from '../css/properties/containment.ts';
-import { OVERSCROLL_INITIAL, OVERSCROLL_LONGHANDS } from '../css/properties/overscroll.ts';
+import { CONTAINMENT_INITIAL, CONTAINMENT_INITIAL_ONLY } from '../css/properties/containment.ts';
 import { alignsSnap, snapTypeOf } from '../css/properties/scroll-snap.ts';
+import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS } from '../css/properties/anchor-position.ts';
+import { SVG_EXTRA_INITIAL, SVG_EXTRA_LONGHANDS } from '../css/properties/svg-extra.ts';
+import { VIEW_TRANSITION_INITIAL, VIEW_TRANSITION_LONGHANDS } from '../css/properties/view-transition.ts';
+import { ANIMATION_EXTRA_INITIAL, ANIMATION_EXTRA_LONGHANDS } from '../css/properties/animation-extra.ts';
 import type { CssValue } from '../css/values.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import type { Diagnostic } from '../types.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
-import { isReplacedTag } from './elements/replaced.ts';
 import { valueToString } from './resolve.ts';
+import { isReplacedTag } from './elements/replaced.ts';
+import { isSvgShapeTag } from './elements/svg.ts';
 
-type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string };
+/** A family Dragon accepts at its initial values alone: its longhands, their initial values, and why any other value is refused.
+ * userAgent: a value the Chrome UA sheet sets (origin user-agent) is accepted too, as every page has it. */
+export type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string; readonly userAgent?: true };
 
-function refuseNonInitial(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, f: InitialOnlyFamily): void {
-  const p = f.longhands.find((q) => !isInitialValue(f.initial[q] as CssValue, (el.props.get(q) as ResolvedValue).value));
-  if (p === undefined) return;
-  const id = `${f.id}|${el.element.address}`;
+/** Refuses the element's first longhand of the family whose computed value is not initial, once per element and family. */
+export function refuseNonInitial(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, f: InitialOnlyFamily): void {
+  const accepted = (q: Longhand): boolean => {
+    const v = el.props.get(q) as ResolvedValue;
+    return isInitialValue(f.initial[q] as CssValue, v.value) || (f.userAgent === true && v.origin === 'user-agent');
+  };
+  const p = f.longhands.find((q) => !accepted(q));
+  if (p !== undefined) refuse(el, targets, diagnostics, reported, f.id, p, `${f.reason}; only ${valueToString(f.initial[p] as CssValue)} is accepted`, valueToString(f.initial[p] as CssValue));
+}
+
+function refuse(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, family: string, p: Longhand, reason: string, accepted: string): void {
+  const id = `${family}|${el.element.address}`;
   if (reported.has(id)) return;
   reported.add(id);
   const v = el.props.get(p) as ResolvedValue;
   const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
-  const initial = valueToString(f.initial[p] as CssValue);
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
       origin,
       target: t,
-      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: ${f.reason}; only ${initial} is accepted`,
-      manual: `Remove ${p} from ${el.element.address}, or set ${p}: ${initial}.`,
+      message: `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address} is unsupported: ${reason}`,
+      manual: `Remove ${p} from ${el.element.address}, or set ${p}: ${accepted}.`,
       basis: 'computed-value',
     }));
   }
 }
 
-// css-overscroll-1, css-scroll-anchoring-1: auto leaves scroll chaining and anchoring to the platform scroll view, as every Dragon
-// scroll container does; contain, none and overflow-anchor: none ask for behaviour no target implements.
-const OVERSCROLL: InitialOnlyFamily = { id: 'overscroll', longhands: OVERSCROLL_LONGHANDS, initial: OVERSCROLL_INITIAL, reason: 'Dragon implements no overscroll behaviour or scroll anchoring yet' };
-// css-contain-2: containment and content-visibility change layout and can skip painting a box's contents (text included); the
-// intrinsic sizes apply only under size containment.
-const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_LONGHANDS, initial: CONTAINMENT_INITIAL, reason: 'Dragon implements no containment or content-visibility yet' };
-// css-conditional-5: a container-type other than normal applies size containment, and a container-name only names a query container.
-const CONTAINER_QUERY: InitialOnlyFamily = { id: 'container-query', longhands: CONTAINER_QUERY_LONGHANDS, initial: CONTAINER_QUERY_INITIAL, reason: 'Dragon implements no container queries or the containment they apply yet' };
+// css-contain-2: content-visibility skips laying out and painting a box's contents (text included), and the intrinsic sizes apply
+// under size containment; contain itself is analysis/containment.ts's.
+const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_INITIAL_ONLY, initial: CONTAINMENT_INITIAL, reason: 'Dragon skips no contents and sizes no contained box from contain-intrinsic-size yet' };
+
+/**
+ * css-conditional-5 §2.1: container-type: inline-size compiles (lower/ios-layout.ts containInlineSize, LayoutStyle containSize inline-size) on a box that generates a block
+ * container, flex or grid box. Size containment, scroll-state and anchored containers are refused, as is inline-size on an inline box
+ * (which css-contain-2 §3.2 does not contain) and on a replaced element or SVG shape (whose natural size it would drop). container-name
+ * only names a query container for @container rules (analysis/container-rules.ts), so every name compiles.
+ */
+function checkContainerType(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const v = (el.props.get('container-type') as ResolvedValue).value;
+  const type = v.kind === 'keyword' ? v.value : valueToString(v);
+  if (type === 'normal') return;
+  const display = (el.props.get('display') as ResolvedValue).value;
+  const shown = display.kind === 'keyword' ? display.value : '';
+  const tag = el.element.tag;
+  const reason = type !== 'inline-size'
+    ? 'Dragon implements inline-size query containers only, not size containment or scroll-state and anchored queries'
+    : isReplacedTag(tag) || isSvgShapeTag(tag)
+      ? `inline-size containment drops the natural size of <${tag}>, which Dragon does not model`
+      : shown === 'inline' || shown === 'contents'
+        ? `inline-size containment does not apply to a display: ${shown} element, which Dragon does not model`
+        : null;
+  if (reason !== null) refuse(el, targets, diagnostics, reported, 'container-query', 'container-type', reason, type === 'inline-size' ? 'normal' : 'inline-size');
+}
+
+// css-anchor-position-1: an anchor name or scope only names anchors, and the position longhands move or hide an anchored box.
+const ANCHOR_POSITION: InitialOnlyFamily = { id: 'anchor-position', longhands: ANCHOR_POSITION_LONGHANDS, initial: ANCHOR_POSITION_INITIAL, reason: 'Dragon implements no anchor positioning yet' };
+// SVG 2: baseline-shift of SVG text, which Dragon does not build, and the rendering hints, which would change how its shapes are
+// drawn (the stop, flood, mask-type and text-anchor properties are SVG-inert-b's, css/properties/svg.ts, accepted at every value).
+const SVG_EXTRA: InitialOnlyFamily = { id: 'svg-extra', longhands: SVG_EXTRA_LONGHANDS, initial: SVG_EXTRA_INITIAL, reason: 'Dragon builds no SVG text and draws its shapes with the default rendering hints' };
+
+// css-view-transitions-2: the names, classes and groups of a view transition's captured boxes. Chrome's UA sheet names the root
+// (:root { view-transition-name: root }), which captures it only once a transition starts, so that UA value is accepted too.
+const VIEW_TRANSITION: InitialOnlyFamily = { id: 'view-transition', longhands: VIEW_TRANSITION_LONGHANDS, initial: VIEW_TRANSITION_INITIAL, reason: 'Dragon implements no view transitions yet', userAgent: true };
+// css-values-5 §8.2, scroll-animations-1 §4.2: keyword size interpolation and the scope of named timelines.
+const ANIMATION_EXTRA: InitialOnlyFamily = { id: 'animation-extra', longhands: ANIMATION_EXTRA_LONGHANDS, initial: ANIMATION_EXTRA_INITIAL, reason: 'Dragon interpolates no intrinsic size keyword and has no scroll-driven timelines yet' };
 
 /** Refuses the first non-initial longhand of each initial-only family on the element; each family's planted fault accepts it. */
 export function checkScrollContainment(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: ScrollContainmentFaults): void {
-  if (!faults.overscrollAccepted) refuseNonInitial(el, targets, diagnostics, reported, OVERSCROLL);
   if (!faults.containmentAccepted) refuseNonInitial(el, targets, diagnostics, reported, CONTAINMENT);
-  if (!faults.containerQueryAccepted) refuseNonInitial(el, targets, diagnostics, reported, CONTAINER_QUERY);
+  if (!faults.containerQueryAccepted) checkContainerType(el, targets, diagnostics, reported);
+  if (!faults.anchorPositionAccepted) refuseNonInitial(el, targets, diagnostics, reported, ANCHOR_POSITION);
+  if (!faults.svgExtraAccepted) refuseNonInitial(el, targets, diagnostics, reported, SVG_EXTRA);
+  if (!faults.viewTransitionAccepted) refuseNonInitial(el, targets, diagnostics, reported, VIEW_TRANSITION);
+  if (!faults.animationExtraAccepted) refuseNonInitial(el, targets, diagnostics, reported, ANIMATION_EXTRA);
 }
 
 const keywordOf = (el: ResolvedElement, p: Longhand): string => {

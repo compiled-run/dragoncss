@@ -75,15 +75,12 @@ describe('appearance: compile', () => {
     }
   });
 
-  it('refuses appearance other than none on display inline, inline-table, list-item and table, which Chrome adjusts', () => {
+  it('compiles appearance other than none on display inline, inline-table, list-item and table, whose adjustment Dragon applies (analysis/computed.ts appearanceDisplay)', () => {
     const refusals = (c: ReturnType<typeof compile>) => c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE' && d.message.includes('appearance'));
-    for (const [display, adjusted] of [['inline', 'inline-block'], ['inline-table', 'inline-block'], ['list-item', 'block'], ['table', 'block']]) {
-      const c = compile(`.b { display: ${display}; appearance: button; }`, NATIVE);
-      expect(refusals(c).map((d) => d.target).sort(), display).toEqual(['android', 'ios', 'web']);
-      expect(refusals(c)[0]?.message, display).toContain(`which Chrome turns into display ${adjusted}`);
-      expect(refusals(compile(`.b { display: ${display}; appearance: none; }`, NATIVE)), display).toEqual([]);
+    for (const display of ['inline', 'inline-table', 'list-item', 'table', 'block', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid', 'flow-root']) {
+      expect(refusals(compile(`.b { display: ${display}; appearance: button; }`, NATIVE)), display).toEqual([]);
+      expect(refusals(compile(`.b { display: ${display}; -webkit-appearance: auto; }`, NATIVE)), display).toEqual([]);
     }
-    for (const display of ['block', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid', 'flow-root']) expect(refusals(compile(`.b { display: ${display}; -webkit-appearance: auto; }`, NATIVE)), display).toEqual([]);
   });
 
   it('writes appearance in web output only where it is not none', () => {

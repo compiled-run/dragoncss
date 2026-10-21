@@ -1,0 +1,11 @@
+{
+  "case": "sizing-stretch-block",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"wmn10:text0","lines":[[0,3],[3,8],[8,9]]},
+    {"id":"wmx11:text0","lines":[[0,29]]},
+    {"id":"wfc12:text0","lines":[[0,6]]},
+    {"id":"xwm13:text0","lines":[[0,3],[3,8],[8,9]]},
+    {"id":"nwx14:text0","lines":[[0,6]]}
+  ]
+}

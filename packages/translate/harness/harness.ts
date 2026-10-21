@@ -10,6 +10,9 @@ import type {
   BoxSizing,
   BoxType,
   CalcExpr,
+  ContainSize,
+  ControlBox,
+  ControlKind,
   Direction,
   Display,
   FlexBasisValue,
@@ -48,9 +51,12 @@ import type {
   MaxInlineSizeValue,
   MaxSizeValue,
   MinSizeValue,
+  NoneValue,
+  Float,
   Overflow,
   PaddingValue,
   Position,
+  Px,
   SafeAreaSide,
   SizeValue,
   TextAlign,
@@ -82,6 +88,7 @@ import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -140,6 +147,8 @@ import type { ScriptStep, TransitionListing, TransitionState } from '../../layou
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
+import type { SelectFacts } from '../../layout/src/rt-select.ts';
+import { selectAnswers, selectionTableOf } from '../../layout/src/rt-select.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, OriginTable, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
@@ -553,23 +562,36 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
-/** width and min-width: a SizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+/** contain-intrinsic-width and -height: px or none. */
+function pxOrNone(v: JsonValue, path: string): Px | NoneValue {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'none') {
+    obj(v, ['kind'], path);
+    return { kind: 'none' };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+/** width and min-width: a SizeValue, the css-sizing-3 keywords min-content, max-content and fit-content, or css-sizing-4's stretch. */
 function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
   const k = kindOf(v, path);
-  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return sizeValue(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content' && k !== 'stretch') return sizeValue(v, path);
   obj(v, ['kind'], path);
   if (k === 'min-content') return { kind: 'min-content' };
   if (k === 'max-content') return { kind: 'max-content' };
+  if (k === 'stretch') return { kind: 'stretch' };
   return { kind: 'fit-content' };
 }
 
-/** max-width: a MaxSizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
+/** max-width: a MaxSizeValue, the css-sizing-3 keywords min-content, max-content and fit-content, or css-sizing-4's stretch. */
 function maxInlineSizeValue(v: JsonValue, path: string): MaxInlineSizeValue {
   const k = kindOf(v, path);
-  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return maxSizeValue(v, path);
+  if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content' && k !== 'stretch') return maxSizeValue(v, path);
   obj(v, ['kind'], path);
   if (k === 'min-content') return { kind: 'min-content' };
   if (k === 'max-content') return { kind: 'max-content' };
+  if (k === 'stretch') return { kind: 'stretch' };
   return { kind: 'fit-content' };
 }
 
@@ -646,11 +668,12 @@ function aspectRatioValue(v: JsonValue, path: string): AspectRatioValue {
 }
 
 const STYLE_KEYS: readonly string[] = [
-  'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
+  'display', 'position', 'float', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -809,6 +832,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   return {
     display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'], p('display')) as Display,
     position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
+    float: lit(f('float'), ['none', 'left', 'right'], p('float')) as Float,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
     bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
@@ -853,8 +877,14 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     textIndent: paddingValue(f('textIndent'), p('textIndent')),
     lineClamp: num(f('lineClamp'), p('lineClamp')),
+    containLayout: bool(f('containLayout'), p('containLayout')),
+    containPaint: bool(f('containPaint'), p('containPaint')),
+    containSize: lit(f('containSize'), ['none', 'inline-size', 'size'], p('containSize')) as ContainSize,
+    containIntrinsicWidth: pxOrNone(f('containIntrinsicWidth'), p('containIntrinsicWidth')),
+    containIntrinsicHeight: pxOrNone(f('containIntrinsicHeight'), p('containIntrinsicHeight')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
+    zoom: numbers(f('zoom'), p('zoom')),
   };
 }
 
@@ -911,20 +941,54 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
   };
 }
 
-function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'marker', 'children'], path);
-  const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
+function decodeChildren(o: JsonObj, path: string): (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] {
+  const children: (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
+  return children;
+}
+
+function decodeStrutField(o: JsonObj, path: string): LineStrut | null {
   const strut = field(o, 'strut', path);
+  return strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`);
+}
+
+function controlKind(v: JsonValue, path: string): ControlKind {
+  const k = kindOf(v, path);
+  if (k === 'range') return { kind: 'range', defaultInlineSize: numField(obj(v, ['kind', 'defaultInlineSize'], path), 'defaultInlineSize', path) };
+  if (k === 'slider-thumb') return { kind: 'slider-thumb', ratio: numField(obj(v, ['kind', 'ratio'], path), 'ratio', path) };
+  if (k === 'button-block') {
+    obj(v, ['kind'], path);
+    return { kind: 'button-block' };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
+function decodeControl(o: JsonObj, path: string): ControlBox {
+  obj(o, ['kind', 'id', 'boxType', 'style', 'control', 'strut', 'children'], path);
+  const children = decodeChildren(o, path);
+  return {
+    kind: 'control',
+    id: str(field(o, 'id', path), `${path}.id`),
+    boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
+    style: decodeStyle(field(o, 'style', path), `${path}.style`),
+    control: controlKind(field(o, 'control', path), `${path}.control`),
+    strut: decodeStrutField(o, path),
+    children,
+  };
+}
+
+function decodeBox(o: JsonObj, path: string): LayoutBox {
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'marker', 'children'], path);
+  const children = decodeChildren(o, path);
   const marker = field(o, 'marker', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
-    boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
+    boxType: lit(field(o, 'boxType', path), ['element', 'anonymous', 'block-in-inline'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
-    strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
+    strut: decodeStrutField(o, path),
     marker: marker.kind === 'null' ? null : decodeMarker(marker, `${path}.marker`),
     children,
   };
@@ -979,10 +1043,11 @@ function decodeInlineChild(v: JsonValue, path: string): InlineChild {
   return fail(`${path}: unknown inline-level node kind ${k}`);
 }
 
-function decodeNode(v: JsonValue, path: string): LayoutBox | ReplacedLeaf | InlineChild {
+function decodeNode(v: JsonValue, path: string): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (v.kind !== 'obj') return fail(`${path}: expected a node`);
   const k = kindOf(v, path);
   if (k === 'box') return decodeBox(v, path);
+  if (k === 'control') return decodeControl(v, path);
   if (k === 'replaced') return decodeReplaced(v, path);
   return decodeInlineChild(v, path);
 }
@@ -1026,7 +1091,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1117,6 +1182,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampHeightIncludesHiddenLines: b('clampHeightIncludesHiddenLines'),
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
+    containedContentSized: b('containedContentSized'),
+    containerJoinsFlow: b('containerJoinsFlow'),
   };
 }
 
@@ -1583,6 +1650,21 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const faults: DashFaults = { phase1: flagAt(a, 11), gapUnfitted: flagAt(a, 12) };
     return `["ok",[${commaList(outlinePaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), str(item(a, 6, '$'), '$[6]'), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10), faults).map(borderOpJson))}]]`;
   }
+  // PNT1-opacity-b: paint-group.ts.
+  if (name === 'paint:group:groupComposite') return `["ok",${h(groupComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10) !== 0))}]`;
+  if (name === 'paint:group:groupPack') return `["ok",${h(groupPack(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:group:groupTileSize') return `["ok",${h(groupTileSize(arg(a, 1)))}]`;
+  if (name === 'paint:group:groupTileIndex') return `["ok",${h(groupTileIndex(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupTileSpan') return numList(groupTileSpan(arg(a, 1), arg(a, 2)));
+  // PNT1-opacity-b S2: the software layer's fill, fold alpha and fold item.
+  if (name === 'paint:group:groupTileFoldIndex') return `["ok",${h(groupTileFoldIndex(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)))}]`;
+  if (name === 'paint:group:groupFoldAlpha') return `["ok",${h(groupFoldAlpha(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupFill') return `["ok",${h(groupFill(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8)))}]`;
+  if (name === 'paint:group:groupTileFolds') return `["ok",${groupTileFolds(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)) ? 'true' : 'false'}]`;
+  // PNT1-filter: paint-group.ts colour-matrix filters.
+  if (name === 'paint:group:groupFilterMatrix') return numList(groupFilterMatrix(arg(a, 1), arg(a, 2)));
+  if (name === 'paint:group:groupFilterMatrices') return numList(groupFilterMatrices(bitsList(a, 1)));
+  if (name === 'paint:group:groupFilterComposite') return `["ok",${h(groupFilterComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), bitsList(a, 9), arg(a, 10)))}]`;
   // PNT2: paint-transform.ts.
   if (name === 'paint:transform:resolveTransformOrigin') {
     const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
@@ -2015,6 +2097,9 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // hit suite (SELD-R1b, T047 RT-9): the hit table, derived grid and answers of a layout vector's input.
     case 'rt-hit':
       return rtHitResult(a);
+    // select suite (T154 slice 2a): carets, caret rects and selected text over a selection case's points and drags.
+    case 'rt-select':
+      return rtSelectResult(a);
     // animator suite (ANIM-b1 3b, T065 R16): the runtime animator over a frame case's tables and script.
     case 'rt-animator':
       return rtAnimatorResult(a);
@@ -2455,6 +2540,22 @@ function rtHitResult(a: readonly JsonValue[]): string {
   const t = hitTableOf(input, m.measurer, facts, HIT_TABLE_CLEAN);
   const zoom = input.devicePixelRatio * 64;
   return q(hitRuns(t, hitGrid(t, input.viewport.width * zoom, input.viewport.height * zoom), HIT_CLEAN));
+}
+
+// ---------------------------------------------------------------- select suite (T154 slice 2a)
+
+/** A selection read: [op, platform, input, [body, paragraphs, unselectable, hidden, floats], points, drags] -> selectAnswers over the input's table. */
+function rtSelectResult(a: readonly JsonValue[]): string {
+  if (a.length !== 6) return fail('rt-select: expected [op, platform, input, facts, points, drags]');
+  const platform = str(item(a, 1, '$'), '$[1]');
+  const input = decodeInput(item(a, 2, '$'));
+  const f = arr(item(a, 3, '$'), '$[3]');
+  if (f.length !== 5) return fail('$[3]: expected [body, paragraphs, unselectable, hidden, floats]');
+  const facts: SelectFacts = { body: str(item(f, 0, '$[3]'), '$[3][0]'), paragraphs: strList(f, 1), unselectable: strList(f, 2), hidden: strList(f, 3), floats: strList(f, 4) };
+  const m = measurerFor(platform);
+  if (m.kind !== 'ok') return fail(`rt-select: no measurer for ${platform}`);
+  const t = selectionTableOf(input, m.measurer, facts);
+  return q(selectAnswers(t, numbers(item(a, 4, '$'), '$[4]'), numbers(item(a, 5, '$'), '$[5]')));
 }
 
 // ---------------------------------------------------------------- animator suite (ANIM-b1 3b, T065 R16)

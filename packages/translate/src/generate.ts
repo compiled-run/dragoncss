@@ -42,7 +42,7 @@ export function translatorDigest(): string {
  * The paint seam files (EMS, notes/T046-paint-spec.md §3 item 5): every exported function in them is an engine root. The Skia
  * references (paint-blur.ts, paint-dither.ts, paint-aa.ts) are reached through them once a paint package imports them.
  */
-export const PAINT_ROOT_FILES = ['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts', 'paint-marker.ts'];
+export const PAINT_ROOT_FILES = ['paint.ts', 'paint-radius.ts', 'paint-shadow.ts', 'paint-gradient.ts', 'paint-transform.ts', 'paint-dash.ts', 'paint-scrollbar.ts', 'paint-group.ts', 'paint-marker.ts'];
 
 /** The engine roots (native-strategy.md section 1.3): everything they reach is translated. */
 export function engineRoots(files: readonly string[]): { file: string; name: string }[] {
@@ -107,6 +107,11 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   const hit = program.getSourceFile(at('rt-hit.ts')) as ts.SourceFile;
   for (const st of hit.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-hit.ts'), name: st.name.text });
+  }
+  // T154 slice 2a: the selection model native selection reads.
+  const select = program.getSourceFile(at('rt-select.ts')) as ts.SourceFile;
+  for (const st of select.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('rt-select.ts'), name: st.name.text });
   }
   // SELD-R2 (T064 R12): the interaction runtime.
   const interaction = program.getSourceFile(at('rt-interaction.ts')) as ts.SourceFile;

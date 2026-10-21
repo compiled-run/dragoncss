@@ -346,7 +346,7 @@ type DecidedLine = readonly [number, number, number];
 function decideLines(st: ShapedText, text: string, font: string, size: number, widthLu: number, opps: readonly number[]): DecidedLine[] | string {
   const shaped = st.item(text, font, size, 0, 0, -1);
   if (!shaped.ok) return shaped.reason;
-  const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, offset: 0 }];
+  const items: BreakItem[] = [{ kind: 'text', item: shaped.item, result: shaped.result, opportunities: [...opps].sort((x, y) => x - y), atEnd: true, leads: [], offset: 0 }];
   const r = breakItemLines(items, fromRaw(widthLu), true, false, true, false, ZERO, false, false, NO_ANYWHERE_BREAK);
   if (!r.ok) return r.reason;
   let start = 0;

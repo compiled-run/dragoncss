@@ -4,6 +4,7 @@
 // (the last rule of a name wins, M13), and every refusal of the spec's §1 table that needs the reachable states is decided here:
 // ANIM-p (R13), ANIM-o (R12), ANIM-cc, ANIM-t (R11) and ANIM-v. The support gate keys every used value as a feature in the
 // `animation` context: a feature with no passing frame-lane row is refused per target, as every unproven value is.
+import { isBlockInInline } from './block-in-inline.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { KeyframesRule } from '../css/at-rules/keyframes.ts';
 import type { AnimationKind } from '../css/animation-kinds.ts';
@@ -35,6 +36,7 @@ import type { ResolvedElement } from './resolve.ts';
 import { resolvedCustoms } from './resolve.ts';
 import type { CustomProperties } from './variables.ts';
 import { substituteVars } from './variables.ts';
+import { ENV_VALUE_TYPE } from '../css/values.ts';
 
 /** The most transition slots, and closure writes per frame, a program holds (R8, R9): a larger one is refused, never cut. */
 export const MAX_TRANSITION_SLOTS = 256;
@@ -232,6 +234,9 @@ export function animValueOf(v: CssValue): AnimValue {
 }
 
 const sameValue = (a: AnimValue, b: AnimValue): boolean => JSON.stringify(a) === JSON.stringify(b);
+// color.cc Color::GetColorInterpolationSpace: Chrome animates a colour outside the legacy spaces, or one with a none component, in oklab.
+const oklabColor = (v: CssValue): boolean => v.kind === 'color' && v.oklab === true;
+const fractionalColor = (v: CssValue): boolean => v.kind === 'color' && v.fractional === true;
 const valueAt = (el: ResolvedElement, p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
 
 /** A keyframe value on one element: lengths in em and rem take the element's and the root's font size. */
@@ -333,7 +338,8 @@ const PACKAGE_OF = (p: string): string => (ANIM_B2.has(p) ? 'ANIM-b2' : 'ANIM-p'
  */
 function inlineBoxAt(el: ResolvedElement, root: ResolvedElement): boolean {
   const v = valueAt(el, 'display').value;
-  return el !== root && v.kind === 'keyword' && v.value === 'inline';
+  // BII: a block-in-inline box is an inline box laid out as a block, which the runtime would animate as the block.
+  return el !== root && ((v.kind === 'keyword' && v.value === 'inline') || isBlockInInline(el));
 }
 
 /**
@@ -413,6 +419,10 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
       const pending = d.animation?.pending;
       if (pending !== undefined) for (const p of pending.targets) feature(`${p}:var()`, d.valueSpan);
       else for (const [p, list] of d.animation?.longhands ?? []) {
+        // all's CSS-wide keyword yields an initial list (no animation or transition runs: animation-name none, transition-duration
+        // 0s) or a list copied from a declaration keyed where it is written (inherit, revert-layer; revert reaches no UA animation),
+        // so it keys no frame-lane feature of its own.
+        if (list.kind === 'wide' && d.property === 'all') continue;
         if (list.kind === 'wide') feature(`${p}:${list.keyword}`, d.valueSpan);
         else for (const item of list.items) feature(`${p}:${featureType(item)}`, d.valueSpan);
       }
@@ -464,7 +474,9 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           once(`inl-anim|${ea.address}|${a.name}`, diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanFor(ea, 'animation-name')), message: `animation ${a.name} on <${el.element.tag}> ${ea.address} animates an inline box, which Dragon does not animate yet: no frame fixture proves it (INL1a)`, manual: INLINE_ANIM_MANUAL }));
         }
         const rule = keyframes.get(a.name) as KeyframesRule;
-        const fontSize = fontPx(valueAt(el, 'font-size').value);
+        // CALC-2: a font size that follows the viewport has no px here; its em keyframes are refused below.
+        const ownSize = valueAt(el, 'font-size').value;
+        const fontSize = ownSize.kind === 'length' && ownSize.unit === 'px' ? ownSize.value : null;
         const rootSize = fontPx(valueAt(rootEl, 'font-size').value);
         const transforms: { offset: number; value: AnimValue; span: Span }[] = [];
         for (const b of rule.blocks) {
@@ -472,13 +484,22 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
             const kind = animationKind(v.property);
             animated.add(`${ea.address}|${v.property}`);
             if (!admitted(kind)) continue;
-            const value = kind.kind === 'transform' ? transformValueOf(v.value, fontSize, rootSize) : keyframeValueOf(v.value, fontSize, rootSize);
+            // CALC-2: an element's font size may follow the viewport, so an em keyframe there has no px yet (refused below).
+            const fs = valueAt(el, 'font-size').value;
+            const followsViewport = !(fs.kind === 'length' && fs.unit === 'px');
+            if (followsViewport && v.value.kind === 'length' && v.value.unit === 'em') {
+              once(`kfem|${ea.address}|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} on ${ea.address} is unsupported: an em keyframe under a font-size that follows the viewport is not resolved on the device yet (CALC-2)`));
+              continue;
+            }
+            const value = kind.kind === 'transform' ? transformValueOf(v.value, fontSize, rootSize) : keyframeValueOf(v.value, fontSize ?? Number.NaN, rootSize);
             if (kind.kind === 'transform') {
               if (value.kind === 'env') once(`kfenv|${v.span.start}`, refuse(v.valueSpan, `${v.property}: ${v.text} in @keyframes ${a.name} is unsupported: a transform length that does not compute to px is not built yet (package ANIM-b2)`));
               else for (const offset of b.offsets) transforms.push({ offset, value, span: v.valueSpan });
             }
             if (v.property === 'background-color' && foldedOpacity(el) !== null) once(`kffold|${ea.address}|${a.name}`, refuse(v.valueSpan, FOLD_ANIMATED(ea.address)));
             if (kind.kind === 'color' && value.kind === 'keyword' && value.value === 'currentcolor') once(`kfcc|${v.span.start}`, refuse(v.valueSpan, `${v.property}: currentcolor in @keyframes ${a.name} is unsupported: a keyframe pair between currentcolor and a colour is not built yet (package ANIM-cc)`));
+            if (kind.kind === 'color' && (oklabColor(v.value) || oklabColor(valueAt(el, v.property).value))) once(`kfok|${v.span.start}|${ea.address}`, refuse(v.valueSpan, `${v.property}: @keyframes ${a.name} on ${ea.address} interpolates a colour that Chrome mixes in oklab (a non-legacy colour space or a none component); Dragon's animation writer mixes 8-bit sRGB (COL4)`));
+            if (kind.kind === 'color' && (fractionalColor(v.value) || fractionalColor(valueAt(el, v.property).value))) once(`kffr|${v.span.start}|${ea.address}`, refuse(v.valueSpan, `${v.property}: @keyframes ${a.name} on ${ea.address} interpolates an hsl() or hwb() colour whose sRGB channels fall between 8-bit steps, which Chrome mixes in float; Dragon's animation writer mixes 8-bit sRGB (COL4)`));
             const id = `${a.name}|${v.span.start}|${v.property}`;
             const text = JSON.stringify(value);
             const prev = resolutions.get(id);
@@ -545,6 +566,8 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           const problem = transformPairProblem(from, to);
           if (problem !== null) once(`tm|${p}|${address}|${span.start}`, refuse(span, `${p} on ${address}: a transition between two reachable states: ${problem}`));
           const cc = (v: AnimValue): boolean => v.kind === 'keyword' && v.value === 'currentcolor';
+          if (oklabColor(valueAt(ea, p).value) || oklabColor(valueAt(eb, p).value)) once(`tok|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition from or to a colour that Chrome mixes in oklab (a non-legacy colour space or a none component) is unsupported, and Dragon's animation writer mixes 8-bit sRGB (COL4)`));
+          if (fractionalColor(valueAt(ea, p).value) || fractionalColor(valueAt(eb, p).value)) once(`tfr|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition from or to an hsl() or hwb() colour whose sRGB channels fall between 8-bit steps is unsupported: Chrome mixes them in float, and Dragon's animation writer mixes 8-bit sRGB (COL4)`));
           if (cc(from) !== cc(to)) once(`tcc|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition between currentcolor and a colour is unsupported (package ANIM-cc)`));
           if (animated.has(`${address}|${p}`)) once(`to|${p}|${span.start}`, refuse(span, `${p} on ${address} is both transitioned and animated: Chrome blocks transitions on animated properties (package ANIM-o)`));
         }
@@ -585,6 +608,43 @@ export function refuseBandedAnimations(allRules: readonly Rule[], inEveryBand: (
         message: `${d.property} inside @media is unsupported on web: transition and animation lists that differ between @media bands are not built yet (package ANIM-mq)`,
         manual: 'Declare the transition or animation outside @media, the same at every viewport width.',
       }));
+    }
+  }
+}
+
+/** ENV-SAFE: a value that reads a safe-area inset, env() alone or inside a math function (css/values.ts ENV_VALUE_TYPE). */
+const readsEnv = (v: CssValue | undefined): boolean => v !== undefined && v.kind === 'other' && v.type === ENV_VALUE_TYPE;
+
+/**
+ * ENV-SAFE: on native, a transition or animation of a property whose value reads a safe-area inset is refused. The mount measures
+ * the insets at run time and they change without a style change event (rotation, status bar), while the animator holds absolute
+ * endpoints: Chrome would transition the change, or move a running transition's endpoint, and native would snap or jump. Web keeps
+ * them, since Chrome animates the inset itself.
+ */
+export function refuseAnimatedSafeAreaInsets(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string> = new Set()): void {
+  if (nativeTargets.length === 0) return;
+  const trees = roots.map((r) => byAddress(r));
+  const readsEnvAnywhere = (address: string, p: Longhand): boolean => trees.some((t) => readsEnv(t.get(address)?.props.get(p)?.value));
+  for (const c of analysis.cases) {
+    for (const ea of c.elements.values()) {
+      const found: [Longhand, 'an animation' | 'a transition', AnimLonghand][] = [];
+      for (const a of ea.animations) {
+        if (a.name === 'none' || !a.hasKeyframes) continue;
+        for (const b of analysis.keyframes.get(a.name)?.blocks ?? []) {
+          for (const v of b.values) if (readsEnv(v.value) || readsEnvAnywhere(ea.address, v.property)) found.push([v.property, 'an animation', 'animation-name']);
+        }
+      }
+      for (const [p, l] of ea.listings) if (l.mode === 'listed' && l.delay + l.duration > 0 && readsEnvAnywhere(ea.address, p)) found.push([p, 'a transition', 'transition-property']);
+      for (const [p, what, longhand] of found) {
+        const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+        if (d === undefined) continue;
+        for (const t of nativeTargets) {
+          const id = `${t}|${ea.address}|${p}|${longhand}`;
+          if (reported.has(id)) continue;
+          reported.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(d.valueSpan), target: t, message: `${what} of ${p} on ${ea.address}, whose value reads env(safe-area-inset-*): the native animator holds absolute endpoints, so a change of the measured insets (rotation, status bar) would snap or jump where Chrome animates it (ENV-SAFE)`, manual: `Remove the ${longhand === 'animation-name' ? 'animation' : 'transition'} of ${p}, or give ${p} a value without env().` }));
+        }
+      }
     }
   }
 }

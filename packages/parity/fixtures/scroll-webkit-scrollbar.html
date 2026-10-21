@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.s { overflow: auto; width: 60px; height: 30px; padding: 3px; margin: 4px; border: 2px solid #1a1a2e; }
+.c { width: 90px; height: 50px; background-color: #e8d36a; }
+.y { overflow-x: hidden; overflow-y: scroll; }
+.x { overflow-x: scroll; overflow-y: hidden; }
+.f { width: 60px; height: 20px; margin: 4px; background-color: #1f6feb; }
+.hide::-webkit-scrollbar { display: none; }
+.zero::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+.zero::-webkit-scrollbar-thumb { background-color: #c00; border-radius: 4px; }
+.vert::-webkit-scrollbar { width: 0px; }
+.horiz::-webkit-scrollbar { height: 0; }
+.both::-webkit-scrollbar { display: none; width: 8px; }
+.both::-webkit-scrollbar-track { background: #eee; }
+.thin { scrollbar-width: thin; }
+.U::-WEBKIT-SCROLLBAR { DISPLAY: NONE; }
+.row { display: flex; width: 200px; }
+.row > .tw::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="s hide"><div data-dragon-id="c1" class="c">XX XX</div></div>
+<div data-dragon-id="s2" class="s zero"><div data-dragon-id="c2" class="c">XX</div></div>
+<div data-dragon-id="s3" class="s y vert"><div data-dragon-id="c3" class="c">XX</div></div>
+<div data-dragon-id="s4" class="s x horiz"><div data-dragon-id="c4" class="c">XX</div></div>
+<div data-dragon-id="s5" class="s both"><div data-dragon-id="c5" class="c">XX</div></div>
+<div data-dragon-id="s6" class="s hide thin"><div data-dragon-id="c6" class="c">XX</div></div>
+<div data-dragon-id="s7" class="s U"><div data-dragon-id="s7i" class="s"><div data-dragon-id="c7" class="c">XX</div></div></div>
+<div data-dragon-id="f1" class="f hide vert">XX</div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="r1" class="s tw"><div data-dragon-id="rc1" class="c">X</div></div><div data-dragon-id="r2" class="s"><div data-dragon-id="rc2" class="c">X</div></div></div>
+</body>
+</html>

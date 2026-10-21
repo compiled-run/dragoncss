@@ -28,7 +28,9 @@ import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts
 // against frame captures, and anim-frames.test.ts gives them the same checks: exactly the passing cases that use the key, every
 // used key has a row, exactly what profile:rows derives, the context and lane shape, and every proof case a passing frame case.
 // MQ-R1: media rows (context media) are proven by resize cases against resize captures, and media-runtime-resize.test.ts does the same.
-const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT);
+// SELD-R2 PR 5: the interaction rows (context interaction/<input>) are proved by forced device cases on the device records
+// (deriveInteractionRows, interaction-rows.test.ts and android-profile.test.ts), not by layout cases' used keys.
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT && !r.context.startsWith('interaction/'));
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
@@ -65,7 +67,7 @@ function specFor(id: string): (typeof FIXTURES)[number] {
 const fontOutcomes = new Map<string, CaseOutcome[]>();
 const corpusCases = (): CaseOutcome[] => FIXTURES.flatMap((f) => (outcomes.get(f.id)?.cases ?? []));
 const fontCasesRun = (): CaseOutcome[] => FONT_FIXTURES.flatMap((f) => fontOutcomes.get(f.spec.id) ?? []);
-/** ENV-SAFE: the web-only env() cases (env-run.ts), which prove web rows through chrome-dual alone under their safe-area insets. */
+/** ENV-SAFE: the env() cases (env-run.ts), both lanes under their safe-area insets; they prove web and ios rows. */
 const envOutcomes = new Map<string, CaseOutcome[]>();
 const envCasesRun = (): CaseOutcome[] => ENV_FIXTURES.flatMap((f) => envOutcomes.get(f.spec.id) ?? []);
 const webOnlyCasesRun = (): CaseOutcome[] => [...fontCasesRun(), ...envCasesRun()];
@@ -203,7 +205,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   }
 
   for (const f of ENV_FIXTURES) {
-    it(`${f.spec.id} (web-only env() fixture: chrome-dual alone, insets ${JSON.stringify(f.safeArea)})`, async () => {
+    it(`${f.spec.id} (env() fixture: both lanes under insets ${JSON.stringify(f.safeArea)})`, async () => {
       const live = liveEnvAuthored(browser, f);
       const recordLive = async (c: ParityCase): Promise<WebCapture> => {
         const capture = await live(c);
@@ -216,8 +218,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       expect(cases.map((c) => c.direction)).toEqual(f.spec.kind === 'layout' ? f.spec.environments : []);
       for (const c of cases) {
         expect(c.reason, c.id).toBeNull();
-        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'not-run', 'chrome-dual': 'pass' });
-        expect(c.features.ios, c.id).toEqual([]);
+        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
+        expect(c.features.ios.some((k) => k.includes(':<env()>@')), c.id).toBe(true);
         expect(c.features.web.some((k) => k.includes(':<env()>@')), c.id).toBe(true);
       }
       for (const d of ['ltr', 'rtl'] as const) {
@@ -234,6 +236,16 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     for (const c of cases) {
       expect(c.lanes['chrome-dual'], c.id).toBe('fail');
       expect(c.reason, c.id).toMatch(/chrome-dual: /);
+    }
+  }, 240_000);
+
+  it('planted fault envSideSwapped: a native lowering that reads the opposite inset fails linux-dragon-layout under unequal insets', async () => {
+    const f = ENV_FIXTURES.find((x) => x.spec.id === 'env-safe-area-portrait') as (typeof ENV_FIXTURES)[number];
+    const cases = await runEnvFixture(f, browser, { authored: recorded, faults: { ...NO_FAULTS, envSideSwapped: true } });
+    expect(cases.length).toBeGreaterThan(0);
+    for (const c of cases) {
+      expect(c.lanes['linux-dragon-layout'], c.id).toBe('fail');
+      expect(c.reason, c.id).toMatch(/linux-dragon-layout: /);
     }
   }, 240_000);
 

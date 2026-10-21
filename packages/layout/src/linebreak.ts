@@ -7,7 +7,8 @@
 // - both code points in U+0021..U+00FF: Blink's fast pair table (LineBreakData in character_property_data_generator.cc, BSD):
 //   ASCII pairs use Blink's own ASCII table (no break after '/', break after '-' and '?', before '(' '<' '[' '{' after some
 //   characters; Chrome 145 observation, rules 'ascii-*'), other pairs use the UAX #14 result for the two code points alone
-//   (Chrome 145 observation, rules 'latin1' and 'latin1-ascii');
+//   (Chrome 145 observation, rules 'latin1' and 'latin1-ascii'), except a hyphen-minus before a Latin-1 letter, which breaks unless
+//   the hyphen begins the text (first, after an opportunity or after GL; Chrome 145 observation, TXT-BREAK-2);
 // - '-' before an ASCII digit breaks only after an ASCII letter or digit ('ABCD-1234', '2024-01-15', but not ' -5'; Chrome 145
 //   observation, rule 'ascii-minus'), where UAX #14 LB25 never breaks;
 // - everything else: UAX #14 over the whole run, with CJ resolved to ID as Chrome's ICU data does (languageRules).
@@ -454,7 +455,14 @@ export function lineBreakOpportunitiesWith(text: readonly number[], style: LineB
     let breaks: boolean;
     if (isBreakableSpace(cur)) breaks = false;
     else if (isBreakableSpace(last)) breaks = true;
-    else {
+    else if (last === HYPHEN_MINUS && cur > 0x7f && cur <= 0xff && resolveClass(lineBreakClass(cur), true) === LB_AL) {
+      // A hyphen-minus before a Latin-1 letter: a break unless the hyphen begins the text the breaker reads (the first code point,
+      // after an opportunity, or after GL), which is LB20a with every opportunity read as a line start, as at width 0 and in
+      // min-content (Chrome 145 observation, TXT-BREAK-2 test/fixtures/linebreak/chrome145-break-all.json). The fitter keeps the
+      // break when its line starts elsewhere (inline.ts hyphenLeads).
+      const prev = opportunities[opportunities.length - 1];
+      breaks = i >= 2 && (prev === undefined || prev.position !== i - 1) && lineBreakClass(text[i - 2] as number) !== LB_GL;
+    } else {
       const fast = fastBreak(i >= 2 ? (text[i - 2] as number) : -1, last, cur, faults);
       if (fast === FAST_UNKNOWN) {
         breaks = uax[i] as boolean;

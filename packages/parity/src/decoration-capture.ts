@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
-import type { LayoutBox, InlineChild, TextFont } from '@dragon/layout';
+import type { ControlBox, LayoutBox, InlineChild, TextFont } from '@dragon/layout';
 import { pieceGlyphs, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
 import { appliedDecorationsOf, NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
@@ -130,10 +130,10 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
       for (const x of k.children) inline(x);
     }
   };
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
     for (const k of b.children) {
-      if (k.kind === 'box') walk(k);
+      if (k.kind === 'box' || k.kind === 'control') walk(k);
       // A replaced leaf (REPL-a) holds no text, so it has no decoration font.
       else if (k.kind !== 'replaced') inline(k);
     }

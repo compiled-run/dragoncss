@@ -26,8 +26,7 @@ export const TEXT_FAMILY_ASPECTS: { readonly [P in (typeof TEXT_FAMILY_LONGHANDS
 /**
  * The longhands the font shorthand sets besides Dragon's (Chrome 145's expansion), with their initial values as getComputedStyle
  * serializes them. Dragon does not model them: a font value compiles only when it leaves each at this value, and the font-shorthand
- * test checks Chrome computes each to it.
+ * test checks Chrome computes each to it. Empty since TXT-FSA registered font-size-adjust, the last of them
+ * (properties/font-size-adjust.ts), which the shorthand now resets itself.
  */
-export const FONT_RESET_LONGHANDS = {
-  'font-size-adjust': 'none',
-} as const;
+export const FONT_RESET_LONGHANDS: { readonly [property: string]: string } = {};

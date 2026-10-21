@@ -239,8 +239,8 @@ describe('the native targets draw a url() layer from its own write (BG2-u part 2
     for (const [b, ext] of [['uikit', 'swift'], ['android-views', 'kt']] as const) {
       const own = emitNativeSupport(b).find((f) => f.path.endsWith(`DragonPaintGradient.${ext}`))?.text ?? '';
       expect(own).toContain(b === 'uikit' ? '  dragonPaintBackgroundImage(v, ctx, shape)\n  guard let r = v.dragonGradientRaster' : '  dragonPaintBackgroundImage(v, canvas, shape)\n  val r = v.dragonGradientRaster');
-      expect(own).toContain(b === 'uikit' ? '  dragonAfterLayoutBackgroundImage(v, shape, scale)\n  guard let p = v.dragonGradientLayers' : '  dragonAfterLayoutBackgroundImage(v, shape, scale)\n  val p = v.dragonGradientLayers');
-      expect(own).toContain(b === 'uikit' ? 'guard let p = v.dragonGradientLayers else { return dragonAppliedBackgroundImage(v) }' : 'val p = v.dragonGradientLayers ?: return dragonAppliedBackgroundImage(v)');
+      expect(own).toContain(b === 'uikit' ? '  dragonAfterLayoutBackgroundLayers(v, shape, scale)\n  dragonAfterLayoutBackgroundImage(v, shape, scale)\n' : '  dragonAfterLayoutBackgroundLayers(v, shape, scale)\n  dragonAfterLayoutBackgroundImage(v, shape, scale)\n');
+      expect(own).toContain('  return out + dragonAppliedBackgroundImage(v)\n');
       // A no-repeat axis places the tile at a whole device px (Blink LayoutUnit::Round, half up).
       expect(own).toContain(b === 'uikit' ? 'if !b.repeats[k] { at = (at + 0.5).rounded(.down) }' : 'if (!b.repeats[k]) at = kotlin.math.floor(at + 0.5)');
       const planted = emitNativeSupport(b, 'bg-image-offset-1').find((f) => f.path.endsWith(`DragonPaintGradient.${ext}`))?.text ?? '';

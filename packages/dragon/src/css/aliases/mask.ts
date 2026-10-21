@@ -1,17 +1,19 @@
 // The mask family's legacy aliases (aliases.ts): Chrome 145 css_properties.json5 alias_for (lines 7008-7096 and 9159-9180). MaskImage,
 // MaskRepeat and MaskSize ignore UseAliasParsing, MaskPosition uses it only for a use counter, and Mask's none takes no aliased
 // component (css_parsing_utils.cc ParseBackgroundOrMask), so those parse alike. MaskClip and MaskOrigin parse the prefixed boxes
-// under the alias (ConsumePrefixedBackgroundBox), which take border-box as the unprefixed parsers do; Dragon keeps every other value
-// and refuses it. MaskComposite::ParseSingleValue parses only the prefixed compositing operators under the alias
-// (ConsumePrefixedMaskComposite, the keyword range clear to plus-lighter), so a style sheet's -webkit-mask-composite: add is dropped
-// and source-over is kept, computing to source-over (MASK_ALIAS_PARSERS). CSSOM setProperty differs: CSSParser::ParseValue first
-// parses an alias as its resolved property, so it keeps add too. A var() value is parsed after substitution as mask-composite.
+// under the alias (ConsumePrefixedBackgroundBox), which take border-box as the unprefixed parsers do (measured in
+// packages/parity/test/mask-parse.test.ts); Dragon keeps every other value and refuses it, but for the prefixed border, which
+// ConsumePrefixedBackgroundBox reads as border-box, the initial value (prefixedMaskBox). MaskComposite::ParseSingleValue parses only
+// the prefixed compositing operators under the alias (ConsumePrefixedMaskComposite, the keyword range clear to plus-lighter), so a
+// style sheet's -webkit-mask-composite: add is dropped and source-over is kept, computing to source-over (MASK_ALIAS_PARSERS). CSSOM
+// setProperty differs: CSSParser::ParseValue first parses an alias as its resolved property, so it keeps add too. A var() value is
+// parsed after substitution as mask-composite.
 import type { CssNode } from 'css-tree';
 import { asciiLower } from '../escapes.ts';
 import type { MASK_LONGHANDS, MASK_SHORTHANDS } from '../properties/mask.ts';
 import { MASK_COMPOSITE_SOURCE_OVER, maskLayerOther } from '../properties/mask.ts';
 import type { ParsedValue } from '../stylesheet.ts';
-import { CSS_WIDE } from '../values.ts';
+import { CSS_WIDE, type CssValue } from '../values.ts';
 
 export const MASK_ALIASES = {
   '-webkit-mask': 'mask',
@@ -24,6 +26,11 @@ export const MASK_ALIASES = {
   '-webkit-mask-size': 'mask-size',
 } as const satisfies { readonly [alias: string]: (typeof MASK_LONGHANDS)[number] | (typeof MASK_SHORTHANDS)[number] };
 
+/** The value -webkit-mask-clip or -webkit-mask-origin computes from a value kept as written: border is border-box; else null. */
+export function prefixedMaskBox(alias: string, value: CssValue): CssValue | null {
+  if (alias !== '-webkit-mask-clip' && alias !== '-webkit-mask-origin') return null;
+  return value.kind === 'other' && /^border$/i.test(value.text.trim()) ? { kind: 'keyword', value: 'border-box' } : null;
+}
 /** Chrome 145's prefixed compositing operators, the CSSValueID range clear to plus-lighter (css_value_keywords.json5; highlight is commented out). */
 export const PREFIXED_MASK_COMPOSITE: ReadonlySet<string> = new Set(['clear', 'copy', 'source-over', 'source-in', 'source-out', 'source-atop', 'destination-over', 'destination-in', 'destination-out', 'destination-atop', 'xor', 'plus-lighter']);
 

@@ -1,7 +1,8 @@
 // CSS2 Appendix E paint order on the fixed tree (T046 §1): stacking contexts, their layers, and native hosting. A stacking context
 // is the root, a positioned box or flex or grid item with an integer z-index, a box with opacity below 1, or a transformed box (a
 // transform, or will-change: transform or opacity; css-transforms-1 §3, css-will-change-1 §3), a box with a clip-path
-// (css-masking-1 §6.1) or a box with isolation: isolate (compositing-1 §3.2), which paints in the z-index 0 layer.
+// (css-masking-1 §6.1) or a mask image (§7.1), a box with a filter (filter-effects-1 §5), isolation: isolate (compositing-1 §3.2), a
+// backdrop-filter (filter-effects-2 §3) or a mix-blend-mode other than normal (compositing-1 §3.2), which paints in the z-index 0 layer.
 // Its layer items are the positioned boxes and stacking contexts it holds, not counting those inside a nested stacking context:
 // z < 0 in (z, tree) order, then z-index auto or 0 in tree order, then z > 0 in (z, tree) order, where tree order puts a flex or
 // grid container's in-flow items in order-modified document order (Blink paint_layer_stacking_node.cc ForAllChildrenSortedByOrder;
@@ -21,9 +22,13 @@ import { markerTextId } from './list-marker.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
+import { elementMaskGradient } from '../../analysis/mask.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
+import { filterApplies } from '../../css/properties/filter.ts';
+import { containsDescendants } from '../../analysis/containment.ts';
 import { isolates } from '../../css/properties/isolation.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
+import { blendModeOf } from '../../css/properties/fx.ts';
 import { clipsChildren } from './clip.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -31,16 +36,18 @@ import { ProgramError } from './types.ts';
 /** One box of the stacking tree: its positioning, z-index (null for auto or where it has no effect), opacity and clip. */
 export type StackNode = {
   readonly id: string;
-  /** fixed and sticky come from the resolved tree only (the engine refuses them; POSX-f): both always make a stacking context. */
+  /** fixed (POSX-f) and sticky (POSX-s) always make a stacking context. */
   readonly position: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
   /** The z-index when it applies (a positioned box, or a flex or grid item: Blink StyleAdjuster), else null. */
   readonly z: number | null;
   /** An in-flow flex or grid item's order, which sorts it among its siblings (unorderedItems: whole); absent (0) for other nodes. */
   readonly order?: number;
   readonly opacity: number;
-  /** A transform, will-change: transform or opacity, a clip-path or isolation: isolate: a stacking context in the z-index 0 layer. */
+  /** A transform, will-change: transform or opacity, a clip-path, a mask image, a filter, isolation: isolate, a backdrop-filter, a mix-blend-mode or layout or paint containment: a stacking context in the z-index 0 layer. */
   readonly transformed: boolean;
   readonly clips: boolean;
+  /** A static box with layout or paint containment, the containing block of its absolutely positioned descendants (css-contain-2 §3.2). */
+  readonly containsAbsolute?: boolean;
   /**
    * A paint layer of its own (backface-visibility: hidden; Blink LayerTypeRequired): when the box is neither positioned nor a stacking
    * context it is a normal-flow layer, which paints with its flow descendants after its layer host's flow and before the host
@@ -124,7 +131,7 @@ function inBlockChain(a: Info, d: Info): boolean {
   for (let x: Info | null = d; x !== null && x.parent !== null; ) {
     if (x.node.position === 'fixed') return false;
     let cb: Info | null = x.parent;
-    if (x.node.position === 'absolute') while (cb !== null && cb.parent !== null && cb.node.position === 'static') cb = cb.parent;
+    if (x.node.position === 'absolute') while (cb !== null && cb.parent !== null && cb.node.position === 'static' && cb.node.containsAbsolute !== true) cb = cb.parent;
     if (cb === a) return true;
     x = cb;
   }
@@ -362,8 +369,20 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: 
 /** The displays whose children are flex or grid items, whose z-index applies when static (Blink StyleAdjuster). */
 export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
-/** Whether an element's transform, will-change, clip-path or isolation makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1, compositing-1 §3.2). */
-export const transformedForStacking = (el: ResolvedElement): boolean => transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || isolates(el);
+/**
+ * Whether an element's transform, will-change, clip-path, mask image, filter, isolation, backdrop-filter, mix-blend-mode or layout or
+ * paint containment makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1 and §7.1,
+ * filter-effects-1 §5, compositing-1 §3.2, filter-effects-2 §3, css-contain-2 §3.2 and §3.4). A mask other than a gradient is
+ * refused (analysis/mask.ts).
+ */
+export const transformedForStacking = (el: ResolvedElement): boolean =>
+  transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || elementMaskGradient(el) !== null || filterOf(el) || isolates(el) || blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal' || containsDescendants(el);
+
+/** Whether an element has a filter other than none (a hand-built element may carry no filter value at all). */
+const filterOf = (el: ResolvedElement): boolean => {
+  const f = el.props.get('filter') as ResolvedValue | undefined;
+  return f !== undefined && filterApplies(f.value);
+};
 
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {
@@ -389,11 +408,13 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       id: b.id,
       position: b.style.position,
       z: b.style.position !== 'static' || item ? z : null,
-      ...(item && b.style.position !== 'absolute' ? { order: b.style.order } : {}),
+      ...(item && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? { order: b.style.order } : {}),
       opacity,
       transformed: el !== null && transformedForStacking(el),
+      ...(el !== null && containsDescendants(el) ? { containsAbsolute: true } : {}),
       ...(el !== null && backfaceHidden(el) ? { layered: true } : {}),
-      // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), and overflow never applies to an inline box.
+      // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), as paint containment's does (lowered to clip), and
+      // overflow never applies to an inline box.
       clips: b.kind !== 'inline' && clipsChildren(b),
       text: false,
       children,
@@ -406,7 +427,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
   const node = (b: LayoutNode, item: boolean): StackNode => {
     const el = elementOf(b);
     const container = FLEX_OR_GRID.includes(b.style.display);
-    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
+    const children = b.kind === 'replaced' ? [] : b.children.flatMap((c) => (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced' ? [node(c, container)] : content(c)));
     return own(b, el, item, b.kind === 'box' && b.marker !== null ? [...children, marker(b.marker)] : children);
   };
   return node(root, false);
@@ -422,7 +443,7 @@ const treeNodes = (root: LayoutBox): WeakSet<LayoutNode | InlineBox | LineBreak 
   const walk = (b: LayoutNode | InlineBox | LineBreak): void => {
     out.add(b);
     if (b.kind === 'box' && b.marker !== null) out.add(b.marker);
-    if (b.kind === 'box' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
+    if (b.kind === 'box' || b.kind === 'control' || b.kind === 'inline') for (const c of b.children) if (c.kind !== 'text') walk(c);
   };
   walk(root);
   return out;
