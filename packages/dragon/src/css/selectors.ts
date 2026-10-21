@@ -28,7 +28,9 @@ export type PseudoClass =
   | { readonly kind: 'not'; readonly selectors: readonly Selector[] }
   | { readonly kind: 'has'; readonly selectors: readonly Selector[] }
   | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo }
-  | { readonly kind: 'link'; readonly state: LinkState };
+  | { readonly kind: 'link'; readonly state: LinkState }
+  /** FORM-c: :disabled (disabled true) or :enabled, decided by the document's disabled attributes (match.ts isActuallyDisabled). */
+  | { readonly kind: 'disabled'; readonly disabled: boolean };
 
 /** :link (an unvisited hyperlink), :visited, or :any-link (either). */
 export type LinkState = 'unvisited' | 'visited' | 'any';
@@ -88,7 +90,7 @@ export type Selector = {
 
 const SELECTOR_FIX =
   'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
-const INTERACTIVE = new Set(['focus-within', 'target', 'checked', 'disabled', 'enabled']);
+const INTERACTIVE = new Set(['focus-within', 'target', 'checked']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const LEGACY_GENERATED: ReadonlySet<string> = new Set(GENERATED_PSEUDOS);
 const ZERO: Specificity = [0, 0, 0];
@@ -221,6 +223,8 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
   if (name === 'link' && args === null) return { kind: 'link', state: 'unvisited' };
   if (name === 'visited' && args === null) return { kind: 'link', state: 'visited' };
   if (name === 'any-link' && args === null) return { kind: 'link', state: 'any' };
+  // HTML §4.16.3: :disabled and :enabled follow the disabled attributes, which only the app changes (a new case), never the user.
+  if ((name === 'disabled' || name === 'enabled') && args === null) return { kind: 'disabled', disabled: name === 'disabled' };
   if (INTERACTIVE.has(name)) {
     refuse(part, `${text} depends on user interaction or document state, which a later package models as runtime state`, 'Model the state as a component state and select it with a class or a [ui-*] attribute.');
     return null;

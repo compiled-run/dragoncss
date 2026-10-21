@@ -104,6 +104,32 @@ function isEmpty(el: LinkedElement, faults: CompilerFaults): boolean {
 /** Whether some n >= 0 gives a*n + b = index (1-based). */
 const nthHolds = (a: number, b: number, index: number): boolean => (a === 0 ? index === b : (index - b) % a === 0 && (index - b) / a >= 0);
 
+/** HTML §4.16.3: the elements :disabled and :enabled can match, of the tags Dragon resolves or refuses by name. */
+const CAN_BE_DISABLED: ReadonlySet<string> = new Set(['button', 'input', 'select', 'textarea', 'optgroup', 'option', 'fieldset']);
+/** HTML §4.10.18.5: the form controls a disabled fieldset ancestor disables (outside its first legend). */
+const FIELDSET_DISABLES: ReadonlySet<string> = new Set(['button', 'input', 'select', 'textarea', 'fieldset']);
+
+/**
+ * HTML §4.10.18.5 and §4.10.15: whether the last element of path is actually disabled: it has a disabled attribute; or it is an
+ * option whose parent optgroup has one; or it is a form control inside a fieldset with one, but not inside that fieldset's first
+ * legend child. path runs from the root to the element.
+ */
+export function isActuallyDisabled(path: Path): boolean {
+  const el = last(path);
+  if (!CAN_BE_DISABLED.has(el.tag)) return false;
+  if (el.attributes.has('disabled')) return true;
+  const parent = path[path.length - 2];
+  if (el.tag === 'option') return parent !== undefined && parent.tag === 'optgroup' && parent.attributes.has('disabled');
+  if (!FIELDSET_DISABLES.has(el.tag)) return false;
+  for (let i = path.length - 2; i >= 0; i--) {
+    const a = path[i] as LinkedElement;
+    if (a.tag !== 'fieldset' || !a.attributes.has('disabled')) continue;
+    const legend = a.children.find((c): c is LinkedElement => c.kind === 'element' && c.tag === 'legend');
+    if (legend === undefined || path[i + 1] !== legend) return true;
+  }
+  return false;
+}
+
 function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerFaults, ix: InteractionState): boolean {
   const el = last(path);
   switch (p.kind) {
@@ -131,6 +157,8 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
       return p.selectors.some((s) => hasMatches(rule, s, path, faults, ix));
     case 'link':
       return p.state !== 'visited' && isAnyLink(el);
+    case 'disabled':
+      return CAN_BE_DISABLED.has(el.tag) && isActuallyDisabled(path) === p.disabled;
     case 'interaction': {
       const set = p.pseudo === 'focus-visible' ? 'focusVisible' : p.pseudo;
       ix.probe?.[set].add(el.address);

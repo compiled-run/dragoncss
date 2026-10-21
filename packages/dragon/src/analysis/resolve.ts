@@ -31,7 +31,7 @@ import type { LinkedElement, LinkedText } from './link.ts';
 import type { TransformItem } from './text-transform.ts';
 import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
-import { NO_INTERACTION, partSelectorMatches, pseudoSelectorMatches, selectorMatches } from './match.ts';
+import { isActuallyDisabled, NO_INTERACTION, partSelectorMatches, pseudoSelectorMatches, selectorMatches } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
 import { computeResize } from '../css/properties/resize.ts';
@@ -324,7 +324,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart);
     const props = new Map<Longhand, ResolvedValue>();
-    const tag = uaTagOf(el.tag, el.attributes.get('type'));
+    const tag = uaTagOf(el.tag, el.attributes.get('type'), pseudo === null && part === null && isActuallyDisabled(here));
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
       // The UA capture has no font-weight or font-style (datasets.ts TEXT_FONT_LONGHANDS); the root takes their initial value.

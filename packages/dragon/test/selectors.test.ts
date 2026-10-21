@@ -62,6 +62,7 @@ describe('precise refusals', () => {
     ['.a::after.b', 'after the pseudo-element ::after'],
     ['.a:focus-within', ':focus-within depends on user interaction'],
     ['.a:checked', ':checked depends on user interaction'],
+    ['.a:target', ':target depends on user interaction'],
     [':is(.a:focus-within)', ':focus-within depends on user interaction'],
     ['.a:has(:has(.b))', ':has(.b) is invalid inside :has()'],
     ['.a:has(:is(:has(.b)))', ':has(.b) is invalid inside :has()'],
@@ -183,6 +184,22 @@ describe('matching on the fixed tree', () => {
     expect(sizes('.l:visited { font-size: 12px; }')).toEqual(['16px', '16px']);
     expect(sizes('.l:not(:link) { font-size: 12px; }')).toEqual(['16px', '12px']);
     expect(sizes('.p:has(:any-link) .l { font-size: 12px; }')).toEqual(['12px', '12px']);
+  });
+
+  it('FORM-c: :disabled and :enabled match a form control by its disabled attribute, and never a div', () => {
+    const controls = (r: SourceRef): TreeNode[] => {
+      const el = (id: string, tag: string, attributes: ReturnType<typeof attr>[] = []): ElementNode => ({ ...div(r, id, ['c']), tag, attributes });
+      return [el('b1', 'button'), el('b2', 'button', [attr('disabled', '')]), el('r1', 'input', [attr('type', 'range'), attr('disabled', 'disabled')]), el('d1', 'div'), el('d2', 'div')];
+    };
+    const widths = (css: string): string[] => {
+      const c = project().compile(inputFor(`button, input { appearance: none; display: block; font: inherit; border: 0; } input::-webkit-slider-thumb { appearance: none; } ${css}`, controls));
+      expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+      return ['b1', 'b2', 'r1', 'd1', 'd2'].map((n) => explainOne(c, 'ios', n, 'width').value);
+    };
+    expect(widths('.c:disabled { width: 7px; }')).toEqual(['auto', '7px', '7px', 'auto', 'auto']);
+    expect(widths('.c:enabled { width: 7px; }')).toEqual(['7px', 'auto', 'auto', 'auto', 'auto']);
+    expect(widths('.c:not(:disabled) { width: 7px; }')).toEqual(['7px', 'auto', 'auto', '7px', '7px']);
+    expect(specificity('button:disabled')).toEqual([0, 1, 1]);
   });
 
   it('the <head> is the first child of <html> and body is its last', () => {
