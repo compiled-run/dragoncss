@@ -157,7 +157,7 @@ const INITIAL: LayoutStyle = {
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' },
-  grid: null, gridItem: null,
+  grid: null, gridItem: null, zoom: [],
 };
 
 function len(r: Rng, min: number): number {

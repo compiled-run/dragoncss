@@ -3047,7 +3047,7 @@ export const STYLE_FIELDS = [
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
   'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout',
-  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem',
+  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -3234,6 +3234,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
   const fieldValue = (st: import('@dragon/layout').LayoutStyle, f: (typeof STYLE_FIELDS)[number]): string => {
     const v = (st as unknown as Record<string, unknown>)[f];
+    if (f === 'zoom') return engineArray(lang, 'Double', false, (v as readonly number[]).map(doubleLit));
     return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
   };
   const styleOf = (st: import('@dragon/layout').LayoutStyle): string => `LayoutStyle(${STYLE_FIELDS.map((f) => fieldValue(st, f)).join(', ')})`;

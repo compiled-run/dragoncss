@@ -391,6 +391,12 @@ export type LayoutStyle = {
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
+  /**
+   * ZOOM (css-viewport-1 §5): the zoom of each element from the root down to this one that is not 1, root first; an anonymous box
+   * takes its parent's. Its lengths and its text's font sizes and spacings are CSS px at zoom 1, which the environment pass
+   * multiplies by Blink's effective zoom (units.ts effectiveZoom).
+   */
+  readonly zoom: readonly number[];
 };
 
 /**

@@ -49,7 +49,7 @@ const complete = {
   textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' },
   aspectRatio: { kind: 'auto' },
   grid: null,
-  gridItem: null,
+  gridItem: null, zoom: [],
 } as const satisfies LayoutStyle;
 
 const { boxSizing: _dropped, ...withoutBoxSizing } = complete;

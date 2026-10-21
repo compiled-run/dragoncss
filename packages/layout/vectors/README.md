@@ -198,7 +198,8 @@ Input:
     "kind": "none"
    },
    "grid": null,
-   "gridItem": null
+   "gridItem": null,
+   "zoom": []
   },
   "strut": null,
   "marker": null,
@@ -336,7 +337,8 @@ Input:
       "kind": "none"
      },
      "grid": null,
-     "gridItem": null
+     "gridItem": null,
+     "zoom": []
     },
     "strut": {
      "font": {
@@ -442,7 +444,7 @@ Output with measurer `ahem/darwin-arm64`:
 
 Native lanes run at DPR 2 and 3 on both platforms, and at 2.625 on Android as a named extra (never a substitute). Chrome is captured at those ratios with `--force-device-scale-factor=N` and a context `deviceScaleFactor` of N (`pnpm run parity:dpr-capture`, into `packages/parity/expected-dpr/<platform>/dpr-<N>`), guarded by a zoom check: a 0.5px border must compute to 0.5px, 0.333333px and 0.380952px.
 
-**The zoom model** (`layout.ts` `zoomInput`). At DPR N the engine multiplies every CSS length by N on entry (`zoomCssPx`, in double), computes font sizes as `fround(fround(size) * N)` (`zoomFontSize`), applies the font rules to the zoomed size, and lays out in zoomed px with `devicePixelRatio` 1, so borders snap to whole zoomed px. A zoomed px is a device px: output LU are 1/64 device px, and CSS px = LU / (64 * N). At DPR 1 an input with no calculation and no font to resolve is used as given, so the model is the identity. A `device-px` border width is not multiplied.
+**The zoom model** (`layout.ts` `zoomInput`). At DPR N the engine multiplies every CSS length by N on entry (`zoomCssPx`, in double), computes font sizes as `fround(fround(size) * N)` (`zoomFontSize`), applies the font rules to the zoomed size, and lays out in zoomed px with `devicePixelRatio` 1, so borders snap to whole zoomed px. A zoomed px is a device px: output LU are 1/64 device px, and CSS px = LU / (64 * N). At DPR 1 an input with no calculation, no font to resolve and no zoom is used as given, so the model is the identity. A `device-px` border width is not multiplied. An element under CSS `zoom` (ZOOM) carries its zoom chain in `style.zoom`, the zooms that are not 1 from the root down, its lengths staying CSS px at zoom 1; its N is then Blink's effective zoom, `fround(fround(N * z1) * z2)...` (`effectiveZoom`), which its lengths, its font sizes and its text take.
 
 **The five engine rules** (Chrome 145.0.7632.6, notes/T010-p2-triage.md), applied at every DPR, DPR 1 included:
 

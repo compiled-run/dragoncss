@@ -673,7 +673,7 @@ const STYLE_KEYS: readonly string[] = [
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
   'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
-  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -884,6 +884,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     containIntrinsicHeight: pxOrNone(f('containIntrinsicHeight'), p('containIntrinsicHeight')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
+    zoom: numbers(f('zoom'), p('zoom')),
   };
 }
 
@@ -985,7 +986,7 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
-    boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
+    boxType: lit(field(o, 'boxType', path), ['element', 'anonymous', 'block-in-inline'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
     strut: decodeStrutField(o, path),
     marker: marker.kind === 'null' ? null : decodeMarker(marker, `${path}.marker`),

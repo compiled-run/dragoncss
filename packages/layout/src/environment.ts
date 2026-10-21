@@ -64,6 +64,7 @@ import {
   clampNonNegativeDouble,
   calcEvaluateFloat,
   computedFontSize,
+  effectiveZoom,
   cssLengthFixed,
   doubleAdd,
   doubleDiv,
@@ -108,6 +109,8 @@ type ViewportBase = { readonly width: number; readonly height: number };
 type Env = {
   readonly zoom: number;
   readonly fontZoom: number;
+  /** The device pixel ratio, the root's effective zoom. */
+  readonly device: number;
   readonly small: ViewportBase;
   readonly large: ViewportBase;
   readonly dynamic: ViewportBase;
@@ -145,6 +148,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
   const env: Env = {
     zoom: z,
     fontZoom: z,
+    device: z,
     small: faults.viewportSizeKindIgnored ? large : viewportBase(u.small.width, u.small.height, z, faults),
     large,
     dynamic: faults.viewportSizeKindIgnored ? large : viewportBase(u.dynamic.width, u.dynamic.height, z, faults),
@@ -204,6 +208,7 @@ function fontNeedsEnvironment(f: FontSpec, lineHeight: LineHeightValue, faults: 
 
 /** Whether any length of a style is a calculation, or a px length outside the CSS length range (clamped by the pass). */
 function styleNeedsEnvironment(s: LayoutStyle): boolean {
+  if (s.zoom.length > 0) return true;
   const kinds = [
     s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind,
     s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind,
@@ -220,8 +225,14 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
   return gridNeedsEnvironment(s.grid);
 }
 
+/** The environment of an element at its effective zoom, which its lengths and font take (input.ts LayoutStyle.zoom). */
+function atElement(parent: Env, id: string, s: LayoutStyle): Env {
+  const zoom = effectiveZoom(parent.device, s.zoom);
+  return { ...parent, node: id, zoom, fontZoom: zoom };
+}
+
 function resolveBox(b: LayoutBox, parent: Env): LayoutBox {
-  const env: Env = { ...parent, node: b.id };
+  const env = atElement(parent, b.id, b.style);
   return { kind: 'box', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), strut: resolveStrutOf(b, env), marker: b.marker === null ? null : resolveMarker(b.marker, env), children: resolveChildren(b.children, env) };
 }
 
@@ -235,7 +246,7 @@ function resolveChildren(children: readonly (LayoutBox | ControlBox | ReplacedLe
 
 /** A control box in zoomed px: a range's default track length is zoomed in float as Blink does (controls.ts zoomTrackLength). */
 function resolveControl(b: ControlBox, parent: Env): ControlBox {
-  const env: Env = { ...parent, node: b.id };
+  const env = atElement(parent, b.id, b.style);
   const c = b.control;
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
   return { kind: 'control', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
@@ -243,7 +254,7 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
 
 function resolveInline(c: InlineChild, parent: Env): InlineChild {
   if (c.kind === 'text') return resolveText(c, parent);
-  const env: Env = { ...parent, node: c.id };
+  const env = c.kind === 'inline' ? atElement(parent, c.id, c.style) : { ...parent, node: c.id };
   const size = computedSize(c.font, env);
   const font: FontSpec = { family: c.font.family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true };
   const lineHeight = resolveLineHeightValue(c.lineHeight, size, env);
@@ -265,7 +276,7 @@ function resolveMarker(m: ListMarker, env: Env): ListMarker {
 
 /** A replaced leaf in zoomed px: its style, natural size, default object size (Blink ComputeDefaultNaturalSize scales it by the zoom) and px object-position. */
 function resolveReplaced(r: ReplacedLeaf, parent: Env): ReplacedLeaf {
-  const env: Env = { ...parent, node: r.id };
+  const env = atElement(parent, r.id, r.style);
   const z = env.zoom;
   const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
   const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? lengthPx(v, z) : v);
@@ -343,6 +354,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     containIntrinsicWidth: s.containIntrinsicWidth.kind === 'px' ? lengthPx(s.containIntrinsicWidth, env.zoom) : s.containIntrinsicWidth,
     containIntrinsicHeight: s.containIntrinsicHeight.kind === 'px' ? lengthPx(s.containIntrinsicHeight, env.zoom) : s.containIntrinsicHeight,
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
+    zoom: [],
   };
 }
 

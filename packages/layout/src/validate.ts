@@ -183,6 +183,7 @@ export const styleSchema = obj({
   containIntrinsicHeight: tagged({ ...px(0), none: {} }),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
+  zoom: arr({ t: 'number', min: 0, exclusiveMin: true, integer: false }, 0),
 });
 
 /** css-fonts-4 §2: a font with its specified size expression (input.ts FontSpec). */
@@ -896,7 +897,7 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem' | 'zoom'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
   float: 'none',

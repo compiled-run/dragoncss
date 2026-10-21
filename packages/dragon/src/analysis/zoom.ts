@@ -2,9 +2,10 @@
 // absolute length of the element by it at computed-value time (CSSToLengthConversionData's zoom), viewport units and the em and
 // rem lengths included, and reports it divided back out in getComputedStyle; percentages and numbers stay as they are. A border
 // width is zoomed and then snapped as any border width (thin, medium and thick too), but the initial medium width is not zoomed.
-// The web output keeps zoom as authored, so web compiles any zoom. Native lays a zoomed subtree out by multiplying the lengths
-// the layout lowering reads (ZOOM_SCALED, lower/ios-layout.ts zoomedGet), so on iOS and Android an element whose effective zoom is
-// not 1 is refused when it holds a length the lowering does not scale (a paint length such as border-radius, a shadow, a grid
+// The web output keeps zoom as authored, so web compiles any zoom. Native lays a zoomed subtree out with each element's zoom chain
+// (zoomChain), and the engine multiplies the lengths it reads (ZOOM_SCALED) by Blink's float effective zoom at the device pixel
+// ratio, so on iOS and Android an element whose effective zoom is
+// not 1 is refused when it holds a length the engine does not scale (a paint length such as border-radius, a shadow, a grid
 // track, a transform, or one inherited, which Chrome zooms again at the inheriting element), a calculation, an animation or
 // transition, a scroll container or replaced content. Chrome does not zoom an explicitly inherited value again for some longhands
 // (padding, margin, border-radius, box-shadow) where it does for others, so on every target an element whose effective zoom differs
@@ -18,7 +19,7 @@ import type { AnimationAnalysis } from './animations.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
 
-/** The longhands whose px and viewport lengths the native layout lowering multiplies by the effective zoom. */
+/** The longhands whose px and viewport lengths the engine multiplies by the effective zoom on native (layout input.ts LayoutStyle.zoom). */
 export const ZOOM_SCALED: ReadonlySet<Longhand> = new Set<Longhand>([
   'width', 'height', 'min-width', 'min-height', 'max-width', 'max-height',
   'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
@@ -34,6 +35,16 @@ export function effectiveZoom(el: ResolvedElement, parentZoom: number): number {
   const own = v === undefined ? 1 : zoomOf(v.value);
   return parentZoom * (own === null ? 1 : own);
 }
+
+/** The zooms that are not 1 from the root down to el, root first, where its parent's are parentZooms (layout input.ts LayoutStyle.zoom). */
+export function zoomChain(el: ResolvedElement, parentZooms: readonly number[]): readonly number[] {
+  const v = el.props.get('zoom') as ResolvedValue | undefined;
+  const own = v === undefined ? 1 : zoomOf(v.value);
+  return own === null || own === 1 ? parentZooms : [...parentZooms, own];
+}
+
+/** The effective zoom of a zoom chain at device scale 1, as effectiveZoom multiplies it. */
+export const zoomProduct = (zooms: readonly number[]): number => zooms.reduce((z, own) => z * own, 1);
 
 // An absolute or font-relative length that is not zero, inside any value's text.
 const NONZERO_LENGTH = /(?:^|[^\w.-])[+-]?(?:\d*\.)?\d*[1-9]\d*(?:\.\d*)?(?:e[+-]?\d+)?(?:px|em|rem|ex|rex|ch|rch|cap|rcap|ic|ric|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|lvw|lvh|dvw|dvh|cqw|cqh|cqi|cqb|cqmin|cqmax|cm|mm|q|in|pt|pc)\b/i;
