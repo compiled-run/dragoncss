@@ -134,7 +134,7 @@ jobs:
       - name: Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records
         if: inputs.side == 'host'
         run: |
-          brew install openjdk@17
+          bash scripts/brew-openjdk17.sh
           # kotlinc pinned to the JetBrains release lanes.json records; Homebrew's kotlin moves to each new release.
           curl -sSfL -o "$RUNNER_TEMP/kotlin.zip" https://github.com/JetBrains/kotlin/releases/download/v2.4.20/kotlin-compiler-2.4.20.zip
           unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
