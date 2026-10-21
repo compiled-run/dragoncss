@@ -15,7 +15,8 @@ import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
 import type { ContainerCondition, Declaration, EnclosedRules, LonghandValue, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
-import { splitNotApplicable } from './css/not-applicable.ts';
+import { browserOnlyDiagnostic, splitNotApplicable, withoutRepeatedBrowserOnly } from './css/not-applicable.ts';
+import { browserOnlyEntry } from './profiles/browser-only-native.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
@@ -498,6 +499,12 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
           // CASC: a CSS-wide keyword's value depends on the element, so where the cases resolve it, checkContexts checks the value it
           // computes to there; a keyword no case resolves is still refused here.
           if (wide && (typeof used === 'function' ? used(t) : used).some((u) => u.declaration === d && u.property === lh.property && u.resolved !== undefined)) continue;
+          // BROWSER-ONLY: a listed property is an error of its own on native, never "unsupported yet".
+          const browserOnly = t === 'web' ? null : browserOnlyEntry(lh.property);
+          if (browserOnly !== null) {
+            diagnostics.push(browserOnlyDiagnostic(browserOnly, authored(d.valueSpan), t, `${lh.property}: ${valueToString(lh.value)}${setBy(d, lh.property)}`));
+            continue;
+          }
           // checkOutline refuses these outline styles on native wherever they paint; a zero-width one paints nothing.
           if (t !== 'web' && nativeOutlinePending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
@@ -939,6 +946,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
           // CASC: a CSS-wide keyword with no row of its own in this context is supported where it leaves the element's value
           // unchanged, or where the value it computes to here has a row in this context.
           if (u.resolved.unchanged || statusOf(profile, u.resolved.feature, u.context) !== 'unsupported') continue;
+          // BROWSER-ONLY: analysis/scroll-containment.ts reports the computed value on native as browser-only.
+          if (t !== 'web' && browserOnlyEntry(u.property) !== null) continue;
           const key = `${id}|${u.resolved.feature}`;
           if (reported.has(key)) continue;
           reported.add(key);
@@ -1513,7 +1522,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         // A target's messages list the contexts of the bands it is resolved in.
         const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
         checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
-        diagnostics.splice(valuesAt, 0, ...values);
+        diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
