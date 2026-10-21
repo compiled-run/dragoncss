@@ -844,6 +844,10 @@ function lineShadowMasks(ink: readonly GlyphInk[], baseline: number, sh: ShadowI
  * backdrop, and then this line's shadows over all of that. The device shows the earlier lines' own layers (encoded over what lies
  * under them) and their text views beneath this layer, so each pixel is encoded over Chrome's bytes there, and where an earlier
  * glyph has ink and this layer paints, as the opaque Chrome colour: the text view's glyph edge is the platform's, not Skia's.
+ * The earlier glyphs are area coverage of their ink boxes, like this line's masks (glyphMask), so the bytes are Chrome's in their
+ * interiors and on their bottom edges; within the Core Text fringe on their left, right and top edges (docs/decisions.md, the
+ * T093 glyph-edge ruling, up to 1.5 device px) they are not, as no native glyph is, and the parity samples keep SAMPLE_INSET_DEVICE_PX
+ * clear of every glyph box there.
  */
 export function textShadowLayerOverTexts(cps: readonly number[], xs: readonly number[], size: number, baseline: number, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[], under: readonly TextLinePaint[]): ShadowLayer {
   const ink = ahemLineInk(cps, xs, size, baseline);
