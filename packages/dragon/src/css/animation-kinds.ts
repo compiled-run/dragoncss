@@ -27,6 +27,8 @@ import { FONT_FEATURES_ANIMATION } from './animation-kinds/font-features.ts';
 import { FONT_STRETCH_ANIMATION } from './animation-kinds/font-stretch.ts';
 import { FONT_TUNING_ANIMATION } from './animation-kinds/font-tuning.ts';
 import { FONT_VARIANT_ANIMATION } from './animation-kinds/font-variant.ts';
+import { FRAGMENTATION_ANIMATION } from './animation-kinds/fragmentation.ts';
+import { FX_ANIMATION } from './animation-kinds/fx.ts';
 import { GRID_ANIMATION } from './animation-kinds/grid.ts';
 import { HYPHENS_ANIMATION } from './animation-kinds/hyphens.ts';
 import { INLINE_ANIMATION } from './animation-kinds/inline.ts';
@@ -36,6 +38,7 @@ import { LINE_CLAMP_ANIMATION } from './animation-kinds/line-clamp.ts';
 import { LISTS_ANIMATION } from './animation-kinds/lists.ts';
 import { LOGICAL_ANIMATION } from './animation-kinds/logical.ts';
 import { MASK_ANIMATION } from './animation-kinds/mask.ts';
+import { MULTICOL_ANIMATION } from './animation-kinds/multicol.ts';
 import { OUTLINE_ANIMATION } from './animation-kinds/outline.ts';
 import { OVERFLOW_ANIMATION } from './animation-kinds/overflow.ts';
 import { OVERSCROLL_ANIMATION } from './animation-kinds/overscroll.ts';
@@ -47,6 +50,7 @@ import { SCROLL_SNAP_ANIMATION } from './animation-kinds/scroll-snap.ts';
 import { SCROLLBAR_ANIMATION } from './animation-kinds/scrollbar.ts';
 import { SELECTION_ANIMATION } from './animation-kinds/selection.ts';
 import { SHADOW_ANIMATION } from './animation-kinds/shadow.ts';
+import { SPEAK_ANIMATION } from './animation-kinds/speak.ts';
 import { SVG_ANIMATION } from './animation-kinds/svg.ts';
 import { TAB_SIZE_ANIMATION } from './animation-kinds/tab-size.ts';
 import { TABLE_ANIMATION } from './animation-kinds/table.ts';
@@ -95,6 +99,8 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...FONT_STRETCH_ANIMATION,
   ...FONT_TUNING_ANIMATION,
   ...FONT_VARIANT_ANIMATION,
+  ...FRAGMENTATION_ANIMATION,
+  ...FX_ANIMATION,
   ...GRID_ANIMATION,
   ...HYPHENS_ANIMATION,
   ...INLINE_ANIMATION,
@@ -104,6 +110,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...LISTS_ANIMATION,
   ...LOGICAL_ANIMATION,
   ...MASK_ANIMATION,
+  ...MULTICOL_ANIMATION,
   ...OUTLINE_ANIMATION,
   ...OVERFLOW_ANIMATION,
   ...OVERSCROLL_ANIMATION,
@@ -115,6 +122,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...SCROLLBAR_ANIMATION,
   ...SELECTION_ANIMATION,
   ...SHADOW_ANIMATION,
+  ...SPEAK_ANIMATION,
   ...SVG_ANIMATION,
   ...TAB_SIZE_ANIMATION,
   ...TABLE_ANIMATION,

@@ -15,6 +15,7 @@ packages/layout/paint-vectors/*/vectors.json merge=dragon-generated
 packages/layout/paint-vectors/radius/inputs.jsonl merge=dragon-generated
 packages/layout/paint-vectors/shadow/inputs.jsonl merge=dragon-generated
 packages/layout/rt-vectors/animator/** merge=dragon-generated
+packages/layout/rt-vectors/band/** merge=dragon-generated
 packages/layout/rt-vectors/hit/** merge=dragon-generated
 packages/layout/vectors/*.json merge=dragon-generated
 packages/layout/vectors/dpr-*/** merge=dragon-generated

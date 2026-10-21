@@ -219,7 +219,7 @@ export type PartOutcome = { readonly schema: typeof PART_SCHEMA; readonly target
 export const partOutcomeText = (o: PartOutcome): string => `${JSON.stringify(o)}\n`;
 
 /** The fields each part fills in an outcome that is not blocked: a part that ran fills all of them, one that did not none. */
-const PART_FIELDS: { readonly [P in DevicePart]: readonly (keyof DeviceOutcome)[] } = { cases: ['set', 'states', 'hits', 'traces', 'trust'], anim: ['anim'], vectors: ['vectors'] };
+const PART_FIELDS: { readonly [P in DevicePart]: readonly (keyof DeviceOutcome)[] } = { cases: ['set', 'states', 'hits', 'traces', 'env', 'trust'], anim: ['anim'], vectors: ['vectors'] };
 
 /** A part file, checked: schema, a matrix device, its parts, evidence, host, an outcome holding exactly its parts, and the hashes. */
 export function parsePartOutcome(text: string, file: string): PartOutcome {
@@ -289,7 +289,7 @@ export function combineParts(files: readonly PartOutcome[], matrix: readonly Dev
     const outcome: DeviceOutcome =
       blocked.length > 0
         ? { device: d.name, set: null, trust: null, vectors: null, blocked: [...new Set(blocked.map((f) => f.outcome.blocked as string))].join('; '), ...(blockedBy.length > 0 ? { blockedBy } : {}) }
-        : { device: d.name, set: cases.outcome.set, states: cases.outcome.states ?? null, hits: cases.outcome.hits ?? null, anim: anim.outcome.anim ?? null, traces: cases.outcome.traces ?? null, trust: cases.outcome.trust, vectors: need.includes('vectors') ? of('vectors').outcome.vectors : null, blocked: null };
+        : { device: d.name, set: cases.outcome.set, states: cases.outcome.states ?? null, hits: cases.outcome.hits ?? null, anim: anim.outcome.anim ?? null, traces: cases.outcome.traces ?? null, env: cases.outcome.env ?? null, trust: cases.outcome.trust, vectors: need.includes('vectors') ? of('vectors').outcome.vectors : null, blocked: null };
     let dumps: CaseDumpHashes | null = null;
     if (blocked.length === 0 && cases.dumps !== null && anim.dumps !== null) {
       if (cases.dumps.dpr !== anim.dumps.dpr) problems.push(`${d.target}/${d.name}: the parts' dump hashes are at DPR ${cases.dumps.dpr} and ${anim.dumps.dpr}`);

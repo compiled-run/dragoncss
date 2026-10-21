@@ -28,7 +28,7 @@ export function blockLevelOf(box: LayoutBox): LayoutBox {
   const d = box.style.display;
   const display = d === 'inline-flex' ? 'flex' : d === 'inline-grid' ? 'grid' : 'block';
   const style: LayoutStyle = { ...box.style, display };
-  return { kind: 'box', id: box.id, boxType: box.boxType, style, strut: box.strut, children: box.children };
+  return { kind: 'box', id: box.id, boxType: box.boxType, style, strut: box.strut, marker: box.marker, children: box.children };
 }
 
 /**

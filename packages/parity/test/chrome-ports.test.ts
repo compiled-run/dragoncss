@@ -52,7 +52,7 @@ const KNOWN_LGPL_CLEAN_ROOM: readonly string[] = [];
 const CLEAN_ROOM_TASK = 'T123';
 
 // Upstream roots inside the Chromium tree at the tag (third_party/skia and v8 are resolved at their DEPS-pinned revisions).
-const UPSTREAM_ROOTS = ['third_party/blink/', 'third_party/skia/', 'v8/', 'ui/gfx/', 'cc/', 'third_party/rapidhash/', 'third_party/harfbuzz-ng/'];
+const UPSTREAM_ROOTS = ['third_party/blink/', 'third_party/skia/', 'v8/', 'ui/base/', 'ui/gfx/', 'cc/', 'third_party/rapidhash/', 'third_party/harfbuzz-ng/', 'skia/ext/'];
 
 interface Ruling { class: 'A' | 'B' | 'C'; basis: string; proof: string[]; task?: string; note?: string }
 interface Range { lines: string; symbol: string | null; source: 'cited' | 'located' | 'whole-file' }
@@ -120,8 +120,8 @@ const SKIP_DIRS = ['node_modules', 'dist', 'dist-test', 'build', '.build', 'gene
 const SCRIPT = /\.(ts|mts|cts|tsx|js|mjs|cjs|jsx)$/;
 /** Read by codeSpans: comments, strings and include paths (or the whole text, for WHOLE_TEXT files). */
 const C_STYLE = /\.(swift|kt|kts|java|zig|zon|c|h|cc|cpp|m|mm|tsrx|modulemap)$/;
-/** Read by codeSpans with # comments. */
-const SHELL = /\.sh$/;
+/** Read by codeSpans with # comments (shell; Ruby, for the vendored Homebrew formula). */
+const SHELL = /\.(sh|rb)$/;
 /** Data, fixtures, docs and binaries: never code, so never scanned. */
 const DATA = /(\.(json|jsonl|png|jpg|jpeg|gif|bmp|webp|ico|svg|wasm|css|html|xht|dg|md|txt|lock|gitignore|npmignore|yaml|yml|ttf|otf|woff2?)|(^|\/)(\.gitignore|\.npmignore|LICENSE[A-Za-z0-9._-]*|COPYING))$/;
 const isCode = (f: string) => SCRIPT.test(f) || C_STYLE.test(f) || SHELL.test(f);

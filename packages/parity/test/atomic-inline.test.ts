@@ -30,17 +30,17 @@ const STYLE = {
   paddingTop: { kind: 'px', value: 0 }, paddingRight: { kind: 'px', value: 0 }, paddingBottom: { kind: 'px', value: 0 }, paddingLeft: { kind: 'px', value: 0 },
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
-  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0,
+  alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' },
   verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null,
 } as const satisfies LayoutStyle;
 
 describe('compare.ts: an anonymous box holding only atomic inlines', () => {
   const font = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true } as const;
-  const atomic = (id: string): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { ...STYLE, display: 'inline-block' }, strut: null, children: [] });
+  const atomic = (id: string): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { ...STYLE, display: 'inline-block' }, strut: null, marker: null, children: [] });
   const input = (kids: readonly LayoutBox[]): LayoutInput => ({
     viewport: { width: 400, height: 300 }, devicePixelRatio: 1, viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } },
     safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16,
-    root: { kind: 'box', id: 'r', boxType: 'element', style: STYLE, strut: null, children: [{ kind: 'box', id: 'r:anon0', boxType: 'anonymous', style: STYLE, strut: { font, lineHeight: { kind: 'normal' } }, children: kids }] },
+    root: { kind: 'box', id: 'r', boxType: 'element', style: STYLE, strut: null, marker: null, children: [{ kind: 'box', id: 'r:anon0', boxType: 'anonymous', style: STYLE, strut: { font, lineHeight: { kind: 'normal' } }, marker: null, children: kids }] },
   });
   const rect = (id: string, parent: string | null): LayoutRect => ({ id, parent, x: 0 as LayoutRect['x'], y: 0 as LayoutRect['y'], width: 640 as LayoutRect['width'], height: 640 as LayoutRect['height'] });
   const capture = (ids: readonly string[]): WebCapture => ({

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w { width: 100px; }
+.sc { font-variant-caps: small-caps; }
+.s16 { font-size: 16px; }
+.a { font-synthesis-small-caps: auto; }
+.au { font-synthesis-small-caps: AUTO; }
+.fsc { font-synthesis: small-caps; }
+.fall { font-synthesis: weight style small-caps; }
+.fsw { font-synthesis: small-caps weight; }
+.off { font-synthesis: none; }
+.offl { font-synthesis-small-caps: none; }
+.inh { font-synthesis-small-caps: inherit; }
+.ini { font-synthesis-small-caps: initial; }
+.uns { font-synthesis: unset; }
+.narrow { width: 50px; }
+.row { display: flex; width: 120px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="w sc a">Ab cd Ef gh</div>
+<div data-dragon-id="au" class="w sc au s16">ab XY</div>
+<div data-dragon-id="fsc" class="w sc fsc">Xx pp Pp</div>
+<div data-dragon-id="fall" class="w sc fall">abc Abc ABC</div>
+<div data-dragon-id="fsw" class="w sc fsw s16">ab cd</div>
+<div data-dragon-id="plain" class="w a">Ab cd Ef</div>
+<div data-dragon-id="po" class="off"><div data-dragon-id="pa" class="w sc a">ab cd</div></div>
+<div data-dragon-id="pl" class="offl"><div data-dragon-id="pf" class="w sc fsc">ab cd</div></div>
+<div data-dragon-id="pi" class="fall"><div data-dragon-id="pin" class="w sc offl">ab cd</div></div>
+<div data-dragon-id="hi" class="off"><div data-dragon-id="hin" class="w sc ini">ab cd</div></div>
+<div data-dragon-id="hu" class="off"><div data-dragon-id="hun" class="w sc uns">ab cd</div></div>
+<div data-dragon-id="hh" class="a"><div data-dragon-id="hhn" class="w sc inh">ab cd</div></div>
+<div data-dragon-id="narrow" class="narrow sc a">abcdefg hi</div>
+<div data-dragon-id="row" class="row sc fall"><div data-dragon-id="ra">ab cd</div><div data-dragon-id="rb" class="offl">ab</div></div>
+</body>
+</html>

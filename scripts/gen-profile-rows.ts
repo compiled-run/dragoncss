@@ -40,7 +40,7 @@ try {
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);
   }
-  // ENV-SAFE: the web-only env() fixtures prove web rows through chrome-dual alone, under their insets; their ios features are empty.
+  // ENV-SAFE: the env() fixtures prove web rows through chrome-dual and ios rows through linux-dragon-layout, both under their insets.
   for (const outcomes of await inOrder(ENV_FIXTURES, CHROME_PAGES, (f) => runEnvFixture(f, browser, { authored: committedEnvAuthored(f), faults: NO_FAULTS, profiles: 'derive' }))) {
     cases.push(...outcomes);
     for (const c of outcomes) if (c.status !== 'pass') console.log(`not passing, proves nothing: ${c.id}: ${c.reason}`);

@@ -359,8 +359,9 @@ export async function runCase(c: ParityCase, compiled: Compiled<'ios' | 'web'>, 
   const colors = resolvedColors(compiled, c.assignment, state);
   const textColors = resolvedTextColors(compiled, c.assignment, state);
   if (classOf === null || colors === null || textColors === null) return fail('the compiled result has no web class map or resolved colours for this case');
-  // GEN-a R9: the generated boxes Chrome made are the ones Dragon generated (every resolved element of the case has colours).
-  const pseudoSet = pseudoSetProblems(authored, colors.keys());
+  // GEN-a R9: the generated boxes Chrome made are the ones Dragon generated (every resolved element has colours; GEN-c markers are layout rects).
+  const markers = result.kind === 'ok' ? result.boxes.map((b) => b.id).filter((id) => id.endsWith('::marker')) : [];
+  const pseudoSet = pseudoSetProblems(authored, [...colors.keys(), ...markers]);
   if (pseudoSet.length > 0) {
     layoutStatus = 'fail';
     reasons.push(`linux-dragon-layout: ${pseudoSet.join('; ')}`);

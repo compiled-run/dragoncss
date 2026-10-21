@@ -1,0 +1,16 @@
+{
+  "case": "overflow-text-cards",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"r1h:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"r1p:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r2p:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"g1h:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"g1p:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"g2p:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fh:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fp:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"bl:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

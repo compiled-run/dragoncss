@@ -3,7 +3,7 @@
 import { generate } from 'css-tree';
 import { asciiLower } from '../css/escapes.ts';
 import type { CssNode } from 'css-tree';
-import { isEnvironmentFeature, RANGE_FEATURES, splitFeatureName } from './features.ts';
+import { DEVICE_KEYWORDS, EVALUATED_FEATURES, isEnvironmentFeature, RANGE_FEATURES, splitFeatureName } from './features.ts';
 import type { MediaFaults } from './faults.ts';
 import { NO_MEDIA_FAULTS } from './faults.ts';
 import { InvalidValue, parseLength, RefusedValue, serialiseLength } from './length.ts';
@@ -17,10 +17,17 @@ export type MediaValue =
   | { readonly kind: 'length'; readonly length: MediaLength }
   | { readonly kind: 'ratio'; readonly num: number; readonly den: number }
   | { readonly kind: 'ident'; readonly name: string }
+  /** MQ-R2: a <resolution> as authored (dppx, x, dpi or dpcm), and -webkit-device-pixel-ratio's <number>. */
+  | { readonly kind: 'resolution'; readonly value: number; readonly unit: ResolutionUnit }
+  | { readonly kind: 'number'; readonly value: number }
   /** A value Dragon does not evaluate: a ratio, or the authored component values. */
   | { readonly kind: 'raw'; readonly ratio: { readonly num: number; readonly den: number } | null; readonly values: readonly ComponentValue[] };
 
 export type Comparison = '<' | '<=' | '>' | '>=' | '=';
+
+export type ResolutionUnit = 'dppx' | 'x' | 'dpi' | 'dpcm';
+const RESOLUTION_UNITS: readonly string[] = ['dppx', 'x', 'dpi', 'dpcm'];
+const FLOAT_MAX = 3.4028234663852886e38;
 
 export type MediaFeature = {
   readonly type: 'feature';
@@ -247,7 +254,7 @@ class Parser {
   }
 }
 
-const isEvaluated = (base: string): boolean => base === 'width' || base === 'height' || base === 'aspect-ratio' || base === 'orientation';
+const isEvaluated = (base: string): boolean => EVALUATED_FEATURES.has(base);
 const isFeatureName = (name: string): boolean => {
   const { base } = splitFeatureName(name);
   return isEvaluated(base) || isEnvironmentFeature(base);
@@ -270,11 +277,32 @@ function parseValue(base: string, items: readonly Item[]): MediaValue {
     if (ratio.num === 0 && ratio.den === 0) throw new RefusedValue('degenerate ratio');
     return { kind: 'ratio', ...ratio };
   }
+  if (base === 'resolution' || base === '-webkit-device-pixel-ratio') {
+    // Chrome 145 (measured): a negative <resolution> or one without a unit is invalid; -webkit-device-pixel-ratio takes any
+    // <number> and no unit. calc() is not evaluated.
+    const cv = cvs[0];
+    if (cvs.length !== 1 || cv === undefined) throw new InvalidValue('one resolution');
+    if (cv.kind === 'function') {
+      if (asciiLower(cv.name) === 'calc') throw new RefusedValue('calc');
+      throw new InvalidValue(cv.name);
+    }
+    if (cv.kind !== 'token') throw new InvalidValue('block');
+    if (base === '-webkit-device-pixel-ratio') {
+      if (cv.token.type !== 'number') throw new InvalidValue('number');
+      return { kind: 'number', value: cv.token.value };
+    }
+    if (cv.token.type !== 'dimension' || cv.token.value < 0) throw new InvalidValue('resolution');
+    const unit = asciiLower(cv.token.unit);
+    if (!RESOLUTION_UNITS.includes(unit)) throw new InvalidValue(unit);
+    // Chrome keeps a <resolution> within the float range (1e40dppx serialises as 3.40282e+38dppx).
+    return { kind: 'resolution', value: Math.min(cv.token.value, FLOAT_MAX), unit: unit as ResolutionUnit };
+  }
   if (cvs.length === 1) {
     const name = identOf(cvs[0]);
-    if (name === 'portrait' || name === 'landscape') return { kind: 'ident', name };
+    const allowed = base === 'orientation' ? ['portrait', 'landscape'] : (DEVICE_KEYWORDS[base] ?? []);
+    if (name !== null && allowed.includes(name)) return { kind: 'ident', name };
   }
-  throw new InvalidValue('orientation');
+  throw new InvalidValue(base);
 }
 
 function parseRatio(cvs: readonly ComponentValue[]): { num: number; den: number } | null {
@@ -329,6 +357,10 @@ export function serialiseValue(v: MediaValue, fmt: NumberFormat = exactNumber): 
       return `${fmt(v.num)} / ${fmt(v.den)}`;
     case 'ident':
       return v.name;
+    case 'resolution':
+      return `${fmt(v.value)}${v.unit}`;
+    case 'number':
+      return fmt(v.value);
     case 'raw':
       return v.ratio !== null ? `${fmt(v.ratio.num)} / ${fmt(v.ratio.den)}` : v.values.map((c) => rawCv(c, fmt)).join(' ');
   }

@@ -13,7 +13,7 @@ import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, la
 import { ANIM_LANE, HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
 import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
-import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
+import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
@@ -43,10 +43,11 @@ const stateCaseCount = (name: string): number => {
 };
 
 describe('native targets', () => {
-  it('ios and android, each with the ten lanes in order', () => {
+  it('ios and android, each with the eleven lanes in order', () => {
     expect(targets.map((t) => t.target)).toEqual(['ios', 'android']);
-    // SELD-R1b appends device-states and device-hit after the six P5 lanes; ANIM-b1 3b appends device-anim; SELD-R2 (T064 R14) device-traces.
-    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-anim', 'device-traces']);
+    // SELD-R1b appends device-states and device-hit after the six P5 lanes; ANIM-b1 3b appends device-anim; SELD-R2 (T064 R14) device-traces;
+    // MQ-R1 appends device-env (one rotation per device).
+    expect(LANES).toEqual(['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels', 'device-states', 'device-hit', 'device-anim', 'device-traces', 'device-env']);
     for (const t of targets) expect(lane(t, TRACE_LANE)?.sets.map((s) => [s.dpr, s.ids]), t.target).toEqual(t.dprs.map((d) => [d, traceScriptIds()]));
     for (const t of targets) expect(t.lanes.map((l) => l.lane)).toEqual([...LANES]);
   });
@@ -260,6 +261,7 @@ describe('committed out/lanes.json', () => {
     expect(refused.filter((id) => SVG_OUT.includes(id)).sort()).toEqual([...SVG_OUT].sort());
     expect(refused.filter((id) => CLIP_RECT_OUT.includes(id)).sort()).toEqual([...CLIP_RECT_OUT].sort());
     expect(refused.filter((id) => CLIP_PATH_OUT.includes(id)).sort()).toEqual([...CLIP_PATH_OUT].sort());
+    expect(refused.filter((id) => MARKER_OUT.includes(id)).sort()).toEqual([...MARKER_OUT].sort());
     for (const r of refusals) {
       if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
@@ -270,6 +272,7 @@ describe('committed out/lanes.json', () => {
       else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
       else if (CLIP_PATH_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_PATH_REASON);
       else if (CLAMP_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLAMP_REASON);
+      else if (MARKER_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(MARKER_REASON);
       else if (TRANSFORM_NAMED.includes(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }

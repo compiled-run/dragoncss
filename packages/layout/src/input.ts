@@ -137,6 +137,8 @@ export type Position = 'static' | 'relative' | 'absolute';
  */
 export type Overflow = 'visible' | 'hidden' | 'clip' | 'auto' | 'scroll';
 export type Direction = 'ltr' | 'rtl';
+/** css-contain-2 §3.1: the axes size containment applies in. */
+export type ContainSize = 'none' | 'inline-size' | 'size';
 export type BoxSizing = 'content-box' | 'border-box';
 export type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';
 export type FlexWrap = 'nowrap' | 'wrap' | 'wrap-reverse';
@@ -353,6 +355,26 @@ export type LayoutStyle = {
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
    */
   readonly lineClamp: number;
+  /**
+   * css-contain-2 §3.2 layout containment (contain: layout, content or strict; Blink applies it to every box here but an inline box):
+   * the box is an independent formatting context and the containing block of its absolutely positioned descendants, and has no
+   * baseline for anything outside it to align to (Blink LayoutBox::ShouldApplyLayoutContainment).
+   */
+  readonly containLayout: boolean;
+  /**
+   * css-contain-2 §3.4 paint containment (contain: paint, content or strict): an independent formatting context and the containing
+   * block of its absolutely positioned descendants, keeping its baseline. Its clip arrives as overflow clip on both axes.
+   */
+  readonly containPaint: boolean;
+  /**
+   * css-contain-2 §3.1 size containment: size in both axes, inline-size in the inline axis only (also container-type: inline-size,
+   * whose query container css-conditional-5 §2.1 makes an independent formatting context). Never on an inline box. The box sizes as if it had no
+   * contents, its content size being containIntrinsicWidth and containIntrinsicHeight (css-sizing-4 §5.2; none is 0), and then lays
+   * its contents out inside that size.
+   */
+  readonly containSize: ContainSize;
+  readonly containIntrinsicWidth: Px | NoneValue;
+  readonly containIntrinsicHeight: Px | NoneValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
@@ -468,6 +490,25 @@ export type InlineChild = TextLeaf | InlineBox | LineBreak;
 /** The strut of a block container with inline content (CSS2 §10.8.1): the container's own font and line-height. */
 export type LineStrut = { readonly font: FontSpec; readonly lineHeight: LineHeightValue };
 
+/** css-lists-3 §3: the symbol of an outside disc, circle or square marker (Blink list_marker.cc kSymbol). */
+export type MarkerSymbol = 'disc' | 'circle' | 'square';
+/** A marker drawn as a symbol (no glyph) or as its counter text. */
+export type MarkerKind = 'symbol' | 'text';
+
+/**
+ * css-lists-3 §3 and T151 R14: a list item's outside ::marker box, an inline-block with its own line of font and lineHeight (the list
+ * item's). A symbol marker has no glyph: its width comes from the font's ascent (list_marker.cc WidthOfSymbol). A text marker is
+ * its compile-time counter text, trailing space included. id names the marker's rect in the layout result: "<list item>::marker".
+ */
+export type ListMarker = {
+  readonly id: string;
+  readonly kind: MarkerKind;
+  readonly symbol: MarkerSymbol | null;
+  readonly text: string | null;
+  readonly font: FontSpec;
+  readonly lineHeight: LineHeightValue;
+};
+
 /**
  * Children are either all boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks): the compiler
  * wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level, else null.
@@ -478,6 +519,8 @@ export type LayoutBox = {
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
   readonly strut: LineStrut | null;
+  /** The outside list marker of a list item (T151 R14), or null. */
+  readonly marker: ListMarker | null;
   readonly children: readonly (LayoutBox | ReplacedLeaf | InlineChild)[];
 };
 

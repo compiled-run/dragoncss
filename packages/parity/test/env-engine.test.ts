@@ -1,7 +1,7 @@
 // ENV-SAFE host proof of the native mapping: the compiler's native lowering of each env() fixture, laid out by the shared engine
 // with the fixture's safe-area insets injected into the layout input, matches Chrome's committed capture under the same insets
-// (1 device px). Native targets still refuse env(): no runtime reads the root view's insets yet, so this proves only the engine
-// path a host would feed. Planted faults show the check sees a missing, ignored or swapped inset.
+// (1 device px), the engine path a native mount feeds with its container's measured insets (DragonTree.safeArea). Planted faults
+// show the check sees a missing, ignored or swapped inset.
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutInput } from '@dragon/layout';
 import { absoluteRects, environmentDependencies, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, REFERENCE_PLATFORM, validateLayoutInput } from '@dragon/layout';

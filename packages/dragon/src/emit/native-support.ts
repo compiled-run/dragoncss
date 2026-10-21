@@ -8,6 +8,8 @@ import type { GeneratedFile } from '../types.ts';
 import type { FontSpec } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
 import type { PaintPlantName } from './paint/registry.ts';
+import type { MediaPlantName } from './runtime/media.ts';
+import { mediaPlants } from './runtime/media.ts';
 import { nativePaints, PAINT_STAGES, paintPlants, soleHook, stagePainters } from './paint/registry.ts';
 import { runtimeSupportFiles } from './runtime/index.ts';
 
@@ -255,6 +257,11 @@ ${boxMembers('uikit')}  public init(dragonId: String, kind: String, parent: Stri
   public override func draw(_ rect: CGRect) {
     guard let ctx = UIGraphicsGetCurrentContext() else { return }
     dragonPaintBox(self, ctx, dragonShape)
+  }
+  /// PNT1-opacity-b: any layout or paint change of a box marks every group overlay's composite stale (the effects module).
+  public override func setNeedsDisplay() {
+    super.setNeedsDisplay()
+    dragonGroupsChanged()
   }
   /// The device scale the frames were applied at; clip values are read back in whole device px / scale.
   public var dragonScale: Double = 1
@@ -665,6 +672,62 @@ public struct DragonCase {
   }
 }
 
+/// css-env-1 env(safe-area-inset-*) on iOS: how far the window's safe-area insets (status bar, home indicator, sensor housing; in
+/// points, which are CSS px) reach into container's bounds, side by side. The window's insets, not the view's: a view controller's
+/// bars and additionalSafeAreaInsets are app chrome, not the device's unsafe area, and Android reads the window's too. A container
+/// laid out inside the insets, or not in a window yet, reads 0 on every side, as a page without viewport-fit=cover does (P7).
+public func dragonSafeArea(_ container: UIView) -> SafeAreaInsets {
+  guard let w = container.window else { return SafeAreaInsets(0.0, 0.0, 0.0, 0.0) }
+  let i = w.safeAreaInsets
+  let r = container.convert(container.bounds, to: w)
+  let b = w.bounds
+  func css(_ v: CGFloat) -> Double { return Double(max(0, v)) }
+  return SafeAreaInsets(css(i.top - r.minY), css(r.maxX - (b.width - i.right)), css(r.maxY - (b.height - i.bottom)), css(i.left - r.minX))
+}
+
+/// css-env-1: input with its safe-area insets replaced by a mount's measured ones.
+public func dragonWithSafeArea(_ input: LayoutInput, _ s: SafeAreaInsets) -> LayoutInput {
+  return LayoutInput(input.viewport, input.devicePixelRatio, input.viewportUnits, s, input.rootFontSize, input.root)
+}
+
+/// css-env-1: whether two inset sets are equal side by side.
+public func dragonSameInsets(_ a: SafeAreaInsets, _ b: SafeAreaInsets) -> Bool {
+  return a.top == b.top && a.right == b.right && a.bottom == b.bottom && a.left == b.left
+}
+
+/// css-env-1: an empty view over a mount's stage that calls onChange whenever the stage's safe-area insets may have changed: the
+/// stage entering a window, the window's insets changing (rotation, status bar, split view) or the stage resizing. The calls are
+/// coalesced onto the next main-queue turn, never made inside UIKit's own callback. The mount then measures the stage again
+/// (dragonSafeArea) and re-renders when the insets differ.
+public final class DragonSafeAreaProbe: UIView {
+  public var onChange: (() -> Void)?
+  private var pending = false
+
+  public init(stage: UIView) {
+    super.init(frame: stage.bounds)
+    isUserInteractionEnabled = false
+    isAccessibilityElement = false
+    autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    stage.insertSubview(self, at: 0)
+  }
+
+  required init?(coder: NSCoder) { fatalError("dragon: DragonSafeAreaProbe is built in code") }
+
+  public override func didMoveToWindow() { super.didMoveToWindow(); changed() }
+  public override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); changed() }
+  public override func layoutSubviews() { super.layoutSubviews(); changed() }
+
+  private func changed() {
+    if pending { return }
+    pending = true
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.pending = false
+      self.onChange?()
+    }
+  }
+}
+
 /// The native tree of one case: builds the views, applies the translated engine's snapped frames at the device scale, and reads
 /// the dump back from the live tree.
 public final class DragonTree {
@@ -679,6 +742,9 @@ public final class DragonTree {
   private var inlineLines: [String: [(edges: [Double], baseline: Double)]] = [:]
   private var hosts: [String: String] = [:]
   private var companions: [String: [UIView]] = [:]
+  /// css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, measured from its container (dragonSafeArea) by a host
+  /// before apply, which then replace the case input's own; nil keeps the input's (a mount's machine puts its insets there).
+  public var safeArea: SafeAreaInsets? = nil
   public init() {}
 
   /// Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -713,7 +779,8 @@ public final class DragonTree {
 
   /// Runs the translated engine at the device scale, snaps with the translated snapEdges and sets every frame relative to its
   /// native parent as CGFloat(edge - parentEdge) / scale. No Auto Layout.
-  public func apply(_ input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) throws {
+  public func apply(_ given: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) throws {
+    let input = safeArea.map { dragonWithSafeArea(given, $0) } ?? given
     let result = try layout_layout(input, measurer)
     if let refused = result as? LayoutResult_unsupported { fatalError("dragon: the engine refused the case: \(refused.unsupported.code) at \(refused.unsupported.nodeId): \(refused.unsupported.detail)") }
     guard let ok = result as? LayoutResult_ok else { fatalError("dragon: the engine gave no result") }
@@ -726,6 +793,10 @@ public final class DragonTree {
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
     var zParent: [String: String] = [:]
+    // GEN-c: each list item's zoomed marker, by its rect id.
+    var zMarkers: [String: ListMarker] = [:]
+    // GEN-c: each text marker, by its text fragment's id (marker.ts markerTextId).
+    var zMarkerTexts: [String: ListMarker] = [:]
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
     var inlineIds = Set<String>()
@@ -740,6 +811,10 @@ public final class DragonTree {
     func walk(_ b: LayoutBox) {
       zBoxes[b.id.description] = b
       zStyles[b.id.description] = b.style
+      if let m = b.marker {
+        zMarkers[m.id.description] = m
+        if m.kind.description == "text" { zMarkerTexts[m.id.description + ":text0"] = m }
+      }
       for c in b.children.items {
         if let cb = c as? LayoutBox { zParent[cb.id.description] = b.id.description; walk(cb) }
         else if let t = c as? TextLeaf { zParent[t.id.description] = b.id.description }
@@ -838,10 +913,10 @@ public final class DragonTree {
       v.frame = frame
       if let bv = v as? DragonBoxView {
         // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
-        // paddings a background reads (the compiler refuses gradients on inline boxes).
+        // paddings a background reads (the compiler refuses gradients on inline boxes); nor has a list marker's box (GEN-c).
         let px: [Double]
         let padding: [Double]
-        if inlineIds.contains(id) { px = [0, 0, 0, 0]; padding = [0, 0, 0, 0] } else {
+        if inlineIds.contains(id) || zMarkers[id] != nil { px = [0, 0, 0, 0]; padding = [0, 0, 0, 0] } else {
           guard let zs = zStyles[id] else { fatalError("dragon: no zoomed box \(id)") }
           let be = try box_resolveBorder(zs, zoomed.devicePixelRatio)
           px = [be.top / lu, be.right / lu, be.bottom / lu, be.left / lu]
@@ -856,6 +931,12 @@ public final class DragonTree {
         bv.dragonShape = DragonBoxShape(edges: [e.left, e.top, e.right, e.bottom], borders: px, size: [r.width / lu, r.height / lu], lu: [a.x, a.y, a.width, a.height], padding: padding, rootX: rootX)
         bv.dragonScrollRange = scrollRanges[id]
         bv.dragonScrollRefusal = scrollRefusals[id]
+        // GEN-c: a symbol marker's paint rect and coverage from the translated paint-marker.ts, at its box's absolute LU origin.
+        if let m = zMarkers[id], m.kind.description == "symbol" {
+          let mp = try paintMarker_markerSymbolPaint(Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS), m, a.x, a.y)
+          bv.dragonMarkerRect = [mp.left - e.left, mp.top - e.top, mp.right - mp.left, mp.bottom - mp.top]
+          bv.dragonMarkerCoverage = mp.coverage.items
+        }
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -877,27 +958,7 @@ public final class DragonTree {
     }
     for id in order {
       guard let tv = views[id] as? DragonTextView else { continue }
-      guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
-      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
-      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
       let ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
-      let ifc = try inline_buildIfc(ctx, p)
-      let leaves = ifc.leaves.items
-      guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
-      let scalars = Array(leaves[li].text.description.unicodeScalars)
-      func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
-      let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
-      let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
-      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
-      let size = try units_platformFontSize(leaves[li].font.size)
-      var specs: [DragonLineSpec] = []
-      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
-      // points and glyph pens in zoomed px from the root.
-      var geometry: [[Double]] = []
-      var geometryCps: [[Double]] = []
-      var geometryPens: [[Double]] = []
-      var viewMetrics: (topsLU: [Double], ascent: Double, descent: Double)? = nil
-      var firstBaselineOffset: Double? = nil
       // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
       // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
       // advance / unitsPerEm, summed in float as textAdvanceAt does.
@@ -933,6 +994,45 @@ public final class DragonTree {
         }
         return (glyphs, xs)
       }
+      // GEN-c: a text marker's text is one line at the engine's text fragment in the marker box (marker.ts layoutMarker): its whole
+      // text from the fragment's left, on the marker line's baseline, in the marker's font. It has no decorations (computed-checks.ts).
+      if let m = zMarkerTexts[id] {
+        guard let e = edges[id], let mt = m.text, let ma = abs.get(m.id) else { fatalError("dragon: marker text \(id) is not placed") }
+        let lines = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
+        guard lines.count == 1, let line = lines.first, let a = abs.get(line.element.id) else { fatalError("dragon: marker text \(id) has \(lines.count) line rects, not 1") }
+        let i = line.offset
+        let r = line.element
+        let font = try inline_fontMetricsOf(ctx, m.id, m.font)
+        let xLU = a.x - e[0] * lu
+        let count = Double(mt.description.unicodeScalars.count)
+        let run = try glyphRun(mt, try inline_fontOf(m.font), 0, count, xLU / lu, [], "marker")
+        let top = try units_snapEdge(ma.y)
+        let baseline = snapped[i].top + font.ascent / lu
+        let spec = DragonLineSpec(text: mt.description, glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: r.width, top: top - e[1], baseline: baseline - e[1], start: 0, end: mt.description.utf16.count, ellipsisGlyphs: [], ellipsisXs: [], ellipsisSize: 0, sizes: [])
+        textMetrics[id] = ([a.y - e[1] * lu], font.ascent / lu, font.descent / lu)
+        tv.dragonConfigure(font: bridge.font(pointSize: CGFloat(try units_platformFontSize(m.font.size) / s)), lines: [spec], scale: s)
+        continue
+      }
+      guard let pId = zParent[id], let p = zBoxes[pId], let e = edges[id] else { fatalError("dragon: text \(id) has no container") }
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      let ifc = try inline_buildIfc(ctx, p)
+      let leaves = ifc.leaves.items
+      guard let li = leaves.firstIndex(where: { $0.id.description == id }) else { fatalError("dragon: no leaf \(id)") }
+      let scalars = Array(leaves[li].text.description.unicodeScalars)
+      func utf16(_ cp: Int) -> Int { return scalars[0..<cp].reduce(0) { $0 + $1.utf16.count } }
+      let placed = try inline_placeIfcLines(ctx, p, ifc, try contentWidth(pId)).items
+      let pieces = boxes.enumerated().filter { DragonTree.isLine($0.element) && $0.element.parent?.description == id }
+      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
+      let size = try units_platformFontSize(leaves[li].font.size)
+      var specs: [DragonLineSpec] = []
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
+      var geometry: [[Double]] = []
+      var geometryCps: [[Double]] = []
+      var geometryPens: [[Double]] = []
+      var viewMetrics: (topsLU: [Double], ascent: Double, descent: Double)? = nil
+      var firstBaselineOffset: Double? = nil
       // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
       func glyphSizes(_ text: JsString, _ font: TextFont, _ from: Double, _ to: Double, _ what: String) throws -> [Double] {
         if !font.smallCaps || from >= to { return [] }
@@ -1024,7 +1124,8 @@ public final class DragonTree {
   }
 
   /// The dump read back from the live tree: frames via dragonLayoutRect (transforms ignored), applied values from the live objects.
-  public func dump(_ c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming) -> Dump {
+  /// environment (MQ-R1): a state mount's Dragon root view environment; nil for a layout case.
+  public func dump(_ c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming, environment: DumpEnvironment? = nil) -> Dump {
     let s = scale
     var nodes: [DumpNodes] = []
     for id in order {
@@ -1058,7 +1159,7 @@ public final class DragonTree {
       }
       nodes.append(DumpNodes(id: id, parent: parents[id] ?? nil, kind: v.dragonKind, native: String(describing: type(of: v)), frame: DumpNodesFrame(x: l / s, y: t / s, width: (rr - l) / s, height: (b - t) / s), deviceEdges: DumpNodesDeviceEdges(left: l, top: t, right: rr, bottom: b), applied: v.dragonApplied(), lines: lines))
     }
-    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing)
+    return Dump(lane: "ios-sim", case: DumpCase(id: c.id, fixture: c.fixture, dpr: s, viewport: DumpCaseViewport(width: c.viewport.width, height: c.viewport.height), direction: c.direction, compilerDigest: c.compilerDigest, expectedDigest: c.expectedDigest(scale: s)), device: device, nodes: nodes, pixels: pixels, timing: timing, environment: environment)
   }
 }
 
@@ -1322,6 +1423,7 @@ open class DragonGroup(ctx: Context) : ViewGroup(ctx) {
 fun dragonFrameOf(v: View): IntArray = when (v) {
   is DragonGroup -> v.dragonFrame
   is DragonTextView -> v.dragonFrame
+  is DragonGroupView -> v.dragonFrame
   else -> throw IllegalStateException("dragon: " + v.javaClass.name + " is not a Dragon view")
 }
 
@@ -1365,6 +1467,11 @@ ${boxMembers('android-views')}  val dragonContainer: ViewGroup get() = dragonCli
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
     dragonPaintBox(this, canvas, dragonShape)
+  }
+  /** PNT1-opacity-b: any layout or paint change of a box marks every group overlay's composite stale (the effects module). */
+  override fun invalidate() {
+    super.invalidate()
+    dragonGroupsChanged()
   }
   override fun dragonApplied(): List<Pair<String, DumpJson>> = dragonPaintApplied(this)
 }
@@ -1412,7 +1519,9 @@ class DragonTextView(ctx: Context, override val dragonId: String, override val d
   var dragonStrokeColor: DragonRGBA8? = null
     private set
   private var scale = 1.0
-  private var font: android.graphics.fonts.Font? = null
+  /** The bridge's font the glyphs are drawn in (a group's ink extent reads it, PNT1-opacity-b). */
+  var font: android.graphics.fonts.Font? = null
+    private set
 
   /** The text run from the program: text, font family and colour; the size comes from the engine at the device scale. */
   fun dragonSetText(text: String, family: String, color: DragonRGBA8) {
@@ -1672,6 +1781,7 @@ import dev.dragon.dump.Dump
 import dev.dragon.dump.DumpCase
 import dev.dragon.dump.DumpCaseViewport
 import dev.dragon.dump.DumpDevice
+import dev.dragon.dump.DumpEnvironment
 import dev.dragon.dump.DumpNodes
 import dev.dragon.dump.DumpNodesDeviceEdges
 import dev.dragon.dump.DumpNodesFrame
@@ -1687,11 +1797,14 @@ import dev.dragon.layout.LayoutInput
 import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
+import dev.dragon.layout.ListMarker
+import dev.dragon.layout.SafeAreaInsets
 import dev.dragon.layout.ObjectRect
 import dev.dragon.layout.PieceGlyphs_okFalse
 import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
+import dev.dragon.layout.paintMarker_markerSymbolPaint
 import dev.dragon.layout.paint_replacedPaint
 import dev.dragon.layout.TextFont
 import dev.dragon.layout.TextLeaf
@@ -1704,6 +1817,8 @@ import dev.dragon.layout.LineBreak
 import dev.dragon.layout.U_InlineBox_LineBreak_TextLeaf
 import dev.dragon.layout.inline_boxLineRects
 import dev.dragon.layout.inline_buildIfc
+import dev.dragon.layout.inline_fontMetricsOf
+import dev.dragon.layout.inline_fontOf
 import dev.dragon.layout.inline_leafFontOf
 import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.grid_NO_GRID_FAULTS
@@ -1743,6 +1858,69 @@ class DragonCase(
 }
 
 /**
+ * css-env-1 env(safe-area-inset-*) on Android: how far the window's system bars and display cutout reach into container's content
+ * box (its bounds less padding, where the tree's root view goes), side by side, in CSS px (device px / scale). A container laid out
+ * inside the insets, or not attached yet, reads 0 on every side, as a page without viewport-fit=cover does (P7).
+ */
+fun dragonSafeArea(container: android.view.View, scale: Double): SafeAreaInsets {
+  val wi = container.rootWindowInsets ?: return SafeAreaInsets(0.0, 0.0, 0.0, 0.0)
+  val bars = wi.getInsets(android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout())
+  val at = IntArray(2)
+  container.getLocationInWindow(at)
+  val window = container.rootView
+  val left = at[0] + container.paddingLeft
+  val top = at[1] + container.paddingTop
+  val right = at[0] + container.width - container.paddingRight
+  val bottom = at[1] + container.height - container.paddingBottom
+  fun css(px: Int): Double = maxOf(0, px) / scale
+  return SafeAreaInsets(css(bars.top - top), css(right - (window.width - bars.right)), css(bottom - (window.height - bars.bottom)), css(bars.left - left))
+}
+
+/** css-env-1: input with its safe-area insets replaced by a mount's measured ones. */
+fun dragonWithSafeArea(input: LayoutInput, s: SafeAreaInsets): LayoutInput =
+  LayoutInput(input.viewport, input.devicePixelRatio, input.viewportUnits, s, input.rootFontSize, input.root)
+
+/** css-env-1: whether two inset sets are equal side by side. */
+fun dragonSameInsets(a: SafeAreaInsets, b: SafeAreaInsets): Boolean = a.top == b.top && a.right == b.right && a.bottom == b.bottom && a.left == b.left
+
+/**
+ * css-env-1: an empty, zero-size view in a mount's stage that calls onChange (posted, never inside a dispatch) whenever the stage's
+ * safe-area insets may have changed: attach, new window insets (rotation, status bar, multi-window) or any layout of the window. The
+ * mount then measures the stage again (dragonSafeArea) and re-renders when the insets differ. A mount that is gone takes the probe
+ * off the stage on the next call.
+ */
+class DragonSafeAreaProbe<M : Any>(stage: ViewGroup, mount: M, private val onChange: (M) -> Unit) : android.view.View(stage.context) {
+  private val mount = java.lang.ref.WeakReference(mount)
+  private val check = Runnable {
+    val m = this.mount.get()
+    if (m == null) (parent as? ViewGroup)?.removeView(this) else onChange(m)
+  }
+  private val layoutListener = android.view.ViewTreeObserver.OnGlobalLayoutListener { post(check) }
+
+  init {
+    importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    stage.addView(this, 0, ViewGroup.LayoutParams(0, 0))
+  }
+
+  override fun onApplyWindowInsets(insets: android.view.WindowInsets): android.view.WindowInsets {
+    post(check)
+    return super.onApplyWindowInsets(insets)
+  }
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
+    post(check)
+  }
+
+  override fun onDetachedFromWindow() {
+    viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
+    removeCallbacks(check)
+    super.onDetachedFromWindow()
+  }
+}
+
+/**
  * The native tree of one case: builds the views, applies the translated engine's snapped frames at the device scale through
  * View.layout ints from dragonCheckedInt, and reads the dump back from the live tree.
  */
@@ -1755,6 +1933,11 @@ class DragonTree(val context: Context) {
   private val textMetrics = HashMap<String, DoubleArray>()
   private val hosts = HashMap<String, String>()
   private val companions = HashMap<String, ArrayList<android.view.View>>()
+  /**
+   * css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, measured from its container (dragonSafeArea) by a host
+   * before apply, which then replace the case input's own; null keeps the input's (a mount's machine puts its insets there).
+   */
+  var safeArea: SafeAreaInsets? = null
 
   /**
    * Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -1794,7 +1977,8 @@ class DragonTree(val context: Context) {
   private fun setFrame(f: IntArray, l: Double, t: Double, r: Double, b: Double, what: String) = dragonSetFrame(f, l, t, r, b, what)
 
   /** Runs the translated engine at the device scale, snaps with the translated snapEdges and stores every frame in device px. */
-  fun apply(input: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+  fun apply(given: LayoutInput, measurer: TextMeasurer, scale: Double, bridge: DragonBridge) {
+    val input = safeArea?.let { dragonWithSafeArea(given, it) } ?: given
     val result = layout_layout(input, measurer)
     val refused = result as? dev.dragon.layout.LayoutResult_unsupported
     if (refused != null) throw IllegalStateException("dragon: the engine refused the case: " + refused.unsupported.code + " at " + refused.unsupported.nodeId + ": " + refused.unsupported.detail)
@@ -1808,6 +1992,10 @@ class DragonTree(val context: Context) {
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()
     val zParent = HashMap<String, String>()
+    // GEN-c: each list item's zoomed marker, by its rect id.
+    val zMarkers = HashMap<String, ListMarker>()
+    // GEN-c: each text marker, by its text fragment's id (marker.ts markerTextId).
+    val zMarkerTexts = HashMap<String, ListMarker>()
     // A text leaf's, inline box's or <br>'s container is the block container of its inline formatting context, through any
     // inline boxes.
     val inlineIds = HashSet<String>()
@@ -1822,6 +2010,11 @@ class DragonTree(val context: Context) {
     fun walk(b: LayoutBox) {
       zBoxes[b.id] = b
       zStyles[b.id] = b.style
+      val m = b.marker
+      if (m != null) {
+        zMarkers[m.id] = m
+        if (m.kind == "text") zMarkerTexts[m.id + ":text0"] = m
+      }
       for (c in b.children) {
         if (c is LayoutBox) { zParent[c.id] = b.id; walk(c) } else if (c is TextLeaf) zParent[c.id] = b.id
         else if (c is ReplacedLeaf) { zParent[c.id] = b.id; zStyles[c.id] = c.style; zLeaves.add(c) }
@@ -1929,8 +2122,9 @@ class DragonTree(val context: Context) {
       setFrame(dragonFrameOf(v), e.left - ox, e.top - oy, e.right - ox, e.bottom - oy, id)
       if (v is DragonBoxView) {
         // An inline box or <br> view is unpainted and has no borders (the compiler refuses inline box borders until INL1b) and no
-        // paddings a background reads (the compiler refuses gradients on inline boxes).
-        val inline = inlineIds.contains(id)
+        // paddings a background reads (the compiler refuses gradients on inline boxes); nor has a list marker's box (GEN-c).
+        val marker = zMarkers[id]
+        val inline = inlineIds.contains(id) || marker != null
         val zs = if (inline) null else zStyles[id] ?: throw IllegalStateException("dragon: no zoomed box " + id)
         val px = if (zs == null) doubleArrayOf(0.0, 0.0, 0.0, 0.0) else {
           val be = box_resolveBorder(zs, zoomed.devicePixelRatio)
@@ -1943,6 +2137,12 @@ class DragonTree(val context: Context) {
         v.dragonShape = DragonBoxShape(doubleArrayOf(e.left, e.top, e.right, e.bottom), px, DoubleArray(8), doubleArrayOf(r.width / lu, r.height / lu), doubleArrayOf(a.x, a.y, a.width, a.height), padding, rootX)
         v.dragonScrollRange = scrollRanges[id]
         v.dragonScrollRefusal = scrollRefusals[id]
+        // GEN-c: a symbol marker's paint rect and coverage from the translated paint-marker.ts, at its box's absolute LU origin.
+        if (marker != null && marker.kind == "symbol") {
+          val mp = paintMarker_markerSymbolPaint(Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS), marker, a.x, a.y)
+          v.dragonMarkerRect = intArrayOf(dragonCheckedInt(mp.left - e.left, id + " marker x"), dragonCheckedInt(mp.top - e.top, id + " marker y"), dragonCheckedInt(mp.right - mp.left, id + " marker width"), dragonCheckedInt(mp.bottom - mp.top, id + " marker height"))
+          v.dragonMarkerCoverage = mp.coverage.toList()
+        }
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
@@ -1968,30 +2168,7 @@ class DragonTree(val context: Context) {
     }
     for (id in order) {
       val tv = views[id] as? DragonTextView ?: continue
-      val pId = zParent[id] ?: throw IllegalStateException("dragon: text " + id + " has no container")
-      val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
-      val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
-      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
-      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
       val ctx = Ctx(measurer, zoomed.devicePixelRatio, block_NO_ENGINE_FAULTS, grid_NO_GRID_FAULTS)
-      val ifc = inline_buildIfc(ctx, p)
-      val leaves = ifc.leaves
-      val li = leaves.indexOfFirst { it.id == id }
-      if (li < 0) throw IllegalStateException("dragon: no leaf " + id)
-      val leafText = leaves[li].text
-      fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
-      val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
-      val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
-      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
-      val size = units_platformFontSize(leaves[li].font.size)
-      val specs = ArrayList<DragonLineSpec>()
-      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
-      // points and glyph pens in zoomed px from the root.
-      val geometry = ArrayList<DoubleArray>()
-      val geometryCps = ArrayList<DoubleArray>()
-      val geometryPens = ArrayList<DoubleArray>()
-      var viewMetrics: DoubleArray? = null
-      var firstBaselineOffset: Double? = null
       // Dragon places every glyph from x (device px from the view's left): shaped, the glyph ids and advances are HarfBuzz's for
       // code points [from, to) (shaping_pieceGlyphs); otherwise cmap's ids advance by the instance size times the font-unit
       // advance / unitsPerEm, summed in float as textAdvanceAt does.
@@ -2023,6 +2200,51 @@ class DragonTree(val context: Context) {
         }
         return Pair(glyphs, xs)
       }
+      // GEN-c: a text marker's text is one line at the engine's text fragment in the marker box (marker.ts layoutMarker): its whole
+      // text from the fragment's left, on the marker line's baseline, in the marker's font. It has no decorations (computed-checks.ts).
+      val marker = zMarkerTexts[id]
+      if (marker != null) {
+        val e = edges[id] ?: throw IllegalStateException("dragon: marker text " + id + " is not placed")
+        val mt = marker.text ?: throw IllegalStateException("dragon: marker text " + id + " has no text")
+        val ma = abs.get(marker.id) ?: throw IllegalStateException("dragon: no absolute rect for " + marker.id)
+        val lines = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
+        if (lines.size != 1) throw IllegalStateException("dragon: marker text " + id + " has " + lines.size + " line rects, not 1")
+        val i = lines[0]
+        val r = boxes[i]
+        val a = abs.get(r.id) ?: throw IllegalStateException("dragon: no absolute rect for " + r.id)
+        val font = inline_fontMetricsOf(ctx, marker.id, marker.font)
+        val xLU = a.x - e[0] * lu
+        val run = glyphRun(mt, inline_fontOf(marker.font), 0.0, mt.codePointCount(0, mt.length).toDouble(), xLU / lu, emptyList(), "marker")
+        val top = units_snapEdge(ma.y)
+        val baseline = snapped[i].top + font.ascent / lu
+        val spec = DragonLineSpec(mt, run.first, run.second, xLU, r.width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), 0, mt.length, IntArray(0), DoubleArray(0), 0.0)
+        textMetrics[id] = doubleArrayOf(font.ascent / lu, font.descent / lu, a.y - e[1] * lu)
+        tv.dragonConfigure(bridge, units_platformFontSize(marker.font.size).toFloat(), listOf(spec), scale)
+        continue
+      }
+      val pId = zParent[id] ?: throw IllegalStateException("dragon: text " + id + " has no container")
+      val p = zBoxes[pId] ?: throw IllegalStateException("dragon: no container " + pId)
+      val e = edges[id] ?: throw IllegalStateException("dragon: text " + id + " is not placed")
+      // The engine's own lines: inline.ts placeLines (buildIfc, then placeIfcLines), translated, over the zoomed context. Each
+      // line gives this leaf's piece; a piece's leaf index is into the same formatting context's leaves.
+      val ifc = inline_buildIfc(ctx, p)
+      val leaves = ifc.leaves
+      val li = leaves.indexOfFirst { it.id == id }
+      if (li < 0) throw IllegalStateException("dragon: no leaf " + id)
+      val leafText = leaves[li].text
+      fun utf16(cp: Int): Int = leafText.offsetByCodePoints(0, cp)
+      val placed = inline_placeIfcLines(ctx, p, ifc, contentWidth(pId))
+      val pieces = boxes.indices.filter { isLine(boxes[it]) && boxes[it].parent == id }
+      // The instance size of the leaf's computed font size in the resolved input (environment.ts), at the device scale.
+      val size = units_platformFontSize(leaves[li].font.size)
+      val specs = ArrayList<DragonLineSpec>()
+      // TDEC-b: each line's piece left, width and top in zoomed px from the root, for the after-text hooks; TDEC-d: its shown code
+      // points and glyph pens in zoomed px from the root.
+      val geometry = ArrayList<DoubleArray>()
+      val geometryCps = ArrayList<DoubleArray>()
+      val geometryPens = ArrayList<DoubleArray>()
+      var viewMetrics: DoubleArray? = null
+      var firstBaselineOffset: Double? = null
       // Small caps: each glyph's instance size in device px, 0 for the view's font (none unless the font has small caps).
       fun glyphSizes(text: String, font: TextFont, from: Double, to: Double, what: String): DoubleArray {
         if (!font.smallCaps || from >= to) return DoubleArray(0)
@@ -2126,7 +2348,8 @@ class DragonTree(val context: Context) {
   }
 
   /** The dump read back from the live tree: frames from the layout positions up to the root (dragonLayoutOffset), divided by density. */
-  fun dump(c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming): Dump {
+  /** environment (MQ-R1): a state mount's Dragon root view environment; null for a layout case. */
+  fun dump(c: DragonCase, scale: Double, device: DumpDevice, pixels: DumpPixels, timing: DumpTiming, environment: DumpEnvironment? = null): Dump {
     val s = scale
     val nodes = ArrayList<DumpNodes>()
     for (id in order) {
@@ -2161,7 +2384,7 @@ class DragonTree(val context: Context) {
       }
       nodes.add(DumpNodes(id, parents[id], v.dragonKind, view.javaClass.name, DumpNodesFrame(l / s, t / s, (rr - l) / s, (b - t) / s), DumpNodesDeviceEdges(l, t, rr, b), v.dragonApplied(), lines))
     }
-    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing)
+    return Dump("android-emu", DumpCase(c.id, c.fixture, s, DumpCaseViewport(c.viewportWidth, c.viewportHeight), c.direction, c.compilerDigest, c.expectedDigest(s)), device, nodes, pixels, timing, environment)
   }
 }
 
@@ -2231,9 +2454,10 @@ const header = (comment: string, what: string): string => `${comment} GENERATED 
 
 /**
  * Raster plants of the support code: glyph-offset-1 draws every glyph 1 device px right of the engine's position (P5), and
- * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs.
+ * glyph-offset-y-1 1 device px below it (T093); the paint modules add theirs, and MQ-R2 its reduced-motion and colour-scheme
+ * reading plants.
  */
-export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | 'single-run-baseline';
+export type SupportPlant = 'glyph-offset-1' | 'glyph-offset-y-1' | PaintPlantName | MediaPlantName | 'single-run-baseline';
 
 type PlantReplacement = { readonly name: SupportPlant; readonly replace: { readonly [B in NativeBackend]: readonly [string, string] } };
 
@@ -2250,6 +2474,8 @@ const PLANT_REPLACEMENTS: readonly PlantReplacement[] = [
   glyphPlant('glyph-offset-y-1', 'public let dragonGlyphPlantYDevicePx: Double = ', 'const val DRAGON_GLYPH_PLANT_Y_DEVICE_PX = '),
   ...(paintPlants() as readonly PlantReplacement[]),
   glyphPlant('single-run-baseline', 'public let dragonSingleRunBaselinePlant: Double = ', 'const val DRAGON_SINGLE_RUN_BASELINE_PLANT = '),
+  // MQ-R2: the media runtime's reading plants.
+  ...mediaPlants(),
 ];
 
 export const SUPPORT_PLANTS: readonly SupportPlant[] = PLANT_REPLACEMENTS.map((p) => p.name);
@@ -2472,7 +2698,8 @@ export const STYLE_FIELDS = [
   'display', 'position', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height', 'minWidth', 'minHeight',
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
-  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
+  'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout',
+  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -2598,6 +2825,7 @@ function engineValue(lang: Lang, v: unknown): string {
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
   if (typeof v === 'string') return str(v);
   if (typeof v === 'number') return doubleLit(v);
+  if (typeof v === 'boolean') return String(v);
   const calc = calcValue(lang, v as Record<string, unknown>);
   if (calc !== null) return calc;
   const r = v as { kind: string; width?: number; height?: number };
@@ -2637,6 +2865,15 @@ export function environmentArgs(viewport: { readonly width: number; readonly hei
 }
 
 /**
+ * MQ-R1 (T067 R5, R6): environmentArgs with the viewport the state machine holds (the media root's CSS size, in the generated
+ * variables named), so a size change lays out again with the new viewport units. The small, large and dynamic sizes equal it, as decided.
+ */
+export function liveEnvironmentArgs(width: string, height: string, rootFontSize: number): string {
+  const v = `Viewport(${width}, ${height})`;
+  return `ViewportUnitSizes(${v}, ${v}, ${v}), SafeAreaInsets(0.0, 0.0, 0.0, 0.0), ${doubleLit(rootFontSize)}`;
+}
+
+/**
  * Functions that build a LayoutInput with the translated engine's typed constructors (no JSON, no CSS): one small function per box,
  * which builds its style, its text leaves and calls its child boxes' functions. Returns the declarations and the root call.
  */
@@ -2660,11 +2897,15 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };
+  const none = lang === 'swift' ? 'nil' : 'null';
+  // GEN-c: a list item's marker in the translated ListMarker's field order (input.ts): id, kind, symbol, text, font, lineHeight.
+  const marker = (m: import('@dragon/layout').ListMarker | null): string =>
+    m === null ? none : `ListMarker(${str(m.id)}, ${str(m.kind)}, ${m.symbol === null ? none : str(m.symbol)}, ${m.text === null ? none : str(m.text)}, ${fontSpecValue(lang, m.font)}, ${lineHeightValue(lang, m.lineHeight)})`;
   const visit = (b: import('@dragon/layout').LayoutBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
     const strut = b.strut === null ? (lang === 'swift' ? 'nil' : 'null') : `LineStrut(${fontSpecValue(lang, b.strut.font)}, ${lineHeightValue(lang, b.strut.lineHeight)})`;
-    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
+    const body = `LayoutBox(${str('box')}, ${str(b.id)}, ${str(b.boxType)}, ${styleOf(b.style)}, ${strut}, ${marker(b.marker)}, ${list('U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf', kids)})`;
     decls.push(lang === 'swift' ? `private func ${name}() -> LayoutBox {\n  return ${body}\n}` : `private fun ${name}(): LayoutBox =\n  ${body}`);
     return name;
   };

@@ -221,8 +221,8 @@ describe('@font-face rules', () => {
     expect(face('@font-face { font-family: F; src: url(fonts/Inter-Regular.ttf); font-d\u0130splay: swap }')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
   it('a family inside an unsupported at-rule is checked in the scratch pass: an unmapped one is a related entry of the at-rule error', () => {
-    // @media is conditional since MQ-a, so the unsupported at-rule here is @container.
-    const c = compileWith(fontInput('@container (min-width: 1px) { .a { font-family: Nope } }'), MAP);
+    // @media is conditional since MQ-a, so the unsupported at-rule here is @starting-style.
+    const c = compileWith(fontInput('@starting-style { .a { font-family: Nope } }'), MAP);
     expect(codes(c)).toEqual(['DRAGON_UNSUPPORTED_AT_RULE']);
     expect(c.diagnostics[0]?.related.map((r) => r.message.split(':')[0])).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
   });

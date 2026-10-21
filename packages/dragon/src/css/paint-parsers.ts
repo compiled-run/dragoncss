@@ -8,16 +8,19 @@ import { BACKGROUND_BLEND_VALUE_PARSERS } from './properties/background-blend.ts
 import { BORDER_IMAGE_VALUE_PARSERS } from './properties/border-image.ts';
 import { APPEARANCE_VALUE_PARSERS } from './properties/appearance.ts';
 import { USER_MODIFY_VALUE_PARSERS } from './properties/user-modify.ts';
+import { SPEAK_VALUE_PARSERS } from './properties/speak.ts';
 import { CLIP_PATH_VALUE_PARSERS } from './properties/clip-path.ts';
 import { CLIP_RECT_VALUE_PARSERS } from './properties/clip-rect.ts';
 import { COLOR_SCHEME_VALUE_PARSERS } from './properties/color-scheme.ts';
 import { EFFECTS_VALUE_PARSERS, parseOpacityValue } from './properties/effects.ts';
 import { FILTER_VALUE_PARSERS } from './properties/filter.ts';
+import { FX_VALUE_PARSERS } from './properties/fx.ts';
 import { FONT_VARIANT_VALUE_PARSERS } from './properties/font-variant.ts';
 import { FONT_TUNING_VALUE_PARSERS } from './properties/font-tuning.ts';
 import { FONT_STRETCH_VALUE_PARSERS } from './properties/font-stretch.ts';
 import { FONT_FEATURES_VALUE_PARSERS } from './properties/font-features.ts';
 import { LINE_BREAK_VALUE_PARSERS } from './properties/line-break.ts';
+import { FRAGMENTATION_VALUE_PARSERS } from './properties/fragmentation.ts';
 import { LINE_CLAMP_VALUE_PARSERS } from './properties/line-clamp.ts';
 import { MASK_VALUE_PARSERS } from './properties/mask.ts';
 import { CONTAINMENT_VALUE_PARSERS } from './properties/containment.ts';
@@ -25,6 +28,7 @@ import { CONTAINER_QUERY_VALUE_PARSERS } from './properties/container-query.ts';
 import { OVERSCROLL_VALUE_PARSERS } from './properties/overscroll.ts';
 import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
 import { COUNTERS_VALUE_PARSERS } from './properties/counters.ts';
+import { MULTICOL_VALUE_PARSERS } from './properties/multicol.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
@@ -73,9 +77,11 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(FONT_FEATURES_VALUE_PARSERS),
   ...Object.entries(TEXT_SHADOW_VALUE_PARSERS),
   ...Object.entries(FILTER_VALUE_PARSERS),
+  ...Object.entries(FX_VALUE_PARSERS),
   ...Object.entries(TOUCH_ACTION_VALUE_PARSERS),
   ...Object.entries(APPEARANCE_VALUE_PARSERS),
   ...Object.entries(USER_MODIFY_VALUE_PARSERS),
+  ...Object.entries(SPEAK_VALUE_PARSERS),
   ...Object.entries(SCROLLBAR_VALUE_PARSERS),
   ...Object.entries(CLIP_RECT_VALUE_PARSERS),
   ...Object.entries(CLIP_PATH_VALUE_PARSERS),
@@ -87,6 +93,8 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(CONTAINMENT_VALUE_PARSERS),
   ...Object.entries(CONTAINER_QUERY_VALUE_PARSERS),
   ...Object.entries(COUNTERS_VALUE_PARSERS),
+  ...Object.entries(MULTICOL_VALUE_PARSERS),
   ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),
   ...Object.entries(BACKGROUND_BLEND_VALUE_PARSERS),
+  ...Object.entries(FRAGMENTATION_VALUE_PARSERS),
 ]);

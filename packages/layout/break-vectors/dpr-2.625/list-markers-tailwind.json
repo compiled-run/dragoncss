@@ -1,0 +1,10 @@
+{
+  "case": "list-markers-tailwind",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"u1:text0","lines":[[0,2]]},
+    {"id":"tw1:text0","lines":[[0,3]]},
+    {"id":"tw2:text0","lines":[[0,7]]},
+    {"id":"tw3:text0","lines":[[0,5]]}
+  ]
+}

@@ -149,10 +149,20 @@
      "value": 0
     },
     "lineClamp": 0,
+    "containLayout": false,
+    "containPaint": false,
+    "containSize": "none",
+    "containIntrinsicWidth": {
+     "kind": "none"
+    },
+    "containIntrinsicHeight": {
+     "kind": "none"
+    },
     "grid": null,
     "gridItem": null
    },
    "strut": null,
+   "marker": null,
    "children": [
     {
      "kind": "box",
@@ -275,10 +285,20 @@
        "value": 0
       },
       "lineClamp": 0,
+      "containLayout": false,
+      "containPaint": false,
+      "containSize": "none",
+      "containIntrinsicWidth": {
+       "kind": "none"
+      },
+      "containIntrinsicHeight": {
+       "kind": "none"
+      },
       "grid": null,
       "gridItem": null
      },
      "strut": null,
+     "marker": null,
      "children": [
       {
        "kind": "box",
@@ -402,6 +422,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -420,6 +449,7 @@
          "value": 1
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -576,6 +606,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -594,6 +633,7 @@
          "value": 1.5
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -750,6 +790,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -768,6 +817,7 @@
          "value": 2
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -924,6 +974,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -942,6 +1001,7 @@
          "value": 9.6171875
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1098,6 +1158,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1116,6 +1185,7 @@
          "value": 12.0078125
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1272,6 +1342,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1290,6 +1369,7 @@
          "value": 10.4921875
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1446,6 +1526,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1464,6 +1553,7 @@
          "value": 1.2
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1620,6 +1710,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1638,6 +1737,7 @@
          "value": 9.6
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",
@@ -1794,6 +1894,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1812,6 +1921,7 @@
          "value": 17.3
         }
        },
+       "marker": null,
        "children": [
         {
          "kind": "text",

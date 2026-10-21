@@ -1,5 +1,5 @@
 // Runtime validator for LayoutInput. The schema's inferred type must equal the declared input types exactly.
-import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { CalcExpr, LayoutBox, LayoutInput, LayoutStyle, LineBreak, LineStrut, ListMarker, ReplacedLeaf, TextLeaf } from './input.ts';
 
 type NumberRule = { readonly t: 'number'; readonly min: number; readonly exclusiveMin: boolean; readonly integer: boolean };
 type StringRule = { readonly t: 'string' };
@@ -175,6 +175,11 @@ export const styleSchema = obj({
   textOverflow: lit('clip', 'ellipsis'),
   textIndent: tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...calc }),
   lineClamp: count0,
+  containLayout: bool,
+  containPaint: bool,
+  containSize: lit('none', 'inline-size', 'size'),
+  containIntrinsicWidth: tagged({ ...px(0), none: {} }),
+  containIntrinsicHeight: tagged({ ...px(0), none: {} }),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
 });
@@ -219,6 +224,9 @@ export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSch
 /** The strut of a block container with inline content (input.ts LineStrut). */
 export const strutSchema = obj({ font: fontSpecSchema, lineHeight: lineHeightSchema });
 
+/** The outside marker of a list item (input.ts ListMarker). */
+export const markerSchema = obj({ id: str, kind: lit('symbol', 'text'), symbol: nullable(lit('disc', 'circle', 'square')), text: nullable(str), font: fontSpecSchema, lineHeight: lineHeightSchema });
+
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Assert<T extends true> = T;
 export type SchemaMatchesStyle = Assert<Equal<Infer<typeof styleSchema>, LayoutStyle>>;
@@ -226,6 +234,7 @@ export type SchemaMatchesText = Assert<Equal<Infer<typeof textLeafSchema>, TextL
 export type SchemaMatchesReplaced = Assert<Equal<Infer<typeof replacedLeafSchema>, ReplacedLeaf>>;
 export type SchemaMatchesBreak = Assert<Equal<Infer<typeof lineBreakSchema>, LineBreak>>;
 export type SchemaMatchesStrut = Assert<Equal<Infer<typeof strutSchema>, LineStrut>>;
+export type SchemaMatchesMarker = Assert<Equal<Infer<typeof markerSchema>, ListMarker>>;
 
 export type ValidationErrorCode =
   | 'missing-key'
@@ -503,6 +512,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     checkFields(value, { id: str, style: styleSchema, font: fontSpecSchema, lineHeight: lineHeightSchema }, path, errors, ['kind', 'children']);
     const style = value['style'];
     if (isRecord(style) && style['display'] !== 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an inline box has display inline' });
+    // css-contain-2 §3.1: size containment has no effect on a non-atomic inline box.
+    if (isRecord(style) && style['containSize'] !== undefined && style['containSize'] !== 'none') errors.push({ path: `${path}.style.containSize`, code: 'bad-value', message: 'an inline box is never size contained' });
     // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
     if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
     const kids = childrenOf(value, path, errors);
@@ -524,6 +535,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       if (style['overflowX'] !== style['overflowY']) errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be equal: css-overflow-3 §3.1 computes visible beside hidden to auto' });
       // CSS 2.2 §10.3.8 and §10.6.5: absolutely positioned replaced boxes are not supported yet.
       if (style['position'] === 'absolute') errors.push({ path: `${path}.style.position`, code: 'bad-value', message: 'an absolutely positioned replaced box is not supported' });
+      // css-contain-2 §3.2: a size-contained replaced box loses its natural size, which replaced.ts does not model.
+      if (style['containSize'] !== undefined && style['containSize'] !== 'none') errors.push({ path: `${path}.style.containSize`, code: 'bad-value', message: 'a size-contained replaced box is not supported' });
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
       if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
@@ -534,8 +547,9 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     errors.push({ path: `${path}.kind`, code: 'unknown-tag', message: 'expected kind box | replaced | inline | br | text' });
     return;
   }
-  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema }, path, errors, ['kind', 'children', 'strut']);
+  checkFields(value, { id: str, boxType: lit('element', 'anonymous'), style: styleSchema, marker: nullable(markerSchema) }, path, errors, ['kind', 'children', 'strut']);
   const style = value['style'];
+  checkMarker(value, path, errors);
   if (isRecord(style) && style['display'] === 'inline') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'a box is block, flex or grid; an inline box has kind inline' });
   // css-display-3 §2.7: the root and an absolutely positioned box are blockified, so an atomic inline is in flow among inline content.
   if (isAtomic(value) && isRecord(style) && style['position'] === 'absolute') errors.push({ path: `${path}.style.display`, code: 'bad-value', message: 'an absolutely positioned box is blockified: it is never inline-block, inline-flex or inline-grid' });
@@ -745,6 +759,19 @@ function checkStrut(box: Record<string, unknown>, children: readonly unknown[], 
   else if (isRecord(strut)) checkLeafFonts(children, strut['font'], strut['lineHeight'], path, errors);
 }
 
+// T151 R14: an outside marker belongs to a block container element (Blink LayoutListItem is a LayoutBlockFlow), is named after it,
+// and holds a symbol or a non-empty text as its kind says.
+function checkMarker(box: Record<string, unknown>, path: string, errors: ValidationError[]): void {
+  const m = box['marker'];
+  if (!isRecord(m)) return;
+  const style = box['style'];
+  if (box['boxType'] !== 'element') errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'only an element box is a list item' });
+  if (isRecord(style) && style['display'] !== 'block') errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'a list item with a marker is a block container (display block)' });
+  if (m['id'] !== `${String(box['id'])}::marker`) errors.push({ path: `${path}.marker.id`, code: 'bad-value', message: 'a marker is named "<list item>::marker"' });
+  if (m['kind'] === 'symbol' && (m['symbol'] === null || m['text'] !== null)) errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'a symbol marker has a symbol and no text' });
+  if (m['kind'] === 'text' && (m['symbol'] !== null || typeof m['text'] !== 'string' || m['text'] === '')) errors.push({ path: `${path}.marker`, code: 'bad-value', message: 'a text marker has a non-empty text and no symbol' });
+}
+
 /** The text leaves and atomic inlines of an inline formatting context in tree order, with null marking each line break. */
 function inlineTexts(children: readonly unknown[], out: (Record<string, unknown> | null)[]): void {
   for (const c of children) {
@@ -849,6 +876,11 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   verticalAlign: { kind: 'keyword', value: 'baseline' },
   textOverflow: 'clip',
   lineClamp: 0,
+  containLayout: false,
+  containPaint: false,
+  containSize: 'none',
+  containIntrinsicWidth: { kind: 'none' },
+  containIntrinsicHeight: { kind: 'none' },
   grid: null,
 };
 

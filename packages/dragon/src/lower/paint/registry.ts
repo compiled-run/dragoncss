@@ -10,6 +10,7 @@ import { FIXED_LOWERING } from './fixed.ts';
 import { FOREIGN_VIEW_LOWERING } from './foreign-view.ts';
 import { GRADIENT_LOWERING } from './gradient.ts';
 import { IMAGE_LOWERING } from './image.ts';
+import { LIST_MARKER_LOWERING } from './list-marker.ts';
 import { OUTLINE_LOWERING } from './outline.ts';
 import { RADIUS_LOWERING } from './radius.ts';
 import { SCROLL_LOWERING } from './scroll.ts';
@@ -44,6 +45,7 @@ const LOWERINGS = [
   VISIBILITY_LOWERING,
   TEXT_DECORATION_LOWERING,
   TEXT_SHADOW_LOWERING,
+  LIST_MARKER_LOWERING,
 ] as const;
 
 type WriteOf<L> = L extends PaintLowering<infer W> ? W : never;

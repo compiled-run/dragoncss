@@ -18,14 +18,14 @@ const DIV: LayoutStyle = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal', alignItems: 'normal',
   alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: { kind: 'auto' },
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, grid: null, gridItem: null,
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, grid: null, gridItem: null,
 };
 type Child = LayoutBox | ReplacedLeaf | InlineChild;
 const AHEM: FontSpec = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true };
 const px = (value: number) => ({ kind: 'px', value }) as const;
 const pct = (value: number) => ({ kind: 'percent', value }) as const;
 const box = (id: string, style: Partial<LayoutStyle>, children: Child[] = []): LayoutBox => ({
-  kind: 'box', id, boxType: 'element', style: { ...DIV, ...style }, children,
+  kind: 'box', id, boxType: 'element', style: { ...DIV, ...style }, marker: null, children,
   strut: children.some((c) => c.kind === 'text' || c.kind === 'inline' || c.kind === 'br') ? { font: AHEM, lineHeight: { kind: 'normal' } } : null,
 });
 const span = (id: string, children: InlineChild[]): InlineBox => ({ kind: 'inline', id, style: { ...DIV, display: 'inline' }, font: AHEM, lineHeight: { kind: 'normal' }, children });

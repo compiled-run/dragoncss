@@ -1,0 +1,37 @@
+{
+  "sources": ["app.dg", "doc.css", "app.css"],
+  "modules": [{ "id": "app", "source": "app.dg" }],
+  "styles": [
+    { "id": "doc", "file": "doc.css", "scope": "document" },
+    { "id": "app", "file": "app.css", "scope": "App" }
+  ],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc", "app"] },
+  "components": [
+    {
+      "id": "App", "module": "app", "at": "component App",
+      "states": [
+        { "id": "open", "domain": [false, true], "initial": false, "at": "open: boolean = false" }
+      ],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "frame", "at": "<div frame", "class": ["app.frame"], "children": [
+              { "el": "div", "id": "panel", "at": "<div panel", "class": ["app.panel"], "attr": [
+                { "name": "ui-open", "when": ["open", true], "value": "", "at": "ui-open={open}" }
+              ] },
+              { "el": "div", "id": "sib", "at": "<div sib", "class": ["app.sib"] }
+            ] }
+          ] }
+        ] }
+      ]
+    }
+  ],
+  "expected": {
+    "freeStates": [
+      { "instance": "doc", "state": "open", "domain": [false, true] }
+    ],
+    "cases": 2,
+    "initial": [{ "instance": "doc", "state": "open", "value": false }],
+    "textTopology": []
+  }
+}

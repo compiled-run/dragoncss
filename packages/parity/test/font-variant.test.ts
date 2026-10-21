@@ -1,5 +1,6 @@
 // TXT-FONTFEAT (fixture-groups/text-font-variant.ts): the font-variant feature longhands and shorthand over Ahem against Chrome 145. The
-// layout fixtures (text-font-variant-caps-ahem: synthesized small capitals) pass both lanes in both directions and at every DPR, and
+// layout fixtures (text-font-variant-caps-ahem: synthesized small capitals; text-synthesis-small-caps-ahem: font-synthesis-small-caps: auto
+// set explicitly) pass both lanes in both directions and at every DPR, and
 // the reject (all-small-caps) is refused on every target. text-font-variant-caps-ahem.test.ts proves the native pixels.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -33,7 +34,7 @@ const specOf = (id: string) => {
 describe('the text-font-variant fixtures', () => {
   // DRAGON_LIVE_AUTHORED=1 captures Chrome live instead of reading the committed capture (before the first regen of a new fixture).
   const authored = () => (process.env['DRAGON_LIVE_AUTHORED'] === '1' ? liveAuthored(browser) : committedAuthored);
-  for (const id of ['text-font-variant-ahem', 'text-font-variant-caps-ahem']) {
+  for (const id of ['text-font-variant-ahem', 'text-font-variant-caps-ahem', 'text-synthesis-small-caps-ahem']) {
     it(`${id} passes chrome-dual and linux-dragon-layout in ltr and rtl`, async () => {
       const out = await runFixture(specOf(id), browser, { authored: authored(), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
       expect(out.reason).toBeNull();
@@ -47,7 +48,7 @@ describe('the text-font-variant fixtures', () => {
   }, 300_000);
 });
 
-for (const id of ['text-font-variant-ahem', 'text-font-variant-caps-ahem']) {
+for (const id of ['text-font-variant-ahem', 'text-font-variant-caps-ahem', 'text-synthesis-small-caps-ahem']) {
   describe(`${id} passes at every DPR`, () => {
     const corpus = layoutCases().filter((f) => f.spec.id === id);
     const compiled = { ltr: compileFixture(specOf(id), NO_FAULTS, 'enforce', 'ltr').compiled, rtl: compileFixture(specOf(id), NO_FAULTS, 'enforce', 'rtl').compiled };

@@ -40,6 +40,7 @@ function whole(d: DeviceSpec): { outcome: DeviceOutcome; dumps: CaseDumpHashes }
     hits: set(d, 'device-hit', dpr, 7),
     anim: set(d, 'device-anim', dpr, 6),
     traces: set(d, 'device-traces', dpr, 2),
+    env: set(d, 'device-env', dpr, 3),
     trust: { device: d.name, dpr, rows: [{ case: 'trust', points: 3, mismatches: [] }] },
     vectors: VECTOR_DEVICES[d.target] === d.name ? vectorsRun(d.name) : null,
     blocked: null,
@@ -52,7 +53,7 @@ function partFile(d: DeviceSpec, parts: readonly DevicePart[], evidence = stamp(
   const w = whole(d);
   const has = (p: DevicePart): boolean => parts.includes(p);
   const o = w.outcome;
-  const outcome: DeviceOutcome = { device: d.name, set: has('cases') ? o.set : null, states: has('cases') ? o.states! : null, hits: has('cases') ? o.hits! : null, anim: has('anim') ? o.anim! : null, traces: has('cases') ? o.traces! : null, trust: has('cases') ? o.trust : null, vectors: has('vectors') ? o.vectors : null, blocked: null };
+  const outcome: DeviceOutcome = { device: d.name, set: has('cases') ? o.set : null, states: has('cases') ? o.states! : null, hits: has('cases') ? o.hits! : null, anim: has('anim') ? o.anim! : null, traces: has('cases') ? o.traces! : null, env: has('cases') ? o.env! : null, trust: has('cases') ? o.trust : null, vectors: has('vectors') ? o.vectors : null, blocked: null };
   const dpr = outcome.set?.dpr ?? outcome.anim?.dpr ?? null;
   const dumps = dpr === null ? null : { dpr, set: has('cases') ? w.dumps.set : {}, states: has('cases') ? w.dumps.states : {}, hits: has('cases') ? w.dumps.hits : {}, anim: has('anim') ? w.dumps.anim : {} };
   return { schema: PART_SCHEMA, target: d.target, device: d.name, parts, evidence, producedOn: CI, outcome, dumps };
@@ -99,6 +100,7 @@ describe('part files', () => {
     const bad = (v: unknown, msg: string): void => expect(() => parsePartOutcome(JSON.stringify(v), 'p.json')).toThrow(msg);
     bad({ ...f, outcome: { ...f.outcome, anim: whole(spec('dragon-320')).outcome.anim } }, 'does not hold exactly the parts cases: anim present');
     bad({ ...f, outcome: { ...f.outcome, traces: null } }, 'traces missing');
+    bad({ ...f, outcome: { ...f.outcome, env: null } }, 'env missing');
     bad({ ...f, parts: ['anim', 'cases'] }, 'are not in the order cases, anim, vectors');
     bad({ ...f, parts: ['vectors'] }, '"vectors" is not a part of dragon-320');
     bad({ ...f, parts: 'cases' }, 'parts is not a list of part names');

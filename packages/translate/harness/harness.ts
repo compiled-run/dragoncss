@@ -10,6 +10,7 @@ import type {
   BoxSizing,
   BoxType,
   CalcExpr,
+  ContainSize,
   Direction,
   Display,
   FlexBasisValue,
@@ -37,6 +38,9 @@ import type {
   LineBreak,
   LineHeightValue,
   LineStrut,
+  ListMarker,
+  MarkerKind,
+  MarkerSymbol,
   MarginValue,
   NaturalSizeValue,
   ObjectFit,
@@ -45,9 +49,11 @@ import type {
   MaxInlineSizeValue,
   MaxSizeValue,
   MinSizeValue,
+  NoneValue,
   Overflow,
   PaddingValue,
   Position,
+  Px,
   SafeAreaSide,
   SizeValue,
   TextAlign,
@@ -79,6 +85,7 @@ import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
 import type { DistributedMode, FactorSum, LU } from '../../layout/src/units.ts';
 import {
   cachedRangeWidth,
@@ -143,7 +150,10 @@ import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTabl
 import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
 import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
+import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature, BandKeyword, BandOp, BandTable } from '../../layout/src/rt-band.ts';
+import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
+import { symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
@@ -547,6 +557,17 @@ function maxSizeValue(v: JsonValue, path: string): MaxSizeValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+/** contain-intrinsic-width and -height: px or none. */
+function pxOrNone(v: JsonValue, path: string): Px | NoneValue {
+  const k = kindOf(v, path);
+  if (k === 'px') return { kind: 'px', value: numField(obj(v, ['kind', 'value'], path), 'value', path) };
+  if (k === 'none') {
+    obj(v, ['kind'], path);
+    return { kind: 'none' };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 /** width and min-width: a SizeValue, or the css-sizing-3 keywords min-content, max-content and fit-content. */
 function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
   const k = kindOf(v, path);
@@ -644,7 +665,8 @@ const STYLE_KEYS: readonly string[] = [
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
-  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'grid', 'gridItem',
+  'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -847,6 +869,11 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
     textIndent: paddingValue(f('textIndent'), p('textIndent')),
     lineClamp: num(f('lineClamp'), p('lineClamp')),
+    containLayout: bool(f('containLayout'), p('containLayout')),
+    containPaint: bool(f('containPaint'), p('containPaint')),
+    containSize: lit(f('containSize'), ['none', 'inline-size', 'size'], p('containSize')) as ContainSize,
+    containIntrinsicWidth: pxOrNone(f('containIntrinsicWidth'), p('containIntrinsicWidth')),
+    containIntrinsicHeight: pxOrNone(f('containIntrinsicHeight'), p('containIntrinsicHeight')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
   };
@@ -906,18 +933,20 @@ function decodeReplaced(o: JsonObj, path: string): ReplacedLeaf {
 }
 
 function decodeBox(o: JsonObj, path: string): LayoutBox {
-  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'children'], path);
+  obj(o, ['kind', 'id', 'boxType', 'style', 'strut', 'marker', 'children'], path);
   const children: (LayoutBox | ReplacedLeaf | InlineChild)[] = [];
   arr(field(o, 'children', path), `${path}.children`).forEach((c, i) => {
     children.push(decodeNode(c, `${path}.children[${i}]`));
   });
   const strut = field(o, 'strut', path);
+  const marker = field(o, 'marker', path);
   return {
     kind: 'box',
     id: str(field(o, 'id', path), `${path}.id`),
     boxType: lit(field(o, 'boxType', path), ['element', 'anonymous'], `${path}.boxType`) as BoxType,
     style: decodeStyle(field(o, 'style', path), `${path}.style`),
     strut: strut.kind === 'null' ? null : decodeStrut(strut, `${path}.strut`),
+    marker: marker.kind === 'null' ? null : decodeMarker(marker, `${path}.marker`),
     children,
   };
 }
@@ -925,6 +954,20 @@ function decodeBox(o: JsonObj, path: string): LayoutBox {
 function decodeStrut(v: JsonValue, path: string): LineStrut {
   const o = obj(v, ['font', 'lineHeight'], path);
   return { font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+}
+
+function decodeMarker(v: JsonValue, path: string): ListMarker {
+  const o = obj(v, ['id', 'kind', 'symbol', 'text', 'font', 'lineHeight'], path);
+  const symbol = field(o, 'symbol', path);
+  const text = field(o, 'text', path);
+  return {
+    id: str(field(o, 'id', path), `${path}.id`),
+    kind: lit(field(o, 'kind', path), ['symbol', 'text'], `${path}.kind`) as MarkerKind,
+    symbol: symbol.kind === 'null' ? null : (lit(symbol, ['disc', 'circle', 'square'], `${path}.symbol`) as MarkerSymbol),
+    text: text.kind === 'null' ? null : str(text, `${path}.text`),
+    font: fontSpec(field(o, 'font', path), `${path}.font`),
+    lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`),
+  };
 }
 
 function decodeInline(o: JsonObj, path: string): InlineBox {
@@ -1004,7 +1047,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1095,6 +1138,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampHeightIncludesHiddenLines: b('clampHeightIncludesHiddenLines'),
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
+    containedContentSized: b('containedContentSized'),
+    containerJoinsFlow: b('containerJoinsFlow'),
   };
 }
 
@@ -1561,6 +1606,21 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const faults: DashFaults = { phase1: flagAt(a, 11), gapUnfitted: flagAt(a, 12) };
     return `["ok",[${commaList(outlinePaintOps(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), str(item(a, 6, '$'), '$[6]'), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10), faults).map(borderOpJson))}]]`;
   }
+  // PNT1-opacity-b: paint-group.ts.
+  if (name === 'paint:group:groupComposite') return `["ok",${h(groupComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), arg(a, 9), arg(a, 10) !== 0))}]`;
+  if (name === 'paint:group:groupPack') return `["ok",${h(groupPack(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)))}]`;
+  if (name === 'paint:group:groupTileSize') return `["ok",${h(groupTileSize(arg(a, 1)))}]`;
+  if (name === 'paint:group:groupTileIndex') return `["ok",${h(groupTileIndex(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupTileSpan') return numList(groupTileSpan(arg(a, 1), arg(a, 2)));
+  // PNT1-opacity-b S2: the software layer's fill, fold alpha and fold item.
+  if (name === 'paint:group:groupTileFoldIndex') return `["ok",${h(groupTileFoldIndex(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)))}]`;
+  if (name === 'paint:group:groupFoldAlpha') return `["ok",${h(groupFoldAlpha(arg(a, 1), arg(a, 2)))}]`;
+  if (name === 'paint:group:groupFill') return `["ok",${h(groupFill(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8)))}]`;
+  if (name === 'paint:group:groupTileFolds') return `["ok",${groupTileFolds(bitsList(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)) ? 'true' : 'false'}]`;
+  // PNT1-filter: paint-group.ts colour-matrix filters.
+  if (name === 'paint:group:groupFilterMatrix') return numList(groupFilterMatrix(arg(a, 1), arg(a, 2)));
+  if (name === 'paint:group:groupFilterMatrices') return numList(groupFilterMatrices(bitsList(a, 1)));
+  if (name === 'paint:group:groupFilterComposite') return `["ok",${h(groupFilterComposite(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), arg(a, 8), bitsList(a, 9), arg(a, 10)))}]`;
   // PNT2: paint-transform.ts.
   if (name === 'paint:transform:resolveTransformOrigin') {
     const o = resolveTransformOrigin(decodeOrigin(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
@@ -1575,6 +1635,8 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
     const p = mapPoint(decodeMatrix(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3));
     return `["ok",[${h(p.x)},${h(p.y)}]]`;
   }
+  // GEN-c: paint-marker.ts, a disc's or square's coverage over its device-px rect.
+  if (name === 'paint:marker:symbolCoverage') return numList(symbolCoverage(str(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)));
   if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
   if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
   if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
@@ -1997,6 +2059,12 @@ function libraryResult(op: string, a: readonly JsonValue[]): string {
     // interaction suite (SELD-R2, T064 R12): the interaction runtime over synthetic tables and an event script.
     case 'rt-interaction':
       return rtInteractionResult(a);
+    // band suite (MQ-R1, T067 R4): a stylesheet's band table looked up at root sizes in whole device px.
+    case 'rt-band':
+      return rtBandResult(a);
+    // pointer suite (MQ-R2, T067 R9): the Android pointer and hover readings of input devices' sources.
+    case 'rt-pointer':
+      return rtPointerResult(a);
     default:
       return fail(`unknown operation ${op}`);
   }
@@ -2746,4 +2814,85 @@ function rtInteractionResult(a: readonly JsonValue[]): string {
     out += `${out === '' ? '' : ','}[${iaElements(hoverMatches(t, s, IA_NO_FAULTS))},${iaElements(activeMatches(t, s, IA_NO_FAULTS))},${h(focusMatch(s))},${h(focusVisibleMatch(s))},${h(interactionCombo(t, s))},${h(interactionState(t, s))}]`;
   });
   return `[${out}]`;
+}
+
+// ---------------------------------------------------------------- band suite (MQ-R1, T067 R4)
+
+function bandOp(v: JsonValue, path: string): BandOp {
+  const t = str(v, path);
+  if (t === 'lt' || t === 'le' || t === 'gt' || t === 'ge' || t === 'eq') return t;
+  return fail(`${path}: unknown band operator ${t}`);
+}
+
+function bandFeature(v: JsonValue, path: string): BandFeature {
+  const t = str(v, path);
+  if (t === 'width' || t === 'height' || t === 'orientation' || t === 'aspect-ratio' || t === 'resolution' || t === 'pointer' || t === 'any-pointer' || t === 'hover' || t === 'any-hover' || t === 'prefers-reduced-motion' || t === 'prefers-color-scheme') return t;
+  return fail(`${path}: unknown band feature ${t}`);
+}
+
+/** An atom [feature, keyword, [[op, value, num, den]...]], numbers as bits. */
+function bandAtom(v: JsonValue, path: string): BandAtom {
+  const a = arr(v, path);
+  if (a.length !== 3) return fail(`${path}: expected [feature, keyword, comparisons]`);
+  const kw = str(item(a, 1, path), `${path}[1]`);
+  let k: BandKeyword = 'none';
+  if (kw === 'portrait' || kw === 'landscape' || kw === 'none' || kw === 'any' || kw === 'coarse' || kw === 'fine' || kw === 'hover' || kw === 'no-preference' || kw === 'reduce' || kw === 'light' || kw === 'dark') k = kw;
+  else return fail(`${path}[1]: unknown keyword ${kw}`);
+  const comparisons: BandComparison[] = [];
+  arr(item(a, 2, path), `${path}[2]`).forEach((c, i) => {
+    const p = `${path}[2][${i.toString(16)}]`;
+    const g = arr(c, p);
+    if (g.length !== 4) fail(`${p}: expected [op, value, num, den]`);
+    comparisons.push({ op: bandOp(item(g, 0, p), p), value: arg(g, 1), num: arg(g, 2), den: arg(g, 3) });
+  });
+  return { feature: bandFeature(item(a, 0, path), `${path}[0]`), comparisons, keyword: k };
+}
+
+/**
+ * A band lookup: [op, [atoms, bands], sizes]; a size is [widthPx, heightPx, dpr] as bits, a band a list of truth values. Each size
+ * gives its media width and height and the band index, as bits.
+ */
+function rtBandResult(a: readonly JsonValue[]): string {
+  if (a.length !== 3) return fail('rt-band: expected [op, table, sizes]');
+  const t = arr(item(a, 1, '$'), '$[1]');
+  if (t.length !== 2) return fail('$[1]: expected [atoms, bands]');
+  const atoms: BandAtom[] = [];
+  arr(item(t, 0, '$[1]'), '$[1][0]').forEach((x, i) => atoms.push(bandAtom(x, `$[1][0][${i.toString(16)}]`)));
+  const bands: boolean[][] = [];
+  arr(item(t, 1, '$[1]'), '$[1][1]').forEach((x, i) => {
+    const row: boolean[] = [];
+    arr(x, `$[1][1][${i.toString(16)}]`).forEach((y, j) => row.push(bool(y, `$[1][1][${i.toString(16)}][${j.toString(16)}]`)));
+    bands.push(row);
+  });
+  const table: BandTable = { atoms, bands };
+  const noFaults: BandFaults = { bandBoundaryExclusive: false, primaryPointerFineFirst: false };
+  let out = '';
+  arr(item(a, 2, '$'), '$[2]').forEach((x, i) => {
+    const p = `$[2][${i.toString(16)}]`;
+    const g = arr(x, p);
+    if (g.length !== 4) fail(`${p}: expected [widthPx, heightPx, dpr, readings]`);
+    const w = arg(g, 0);
+    const hh = arg(g, 1);
+    const dpr = arg(g, 2);
+    // MQ-R2: the readings as [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme].
+    const r = arr(item(g, 3, p), `${p}[3]`);
+    if (r.length !== 7) fail(`${p}[3]: expected [pointer, hover, anyCoarse, anyFine, anyHover, reducedMotion, darkScheme]`);
+    const env: BandEnvironment = { dpr, pointer: str(item(r, 0, p), `${p}[3][0]`), hover: bool(item(r, 1, p), `${p}[3][1]`), anyCoarse: bool(item(r, 2, p), `${p}[3][2]`), anyFine: bool(item(r, 3, p), `${p}[3][3]`), anyHover: bool(item(r, 4, p), `${p}[3][4]`), reducedMotion: bool(item(r, 5, p), `${p}[3][5]`), darkScheme: bool(item(r, 6, p), `${p}[3][6]`) };
+    out += `${out === '' ? '' : ','}[${h(mediaSize(w, dpr))},${h(mediaSize(hh, dpr))},${h(bandAtPx(table, w, hh, env, noFaults))}]`;
+  });
+  return `[${out}]`;
+}
+
+/**
+ * The Android pointer readings: [op, devices]; a device is its getSources() as bits. The result is the primary pointer (0 none, 1
+ * coarse, 2 fine), then hover, anyCoarse, anyFine and anyHover as 0 or 1, as bits.
+ */
+function rtPointerResult(a: readonly JsonValue[]): string {
+  if (a.length !== 2) return fail('rt-pointer: expected [op, devices]');
+  const sources: number[] = [];
+  const devices = arr(item(a, 1, '$'), '$[1]');
+  for (let i = 0; i < devices.length; i++) sources.push(arg(devices, i));
+  const r = androidPointerReadings(sources, { bandBoundaryExclusive: false, primaryPointerFineFirst: false });
+  const b = (x: boolean): string => h(x ? 1 : 0);
+  return `[${h(r.pointer === 'coarse' ? 1 : r.pointer === 'fine' ? 2 : 0)},${b(r.hover)},${b(r.anyCoarse)},${b(r.anyFine)},${b(r.anyHover)}]`;
 }

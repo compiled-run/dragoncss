@@ -37,6 +37,8 @@ import { TEXT_SHADOW_LONGHANDS } from '../../dragon/src/css/properties/text-shad
 import { MASK_LONGHANDS } from '../../dragon/src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS } from '../../dragon/src/css/properties/border-image.ts';
 import { COUNTERS_LONGHANDS } from '../../dragon/src/css/properties/counters.ts';
+import { MULTICOL_LONGHANDS } from '../../dragon/src/css/properties/multicol.ts';
+import { FRAGMENTATION_LONGHANDS } from '../../dragon/src/css/properties/fragmentation.ts';
 import { TABLE_LONGHANDS } from '../../dragon/src/css/properties/table.ts';
 import { OVERSCROLL_LONGHANDS } from '../../dragon/src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_LONGHANDS } from '../../dragon/src/css/properties/scroll-snap.ts';
@@ -49,16 +51,23 @@ import { repoPath } from '../src/paths.ts';
 
 /**
  * A JSON value with every text leaf's overflowWrap and wordBreak removed where they are 'normal' (the TXT2-a migration) and its
- * smallCaps where it is false (the TXT-FONTFEAT small-caps migration), and every LayoutStyle's lineClamp removed where it is 0 (the
- * TXT2-g migration: a style is the object that carries textOverflow).
+ * smallCaps where it is false (the TXT-FONTFEAT small-caps migration), every box's marker where it is null (the GEN-c migration:
+ * LayoutBox.marker is required), and every LayoutStyle's lineClamp removed where it is 0 (the TXT2-g migration: a style is the
+ * object that carries textOverflow) and its contain keys where they are at their initial values (the CONTAIN migration, which CQ's
+ * inline-size containment shares).
  */
+/** CONTAIN's LayoutStyle keys at their initial values, which vectors written before it lack. */
+const containInitial = (k: string, x: unknown): boolean =>
+  ((k === 'containLayout' || k === 'containPaint') && x === false) || (k === 'containSize' && x === 'none') || ((k === 'containIntrinsicWidth' || k === 'containIntrinsicHeight') && JSON.stringify(x) === '{"kind":"none"}');
+
 function withoutWrapKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(withoutWrapKeys);
   if (typeof v !== 'object' || v === null) return v;
   const o = v as Record<string, unknown>;
   const leaf = o['kind'] === 'text';
+  const box = o['kind'] === 'box';
   const style = 'textOverflow' in o;
-  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(style && k === 'lineClamp' && x === 0)).map(([k, x]) => [k, withoutWrapKeys(x)]));
+  return Object.fromEntries(Object.entries(o).filter(([k, x]) => !(leaf && (k === 'overflowWrap' || k === 'wordBreak') && x === 'normal') && !(leaf && k === 'smallCaps' && x === false) && !(box && k === 'marker' && x === null) && !(style && k === 'lineClamp' && x === 0) && !(style && containInitial(k, x))).map(([k, x]) => [k, withoutWrapKeys(x)]));
 }
 
 /**
@@ -76,8 +85,10 @@ function withoutWrapKeys(v: unknown): unknown {
  * fixture opacity-cascade, which changes its vectors, pixels and captures (and its -rtl twin) and nothing else.
  */
 // Retaken on batch landing #457: TABLE (#443) changes list-style-values and TOUCH (#444) touch-action-values, the only BASE files that moved.
-const BASE_OUTPUTS = { files: 13143, digest: '2005c2806308eb30542addd828505363789fbfb2e87ec4046130ce0b9b840f97' };
-const BASE_CAPTURES = { files: 3354, digest: 'fa16f2e53e319bd858e47eb3663d0c860c4e18d72bd24ac51dd06f9b27b917b1' };
+// Retaken on batch landing 4a: T154 slice 1 (#505) adds auto and text rows to the BASE fixture user-select-none, whose files (and their
+// -rtl twins) are the only BASE files that moved; with them put back, this tree gives 2005c28063… and fa16f2e53e….
+const BASE_OUTPUTS = { files: 13143, digest: '9b828f312f178e1dff5d11afcb40d0ed9cd3393cd201cd2ba8a25d0bc5b8770f' };
+const BASE_CAPTURES = { files: 3354, digest: '26f638db033721f467584d67565c8ab829c855604aa73831e1b7645ba01848c5' };
 const SOURCE = { uri: 'dragon-source://test/weight.css', revision: 'r1', hash: 'sha256:0' };
 
 type Browser = { newPage(o?: object): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown>; screenshot(): Promise<Buffer> }>; close(): Promise<void> };
@@ -246,7 +257,7 @@ describe('the native refusals', () => {
 });
 
 /** Case id prefixes of the groups that landed after BASE beside those named in the filter below (see own). */
-const LATER_PREFIXES = ['border-image-initial', 'clip-path-', 'svg-stroke', 'svg-dash', 'svg-geometry', 'bg-position-', 'clip-rect-', 'filter-none', 'atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-font-variant-', 'text-font-tuning-', 'text-font-stretch-', 'text-font-features-', 'text-font-size-', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units', 'text-decoration-native-values', 'text-fill-stroke-', 'text-shadow-', 'alias-background', 'shadow-webkit-alias', 'svg-opacity', 'text-style-ahem', 'text-decoration-native-styles', 'alias-font', 'mask-initial', 'svg-paint-order', 'text-shadow-none', 'svg-rrect', 'transform-extra-', 'svg-vector-effect', 'grid-item-', 'opacity-fold', 'background-blend-', 'grid-track-math', 'bg-clip-text', 'box-decoration-', 'text-word-break-', 'text-line-break-', 'text-hyphens-', 'text-wrap-ahem', 'text-tab-size-', 'text-align-last-', 'scroll-scrollbar-', 'color-scheme-', 'transform-individual', 'stacking-isolation', 'stacking-backface', 'appearance-values', 'ui-colors-values', 'user-modify-values', 'scroll-initial-longhands', 'containment-initial', 'zoom-', 'svg-inert', 'gen-', 'table-properties', 'text-stroke-', 'replaced-video'];
+const LATER_PREFIXES = ['charset-late', 'charset-single-quotes', 'charset-after-rules', 'page-dropped', 'speak-values', 'mask-gradient', 'multicol-', 'border-image-initial', 'clip-path-', 'svg-stroke', 'svg-dash', 'svg-geometry', 'bg-position-', 'clip-rect-', 'filter-none', 'atomic-inline-grid', 'outline-web', 'radius-double-web', 'resize-values', 'grid-baseline-axes', 'text-decoration-native-current', 'line-clamp-', 'stacking-grid-items', 'text-font-variant-', 'text-font-tuning-', 'text-font-stretch-', 'text-font-features-', 'text-font-size-', 'touch-action-values', 'radius-logical', 'grid-gap-units', 'ctx-proof-flex-gap-units', 'text-decoration-native-values', 'text-fill-stroke-', 'text-shadow-', 'alias-background', 'shadow-webkit-alias', 'svg-opacity', 'text-style-ahem', 'text-decoration-native-styles', 'alias-font', 'mask-initial', 'svg-paint-order', 'text-shadow-none', 'svg-rrect', 'transform-extra-', 'svg-vector-effect', 'grid-item-', 'opacity-fold', 'background-blend-', 'grid-track-math', 'color-functions', 'bg-clip-text', 'bg-image-', 'box-decoration-', 'text-word-break-', 'text-line-break-', 'text-hyphens-', 'text-wrap-ahem', 'text-tab-size-', 'text-align-last-', 'scroll-scrollbar-', 'scroll-webkit-scrollbar', 'scroll-overscroll-', 'color-scheme-', 'transform-individual', 'stacking-isolation', 'stacking-backface', 'appearance-values', 'ui-colors-values', 'user-modify-values', 'scroll-initial-longhands', 'scroll-snap-values', 'containment-', 'scroll-contain-layout', 'zoom-', 'svg-inert', 'text-synthesis-small-caps-', 'gen-', 'table-properties', 'text-stroke-', 'opacity-group-', 'filter-matrix-', 'transform-perspective', 'backface-values', 'isolation-', 'transform-indiv-', 'fx-', 'container-inline-size', 'cq-rules', 'cq-units', 'fragmentation-', 'casc-layer-revert', 'display-contents', 'link-pseudos', 'list-markers-', 'mqr-rotate', 'overflow-text-cards', 'replaced-video'];
 
 describe('BASE pins', () => {
   // The outputs of BASE that TXT-W1 must not change, pinned as digests (PIN-DERIVE: CI checks out the head alone, so the pins read
@@ -260,7 +271,9 @@ describe('BASE pins', () => {
   // The groups that landed after BASE and add files only: G-INL's atomic-inline-grid, PNT1's outline-web and radius-double-web,
   // resize-values, G3b's grid-baseline-axes, PNT's text-decoration-native-current, TXT2-g's line-clamp cases, PNT1's stacking-grid-items cases and touch-action-values. (PNT1's change to
   // three BASE fixtures is retaken in BASE_OUTPUTS and BASE_CAPTURES, not left out.)
-  const own = (p: string): boolean => /(^|\/)(text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|clip-rect-|filter-none|bg-position-|svg-stroke|svg-dash|svg-geometry|clip-path-|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-font-variant-|text-font-tuning-|text-font-stretch-|text-font-features-|text-font-size-|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-fill-stroke-|text-shadow-|alias-background|shadow-webkit-alias|svg-opacity|text-style-ahem|alias-font|mask-initial|svg-paint-order|text-shadow-none|svg-rrect|transform-extra-|border-image-initial|background-blend-|svg-vector-effect|grid-item-|opacity-fold|grid-track-math|bg-clip-text|box-decoration-|text-word-break-|text-line-break-|text-hyphens-|text-wrap-ahem|text-tab-size-|text-align-last-|scroll-scrollbar-|color-scheme-|transform-individual|stacking-isolation|stacking-backface|appearance-values|ui-colors-values|user-modify-values|scroll-initial-longhands|containment-initial|zoom-|svg-inert|gen-|table-properties|text-stroke-)/.test(p);
+  const own = (p: string): boolean => /(^|\/)(multicol-|charset-late|charset-single-quotes|charset-after-rules|page-dropped|speak-values|text-weight-|fonts-weight-synthetic|font-shorthand-|text-decoration-|white-space-|text-justify-|text-word-spacing-|text-indent-|svg-colors|clip-rect-|filter-none|bg-position-|svg-stroke|svg-dash|svg-geometry|clip-path-|text-break-|atomic-inline-grid|outline-web|radius-double-web|resize-values|grid-baseline-axes|line-clamp-|stacking-grid-items|text-font-variant-|text-font-tuning-|text-font-stretch-|text-font-features-|text-font-size-|touch-action-values|radius-logical|grid-gap-units|ctx-proof-flex-gap-units|text-fill-stroke-|text-shadow-|alias-background|shadow-webkit-alias|svg-opacity|text-style-ahem|alias-font|mask-initial|svg-paint-order|text-shadow-none|svg-rrect|transform-extra-|border-image-initial|background-blend-|svg-vector-effect|grid-item-|opacity-fold|grid-track-math|color-functions|bg-clip-text|bg-image-|box-decoration-|text-word-break-|text-line-break-|text-hyphens-|text-wrap-ahem|text-tab-size-|text-align-last-|scroll-scrollbar-|scroll-webkit-scrollbar|scroll-overscroll-|color-scheme-|transform-individual|stacking-isolation|stacking-backface|appearance-values|ui-colors-values|user-modify-values|scroll-initial-longhands|scroll-snap-values|containment-|scroll-contain-layout|zoom-|svg-inert|text-synthesis-small-caps-|gen-|table-properties|text-stroke-|container-inline-size|cq-rules|cq-units|fragmentation-|casc-layer-revert|display-contents|link-pseudos|list-markers-|mqr-rotate|overflow-text-cards)/.test(p);
+  // Batch 4a adds #462's overflow-text-cards, #469's display-contents, link-pseudos and list-markers-, #472's mqr-rotate, #488's
+  // casc-layer-revert and #499's fragmentation- (files only), and #499's fragmentation longhands to ADDED_KEYS.
   const files = (dirs: readonly string[], keep: (p: string) => boolean): string[] => dirs.flatMap((d) => (readdirSync(repoPath(d), { recursive: true, withFileTypes: true }) as Dirent[])
     .filter((f) => f.isFile()).map((f) => relative(repoPath('.'), join(f.parentPath, f.name)).split(sep).join('/'))).filter((p) => keep(p) && !own(p)).sort();
   const digest = (paths: readonly string[], content: (p: string) => string | Buffer): string =>
@@ -278,7 +291,7 @@ describe('BASE pins', () => {
     expect(base.length).toBe(828);
     expect(createHash('sha256').update(base.join('\n')).digest('hex')).toBe('913a57ff7fbe0dd1f9eb9b3fc119cd82889e581ec4a9f6e628b0d675a73febf3');
   });
-  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE (vectors up to the TXT2-a TextLeaf keys and the TXT2-g lineClamp)', () => {
+  it('every existing vector, break vector, break capture and pixel PNG is byte-identical to BASE (vectors up to the TXT2-a TextLeaf keys, the TXT2-g lineClamp and the CONTAIN keys)', () => {
     // TXT2-a gives every text leaf overflowWrap and wordBreak, so a vector is digested as its JSON with both removed where they are
     // 'normal' (every other byte of it is still pinned), and the vectors README (a format document, not a vector) documents the keys.
     const dirs = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/parity/expected-breaks', 'packages/parity/expected-pixels'];
@@ -290,9 +303,12 @@ describe('BASE pins', () => {
     expect(withoutWrapKeys({ kind: 'text', overflowWrap: 'anywhere', wordBreak: 'normal' })).toEqual({ kind: 'text', overflowWrap: 'anywhere' });
     expect(withoutWrapKeys({ kind: 'text', smallCaps: true })).toEqual({ kind: 'text', smallCaps: true });
     expect(withoutWrapKeys({ kind: 'text', smallCaps: false })).toEqual({ kind: 'text' });
+    expect(withoutWrapKeys({ textOverflow: 'clip', containSize: 'inline-size' })).toEqual({ textOverflow: 'clip', containSize: 'inline-size' });
+    expect(withoutWrapKeys({ kind: 'box', marker: null })).toEqual({ kind: 'box' });
+    expect(withoutWrapKeys({ kind: 'box', marker: { kind: 'text' } })).toEqual({ kind: 'box', marker: { kind: 'text' } });
   });
   /** The computed keys added since BASE: TXT-W1's font-weight and font-style, TXT-W2's font-synthesis longhands, TDEC-a's decoration longhands, TXT2-b's spacing, TXT2-h's text-indent, TXT2-a's overflow-wrap and word-break, TXT2-g's -webkit-box-orient and -webkit-line-clamp, resize-values' resize, touch-action-values' touch-action, TXT-FX's text fill, stroke and shadow, the font-variant, font-tuning, font-stretch and font-features longhands. */
-  const ADDED_KEYS = ['font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'background-blend-mode', 'vector-effect', 'box-decoration-break', ...LINE_BREAK_LONGHANDS, ...HYPHENS_LONGHANDS, ...TEXT_WRAP_LONGHANDS, ...TAB_SIZE_LONGHANDS, ...TEXT_ALIGN_LAST_LONGHANDS, 'scrollbar-width', 'scrollbar-gutter', 'color-scheme', 'translate', 'rotate', 'scale', 'isolation', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', ...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS];
+  const ADDED_KEYS = ['speak', ...MULTICOL_LONGHANDS, 'font-weight', 'font-style', 'font-synthesis-weight', 'font-synthesis-style', 'font-synthesis-small-caps', ...TEXT_DECORATION_LONGHANDS, 'letter-spacing', 'word-spacing', 'text-indent', 'overflow-wrap', 'word-break', '-webkit-box-orient', '-webkit-line-clamp', 'resize', 'touch-action', ...TEXT_FILL_STROKE_LONGHANDS, ...TEXT_SHADOW_LONGHANDS, ...FONT_VARIANT_LONGHANDS, ...FONT_TUNING_LONGHANDS, ...FONT_STRETCH_LONGHANDS, ...FONT_FEATURES_LONGHANDS, 'fill-opacity', 'stroke-opacity', 'clip', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'clip-path', 'filter', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', ...MASK_LONGHANDS, 'paint-order', 'rx', 'ry', 'backface-visibility', 'transform-style', 'transform-box', 'perspective', 'perspective-origin', ...BORDER_IMAGE_LONGHANDS, 'background-blend-mode', 'vector-effect', 'box-decoration-break', ...LINE_BREAK_LONGHANDS, ...HYPHENS_LONGHANDS, ...TEXT_WRAP_LONGHANDS, ...TAB_SIZE_LONGHANDS, ...TEXT_ALIGN_LAST_LONGHANDS, 'scrollbar-width', 'scrollbar-gutter', 'color-scheme', 'translate', 'rotate', 'scale', 'isolation', 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...OVERSCROLL_LONGHANDS, ...SCROLL_SNAP_LONGHANDS, ...CONTAINMENT_LONGHANDS, ...CONTAINER_QUERY_LONGHANDS, 'zoom', 'clip-rule', 'marker-start', 'marker-mid', 'marker-end', ...TABLE_LONGHANDS, ...COUNTERS_LONGHANDS, ...FRAGMENTATION_LONGHANDS];
   it('every existing capture equals BASE once the computed keys added since are removed', () => {
     const dirs = ['packages/parity/expected', 'packages/parity/expected-dpr', 'packages/parity/expected-fonts'];
     const paths = files(dirs, (p) => p.endsWith('.json'));

@@ -9,6 +9,7 @@ import { ATTRIBUTES } from './fixture-groups/attributes.ts';
 import { BACKGROUND_BLEND } from './fixture-groups/background-blend.ts';
 import { BACKGROUND } from './fixture-groups/background.ts';
 import { BG_CLIP_TEXT } from './fixture-groups/bg-clip-text.ts';
+import { BG_IMAGE } from './fixture-groups/bg-image.ts';
 import { BG_POSITION } from './fixture-groups/bg-position.ts';
 import { BLOCK_ELEMENTS } from './fixture-groups/block-elements.ts';
 import { BORDER_IMAGE } from './fixture-groups/border-image.ts';
@@ -21,15 +22,20 @@ import { CASCADE_VAR } from './fixture-groups/cascade-var.ts';
 import { CHARSET } from './fixture-groups/charset.ts';
 import { CLIP_PATH } from './fixture-groups/clip-path.ts';
 import { CLIP_RECT } from './fixture-groups/clip-rect.ts';
+import { COLOR_FUNCTIONS } from './fixture-groups/color-functions.ts';
 import { COLOR_SCHEME } from './fixture-groups/color-scheme.ts';
+import { CONTAINER_QUERY } from './fixture-groups/container-query.ts';
 import { CONTEXTS } from './fixture-groups/contexts.ts';
 import { CTX_PROOF } from './fixture-groups/ctx-proof.ts';
+import { DISPLAY_CONTENTS } from './fixture-groups/display-contents.ts';
 import { DISPLAY_LEGACY } from './fixture-groups/display-legacy.ts';
 import { EFFECTS } from './fixture-groups/effects.ts';
 import { ENV } from './fixture-groups/env.ts';
 import { FILTER } from './fixture-groups/filter.ts';
 import { FONT_SHORTHAND } from './fixture-groups/font-shorthand.ts';
 import { FONTS } from './fixture-groups/fonts.ts';
+import { FRAGMENTATION } from './fixture-groups/fragmentation.ts';
+import { FX } from './fixture-groups/fx.ts';
 import { GENERATED_CONTENT } from './fixture-groups/generated-content.ts';
 import { GRADIENTS } from './fixture-groups/gradients.ts';
 import { GRID } from './fixture-groups/grid.ts';
@@ -38,15 +44,21 @@ import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
+import { ISOLATION } from './fixture-groups/isolation.ts';
 import { LINE_CLAMP } from './fixture-groups/line-clamp.ts';
+import { LINK_PSEUDOS } from './fixture-groups/link-pseudos.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
+import { LIST_MARKERS } from './fixture-groups/list-markers.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
 import { MASK } from './fixture-groups/mask.ts';
+import { MEDIA_ENVIRONMENT } from './fixture-groups/media-environment.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
 import { MEDIA } from './fixture-groups/media.ts';
 import { MILESTONE_1 } from './fixture-groups/milestone-1.ts';
+import { MULTICOL } from './fixture-groups/multicol.ts';
 import { OUTLINE } from './fixture-groups/outline.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
+import { OVERSCROLL } from './fixture-groups/overscroll.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
@@ -60,6 +72,7 @@ import { SHADOW } from './fixture-groups/shadow.ts';
 import { SHOWCASE } from './fixture-groups/showcase.ts';
 import { SIZING_KEYWORDS } from './fixture-groups/sizing-keywords.ts';
 import { SIZING } from './fixture-groups/sizing.ts';
+import { SPEAK } from './fixture-groups/speak.ts';
 import { STATES } from './fixture-groups/states.ts';
 import { SVG } from './fixture-groups/svg.ts';
 import { TABLE } from './fixture-groups/table.ts';
@@ -161,6 +174,7 @@ export const GROUPS = {
   background: BACKGROUND,
   'background-blend': BACKGROUND_BLEND,
   'bg-clip-text': BG_CLIP_TEXT,
+  'bg-image': BG_IMAGE,
   'bg-position': BG_POSITION,
   'block-elements': BLOCK_ELEMENTS,
   'border-image': BORDER_IMAGE,
@@ -173,15 +187,20 @@ export const GROUPS = {
   charset: CHARSET,
   'clip-path': CLIP_PATH,
   'clip-rect': CLIP_RECT,
+  'color-functions': COLOR_FUNCTIONS,
   'color-scheme': COLOR_SCHEME,
+  'container-query': CONTAINER_QUERY,
   contexts: CONTEXTS,
   'ctx-proof': CTX_PROOF,
+  'display-contents': DISPLAY_CONTENTS,
   'display-legacy': DISPLAY_LEGACY,
   effects: EFFECTS,
   env: ENV,
   filter: FILTER,
   'font-shorthand': FONT_SHORTHAND,
   fonts: FONTS,
+  fragmentation: FRAGMENTATION,
+  fx: FX,
   'generated-content': GENERATED_CONTENT,
   gradients: GRADIENTS,
   grid: GRID,
@@ -190,15 +209,21 @@ export const GROUPS = {
   inline: INLINE,
   'inline-tags': INLINE_TAGS,
   interaction: INTERACTION,
+  isolation: ISOLATION,
   'line-clamp': LINE_CLAMP,
+  'link-pseudos': LINK_PSEUDOS,
   'list-items': LIST_ITEMS,
+  'list-markers': LIST_MARKERS,
   'logical-props': LOGICAL_PROPS,
   mask: MASK,
   media: MEDIA,
+  'media-environment': MEDIA_ENVIRONMENT,
   'media-runtime': MEDIA_RUNTIME,
   'milestone-1': MILESTONE_1,
+  multicol: MULTICOL,
   outline: OUTLINE,
   overflow: OVERFLOW,
+  overscroll: OVERSCROLL,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
@@ -212,6 +237,7 @@ export const GROUPS = {
   showcase: SHOWCASE,
   'sizing-keywords': SIZING_KEYWORDS,
   'sizing-ratio': SIZING,
+  speak: SPEAK,
   states: STATES,
   svg: SVG,
   table: TABLE,

@@ -1,4 +1,5 @@
 // Stage 2 of docs/api.md §4.1 for ios: resolved CSS to Dragon's layout engine input, with every field set explicitly.
+import type { ListStyleType } from '../css/counter-styles.ts';
 import type {
   AlignContent,
   AspectRatioValue,
@@ -10,6 +11,7 @@ import type {
   FlexBasisValue,
   FlexDirection,
   FlexWrap,
+  CalcExpr,
   FontSpec,
   GapValue,
   InlineChild,
@@ -24,6 +26,7 @@ import type {
   LengthCalc,
   LineHeightValue,
   LineStrut,
+  ListMarker,
   MarginValue,
   Overflow,
   MaxInlineSizeValue,
@@ -49,12 +52,16 @@ import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
+import type { ListItemMarker } from '../analysis/markers.ts';
+import { listItemMarkers } from '../analysis/markers.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
-import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath } from '../css/math.ts';
+import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import { videoLoads } from '../videos/compile.ts';
+import { appliedContainment } from '../analysis/containment.ts';
+import type { Containment } from '../css/properties/containment.ts';
 import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
 import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
@@ -84,7 +91,7 @@ function keyword<T extends string>(id: string, get: Get, p: Longhand, allowed: r
 }
 
 /** What the lowering of one element reads besides its values: its font sizes for em and rem, and the compiler faults. */
-type Lowering = { readonly em: number | null; readonly rem: number | null; readonly faults: CompilerFaults };
+type Lowering = { readonly em: number | null; readonly emSize: CalcExpr | null; readonly rem: number | null; readonly faults: CompilerFaults };
 
 const VIEWPORT_AXIS: { readonly [unit: string]: 'width' | 'height' | 'min' | 'max' } = { vw: 'width', vi: 'width', vh: 'height', vb: 'height', vmin: 'min', vmax: 'max' };
 
@@ -97,13 +104,15 @@ function lengthPercentage(id: string, get: Get, p: Longhand, range: LengthCalc['
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
   if (v.kind === 'percentage') return { kind: 'percent', value: v.value };
   if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' }, range };
+  // CALC-2: an em under a font size that follows the viewport stays an em leaf over that size, which the engine resolves.
+  if (v.kind === 'length' && v.unit === 'em' && l.emSize !== null) return { kind: 'calc', expr: { kind: 'em', value: v.value, fontSize: l.emSize }, range };
   if (v.kind !== 'other' || !MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) return null;
   const context = mathContextFor(p);
   const parsed = 'refused' in context ? null : parseMath(v.text, context);
   if (parsed === null || !parsed.ok) return fail(id, p, v, `a calculation V1 supports${parsed === null ? '' : ` (${parsed.reason})`}`);
   const needs = fontUnitsIn(parsed.node);
-  if ((needs.em && l.em === null) || (needs.rem && l.rem === null)) return fail(id, p, v, 'em and rem in a calculation on an element whose font sizes are px');
-  const fonts: MathFonts = { em: l.em === null ? 0 : l.em, rem: l.rem === null ? 0 : l.rem };
+  if ((needs.em && l.em === null && l.emSize === null) || (needs.rem && l.rem === null)) return fail(id, p, v, 'em and rem in a calculation on an element whose font sizes are px');
+  const fonts: MathFonts = { em: l.em === null ? 0 : l.em, rem: l.rem === null ? 0 : l.rem, ...(l.emSize === null ? {} : { emSize: l.emSize }) };
   return lowerLengthCalc(parsed.node, fonts, range, l.faults);
 }
 
@@ -220,6 +229,59 @@ function fontPx(v: CssValue): number | null {
 }
 
 /**
+ * CALC-2: a computed font-size that follows the large viewport (a vw, vh, vi, vb, vmin or vmax length, or a calculation reading one
+ * whose em, rem and % analysis/computed.ts made px) as the engine's specified size expression, which it resolves on the device
+ * (input.ts FontSpec.specifiedSize). Null for any other value.
+ */
+export function viewportFontSize(v: CssValue): CalcExpr | null {
+  if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' };
+  if (v.kind !== 'other' || !MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) return null;
+  const context = mathContextFor('font-size');
+  const parsed = 'refused' in context ? null : parseMath(v.text, context);
+  if (parsed === null || !parsed.ok || !mathHasViewport(parsed.node)) return null;
+  const units = fontUnitsIn(parsed.node);
+  if (units.em || units.rem) return null;
+  return lowerMathNode(parsed.node, { em: 0, rem: 0 });
+}
+
+/**
+ * CALC-2: a line-height under a font size that follows the viewport: a percentage of the computed size, an em leaf over its
+ * expression, or a calculation over both, which the engine resolves against the computed size (environment.ts
+ * resolveLineHeightValue).
+ */
+function followingLineHeight(id: string, lh: CssValue, size: CalcExpr): LineHeightValue {
+  if (lh.kind === 'percentage') return { kind: 'percent', value: lh.value };
+  if (lh.kind === 'length' && lh.unit === 'em') return { kind: 'calc', expr: { kind: 'em', value: lh.value, fontSize: size }, range: 'non-negative' };
+  const context = mathContextFor('line-height');
+  const parsed = lh.kind === 'other' && MATH_VALUE_FUNCTIONS.has(lh.type.replace('()', '')) && !('refused' in context) ? parseMath(lh.text, context) : null;
+  if (parsed === null || !parsed.ok || fontUnitsIn(parsed.node).rem) return fail(id, 'line-height', lh, 'normal | <number> | px | % | em | a calculation of them');
+  return { kind: 'calc', expr: lowerMathNode(parsed.node, { em: 0, rem: 0, emSize: size }), range: 'non-negative' };
+}
+
+/**
+ * CALC-2: why lowerFont cannot lower a computed font-size and line-height on the device, or null when it can. A size Chrome takes
+ * of a parent that follows the viewport (em, % or a calculation of them) and a line-height whose em or % an ancestor computed
+ * against such a size stay relative here, which the engine does not resolve yet. inheritedOverOwnSize: the line-height is inherited
+ * while the font-size is the element's own.
+ */
+export function fontLoweringGap(fs: CssValue, lh: CssValue, inheritedOverOwnSize: boolean): { readonly property: 'font-size' | 'line-height'; readonly reason: string } | null {
+  const follows = viewportFontSize(fs);
+  if ((fs.kind !== 'length' || fs.unit !== 'px') && follows === null) return { property: 'font-size', reason: 'it is taken of a parent font-size that follows the viewport' };
+  if ((lh.kind === 'keyword' && lh.value === 'normal') || lh.kind === 'number' || (lh.kind === 'length' && lh.unit === 'px')) return null;
+  // Chrome computes an em or % line-height to px where it is declared, so a child with its own font size inherits that px.
+  if (follows === null || inheritedOverOwnSize) return { property: 'line-height', reason: 'it inherits an em or % an ancestor took of a font-size that follows the viewport' };
+  if (lh.kind === 'percentage' || (lh.kind === 'length' && lh.unit === 'em')) return null;
+  const context = mathContextFor('line-height');
+  const parsed = lh.kind === 'other' && MATH_VALUE_FUNCTIONS.has(lh.type.replace('()', '')) && !('refused' in context) ? parseMath(lh.text, context) : null;
+  return parsed !== null && parsed.ok && !fontUnitsIn(parsed.node).rem ? null : { property: 'line-height', reason: 'a rem in it under a font-size that follows the viewport' };
+}
+
+/** An element's em: its px font size, or the expression of one that follows the viewport (viewportFontSize). */
+function emOf(v: CssValue): { readonly em: number | null; readonly emSize: CalcExpr | null } {
+  return { em: fontPx(v), emSize: viewportFontSize(v) };
+}
+
+/**
  * The root element's specified font size in px at text scale 1: the engine input's rootFontSize, which rem leaves read (V2 of
  * the value model). A host scales it for the device text size (docs/decisions.md, Device text size).
  */
@@ -239,11 +301,13 @@ const NO_LAST_BASELINE: LastBaselineContext = { items: false, self: false };
 export function lowerStyle(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null = null, lastBaseline: LastBaselineContext = NO_LAST_BASELINE): LayoutStyle {
   const id = el.element.address;
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
-  const fonts = { em: fontPx(get('font-size')), rem: rootFontSize };
-  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el));
+  const fonts = { ...emOf(get('font-size')), rem: rootFontSize };
+  return lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, fonts, lastBaseline, lineClampOf(el), appliedContainment(el));
 }
 
 const keywordOf = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
+
+const NO_CONTAINMENT: Containment = { size: 'none', layout: false, style: false, paint: false };
 
 // css-lists-3 §3: a list item without a marker is a block (Blink LayoutListItem is a LayoutBlockFlow); computed-checks.ts refuses the rest.
 function displayOfStyle(id: string, get: Get, lineClamp: number): Display {
@@ -306,12 +370,25 @@ function alignKeyword<T extends string>(id: string, get: Get, p: Longhand, allow
   return keyword(id, get, p, allowed);
 }
 
+// css-conditional-5 §2.1: container-type: inline-size gives the box inline-size containment and an independent formatting context;
+// analysis/scroll-containment.ts refuses every other value but normal, and inline-size on an inline box or a replaced element.
+function containInlineSize(id: string, get: Get): boolean {
+  const v = get('container-type');
+  if (v.kind === 'keyword' && (v.value === 'normal' || v.value === 'inline-size')) return v.value === 'inline-size';
+  return fail(id, 'container-type', v, 'normal | inline-size');
+}
+
 /**
  * lineClamp: N for a line-clamp container, decided in analysis from the specified display (analysis/line-clamp.ts lineClampOf), else
  * 0; an anonymous box and a replaced element never clamp.
  */
-function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0): LayoutStyle {
-  const l: Lowering = { em: fonts.em, rem: fonts.rem, faults };
+function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: CompilerFaults, ua: UaDataset, fonts: { readonly em: number | null; readonly emSize?: CalcExpr | null; readonly rem: number | null }, lastBaseline: LastBaselineContext = NO_LAST_BASELINE, lineClamp = 0, containment: Containment = NO_CONTAINMENT): LayoutStyle {
+  const l: Lowering = { em: fonts.em, emSize: fonts.emSize ?? null, rem: fonts.rem, faults };
+  // css-contain-2 §3.4: paint containment clips the contents to the padding box as overflow: clip does, on an axis that does not already clip.
+  const overflow = (p: 'overflow-x' | 'overflow-y'): Overflow => {
+    const v = keyword<Overflow>(id, get, p, OVERFLOW_VALUES);
+    return containment.paint && v === 'visible' ? 'clip' : v;
+  };
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   return {
@@ -321,8 +398,8 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     right: inset(id, get, 'right', l),
     bottom: inset(id, get, 'bottom', l),
     left: inset(id, get, 'left', l),
-    overflowX: keyword<Overflow>(id, get, 'overflow-x', OVERFLOW_VALUES),
-    overflowY: keyword<Overflow>(id, get, 'overflow-y', OVERFLOW_VALUES),
+    overflowX: overflow('overflow-x'),
+    overflowY: overflow('overflow-y'),
     direction: keyword(id, get, 'direction', ['ltr', 'rtl']),
     boxSizing,
     width: inlineSize(id, get, 'width', l),
@@ -365,6 +442,13 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),
     textIndent: textIndent(id, get, l),
     lineClamp,
+    containLayout: containment.layout,
+    containPaint: containment.paint,
+    // container-type: inline-size is inline-size containment too; contain: size covers both axes already.
+    containSize: containment.size !== 'none' ? containment.size : containInlineSize(id, get) ? 'inline-size' : 'none',
+    // contain-intrinsic-width and -height accept none alone (analysis/scroll-containment.ts), a size containment of 0.
+    containIntrinsicWidth: { kind: 'none' },
+    containIntrinsicHeight: { kind: 'none' },
     grid: null,
     gridItem: null,
   };
@@ -417,14 +501,19 @@ function lowerFamily(id: string, family: CssValue, mode: LowerMode): string {
 function lowerFont(id: string, get: (p: TextLonghand) => CssValue, mode: LowerMode): { readonly font: FontSpec; readonly lineHeight: LineHeightValue } {
   const face = lowerFamily(id, get('font-family'), mode);
   const fs = get('font-size');
-  if (fs.kind !== 'length' || fs.unit !== 'px') fail(id, 'font-size', fs, 'px');
+  const follows = viewportFontSize(fs);
+  if ((fs.kind !== 'length' || fs.unit !== 'px') && follows === null) fail(id, 'font-size', fs, 'px | a large viewport length | a calculation reading one');
   const lh = get('line-height');
   let lineHeight: LineHeightValue;
   if (lh.kind === 'keyword' && lh.value === 'normal') lineHeight = { kind: 'normal' };
   else if (lh.kind === 'number') lineHeight = { kind: 'number', value: lh.value };
   else if (lh.kind === 'length' && lh.unit === 'px') lineHeight = { kind: 'px', value: lh.value };
+  else if (follows !== null) lineHeight = followingLineHeight(id, lh, follows);
   else return fail(id, 'line-height', lh, 'normal | <number> | px');
-  return { font: { family: face, size: fs.value, specifiedSize: { kind: 'px', value: fs.value }, absoluteSize: true }, lineHeight };
+  // A size that follows the viewport is absolute (ConvertFontSize: no em or percentage remains), and the engine resolves it; size
+  // is its placeholder until then (layout environment.ts resolveText).
+  if (follows !== null) return { font: { family: face, size: 0, specifiedSize: follows, absoluteSize: true }, lineHeight };
+  return { font: { family: face, size: (fs as { readonly value: number }).value, specifiedSize: { kind: 'px', value: (fs as { readonly value: number }).value }, absoluteSize: true }, lineHeight };
 }
 
 /** The white-space-collapse values the engine lays out (input.ts WhiteSpaceCollapse). */
@@ -475,6 +564,22 @@ const displayOf = (el: ResolvedElement): string => {
 };
 
 /**
+ * css-display-3 §2.5: the children that generate boxes in el's box. display: none ones generate none, and a display: contents
+ * element is replaced by its own children (it still passes on its inherited values, which resolve.ts has applied).
+ */
+function boxChildren(el: ResolvedElement): (ResolvedElement | ResolvedText)[] {
+  return el.children.flatMap((c): (ResolvedElement | ResolvedText)[] => {
+    if (c.kind === 'text') return [c];
+    const d = displayOf(c);
+    if (d === 'none') return [];
+    if (d !== 'contents') return [c];
+    // css-display-3 §2.7 (Appendix B): a replaced element with display: contents computes to none in Chrome; Dragon refuses it.
+    if (isReplacedTag(c.element.tag)) throw new LoweringError(c.element.address, 'display', `display: contents on the replaced element ${c.element.address} is not supported`);
+    return boxChildren(c);
+  });
+}
+
+/**
  * C5: a text leaf carries its inherited text-align and direction (goal.md principle 3), while the engine reads both from the block
  * container that holds the text (css-text-3 §7.1, css-writing-modes-4 §2.1). Without inline elements they must be equal.
  */
@@ -494,7 +599,7 @@ const isAtomic = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'ele
 const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind === 'text' || (displayOf(c) === 'inline' && !isReplacedTag(c.element.tag)) || isAtomic(c);
 
 /** propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. */
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null };
+type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker> };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -510,7 +615,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
     if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
-  const kids = c.children.filter((k) => k.kind === 'text' || displayOf(k) !== 'none');
+  const kids = boxChildren(c);
   const block = kids.find((k) => !isInlineLevel(k) || isAtomic(k));
   if (block !== undefined && block.kind === 'element') {
     if (isAtomic(block)) throw new LoweringError(block.element.address, 'display', `atomic inline <${block.element.tag}> ${block.element.address} inside inline box ${id} is not laid out (INL2c)`);
@@ -538,7 +643,7 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   const lastBaseline: LastBaselineContext = { items: false, self: parentDisplay === 'grid' || parentDisplay === 'inline-grid' };
   const style = lowerStyleFrom(id, (p) => values.get(p) as CssValue, (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline);
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), children: items.map((c) => lowerInlineLevel(c, l)) };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode), marker: null, children: items.map((c) => lowerInlineLevel(c, l)) };
 }
 
 /**
@@ -547,9 +652,11 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
  */
 export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaDataset, images: ImageNaturals, mode: LowerMode): LayoutBox {
   if (displayOf(root) === 'none') throw new LoweringError(root.element.address, 'display', `display: none on the root element ${root.element.address} leaves no layout tree`);
+  if (displayOf(root) === 'contents') throw new LoweringError(root.element.address, 'display', `display: contents on the root element ${root.element.address} is not supported`);
   if (isReplacedTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a replaced element`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
-  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source }, null);
+  const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
+  return lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers }, null);
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -566,7 +673,7 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
     const v = raw(p);
     return (p === 'overflow-x' || p === 'overflow-y') && v.kind === 'keyword' && v.value === 'clip' ? { kind: 'keyword', value: 'visible' } : v;
   };
-  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { em: fontPx(raw('font-size')), rem: rootFontSize }, { items: false, self: gridParent !== null });
+  const own = lowerStyleFrom(id, get, (p) => isInitialByProvenance(el.props.get(p) as ResolvedValue, p), faults, ua, { ...emOf(raw('font-size')), rem: rootFontSize }, { items: false, self: gridParent !== null });
   // css-grid-2 §5: a replaced element establishes no grid container; display: grid on one is not modelled.
   if (own.display === 'grid' || own.display === 'inline-grid') throw new LoweringError(id, 'display', `display: ${own.display} on the replaced element ${id} is not supported`);
   // css-grid-2 §8 and §9: a replaced child of a grid container carries its placement (an absolutely positioned one, its lines).
@@ -609,7 +716,7 @@ function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDatase
  */
 function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox {
   const id = el.element.address;
-  const kids = el.children.filter((c) => c.kind === 'text' || displayOf(c) !== 'none');
+  const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);
   const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null });
@@ -651,5 +758,26 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   // A line strut only when the box holds inline content: a replaced leaf is a box of its own, not a line (REPL-a with INL1a); an
   // atomic inline is on a line (INL2a).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')));
-  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), children };
+  return { kind: 'box', id, boxType: 'element', style, strut: strutOf(el, inlineContent, l.mode), marker: display === 'list-item' ? markerOf(el, l) : null, children };
+}
+
+const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];
+
+/** Whether a list-style-type GEN-c writes is drawn as a symbol (disc, circle, square) rather than as its marker text. */
+export const isSymbolMarker = (t: ListStyleType): boolean => t.kind === 'style' && SYMBOLS.includes(t.name);
+
+/**
+ * T151 R14: a list item's outside marker in its own font and line-height, a symbol for disc, circle and square and otherwise its
+ * compile-time counter text (analysis/markers.ts); null for list-style-type none. computed-checks.ts refuses what GEN-c does not draw.
+ */
+function markerOf(el: ResolvedElement, l: Lowerer): ListMarker | null {
+  const id = el.element.address;
+  const m = l.markers.get(id);
+  if (m === undefined) throw new LoweringError(id, 'display', `the list item ${id} has no ordinal`);
+  if (m.type.kind === 'none') return null;
+  if (m.type.kind === 'refused') throw new LoweringError(id, 'list-style-type', m.type.reason);
+  const { font, lineHeight } = lowerFont(id, (p) => (el.props.get(p) as ResolvedValue).value, l.mode);
+  const t = m.type.type;
+  if (t.kind === 'style' && isSymbolMarker(t)) return { id: `${id}::marker`, kind: 'symbol', symbol: t.name as ListMarker['symbol'], text: null, font, lineHeight };
+  return { id: `${id}::marker`, kind: 'text', symbol: null, text: m.text, font, lineHeight };
 }

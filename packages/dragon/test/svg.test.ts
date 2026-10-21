@@ -154,6 +154,14 @@ describe('the svg model in a compile', () => {
     expect(overflow.filter((m) => m.includes('on <svg> s is not supported on native: Chrome paints its shapes past the box')).sort()).toEqual(['android', 'ios'].flatMap((t) => ['overflow-x'].map((p) => `DRAGON_UNSUPPORTED_VALUE ${t} ${p}: visible on <svg> s is not supported on native: Chrome paints its shapes past the box, and native clips them to it until the SVG structure package SVG-b`)));
     expect(overflow.every((m) => !m.startsWith('DRAGON_UNSUPPORTED_VALUE web') && !m.startsWith('DRAGON_UNSUPPORTED_VALUE *'))).toBe(true);
   });
+  // Review of #511 at 78f4d9cf: translate, rotate and scale move a shape as transform does, and native draws it from its attributes.
+  it('refuses translate, rotate and scale on a shape, as it refuses transform', () => {
+    const shapes = (_r: SourceRef, o: Origin) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']])];
+    for (const [css, decl] of [['rect { rotate: 45deg; }', 'rotate: 45deg'], ['rect { scale: 2; }', 'scale: 2'], ['rect { translate: 1px; }', 'translate: 1px']] as const) {
+      const e = errors(compile(svgTree(css, shapes), false));
+      for (const t of ['android', 'ios', 'web']) expect(e, css).toContain(`DRAGON_UNSUPPORTED_VALUE ${t} ${decl} on <rect> r is not supported: a shape's geometry comes from its attributes until the SVG structure package SVG-b`);
+    }
+  });
   it("draws no shape Chrome renders nothing for: a zero-size rect or circle, an empty path, a shape with display: none, and a hidden or fully transparent one", () => {
     expect([svgShapeEmpty({ kind: 'rect', x: 4, y: 2, width: 0, height: 10 }), svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 3, height: 0 }), svgShapeEmpty({ kind: 'circle', cx: 1, cy: 1, r: 0 }), svgShapeEmpty({ kind: 'path', segments: [] })]).toEqual([true, true, true, true]);
     expect([svgShapeEmpty({ kind: 'rect', x: 0, y: 0, width: 1, height: 1 }), svgShapeEmpty({ kind: 'circle', cx: 0, cy: 0, r: 1 })]).toEqual([false, false]);
@@ -279,18 +287,18 @@ describe('the svg model in a compile', () => {
     expect(fillOf('@layer base { rect { fill: rgb(1, 2, 3); } }')).toEqual([1, 2, 3]);
     expect(fillOf('@layer base, top; @layer top { rect { fill: rgb(4, 5, 6); } } @layer base { rect { fill: rgb(1, 2, 3); } }')).toEqual([4, 5, 6]);
   });
-  it("in one document, the svg checks and GEN-b's list-marker check both fire (checkSvg beside checkComputed's GEN-b checks)", () => {
+  it("in one document, the svg checks and GEN-c's list-marker check both fire (checkSvg beside checkComputed's GEN-c checks)", () => {
     const input = inputFor('body { margin: 0 } svg { display: block } circle { stroke-width: 10%; }', (r) => {
       const o: Origin = { kind: 'authored', span: { source: r, start: 0, end: 0 } };
       const attrs = (list: [string, string][]) => list.map(([name, value]) => ({ name, value: [{ when: { kind: 'true' as const }, value }], origin: o }));
       const svg: ElementNode = { kind: 'element', id: 's', tag: 'svg', classes: [], attributes: attrs([['width', '24'], ['height', '24']]), children: [shape(o, 'c', 'circle', [['r', '4']])], origin: o };
       const li: ElementNode = { kind: 'element', id: 'li', tag: 'li', classes: [], attributes: [], children: [], origin: o };
-      const ul: ElementNode = { kind: 'element', id: 'ul', tag: 'ul', classes: [], attributes: [], children: [li], origin: o };
+      const ul: ElementNode = { kind: 'element', id: 'ul', tag: 'ol', classes: [], attributes: [], children: [li], origin: o };
       return [div(r, 'w', ['w'], [svg, ul])];
     });
     const e = errors(compile(input, true));
     expect(e.filter((m) => m.includes('stroke-width: 10% on <circle> c is unsupported')).length).toBeGreaterThan(0);
-    expect(e.filter((m) => m.includes('display: list-item on <li> li generates a disc marker')).length).toBeGreaterThan(0);
+    expect(e.filter((m) => m.includes('display: list-item on <li> li generates a decimal marker')).length).toBeGreaterThan(0);
   });
   it('SVG-opacity: fill-opacity and stroke-opacity compute to a clamped number, inherit, and scale the fill and stroke alpha byte on native', () => {
     const input = svgTree('svg { fill-opacity: 40%; stroke-opacity: 2; } .h { fill-opacity: 0.5; stroke-opacity: -1; }', (_r, o) => [
@@ -503,8 +511,8 @@ describe('the svg model in a compile', () => {
     }
     const e = errors(compile(svgTree('rect { filter: blur(2px); mask-image: linear-gradient(red, blue); }', shapes), false));
     expect(e.filter((m) => m.includes('on <rect> r is unsupported')).map((m) => m.split(' ').slice(2).join(' ')).sort()).toEqual([
-      ...['android', 'ios', 'web'].map(() => 'filter: blur(2px) on <rect> r is unsupported: Dragon draws no filter yet (FX); only none is accepted'),
-      ...['android', 'ios', 'web'].map(() => 'mask-image: linear-gradient(red,blue) on <rect> r is unsupported: Dragon draws no mask yet (MASK-CLIP); only the initial value is accepted'),
+      ...['android', 'ios', 'web'].map(() => 'filter: blur(2px) on <rect> r is unsupported: Dragon draws no filter on an SVG shape (FX)'),
+      ...['android', 'ios', 'web'].map(() => 'mask-image: linear-gradient(red,blue) on <rect> r is unsupported: Dragon draws no mask on an SVG shape (MASK-CLIP); only the initial value is accepted'),
     ]);
     // Refused on every target, whether as a property no target supports yet (a target-free error) or as a value refused per target.
     const refusedOn = (css: string): string[] => {

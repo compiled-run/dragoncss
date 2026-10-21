@@ -118,6 +118,10 @@ describe('dependency boundaries', () => {
     const imports = [...text.matchAll(/^import .*$/gm)].map((m) => m[0]);
     expect(imports).toEqual([
       "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
+      // NA-NATIVE: whether an element's ::-webkit-scrollbar rules hide its scrollbars, recorded on its resolution (no matching here).
+      "import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';",
+      // ::marker: a list item's resolved marker color, from the resolved tree alone.
+      "import { markerOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",
@@ -130,6 +134,7 @@ describe('dependency boundaries', () => {
       "import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';",
       // MISC-PAINT: the border image longhand names and their initial values, to leave initial border images unwritten.
       "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
+      "import { blendModeOf, FX_LONGHANDS, hasBackdropFilter } from '../css/properties/fx.ts';",
       "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
@@ -151,6 +156,8 @@ describe('dependency boundaries', () => {
   it('colour conversion and rounding live only in css/color.ts', () => {
     for (const f of files(src)) {
       if (f.endsWith(join('css', 'color.ts'))) continue;
+      // COL4: css/color-space.ts ports Blink's Color, gfx colour conversions and skcms in float32 (Math.fround) with color.ts; only that file.
+      if (f.endsWith(join('css', 'color-space.ts'))) continue;
       // The font metrics port Blink's float32 arithmetic (Math.fround, floorf), so src/fonts/** is exempt by path.
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.

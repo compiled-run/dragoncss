@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 11896
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 11896
+  },
+  {
+   "id": "x",
+   "parent": "body",
+   "x": 1680,
+   "y": 1680,
+   "width": 25840,
+   "height": 8536
+  },
+  {
+   "id": "k",
+   "parent": "x",
+   "x": 1580,
+   "y": 1832,
+   "width": 22680,
+   "height": 1680
+  },
+  {
+   "id": "e",
+   "parent": "x",
+   "x": 1160,
+   "y": 4184,
+   "width": 23520,
+   "height": 1512
+  },
+  {
+   "id": "f",
+   "parent": "x",
+   "x": 1160,
+   "y": 5696,
+   "width": 23520,
+   "height": 1680
+  },
+  {
+   "id": "fa",
+   "parent": "f",
+   "x": 0,
+   "y": 0,
+   "width": 5040,
+   "height": 1680
+  },
+  {
+   "id": "fb",
+   "parent": "f",
+   "x": 5040,
+   "y": 0,
+   "width": 5040,
+   "height": 1680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 186,
+   "width": 1050,
+   "height": 186
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 186,
+   "width": 1050,
+   "height": 186
+  },
+  {
+   "id": "x",
+   "left": 26,
+   "top": 26,
+   "right": 430,
+   "bottom": 160,
+   "width": 404,
+   "height": 134
+  },
+  {
+   "id": "k",
+   "left": 51,
+   "top": 55,
+   "right": 405,
+   "bottom": 81,
+   "width": 354,
+   "height": 26
+  },
+  {
+   "id": "e",
+   "left": 44,
+   "top": 92,
+   "right": 412,
+   "bottom": 115,
+   "width": 368,
+   "height": 23
+  },
+  {
+   "id": "f",
+   "left": 44,
+   "top": 115,
+   "right": 412,
+   "bottom": 142,
+   "width": 368,
+   "height": 27
+  },
+  {
+   "id": "fa",
+   "left": 44,
+   "top": 115,
+   "right": 123,
+   "bottom": 142,
+   "width": 79,
+   "height": 27
+  },
+  {
+   "id": "fb",
+   "left": 123,
+   "top": 115,
+   "right": 202,
+   "bottom": 142,
+   "width": 79,
+   "height": 27
+  }
+ ]
+}

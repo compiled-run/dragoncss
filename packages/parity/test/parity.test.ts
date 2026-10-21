@@ -35,6 +35,7 @@ import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
 import { TEXT_LATIN_PROBES } from '../src/fixture-groups/text-latin.ts';
 import { fontEmittedPath, fontExpectedPath, liveFontAuthored, runFontFixture } from '../src/fonts-run.ts';
 import { ENV_FIXTURES } from '../src/fixture-groups/env.ts';
+import { MEDIA_ENVIRONMENT_FIXTURES } from '../src/fixture-groups/media-environment.ts';
 import { envEmittedPath, envExpectedPath, liveEnvAuthored, runEnvFixture } from '../src/env-run.ts';
 import type { FrontEndResult } from 'dragon';
 
@@ -64,7 +65,7 @@ function specFor(id: string): (typeof FIXTURES)[number] {
 const fontOutcomes = new Map<string, CaseOutcome[]>();
 const corpusCases = (): CaseOutcome[] => FIXTURES.flatMap((f) => (outcomes.get(f.id)?.cases ?? []));
 const fontCasesRun = (): CaseOutcome[] => FONT_FIXTURES.flatMap((f) => fontOutcomes.get(f.spec.id) ?? []);
-/** ENV-SAFE: the web-only env() cases (env-run.ts), which prove web rows through chrome-dual alone under their safe-area insets. */
+/** ENV-SAFE: the env() cases (env-run.ts), both lanes under their safe-area insets; they prove web and ios rows. */
 const envOutcomes = new Map<string, CaseOutcome[]>();
 const envCasesRun = (): CaseOutcome[] => ENV_FIXTURES.flatMap((f) => envOutcomes.get(f.spec.id) ?? []);
 const webOnlyCasesRun = (): CaseOutcome[] => [...fontCasesRun(), ...envCasesRun()];
@@ -88,7 +89,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     // Frame fixtures (T065) are registered by their frames.json sidecar (anim-cases.ts animFixtures) and are not layout fixtures.
     const frames = animFixtures().map((f) => f.id);
     for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
-    const webOnly = [...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec);
+    // MQ-R2's media-environment fixtures run only as their resize scripts (resize-capture.ts ENV_SCRIPTS), so they are not in FIXTURES.
+    const webOnly = [...[...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec), ...MEDIA_ENVIRONMENT_FIXTURES];
     const registered = new Set([...[...FIXTURES, ...webOnly].map((f) => (f.format === 'html' ? `${f.id}.html` : f.id)), ...TEXT_LATIN_PROBES.map((id) => `${id}.html`), ...frames]);
     for (const id of [...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]) expect(statSync(`${dir}/${id}.html`).isFile(), id).toBe(true);
     expect(new Set([...FIXTURES.map((f) => f.id), ...webOnly.map((f) => f.id), ...TEXT_LATIN_PROBES]).size).toBe(FIXTURES.length + webOnly.length + TEXT_LATIN_PROBES.length);
@@ -201,7 +203,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
   }
 
   for (const f of ENV_FIXTURES) {
-    it(`${f.spec.id} (web-only env() fixture: chrome-dual alone, insets ${JSON.stringify(f.safeArea)})`, async () => {
+    it(`${f.spec.id} (env() fixture: both lanes under insets ${JSON.stringify(f.safeArea)})`, async () => {
       const live = liveEnvAuthored(browser, f);
       const recordLive = async (c: ParityCase): Promise<WebCapture> => {
         const capture = await live(c);
@@ -214,8 +216,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       expect(cases.map((c) => c.direction)).toEqual(f.spec.kind === 'layout' ? f.spec.environments : []);
       for (const c of cases) {
         expect(c.reason, c.id).toBeNull();
-        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'not-run', 'chrome-dual': 'pass' });
-        expect(c.features.ios, c.id).toEqual([]);
+        expect(c.lanes, c.id).toEqual({ 'linux-dragon-layout': 'pass', 'chrome-dual': 'pass' });
+        expect(c.features.ios.some((k) => k.includes(':<env()>@')), c.id).toBe(true);
         expect(c.features.web.some((k) => k.includes(':<env()>@')), c.id).toBe(true);
       }
       for (const d of ['ltr', 'rtl'] as const) {
@@ -232,6 +234,16 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     for (const c of cases) {
       expect(c.lanes['chrome-dual'], c.id).toBe('fail');
       expect(c.reason, c.id).toMatch(/chrome-dual: /);
+    }
+  }, 240_000);
+
+  it('planted fault envSideSwapped: a native lowering that reads the opposite inset fails linux-dragon-layout under unequal insets', async () => {
+    const f = ENV_FIXTURES.find((x) => x.spec.id === 'env-safe-area-portrait') as (typeof ENV_FIXTURES)[number];
+    const cases = await runEnvFixture(f, browser, { authored: recorded, faults: { ...NO_FAULTS, envSideSwapped: true } });
+    expect(cases.length).toBeGreaterThan(0);
+    for (const c of cases) {
+      expect(c.lanes['linux-dragon-layout'], c.id).toBe('fail');
+      expect(c.reason, c.id).toMatch(/linux-dragon-layout: /);
     }
   }, 240_000);
 

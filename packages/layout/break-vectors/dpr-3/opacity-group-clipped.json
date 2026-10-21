@@ -1,0 +1,9 @@
+{
+  "case": "opacity-group-clipped",
+  "dpr": 3,
+  "texts": [
+    {"id":"label:text0","lines":[[0,2]]},
+    {"id":"og-a:text0","lines":[[0,1]]},
+    {"id":"og-b:text0","lines":[[0,2],[2,3]]}
+  ]
+}

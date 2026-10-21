@@ -1,7 +1,7 @@
 // user-select (css-ui-4 §6.1; T154): auto | text | none | all, inherited as Blink declares it, initial auto, computed as specified.
 // Blink 145 css_properties.json5 lists contain too, but css_parser_fast_paths.cc parses it only under CSSUserSelectContain, a
-// test-status feature, so the value parser drops it. No layout or paint aspect: on native only none compiles, since no native
-// text is selectable until package P6c (T077) builds selection (analysis/selection.ts).
+// test-status feature, so the value parser drops it. No layout or paint aspect: on native only none and the values whose used value
+// is the default's compile, since no native text is selectable until package P6c (T077) builds selection (analysis/selection.ts).
 import type { CssNode } from 'css-tree';
 import type { Span } from '../../types.ts';
 import { asciiLower } from '../escapes.ts';
