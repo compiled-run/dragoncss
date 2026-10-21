@@ -97,6 +97,10 @@ export type Stretch = { readonly kind: 'stretch' };
 export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
 export type InlineSizeValue = SizeValue | SizeKeyword;
 export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
+/** css-sizing-4 §3.1: height, min-height and max-height also take stretch, read only on a block-level box in block flow. */
+export type BlockSizeValue = SizeValue | Stretch;
+export type MinBlockSizeValue = MinSizeValue | Stretch;
+export type MaxBlockSizeValue = MaxSizeValue | Stretch;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -351,11 +355,11 @@ export type LayoutStyle = {
   readonly direction: Direction;
   readonly boxSizing: BoxSizing;
   readonly width: InlineSizeValue;
-  readonly height: SizeValue;
+  readonly height: BlockSizeValue;
   readonly minWidth: InlineSizeValue;
-  readonly minHeight: MinSizeValue;
+  readonly minHeight: MinBlockSizeValue;
   readonly maxWidth: MaxInlineSizeValue;
-  readonly maxHeight: MaxSizeValue;
+  readonly maxHeight: MaxBlockSizeValue;
   readonly marginTop: MarginValue;
   readonly marginRight: MarginValue;
   readonly marginBottom: MarginValue;

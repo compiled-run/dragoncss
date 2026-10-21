@@ -1038,20 +1038,60 @@ function checkSticky(root: ResolvedElement, propagated: ResolvedElement | null, 
 
 const RATIO_BLOCK_SIZES: readonly Longhand[] = ['height', 'min-height', 'max-height'];
 
+/**
+ * css-sizing-4 §3.1: a height, min-height or max-height of stretch fills the containing block's height as a percentage resolves
+ * against it (box.ts stretchBlockSize). It is refused on every target on the root, whose containing block the engine does not
+ * stretch into, and inside a flex item, whose flexed or stretched height the engine does not take as definite for it.
+ */
+function checkStretchHeights(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const refuse = (el: ResolvedElement, what: string, message: string, manual: string): void => {
+    for (const p of RATIO_BLOCK_SIZES) {
+      const v = el.props.get(p) as ResolvedValue;
+      if (keywordOf(v) !== 'stretch') continue;
+      const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+      for (const t of targets) {
+        const id = `${t}|stretch-${what}-${p}|${JSON.stringify(origin)}|${el.element.address}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${p}: stretch on ${el.element.address} ${message} is not supported yet (css-sizing-4 §3.1)`, manual, basis: 'computed-value' }));
+      }
+    }
+  };
+  if (displayKeyword(root) !== 'none') refuse(root, 'root', 'on the root element', `Use a percentage or a viewport length for the root's size, or stretch a descendant of ${root.element.address}.`);
+  const isFlex = (el: ResolvedElement): boolean => ['flex', 'inline-flex'].includes(displayKeyword(el));
+  const outOfFlow = (el: ResolvedElement): boolean => ['absolute', 'fixed'].includes(keywordOf(el.props.get('position') as ResolvedValue));
+  // flexItem: whether the containing block of el's in-flow children is a flex item; items: whether they are flex items.
+  const walk = (el: ResolvedElement, flexItem: boolean, items: boolean): void => {
+    for (const c of el.children) {
+      if (c.kind !== 'element' || displayKeyword(c) === 'none') continue;
+      // css-display-3 §2.5: display: contents puts c's children in its place, as el's children.
+      if (displayKeyword(c) === 'contents') {
+        walk(c, flexItem, items);
+        continue;
+      }
+      if (flexItem) refuse(c, 'flex-item', `inside a flex item (its containing block's height is flexed or stretched)`, `Use a percentage, or set the height on ${c.element.address} itself.`);
+      // A block inside an inline box (BII) has the inline box's containing block as its own.
+      walk(c, isBlockInInline(c) ? flexItem : items && !outOfFlow(c), isFlex(c));
+    }
+  };
+  walk(root, false, isFlex(root));
+}
+
 /** css-sizing-3 §3.2 and css-sizing-4 §3.1: the inline-size keywords the engine resolves only on a block-level box without a ratio. */
 const SIZE_KEYWORDS: ReadonlySet<string> = new Set(['min-content', 'max-content', 'fit-content', 'stretch']);
 const INLINE_SIZES: readonly Longhand[] = ['width', 'min-width', 'max-width'];
 
 /**
- * The width, min-width or max-width of el whose computed value is a sizing keyword, refused on every target as where says: the
- * engine resolves them only for a block-level box with no aspect-ratio (block.ts blockLevelInlineSize, intrinsic.ts
- * inlineContribution) and never on a replaced box (replaced.ts replacedSize through box.ts lengthWidth).
+ * The width, min-width or max-width of el whose computed value is a sizing keyword, or the height, min-height or max-height whose
+ * computed value is stretch, refused on every target as where says: the engine resolves them only for a block-level box with no
+ * aspect-ratio (block.ts blockLevelInlineSize, intrinsic.ts inlineContribution, box.ts specifiedBlockSizeWith) and never on a
+ * replaced box (replaced.ts replacedSize through box.ts lengthWidth and lengthHeight).
  */
 function refuseSizeKeywords(el: ResolvedElement, where: string, manual: string, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  for (const p of INLINE_SIZES) {
+  for (const p of [...INLINE_SIZES, ...RATIO_BLOCK_SIZES]) {
     const v = el.props.get(p) as ResolvedValue;
     const k = keywordOf(v);
-    if (!SIZE_KEYWORDS.has(k)) continue;
+    if (INLINE_SIZES.includes(p) ? !SIZE_KEYWORDS.has(k) : k !== 'stretch') continue;
     const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
     for (const t of targets) {
       const id = `${t}|size-keyword-${p}|${JSON.stringify(origin)}|${el.element.address}`;
@@ -1912,6 +1952,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkFixedContainingBlocks(root, propagated, targets, diagnostics, reported);
   // POSX-s: sticky boxes the engine does not offset (checkSticky).
   checkSticky(root, propagated, targets, diagnostics, reported);
+  // SIZE-KW: stretch heights the engine does not fill (checkStretchHeights).
+  checkStretchHeights(root, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);
