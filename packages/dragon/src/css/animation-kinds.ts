@@ -23,6 +23,7 @@ import { CONTAINER_QUERY_ANIMATION } from './animation-kinds/container-query.ts'
 import { CONTAINMENT_ANIMATION } from './animation-kinds/containment.ts';
 import { COUNTERS_ANIMATION } from './animation-kinds/counters.ts';
 import { EFFECTS_ANIMATION } from './animation-kinds/effects.ts';
+import { FIELD_SIZING_ANIMATION } from './animation-kinds/field-sizing.ts';
 import { FILTER_ANIMATION } from './animation-kinds/filter.ts';
 import { FLEX_ANIMATION } from './animation-kinds/flex.ts';
 import { FLOAT_ANIMATION } from './animation-kinds/float.ts';
@@ -103,6 +104,7 @@ export const ANIMATION_KINDS: { readonly [P in Longhand]: AnimationKind } = {
   ...CONTAINMENT_ANIMATION,
   ...COUNTERS_ANIMATION,
   ...EFFECTS_ANIMATION,
+  ...FIELD_SIZING_ANIMATION,
   ...FILTER_ANIMATION,
   ...FLEX_ANIMATION,
   ...FLOAT_ANIMATION,

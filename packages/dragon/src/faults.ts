@@ -12,6 +12,7 @@ import { CASC_PROPERTY_FAULTS } from './faults/casc-property.ts';
 import { CASCADE_VAR_FAULTS } from './faults/cascade-var.ts';
 import { CONTAIN_INTRINSIC_FAULTS } from './faults/contain-intrinsic.ts';
 import { ENV_SAFE_FAULTS } from './faults/env-safe.ts';
+import { FIELD_SIZING_FAULTS } from './faults/field-sizing.ts';
 import { FONT_UNITS_FAULTS } from './faults/font-units.ts';
 import { FONTS_FAULTS } from './faults/fonts.ts';
 import { FX_FAULTS } from './faults/fx.ts';
@@ -63,6 +64,7 @@ export const FAULT_GROUPS = {
   'cascade-var': CASCADE_VAR_FAULTS,
   'contain-intrinsic': CONTAIN_INTRINSIC_FAULTS,
   'env-safe': ENV_SAFE_FAULTS,
+  'field-sizing': FIELD_SIZING_FAULTS,
   'font-units': FONT_UNITS_FAULTS,
   fonts: FONTS_FAULTS,
   fx: FX_FAULTS,
