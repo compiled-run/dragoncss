@@ -4,9 +4,10 @@
 // the CSS-wide keywords, inherit and a flex row, so every target proves the initial values. multicol-ahem lays out multi-column
 // containers of Ahem text (css-multicol-1 §3, §7) through column-count, column-width, columns and their -webkit- aliases: normal,
 // px and zero gaps, a column-width that caps the count, padding and borders, line heights that are not whole px, contents the
-// balancer stretches for orphans and widows, <br>s (n has one in every column), centred text, a word wider than its column, a text-indent, one line over three
-// columns, a percentage width and one column. The rejects are the multi-column containers no target lays out (one holding an inline
-// box, one holding a block, a flex item, one with a height, a column-width in em) and a drawn column rule.
+// balancer stretches for orphans and widows, <br>s (n has one in every column), centred text, a word wider than its column, a
+// text-indent, one line over three columns, a percentage width, one column, and a relatively positioned container in a relatively
+// positioned block. The rejects are the multi-column containers no target lays out (one holding an inline box, one holding a block,
+// a flex item, one with a height, a column-width in em) and a drawn column rule.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 

@@ -101,6 +101,9 @@ describe('the initial-only multicol family', () => {
     expect(parsed('column-rule: thin')[0]).toBe('column-rule-width: ?thin');
     expect(parsed('column-count: 1')).toEqual(['column-count: 1']);
     expect(parsed('column-count: +3')).toEqual(['column-count: 3']);
+    // Chrome keeps column-count as a uint16.
+    expect(parsed('column-count: 70000')).toEqual(['column-count: 65535']);
+    expect(parsed('column-count: 99999999999999999999')).toEqual(['column-count: 65535']);
     expect(parsed('column-width: 0')).toEqual(['column-width: 0px']);
     expect(parsed('column-width: 12.5px')).toEqual(['column-width: 12.5px']);
     // Spellings Dragon does not read are kept and refused: a count of 0, a fraction, two counts, a font-relative or negative width.
@@ -182,6 +185,7 @@ describe('multi-column containers', () => {
       ['columns: 2 120px; column-gap: 7px', { count: 2, width: { kind: 'px', value: 120 } }],
       ['-webkit-columns: 0', { count: 0, width: { kind: 'px', value: 0 } }],
       ['column-count: 2; text-align: center; text-indent: 4px; padding: 3px; border: 1px solid; width: 50%', { count: 2, width: { kind: 'auto' } }],
+      ['column-count: 70000; position: relative; top: 2px', { count: 65535, width: { kind: 'auto' } }],
       ['columns: auto', null],
       ['column-count: 2; column-count: auto', null],
     ];
@@ -191,6 +195,8 @@ describe('multi-column containers', () => {
       expect(lowered(c, 'a').style.multicol, decl).toEqual(want);
     }
     // A child in a display: none subtree is never laid out, so its columns are not refused.
+    // A <br> hidden with display: none is no box at all.
+    expect(messages(compile('.a { column-count: 2; } br { display: none; }'))).toEqual([]);
     const hidden = compile('.h { display: none; } .a { column-count: 2; }', (r) => [el(r, 'h', 'div', ['h'], [el(r, 'a', 'div', ['a'], [el(r, 'b', 'span', [], [text(r, 't', 'XX')])])])]);
     expect(messages(hidden)).toEqual([]);
   });
@@ -218,6 +224,11 @@ describe('multi-column containers', () => {
       ['.a { column-count: 2; orphans: 3; }', own, 'its orphans is not 2'],
       ['.a { column-count: 2; widows: 1; }', own, 'its widows is not 2'],
       ['.a { column-count: 2; container-type: inline-size; }', own, 'it is contained'],
+      ['.a { column-count: 2; aspect-ratio: 2 / 1; }', own, 'it has aspect-ratio: 2 / 1'],
+      ['.a { column-count: 2; } br { display: block; }', own, 'it holds <br> b with display: block and float: none, and only an inline <br> is proven'],
+      ['.a { column-count: 2; } br { float: left; }', own, 'it holds <br> b with display: block and float: left, and only an inline <br> is proven'],
+      ['.a { column-count: 2; } br { display: flex; }', own, 'it holds <br> b with display: flex and float: none, and only an inline <br> is proven'],
+      ['.a { column-count: 2; } br { display: inline-block; }', own, 'it holds <br> b with display: inline-block and float: none, and only an inline <br> is proven'],
     ];
     for (const [css, body, why] of cases) {
       const c = compile(css, body);

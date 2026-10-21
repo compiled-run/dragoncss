@@ -1,7 +1,7 @@
 // The column-width, column-count and columns grammars against Chrome 145 (css/properties/multicol.ts, Blink ConsumeColumnWidth,
 // ConsumeColumnCount and Columns::ParseShorthand): every value Dragon reads Chrome parses, to the computed column-width and
 // column-count Dragon gives, and every value Chrome drops Dragon reads as none (it is kept as written and refused, or invalid).
-// Each planted reading must be caught.
+// A count above 65535 computes to 65535. Each planted reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -33,7 +33,7 @@ const WIDTHS = ['auto', 'AUTO', '0', '0px', '80px', '12.5px', '100PX',
   '5em', 'calc(10px + 5px)',
   // Chrome drops these.
   '-1px', '10%', '10', '10px 20px', 'none', 'auto auto'];
-const COUNTS = ['auto', 'Auto', '1', '2', '+3', '17',
+const COUNTS = ['auto', 'Auto', '1', '2', '+3', '17', '70000', '99999999999999999999',
   // Chrome drops these.
   '0', '-2', '1.5', '2 3', 'none', '2px'];
 const SHORTHANDS = ['auto', 'auto auto', '2', '80px', '2 80px', '80px 2', 'auto 2', '2 auto', '80px auto', 'auto 80px', '0', '2 0',
@@ -71,6 +71,7 @@ describe('column-width, column-count and columns: Chrome 145 parsing', () => {
       { name: 'percentWidthRead', items: [{ p: 'column-width', v: '10%', read: true, width: '10%', count: '' }] },
       { name: 'swappedShorthand', items: [{ p: 'columns', v: '2 80px', read: true, width: 'auto', count: '2' }] },
       { name: 'twoCountsRead', items: [{ p: 'columns', v: '2 3', read: true, width: 'auto', count: '3' }] },
+      { name: 'unclampedCount', items: [{ p: 'column-count', v: '70000', read: true, width: '', count: '70000' }] },
       { name: 'unitlessWidthRead', items: [{ p: 'column-width', v: '10', read: true, width: '10px', count: '' }] },
     ];
     const sets = [real, ...planted.map((p) => p.items)];
@@ -97,7 +98,7 @@ describe('column-width, column-count and columns: Chrome 145 parsing', () => {
     expect(real.filter((it, i) => !(seen[0] as Seen[])[i]?.parsed && it.read)).toEqual([]);
     expect(real.filter((it) => it.read).map((it) => `${it.p}: ${it.v}`)).toEqual([
       ...['auto', 'AUTO', '0', '0px', '80px', '12.5px', '100PX'].map((v) => `column-width: ${v}`),
-      ...['auto', 'Auto', '1', '2', '+3', '17'].map((v) => `column-count: ${v}`),
+      ...['auto', 'Auto', '1', '2', '+3', '17', '70000', '99999999999999999999'].map((v) => `column-count: ${v}`),
       ...['auto', 'auto auto', '2', '80px', '2 80px', '80px 2', 'auto 2', '2 auto', '80px auto', 'auto 80px', '0', '2 0'].map((v) => `columns: ${v}`),
     ]);
     planted.forEach((p, i) => expect(judge(p.items, seen[i + 1] as Seen[]).length, p.name).toBe(p.items.length));

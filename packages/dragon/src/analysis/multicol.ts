@@ -1,7 +1,7 @@
 // The multicol family (css/properties/multicol.ts). column-width as a px length and column-count as a positive integer make a block a
 // multi-column container, which the engine lays out (lower/ios-layout.ts multicolOf, LayoutStyle.multicol) where Chrome's columns are
-// proven: a static, unfloated block in a chain of static, unfloated blocks, holding collapsible text and <br>s alone, with an auto
-// block size, visible overflow, a px or normal column gap and the initial orphans and widows. Every other multi-column container is
+// proven: an unfloated block, static or relatively positioned, in a chain of such blocks, holding collapsible text and inline <br>s
+// alone, with an auto block size and aspect ratio, visible overflow, a px or normal column gap and the initial orphans and widows. Every other multi-column container is
 // refused on every target, as is any column rule, span or fill other than the initial one and any column-width or column-count
 // spelling the parser keeps as written. Each element is refused once.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
@@ -68,6 +68,7 @@ function refusal(el: ResolvedElement, chain: readonly ResolvedElement[]): string
   const minHeight = value(el, 'min-height');
   const zeroMin = (minHeight.kind === 'keyword' && minHeight.value === 'auto') || (minHeight.kind === 'length' && minHeight.value === 0);
   if (keyword(el, 'height') !== 'auto' || keyword(el, 'max-height') !== 'none' || !zeroMin) return 'it has a specified block size';
+  if (keyword(el, 'aspect-ratio') !== 'auto') return `it has aspect-ratio: ${valueToString(value(el, 'aspect-ratio'))}`;
   if (keyword(el, 'column-gap') !== 'normal' && !pxLength(el, 'column-gap')) return 'its column gap is not a px length or normal';
   if (!pxLength(el, 'text-indent')) return 'its text-indent is not a px length';
   if (keyword(el, 'white-space-collapse') !== 'collapse') return 'it preserves white space';
@@ -78,8 +79,16 @@ function refusal(el: ResolvedElement, chain: readonly ResolvedElement[]): string
   }
   if (keyword(el, 'contain') !== 'none' || keyword(el, 'container-type') !== 'normal') return 'it is contained';
   if (lineClampOf(el) > 0) return 'it clamps its lines';
-  const kid = el.children.find((c) => c.kind === 'element' && c.element.tag !== 'br');
-  if (kid !== undefined && kid.kind === 'element') return `it holds <${kid.element.tag}> ${kid.element.address}, and only text and <br> are proven`;
+  for (const c of el.children) {
+    if (c.kind !== 'element') continue;
+    if (c.element.tag !== 'br') return `it holds <${c.element.tag}> ${c.element.address}, and only text and <br> are proven`;
+    // A <br> that is not an inline line break (display other than inline or none, or a float) is a block-level box or an atomic
+    // inline in the columns, which the engine does not lay out.
+    const display = keyword(c, 'display');
+    if ((display !== 'inline' && display !== 'none') || keyword(c, 'float') !== 'none') {
+      return `it holds <br> ${c.element.address} with display: ${valueToString(value(c, 'display'))} and float: ${valueToString(value(c, 'float'))}, and only an inline <br> is proven`;
+    }
+  }
   return null;
 }
 

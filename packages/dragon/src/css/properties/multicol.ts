@@ -77,13 +77,20 @@ function columnWidthOf(t: CssNode | undefined): CssValue | null {
   return Number.isFinite(v) && v >= 0 ? { kind: 'length', value: v, unit: 'px' } : null;
 }
 
-/** One token as column-count: auto, or an integer of at least 1 (Blink ConsumePositiveInteger); null for any other spelling. */
+/** Chrome 145 keeps column-count as a uint16: a larger count computes to 65535 (ComputedStyle ClampTo<uint16_t>). */
+const MAX_COLUMN_COUNT = 65535;
+
+/**
+ * One token as column-count: auto, or an integer of at least 1 (Blink ConsumePositiveInteger), clamped to 65535 as Chrome
+ * computes it; null for any other spelling.
+ */
 function columnCountOf(t: CssNode | undefined): CssValue | null {
   if (t === undefined) return null;
   if (t.type === 'Identifier' && asciiLower(String(t['name'])) === 'auto') return kwInitial('auto');
   if (t.type !== 'Number' || !/^[+]?[0-9]+$/.test(String(t['value']))) return null;
   const v = Number(t['value']);
-  return Number.isSafeInteger(v) && v >= 1 ? { kind: 'number', value: v } : null;
+  if (!(v >= 1)) return null;
+  return { kind: 'number', value: v > MAX_COLUMN_COUNT ? MAX_COLUMN_COUNT : v };
 }
 
 /** column-width or column-count: a value it reads, else the value kept as written (refused by analysis/multicol.ts). */
