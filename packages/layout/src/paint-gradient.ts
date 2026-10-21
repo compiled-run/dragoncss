@@ -1373,19 +1373,19 @@ function subrectF(bx: number, by: number, bw: number, bh: number, ox: number, oy
  * GradientGeneratedImage::Draw of one piece, src -> dest ([x, y, width, height] floats): the visible src (src within the image),
  * RectToRect(src, dest) as the shader's local matrix, and the visible dest it maps to, drawn directly; null when nothing is drawn.
  */
-function piece(desc: GradientDesc, w: number, h: number, src: readonly number[], dst: readonly number[], faults: GradientFaults): PlannedLayer | null {
-  const sl = src[0] as number;
-  const st = src[1] as number;
-  const sr = f32(sl + (src[2] as number));
-  const sb = f32(st + (src[3] as number));
+function piece(desc: GradientDesc, w: number, h: number, q: readonly number[], faults: GradientFaults): PlannedLayer | null {
+  const sl = q[0] as number;
+  const st = q[1] as number;
+  const sr = f32(sl + (q[2] as number));
+  const sb = f32(st + (q[3] as number));
   const vl = sl < 0 ? 0 : sl;
   const vt = st < 0 ? 0 : st;
   const vr = w < sr ? w : sr;
   const vb = h < sb ? h : sb;
   if (vl >= vr || vt >= vb) return null;
-  const dl = dst[0] as number;
-  const dt = dst[1] as number;
-  const m = matRectToRect(sl, st, sr, sb, dl, dt, f32(dl + (dst[2] as number)), f32(dt + (dst[3] as number)));
+  const dl = q[4] as number;
+  const dt = q[5] as number;
+  const m = matRectToRect(sl, st, sr, sb, dl, dt, f32(dl + (q[6] as number)), f32(dt + (q[7] as number)));
   if (m === null) return null;
   // mapRect of a scale-translate matrix: each edge times the scale plus the translation, sorted.
   const x0 = f32(f32(vl * m.sx) + m.tx);
@@ -1517,10 +1517,10 @@ export function planBorderImage(p: BorderImagePaint, faults: GradientFaults): Ba
   if (drawBottom && (bottomSrc[2] as number) > 0 && (bottomDst[2] as number) > 0) pieces.push([...bottomSrc, ...bottomDst]);
   if (p.fill && esw > 0 && esh > 0 && edw > 0 && edh > 0) pieces.push([...subrectF(0, 0, w, h, sliceLeft, sliceTop, esw, esh), ...subrectF(areaX, areaY, areaW, areaH, left, top, edw, edh)]);
   for (const q of pieces) {
-    const l = piece(desc, w, h, q.slice(0, 4), q.slice(4, 8), faults);
-    if (l === null) continue;
-    if (!l.shader.drawable || !l.shader.opaque) modelled = false;
-    layers.push(l);
+    const drawn = piece(desc, w, h, q, faults);
+    if (drawn === null) continue;
+    if (!drawn.shader.drawable || !drawn.shader.opaque) modelled = false;
+    layers.push(drawn);
   }
   return borderPlan(ox, oy, area, layers, p.tileSize, modelled);
 }
