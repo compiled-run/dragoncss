@@ -1326,8 +1326,8 @@ export function referenceTileSize(zoom: number): number {
 // ComputeEdgeSlice, ComputeEdgeWidth, SnapEdgeWidths and the piece rects), each piece drawn by GradientGeneratedImage::Draw
 // (gradient_generated_image.cc), which draws its src -> dest directly with RectToRect as the shader's local matrix. The image is
 // the border image area at its unsnapped size (the generated image's default object size); every piece is one direct layer of
-// backgroundRow over transparent. The area is the border box: border-image-outset is not modelled (MISC-PAINT part 2), nor is a
-// tiled piece (repeat, round, space).
+// backgroundRow over transparent. The area is the border box: border-image-outset is not modelled. A tiled piece (repeat, round,
+// space) is tiledPiece below.
 /** A border-image-slice side: a <number> (image px, which are CSS px for a gradient) or a <percentage> of the image's size. */
 export type BorderImageSlice = { readonly unit: 'number' | 'percent'; readonly value: number };
 /** A border-image-width side: a multiple of the border width, CSS px, or auto (the slice's own size). */
@@ -1455,7 +1455,7 @@ function repeatRule(k: string): number {
 }
 
 /**
- * ComputeTileParameters (nine_piece_image_painter.cc) on one axis: [scale factor, phase, spacing], floats; an empty list where space
+ * CalculateSpaceNeeded and ComputeTileParameters (nine_piece_image_painter.cc) on one axis: [scale factor, phase, spacing], floats; an empty list where space
  * fits no tile (CalculateSpaceNeeded returns nullopt and the piece is not drawn).
  */
 function tileParameters(rule: number, dst: number, src: number): readonly number[] {
@@ -1486,8 +1486,9 @@ function powerOfTwo(v: number): boolean {
 
 /**
  * One tiled piece (q: src, dest, tile scale, horizontal and vertical rule), as PaintPieces hands it to DrawImageTiled and
- * GeneratedImage::DrawPattern records it: the src rect plus spacing is a paint-record shader tile, repeated, through
- * T(phase) S(scale) T(tile origin); cc rasters it as SkPictureShader does, at ceil(scale * tile size) px with the raster scale
+ * GeneratedImage::DrawPattern (generated_image.cc) records it: the src rect plus spacing is a paint-record shader tile, repeated,
+ * through T(phase) S(scale) T(tile origin); cc rasters it as SkPictureShader (src/shaders/SkPictureShader.cpp CachedImageInfo::Make)
+ * does, at ceil(scale * tile size) px with the raster scale
  * size / tile, and the image shader samples it. The port models it only where that raster is the tile 1:1 at whole device px
  * (scale a power of two, every tile, content and phase edge a whole px), where each dest pixel is one tile image pixel; [] marks
  * any other tiling unmodelled, and null a piece Blink does not draw.

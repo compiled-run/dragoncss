@@ -199,6 +199,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/ports/SkTypeface_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp`: Copyright 2022 Google LLC
+- `third_party/skia/src/shaders/SkPictureShader.cpp`: Copyright 2014 Google Inc.
 - `third_party/skia/src/utils/SkDashPath.cpp`: Copyright 2014 Google Inc.
 
 ```
@@ -249,6 +250,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/platform/fonts/shaping/harfbuzz_shaper.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/geometry/layout_unit.h`: Copyright (c) 2012, Google Inc. All rights reserved.
+- `third_party/blink/renderer/platform/graphics/generated_image.cc`: Copyright (C) 2012 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/styled_stroke_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/text/character.h`: Copyright (C) 2014 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/wtf/decimal.cc`: Copyright (C) 2012 Google Inc. All rights reserved.

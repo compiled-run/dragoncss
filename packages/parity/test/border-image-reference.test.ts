@@ -1,10 +1,11 @@
-// MISC-PAINT part 1, host stage of the two-stage paint proof: the TS reference raster of every gradient border image
+// MISC-PAINT, host stage of the two-stage paint proof: the TS reference raster of every gradient border image
 // (paint-gradient.ts planBorderImage and backgroundRow, the code the device runs translated) against the committed Chrome 145
 // screenshots, at every pixel a piece paints exactly (opaque, no fractional piece edge across it) and no other box covers, at DPR 2,
 // 3 and 2.625. The measured maximum per-channel difference is printed and must not exceed the gradient allowance
 // (GATE_CHANNEL_DELTA: no allowance). Each planted reading, a Chrome behaviour the reference must model, must make some pixel differ:
 // the raster 1 device px right (the border-image-offset-1 plant's host twin), no dither, the slices read top for left (the
-// grid's sides), fill ignored, and every width read as 1 (ComputeEdgeWidth ignored). The device stage samples the same pixels
+// grid's sides), fill ignored, every width read as 1 (ComputeEdgeWidth ignored), and border-image-repeat read as stretch (the
+// tiling of MISC-PAINT part 2 ignored). The device stage samples the same pixels
 // (paint-samples/border.ts, rule gradient:<box>) and the border-image-offset-1 plant runs on border-image-gradient
 // (device-run.ts PLANT_CASES).
 import { backgroundPixelExact, backgroundRow, gradientFaults } from '@dragon/layout';
@@ -22,7 +23,7 @@ import { caseBoxes, casePoints, committedPixels, rasterSize } from '../src/pixel
 import { isScanlineRule } from '../src/samples.ts';
 
 type Tally = { pixels: number; differing: number; maxDelta: number; first: string | null };
-type Reading = 'none' | 'slicesSwapped' | 'fillIgnored' | 'widthsOne';
+type Reading = 'none' | 'slicesSwapped' | 'fillIgnored' | 'widthsOne' | 'repeatIgnored';
 
 /** The program with each border image write read as the planted reading says. */
 function read(p: NativeProgram, reading: Reading): NativeProgram {
@@ -34,6 +35,7 @@ function read(p: NativeProgram, reading: Reading): NativeProgram {
       const b = w as unknown as { slices: readonly unknown[]; fill: boolean; widths: readonly unknown[] };
       if (reading === 'slicesSwapped') return { ...w, slices: [b.slices[3], b.slices[2], b.slices[1], b.slices[0]] } as unknown as typeof w;
       if (reading === 'fillIgnored') return { ...w, fill: !b.fill } as unknown as typeof w;
+      if (reading === 'repeatIgnored') return { ...w, repeat: ['stretch', 'stretch'] } as unknown as typeof w;
       return { ...w, widths: [0, 1, 2, 3].map(() => ({ unit: 'number', value: 1 })) } as unknown as typeof w;
     }),
   }));
@@ -109,7 +111,7 @@ describe('MISC-PAINT border image reference raster against Chrome 145 (host stag
       expect(tally.differing).toBeGreaterThan(0);
     }, 600_000);
   }
-  for (const reading of ['slicesSwapped', 'fillIgnored', 'widthsOne'] as const) {
+  for (const reading of ['slicesSwapped', 'fillIgnored', 'widthsOne', 'repeatIgnored'] as const) {
     it(`catches the ${reading} reading`, () => {
       const { tally } = compareAll(gradientFaults('none'), reading);
       console.log(`border-image-reference --reading ${reading}: ${tally.differing} of ${tally.pixels} pixels differ, max ${tally.maxDelta}`);
@@ -124,7 +126,7 @@ describe('MISC-PAINT border image device samples', () => {
     const engine = expectedEngine();
     let caught = 0;
     let kept = 0;
-    for (const n of nativeCases().filter((c) => c.spec.id === 'border-image-gradient' || c.spec.id === 'border-image-fractional')) {
+    for (const n of nativeCases().filter((c) => c.spec.id === 'border-image-gradient' || c.spec.id === 'border-image-fractional' || c.spec.id === 'border-image-repeat')) {
       const program = n.programs['android-views'];
       const viewport = n.case.environment.viewport;
       for (const dpr of DPRS) {

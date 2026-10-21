@@ -3,10 +3,9 @@
 // ceil(scale * tile size) px; paint-gradient.ts planBorderImage models a tiled piece only where that tile image is drawn 1:1 at whole
 // device px, and leaves the plan unmodelled otherwise (the device then throws). A gradient's image is the border box itself, so every
 // tile size, phase and spacing depends on the laid-out box. The compiler accepts a tiled border image only when it proves the box's
-// border box and border widths exactly, in device px at every device scale of the target, and planBorderImage models that box at
-// every sub-pixel position (64 LU offsets per axis). Anything it cannot prove is refused at border-image-repeat on ios and android.
-import type { BorderImagePaint, GradientImage } from '@dragon/layout';
-import { fromCssPx, NO_GRADIENT_FAULTS, planBorderImage, referenceTileSize } from '@dragon/layout';
+// border box and border widths exactly, and tilingProblem proves, in exact arithmetic at every device scale of the target, that
+// planBorderImage models it at every sub-pixel position (border-image-tiling.test.ts checks that against planBorderImage itself).
+// Anything it cannot prove is refused at border-image-repeat on ios and android.
 import type { Longhand } from '../../css/properties.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { BorderImageFaults } from '../../faults/border-image.ts';
@@ -87,36 +86,149 @@ export function exactBox(el: ResolvedElement, ancestors: readonly ResolvedElemen
   return { width, height, borderBox: keyword(el, 'box-sizing') === 'border-box', padding: padding as number[], borders };
 }
 
-/** snapBorderWidth in device px: a width of a device px or more floors, a thinner non-zero one is 1. */
-function borderDevicePx(css: number, dpr: number): number {
-  const d = css * dpr;
-  return d >= 1 ? Math.floor(d) : d > 0 ? 1 : 0;
+/** The border image inputs the tiling proof reads (a BorderImageWrite's). */
+export type TilingInputs = {
+  readonly slices: readonly { readonly unit: 'number' | 'percent'; readonly value: number }[];
+  readonly widths: readonly { readonly unit: 'number' | 'px' | 'auto'; readonly value: number }[];
+  readonly fill: boolean;
+  readonly repeat: readonly string[];
+};
+
+/** The bound on every device px quantity, so that each is exact in float on the 1/2048 px grid (22 significant bits at most). */
+const BOUND = 4096;
+/** A device px quantity on the 1/2048 px grid within the bound: exact in float, and in Blink's float arithmetic over it. */
+const fine = (v: number): boolean => Number.isInteger(v * 2048) && v > -BOUND && v < BOUND;
+/** A power of two between 1/16 and 16 (planBorderImage accepts 1/256 to 256; the narrower range keeps every product on the grid). */
+function powerOfTwo(v: number): boolean {
+  for (let p = 1 / 16; p <= 16; p = p * 2) if (v === p) return true;
+  return false;
+}
+/** The quotient and remainder of a / b for b > 0 on the 1/2048 grid, as whole numbers of grid steps (integer division). */
+function divide(a: number, b: number): readonly [number, number] {
+  const n = a * 2048;
+  const m = b * 2048;
+  const r = n % m;
+  return [(n - r) / m, r / 2048];
 }
 
-/** The box's border box at a device scale, raw LU, and its border widths in device px: [width, height, top, right, bottom, left]. */
-export function deviceBox(b: ExactBox, dpr: number): readonly number[] {
-  const bd = b.borders.map((v) => borderDevicePx(v, dpr));
-  const pad = b.padding.map((v) => fromCssPx(v * dpr));
-  const t = bd[0] as number;
-  const r = bd[1] as number;
-  const bo = bd[2] as number;
-  const l = bd[3] as number;
-  const extraX = (pad[1] as number) + (pad[3] as number) + (r + l) * 64;
-  const extraY = (pad[0] as number) + (pad[2] as number) + (t + bo) * 64;
-  const w = fromCssPx(b.width * dpr);
-  const h = fromCssPx(b.height * dpr);
-  const width = b.borderBox ? Math.max(w, extraX) : w + extraX;
-  const height = b.borderBox ? Math.max(h, extraY) : h + extraY;
-  return [width, height, t, r, bo, l];
+/** ComputeTileParameters on one axis (paint-gradient.ts tileParameters) exactly: [scale, phase, spacing]; [] for space with no tile, null off the grid. */
+function tileParameters(rule: string, dst: number, src: number): readonly number[] | null {
+  if (rule === 'stretch') return [1, 0, 0];
+  if (rule === 'repeat') return [1, (dst - src) / 2, 0];
+  const [q, r] = divide(dst, src);
+  if (rule === 'round') {
+    // roundf(dst / src), half away from zero, at least 1.
+    const reps = q + (2 * r >= src ? 1 : 0) || 1;
+    const scale = dst / (src * reps);
+    return powerOfTwo(scale) && scale * src * reps === dst ? [scale, 0, 0] : null;
+  }
+  if (q === 0) return [];
+  const space = (dst - src * q) / (q + 1);
+  return fine(space) && space * (q + 1) === dst - src * q ? [1, space, space] : null;
 }
 
-/** The first device scale of dprs at which some sub-pixel position of the box leaves the plan of paint unmodelled, or null. */
-export function unmodelledScale(paint: (dpr: number, x: number, y: number) => BorderImagePaint, dprs: readonly number[]): number | null {
-  for (const dpr of dprs) {
-    for (let k = 0; k < 64; k++) {
-      if (!planBorderImage(paint(dpr, k, 0), NO_GRADIENT_FAULTS).modelled) return dpr;
-      if (!planBorderImage(paint(dpr, 0, k), NO_GRADIENT_FAULTS).modelled) return dpr;
-    }
+/**
+ * Whether paint-gradient.ts tiledPiece models one tiled piece (src and dest [x, y, width, height] in image and device px, the
+ * tile scale on each axis, the rules) 1:1: each scale a power of two, the tile image's raster size, its content and its origin
+ * whole device px, the raster at most 2048 x 2048 px in area. Every input is exact on the grid, so Blink's float arithmetic over
+ * them is exact too. A space axis that fits no tile draws nothing.
+ */
+function pieceTiles(src: readonly number[], dst: readonly number[], tsx: number, tsy: number, rx: string, ry: string): boolean {
+  /** [raster size] for a modelled axis, [] for an axis that draws nothing, null for an unmodelled one. */
+  const axis = (sw: number, d: number, dw: number, ts: number, rule: string): readonly number[] | null => {
+    const p = tileParameters(rule, dw, sw * ts);
+    if (p === null) return null;
+    if (p.length === 0) return [];
+    const scale = ts * (p[0] as number);
+    const raster = scale * (sw + (p[2] as number));
+    const origin = d + (p[1] as number);
+    return powerOfTwo(scale) && fine(raster) && Number.isInteger(raster) && raster >= 1 && Number.isInteger(scale * sw) && fine(origin) && Number.isInteger(origin) ? [raster] : null;
+  };
+  const x = axis(src[2] as number, dst[0] as number, dst[2] as number, tsx, rx);
+  const y = axis(src[3] as number, dst[1] as number, dst[3] as number, tsy, ry);
+  if (x === null || y === null) return false;
+  if (x.length === 0 || y.length === 0) return true;
+  return (x[0] as number) * (y[0] as number) <= 4194304;
+}
+
+/**
+ * Why paint-gradient.ts planBorderImage may leave a tiled border image of the box unmodelled at a device scale, or null when it
+ * models it at every position. The proof keeps every quantity a whole device px or exact on the 1/2048 px grid: the border box,
+ * its border widths and the border image widths whole device px, the slices exact, so the snapped area is the box at any
+ * sub-pixel position and every piece moves by whole device px with it. It mirrors planBorderImage's grid in exact arithmetic,
+ * then each tiled piece as tiledPiece judges it.
+ */
+export function tilingProblem(b: ExactBox, t: TilingInputs, dpr: number): string | null {
+  const GRID = 'a tile, its spacing or its phase is not a whole device px (or its scale is not a power of two), which Chrome rasters through a resampled tile image the native raster does not model';
+  for (const v of [b.width, b.height, ...b.padding, ...b.borders]) if (!Number.isInteger(v * 64) || !Number.isInteger(v * dpr * 64)) return 'a size, padding or border width is not a whole LayoutUnit';
+  const bd = b.borders.map((v) => v * dpr);
+  if (bd.some((v) => !Number.isInteger(v))) return 'a border width is not a whole device px';
+  const [bt, br, bb, bl] = bd as [number, number, number, number];
+  const extraX = (b.padding[1] as number) * dpr + (b.padding[3] as number) * dpr + br + bl;
+  const extraY = (b.padding[0] as number) * dpr + (b.padding[2] as number) * dpr + bt + bb;
+  const w = b.borderBox ? Math.max(b.width * dpr, extraX) : b.width * dpr + extraX;
+  const h = b.borderBox ? Math.max(b.height * dpr, extraY) : b.height * dpr + extraY;
+  if (!Number.isInteger(w) || !Number.isInteger(h)) return 'the border box is not a whole device px';
+  if (w <= 0 || h <= 0) return null;
+  if (w >= BOUND || h >= BOUND) return `the border box is ${BOUND} device px or more`;
+  // ComputeEdgeSlice: a whole number times the zoom (rounded to a LayoutUnit, which absorbs the float slice scale), or a whole
+  // percentage of the image side; at most the side.
+  const slice = (i: number, side: number): number | null => {
+    const s = t.slices[i];
+    if (s === undefined || !Number.isInteger(s.value) || s.value < 0) return null;
+    const v = s.unit === 'number' ? s.value * dpr : (side * s.value) / 100;
+    if (!Number.isInteger(v * 64)) return null;
+    return Math.min(v, side);
+  };
+  const sl = [slice(0, h), slice(1, w), slice(2, h), slice(3, w)];
+  if (sl.some((v) => v === null)) return 'a border-image-slice is not a whole number, or a whole percentage that is a whole LayoutUnit';
+  const [st, sr, sb, sll] = sl as [number, number, number, number];
+  // ComputeEdgeWidth: whole device px only, so SnapEdgeWidths keeps each. auto is the slice over the float zoom ratio of the
+  // image, exact only where the zoom is a power of two.
+  const width = (i: number, border: number, s: number): number | null => {
+    const x = t.widths[i];
+    if (x === undefined) return null;
+    if (x.unit === 'number') return Number.isInteger(x.value * border) && x.value >= 0 ? x.value * border : null;
+    if (x.unit === 'px') return Number.isInteger(x.value * 64) && Number.isInteger(x.value * dpr) && x.value >= 0 ? x.value * dpr : null;
+    return powerOfTwo(dpr) && Number.isInteger(s) ? s : null;
+  };
+  const wd = [width(0, bt, st), width(1, br, sr), width(2, bb, sb), width(3, bl, sll)];
+  if (wd.some((v) => v === null)) return 'a border-image-width is not a whole device px (an auto width is one only at a power-of-two scale)';
+  const [top, right, bottom, left] = wd as [number, number, number, number];
+  if (left + right > w || top + bottom > h) return 'its border-image-widths overlap, and Chrome scales them down off the device px grid';
+  const esw = Math.max(0, w - (sll + sr));
+  const esh = Math.max(0, h - (st + sb));
+  const edw = w - (left + right);
+  const edh = h - (top + bottom);
+  const drawTop = st > 0 && top > 0;
+  const drawRight = sr > 0 && right > 0;
+  const drawBottom = sb > 0 && bottom > 0;
+  const drawLeft = sll > 0 && left > 0;
+  const scaleTop = drawTop ? top / st : 1;
+  const scaleRight = drawRight ? right / sr : 1;
+  const scaleBottom = drawBottom ? bottom / sb : 1;
+  const scaleLeft = drawLeft ? left / sll : 1;
+  const [rx, ry] = [t.repeat[0] ?? 'stretch', t.repeat[1] ?? 'stretch'];
+  let midX = drawTop ? scaleTop : drawBottom ? scaleBottom : dpr;
+  let midY = drawLeft ? scaleLeft : drawRight ? scaleRight : dpr;
+  if (esw > 0 && esh > 0) {
+    if (rx === 'stretch') midX = edw / esw;
+    if (ry === 'stretch') midY = edh / esh;
+  }
+  // The tiled pieces (a corner, or a piece stretched both ways, is drawn directly): [src, dest, tile scales, rules].
+  const tiled: (readonly [readonly number[], readonly number[], number, number, string, string])[] = [];
+  if (ry !== 'stretch') {
+    if (drawLeft && esh > 0 && edh > 0) tiled.push([[0, st, sll, esh], [0, top, left, edh], scaleLeft, scaleLeft, 'stretch', ry]);
+    if (drawRight && esh > 0 && edh > 0) tiled.push([[w - sr, st, sr, esh], [w - right, top, right, edh], scaleRight, scaleRight, 'stretch', ry]);
+  }
+  if (rx !== 'stretch') {
+    if (drawTop && esw > 0 && edw > 0) tiled.push([[sll, 0, esw, st], [left, 0, edw, top], scaleTop, scaleTop, rx, 'stretch']);
+    if (drawBottom && esw > 0 && edw > 0) tiled.push([[sll, h - sb, esw, sb], [left, h - bottom, edw, bottom], scaleBottom, scaleBottom, rx, 'stretch']);
+  }
+  if (t.fill && esw > 0 && esh > 0 && edw > 0 && edh > 0 && (rx !== 'stretch' || ry !== 'stretch')) tiled.push([[sll, st, esw, esh], [left, top, edw, edh], midX, midY, rx, ry]);
+  for (const [src, dst, tsx, tsy, x, y] of tiled) {
+    if (![...src, ...dst].every(fine) || !powerOfTwo(tsx) || !powerOfTwo(tsy)) return GRID;
+    if (!pieceTiles(src, dst, tsx, tsy, x, y)) return GRID;
   }
   return null;
 }
@@ -140,7 +252,7 @@ export function checkBorderImageTiling(root: ResolvedElement, targets: readonly 
     if (parts === null || (parts.repeat[0] === 'stretch' && parts.repeat[1] === 'stretch') || borderImageRefusal(el) !== null) return;
     const box = exactBox(el, ancestors, kw);
     let why: string | null = typeof box === 'string' ? `Dragon cannot prove its border box exactly: ${box}` : null;
-    let scales: readonly number[] = [];
+    let problems: readonly (string | null)[] = [];
     if (typeof box !== 'string') {
       let write: ReturnType<typeof borderImageWrite> = null;
       try {
@@ -151,35 +263,24 @@ export function checkBorderImageTiling(root: ResolvedElement, targets: readonly 
       }
       if (write !== null) {
         const w = write;
-        const image: GradientImage = { ...w.gradient, stops: w.gradient.stops.map((s) => ({ color: { r: s.color.r, g: s.color.g, b: s.color.b, alpha: s.color.alpha }, unit: s.unit, value: s.value })) };
-        const paint = (dpr: number, x: number, y: number): BorderImagePaint => {
-          const d = deviceBox(box, dpr);
-          return {
-            box: { x, y, width: d[0] as number, height: d[1] as number, borders: d.slice(2).map((v) => v * 64), padding: [0, 0, 0, 0], obscures: [false, false, false, false] },
-            image,
-            slices: w.slices,
-            fill: w.fill,
-            widths: w.widths,
-            zoom: dpr,
-            tileSize: referenceTileSize(dpr),
-            layerX: 0,
-            layerY: 0,
-            repeatX: w.repeat[0],
-            repeatY: w.repeat[1],
-          };
-        };
-        scales = native.map((t) => unmodelledScale(paint, NATIVE_DEVICE_DPRS[t]) ?? 0);
+        problems = native.map((t) => {
+          for (const dpr of NATIVE_DEVICE_DPRS[t]) {
+            const p = tilingProblem(box, w, dpr);
+            if (p !== null) return `at DPR ${dpr} ${p}`;
+          }
+          return null;
+        });
       } else if (why === null) return;
     }
     const v = el.props.get('border-image-repeat' as Longhand) as ResolvedValue;
     const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
     native.forEach((t, i) => {
-      const dpr = scales[i] ?? 0;
-      if (why === null && dpr === 0) return;
+      const problem = problems[i] ?? null;
+      if (why === null && problem === null) return;
       const id = `${t}|border-image-tiling|${el.element.address}`;
       if (reported.has(id)) return;
       reported.add(id);
-      const reason = why ?? `at DPR ${dpr} a tile, its spacing or its phase is not a whole device px (or its scale is not a power of two), which Chrome rasters through a resampled tile image the native raster does not model`;
+      const reason = why ?? problem;
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
         origin,
         target: t,

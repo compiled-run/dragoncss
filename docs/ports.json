@@ -2013,6 +2013,8 @@
       "fileSha256": "b8c2a67569424d6eb981a5c169bc60fad6d133ecf14d98b1b4afaa79111709df",
       "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
       "ranges": [
+        { "lines": "23-36", "symbol": "CalculateSpaceNeeded", "source": "located" },
+        { "lines": "38-73", "symbol": "ComputeTileParameters", "source": "located" },
         { "lines": "75-85", "symbol": "ShouldTile", "source": "located" },
         { "lines": "87-177", "symbol": "PaintPieces", "source": "located" },
         { "lines": "181-240", "symbol": "NinePieceImagePainter::Paint", "source": "located" }
@@ -2020,7 +2022,9 @@
       "dragon": [
         { "file": "packages/layout/src/nine-piece.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBorderImage", "use": "port" }
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBorderImage", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tileParameters", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tiledPiece", "use": "port" }
       ]
     },
     {
@@ -3744,6 +3748,22 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/shaders/SkPictureShader.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 Google Inc.",
+      "fileSha256": "4b08868b10e194e7bf143722ff9efb854296e0a4ac505f378a51b43c643d38af",
+      "headerSha256": "09fb410fe807746e5c9d267a697de002ac415d5dd13d48c20717ab180ccb1f05",
+      "ranges": [
+        { "lines": "180-242", "symbol": "SkPictureShader::CachedImageInfo::Make", "source": "located" },
+        { "lines": "259-289", "symbol": "SkPictureShader::rasterShader", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tiledPiece", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -3905,6 +3925,21 @@
       "dragon": [
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/units.ts", "symbol": "layoutRatio", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/graphics/generated_image.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2012 Google Inc. All rights reserved.",
+      "fileSha256": "7278d544cdf795217890999722d7d14e51b4534aff9a5a3488269eea211b44e0",
+      "headerSha256": "9223f4874a0ea140744989276f607e1fea653341d252dd94c077112dd953ffd2",
+      "ranges": [
+        { "lines": "43-72", "symbol": "GeneratedImage::DrawPattern", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "tiledPiece", "use": "port" }
       ]
     },
     {
