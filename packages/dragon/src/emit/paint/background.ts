@@ -3,7 +3,10 @@
 // stage), and its native background is off; the readback then reports the colour it paints. PNT1-opacity-b: a folded fill (a
 // fractional opacity folded into a translucent fill, lower/paint/background.ts) is drawn at the background stage as an opaque
 // image of Chrome's bytes, the translated paint-shadow.ts backdropAt at every device pixel over the ancestors' backgrounds (the
-// shadow module's backdrop) and the fill itself, since the platform's own blend of the colour rounds unlike Skia's blit.
+// shadow module's backdrop) and the fill itself, since the platform's own blend of the colour rounds unlike Skia's blit. A fill with
+// rivals (lower/paint/fold-backdrop.ts) draws folded only while no rival's border box meets its own, checked after every layout of
+// the fill or of a rival; otherwise it keeps the platform blend.
+import { strLit } from './text-decoration.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT, rgbaLit } from './types.ts';
 
@@ -13,6 +16,11 @@ const SWIFT_MEMBERS = String.raw`  /// The background colour the case or a runti
   public var dragonBackgroundFolded = false
   /// The folded fill's opaque pixels over the border box at the device scale, drawn at the background stage.
   public var dragonFoldedImage: CGImage? = nil
+  /// The boxes whose border boxes a folded fill must not meet to draw folded, and the tree that holds them.
+  public var dragonFoldRivals: [String] = []
+  public weak var dragonFoldTree: DragonTree? = nil
+  /// The folded fills that check this box, synced again after its layout.
+  public var dragonFoldWatchers: [String] = []
 `;
 
 const SWIFT = String.raw`import UIKit
@@ -26,13 +34,36 @@ public func dragonBackground(_ v: DragonBoxView, _ c: DragonRGBA8, folded: Bool 
   dragonShadowBackdropChanged(v)
 }
 
+/// PNT1-opacity-b: the boxes a folded fill draws folded only clear of (lower/paint/fold-backdrop.ts), in the tree t.
+public func dragonFoldRivals(_ t: DragonTree, _ v: DragonBoxView, _ rivals: [String]) {
+  v.dragonFoldTree = t
+  v.dragonFoldRivals = rivals
+}
+
+/// Whether no rival's border box meets the folded fill's at the last layout. Each rival keeps the fill as a watcher, so its own
+/// layout syncs the fill again.
+func dragonFoldClear(_ v: DragonBoxView) -> Bool {
+  if v.dragonFoldRivals.isEmpty { return true }
+  guard let t = v.dragonFoldTree else { return false }
+  let e = v.dragonShape.edges
+  var clear = true
+  for id in v.dragonFoldRivals {
+    guard let r = t.node(id) as? DragonBoxView else { fatalError("dragon: \(v.dragonId): its fold rival \(id) is not a box in the tree") }
+    r.dragonFoldTree = t
+    if !r.dragonFoldWatchers.contains(v.dragonId) { r.dragonFoldWatchers.append(v.dragonId) }
+    let f = r.dragonShape.edges
+    if f[2] > f[0] && f[3] > f[1] && f[0] < e[2] && e[0] < f[2] && f[1] < e[3] && e[1] < f[3] { clear = false }
+  }
+  return clear
+}
+
 /// A square box keeps UIView.backgroundColor; a rounded box turns it off and the background stage fills the rounded border box. A
 /// box that is not visible (T150a) shows neither, unless its background is the canvas's, which shows square. A visible square
-/// folded fill turns it off too, and the background stage draws its opaque image.
+/// folded fill clear of its rivals turns it off too, and the background stage draws its opaque image.
 public func dragonSyncBackground(_ v: DragonBoxView) {
   v.dragonFoldedImage = nil
   if v.dragonVisible ? dragonRoundedPath(v, v.dragonShape, inner: false) == nil : v.dragonVisibilityCanvas {
-    if v.dragonBackgroundFolded && v.dragonVisible {
+    if v.dragonBackgroundFolded && v.dragonVisible && dragonFoldClear(v) {
       v.backgroundColor = nil
       v.dragonFoldedImage = dragonFoldedFill(v)
     } else {
@@ -84,9 +115,13 @@ public func dragonPaintBackgroundStage(_ v: DragonBoxView, _ ctx: CGContext, _ s
   ctx.restoreGState()
 }
 
-/// After every layout: the native-or-rounded choice for the new shape.
+/// After every layout: the native-or-rounded choice for the new shape, and again for each folded fill that checks this box.
 public func dragonAfterLayoutBackground(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
   dragonSyncBackground(v)
+  guard let t = v.dragonFoldTree else { return }
+  for id in v.dragonFoldWatchers {
+    if let w = t.node(id) as? DragonBoxView, w !== v { dragonSyncBackground(w) }
+  }
 }
 
 /// The readback of the background module: the live backgroundColor as sRGB RGBA8, or the colour a rounded box or a folded fill paints.
@@ -102,6 +137,11 @@ const KOTLIN_MEMBERS = String.raw`  /** The background colour the case or a runt
   var dragonBackgroundFolded = false
   /** The folded fill's opaque pixels over the border box in device px, drawn at the background stage. */
   var dragonFoldedBitmap: android.graphics.Bitmap? = null
+  /** The boxes whose border boxes a folded fill must not meet to draw folded, and the tree that holds them. */
+  var dragonFoldRivals: List<String> = emptyList()
+  var dragonFoldTree: DragonTree? = null
+  /** The folded fills that check this box, synced again after its layout. */
+  val dragonFoldWatchers = ArrayList<String>()
 `;
 
 const KOTLIN = String.raw`package dev.dragon.views
@@ -125,15 +165,40 @@ fun dragonBackground(v: DragonBoxView, c: DragonRGBA8, folded: Boolean = false) 
   dragonShadowBackdropChanged(v)
 }
 
+/** PNT1-opacity-b: the boxes a folded fill draws folded only clear of (lower/paint/fold-backdrop.ts), in the tree t. */
+fun dragonFoldRivals(t: DragonTree, v: DragonBoxView, rivals: List<String>) {
+  v.dragonFoldTree = t
+  v.dragonFoldRivals = rivals
+}
+
+/**
+ * Whether no rival's border box meets the folded fill's at the last layout. Each rival keeps the fill as a watcher, so its own
+ * layout syncs the fill again.
+ */
+fun dragonFoldClear(v: DragonBoxView): Boolean {
+  if (v.dragonFoldRivals.isEmpty()) return true
+  val t = v.dragonFoldTree ?: return false
+  val e = v.dragonShape.edges
+  var clear = true
+  for (id in v.dragonFoldRivals) {
+    val r = t.node(id) as? DragonBoxView ?: throw IllegalStateException("dragon: " + v.dragonId + ": its fold rival " + id + " is not a box in the tree")
+    r.dragonFoldTree = t
+    if (!r.dragonFoldWatchers.contains(v.dragonId)) r.dragonFoldWatchers.add(v.dragonId)
+    val f = r.dragonShape.edges
+    if (f[2] > f[0] && f[3] > f[1] && f[0] < e[2] && e[0] < f[2] && f[1] < e[3] && e[1] < f[3]) clear = false
+  }
+  return clear
+}
+
 /**
  * A square box keeps a native ColorDrawable; a rounded box turns it off and the background stage fills the rounded border box. A box
  * that is not visible (T150a) shows neither, unless its background is the canvas's, which shows square. A visible square folded
- * fill has none either, and the background stage draws its opaque bitmap.
+ * fill clear of its rivals has none either, and the background stage draws its opaque bitmap.
  */
 fun dragonSyncBackground(v: DragonBoxView) {
   v.dragonFoldedBitmap = null
   val square = if (v.dragonVisible) dragonRoundedPath(v, v.dragonShape, false) == null else v.dragonVisibilityCanvas
-  if (square && v.dragonBackgroundFolded && v.dragonVisible) {
+  if (square && v.dragonBackgroundFolded && v.dragonVisible && dragonFoldClear(v)) {
     v.background = null
     v.dragonFoldedBitmap = dragonFoldedFill(v)
   } else {
@@ -177,9 +242,14 @@ fun dragonPaintBackgroundStage(v: DragonBoxView, canvas: Canvas, shape: DragonBo
   canvas.drawPath(p, paint)
 }
 
-/** After every layout: the native-or-rounded choice for the new shape. */
+/** After every layout: the native-or-rounded choice for the new shape, and again for each folded fill that checks this box. */
 fun dragonAfterLayoutBackground(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   dragonSyncBackground(v)
+  val t = v.dragonFoldTree ?: return
+  for (id in v.dragonFoldWatchers) {
+    val w = t.node(id) as? DragonBoxView
+    if (w != null && w !== v) dragonSyncBackground(w)
+  }
 }
 
 /** The readback of the background module: the live ColorDrawable colour, or the colour a rounded box or a folded fill paints. */
@@ -194,8 +264,14 @@ export const BACKGROUND_EMITTER: PaintEmitter<'background-color'> = {
   name: 'background',
   kinds: ['background-color'],
   lines: {
-    uikit: (v, _n, w) => [`  dragonBackground(${v}, ${rgbaLit(w.color)}${w.folded === true ? ', folded: true' : ''})`],
-    'android-views': (v, _n, w) => [`  dragonBackground(${v}, ${rgbaLit(w.color)}${w.folded === true ? ', folded = true' : ''})`],
+    uikit: (v, _n, w) => [
+      ...(w.rivals === undefined ? [] : [`  dragonFoldRivals(t, ${v}, [${w.rivals.map((r) => strLit('swift', r)).join(', ')}])`]),
+      `  dragonBackground(${v}, ${rgbaLit(w.color)}${w.folded === true ? ', folded: true' : ''})`,
+    ],
+    'android-views': (v, _n, w) => [
+      ...(w.rivals === undefined ? [] : [`  dragonFoldRivals(t, ${v}, listOf(${w.rivals.map((r) => strLit('kotlin', r)).join(', ')}))`]),
+      `  dragonBackground(${v}, ${rgbaLit(w.color)}${w.folded === true ? ', folded = true' : ''})`,
+    ],
   },
   applied: (_e, _b, w) => [w.color.r, w.color.g, w.color.b, w.color.alpha],
   native: {

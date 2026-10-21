@@ -176,7 +176,7 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     expect(() => nodeLit('swift', n)).toThrow(StateEmitError);
     expect(() => nodeLit('kotlin', n)).toThrow(/folded into the fill has no state-node write/);
   });
-  it('keeps the platform blend for a folded fill whose backdrop may hold more than the ancestors\' background colours', () => {
+  it('keeps the platform blend for a folded fill whose backdrop may hold more than the ancestors\' background colours, or checks its rivals at run time', () => {
     type Tree = Parameters<typeof inputFor>[1];
     const sibling: Tree = (r) => [div(r, 'a', ['a'], [div(r, 's', ['s']), div(r, 'b', ['b'])])];
     const folded = (css: string, tree: Tree = sibling) => {
@@ -185,25 +185,38 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
       if (p.kind !== 'ready') throw new Error(p.reason);
       const w = p.programs.uikit.nodes.find((x) => x.id === 'b')?.writes.find((x) => x.kind === 'background-color');
       if (w === undefined || w.kind !== 'background-color') throw new Error(`${css}: no background write`);
-      return w.folded === true;
+      return w.folded === true ? (w.rivals ?? []) : false;
     };
     const lone: Tree = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])];
     // Nothing but the box and its ancestors paints: the backdrop is their colours wherever layout puts the box.
-    expect(folded('', lone)).toBe(true);
-    expect(folded('.a { background-color: rgb(40, 60, 80); padding: 4px; } .b { position: relative; top: -5px; }', lone)).toBe(true);
-    expect(folded('.s { background-color: transparent; }')).toBe(true);
+    expect(folded('', lone)).toEqual([]);
+    expect(folded('.a { background-color: rgb(40, 60, 80); padding: 4px; } .b { position: relative; top: -5px; }', lone)).toEqual([]);
+    expect(folded('.s { background-color: transparent; }')).toEqual([]);
     // 1-3: an ancestor's gradient, border or inset shadow can lie under the fill.
     expect(folded('.a { background-image: linear-gradient(rgb(255, 0, 0), rgb(0, 0, 255)); }', lone)).toBe(false);
     expect(folded('.a { border: 4px solid rgb(0, 0, 0); } .b { margin-top: -4px; }', lone)).toBe(false);
     expect(folded('.a { box-shadow: inset 0 0 4px rgb(255, 0, 0); }', lone)).toBe(false);
-    // 4: any other box that paints may lie under it, however flow, a margin, an offset, a wrap or a shrink places them.
-    expect(folded('')).toBe(false);
-    expect(folded('.b { margin-top: -5px; }')).toBe(false);
-    expect(folded('.b { position: relative; top: -5px; }')).toBe(false);
-    expect(folded('.b { position: absolute; top: 0; }')).toBe(false);
-    expect(folded('.a { display: flex; flex-direction: column; flex-wrap: wrap; height: 10px; width: 100px; } .s { width: 80px; } .b { height: 10px; }')).toBe(false);
-    // A sibling's text paints too.
+    // 4: any other box that paints may lie under it, however flow, a margin, an offset, a wrap or a shrink places them, so the device
+    // folds the fill only while its border box meets no such rival's (emit/paint/background.ts dragonFoldClear).
+    expect(folded('')).toEqual(['s']);
+    expect(folded('.b { margin-top: -5px; }')).toEqual(['s']);
+    expect(folded('.b { position: relative; top: -5px; }')).toEqual(['s']);
+    expect(folded('.b { position: absolute; top: 0; }')).toEqual(['s']);
+    expect(folded('.a { display: flex; flex-direction: column; flex-wrap: wrap; height: 10px; width: 100px; } .s { width: 80px; } .b { height: 10px; }')).toEqual(['s']);
+    // A rival whose paint may leave its border box, or move without a layout, keeps the platform blend: text, a shadow, a transform,
+    // or a scroll container around it.
     expect(folded('.a { font-family: Ahem; font-size: 16px; line-height: 16px; }', (r) => [div(r, 'a', ['a'], [div(r, 't', [], [text(r, 'tx', 'X')]), div(r, 'b', ['b'])])])).toBe(false);
+    for (const css of ['.s { box-shadow: 0 0 4px red; }', '.s { transform: translateX(4px); }']) expect(folded(css), css).toBe(false);
+    expect(folded('.w { overflow: auto; height: 5px; }', (r) => [div(r, 'a', ['a'], [div(r, 'w', ['w'], [div(r, 's', ['s'])]), div(r, 'b', ['b'])])])).toBe(false);
+    expect(folded('.w { overflow: hidden; height: 5px; }', (r) => [div(r, 'a', ['a'], [div(r, 'w', ['w'], [div(r, 's', ['s'])]), div(r, 'b', ['b'])])])).toEqual(['s']);
+    // The rivals are listed ahead of the background write.
+    const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`body { margin: 0; } .s { height: 5px; background-color: rgb(200, 0, 0); } .b { ${leaf} opacity: 0.3; }`, sibling)), []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const node = p.programs.uikit.nodes.find((x) => x.id === 'b');
+    const w = node?.writes.find((x) => x.kind === 'background-color');
+    if (node === undefined || w === undefined || w.kind !== 'background-color') throw new Error('no background write');
+    expect(BACKGROUND_EMITTER.lines.uikit('v0', node, w)).toEqual(['  dragonFoldRivals(t, v0, ["s"])', '  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded: true)']);
+    expect(BACKGROUND_EMITTER.lines['android-views']('v0', node, w)).toEqual(['  dragonFoldRivals(t, v0, listOf("s"))', '  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded = true)']);
   });
   it("the lowering's alpha byte is @dragon/layout's opacityAlpha8", () => {
     const vals: number[] = [];

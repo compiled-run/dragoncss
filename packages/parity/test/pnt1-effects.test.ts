@@ -566,9 +566,10 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
         if (spec.id === 'opacity-fold') {
           expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'opacity')).map((n) => n.id)).toEqual([]);
           expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.color.alpha > 0 && w.color.alpha < 255)).map((n) => n.id)).toEqual(['of-a', 'of-b', 'of-d', 'of-e', 'of-h', 'of-j']);
-          // Each shares the stage with other painted fills, which no geometry-free proof keeps from under it, so none is drawn as
-          // Chrome's bytes: they keep the platform blend of the translucent colour.
-          expect(p.nodes.filter((n) => n.writes.some((w) => w.kind === 'background-color' && w.folded === true)).map((n) => n.id)).toEqual([]);
+          // Each shares the stage with other painted fills, so the device draws it as Chrome's bytes while no other fill's border box
+          // meets its own (emit/paint/background.ts dragonFoldClear): the rows, the spacers' neighbours and the other cells.
+          const folded = p.nodes.flatMap((n) => n.writes.flatMap((w) => (w.kind === 'background-color' && w.folded === true ? [[n.id, (w.rivals ?? []).length > 0] as const] : [])));
+          expect(folded).toEqual(['of-a', 'of-b', 'of-d', 'of-e', 'of-h', 'of-j'].map((id) => [id, true]));
         } else if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
         if (spec.id.startsWith('filter-matrix-')) expect(caught({ alphaIgnored: false, treeOrder: false, filterIgnored: true }), 'filter-ignored').toBe(true);
