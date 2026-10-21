@@ -45,6 +45,7 @@ import { refuseAnimatedPixelated } from './analysis/image-rendering.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
 import { refuseAnimatedTextFill } from './analysis/paint-values/text-fill.ts';
+import { refuseAnimatedShadowUnders } from './analysis/text-shadow.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -1449,6 +1450,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const textFillReported = new Set<string>();
       const fxReported = new Set<string>();
       const pixelatedReported = new Set<string>();
+      const shadowUnderReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
@@ -1463,6 +1465,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         // FX-0: a backdrop-filter or mix-blend-mode is drawn only on a page that does not animate (analysis/fx.ts).
         refuseAnimatedFx(a, roots, nativeTargets, diagnostics, fxReported);
         refuseAnimatedPixelated(a, roots, nativeTargets, diagnostics, pixelatedReported, options.faults);
+        refuseAnimatedShadowUnders(a, roots, nativeTargets, diagnostics, shadowUnderReported);
       });
       // TXT-FX: a state program's text records carry no stroke, so native refuses a drawn stroke wherever the output is one.
       const animated = bandAnimations.some((a) => a.cases.some((c) => [...c.elements.values()].some((e) => e.declared || e.animations.some((x) => x.name !== 'none'))));
