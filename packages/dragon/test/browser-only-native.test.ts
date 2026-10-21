@@ -54,12 +54,27 @@ describe('the browser-only list', () => {
     expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
+  it('a CSS-wide keyword that computes to the initial value is not browser-only', () => {
+    for (const k of ['initial', 'unset', 'revert']) {
+      const c = compile(`.a { view-transition-name: ${k}; view-transition-class: ${k}; view-transition-group: ${k}; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 } });
+      expect(c.diagnostics.filter((d) => d.code === 'DRAGON_BROWSER_ONLY_NATIVE').map((d) => d.message), k).toEqual([]);
+    }
+  });
+
   it('reports each declaration once on a native target, though both the value check and the analysis find it', () => {
     const css = '.a { view-transition-name: hero; view-transition-class: card; }';
     const c = compile(css, { ios: { minimum: '15.0' } });
     const found = c.diagnostics.filter((d) => d.code === 'DRAGON_BROWSER_ONLY_NATIVE');
     const text = `${BASE}\n${css}`;
     expect(found.map((d) => (d.origin.kind === 'authored' ? text.slice(d.origin.span.start, d.origin.span.end) : null)).sort()).toEqual(['card', 'hero']);
+  });
+
+  it('a value inherited through the inherit keyword is browser-only on the child, never also unsupported', () => {
+    const input = inputFor(`${BASE}\n.p { view-transition-name: hero; } .a { view-transition-name: inherit; }`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'])])]);
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(input);
+    const errors = c.diagnostics.filter((d) => d.severity === 'error');
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.every((d) => d.code === 'DRAGON_BROWSER_ONLY_NATIVE'), errors.map((d) => `${d.code} ${d.message}`).join('\n')).toBe(true);
   });
 
   it('a value that arrives through var() is a browser-only error too', () => {

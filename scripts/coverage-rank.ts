@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Diagnostic } from '../packages/dragon/src/internal.ts';
 import { ANDROID_MIN_SDK, createProjectWith, NO_FAULTS, REFERENCE_PLATFORM } from '../packages/dragon/src/internal.ts';
+import { browserOnlyEntry } from '../packages/dragon/src/profiles/browser-only-native.ts';
 import { fixtureToInput, PROJECT_ID } from '../packages/parity/src/fixture-reader.ts';
 import { ENVIRONMENT } from '../packages/parity/src/fixtures.ts';
 import { committedLanes, nativeLanesSource } from '../packages/parity/src/profile-rows.ts';
@@ -303,10 +304,11 @@ const nativeShare = (row: Row): number => Math.min(supportedShare(row, 'ios'), s
 
 /**
  * A browser-only row leaves the native denominator: the compiler reports some probe browser-only on both native targets and every
- * other probe compiles there (the initial value of view-transition-name, say). The owner ruled the list itself (2026-10-21), so no
- * input entry is needed; a row with any other native error stays in the denominator.
+ * other probe compiles there (the initial value of view-transition-name, say). Only a row the list names qualifies: the owner ruled
+ * the list itself (2026-10-21), so no input entry is needed; a row with any other native error stays in the denominator.
  */
 const browserOnlyOnNative = (r: Row): boolean => {
+  if (browserOnlyEntry(r.id.startsWith('at-rule:') ? r.id.slice('at-rule:'.length) : r.id) === null) return false;
   const fine = (v: Verdict): boolean => v.kind === 'ok' || v.kind === 'browser-only';
   return r.probes.every((p) => fine(p.verdict.ios) && fine(p.verdict.android)) && r.probes.some((p) => p.verdict.ios.kind === 'browser-only' && p.verdict.android.kind === 'browser-only');
 };

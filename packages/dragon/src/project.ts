@@ -946,6 +946,8 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
           // CASC: a CSS-wide keyword with no row of its own in this context is supported where it leaves the element's value
           // unchanged, or where the value it computes to here has a row in this context.
           if (u.resolved.unchanged || statusOf(profile, u.resolved.feature, u.context) !== 'unsupported') continue;
+          // BROWSER-ONLY: analysis/scroll-containment.ts reports the computed value on native as browser-only.
+          if (t !== 'web' && browserOnlyEntry(u.property) !== null) continue;
           const key = `${id}|${u.resolved.feature}`;
           if (reported.has(key)) continue;
           reported.add(key);
