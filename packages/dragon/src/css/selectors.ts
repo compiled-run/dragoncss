@@ -46,23 +46,26 @@ export type Compound = {
   readonly pseudos: readonly PseudoClass[];
 };
 export type Specificity = readonly [number, number, number];
-/** The range parts an author selector can style (FORM-a A4): ::-webkit-slider-thumb and ::-webkit-slider-runnable-track. */
-export type RangePart = 'thumb' | 'track';
-const RANGE_PSEUDO_ELEMENTS: ReadonlyMap<string, RangePart> = new Map([['-webkit-slider-thumb', 'thumb'], ['-webkit-slider-runnable-track', 'track']]);
-const RANGE_PSEUDO_NAMES: Readonly<Record<RangePart, string>> = { thumb: '-webkit-slider-thumb', track: '-webkit-slider-runnable-track' };
+/**
+ * The form control parts an author selector can style: a range's ::-webkit-slider-thumb and ::-webkit-slider-runnable-track
+ * (FORM-a A4), and a text field's ::placeholder, which Chrome 145 also parses as ::-webkit-input-placeholder (FORM-c).
+ */
+export type ControlPart = 'thumb' | 'track' | 'placeholder';
+const CONTROL_PSEUDO_ELEMENTS: ReadonlyMap<string, ControlPart> = new Map([['-webkit-slider-thumb', 'thumb'], ['-webkit-slider-runnable-track', 'track'], ['placeholder', 'placeholder'], ['-webkit-input-placeholder', 'placeholder']]);
+const CONTROL_PSEUDO_NAMES: Readonly<Record<ControlPart, string>> = { thumb: '-webkit-slider-thumb', track: '-webkit-slider-runnable-track', placeholder: 'placeholder' };
 /** The pseudo-elements that generate a box from string content (GEN-a, notes/T151-gen-spec.md R2, R5). */
 export type GeneratedPseudo = 'before' | 'after';
 export const GENERATED_PSEUDOS: readonly GeneratedPseudo[] = ['before', 'after'];
 /**
  * The pseudo-element a selector's subject compound ends with (R5): ::before or ::after (or the legacy :before and :after), whose
- * box the cascade builds from the host's chain, or a statically empty one (::backdrop, ::placeholder, a date or number input part),
- * which matches no box once analysis/pseudo-hosts.ts proves no element of the tree can host it, or a range part (FORM-a A4),
- * which the cascade styles per part of an input[type=range]. span: the pseudo-element's text.
+ * box the cascade builds from the host's chain, or a statically empty one (::backdrop, a date or number input part), which
+ * matches no box once analysis/pseudo-hosts.ts proves no element of the tree can host it, or a control part (FORM-a A4, FORM-c),
+ * which the cascade styles per part of an input[type=range] or text field. span: the pseudo-element's text.
  */
 export type SelectorPseudoElement =
   | { readonly kind: 'generated'; readonly name: GeneratedPseudo; readonly span: Span; /** Written as CSS2's single-colon :before or :after. */ readonly legacy: boolean }
   | { readonly kind: 'static-empty'; readonly name: string; readonly span: Span }
-  | { readonly kind: 'range'; readonly name: RangePart; readonly span: Span }
+  | { readonly kind: 'part'; readonly name: ControlPart; readonly span: Span }
   /** ::marker, whose rules cascade onto a list item's marker (resolve.ts markerOf); only color is accepted (generated.ts). */
   | { readonly kind: 'marker'; readonly name: 'marker'; readonly span: Span }
   | { readonly kind: 'scrollbar'; readonly name: ScrollbarPseudo; readonly span: Span };
@@ -159,7 +162,7 @@ function pseudoElementOwner(name: string): string {
 export function isStaticEmptyPseudo(name: string): boolean {
   return STATIC_EMPTY_PSEUDOS.has(name) || name.startsWith('-webkit-datetime-edit');
 }
-const STATIC_EMPTY_PSEUDOS: ReadonlySet<string> = new Set(['backdrop', 'file-selector-button', 'placeholder', '-webkit-search-decoration', '-webkit-date-and-time-value', '-webkit-calendar-picker-indicator', '-webkit-inner-spin-button', '-webkit-outer-spin-button']);
+const STATIC_EMPTY_PSEUDOS: ReadonlySet<string> = new Set(['backdrop', 'file-selector-button', '-webkit-search-decoration', '-webkit-date-and-time-value', '-webkit-calendar-picker-indicator', '-webkit-inner-spin-button', '-webkit-outer-spin-button']);
 
 /** The owner of what follows a pseudo-element in its compound (R5): Dragon refuses it rather than decide Chrome's validity. */
 function afterPseudoOwner(part: CssNode): string {
@@ -302,7 +305,7 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
     if (pseudoElement !== null) {
       // R5: the pseudo-element ends the selector; Dragon refuses whatever follows it (::before:hover, ::before::marker, a combinator).
       ok = false;
-      refuse(part, `"${generate(part)}" after the pseudo-element ::${pseudoElement.kind === 'range' ? RANGE_PSEUDO_NAMES[pseudoElement.name] : pseudoElement.name} of ${generate(sel)} is not supported (${afterPseudoOwner(part)})`, 'End the selector with the pseudo-element.');
+      refuse(part, `"${generate(part)}" after the pseudo-element ::${pseudoElement.kind === 'part' ? CONTROL_PSEUDO_NAMES[pseudoElement.name] : pseudoElement.name} of ${generate(sel)} is not supported (${afterPseudoOwner(part)})`, 'End the selector with the pseudo-element.');
       break;
     }
     if (part.type === 'Combinator') {
@@ -368,15 +371,15 @@ function parseComplex(sel: CssNode, relative: Combinator | null, ctx: Context, r
       else current.pseudos.push(p);
     } else if (part.type === 'PseudoElementSelector') {
       const name = asciiLower(String(part['name']));
-      const rangePart = part['children'] === null ? RANGE_PSEUDO_ELEMENTS.get(name) : undefined;
+      const controlPart = part['children'] === null ? CONTROL_PSEUDO_ELEMENTS.get(name) : undefined;
       const generated = part['children'] === null && (GENERATED_PSEUDOS as readonly string[]).includes(name);
       const empty = part['children'] === null && isStaticEmptyPseudo(name);
       const scrollbar = part['children'] === null && (SCROLLBAR_PSEUDOS as readonly string[]).includes(name);
       const marker = part['children'] === null && name === 'marker';
-      if (rangePart !== undefined && ctx.inArgument) {
+      if (controlPart !== undefined && ctx.inArgument) {
         ok = false;
         refuse(part, `pseudo-element ${generate(part)} inside a selector argument is not supported`, 'Write the pseudo-element at the end of a top-level selector.');
-      } else if (rangePart !== undefined) pseudoElement = { kind: 'range', name: rangePart, span: spanOf(part, ctx.base) };
+      } else if (controlPart !== undefined) pseudoElement = { kind: 'part', name: controlPart, span: spanOf(part, ctx.base) };
       else if ((generated || empty || scrollbar || marker) && ctx.inArgument) {
         // Selectors-4 §4: a pseudo-element is invalid in a selector argument; Chrome drops it, and so does Dragon.
         ok = false;

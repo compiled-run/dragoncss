@@ -2,7 +2,7 @@
 // values come from the captured dataset, computed.ts, and Chrome's UA rules for the supported tags hold no !important), so the
 // order is importance, then cascade layer, then specificity, then order of appearance.
 import type { Longhand } from '../css/properties.ts';
-import type { GeneratedPseudo, RangePart, Selector } from '../css/selectors.ts';
+import type { GeneratedPseudo, ControlPart, Selector } from '../css/selectors.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import type { Registrations } from '../css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from '../css/at-rules/property.ts';
@@ -71,7 +71,7 @@ export type CascadeResult = {
 export type CascadePseudo = { readonly name: GeneratedPseudo | 'marker'; readonly direction: Direction };
 
 /** A range part's cascade: the part's pseudo-element (null for the container, which no author selector reaches) and its direction. */
-export type CascadePart = { readonly name: RangePart | null; readonly direction: Direction };
+export type CascadePart = { readonly name: ControlPart | null; readonly direction: Direction };
 
 /** css-variables-1 §3.1: a longhand of a declaration holding var() competes with this value until substitution. */
 const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var()', text: d.text });

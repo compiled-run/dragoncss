@@ -7,7 +7,7 @@ import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
-import type { GeneratedPseudo, RangePart } from '../css/selectors.ts';
+import type { GeneratedPseudo, ControlPart } from '../css/selectors.ts';
 import { GENERATED_PSEUDOS } from '../css/selectors.ts';
 import type { CompilerFaults } from '../faults.ts';
 import { STRING_VALUE_TYPE } from '../css/properties/lists.ts';
@@ -475,7 +475,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     }
     if (pseudo === null) {
       // FORM-a A4: input[type=range] holds Chrome's UA shadow tree, container > track > thumb, each a div (forms/ua-shadow.generated.ts).
-      const host = part === null ? (el.tag === 'input' && isRangeType(el.attributes.get('type')) ? el : null) : (rangeParts.get(parent as ResolvedElement) as RangePartInfo).host;
+      const host = part === null ? (el.tag === 'input' && isRangeType(el.attributes.get('type')) ? el : null) : (rangeParts.get(parent as ResolvedElement) as ControlPartInfo).host;
       const next: RangeShadowPart | null = part === null ? (host === null ? null : 'container') : part === 'container' ? 'track' : part === 'track' ? 'thumb' : null;
       if (part !== null) rangeParts.set(self, { part, host: host as LinkedElement });
       else if (host !== null) rangeParts.set(self, { part: null, host });
@@ -623,14 +623,14 @@ function computePseudoContent(props: Map<Longhand, ResolvedValue>, faults: Compi
 
 /** The parts of the UA shadow tree of input[type=range] (FORM-a A4). */
 export type RangeShadowPart = 'container' | 'track' | 'thumb';
-const PART_PSEUDO: Readonly<Record<RangeShadowPart, RangePart | null>> = { container: null, track: 'track', thumb: 'thumb' };
+const PART_PSEUDO: Readonly<Record<RangeShadowPart, ControlPart | null>> = { container: null, track: 'track', thumb: 'thumb' };
 
 /** A range input (part null) or one of its shadow parts, with the input element. */
-export type RangePartInfo = { readonly part: RangeShadowPart | null; readonly host: LinkedElement };
-const rangeParts = new WeakMap<ResolvedElement, RangePartInfo>();
+export type ControlPartInfo = { readonly part: RangeShadowPart | null; readonly host: LinkedElement };
+const rangeParts = new WeakMap<ResolvedElement, ControlPartInfo>();
 
 /** The range input or shadow part a resolved element is, or undefined for every other element. */
-export function rangePartOf(el: ResolvedElement): RangePartInfo | undefined {
+export function rangePartOf(el: ResolvedElement): ControlPartInfo | undefined {
   return rangeParts.get(el);
 }
 

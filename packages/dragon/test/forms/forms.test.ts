@@ -70,6 +70,7 @@ describe('R11 devolve table', () => {
     expect(APPEARANCE_PROBE).toEqual({
       button: { none: 'theme', 'background-color': 'css', border: 'css', 'appearance-none': 'css' },
       range: { none: 'theme', 'background-color': 'theme', border: 'theme', 'appearance-none': 'css', 'input-none-thumb-auto': 'theme' },
+      textfield: { none: 'theme', 'background-color': 'css', border: 'css', 'appearance-none': 'css' },
     });
   });
 
