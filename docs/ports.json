@@ -2835,6 +2835,7 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/shaping.ts", "symbol": "handleOverflow", "use": "reference" },
         { "file": "packages/text-shaper/scripts/report.ts", "symbol": "md", "use": "reference" }
       ]
     },

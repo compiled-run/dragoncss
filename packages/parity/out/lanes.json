@@ -2653,7 +2653,7 @@
           "caseListSha256": "98481353d894ddeb5e64f10d39908c35c0981eb36409a7ec0730b34f4bd65675",
           "totalCases": 634370,
           "run": {
-            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.20.1+0); openjdk version \"17.0.20.1\" 2026-08-18",
+            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.21+0); openjdk version \"17.0.21\" 2026-10-20",
             "suites": [
               {
                 "corpus": "p1",
