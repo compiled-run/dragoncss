@@ -47,6 +47,14 @@ describe('column geometry (ColumnLayoutAlgorithm::Layout, ResolveUsedColumnCount
     const g = columnGeometry({ count: 2, width: { kind: 'auto' } }, px(15.5), 10, fromCssPx(100));
     expect(g).toEqual({ count: 2, width: divRaw(6400 - 992, 2), stride: 6400 - 992 + 1984 });
   });
+
+  it('takes a normal gap as the font size rounded to a whole px (ComputedPixelSize)', () => {
+    // 10px at DPR 2.625 is 26.25px, so the gap is 26px: 300px zoomed is 50400 raw, (50400 - 2 * 1664) / 3 = 15690 raw.
+    const g = columnGeometry({ count: 3, width: { kind: 'auto' } }, { kind: 'normal' }, 26.25, fromCssPx(787.5));
+    expect(g).toEqual({ count: 3, width: 15690, stride: 47072 + 3 * 1664 });
+    expect(columnOffsets(g, 3)).toEqual([0, 17355, 34709]);
+    expect(columnGeometry({ count: 2, width: { kind: 'auto' } }, { kind: 'normal' }, 12.5, fromCssPx(100)).stride).toBe(6400 + 832); // 12.5px rounds half up to a 13px gap
+  });
 });
 
 function divRaw(raw: number, n: number): number {

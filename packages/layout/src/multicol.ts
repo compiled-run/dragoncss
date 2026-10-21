@@ -4,7 +4,7 @@
 // (BreakBeforeChildIfNeeded and FinalizeForFragmentation) with fragmentation_utils.cc (MovePastBreakpoint, space shortage).
 import type { GapValue, MulticolStyle } from './input.ts';
 import type { LU } from './units.ts';
-import { add, clampNegativeToZero, divInt, divLu, fromCssPx, fromPxCeil, fromRaw, intDiv, intMod, LU_PER_PX, max, sub, toFloat, ZERO } from './units.ts';
+import { add, clampNegativeToZero, computedPixelSize, divInt, divLu, fromCssPx, fromPxCeil, fromRaw, intDiv, intMod, LU_PER_PX, max, sub, toFloat, ZERO } from './units.ts';
 
 /** The orphans and widows initial values (css-break-3 §4.2), the only ones the engine takes. */
 const ORPHANS = 2;
@@ -17,12 +17,14 @@ export type ColumnGeometry = { readonly count: number; readonly width: LU; reado
 export type ColumnBreaks = { readonly starts: readonly number[]; readonly height: LU };
 
 /**
- * CombinedColumnGapSize: gapCount column gaps together, a px gap times the count in float (Length::Multiplied), normal one
- * em of the container's computed font size each, as one LayoutUnit. The caller refuses a percentage or calculated gap.
+ * CombinedColumnGapSize: gapCount column gaps together, a px gap times the count in float (Length::Multiplied), normal the
+ * container's computed font size each, as one LayoutUnit. ResolveUsedColumnGap takes normal as ComputedPixelSize, the size
+ * rounded to a whole px (measured at DPR 2.625: 10px Ahem zooms to 26.25px and its columns are 26px apart). The caller refuses a
+ * percentage or calculated gap.
  */
 export function combinedColumnGap(gap: GapValue, fontSize: number, gapCount: number): LU {
   if (gapCount < 1) return ZERO;
-  const one = gap.kind === 'px' ? gap.value : fontSize;
+  const one = gap.kind === 'px' ? gap.value : computedPixelSize(fontSize);
   return fromCssPx(Math.fround(Math.fround(one) * gapCount));
 }
 

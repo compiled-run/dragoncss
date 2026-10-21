@@ -1907,6 +1907,9 @@ function multicolLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Colum
   const columns = balanceColumns(lines.map((l) => l.height), g.count);
   const offsets = columnOffsets(g, columns.starts.length);
   const rtl = directionOf(ctx, box) === 'rtl';
+  // A <br>'s rect keeps the first column's inline offset in every column: Chrome 145 reports a <br> on a later column's line at
+  // its place in the first column, inline, and in its own column, block (measured, fixture multicol-ahem h3 and n; source not located).
+  const first = rtl ? sub(available, g.width) : ZERO;
   const out: AtomicLine[] = [];
   for (let c = 0; c < columns.starts.length; c++) {
     const from = columns.starts[c] as number;
@@ -1915,7 +1918,7 @@ function multicolLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): Colum
     const dx = rtl ? sub(sub(available, offset), g.width) : offset;
     for (let j = from; j < to; j++) {
       const line = lines[j] as PlacedLine;
-      out.push({ line: shiftLine(line, dx, sub(ZERO, (lines[from] as PlacedLine).top)), atomics: [], atomicRects: [] });
+      out.push({ line: shiftLine(line, dx, sub(ZERO, (lines[from] as PlacedLine).top), first), atomics: [], atomicRects: [] });
     }
   }
   return { lines: out, height: columns.height };
@@ -1925,9 +1928,10 @@ function shiftRect(r: Rect, dx: LU, dy: LU): Rect {
   return { x: add(r.x, dx), y: add(r.y, dy), width: r.width, height: r.height };
 }
 
-function shiftLine(line: PlacedLine, dx: LU, dy: LU): PlacedLine {
+/** A line moved by dx and dy, its <br> rects by breakDx and dy. */
+function shiftLine(line: PlacedLine, dx: LU, dy: LU, breakDx: LU): PlacedLine {
   const pieces = line.pieces.map((p): LinePiece => ({ ...p, x: add(p.x, dx), top: add(p.top, dy) }));
-  return { ...line, top: add(line.top, dy), baseline: add(line.baseline, dy), pieces, boxRects: line.boxRects.map((r) => shiftRect(r, dx, dy)), breakRects: line.breakRects.map((r) => shiftRect(r, dx, dy)) };
+  return { ...line, top: add(line.top, dy), baseline: add(line.baseline, dy), pieces, boxRects: line.boxRects.map((r) => shiftRect(r, dx, dy)), breakRects: line.breakRects.map((r) => shiftRect(r, breakDx, dy)) };
 }
 
 /**
