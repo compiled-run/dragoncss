@@ -11,7 +11,7 @@ import { isReplacedTag, SVG_SHAPE_TAGS } from '../../analysis/elements/replaced.
 import { rounds } from '../../analysis/paint-values/outline.ts';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
 import { SIDES } from '../../css/properties.ts';
-import { opacityOf } from '../../css/properties/effects.ts';
+import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { usedColors } from './colors.ts';
 
 /** Longhands an ancestor must leave at these values: its one paint is a square border-box colour, unlayered and unmoved. */
@@ -60,7 +60,7 @@ export function provableFoldBackdrops(root: ResolvedElement, moving: ReadonlySet
     const scrolls = ['overflow-x', 'overflow-y'].some((p) => ['auto', 'scroll'].includes(kw(el, p) ?? 'visible'));
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
-      if (c.children.length === 0 && ok && !moving.has(c.element.address) && kw(c, 'display') !== 'none') leaves.push({ el: c, path: here });
+      if (c.children.length === 0 && ok && !moving.has(c.element.address) && kw(c, 'display') !== 'none' && !beneath(c)) leaves.push({ el: c, path: here });
       walk(c, here, ok, still && !scrolls);
     }
   };
@@ -74,6 +74,16 @@ export function provableFoldBackdrops(root: ResolvedElement, moving: ReadonlySet
     out.set(el.element.address, rivals.map((p) => p.el.element.address));
   }
   return out;
+}
+
+/**
+ * A negative z-index: the fill paints beneath the backgrounds of the ancestors inside its stacking context, so its backdrop is not
+ * every ancestor's (emit/paint/background.ts dragonFoldBackdrop). Read whether or not it applies (a static non-item ignores it).
+ */
+function beneath(el: ResolvedElement): boolean {
+  const v = el.props.get('z-index')?.value;
+  const z = v === undefined ? null : zIndexOf(v);
+  return z !== null && z < 0;
 }
 
 /** A rival's own paint: inside its border box (no shadow, outline, text, replaced content or control) and unmoved but by layout. */
