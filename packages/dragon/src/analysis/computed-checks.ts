@@ -52,7 +52,7 @@ import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
-import { checkZoom } from './zoom.ts';
+import { checkZoom, effectiveZoom } from './zoom.ts';
 import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
@@ -1527,7 +1527,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // layoutParent: the nearest ancestor that is not display: contents (the one whose box el's boxes sit in), or null for the root.
   // staleLh: the inherited em or % lengths an ancestor inherits over its own font size (checkViewportFont).
   // button: the form control el is inside, or null; parentDisplay: the display of el's layout parent, or null for the root.
-  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>, button: ResolvedElement | null, parentDisplay: string | null): void => {
+  // parentZoom: the parent's effective zoom (analysis/zoom.ts).
+  const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>, button: ResolvedElement | null, parentDisplay: string | null, parentZoom: number): void => {
+    const zoom = effectiveZoom(el, parentZoom);
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1535,7 +1537,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults, propagated, true);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
-      checkZoom(el, targets, diagnostics, reported);
+      checkZoom(el, zoom, parentZoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkMulticol(el, targets, diagnostics, reported, faults);
       checkColorScheme(el, false, targets, diagnostics, reported);
@@ -1557,7 +1559,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
-    checkZoom(el, targets, diagnostics, reported);
+    checkZoom(el, zoom, parentZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
     // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
     checkScrollContainment(el, targets, diagnostics, reported, faults);
     // The multicol family, initial values only (analysis/multicol.ts).
@@ -1613,9 +1615,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     const own = el !== propagated && isScrollKeyword(keywordOf(el.props.get('overflow-x') as ResolvedValue)) ? el.element.address : null;
     const inner = el === root ? own : (own ?? scroller);
     const boxParent = isContents(el) ? layoutParent : el;
-    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale, inside, display === 'contents' ? parentDisplay : display);
+    for (const c of el.children) if (c.kind === 'element') walk(c, here, inner, panners, boxParent, stale, inside, display === 'contents' ? parentDisplay : display, zoom);
   };
-  walk(root, false, 'viewport', [], null, new Set(), null, null);
+  walk(root, false, 'viewport', [], null, new Set(), null, null, 1);
   // SCROLL-SNAP: a scroll container that snaps to a snap area, which native does not yet (analysis/scroll-containment.ts).
   checkScrollSnap(root, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, faults);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);

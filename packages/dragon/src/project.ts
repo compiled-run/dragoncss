@@ -34,6 +34,7 @@ import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations } from './analysis/animations.ts';
+import { refuseZoomedAnimations } from './analysis/zoom.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
 import { refuseAnimatedFx } from './analysis/fx.ts';
 import { refuseStatefulStrokes } from './analysis/text-stroke.ts';
@@ -1416,6 +1417,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
+      // ZOOM: native carries animated lengths unzoomed, so a zoomed element's transitions and animations are refused there.
+      const zoomAnimReported = new Set<string>();
+      bandCases.forEach((r, k) => refuseZoomedAnimations(bandAnimations[k] as AnimationAnalysis, r.cases, nativeTargets, diagnostics, zoomAnimReported));
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
       // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. PNT1: an animated color
       // must not turn a currentcolor dotted, dashed or 3D outline or rounded double border translucent, nor reach a currentcolor
