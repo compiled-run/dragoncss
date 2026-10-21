@@ -121,10 +121,10 @@ describe('the LayoutStyle constructor arguments', () => {
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
     // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then TXT2-f's textOverflow,
-    // TXT2-h's textIndent, TXT2-g's lineClamp, CONTAIN's containLayout, containPaint, containSize and contain-intrinsic sizes, and
-    // GRID's grid and gridItem, nil off a grid, and ZOOM's zoom chain, empty without zoom.
-    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), Px(JsString("px"), 0.0), 0.0, false, false, JsString("none"), NoneValue(JsString("none")), NoneValue(JsString("none")), nil, nil, JsArray<Double>([]))';
-    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", Px("px", 0.0), 0.0, false, false, "none", NoneValue("none"), NoneValue("none"), null, null, jsArrayOf<Double>())';
+    // TXT2-h's textIndent, TXT2-g's lineClamp, CONTAIN's containLayout, containPaint, containSize and contain-intrinsic sizes, TXT-TW's
+    // textWrapStyle (auto), multicol (nil off a multi-column container), textBoxTrim (nil without text-box-trim), GRID's grid and gridItem, nil off a grid, and ZOOM's zoom chain, empty without zoom.
+    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), Px(JsString("px"), 0.0), 0.0, false, false, JsString("none"), NoneValue(JsString("none")), NoneValue(JsString("none")), Auto(JsString("auto")), nil, nil, nil, nil, JsArray<Double>([]))';
+    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", Px("px", 0.0), 0.0, false, false, "none", NoneValue("none"), NoneValue("none"), Auto("auto"), null, null, null, null, jsArrayOf<Double>())';
     expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0)${swiftAlign}`);
     expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0)${swiftAlign}`);
     expect(swift).toContain(`JsString("start"), Auto(JsString("auto"))${swiftAlign}`);

@@ -14,6 +14,7 @@ body { margin: 0; color: #123456; }
 .r1 { display: revert; width: revert; margin: revert; padding: revert; color: revert; background-color: revert; }
 .r2 { margin: revert-layer; display: revert-layer; height: revert; border-top-width: revert; }
 .r3 { margin-inline-start: revert; margin-block-end: revert-layer; }
+.bi { border-top-style: solid; border-top-width: inherit; border-top-color: #aa0000; width: 10px; height: 4px; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -27,5 +28,7 @@ body { margin: 0; color: #123456; }
 <h1 data-dragon-id="h1" class="flat r2"></h1>
 <h2 data-dragon-id="h2" class="flat r3"></h2>
 <blockquote data-dragon-id="bq" class="flat r3"></blockquote>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="b0" class="bi"></div></div>
+<div data-dragon-id="b2p" class="base"><div data-dragon-id="b2" class="bi"></div></div>
 </body>
 </html>

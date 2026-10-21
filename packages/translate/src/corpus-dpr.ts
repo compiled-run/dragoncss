@@ -380,7 +380,7 @@ const INLINE_STYLE: Json = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
-  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, grid: null, gridItem: null, zoom: [],
+  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' }, multicol: null, textBoxTrim: null, grid: null, gridItem: null, zoom: [],
 };
 
 const inlineFont = (size: number): Json => ({ family: 'Ahem', size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true });
@@ -625,7 +625,7 @@ const OVERFLOW_STYLE: Json = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
-  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, grid: null, gridItem: null, zoom: [],
+  aspectRatio: { kind: 'auto' }, verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' }, multicol: null, textBoxTrim: null, grid: null, gridItem: null, zoom: [],
 };
 
 /** engine-overflow: generated scroll containers with scroll metrics, appended after every earlier suite so their inputs do not move. */
@@ -774,6 +774,44 @@ export function textLatinVectorCases(): DprVectorCase[] {
   return out;
 }
 
+// ---------------------------------------------------------------- engine-wrap-style
+
+export const WRAP_STYLE_SPEC = { engineWrapStyle: 400 } as const;
+
+/**
+ * Generated text-wrap-style contexts (TXT-TW): one Ahem text run of 3 to 12 words in a block of its strut's font, balanced or
+ * pretty (zoom 1; the environment pass zooms it), in a block or a flex row, of random width, size, text-align and direction, at
+ * every DPR, some with planted fault wrapStyleGreedy. The balance score and bisection passes, the pretty window and the greedy
+ * fallbacks (one line, more than six, an overflowing word) all occur.
+ */
+export function engineWrapStyleCases(): string[] {
+  const r = new Rng(EXTENDED_SPEC.seed * 73);
+  const out: string[] = [];
+  let n = 0;
+  while (out.length < WRAP_STYLE_SPEC.engineWrapStyle) {
+    const direction = r.chance(0.3) ? 'rtl' : 'ltr';
+    const size = r.pick([10, 10, 12, 16, 20, 13]);
+    const words: string[] = [];
+    const count = 3 + r.int(10);
+    for (let i = 0; i < count; i++) words.push('X'.repeat(1 + (r.chance(0.01) ? 20 + r.int(6) : r.int(6))));
+    const font = inlineFont(size);
+    const lineHeight = r.chance(0.7) ? { kind: 'normal' } : { kind: 'number', value: r.pick([1, 1.5, 2]) };
+    const leaf: Json = { kind: 'text', id: 't0', text: words.join(' '), font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
+    const kind = r.chance(0.5) ? 'balance' : 'pretty';
+    // 8 to 19 ems wide, so most runs take two to six lines of words up to 6 ems.
+    const width = { kind: 'px', value: size * (8 + r.int(12)) + (r.chance(0.2) ? r.pick([0.015625, 0.5, 0.3]) : 0) };
+    const style = { ...INLINE_STYLE, display: 'block', direction, width, textAlign: r.pick(['start', 'end', 'left', 'right', 'center']), textWrapStyle: { kind, zoom: 1 } };
+    const container: Json = { kind: 'box', id: 'c', boxType: 'element', style, strut: { font, lineHeight }, marker: null, children: [leaf] };
+    const root: Json = { kind: 'box', id: 'root', boxType: 'element', style: { ...INLINE_STYLE, display: r.chance(0.3) ? 'flex' : 'block', direction }, strut: null, marker: null, children: [container] };
+    const input: Json = { viewport: { width: 400, height: 300 }, devicePixelRatio: r.pick([1, 2, 3, 2.625]), viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16, root };
+    n++;
+    if (!validateLayoutInput(input).ok) throw new Error(`engine-wrap-style: generated input ${n} is invalid: ${JSON.stringify(validateLayoutInput(input))}`);
+    const faults = r.chance(0.2) ? { ...NO_ENGINE_FAULTS, wrapStyleGreedy: true } : NO_ENGINE_FAULTS;
+    out.push(JSON.stringify({ platform: 'darwin-arm64', faults, input }));
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the extended corpus
 
 export type ExtendedCorpus = Corpus & {
@@ -798,6 +836,7 @@ export function buildExtendedCorpus(): ExtendedCorpus {
   const engineInline = engineInlineCases();
   const engineOverflow = engineOverflowCases();
   const textLatin = textLatinVectorCases().map((v) => v.line);
+  const engineWrapStyle = engineWrapStyleCases();
   const suites: Suite[] = [
     { name: 'vectors-m2', mode: 'engine', lines: m2Lines, expected: m2Lines.map(runEngineCase) },
     { name: 'vectors-dpr', mode: 'engine', lines: dprLines, expected: dprLines.map(runEngineCase) },
@@ -815,6 +854,8 @@ export function buildExtendedCorpus(): ExtendedCorpus {
     { name: 'engine-overflow', mode: 'engine', lines: engineOverflow, expected: engineOverflow.map(runEngineCase) },
     // TXT1a-2: a new suite only, after the OVFL one.
     { name: 'text-latin', mode: 'engine', lines: textLatin, expected: textLatin.map(runEngineCase) },
+    // TXT-TW: a new suite only, after the TXT1a-2 one.
+    { name: 'engine-wrap-style', mode: 'engine', lines: engineWrapStyle, expected: engineWrapStyle.map(runEngineCase) },
   ];
   const d = digestsOf(suites);
   const engineSplit: Split = split(suites[2]?.expected ?? []);
@@ -834,6 +875,7 @@ export function extendedLockText(c: ExtendedCorpus): string {
     engineCalc: CALC_SPEC.engineCalc,
     engineInline: INLINE_SPEC.engineInline + INLINE_SPEC.atomicInline,
     engineOverflow: OVERFLOW_SPEC.engineOverflow,
+    engineWrapStyle: WRAP_STYLE_SPEC.engineWrapStyle,
     snapGenerated: EXTENDED_SPEC.snapGenerated,
     snapVectors: c.snapVectors.length,
     cases: Object.fromEntries(c.suites.map((s) => [s.name, s.lines.length])),
