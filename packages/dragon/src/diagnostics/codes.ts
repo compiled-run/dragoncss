@@ -13,6 +13,7 @@ import { S5 } from './codes/s5.ts';
 import { TREE } from './codes/tree.ts';
 import { TXT1A } from './codes/txt1a.ts';
 import { TXT1C } from './codes/txt1c.ts';
+import { TXT2_I } from './codes/txt2-i.ts';
 
 export const DIAGNOSTIC_FEATURES = {
   'anim-b1': ANIM_B1,
@@ -25,6 +26,7 @@ export const DIAGNOSTIC_FEATURES = {
   tree: TREE,
   txt1a: TXT1A,
   txt1c: TXT1C,
+  'txt2-i': TXT2_I,
 } as const;
 
 export type DiagnosticFeatureId = keyof typeof DIAGNOSTIC_FEATURES;
