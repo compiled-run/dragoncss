@@ -1,0 +1,24 @@
+{
+  "case": "text-decoration-native-values-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 934,
+  "gridSha256": "e681fcb8f5a8ce1a81e81783763dc4ea5d68dabb3ea32d3098a8be38ca40b2cb",
+  "ids": [
+    "html",
+    "v1",
+    "v2",
+    "v3",
+    "v4",
+    "v5",
+    "v6",
+    "v7"
+  ],
+  "runs": [[1,92],[2,132],[3,132],[4,134],[5,132],[6,2],[5,2],[6,8],[5,5],[6,9],[5,3],[6,115],[7,144],[0,24]]
+}

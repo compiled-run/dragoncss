@@ -1,0 +1,20 @@
+{
+  "case": "attr-drop-invalid-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2.625,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 134,
+  "gridSha256": "447ac2286a987f81b1a43139c6422ec4fe858e80db99fa02937971dd5185fd9e",
+  "ids": [
+    "a",
+    "b",
+    "body",
+    "html"
+  ],
+  "runs": [[2,4],[0,4],[2,2],[0,4],[2,2],[0,4],[2,2],[0,4],[2,34],[1,4],[2,2],[1,4],[2,4],[1,4],[2,2],[1,4],[2,4],[1,4],[2,4],[1,4],[3,34]]
+}

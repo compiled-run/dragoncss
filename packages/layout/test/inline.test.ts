@@ -185,9 +185,9 @@ describe('placeLines: the one source of lines (INL1a, notes/T044-inl-spec.md R3)
     const b = box('a', { width: px(30) }, [text('t0', 'XX X'), text('t1', 'Y YY')]);
     const got = placeLines(ctx, b, fromCssPx(30));
     expect(got).toEqual([
-      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintEnd: 2, truncated: false, truncatedWidth: 0 }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
-      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: false, truncatedWidth: 0 }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128, shifts: [], paintEnd: 1, truncated: false, truncatedWidth: 0 }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
-      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: false, truncatedWidth: 0 }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
+      { top: 0, height: G, baseline: 512, pieces: [{ leaf: 0, start: 0, visibleEnd: 2, end: 3, x: 0, width: 2 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintEnd: 2, truncated: false, truncatedWidth: 0, hangs: false }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
+      { top: G, height: G, baseline: G + 512, pieces: [{ leaf: 0, start: 3, visibleEnd: 4, end: 4, x: 0, width: G, top: G, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: false, truncatedWidth: 0, hangs: false }, { leaf: 1, start: 0, visibleEnd: 1, end: 2, x: G, width: G, top: G, ascent: 512, descent: 128, shifts: [], paintEnd: 1, truncated: false, truncatedWidth: 0, hangs: false }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
+      { top: 2 * G, height: G, baseline: 2 * G + 512, pieces: [{ leaf: 1, start: 2, visibleEnd: 4, end: 4, x: 0, width: 2 * G, top: 2 * G, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: false, truncatedWidth: 0, hangs: false }], boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null },
     ]);
   });
   it('the leaf pieces sit at the baseline minus the ascent: a 13px line-height floors the 1.5px half-leading to 1px', () => {

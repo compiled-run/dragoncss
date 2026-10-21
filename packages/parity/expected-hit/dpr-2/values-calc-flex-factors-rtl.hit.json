@@ -1,0 +1,21 @@
+{
+  "case": "values-calc-flex-factors-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 189,
+  "gridSha256": "2200aea8ba418ebc884815dd8c41779ada6c250f9bf8e94c9b7d6ce4afef1407",
+  "ids": [
+    "a",
+    "b",
+    "body",
+    "c",
+    "html"
+  ],
+  "runs": [[2,3],[3,9],[0,10],[1,5],[2,3],[3,9],[0,10],[1,5],[2,3],[3,9],[0,10],[1,5],[2,3],[3,9],[0,10],[1,5],[4,81]]
+}

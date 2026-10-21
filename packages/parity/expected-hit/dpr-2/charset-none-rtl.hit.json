@@ -1,0 +1,20 @@
+{
+  "case": "charset-none-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 297,
+  "gridSha256": "13cf6011651c2f9727c6d08a5af73fb5c475e895e9008be20acae90cf375fb18",
+  "ids": [
+    "body",
+    "div",
+    "html",
+    "p"
+  ],
+  "runs": [[0,4],[1,59],[0,2],[1,75],[0,2],[1,4],[0,2],[1,4],[0,63],[3,48],[2,34]]
+}

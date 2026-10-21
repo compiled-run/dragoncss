@@ -1,0 +1,20 @@
+{
+  "case": "font-shorthand-inherit-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 3,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 400,
+  "gridSha256": "53a24bbbf9116b4c62f47ff47d81c478de65692184776d842c77c0f010e61935",
+  "ids": [
+    "e",
+    "h",
+    "html",
+    "s"
+  ],
+  "runs": [[1,92],[3,134],[0,150],[2,24]]
+}
