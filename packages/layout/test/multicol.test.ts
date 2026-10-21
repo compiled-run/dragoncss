@@ -75,6 +75,13 @@ describe('balancing (ResolveColumnAutoBlockSize and the LayoutLine stretch loop)
     expect(balanceColumns([lu(3200), lu(L)], 2)).toEqual({ starts: [0], height: 3840 });
   });
 
+  it('starts at least as tall as the tallest line, which is unbreakable', () => {
+    // One 10px line over 3 columns would be 214 raw; the tallest unbreakable line makes it 10px (ConstrainColumnBlockSize).
+    expect(balanceColumns(ten(1), 3)).toEqual({ starts: [0], height: L });
+    // 10 + 30 + 10 starts at the 30px line; one line per column violates orphans, so the columns stretch by 10px to two columns.
+    expect(balanceColumns([lu(L), lu(3 * L), lu(L)], 3)).toEqual({ starts: [0, 2], height: 4 * L });
+  });
+
   it('keeps one column for column-count 1 and none for no lines', () => {
     expect(balanceColumns(ten(3), 1)).toEqual({ starts: [0], height: 1920 });
     expect(balanceColumns([], 3)).toEqual({ starts: [0], height: 0 });

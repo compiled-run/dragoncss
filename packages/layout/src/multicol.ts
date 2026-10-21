@@ -129,14 +129,19 @@ function layoutColumn(heights: readonly LU[], start: number, height: LU, first: 
 }
 
 /**
- * ResolveColumnAutoBlockSize then LayoutLine, for content without forced breaks or unbreakable pieces: the columns start at the
- * content's block size over the column count (LayoutUnit::FromFloatCeil of the float quotient), and while a break violates orphans
+ * ResolveColumnAutoBlockSize then LayoutLine, for lines without forced breaks: the columns start at the content's block size over
+ * the column count (LayoutUnit::FromFloatCeil of the float quotient), at least the tallest line, and while a break violates orphans
  * or widows or more columns than count are needed, they stretch by the least space shortage of any column and are laid out again.
  */
 export function balanceColumns(heights: readonly LU[], count: number): ColumnBreaks {
   let content = ZERO;
-  for (const h of heights) content = add(content, h);
-  let height = fromPxCeil(Math.fround(toFloat(content) / Math.fround(count)));
+  // A line box is monolithic (PhysicalFragment::IsMonolithic), so the initial pass reports the tallest line as unbreakable.
+  let tallest = ZERO;
+  for (const h of heights) {
+    content = add(content, h);
+    tallest = max(tallest, h);
+  }
+  let height = tallest >= content ? tallest : max(fromPxCeil(Math.fround(toFloat(content) / Math.fround(count))), tallest);
   for (;;) {
     const starts: number[] = [0];
     let shortage = fromRaw(-1);
