@@ -149,6 +149,15 @@
      "value": 0
     },
     "lineClamp": 0,
+    "containLayout": false,
+    "containPaint": false,
+    "containSize": "none",
+    "containIntrinsicWidth": {
+     "kind": "none"
+    },
+    "containIntrinsicHeight": {
+     "kind": "none"
+    },
     "grid": null,
     "gridItem": null
    },
@@ -276,6 +285,15 @@
        "value": 0
       },
       "lineClamp": 0,
+      "containLayout": false,
+      "containPaint": false,
+      "containSize": "none",
+      "containIntrinsicWidth": {
+       "kind": "none"
+      },
+      "containIntrinsicHeight": {
+       "kind": "none"
+      },
       "grid": null,
       "gridItem": null
      },
@@ -405,6 +423,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -535,6 +562,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -665,6 +701,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -841,6 +886,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -971,6 +1025,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1101,6 +1164,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1231,6 +1303,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1360,6 +1441,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -1534,6 +1624,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -1710,6 +1809,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -1839,6 +1947,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -2013,6 +2130,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -2145,6 +2271,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -2274,6 +2409,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -2406,6 +2550,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -2538,6 +2691,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -2669,6 +2831,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -2801,6 +2972,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -2930,6 +3110,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -3060,6 +3249,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -3192,6 +3390,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -3324,6 +3531,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -3453,6 +3669,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -3583,6 +3808,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -3715,6 +3949,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -3844,6 +4087,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -3974,6 +4226,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -4106,6 +4367,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -4236,6 +4506,15 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
         "gridItem": null
        },
@@ -4364,6 +4643,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },
@@ -4507,6 +4795,15 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
           "gridItem": null
          },

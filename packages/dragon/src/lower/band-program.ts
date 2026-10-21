@@ -205,6 +205,15 @@ export function dependsOnViewport(v: CssValue): boolean {
   return false;
 }
 
+const EM_IN_TEXT = /\dem(?![\w-])/i;
+
+/** Whether a computed value is still taken of the element's font size: an em length, a calculation with one, or a % line-height. */
+function readsFontSize(p: Longhand, v: CssValue): boolean {
+  if (v.kind === 'length') return v.unit === 'em';
+  if (v.kind === 'other') return EM_IN_TEXT.test(v.text);
+  return p === 'line-height' && v.kind === 'percentage';
+}
+
 /** Whether a listing starts a transition: listed with a positive combined duration (CSSTransitionData). */
 const starts = (l: Listing | undefined): boolean => l !== undefined && l.mode === 'listed' && Math.max(l.duration, 0) + l.delay > 0;
 
@@ -250,7 +259,14 @@ export function refuseSizeTransitions(bands: readonly BandAnalysis[], targets: r
       for (const p of [...listed].sort()) {
         const values = trees.map((t) => t.get(address)?.props.get(p)?.value ?? null);
         const differs = values.some((v) => canonicalJson(v) !== canonicalJson(values[0]));
-        const viewport = values.some((v) => v !== null && dependsOnViewport(v));
+        // CALC-2: an em (or a % line-height) under a font size that follows the viewport follows it too.
+        const followsFont = trees.some((t) => {
+          const fs = t.get(address)?.props.get('font-size')?.value;
+          return fs !== undefined && dependsOnViewport(fs);
+        });
+        // An inherited em still relative was taken of an ancestor's size that follows the viewport (computeLengths makes the rest px).
+        const inheritedEm = trees.some((t) => t.get(address)?.props.get(p)?.origin === 'inherited');
+        const viewport = values.some((v) => v !== null && (dependsOnViewport(v) || ((followsFont || inheritedEm) && readsFontSize(p, v))));
         if (!differs && !viewport) continue;
         const ea = elements.map((e) => e.get(address)).find((x) => x !== undefined);
         const span = ea === undefined ? null : transitionSpan(ea);

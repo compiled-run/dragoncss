@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w55 { width: 55px; }
+.w35 { width: 35px; }
+.w5 { width: 5px; }
+.all { word-break: break-all; }
+.keep { word-break: keep-all; }
+.any { overflow-wrap: anywhere; }
+.nowrap { white-space: nowrap; }
+.row { display: flex; width: 30px; }
+.col { display: flex; flex-direction: column; width: 30px; align-items: flex-start; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="w55 all">XXXXXXXX XX</div>
+<div data-dragon-id="b" class="w35 all">AB-CD/EF(GH)!IJ$5%K</div>
+<div data-dragon-id="c" class="w35 all">X,Y.Z:W;V?U"T[S]R{Q}P|O\N</div>
+<div data-dragon-id="d" class="w5 all">XX XX</div>
+<div data-dragon-id="e" class="w55 keep">XXXXXXXX XX-XX/XX</div>
+<div data-dragon-id="f" class="w35 all any">XXXXXXXX</div>
+<div data-dragon-id="g" class="w35 all nowrap">XXXXXXXX</div>
+<div data-dragon-id="h" class="w35 all">XX <span data-dragon-id="h1">XXXXXX</span>X&#x200B;XX</div>
+<div data-dragon-id="r" class="row"><div data-dragon-id="r1" class="all">XXXXXX</div><div data-dragon-id="r2" class="keep">XX-XX</div></div>
+<div data-dragon-id="k" class="col"><div data-dragon-id="k1" class="all">XXXX XX</div><div data-dragon-id="k2" class="all">(XX)</div></div>
+</body>
+</html>

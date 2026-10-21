@@ -14,6 +14,7 @@ import { CONTAINER_QUERY_INITIAL } from '../src/css/properties/container-query.t
 import { CONTAINMENT_INITIAL } from '../src/css/properties/containment.ts';
 import { OVERSCROLL_INITIAL } from '../src/css/properties/overscroll.ts';
 import { SCROLL_SNAP_INITIAL } from '../src/css/properties/scroll-snap.ts';
+import { MULTICOL_INITIAL } from '../src/css/properties/multicol.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 import { floorProblems } from './floor.ts';
 
@@ -98,9 +99,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
       'border-image-repeat': ['stretch', 'STRETCH'],
       perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
-      // The overscroll, scroll-snap, containment and container-query longhands, which accept their initial values alone, at those
+      // The overscroll, scroll-snap, containment, container-query and multicol longhands, which accept their initial values alone, at those
       // values in two spellings.
-      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])),
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL, ...MULTICOL_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : ['0', '0px']])),
       // isolation, whose isolate makes a stacking context and so changes paint order alone, at auto and isolate.
       isolation: ['auto', 'isolate'],
       // PNT2: the individual transforms (css-transforms-2 §4).
@@ -108,14 +109,18 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       // css-break-4 §5.4: box-decoration-break, which accepts slice alone, at slice in two ASCII cases.
       'box-decoration-break': ['slice', 'SLICE'],
       // BG2: background-blend-mode, which accepts normal alone, at normal in two ASCII cases.
-      'background-blend-mode': ['normal', 'NORMAL'] };
+      'background-blend-mode': ['normal', 'NORMAL'],
+      // FX: backdrop-filter and mix-blend-mode, which make a stacking context and move no box.
+      'backdrop-filter': ['none', 'blur(2px)'], 'mix-blend-mode': ['normal', 'multiply'] };
 
     for (const p of paint) {
       const [va, vb] = pair[p] ?? (p.endsWith('-radius') ? ['4px', '30% 2px'] : ['#102030', 'rgba(200, 100, 50, 0.5)']);
       const position = p === 'box-shadow' ? 'static' : 'relative';
-      // A clip-path over text is refused natively (the accessibility rule), so its boxes hold an empty block instead of text.
-      const inner = (r: SourceRef, id: string): TreeNode => (p === 'clip-path' ? div(r, id, []) : text(r, id, 'XX XX'));
-      const input = inputFor(`${FONT} .x { width: 30px; border: 2px solid; position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [inner(r, 'at')]), div(r, 'b', ['x', 'b'], [inner(r, 'bt')])]);
+      // A clip-path over text is refused natively (the accessibility rule), so its boxes hold an empty block instead of text; native
+      // draws an FX value only where nothing else paints (analysis/fx.ts), so its boxes are empty and unbordered.
+      const fx = p === 'backdrop-filter' || p === 'mix-blend-mode';
+      const inner = (r: SourceRef, id: string): TreeNode => (p === 'clip-path' || fx ? div(r, id, []) : text(r, id, 'XX XX'));
+      const input = inputFor(`${FONT} .x { width: 30px; ${fx ? 'height: 10px;' : 'border: 2px solid;'} position: ${position}; } .a { ${p}: ${va}; } .b { ${p}: ${vb}; }`, (r) => [div(r, 'a', ['x', 'a'], [inner(r, 'at')]), div(r, 'b', ['x', 'b'], [inner(r, 'bt')])]);
       const m = boxes(input);
       const [a, b] = [m.get('a') as LayoutBox, m.get('b') as LayoutBox];
       expect(a.style, p).toEqual(b.style);
@@ -125,6 +130,8 @@ describe("rec1 colour_rows: the 'paint' role", () => {
   it('(iii) colour conversion stays in css/color.ts', () => {
     for (const f of files(src)) {
       if (f.endsWith(join('css', 'color.ts'))) continue;
+      // COL4: css/color-space.ts ports Blink's Color, gfx colour conversions and skcms in float32 (Math.fround) with color.ts; only that file.
+      if (f.endsWith(join('css', 'color-space.ts'))) continue;
       // The font metrics port Blink's float32 arithmetic (Math.fround, floorf), so src/fonts/** is exempt by path.
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
@@ -228,7 +235,7 @@ describe('rec4: the unsupported at-rule fix is manual and never deletes the encl
   it('DRAGON_UNSUPPORTED_AT_RULE carries a manual fix; applyFix changes no text', () => {
     expect(CATALOGUE.DRAGON_UNSUPPORTED_AT_RULE.fix.kind).toBe('manual');
     // A width @media is native too since MQ-R1, so the at-rule here is one every target refuses.
-    const css = `${FONT} @container (min-width: 1px) { .a { width: 80px; } }`;
+    const css = `${FONT} @starting-style { .a { width: 80px; } }`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a'])]);
     const d = project().compile(input).diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_AT_RULE');
     if (d === undefined || d.fix === null) throw new Error('no at-rule diagnostic');

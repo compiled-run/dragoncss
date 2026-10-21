@@ -1,0 +1,15 @@
+{
+  "case": "clip-path-text-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"cut-a:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"cut-b:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"cut-c-kid:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"cut-d:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"cut-e:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"cut-f-kid:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"cut-f-hid:text0","data":"Y","lines":1,"units":[0],"blank":[]},
+    {"id":"cut-g-hid:text0","data":"Y","lines":1,"units":[0],"blank":[]}
+  ]
+}

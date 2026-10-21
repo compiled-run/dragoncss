@@ -116,12 +116,12 @@ describe('the resize host lanes against the committed Chrome traces', () => {
 describe('media rows (profile:rows from the resize lanes, T067 R13)', () => {
   const passing = resizeReport().passing.map((c) => ({ id: c.id, features: mediaFeatures(c.compiled) }));
   const rowsOf = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context === MEDIA_CONTEXT);
-  it('are exactly what profile:rows derives from the passing resize cases, per target, and prove @media width, height, orientation and aspect-ratio natively', () => {
+  it('are exactly what profile:rows derives from the passing resize cases, per target, and prove @media width, height, orientation and aspect-ratio and @container natively', () => {
     expect(rowsOf(webProfile.rows)).toEqual(deriveMediaRows('web', passing));
     expect(rowsOf(iosProfile.rows)).toEqual(deriveMediaRows('ios', passing));
     expect(rowsOf(androidProfile.rows)).toEqual(deriveMediaRows('android', passing));
-    // MQ-R2: the device features join the viewport ones, exact except where R9 labels a target's reading caveat (MEDIA_CAVEATS).
-    const features = ['at-rule:@media', 'media-feature:-webkit-device-pixel-ratio', 'media-feature:any-hover', 'media-feature:any-pointer', 'media-feature:aspect-ratio', 'media-feature:height', 'media-feature:hover', 'media-feature:orientation', 'media-feature:pointer', 'media-feature:prefers-color-scheme', 'media-feature:prefers-reduced-motion', 'media-feature:resolution', 'media-feature:width'];
+    // MQ-R2: the device features join the viewport ones (and CQ's at-rule:@container), exact except where R9 labels a target's reading caveat (MEDIA_CAVEATS).
+    const features = ['at-rule:@container', 'at-rule:@media', 'media-feature:-webkit-device-pixel-ratio', 'media-feature:any-hover', 'media-feature:any-pointer', 'media-feature:aspect-ratio', 'media-feature:height', 'media-feature:hover', 'media-feature:orientation', 'media-feature:pointer', 'media-feature:prefers-color-scheme', 'media-feature:prefers-reduced-motion', 'media-feature:resolution', 'media-feature:width'];
     for (const [target, profile] of [['ios', iosProfile], ['android', androidProfile]] as const) {
       expect(rowsOf(profile.rows).map((r) => [r.feature, r.status, r.proofs.map((p) => [p.aspect, p.lane])])).toEqual(features.map((f) => [f, MEDIA_CAVEATS[target].includes(f) ? 'caveat' : 'exact', [['layout', 'linux-dragon-layout']]]));
     }

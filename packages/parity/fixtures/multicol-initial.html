@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 60px; height: 30px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.s { columns: auto; column-rule: none; column-span: none; column-fill: balance; }
+.S { COLUMNS: AUTO Auto; COLUMN-RULE: MEDIUM NONE CURRENTCOLOR; COLUMN-SPAN: NONE; COLUMN-FILL: BALANCE; }
+.l { column-width: auto; column-count: auto; column-rule-width: medium; column-rule-style: none; column-rule-color: currentcolor; }
+.o { column-rule: currentcolor none; columns: auto auto; column-rule-color: CurrentColor; color: rgb(160, 20, 40); }
+.w { -webkit-columns: auto; -webkit-column-rule: none medium; -webkit-column-span: none; -webkit-column-count: auto; -webkit-column-width: AUTO; -webkit-column-rule-color: currentcolor; -webkit-column-rule-style: none; -webkit-column-rule-width: medium; }
+.k { columns: initial; column-rule: unset; column-span: initial; column-fill: revert; column-count: unset; }
+.i { column-width: inherit; column-count: inherit; column-rule: inherit; column-span: inherit; column-fill: inherit; color: rgb(20, 120, 40); }
+.row { display: flex; width: 200px; columns: auto; column-rule: medium; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="box s">XX XX</div>
+<div data-dragon-id="s2" class="box S"><div data-dragon-id="s2c" class="i">XXX</div></div>
+<div data-dragon-id="s3" class="box l">XX</div>
+<div data-dragon-id="s4" class="box o"><div data-dragon-id="s4c" class="i">XX</div></div>
+<div data-dragon-id="s5" class="box w">XX</div>
+<div data-dragon-id="s6" class="box k">XX</div>
+<div data-dragon-id="row" class="row s"><div data-dragon-id="ra" class="box w">XX XX</div><div data-dragon-id="rb" class="box l">XX</div></div>
+</body>
+</html>

@@ -4,7 +4,7 @@ import type { LayoutBox, LayoutInput } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, sub, ZERO } from './units.ts';
 import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
-import { resolveBorder } from './box.ts';
+import { containsAbsolute, resolveBorder } from './box.ts';
 import type { EnvironmentDependencies } from './environment.ts';
 import { applyEnvironment, environmentDependencies, resolveEnvironment } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
@@ -116,7 +116,7 @@ function parents(root: LayoutBox): Map<string, LayoutBox> {
 // ancestor, or the initial containing block (planted fault cbIgnoresPadding uses the content box, px padding only).
 function containingBlock(ctx: Ctx, box: LayoutBox, parentOf: Map<string, LayoutBox>, out: Placement, icb: ContainingBlock): ContainingBlock {
   let at = parentOf.get(box.id);
-  while (at !== undefined && at.style.position === 'static') at = parentOf.get(at.id);
+  while (at !== undefined && !containsAbsolute(at.style)) at = parentOf.get(at.id);
   if (at === undefined) return icb;
   const r = out.absolute.get(at.id);
   if (r === undefined) throw new Error(`containing block ${at.id} of ${box.id} is not placed yet`);

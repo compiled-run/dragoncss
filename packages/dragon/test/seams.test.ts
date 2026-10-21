@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { beats, cascadeGroups, substituteVariables } from '../src/analysis/resolve.ts';
 import type { Candidate } from '../src/analysis/resolve.ts';
-import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, mediaAtRule, refuseAtRule } from '../src/css/at-rules.ts';
+import { acceptFontFace, AT_RULE_HANDLERS, atRuleHandler, containerAtRule, mediaAtRule, pageAtRule, refuseAtRule } from '../src/css/at-rules.ts';
 import { keyframesAtRule } from '../src/css/at-rules/keyframes.ts';
 import { layerAtRule } from '../src/css/at-rules/layer.ts';
 import { propertyAtRule } from '../src/css/at-rules/property.ts';
@@ -119,25 +119,28 @@ describe('E2 seams: FIXTURES', () => {
   // OVFL retargeted reject-overflow-single-axis to clip and removed reject-overflow-body and reject-overflow-scroll (now layout
   // fixtures in the overflow group); GRID G1a retargeted reject-display-grid (display: grid is proven in block flow); every
   // other milestone-1 spec is unchanged. Before G1a all specs hashed to a336142203f67ef5287bfd48a891f5c542ebeb581f5ac720964e1563c1269389.
-  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects, the retargeted reject-display-grid and reject-white-space-pre, and the code of reject-last-baseline', async () => {
+  it('the milestone-1 specs are byte-identical to 4c1331c but for the OVFL rejects, the retargeted reject-display-grid and reject-white-space-pre, the code of reject-last-baseline and the retargeted reject-color-lab', async () => {
     const m1 = (await load()).slice(0, MILESTONE_1_IDS.length);
     // TXT2-c retargeted reject-white-space-pre to a tab (white-space: pre is laid out); with it the others hashed to 7725fc41….
     // GRID G3b proves last baseline in grid containers, so reject-last-baseline (a flex container) expects an unproven context; with
     // its old code the others hashed to 56415fd4….
-    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid' && f.id !== 'reject-white-space-pre' && f.id !== 'reject-last-baseline'))).toBe('69d403ab911619532ddaf698a87f0e3783be0909939b28d1587d700714a410d5');
+    // COL4 paints lab(), so reject-color-lab expects a translucent lab() outside sRGB; with it the others hashed to 69d403ab….
+    expect(sha(m1.filter((f) => f.id !== 'reject-display-grid' && f.id !== 'reject-white-space-pre' && f.id !== 'reject-last-baseline' && f.id !== 'reject-color-lab'))).toBe('7e4e1e55f57c992127af94ef71eb481aabbce14758ebdf2b129c7a142479bccf');
     expect(m1.find((f) => f.id === 'reject-last-baseline')).toEqual({ id: 'reject-last-baseline', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNPROVEN_CONTEXT', spanText: 'last baseline', messagePrefix: null } });
     expect(m1.find((f) => f.id === 'reject-white-space-pre')).toEqual({ id: 'reject-white-space-pre', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNSUPPORTED_VALUE', spanText: '<div data-dragon-id="a" class="a">XX\tXX</div>', messagePrefix: 'a tab in ' } });
+    expect(m1.find((f) => f.id === 'reject-color-lab')).toEqual({ id: 'reject-color-lab', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNSUPPORTED_VALUE', spanText: 'lab(50% 100 59 / 0.5)', messagePrefix: null } });
     expect(m1.find((f) => f.id === 'reject-display-grid')).toEqual({ id: 'reject-display-grid', format: 'html', kind: 'reject', expect: { code: 'DRAGON_UNPROVEN_CONTEXT', spanText: 'grid', messagePrefix: 'display:grid on grid is used in the flex-column/ltr context, which is not proven' } });
   });
 });
 
-describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, @charset and @layer is still refused', () => {
+describe('E2 seams: every at-rule but @media, @container, @keyframes, @supports, @property, @charset and @layer is still refused', () => {
   // MQ-a made @media conditional, ANIM-b1 accepted a top-level @keyframes (keyframes.test.ts), ANIM-b2 accepted @-webkit-keyframes
   // as @keyframes (aliases.test.ts), CASC decides @supports (casc.test.ts), CASC 2 registers a top-level @property
-  // (casc-property.test.ts) and CASC 3 orders cascade layers (casc-layer.test.ts). The enclosing at-rule of the fourth sheet is
-  // @unknown-thing, which no handler will ever take. @charset has its own handler, which accepts only "utf-8" at the start of a sheet (charset.test.ts).
+  // (casc-property.test.ts), CASC 3 orders cascade layers (casc-layer.test.ts) and CQ applies @container rules per query container
+  // (container-rules.test.ts). The enclosing at-rule of the fourth sheet is
+  // @unknown-thing, which no handler will ever take. @charset has its own handler, which refuses only a non-UTF-8 encoding the sniffer reads at the start of a sheet (charset.test.ts).
   const KEYFRAMES = ['keyframes', '-webkit-keyframes'];
-  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'layer' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
+  const NAMES = [...Object.keys(AT_RULE_HANDLERS).filter((n) => n !== 'media' && n !== 'supports' && n !== 'property' && n !== 'charset' && n !== 'page' && n !== 'layer' && n !== 'container' && !KEYFRAMES.includes(n)), 'Font-Face', 'unknown-thing'];
   const sheets = (n: string): string[] => [`@${n} x { .a { width: 1px; } }`, `@${n};`, `.a { @${n} y { width: 2px; } }`, `@unknown-thing w { @${n} z { .b { height: 3px; } } }`];
   const run = (text: string): { text: string; diagnostics: Diagnostic[]; enclosed: EnclosedRules[]; rules: number } => {
     const diagnostics: Diagnostic[] = [];
@@ -146,8 +149,8 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
     return { text, diagnostics, enclosed, rules: rules.length };
   };
   const atRules = (ds: readonly Diagnostic[]): [string, string][] => ds.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE').map((d) => [d.code, d.message]);
-  it('every registered name but font-face, media, keyframes, supports, property, charset and layer is refused today', () => {
-    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : name === 'layer' ? layerAtRule : refuseAtRule);
+  it('every registered name but font-face, media, container, keyframes, supports, property, charset, page and layer is refused today', () => {
+    for (const [name, h] of Object.entries(AT_RULE_HANDLERS)) expect(h, name).toBe(name === 'font-face' ? acceptFontFace : name === 'media' ? mediaAtRule : KEYFRAMES.includes(name) ? keyframesAtRule : name === 'supports' ? supportsAtRule : name === 'property' ? propertyAtRule : name === 'charset' ? charsetAtRule : name === 'page' ? pageAtRule : name === 'layer' ? layerAtRule : name === 'container' ? containerAtRule : refuseAtRule);
     expect(atRuleHandler('MEDIA')).toBe(mediaAtRule);
     expect(atRuleHandler('no-such-rule')).toBe(refuseAtRule);
     expect(atRuleHandler('Font-Face')).toBe(acceptFontFace);
@@ -168,12 +171,13 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
       ]);
     }
   });
-  it('@media is conditional only at the top level with a block: its rules carry the condition; blockless or in a rule block it is refused', () => {
+  it('@media is conditional at the top level and in a rule block (css-nesting-1 §3.3) with a block: its rules carry the condition; blockless it is refused', () => {
     for (const n of ['media', 'MEDIA']) {
       const [top, statement, nested, inner] = sheets(n).map(run) as [ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>, ReturnType<typeof run>];
       expect([top.rules, top.diagnostics, top.enclosed], n).toEqual([1, [], []]);
       expect(atRules(statement.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in the stylesheet is not supported in milestone 1`]]);
-      expect(atRules(nested.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', `@${n} in a rule block is not supported in milestone 1`]]);
+      // The rule .a, which declares nothing itself, and its nested @media, as a rule for .a under the condition.
+      expect([nested.rules, nested.diagnostics, nested.enclosed], n).toEqual([2, [], []]);
       expect(atRules(inner.diagnostics), n).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', '@unknown-thing in the stylesheet is not supported in milestone 1']]);
       // The @media inside the refused @unknown-thing is parsed into the enclosed rules, with its condition, for analysis only.
       expect(inner.enclosed.length, n).toBe(1);
@@ -199,8 +203,10 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
     // before taking ANIM-b2 (1b8eacfdf9) gives 48d27023… for this list too. charset left with its own handler: without it master
     // before it (9b32f10e18) gives ecd10b0c… too. property left with CASC 2: without it master before CASC 2 (508db670c4) gives
     // 1397573c… too. CASC 3 orders @layer, so layer left the list and the enclosing at-rule became @unknown-thing (never registered, so always refused): master before
-    // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged.
-    const pinned = ['color-profile', 'container', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'page', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
+    // CASC 3 (8a91837674) gives 180df812… for these runs too, so every other at-rule is still unchanged. container left with CQ
+    // without it the commit before CQ (f5bd030d8e) gives 0a87ea72… too.
+    // page left with NA-NATIVE-2 (dropped, it only applies when printing): without both, the batch 4a landing (a5feb6dd) gives c094d926… too.
+    const pinned = ['color-profile', 'counter-style', 'font-face', 'font-feature-values', 'font-palette-values', 'import', 'namespace', 'position-try', 'scope', 'starting-style', 'view-transition', 'Font-Face', 'unknown-thing'];
     const runs = pinned.flatMap((n) => sheets(n).map((text) => {
       const { diagnostics, enclosed } = run(text);
       return { text, diagnostics, enclosed };
@@ -216,7 +222,7 @@ describe('E2 seams: every at-rule but @media, @keyframes, @supports, @property, 
       }
       return x;
     }));
-    expect(sha(strip(runs))).toBe('180df812178562c5c4cde6b617b5ba74c2aa0f3565c8d39177a9d8717aed5b3e');
+    expect(sha(strip(runs))).toBe('c094d92685032b3691d4afddb2cc996c76a4df005e492c0c44c5da96344c9072');
     expect(added.length).toBeGreaterThan(0);
     for (const x of added) expect([[], null, false]).toContainEqual(x);
   });

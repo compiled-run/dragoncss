@@ -106,8 +106,8 @@ describe('var() substitution', () => {
   });
 
   it('refuses a grammar-valid substituted value Dragon cannot express', () => {
-    const at = resolve('.a { --c: lab(50% 40 59); color: var(--c); }', [el('a', ['a'])]);
-    expect(at('a', 'color').substitution?.refusal).toMatch(/^color: var\(--c\) substitutes to "lab\(50% 40 59\)", and lab\(50% 40 59\) is unsupported/);
+    const at = resolve('.a { --c: light-dark(red, blue); color: var(--c); }', [el('a', ['a'])]);
+    expect(at('a', 'color').substitution?.refusal).toMatch(/^color: var\(--c\) substitutes to "light-dark\(red, blue\)", and light-dark\(red, blue\) is unsupported/);
     expect(at('a', 'color').declared).toBeNull();
   });
 });

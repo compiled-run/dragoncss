@@ -8,6 +8,7 @@ import type { Diagnostic } from '../src/index.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text as textNode } from './helpers.ts';
 import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
 import { BORDER_IMAGE_LONGHANDS } from '../src/css/properties/border-image.ts';
+import { FX_LONGHANDS } from '../src/css/properties/fx.ts';
 
 const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
 const ios = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' } } });
@@ -46,7 +47,7 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('check() reports the same diagnostics without outputs', () => {
-    const input = inputFor('.g { column-count: 2; }', (r) => [div(r, 'g', ['g'])]);
+    const input = inputFor('.g { shape-outside: circle(); }', (r) => [div(r, 'g', ['g'])]);
     const r = ios().check(input);
     expect(r.ok).toBe(false);
     expect(r.diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_PROPERTY']);
@@ -70,8 +71,9 @@ describe('createProject().compile() and check()', () => {
     // line-clamp longhands, which are written only where one is not initial (TXT2-g), clip, written only where it is not auto, and
     // clip-path, written only where it is not none, and the mask longhands, written only where one is not initial (MASK-CLIP), as are
     // the border image longhands (MISC-PAINT), and appearance, written only where it is not none (FORM-a), caret-color and accent-color,
-    // written only where one is not auto (FORM-b), and -webkit-user-modify, never written (TOUCH).
-    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify'];
+    // written only where one is not auto (FORM-b), and -webkit-user-modify, never written (TOUCH), backdrop-filter and mix-blend-mode (FX), and
+    // speak, written only where one is not normal (NA-NATIVE-2).
+    const unwritten = ['top', 'right', 'bottom', 'left', 'outline-color', 'outline-style', 'outline-width', 'outline-offset', '-webkit-box-orient', '-webkit-line-clamp', 'clip', 'clip-path', ...MASK_LONGHANDS, ...BORDER_IMAGE_LONGHANDS, 'appearance', 'caret-color', 'accent-color', '-webkit-user-modify', ...FX_LONGHANDS, 'speak'];
     // The fragmentation longhands, written only where one is not initial (css-break-3).
     unwritten.push('break-before', 'break-after', 'break-inside', 'orphans', 'widows');
     for (const p of LONGHANDS) expect(text.split(`  ${p}: `).length - 1, p).toBe(unwritten.includes(p) ? 0 : 3);
@@ -86,7 +88,7 @@ describe('createProject().compile() and check()', () => {
     const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor('.a { width: 1px; }', (r) => [div(r, 'a', ['a'])]));
     expect(c.outputs.web.kind).toBe('ready');
     expect(c.outputs.ios.kind).toBe('analysis-only');
-    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { column-count: 2; }', (r) => [div(r, 'a', ['a'])]));
+    const g = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor('.a { shape-outside: circle(); }', (r) => [div(r, 'a', ['a'])]));
     expect(g.outputs.web.kind).toBe('blocked');
   });
 
@@ -119,7 +121,7 @@ describe('createProject().compile() and check()', () => {
   });
 
   it('refuses colour syntax outside the milestone subset with DRAGON_UNSUPPORTED_VALUE on its span', () => {
-    for (const value of ['lab(50% 40 59)', 'color-mix(in srgb, red, blue)', 'Canvas', 'light-dark(red, blue)', 'hwb(1 2% 3%)', 'oklch(0.5 0.1 20)']) {
+    for (const value of ['color-mix(in srgb, currentcolor, blue)', 'Canvas', 'light-dark(red, blue)', 'rgb(from currentcolor r g b)', 'color(display-p3 1 0 0 / 0.5)']) {
       const css = `.a { color: ${value}; }`;
       const c = createProject({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }).compile(inputFor(css, (r) => [div(r, 'a', ['a'])]));
       const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
