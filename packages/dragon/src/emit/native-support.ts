@@ -866,6 +866,8 @@ public final class DragonTree {
   public func companion(_ id: String, _ view: UIView) { companions[id, default: []].append(view) }
   /// A built node's view, for the runtime writers (RT-1, RT-2, RT-11).
   public func node(_ id: String) -> DragonNodeView? { return views[id] }
+  /// A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted.
+  public func layoutParent(_ id: String) -> String? { return parents[id] ?? nil }
 
   public func boxNode(_ id: String, parent: String?, kind: String) -> DragonBoxView {
     let v = DragonBoxView(dragonId: id, kind: kind, parent: parent)
@@ -2284,6 +2286,8 @@ class DragonTree(val context: Context) {
   fun companion(id: String, view: android.view.View) { companions.getOrPut(id) { ArrayList() }.add(view) }
   /** A built node's view, for the runtime writers (RT-1, RT-2, RT-11). */
   fun node(id: String): DragonNodeView? = views[id]
+  /** A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted. */
+  fun layoutParent(id: String): String? = parents[id]
 
   /** Each inline box's fragments (INL1a): left, top, right, bottom relative to the box's snapped edges, and the baseline from the top. */
   private val inlineLines = HashMap<String, List<DoubleArray>>()
