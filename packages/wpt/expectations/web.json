@@ -27359,7 +27359,7 @@
     "css/css-sizing/intrinsic-percent-replaced-dynamic-012.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/intrinsic-ratio-replaced-box-sizing.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/intrinsic-size-fallback-replaced.html": {"missing":"translate:foreign-element","status":"not-runnable"},
-    "css/css-sizing/intrinsic-size-fallback-video.html": {"missing":"DRAGON_UNSUPPORTED_ELEMENT:<video data-dragon-id=\"n12\"></video>","status":"not-runnable"},
+    "css/css-sizing/intrinsic-size-fallback-video.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:<video data-dragon-id=\"n12\"></video>","status":"not-runnable"},
     "css/css-sizing/intrinsic-size-min-content-box-sizing.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/keyword-sizes-for-intrinsic-contributions-002.html": {"missing":"DRAGON_UNSUPPORTED_ELEMENT:<canvas data-dragon-id=\"n13\" class=\"wpt-inline-0\" width=\"50\" height=\"50\"></canva","status":"not-runnable"},
     "css/css-sizing/keyword-sizes-for-intrinsic-contributions.html": {"missing":"DRAGON_CSS_INVALID_VALUE:-moz-available","status":"not-runnable"},

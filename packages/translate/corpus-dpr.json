@@ -38,13 +38,13 @@
   "engineInline": 4500,
   "engineOverflow": 3000,
   "snapGenerated": 20000,
-  "snapVectors": 2757,
+  "snapVectors": 2769,
   "cases": {
-    "vectors-m2": 733,
-    "vectors-dpr": 2973,
-    "engine-dpr": 2973,
+    "vectors-m2": 737,
+    "vectors-dpr": 2985,
+    "engine-dpr": 2985,
     "units-m2": 120000,
-    "snap": 22757,
+    "snap": 22769,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
@@ -54,25 +54,25 @@
     "text-latin": 160
   },
   "engineSplit": {
-    "ok": 2961,
-    "unsupported": 12,
+    "ok": 2978,
+    "unsupported": 7,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "343bc3bf865c2fa318e676118a067389d37e23a9630cce779cd6d5712f2225ee",
-    "vectors-dpr": "72170c3388b097a48ef0a2b00b4f7402d08c9468ee9004b23840ad8769cfa470",
-    "engine-dpr": "546db8a156722f9e57c129f41ad3e02ffbcdaba721751e4f05ac517e513f6eb7",
+    "vectors-m2": "d6eddea8d8a6da5db4e6490461e271030bbc44216088a69fd939f3face23d949",
+    "vectors-dpr": "afa7e0bd0a2ff249ce8ec8f6ad9aa1c7ac404b4638fb46e0b67b89ff44843a50",
+    "engine-dpr": "fcd3457947a8f1fc2f3b57adb81b60074a9dcca5388644778d4b1e49100cb204",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "d2bcda3590194cd4a47c36a91a2a07197e6d66a5981a65b69715726cabd3cf1e",
+    "snap": "569c003146da86d54eb52e8b42bef8749ea8fe3ffb52cac7f677c695ae9445af",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
     "calc-goldens": "43045bf7c4a52c090b909f4df215d2044e5036a471b88951c2e9de5c1cc9cd51",
-    "engine-calc": "f412b7c191a18a8021c8cde207dce0ccffcd2b65c24a6d4e7a1b39914c29c909",
+    "engine-calc": "fd2240d3e5749fc5ab20d60a0c0e88aed7e3e05e1ddb1bc31126b30bd5c497dc",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
     "engine-inline": "de0ef83f5f6ea0999848efb2670c604691f1bdadb257fff5af9eea9b36289b56",
     "engine-overflow": "462bf90e84a986587adc6881bc286b3e35d59f0f1fd0a1f3a37ec27feace257c",
     "text-latin": "b1051af857b96b0449ffc85b5f703bd8ab9b090b15821bedfb7023fe5a7fb537"
   },
-  "digest": "dcd914c6f1364d235c6820573918d81e7fe6fc8cdf7fa40429c80be85169457d"
+  "digest": "df719dbb1efc819482fdefe19c2ef9b3352494973d65e3a11c0897fe5fb4ddd0"
 }
