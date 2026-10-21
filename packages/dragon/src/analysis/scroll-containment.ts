@@ -73,7 +73,7 @@ function refuse(el: ResolvedElement, targets: readonly string[], diagnostics: Di
 
 // css-contain-2: content-visibility skips laying out and painting a box's contents (text included), and the intrinsic sizes apply
 // under size containment; contain itself is analysis/containment.ts's.
-const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_INITIAL_ONLY, initial: CONTAINMENT_INITIAL, reason: 'Dragon skips no contents and sizes no contained box from contain-intrinsic-size yet' };
+const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_INITIAL_ONLY, initial: CONTAINMENT_INITIAL, reason: 'Dragon skips no contents yet, and sizes a contained box from contain-intrinsic-width and -height alone' };
 
 /**
  * css-conditional-5 §2.1: container-type: inline-size compiles (lower/ios-layout.ts containInlineSize, LayoutStyle containSize inline-size) on a box that generates a block
