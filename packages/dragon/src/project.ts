@@ -1612,7 +1612,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           // font (its strut) counts, not only its text.
           const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
           const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse with nativeRealFaces off';
-          if (k === nativeBand) for (const f of real.values()) if (f.kind === 'face') nativeRealFaceIds.add(f.id);
+          // Every band is lowered and shipped, so a real face of any band keeps the output analysis-only.
+          for (const f of real.values()) if (f.kind === 'face') nativeRealFaceIds.add(f.id);
           const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
