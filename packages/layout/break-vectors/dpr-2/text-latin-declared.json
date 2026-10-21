@@ -1,0 +1,9 @@
+{
+  "case": "text-latin-declared",
+  "dpr": 2,
+  "texts": [
+    {"id":"regular:text0","lines":[[0,20],[20,44],[44,49]]},
+    {"id":"wide:text0","lines":[[0,24],[24,37]]},
+    {"id":"bold:text0","lines":[[0,18]]}
+  ]
+}

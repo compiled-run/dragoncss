@@ -17,7 +17,7 @@
 // this counts toward the headline pass number or wpt:check's gate.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
-import type { LayoutRect } from '@dragon/layout';
+import type { ControlBox, LayoutBox, LayoutRect } from '@dragon/layout';
 import { absoluteRects, LU_PER_PX } from '@dragon/layout';
 import { resolveBorder } from '../../layout/src/box.ts';
 import type { Browser } from './chrome.ts';
@@ -372,10 +372,10 @@ export function rasterize(page: PagePaint, geometry: Geometry): Uint32Array {
 export function dragonGeometry(t: Extract<Translation, { kind: 'fixture' }>, laid: Extract<LaidOut, { kind: 'laid-out' }>): Geometry {
   const abs: ReadonlyMap<string, LayoutRect> = absoluteRects(laid.boxes);
   const styles = new Map<string, Parameters<typeof resolveBorder>[0]>();
-  const walk = (b: (typeof laid.input)['root']): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     styles.set(b.id, b.style);
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else if (c.kind === 'replaced') styles.set(c.id, c.style);
     }
   };

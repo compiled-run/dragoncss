@@ -21,8 +21,8 @@ function longhands(decl: string): { set: string[]; codes: string[] } {
 
 /** TXT-FONTFEAT: the font shorthand also sets font-stretch, after the family: normal unless the value has a width keyword. */
 const STRETCH = 'font-stretch=normal (reset)';
-/** TXT-FONTFEAT: the font shorthand also resets font-feature-settings and font-variation-settings, after the family. */
-const SETTINGS = ['font-feature-settings=normal (reset)', 'font-variation-settings=normal (reset)'];
+/** TXT-FONTFEAT: the font shorthand also resets font-feature-settings and font-variation-settings, after the family, and TXT-FSA font-size-adjust. */
+const SETTINGS = ['font-feature-settings=normal (reset)', 'font-variation-settings=normal (reset)', 'font-size-adjust=none (reset)'];
 
 describe('the font shorthand', () => {
   it('sets style, weight, size, line height and family, resetting what the value omits, and never font-synthesis', () => {
@@ -41,7 +41,7 @@ describe('the font shorthand', () => {
     expect(longhands('font: calc(600) x').codes).toEqual(['DRAGON_CSS_INVALID_VALUE']);
   });
   it('a CSS-wide keyword sets each modelled longhand', () => {
-    for (const k of ['inherit', 'initial', 'unset']) expect(longhands(`font: ${k}`).set, k).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-stretch', ...VARIANTS.map((v) => v.split('=')[0] as string), ...TUNING.map((v) => v.split('=')[0] as string), 'font-feature-settings', 'font-variation-settings'].map((p) => `${p}=${k}`));
+    for (const k of ['inherit', 'initial', 'unset']) expect(longhands(`font: ${k}`).set, k).toEqual(['font-style', 'font-weight', 'font-size', 'line-height', 'font-family', 'font-stretch', ...VARIANTS.map((v) => v.split('=')[0] as string), ...TUNING.map((v) => v.split('=')[0] as string), 'font-feature-settings', 'font-variation-settings', 'font-size-adjust'].map((p) => `${p}=${k}`));
   });
   it('sets font-stretch from a width keyword', () => {
     expect(longhands('font: condensed 12px x').set).toEqual(['font-style=normal (reset)', 'font-weight=normal (reset)', 'font-size=12px', 'line-height=normal (reset)', 'font-family=x', 'font-stretch=condensed', ...VARIANTS, ...TUNING, ...SETTINGS]);

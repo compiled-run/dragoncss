@@ -215,6 +215,8 @@ const project = createProjectWith(
 type Verdict = { readonly kind: 'ok' } | { readonly kind: 'na' } | { readonly kind: 'context'; readonly code: string } | { readonly kind: 'refused'; readonly code: string; readonly message: string };
 
 const NA_CODE = /NOT_APPLICABLE|NA_NATIVE/;
+/** Warnings that mark a native output as partial (drawn, but without the element's behaviour or accessibility role), so the probe counts as unsupported. */
+const PARTIAL_CODES = new Set(['DRAGON_CONTROL_STATIC_NATIVE']);
 /** Codes about the probe's own document rather than the CSS under test; one of them is a fault in this script's input. */
 const HARNESS_CODES = new Set(['DRAGON_CONFIG_INVALID', 'DRAGON_INPUT_INVALID', 'DRAGON_PRODUCER_ERROR', 'DRAGON_INCOMPLETE_INPUT', 'DRAGON_SOURCE_HASH_MISMATCH', 'DRAGON_SPAN_INVALID', 'DRAGON_TREE_SCHEMA']);
 
@@ -250,7 +252,9 @@ function runProbe(p: Probe, body: string): { readonly [T in Target]: Verdict } {
     const harness = errors.find((d) => HARNESS_CODES.has(d.code));
     if (harness !== undefined) fail('probe', `${p.css}: ${harness.code} ${harness.message}`);
     const first = errors[0];
-    if (first === undefined) out[t] = t !== 'web' && mine.some((d) => d.severity === 'info' && NA_CODE.test(d.code)) ? { kind: 'na' } : { kind: 'ok' };
+    const partial = t === 'web' ? undefined : mine.find((d) => PARTIAL_CODES.has(d.code));
+    if (first === undefined && partial !== undefined) out[t] = { kind: 'refused', code: partial.code, message: partial.message };
+    else if (first === undefined) out[t] = t !== 'web' && mine.some((d) => d.severity === 'info' && NA_CODE.test(d.code)) ? { kind: 'na' } : { kind: 'ok' };
     else if (errors.every((d) => d.code === 'DRAGON_UNPROVEN_CONTEXT')) out[t] = { kind: 'context', code: first.code };
     else out[t] = { kind: 'refused', code: first.code, message: first.message };
   }

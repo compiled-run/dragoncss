@@ -1,0 +1,24 @@
+{
+  "case": "text-font-size-adjust-ahem",
+  "dpr": 3,
+  "texts": [
+    {"id":"n:text0","lines":[[0,4],[4,9],[9,12],[12,17]]},
+    {"id":"n-twin:text0","lines":[[0,4],[4,9],[9,12],[12,17]]},
+    {"id":"u:text0","lines":[[0,7],[7,11]]},
+    {"id":"u-twin:text0","lines":[[0,7],[7,11]]},
+    {"id":"pi:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"pn:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"pu:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"pk:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"pi-twin:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"pn-twin:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"pu-twin:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"pk-twin:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"f:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"f-twin:text0","lines":[[0,3],[3,7],[7,9]]},
+    {"id":"ra:text0","lines":[[0,5],[5,12]]},
+    {"id":"rb:text0","lines":[[0,5]]},
+    {"id":"ra-twin:text0","lines":[[0,5],[5,12]]},
+    {"id":"rb-twin:text0","lines":[[0,5]]}
+  ]
+}

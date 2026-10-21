@@ -1,0 +1,17 @@
+{
+  "case": "zoom-scaled",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","lines":[[0,3],[3,5]]},
+    {"id":"b1:text0","lines":[[0,1]]},
+    {"id":"c:text0","lines":[[0,1]]},
+    {"id":"d:text0","lines":[[0,1]]},
+    {"id":"t:text0","lines":[[0,6],[6,11]]},
+    {"id":"t1:text0","lines":[[0,2]]},
+    {"id":"t:text1","lines":[[1,9],[9,12]]},
+    {"id":"u1:text0","lines":[[0,3],[3,6]]},
+    {"id":"u:text0","lines":[[0,4]]},
+    {"id":"u2:text0","lines":[[0,1]]},
+    {"id":"v:text0","lines":[[0,1]]}
+  ]
+}

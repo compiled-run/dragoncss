@@ -46,6 +46,8 @@ export type WebCapture = {
 const collectNodes = (props: string[]): CapturedNode[] => {
   const out: CapturedNode[] = [];
   const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
+  // Runs in the page (page.evaluate), so it closes over nothing: the elements Chrome lays out as LayoutReplaced.
+  const REPLACED_TAGS = ['IMG', 'VIDEO', 'CANVAS', 'IFRAME', 'EMBED'];
   for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
     const id = el.getAttribute('data-dragon-id') as string;
     const r = el.getBoundingClientRect();
@@ -61,8 +63,9 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     // box (no box fragment of its own) also lists the zero-width piece of a <br> inside it beside that line's rect, and only in
     // the first layout (INL-P open question 1), so a zero-width <br> piece with another rect on its line is left out.
     // An SVG element is never a CSS inline box: an <svg> is a replaced element (an atomic inline at most) and a shape inside it
-    // is laid out by SVG, not by inline formatting, though its computed display is 'inline' (Chrome's LayoutSVGShape).
-    if (cs.display === 'inline' && el.tagName !== 'BR' && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
+    // is laid out by SVG, not by inline formatting, though its computed display is 'inline' (Chrome's LayoutSVGShape). RF-INL: a
+    // replaced element with display: inline is an atomic inline (Chrome's LayoutReplaced), one box on its line, not an inline box.
+    if (cs.display === 'inline' && el.tagName !== 'BR' && !REPLACED_TAGS.includes(el.tagName) && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
       const rects = Array.from(el.getClientRects());
       const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
       const extraBrPiece = (f: DOMRect): boolean =>
@@ -142,10 +145,74 @@ async function captureFixtureLive(browser: Browser, fixture: string, html: strin
         nodes[i] = { ...n, computed };
       }
     }
-    return captureOf(fixture, env, nodes);
+    const parts = await captureRangeParts(page, [...LONGHANDS, ...extra]);
+    return captureOf(fixture, env, parts.size === 0 ? nodes : nodes.flatMap((n) => [n, ...(parts.get(n.id) ?? [])]));
   } finally {
     await page.context().close();
   }
+}
+
+type DomNode = { readonly nodeId: number; readonly nodeName: string; readonly attributes?: readonly string[]; readonly children?: readonly DomNode[]; readonly shadowRoots?: readonly DomNode[] };
+
+/**
+ * FORM-a A4: the UA shadow parts of every input[type=range] with a data-dragon-id, as element nodes "<id>::container",
+ * "<id>::track" and "<id>::thumb" after the input: their border boxes from DOM.getBoxModel and their computed values from
+ * CSS.getComputedStyleForNode, through CDP with pierce (FORM-0, scripts/capture-form-data.ts). Script cannot reach a UA shadow
+ * root. A page without a range input opens no CDP session, so every earlier capture is unchanged.
+ */
+async function captureRangeParts(page: Page, props: readonly string[]): Promise<Map<string, CapturedNode[]>> {
+  const out = new Map<string, CapturedNode[]>();
+  const count = await page.evaluate(() => document.querySelectorAll('input[type="range" i][data-dragon-id]').length);
+  if (count === 0) return out;
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const doc = (await cdp.send('DOM.getDocument', { depth: -1, pierce: true })) as { root: DomNode };
+    const inputs: { id: string; node: DomNode }[] = [];
+    const walk = (n: DomNode): void => {
+      const attrs = n.attributes ?? [];
+      const at = (name: string): string | undefined => {
+        for (let k = 0; k + 1 < attrs.length; k += 2) if (attrs[k] === name) return attrs[k + 1];
+        return undefined;
+      };
+      const id = at('data-dragon-id');
+      if (n.nodeName === 'INPUT' && id !== undefined && at('type')?.toLowerCase() === 'range') inputs.push({ id, node: n });
+      for (const c of n.children ?? []) walk(c);
+    };
+    walk(doc.root);
+    if (inputs.length !== count) throw new Error(`the pierced document holds ${inputs.length} range inputs with a data-dragon-id, the page ${count}`);
+    for (const { id, node } of inputs) {
+      const container = node.shadowRoots?.[0]?.children?.[0];
+      const track = container?.children?.[0];
+      const thumb = track?.children?.[0];
+      if (container === undefined || track === undefined || thumb === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow container, track and thumb`);
+      const nodes: CapturedNode[] = [];
+      for (const [part, n] of [['container', container], ['track', track], ['thumb', thumb]] as const) {
+        const style = (await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] };
+        const byName = new Map(style.computedStyle.map((e) => [e.name, e.value]));
+        const computed: Record<string, string> = {};
+        for (const p of props) {
+          const v = byName.get(p);
+          if (v === undefined) throw new Error(`${id}::${part}: CDP gave no computed ${p}`);
+          computed[p] = v;
+        }
+        let box: number[] | null = null;
+        try {
+          box = ((await cdp.send('DOM.getBoxModel', { nodeId: n.nodeId })) as { model: { border: number[] } }).model.border;
+        } catch (e) {
+          // DOM.getBoxModel fails for a node that generates no box (display: none); any other failure is an error.
+          if (!String(e).includes('Could not compute box model')) throw e;
+        }
+        const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
+        nodes.push({ id: `${id}::${part}`, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
+      }
+      out.set(id, nodes);
+    }
+  } finally {
+    await cdp.detach();
+  }
+  return out;
 }
 
 /** Stable, byte-for-byte JSON for the committed expected files. */

@@ -39,6 +39,8 @@ export type ReplacedSamplesBox = {
    * UpdateInnerBorderRadiusClip; a rounded img has no padding), from the TS paint-radius.ts; empty for square corners.
    */
   readonly clip: readonly Arc[];
+  /** Whether the image is drawn nearest-neighbour (image-rendering: pixelated, the image write's pixelated). */
+  readonly pixelated: boolean;
 };
 
 const cache = new WeakMap<PaintSampleContext, ReadonlyMap<string, ReplacedSamplesBox>>();
@@ -81,7 +83,7 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
     const image = w === undefined ? null : w.kind === 'replaced-image' ? decodePng(new Uint8Array(Buffer.from(w.data, 'base64')), (d) => new Uint8Array(inflateSync(d))) : w.kind === 'video-view' ? videoFrame(n.id, w.data) : null;
     const at = order.get(n.id) as number;
     const later = snapped.slice(at + 1);
-    boxes.set(n.id, { paint, image, video: n.writes.some((x) => x.kind === 'video-view'), later, cover: later.filter((r) => opaque(r.id)), clip: imageClip(ctx, n.id, snapped[at] as SnappedRect, out.boxes[at] as { width: number; height: number }, borders.get(n.id) ?? [0, 0, 0, 0]) });
+    boxes.set(n.id, { paint, image, video: n.writes.some((x) => x.kind === 'video-view'), later, cover: later.filter((r) => opaque(r.id)), clip: imageClip(ctx, n.id, snapped[at] as SnappedRect, out.boxes[at] as { width: number; height: number }, borders.get(n.id) ?? [0, 0, 0, 0]), pixelated: w !== undefined && w.kind === 'replaced-image' && w.pixelated });
   }
   cache.set(ctx, boxes);
   return boxes;
