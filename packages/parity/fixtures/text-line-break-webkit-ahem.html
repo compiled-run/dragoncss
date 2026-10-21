@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.w45 { width: 45px; }
+.w60 { width: 60px; }
+.auto { -webkit-line-break: auto; }
+.loose { -webkit-line-break: loose; }
+.normal { -WebKit-Line-Break: normal; }
+.strict { -webkit-line-break: STRICT; }
+.both { line-break: loose; -webkit-line-break: strict; }
+.drop { line-break: normal; -webkit-line-break: anywhere; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="w60 auto">XX XXXXXXXXXX XX</div>
+<div data-dragon-id="b" class="w60 loose">XX XXXXXXXXXX XX</div>
+<div data-dragon-id="c" class="w45 normal">XXX XXX XXX</div>
+<div data-dragon-id="e" class="w45 strict">XXXX <span data-dragon-id="e1">XX XXX</span> X</div>
+<div data-dragon-id="f" class="w45 both">XX XXX XXXX</div>
+<div data-dragon-id="g" class="w45 drop"><div data-dragon-id="g1">XXX XX XXX</div></div>
+</body>
+</html>

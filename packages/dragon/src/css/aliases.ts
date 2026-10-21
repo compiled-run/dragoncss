@@ -10,7 +10,8 @@
 // -webkit-mask-* aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
 // family's own shorthand (properties/radius.ts), -webkit-border-image the border image family's (properties/border-image.ts),
-// -webkit-box-decoration-break is a surrogate that cascades as an alias (aliases/box-decoration.ts),
+// -webkit-box-decoration-break is a surrogate that cascades as an alias (aliases/box-decoration.ts), and so is -webkit-line-break,
+// with its own keywords (aliases/line-break.ts),
 // -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
 // and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
 // The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
@@ -29,6 +30,7 @@ import { EFFECTS_ALIASES } from './aliases/effects.ts';
 import { FILTER_ALIASES } from './aliases/filter.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { FONT_FEATURES_ALIASES } from './aliases/font-features.ts';
+import { LINE_BREAK_ALIAS_PARSERS, LINE_BREAK_ALIASES } from './aliases/line-break.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
 import { MASK_ALIAS_PARSERS, MASK_ALIASES } from './aliases/mask.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
@@ -48,6 +50,7 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   filter: FILTER_ALIASES,
   flex: FLEX_ALIASES,
   'font-features': FONT_FEATURES_ALIASES,
+  'line-break': LINE_BREAK_ALIASES,
   logical: LOGICAL_ALIASES,
   mask: MASK_ALIASES,
   radius: RADIUS_ALIASES,
@@ -69,7 +72,7 @@ for (const [alias, property] of ALIASES) {
 export type AliasValueParser = (tokens: readonly CssNode[]) => ParsedValue | null;
 
 /** Each family's alias value parsers, one line per family. */
-const ALIAS_VALUE_PARSERS: ReadonlyMap<string, AliasValueParser> = new Map([...Object.entries(MASK_ALIAS_PARSERS)]);
+const ALIAS_VALUE_PARSERS: ReadonlyMap<string, AliasValueParser> = new Map([...Object.entries(LINE_BREAK_ALIAS_PARSERS), ...Object.entries(MASK_ALIAS_PARSERS)]);
 
 /** The value parser of a lower-cased alias Chrome parses unlike its property, or undefined. */
 export function aliasValueParser(alias: string): AliasValueParser | undefined {
@@ -91,6 +94,9 @@ const PLAIN_PERSPECTIVE = /^\s*(?:none|inherit|initial|unset|revert|revert-layer
  * (analysis/transform-extra.ts), so only none and the CSS-wide keywords pass.
  */
 export function legacyAliasRefusal(alias: string, source: string): string | null {
+  // -webkit-line-break parses after-white-space, which line-break does not and the engine does not lay out; a var(), env() or
+  // escape could spell it, or an anywhere the surrogate drops at computed-value time.
+  if (alias === '-webkit-line-break') return /after-white-space|var\(|env\(|\\/i.test(source) ? 'Chrome parses -webkit-line-break with its own keywords (after-white-space, and no anywhere), and Dragon parses only line-break' : null;
   if (alias === '-webkit-perspective') return PLAIN_PERSPECTIVE.test(source) ? null : 'Chrome parses -webkit-perspective with legacy rules (a unitless length), and Dragon parses only perspective';
   if (alias !== '-webkit-transform' || !/perspective|var\(|env\(|\\/i.test(source)) return null;
   return 'Chrome parses -webkit-transform with legacy rules (a unitless perspective() length), and Dragon parses only transform';
