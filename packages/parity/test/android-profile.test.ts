@@ -3,7 +3,7 @@
 // compile, an unblocked android output for every proving case, and the Android Views emitter generating every proving case.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from 'dragon';
-import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS } from 'dragon';
+import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS, PROFILE_NOTES, profileNoteFor } from 'dragon';
 import { fixtureInput } from '../src/cases.ts';
 import { fontMapOf, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
@@ -50,11 +50,16 @@ describe('the android profile follows the iOS rule', () => {
     expect(androidProfile.revision).toBe(iosProfile.revision);
     // Animation rows follow each target's own device-anim record (deriveAnimationRows), so their proving cases may differ;
     // the features and statuses they claim may not. MQ-R2 (T067 R9): the one planned difference among the others is a media row
-    // iOS answers with a caveat that Android answers exactly.
+    // iOS answers with a caveat that Android answers exactly. The rows may also differ by a note only Android carries
+    // (profileNoteFor: Android draws no overscroll effect), with the same status and proofs.
+    const androidNote = (r: (typeof iosProfile.rows)[number]) => {
+      const note = profileNoteFor('android', r.feature);
+      return note === null || profileNoteFor('ios', r.feature) !== null ? r : { ...r, note: PROFILE_NOTES[note] };
+    };
     const exactOnAndroid = (r: (typeof iosProfile.rows)[number]) => r.context === MEDIA_CONTEXT && MEDIA_CAVEATS.ios.includes(r.feature) && !MEDIA_CAVEATS.android.includes(r.feature);
     const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== ANIMATION_CONTEXT);
     const claims = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context === ANIMATION_CONTEXT).map((r) => `${r.feature} ${r.status}`);
-    expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows).map((r) => (exactOnAndroid(r) ? { ...r, status: 'exact' } : r)));
+    expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows).map((r) => androidNote(exactOnAndroid(r) ? { ...r, status: 'exact' } : r)));
     expect(iosProfile.rows.filter(exactOnAndroid).map((r) => r.status)).toEqual(MEDIA_CAVEATS.ios.map(() => 'caveat'));
     expect(claims(androidProfile.rows)).toEqual(claims(iosProfile.rows));
     expect(promoted.length).toBeGreaterThan(0);
