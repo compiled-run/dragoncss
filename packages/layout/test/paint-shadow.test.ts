@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { BackdropFill, ShadowInput, ShadowLayer } from '../src/paint-shadow.ts';
-import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape } from '../src/paint-shadow.ts';
+import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape, textShadowLayerOver, textShadowLayerOverTexts } from '../src/paint-shadow.ts';
 
 const SQUARE = [0, 0, 0, 0, 0, 0, 0, 0];
 const shadow = (o: Partial<ShadowInput>): ShadowInput => ({ inset: false, x: 0, y: 0, blur: 0, spread: 0, r: 0, g: 0, b: 0, a: 255, ...o });
@@ -181,6 +181,49 @@ describe('paint-shadow: the device layers over a backdrop', () => {
         expect([0, 1, 2].map((k) => platformOver(e[k] as number, e[3] as number, b[k] as number)), `${x},${y}`).toEqual(chromeOver(ie, b, x, y));
       }
     }
+  });
+});
+
+describe('paint-shadow: a text layer over earlier texts', () => {
+  it('composites over an earlier text\'s shadows and opaque glyphs as Chrome paints them in tree order', () => {
+    const own = [shadow({ y: 2, blur: 4, a: 128 })];
+    const under = { cps: [88, 88], xs: [4, 14], size: 10, baseline: 18, shadows: [shadow({ y: -2, blur: 3, r: 200, a: 160 })], r: 0, g: 0, b: 0 };
+    // Far below the earlier text, nothing of it lies under the layer: the layer is textShadowLayerOver's.
+    expect(textShadowLayerOverTexts([88, 88], [4, 14], 10, 70, own, 1, NO_SHADOW_FAULTS, [], [under])).toEqual(textShadowLayerOver([88, 88], [4, 14], 10, 70, own, 1, NO_SHADOW_FAULTS, []));
+    const near = textShadowLayerOverTexts([88, 88], [4, 14], 10, 26, own, 1, NO_SHADOW_FAULTS, [], [under]);
+    const below = textShadowLayerOver(under.cps, under.xs, under.size, under.baseline, under.shadows, 1, NO_SHADOW_FAULTS, []);
+    // Chrome's pixel over a uniform colour: the layer encoded over a fill of it, composited.
+    const refs = new Map<string, ShadowLayer>();
+    const chrome = (c: readonly number[], x: number, y: number): number[] => {
+      const key = c.join(',');
+      const l = refs.get(key) ?? textShadowLayerOver([88, 88], [4, 14], 10, 26, own, 1, NO_SHADOW_FAULTS, [fill(-40, -40, 80, 80, SQUARE, c[0] as number, c[1] as number, c[2] as number, 255)]);
+      refs.set(key, l);
+      const e = px(l, x, y);
+      return [0, 1, 2].map((k) => platformOver(e[k] as number, e[3] as number, c[k] as number));
+    };
+    let glyph = 0;
+    let shadowed = 0;
+    for (let y = near.top; y < near.bottom; y++) {
+      for (let x = near.left; x < near.right; x++) {
+        const e = px(near, x, y);
+        if (e[3] === 0) continue;
+        // Ahem's ink boxes: 8px above the baseline and 2px below, one per 10px pen.
+        if (x >= 4 && x < 24 && y >= 10 && y < 20) {
+          // The earlier text's opaque glyph: the layer covers it whole, in Chrome's colour over the glyph.
+          glyph++;
+          expect(e[3], `${x},${y}`).toBe(255);
+          expect(e.slice(0, 3), `${x},${y}`).toEqual(chrome([0, 0, 0], x, y));
+          continue;
+        }
+        // Elsewhere the device shows the earlier text's shadow view over white, and the layer over that.
+        const inBelow = x >= below.left && x < below.right && y >= below.top && y < below.bottom;
+        const b = inBelow ? [0, 1, 2].map((k) => platformOver(px(below, x, y)[k] as number, px(below, x, y)[3] as number, 255)) : [255, 255, 255];
+        if (b.some((v) => v !== 255)) shadowed++;
+        expect([0, 1, 2].map((k) => platformOver(e[k] as number, e[3] as number, b[k] as number)), `${x},${y}`).toEqual(chrome(b, x, y));
+      }
+    }
+    expect(glyph).toBeGreaterThan(0);
+    expect(shadowed).toBeGreaterThan(0);
   });
 });
 

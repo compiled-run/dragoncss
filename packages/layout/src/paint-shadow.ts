@@ -31,6 +31,7 @@ import { a8Device, aaRoute, antiFillPath, devicePixels, drrectPath, NO_AA_FAULTS
 import { ccTileEnd, ccTileIndex, ccTileStart } from './paint-dither.ts';
 import { constrainCornerRadii, hasRoundedCorner } from './paint-radius.ts';
 import { floorOf, froundOf } from './rt-easing.ts';
+import type { GlyphInk } from './text-decoration.ts';
 import { ahemLineInk } from './text-decoration.ts';
 
 /** Planted faults (T046 §5.2); the paint vectors and the pixel lanes must catch each one. */
@@ -805,6 +806,46 @@ function glyphMask(left: number, top: number, right: number, bottom: number): A8
  * equal Chrome's (packages/parity/test/text-shadow-native.test.ts).
  */
 export function textShadowLayerOver(cps: readonly number[], xs: readonly number[], size: number, baseline: number, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[]): ShadowLayer {
+  return textShadowLayerOverTexts(cps, xs, size, baseline, shadows, dpr, faults, backdrop, []);
+}
+
+/**
+ * One line of Ahem text that paints before a shadowed line and may lie under its shadows (TXT-FX): its code points, pens and baseline
+ * in page device px, its zoomed font size, its shadows in list order, and its glyphs' opaque sRGB colour.
+ */
+export type TextLinePaint = {
+  readonly cps: readonly number[];
+  readonly xs: readonly number[];
+  readonly size: number;
+  readonly baseline: number;
+  readonly shadows: readonly ShadowInput[];
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+};
+
+/** The masks of one shadow of a line of Ahem ink, a glyph each, as Skia's text path blits them (see textShadowLayerOver). */
+function lineShadowMasks(ink: readonly GlyphInk[], baseline: number, sh: ShadowInput, dpr: number, faults: ShadowFaults): A8Mask[] {
+  const z = zoomed(sh, dpr, faults);
+  const sigma = at(z, 4);
+  const y = floorOf(f32(f32(baseline + at(z, 1)) + 0.5));
+  const out: A8Mask[] = [];
+  for (const g of ink) {
+    const x = floorOf(f32(f32(g.left + at(z, 0)) + 0.125) * 4) / 4;
+    const src = glyphMask(x, y - (baseline - g.top), x + (g.right - g.left), y + (g.bottom - baseline));
+    out.push(sigma > 0 && !hasNoBlur(sigma) ? boxBlur(src, sigma, NO_BLUR) : src);
+  }
+  return out;
+}
+
+/**
+ * textShadowLayerOver over the backdrop and the lines of text painted before it (under, in paint order): Chrome paints each of
+ * those lines' shadows, last first, then its glyphs (a glyph is drawn as a shadow of no offset or blur in its colour) over the
+ * backdrop, and then this line's shadows over all of that. The device shows the earlier lines' own layers (encoded over what lies
+ * under them) and their text views beneath this layer, so each pixel is encoded over Chrome's bytes there, and where an earlier
+ * glyph has ink and this layer paints, as the opaque Chrome colour: the text view's glyph edge is the platform's, not Skia's.
+ */
+export function textShadowLayerOverTexts(cps: readonly number[], xs: readonly number[], size: number, baseline: number, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[], under: readonly TextLinePaint[]): ShadowLayer {
   const ink = ahemLineInk(cps, xs, size, baseline);
   const masks: A8Mask[] = [];
   let bounds: IRect | null = null;
@@ -812,13 +853,7 @@ export function textShadowLayerOver(cps: readonly number[], xs: readonly number[
     const sh = shadows[k] as ShadowInput;
     if (sh.inset) throw new Error('paint-shadow: a text shadow is never inset');
     if (sh.a === 0) continue;
-    const z = zoomed(sh, dpr, faults);
-    const sigma = at(z, 4);
-    const y = floorOf(f32(f32(baseline + at(z, 1)) + 0.5));
-    for (const g of ink) {
-      const x = floorOf(f32(f32(g.left + at(z, 0)) + 0.125) * 4) / 4;
-      const src = glyphMask(x, y - (baseline - g.top), x + (g.right - g.left), y + (g.bottom - baseline));
-      const m = sigma > 0 && !hasNoBlur(sigma) ? boxBlur(src, sigma, NO_BLUR) : src;
+    for (const m of lineShadowMasks(ink, baseline, sh, dpr, faults)) {
       masks.push(m);
       if (width(m.bounds) > 0 && height(m.bounds) > 0) bounds = union(bounds, m.bounds);
     }
@@ -827,7 +862,29 @@ export function textShadowLayerOver(cps: readonly number[], xs: readonly number[
   const b = bounds;
   const layer = zeroCells(4 * width(b) * height(b));
   const back = backdropCells(backdrop, b);
-  const over = backdropCells(backdrop, b);
+  const glyphInk = under.length === 0 ? [] : zeroCells(width(b) * height(b));
+  for (const u of under) {
+    if (!isByte(u.r) || !isByte(u.g) || !isByte(u.b)) throw new Error(`paint-shadow: a text colour ${u.r},${u.g},${u.b} is not RGB8`);
+    const uInk = ahemLineInk(u.cps, u.xs, u.size, u.baseline);
+    for (let k = u.shadows.length - 1; k >= 0; k--) {
+      const sh = u.shadows[k] as ShadowInput;
+      if (sh.inset) throw new Error('paint-shadow: a text shadow is never inset');
+      if (sh.a === 0) continue;
+      const shMasks = lineShadowMasks(uInk, u.baseline, sh, dpr, faults);
+      for (let n = 0; n < shMasks.length; n++) {
+        const m = shMasks[n] as A8Mask;
+        compositeOnto(back, [], b, m.bounds, sh, (x, y) => maskAt(m, x, y));
+      }
+    }
+    const glyph: ShadowInput = { inset: false, x: 0, y: 0, blur: 0, spread: 0, r: u.r, g: u.g, b: u.b, a: 255 };
+    const glyphMasks = lineShadowMasks(uInk, u.baseline, glyph, dpr, faults);
+    for (let n = 0; n < glyphMasks.length; n++) {
+      const m = glyphMasks[n] as A8Mask;
+      compositeOnto(back, [], b, m.bounds, glyph, (x, y) => maskAt(m, x, y));
+      markInk(glyphInk, b, m);
+    }
+  }
+  const over = copyCells(back);
   let i = 0;
   for (let k = shadows.length - 1; k >= 0; k--) {
     const sh = shadows[k] as ShadowInput;
@@ -838,5 +895,28 @@ export function textShadowLayerOver(cps: readonly number[], xs: readonly number[
       compositeOnto(layer, over, b, m.bounds, sh, (x, y) => maskAt(m, x, y));
     }
   }
+  if (under.length === 0) return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: layerValues(layer, over, back) };
+  // Where an earlier glyph has ink, the layer pixel is opaque wherever it paints at all.
+  for (let p = 0; p < glyphInk.length; p++) {
+    const a = cellAt(layer, 4 * p + 3);
+    if (cellAt(glyphInk, p).v !== 0 && a.v !== 0) a.v = 255;
+  }
   return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: layerValues(layer, over, back) };
+}
+
+/** Marks every pixel of bounds where a mask has coverage. */
+function markInk(marks: readonly Cell[], bounds: IRect, m: A8Mask): void {
+  const y0 = maxNum(bounds.top, m.bounds.top);
+  const y1 = minNum(bounds.bottom, m.bounds.bottom);
+  const x0 = maxNum(bounds.left, m.bounds.left);
+  const x1 = minNum(bounds.right, m.bounds.right);
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) if (maskAt(m, x, y) !== 0) cellAt(marks, (y - bounds.top) * width(bounds) + (x - bounds.left)).v = 1;
+  }
+}
+
+function copyCells(xs: readonly Cell[]): Cell[] {
+  const out: Cell[] = [];
+  for (const c of xs) out.push({ v: c.v });
+  return out;
 }

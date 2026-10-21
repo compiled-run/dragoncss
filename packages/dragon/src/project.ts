@@ -38,6 +38,7 @@ import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
 import { refuseAnimatedTextFill } from './analysis/paint-values/text-fill.ts';
+import { refuseAnimatedShadowUnders } from './analysis/text-shadow.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -1312,6 +1313,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const translucentReported = new Set<string>();
       const currentColorReported = new Set<string>();
       const textFillReported = new Set<string>();
+      const shadowUnderReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
@@ -1320,6 +1322,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
         refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
+        refuseAnimatedShadowUnders(a, roots, nativeTargets, diagnostics, shadowUnderReported);
       });
       // TXT-FX: a state program's text records carry no stroke, so native refuses a drawn stroke wherever the output is one.
       const animated = bandAnimations.some((a) => a.cases.some((c) => [...c.elements.values()].some((e) => e.declared || e.animations.some((x) => x.name !== 'none'))));

@@ -86,6 +86,9 @@ const border = (el: ResolvedElement, s: Side): number => {
   return style === 'none' || style === 'hidden' ? 0 : Math.max(0, pxOf(prop(el, `border-${s}-width`)) ?? 0);
 };
 
+/** Whether a box is a list item that paints a marker. */
+const marked = (el: ResolvedElement): boolean => prop(el, 'display') === 'list-item' && (prop(el, 'list-style-type') !== 'none' || prop(el, 'list-style-image') !== 'none');
+
 /** Whether a box lays out in flow without painting a marker: block-level, an inline-block, or a list item without its marker. */
 function inFlow(el: ResolvedElement): boolean {
   if (prop(el, 'position') !== 'static' || prop(el, 'float') !== 'none') return false;
@@ -141,7 +144,31 @@ export class MeetCheck {
     const m = this.memo.get(key) as Meeting | null;
     if (m === null) return null;
     const other = `text ${u.text.node.address}`;
-    return m.axis ? `its shadows and ${other} may meet (${m.cause}), and the device encodes each shadow over the backdrop alone` : `${other} may meet it: ${m.cause}`;
+    return m.axis ? `its shadows and ${other} may meet (${m.cause}), and the device composites one text's shadows over another's paint only where tree order is their paint order, their glyphs are opaque and neither is moved off its line` : `${other} may meet it: ${m.cause}`;
+  }
+
+  /**
+   * Whether the device composites t and u where they meet (emit/paint/text-shadow.ts): each later text's shadow layers are encoded
+   * over Chrome's paint of the earlier texts that may meet them, so the pair is drawn as Chrome draws it when tree order is their
+   * paint order, neither text's glyphs are translucent (the text view blends its own glyphs), and neither is moved off its line.
+   */
+  composes(t: InkText, u: InkText): boolean {
+    const [first, second] = t.order < u.order ? [t, u] : [u, t];
+    const inkRisky = (x: InkText): boolean => (x.reach.top[0] as Reach).risky;
+    if (!this.ordered(first, second) || inkRisky(first) || inkRisky(second) || first.moved !== null || second.moved !== null) return false;
+    // A list item's marker paints glyphs the device does not model under a shadow: none may sit on either path below the pair's
+    // common ancestor.
+    const ct = this.chainOf(first.container);
+    const cu = this.chainOf(second.container);
+    const inSecond = new Set(cu);
+    const common = ct.find((e) => inSecond.has(e));
+    const below = (chain: readonly ResolvedElement[]): readonly ResolvedElement[] => (common === undefined ? chain : chain.slice(0, chain.indexOf(common)));
+    return ![...below(ct), ...below(cu)].some(marked);
+  }
+
+  /** Whether first and second paint in tree order. */
+  private ordered(first: InkText, second: InkText): boolean {
+    return first.treeOrdered && second.treeOrdered;
   }
 
   private chainOf(el: ResolvedElement): readonly ResolvedElement[] {
@@ -280,7 +307,7 @@ export class MeetCheck {
   private compute(first: InkText, second: InkText): Meeting | null {
     // Only the later text's inexact paint can land on the earlier text's; the earlier never paints over the later.
     // Where tree order may not be paint order (positioning, floats, z-index or order on a path), either may paint over the other.
-    const ordered = first.treeOrdered && second.treeOrdered;
+    const ordered = this.ordered(first, second);
     const risky = (x: InkText): boolean => SIDES.some((s) => x.reach[s].some((r) => r.risky));
     if (!risky(second) && (ordered || !risky(first))) return null;
     const moved = first.moved ?? second.moved;

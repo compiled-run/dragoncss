@@ -4,7 +4,8 @@
 // upright regular Ahem text (the glyph masks are Ahem's ink boxes; no synthetic bold or oblique), on one line or on wrapped lines far
 // enough apart that no line's shadow reaches the line above (wrapRefusal: Chrome paints each line fragment's shadows and then its
 // text, the device each line's layer beneath the whole text view), kept apart from every other text's ink and shadows where it is
-// blurred or translucent (analysis/text-shadow-apart.ts: the device encodes each layer over the backdrop alone), with no decoration (Chrome shadows
+// blurred or translucent (analysis/text-shadow-apart.ts) unless the device composites the later layer over the earlier texts'
+// shadows and opaque glyphs (MeetCheck.composes, nativeTextUnders; their glyph colour may not animate), with no decoration (Chrome shadows
 // decorations too), visible, without ellipsis (on the block container: text-overflow is not inherited) or line clamp, within the work bound
 // (textShadowWork), outside
 // a compositing group, and with no box after it in tree order painting a background, border or box shadow (Chrome paints a
@@ -19,6 +20,7 @@ import type { Longhand } from '../css/properties.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { TxtFxFaults } from '../faults/txt-fx.ts';
 import type { Diagnostic } from '../types.ts';
+import type { AnimationAnalysis } from './animations.ts';
 import { elementTransform, elementWillChange } from './paint-values/transform.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
@@ -213,7 +215,7 @@ function groupOf(el: ResolvedElement): string | null {
 }
 
 /** Every text's ink and reach, and the parents of the tree's elements, for the check that no two texts' shadows meet. */
-type Others = { readonly inks: ReadonlyMap<ResolvedText, InkText>; readonly meet: MeetCheck };
+type Others = { readonly inks: ReadonlyMap<ResolvedText, InkText>; readonly facts: ReadonlyMap<ResolvedText, Shadowed>; readonly meet: MeetCheck };
 
 /** The alpha of the colour an element's glyphs fill in: -webkit-text-fill-color, or color where it is currentcolor. */
 function glyphAlpha(el: ResolvedElement): number {
@@ -234,10 +236,11 @@ function drawnShadows(shadows: readonly Shadow[]): DrawnShadow[] {
 type Shadowed = { readonly text: ResolvedText; readonly parent: ResolvedElement; readonly container: ResolvedElement; readonly clamped: boolean; readonly order: number; readonly group: string | null };
 
 /** The text leaves that draw each declared text-shadow list (declaring element first), and every box-painting element's tree order. */
-function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement, Shadowed[]>; readonly painters: number[]; readonly inks: Map<ResolvedText, InkText> } {
+function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement, Shadowed[]>; readonly painters: number[]; readonly inks: Map<ResolvedText, InkText>; readonly facts: Map<ResolvedText, Shadowed> } {
   const declared = new Map<ResolvedElement, Shadowed[]>();
   const painters: number[] = [];
   const inks = new Map<ResolvedText, InkText>();
+  const facts = new Map<ResolvedText, Shadowed>();
   let order = 0;
   const walk = (el: ResolvedElement, owner: ResolvedElement | null, group: string | null, outer: ResolvedElement, clampedAbove: boolean, movedAbove: string | null, orderedAbove: boolean): void => {
     if (keyword(el.props, 'display') === 'none') return;
@@ -264,13 +267,37 @@ function survey(root: ResolvedElement): { readonly declared: Map<ResolvedElement
       if (c.kind === 'element') walk(c, own, g, container, clamped, moved, childOrdered(c));
       else {
         order++;
-        if (own !== null) (declared.get(own) as Shadowed[]).push({ text: c, parent: el, container, clamped, order, group: g });
-        if (c.text.trim() !== '') inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved, treeOrdered: ordered });
+        const fact: Shadowed = { text: c, parent: el, container, clamped, order, group: g };
+        if (own !== null) (declared.get(own) as Shadowed[]).push(fact);
+        if (c.text.trim() === '') continue;
+        inks.set(c, { text: c, container, reach: reachOf(drawnShadows(shadowList(el)), glyphAlpha(el)), order, moved, treeOrdered: ordered });
+        facts.set(c, fact);
       }
     }
   };
   walk(root, null, null, root, false, null, true);
-  return { declared, painters, inks };
+  return { declared, painters, inks, facts };
+}
+
+/** A glyph drawn as a shadow of no offset or blur (its work in a layer that composites it, as textShadowLayerOverTexts draws it). */
+const ZERO_SHADOW: Shadow = { inset: false, x: { value: 0, unit: 'px' }, y: { value: 0, unit: 'px' }, blur: { value: 0, unit: 'px' }, spread: { value: 0, unit: 'px' }, color: { r: 0, g: 0, b: 0, alpha: 255 } };
+
+/**
+ * Why the native shadow model does not draw a text's glyphs as Chrome does, or null: Chrome draws Ahem past 600 in synthetic bold
+ * and at an italic or oblique slope in synthetic oblique (the model takes the upright regular glyph boxes), shadows its decorations
+ * too, and may end a line in an ellipsis; a hidden text paints nothing, and a compositing group composites apart.
+ */
+function glyphRefusal(t: Shadowed, decorated: ReadonlySet<string>): string | null {
+  const { text, parent, container, clamped, group } = t;
+  const at = `text ${text.node.address}`;
+  if (synthesisAllowedOf(parent.props).weight && weightOf(parent.props.get('font-weight') as ResolvedValue) >= 600) return `${at} is drawn in synthetic bold, which the native shadow does not embolden`;
+  if (synthesizesOblique(parent.props)) return `${at} is drawn in synthetic oblique, which the native shadow does not shear`;
+  if (decorated.has(text.node.address)) return `${at} is decorated, and Chrome shadows its decorations too`;
+  if (keyword(parent.props, 'visibility') !== 'visible') return `${at} is not visible`;
+  if (keyword(container.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;
+  if (clamped) return `${at} is inside a -webkit-line-clamp container, whose clamp may end its line in an ellipsis the native shadow does not draw`;
+  if (group !== null) return `${at} is inside an element with ${group}, a compositing group in Chrome`;
+  return null;
 }
 
 /** Why the native targets refuse a list on its texts, or null when they draw it as Chrome does. */
@@ -283,22 +310,28 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
       const why = wrapRefusal(shadows, text);
       if (why !== null) return `${at} may wrap onto several lines, and ${why}`;
     }
-    // Chrome draws Ahem past 600 in synthetic bold and at an italic or oblique slope in synthetic oblique; the native shadow
-    // takes the upright regular glyph boxes.
-    if (synthesisAllowedOf(parent.props).weight && weightOf(parent.props.get('font-weight') as ResolvedValue) >= 600) return `${at} is drawn in synthetic bold, which the native shadow does not embolden`;
-    if (synthesizesOblique(parent.props)) return `${at} is drawn in synthetic oblique, which the native shadow does not shear`;
-    if (decorated.has(text.node.address)) return `${at} is decorated, and Chrome shadows its decorations too`;
-    if (keyword(parent.props, 'visibility') !== 'visible') return `${at} is not visible`;
-    if (keyword(container.props, 'text-overflow') !== 'clip') return `${at} may end in an ellipsis, which the native shadow does not draw`;
-    if (clamped) return `${at} is inside a -webkit-line-clamp container, whose clamp may end its line in an ellipsis the native shadow does not draw`;
-    if (group !== null) return `${at} is inside an element with ${group}, a compositing group in Chrome`;
-    // Where this text and another meet, the later-painted one's blurred or translucent paint must not land on the earlier's.
+    const own = glyphRefusal({ text, parent, container, clamped, order, group }, decorated);
+    if (own !== null) return own;
+    // Where this text and another meet, the later-painted one's blurred or translucent paint must land on the earlier's as the
+    // device composites it: its layer encoded over Chrome's paint of the earlier text (MeetCheck.composes).
     const self = others.inks.get(text);
     if (self !== undefined) {
       for (const u of others.inks.values()) {
         if (u === self) continue;
         const why = others.meet.refusal(self, u);
-        if (why !== null) return `${at}: ${why}`;
+        if (why === null) continue;
+        const fact = others.facts.get(u.text) as Shadowed;
+        const under = others.meet.composes(self, u) ? (realFaceAt(u.text.node.address) ? `text ${u.text.node.address} is in a real face, whose glyphs the device does not model under a shadow` : glyphRefusal(fact, decorated)) : why;
+        if (under === null) {
+          // The later of the two encodes over the earlier's shadows and glyphs: its work grows by theirs.
+          if (u.order < self.order) {
+            const w = workOf([...shadowList(fact.parent), ZERO_SHADOW], u.text);
+            if (typeof w === 'string') return `${at} meets text ${u.text.node.address}, which ${w}`;
+            pending += w;
+          }
+          continue;
+        }
+        return `${at}: ${why}${under === why ? '' : `, and the device cannot composite them: ${under}`}`;
       }
     }
     const work = workOf(shadows, text);
@@ -314,8 +347,8 @@ function nativeRefusal(shadows: readonly Shadow[], texts: readonly Shadowed[], p
 /** Refuses each text-shadow list that a target does not draw as Chrome does, once per target at its declaration. */
 export function checkTextShadows(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, faults: TxtFxFaults): void {
   if (faults.textShadowListAccepted) return;
-  const { declared, painters, inks } = survey(root);
-  const others: Others = { inks, meet: new MeetCheck(parentsOf(root), TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE) };
+  const { declared, painters, inks, facts } = survey(root);
+  const others: Others = { inks, facts, meet: new MeetCheck(parentsOf(root), TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE) };
   if (declared.size === 0) return;
   // The native work of the lists accepted so far, in declaration order (the document budget).
   const budget = { used: 0 };
@@ -356,4 +389,98 @@ export function nativeTextShadows(root: ResolvedElement): ReadonlyMap<string, re
   };
   walk(root);
   return out;
+}
+
+/** An earlier text a shadowed text's layer composites over: its glyph colour and its shadows, as the device draws them. */
+export type TextShadowUnder = { readonly text: string; readonly color: Rgba8; readonly shadows: readonly TextShadowValue[] };
+
+/** The colour an element's glyphs fill in: -webkit-text-fill-color, or color where it is currentcolor. */
+function glyphColor(el: ResolvedElement): Rgba8 {
+  const fill = (el.props.get('-webkit-text-fill-color') as ResolvedValue | undefined)?.value;
+  const v = fill !== undefined && fill.kind === 'color' ? fill : (el.props.get('color') as ResolvedValue).value;
+  if (v.kind !== 'color') throw new Error(`${el.element.address}: color is not a colour (${v.kind})`);
+  return v.value;
+}
+
+/**
+ * Per natively shadowed text, by address, the earlier texts in tree order its shadows may meet (MeetCheck.refusal), whose shadows
+ * and glyphs the device composites beneath its layer (paint-shadow.ts textShadowLayerOverTexts). checkTextShadows has accepted each
+ * such pair only where MeetCheck.composes, so the list is complete wherever the program compiles.
+ */
+export function nativeTextUnders(root: ResolvedElement): ReadonlyMap<string, readonly TextShadowUnder[]> {
+  return composites(root).unders;
+}
+
+/** nativeTextUnders, and the elements whose text lies under another's layer. */
+function composites(root: ResolvedElement): { readonly unders: ReadonlyMap<string, readonly TextShadowUnder[]>; readonly beneath: ReadonlySet<ResolvedElement> } {
+  const out = new Map<string, readonly TextShadowUnder[]>();
+  const beneath = new Set<ResolvedElement>();
+  const { inks, facts } = survey(root);
+  const meet = new MeetCheck(parentsOf(root), TEXT_SHADOW_WRAP_SLACK_DEVICE_PX, TEXT_SHADOW_WRAP_BLUR_SLACK_DEVICE_PX, TEXT_SHADOW_MIN_DEVICE_SCALE);
+  const all = [...inks.values()].sort((a, b) => a.order - b.order);
+  for (let i = 0; i < all.length; i++) {
+    const self = all[i] as InkText;
+    const own = shadowList((facts.get(self.text) as Shadowed).parent);
+    if (own.length === 0 || listRefusal(own) !== null) continue;
+    const unders: TextShadowUnder[] = [];
+    for (let j = 0; j < i; j++) {
+      const u = all[j] as InkText;
+      if (meet.refusal(self, u) === null) continue;
+      const parent = (facts.get(u.text) as Shadowed).parent;
+      beneath.add(parent);
+      const shadows = shadowList(parent);
+      unders.push({ text: u.text.node.address, color: glyphColor(parent), shadows: listRefusal(shadows) === null ? textShadowValues(shadows, u.text.node.address) : [] });
+    }
+    if (unders.length > 0) out.set(self.text.node.address, unders);
+  }
+  return { unders: out, beneath };
+}
+
+const GLYPH_COLOR = ['color', '-webkit-text-fill-color'];
+
+/**
+ * Refuses, on the native targets, an animation with a color or -webkit-text-fill-color keyframe, or a listed transition of either,
+ * on an element holding text another text's layer composites over, or on any of its ancestors (which it may inherit the colour
+ * from): the device draws that text's glyphs into the layer in their resting colour (nativeTextUnders). roots are the resolved roots
+ * of the analysed cases; the caller runs it per @media band, with one reported set.
+ */
+export function refuseAnimatedShadowUnders(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (nativeTargets.length === 0) return;
+  // The elements whose colour may reach a text beneath a layer, by address, with that text's element.
+  const reaches = new Map<string, { readonly el: ResolvedElement; readonly under: string }>();
+  for (const root of roots) {
+    const parents = parentsOf(root);
+    for (const el of composites(root).beneath) {
+      let at: ResolvedElement | undefined = el;
+      while (at !== undefined) {
+        if (!reaches.has(at.element.address)) reaches.set(at.element.address, { el: at, under: el.element.address });
+        at = parents.get(at);
+      }
+    }
+  }
+  if (reaches.size === 0) return;
+  for (const c of analysis.cases) {
+    for (const ea of c.elements.values()) {
+      const reach = reaches.get(ea.address);
+      if (reach === undefined) continue;
+      const { el, under } = reach;
+      const animated = ea.animations.some((a) => a.name !== 'none' && (analysis.keyframes.get(a.name)?.blocks ?? []).some((b) => b.values.some((v) => GLYPH_COLOR.includes(v.property))));
+      const transitioned = GLYPH_COLOR.some((p) => ea.listings.get(p as Longhand)?.mode === 'listed');
+      if (!animated && !transitioned) continue;
+      const longhand = animated ? 'animation-name' : 'transition-property';
+      const d = ea.declarations.find((x) => x.animation?.longhands.has(longhand) === true) ?? ea.declarations[0];
+      for (const t of nativeTargets) {
+        const id = `${t}|${ea.address}|text-shadow-under`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+          origin: d === undefined ? el.element.node.origin : authored(d.valueSpan),
+          target: t,
+          message: `${animated ? 'an animation' : 'a transition'} of the glyph colour on ${ea.address}: another text's shadow composites over the text of ${under}, which the ${t} device draws into the shadow in its resting colour (TXT-FX)`,
+          manual: `Remove the ${animated ? 'animation' : 'transition'} from ${ea.address}, or the text-shadow that meets the text of ${under}, or build for web.`,
+          basis: 'computed-value',
+        }));
+      }
+    }
+  }
 }

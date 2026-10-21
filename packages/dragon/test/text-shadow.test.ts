@@ -3,7 +3,9 @@
 // text-shadow-blur, text-shadow-wrap and reject-text-shadow-list (packages/parity/fixtures).
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { TEXT_SHADOW_EMITTER } from '../src/emit/paint/text-shadow.ts';
+import type { TextShadowWrite } from '../src/lower/paint/text-shadow.ts';
 import type { CompilerFaults } from '../src/faults.ts';
 import { valueToString } from '../src/analysis/computed.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -210,31 +212,39 @@ describe('text-shadow', () => {
     expect(errorsIn(css, inline)).toEqual(NATIVE_REFUSED);
   });
 
-  it('refuses on iOS and Android a blurred or translucent shadow that may meet another text\'s ink or shadows (each is encoded over the backdrop alone)', () => {
+  it('composites a blurred or translucent shadow over another text it may meet in tree order, and refuses it over translucent glyphs', () => {
     // Each declaring element is refused once per target.
     const NATIVE_ONLY = (css: string, body: (r: SourceRef) => TreeNode[]): string[] => errorsIn(css, body);
-    // Two block siblings 12px tall: their shadows and glyphs overlap (landing's repro).
+    // Two block siblings 12px tall: their shadows and glyphs overlap (landing's repro). The device encodes b's shadows over Chrome's
+    // paint of a's (emit/paint/text-shadow.ts), so they compile; with translucent glyphs, which the text view blends itself, they do not.
     const siblings = (r: SourceRef) => [el(r, 's', 'div', ['s'], [el(r, 'a', 'div', [], [text(r, 't', 'XX')]), el(r, 'b', 'div', [], [text(r, 'u', 'XX')])])];
     const blocks = '.s { line-height: 12px; background-color: #eef; text-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); }';
-    expect([...new Set(NATIVE_ONLY(blocks, siblings))]).toEqual(NATIVE_REFUSED);
-    const msg = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${blocks}`, siblings)).diagnostics.find((d) => d.target === 'ios' && d.message.startsWith('text-shadow'));
-    expect(msg?.message).toBe('text-shadow: rgba(0, 0, 0, 0.5) 0px 8px 16px on <div> s is unsupported on ios: text a:text0: its shadows and text b:text0 may meet (their vertical reaches, 0px and 16px, leave -14px between them, under 6px), and the device encodes each shadow over the backdrop alone');
+    expect([...new Set(NATIVE_ONLY(blocks, siblings))]).toEqual([]);
+    const translucent = `${blocks} .s { color: rgba(0, 0, 0, 0.6); }`;
+    expect([...new Set(NATIVE_ONLY(translucent, siblings))]).toEqual(NATIVE_REFUSED);
+    const msg = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${translucent}`, siblings)).diagnostics.find((d) => d.target === 'ios' && d.message.startsWith('text-shadow'));
+    expect(msg?.message).toBe('text-shadow: rgba(0, 0, 0, 0.5) 0px 8px 16px on <div> s is unsupported on ios: text a:text0: its shadows and text b:text0 may meet (their vertical reaches, 0px and 0px, leave 2px between them, under 4.666666666666667px), and the device composites one text\'s shadows over another\'s paint only where tree order is their paint order, their glyphs are opaque and neither is moved off its line');
     // The same blocks far enough apart compile; so do hard opaque shadows, which cover exactly.
     expect(NATIVE_ONLY('.s { line-height: 12px; text-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); } .s > div { margin-bottom: 60px; }', siblings)).toEqual([]);
     expect(NATIVE_ONLY('.s { line-height: 12px; text-shadow: 0 3px 0 red; }', siblings)).toEqual([]);
-    // Two texts on one line, the blurs meeting at the seam (landing's repro); a hard opaque list there compiles.
+    // Two texts on one line, the blurs meeting at the seam (landing's repro): the later text's shadows composite over the earlier's paint.
     const seam = (r: SourceRef) => [el(r, 'p', 'div', [], [text(r, 't', 'XX'), el(r, 'b', 'span', ['s'], [text(r, 'u', 'XX')])])];
-    expect(NATIVE_ONLY('.s { text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); }', seam)).toEqual(NATIVE_REFUSED);
+    expect(NATIVE_ONLY('.s { text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); }', seam)).toEqual([]);
     const both = (r: SourceRef) => [el(r, 'p', 'div', ['s'], [text(r, 't', 'XX'), el(r, 'b', 'span', [], [text(r, 'u', 'XX')])])];
-    expect(NATIVE_ONLY('.s { white-space: nowrap; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); }', both)).toEqual(NATIVE_REFUSED);
+    // Both texts shadowed on one line: u's shadows composite over t's paint, as Chrome paints each text's shadows then its glyphs in order.
+    expect(NATIVE_ONLY('.s { white-space: nowrap; text-shadow: 0 0 6px rgba(0, 0, 0, 0.5); }', both)).toEqual([]);
     expect(NATIVE_ONLY('.s { white-space: nowrap; text-shadow: 2px 2px 0 red; }', both)).toEqual([]);
     // Flex items kept apart by their margins on both axes when the row wraps; ink kept inside a px width it fits.
     const row = (r: SourceRef) => [el(r, 'f', 'div', ['f'], [el(r, 'a', 'div', ['w'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['w'], [text(r, 'u', 'XX')])])];
     const flex = (margin: string, width: string) => `.f { display: flex; flex-wrap: wrap; } .w { width: ${width}; margin: ${margin}; line-height: 20px; text-shadow: 0 0 4px red; }`;
     expect(NATIVE_ONLY(flex('12px', '30px'), row)).toEqual([]);
-    expect([...new Set(NATIVE_ONLY(flex('2px', '30px'), row))]).toEqual(NATIVE_REFUSED);
+    // Close enough to meet: composited over opaque glyphs, refused over translucent ones.
+    expect([...new Set(NATIVE_ONLY(flex('2px', '30px'), row))]).toEqual([]);
+    const glass = ' .w { color: rgba(0, 0, 0, 0.5); }';
+    expect(NATIVE_ONLY(flex('12px', '30px') + glass, row)).toEqual([]);
+    expect([...new Set(NATIVE_ONLY(flex('2px', '30px') + glass, row))]).toEqual(NATIVE_REFUSED);
     // A px width narrower than the word lets the ink overflow toward the other item.
-    expect([...new Set(NATIVE_ONLY(flex('12px', '10px'), row))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(NATIVE_ONLY(flex('12px', '10px') + glass, row))]).toEqual(NATIVE_REFUSED);
   });
 
   it('accepts a shadow whose meeting text paints later and opaque, and boxes kept apart by auto margins, list items, a grid gap or inline-block buttons', () => {
@@ -245,7 +255,7 @@ describe('text-shadow', () => {
     // Translucent glyphs painted later, or the paragraph first and the heading's shadow over it, are refused.
     expect(errorsIn(`${h} p { color: rgba(0, 0, 0, 0.5); }`, heading)).toEqual(NATIVE_REFUSED);
     const above = (r: SourceRef) => [el(r, 'p', 'p', ['q'], [text(r, 'u', 'XX')]), el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')])];
-    expect(errorsIn(`${h} .q { margin: 0; }`, above)).toEqual(NATIVE_REFUSED);
+    expect(errorsIn(`${h} .q { margin: 0; }`, above)).toEqual([]);
     const shadow = 'text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);';
     const pair = (tag: string, cls: string) => (r: SourceRef) => [el(r, 'c', 'div', ['c'], [el(r, 'a', tag, [cls], [text(r, 't', 'XX')]), el(r, 'b', tag, [cls], [text(r, 'u', 'XX')])])];
     // Auto margins in a flex row add free space only.
@@ -253,13 +263,46 @@ describe('text-shadow', () => {
     // List items without a marker.
     expect([...new Set(errorsIn(`.c { margin: 0; padding: 0; } .i { list-style: none; margin-bottom: 24px; ${shadow} }`, (r) => [el(r, 'c', 'ul', ['c'], [el(r, 'a', 'li', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'li', ['i'], [text(r, 'u', 'XX')])])]))]).toEqual([]);
     expect([...new Set(errorsIn(`.c { margin: 0; padding: 0; } .i { margin-bottom: 24px; ${shadow} }`, (r) => [el(r, 'c', 'ul', ['c'], [el(r, 'a', 'li', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'li', ['i'], [text(r, 'u', 'XX')])])]))]).toEqual(NATIVE_REFUSED);
-    // Auto-placed grid items, a gap apart on both axes; a placed item may share a cell.
+    // Auto-placed grid items, a gap apart on both axes.
     expect([...new Set(errorsIn(`.c { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; } .i { ${shadow} }`, pair('div', 'i')))]).toEqual([]);
-    expect([...new Set(errorsIn(`.c { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; } .i { ${shadow} }`, pair('div', 'i')))]).toEqual(NATIVE_REFUSED);
-    expect([...new Set(errorsIn(`.c { display: grid; gap: 24px; } .i { grid-area: 1 / 1; ${shadow} }`, pair('div', 'i')))]).toEqual(NATIVE_REFUSED);
+    // A 2px gap lets the blurs meet; the later item's shadows composite over the earlier one's paint.
+    expect([...new Set(errorsIn(`.c { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; } .i { ${shadow} }`, pair('div', 'i')))]).toEqual([]);
+    // Two items placed in one cell overlap, and paint in tree order, so the later one's shadows composite over the earlier's paint.
+    expect([...new Set(errorsIn(`.c { display: grid; gap: 24px; } .i { grid-area: 1 / 1; ${shadow} }`, pair('div', 'i')))]).toEqual([]);
     // Inline-block link buttons with margins on every side (Dragon has no <button>).
     expect([...new Set(errorsIn(`.i { display: inline-block; margin: 12px; ${shadow} }`, pair('a', 'i')))]).toEqual([]);
-    expect([...new Set(errorsIn(`.i { display: inline-block; margin: 1px; ${shadow} }`, pair('a', 'i')))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(`.i { display: inline-block; margin: 1px; ${shadow} }`, pair('a', 'i')))]).toEqual([]);
+    expect([...new Set(errorsIn(`.i { display: inline-block; margin: 12px; color: rgba(0, 0, 0, 0.5); ${shadow} }`, pair('a', 'i')))]).toEqual([]);
+    expect([...new Set(errorsIn(`.i { display: inline-block; margin: 1px; color: rgba(0, 0, 0, 0.5); ${shadow} }`, pair('a', 'i')))]).toEqual(NATIVE_REFUSED);
+  });
+
+  it('writes the earlier texts a layer composites over, and refuses animating their glyph colour', () => {
+    const above = (r: SourceRef) => [el(r, 'p', 'p', ['q'], [text(r, 'u', 'XX')]), el(r, 'h', 'div', ['h'], [text(r, 't', 'XX')])];
+    const css = 'body { font-family: Ahem; font-size: 10px; } .h { font-size: 20px; margin: 0 0 10px; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); } .q { margin: 0; color: rgb(10, 20, 30); }';
+    const c = project(NO_FAULTS).compile(inputFor(css, above));
+    expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const programs = nativePrograms(c, []);
+    if (programs.kind !== 'ready') throw new Error(programs.reason);
+    const program = programs.programs.uikit;
+    const writes = program.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'text-shadow').map((w) => [n.id, w] as const));
+    expect(writes).toHaveLength(1);
+    const [id, w] = writes[0] as readonly [string, Parameters<typeof TEXT_SHADOW_EMITTER.lines.uikit>[2]];
+    expect(w.entries).toEqual([{ text: expect.stringMatching(/^h:/), shadows: [{ x: 0, y: 2, blur: 4, color: { r: 0, g: 0, b: 0, alpha: 128 } }], under: [{ text: expect.stringMatching(/^p:/), color: { r: 10, g: 20, b: 30, alpha: 255 }, shadows: [] }] }]);
+    const node = program.nodes.find((n) => n.id === id) as (typeof program.nodes)[number];
+    const [swift] = TEXT_SHADOW_EMITTER.lines.uikit('v', node, w);
+    expect(swift).toMatch(/DragonTextShadowSpec\("h:[^"]*", \[ShadowInput\(false, 0\.0, 2\.0, 4\.0, 0\.0, 0\.0, 0\.0, 0\.0, 128\.0\)\], \[DragonTextShadowUnder\("p:[^"]*", 10\.0, 20\.0, 30\.0, \[\]\)\]\)/);
+    const [kotlin] = TEXT_SHADOW_EMITTER.lines['android-views']('v', node, w);
+    expect(kotlin).toMatch(/listOf\(DragonTextShadowUnder\("p:[^"]*", 10\.0, 20\.0, 30\.0, listOf\(\)\)\)\)\)\)$/);
+    // An earlier text no layer composites over keeps the two-argument spec.
+    const apart = nativePrograms(project(NO_FAULTS).compile(inputFor(css.replace('margin: 0;', 'margin: 0 0 60px;'), above)), []);
+    if (apart.kind !== 'ready') throw new Error(apart.reason);
+    const lone = apart.programs.uikit.nodes.flatMap((n) => n.writes.filter((x) => x.kind === 'text-shadow')) as TextShadowWrite[];
+    expect(lone[0]?.entries[0]?.under).toEqual([]);
+    // The device draws the earlier glyphs into the layer in their resting colour, so animating it is refused; on the far text it is not.
+    const animated = (extra: string, body = css): string[] => project(NO_FAULTS).compile(inputFor(`${body} ${extra}`, above)).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.message.includes('composites over the text of p') ? 'under' : d.message}`).sort();
+    expect(animated('.q { transition: color 1s; }')).toEqual(['android under', 'ios under']);
+    expect(animated('@keyframes k { to { color: red; } } body { animation: k 1s; }')).toEqual(['android under', 'ios under']);
+    expect(animated('.q { transition: color 1s; }', css.replace('margin: 0;', 'margin: 0 0 60px;'))).toEqual([]);
   });
 
   it('refuses a shadow a relatively positioned inline box, a negative margin inside, or a shrinking px width may move into another text', () => {
@@ -271,11 +314,11 @@ describe('text-shadow', () => {
     // A negative margin-bottom on a block inside the first ends its auto height above its text.
     const nested = (r: SourceRef) => [el(r, 'a', 'div', ['s'], [el(r, 'n', 'div', ['n'], [text(r, 't', 'XX')])]), el(r, 'b', 'div', ['s', 'm'], [text(r, 'u', 'XX')])];
     expect([...new Set(errorsIn(`.s { line-height: 20px; ${shadow} } .m { margin-top: 30px; }`, nested))]).toEqual([]);
-    expect([...new Set(errorsIn(`.s { line-height: 20px; ${shadow} } .m { margin-top: 30px; } .n { margin-bottom: -40px; }`, nested))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(`.s { line-height: 20px; ${shadow} } .m { margin-top: 30px; } .n { margin-bottom: -40px; }`, nested))]).toEqual([]);
     // A flex item's px width shrinks to min-width 0 on a full line, past its text; flex-shrink: 0 keeps it.
     const row = (r: SourceRef) => [el(r, 'c', 'div', ['c'], [el(r, 'a', 'div', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['i'], [text(r, 'u', 'XX')])])];
     const flex = (extra: string) => `.c { display: flex; } .i { width: 30px; margin: 0 12px; min-width: 0; ${extra} ${shadow} }`;
-    expect([...new Set(errorsIn(flex(''), row))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(flex(''), row))]).toEqual([]);
     expect([...new Set(errorsIn(flex('flex-shrink: 0;'), row))]).toEqual([]);
   });
 
@@ -299,7 +342,7 @@ describe('text-shadow', () => {
   it('refuses a column flex item that may shrink below its text (min-height 0), and keeps one at min-height auto', () => {
     const items = (r: SourceRef) => [el(r, 'f', 'div', ['f'], [el(r, 'a', 'div', ['i'], [text(r, 't', 'XX')]), el(r, 'b', 'div', ['i'], [text(r, 'u', 'XX')])])];
     const css = (min: string) => `.f { display: flex; flex-direction: column; height: 30px; } .i { ${min} line-height: 40px; text-shadow: 0 0 4px rgba(0, 0, 0, 0.5); }`;
-    expect([...new Set(errorsIn(css('min-height: 0;'), items))]).toEqual(NATIVE_REFUSED);
+    expect([...new Set(errorsIn(css('min-height: 0;'), items))]).toEqual([]);
     expect([...new Set(errorsIn(css(''), items))]).toEqual([]);
   });
 
