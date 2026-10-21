@@ -71,6 +71,22 @@ describe('TXT2-tj: text-justify', () => {
     expect(code([leaf('t', 'XX X­X XXX', 'inter-character')])).toContain('U+AD');
   });
 
+  it('refuses an rtl line mixing inter-character with another text-justify, and lays out an rtl line of one', () => {
+    const rtl = (kids: Kids): string | null => {
+      const b = box('a', { width: px(73), textAlign: 'justify', direction: 'rtl' }, kids);
+      try {
+        placeLines(ctx(), b, fromCssPx(73));
+        return null;
+      } catch (e) {
+        if (e instanceof UnsupportedSignal) return e.unsupported.detail;
+        throw e;
+      }
+    };
+    expect(rtl([leaf('t', 'XX X', 'inter-character'), span('s', [leaf('u', 'X XX ', 'auto')]), leaf('v', 'XXX X XX', 'inter-character')])).toBe('text-justify: inter-character on t on an rtl line with u of another text-justify is not proven against Chrome');
+    expect(rtl([leaf('t', 'XX XX XXX X', 'inter-character')])).toBeNull();
+    expect(rtl([leaf('t', 'XX ', 'auto'), span('s', [leaf('u', 'X X ', 'none')]), leaf('v', 'XXXX XX X', 'auto')])).toBeNull();
+  });
+
   it('planted fault textJustifyAuto justifies every text as auto', () => {
     const faults = { ...NO_ENGINE_FAULTS, textJustifyAuto: true };
     expect(shifts(55, [leaf('t', 'XX XX XXX X', 'inter-character')], faults)).toEqual([[0, 0, 0, 5, 5], []]);

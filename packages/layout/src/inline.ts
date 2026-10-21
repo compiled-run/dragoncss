@@ -1600,6 +1600,8 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
   let afterOpportunity = true;
   let count = 0;
   const opportunities: boolean[] = [];
+  let interCharacter = '';
+  let other = '';
   for (let i = line.start; i < line.visibleEnd; i++) {
     const it = ifc.items[i] as Item;
     if (it.kind !== 'char') {
@@ -1608,6 +1610,8 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
     }
     // Planted fault textJustifyAuto justifies every text as auto.
     const method = ctx.faults.textJustifyAuto ? 'auto' : (ifc.leaves[it.leaf] as TextLeaf).textJustify;
+    if (method === 'inter-character') interCharacter = (ifc.leaves[it.leaf] as TextLeaf).id;
+    else other = (ifc.leaves[it.leaf] as TextLeaf).id;
     let after = false;
     if (method === 'none') afterOpportunity = false;
     else if (method === 'inter-character') {
@@ -1623,6 +1627,10 @@ function justifyLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], lin
     if (after) count++;
     opportunities.push(after);
   }
+  // Blink counts an rtl line's opportunities with its direction (Character::ExpansionOpportunityCount takes it), and a line mixing
+  // inter-character with another text-justify there lays out other than this logical count: text-justify-values-ahem-rtl measured
+  // such a line in Chrome 1.09375px from the engine. Unported, it is refused.
+  if (interCharacter !== '' && other !== '' && directionOf(ctx, box) === 'rtl') unsupported('text-align', box.id, 'css-text-3 §7.4', `text-justify: inter-character on ${interCharacter} on an rtl line with ${other} of another text-justify is not proven against Chrome`);
   if (afterOpportunity && count > 0) count--;
   if (count === 0) return null;
   const total = free * 1024;

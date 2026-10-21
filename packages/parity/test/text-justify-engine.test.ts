@@ -1,4 +1,4 @@
-// TXT2-tj offline: the engine's glyph positions on the justified lines of text-justify-values-ahem (fixture group text-justify), as
+// TXT2-tj offline: the engine's glyph positions on the justified lines of text-justify-values-ahem and text-justify-mixed-ahem, as
 // Blink 145 places them by CheckJustificationOpportunity and ExpansionSetup over 10px Ahem; text-justify-values.test.ts proves the
 // same positions in a live Chrome. Each line lists the left of every non-space character from the block's left, in css px.
 import { describe, expect, it } from 'vitest';
@@ -28,12 +28,12 @@ const EXPECTED: Record<(typeof BLOCKS)[number], number[][]> = {
 };
 
 describe('TXT2-tj: text-justify glyph positions in the engine', () => {
-  it('places every glyph of text-justify-values-ahem as Blink does', () => {
+  it('places every glyph of text-justify-values-ahem and text-justify-mixed-ahem as Blink does', () => {
     expect(engineGlyphs()).toEqual(EXPECTED);
   });
 
   it('planted fault textJustifyAuto moves the glyphs of every block but auto, inter-word and the unjustified one', () => {
     const planted = engineGlyphs({ ...NO_ENGINE_FAULTS, textJustifyAuto: true });
-    expect(BLOCKS.filter((id) => JSON.stringify(planted[id]) !== JSON.stringify(EXPECTED[id]))).toEqual(['none', 'char', 'rem', 'dist', 'mixn', 'mixc', 'inhc', 'rc', 'rn']);
+    expect(BLOCKS.filter((id) => JSON.stringify(planted[id]) !== JSON.stringify(EXPECTED[id]))).toEqual(['none', 'char', 'rem', 'dist', 'mixn', 'inhc', 'rc', 'rn', 'mixc']);
   });
 });

@@ -9,4 +9,6 @@ export const TEXT_JUSTIFY: readonly FixtureSpec[] = [
   layout('text-justify-ahem', ['ltr', 'rtl']),
   layout('text-justify-latin', ['ltr', 'rtl']),
   layout('text-justify-values-ahem', ['ltr', 'rtl']),
+  // ltr only: an rtl line mixing inter-character with another text-justify is refused (inline.ts justifyLine).
+  layout('text-justify-mixed-ahem', ['ltr']),
 ];

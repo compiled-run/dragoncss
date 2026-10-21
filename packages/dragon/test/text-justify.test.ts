@@ -72,5 +72,8 @@ describe('text-justify (TXT2-tj)', () => {
     expect(refusals('Ahem', '.d { text-align: justify; } .s { text-justify: inter-character; }', 'XX ', 'X­X', ' X')).toEqual(at('s:text0', 'holding a character outside Latin-1 or a soft hyphen'));
     expect(refusals('Ahem', '.d { text-align: justify; } .s { text-justify: inter-character; }', 'XX', 'XX X', ' X')).toEqual(at('s:text0', 'after d:text0, whose text-justify auto leaves no opportunity after its last character'));
     expect(refusals('Ahem', '.d { text-align: justify; text-justify: inter-character; } .s { text-justify: none; }', 'XX ', 'XX ', 'X')).toEqual(at('d:text1', 'after s:text0, whose text-justify none leaves no opportunity after its last character'));
+    // rtl: inter-character beside a text of another text-justify; one text-justify throughout compiles.
+    expect(refusals('Ahem', '.d { text-align: justify; direction: rtl; text-justify: inter-character; } .s { text-justify: auto; }', 'XX X', 'X XX ', 'XXX X')).toEqual(both('text-justify: inter-character on d:text0 beside s:text0, whose text-justify is auto, in the rtl block d, is not laid out yet'));
+    expect(refusals('Ahem', '.d { text-align: justify; direction: rtl; text-justify: inter-character; }', 'XX X', 'X XX ', 'XXX X')).toEqual([]);
   });
 });

@@ -481,6 +481,11 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
           : [...t.text].some((c) => (c.codePointAt(0) as number) > 0xff || c === '\u00ad') ? 'holding a character outside Latin-1 or a soft hyphen'
           : k > 0 && !opportunityAfter(texts[k - 1] as ResolvedText) ? `after ${(texts[k - 1] as ResolvedText).node.address}, whose text-justify ${justifyOf(texts[k - 1] as ResolvedText)} leaves no opportunity after its last character`
           : null;
+        // inline.ts justifyLine refuses an rtl line mixing inter-character with another text-justify, which Chrome lays out
+        // otherwise than the engine.
+        const mixed = keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl' ? texts.find((u) => justifyOf(u) !== 'inter-character') : undefined;
+        const rtlWhy = why === null && mixed !== undefined ? `beside ${mixed.node.address}, whose text-justify is ${justifyOf(mixed)}, in the rtl block` : null;
+        if (rtlWhy !== null) refuse(el, 'justify-inter-character', `text-justify: inter-character on ${t.node.address} ${rtlWhy} ${el.element.address}, is not laid out yet`, `Use one text-justify for the whole of ${el.element.address}, or another text-align on it.`);
         if (why !== null) refuse(el, 'justify-inter-character', `text-justify: inter-character on ${t.node.address} ${why}, in the justified ${el.element.address}, is not laid out yet`, `Use text-justify: auto on ${t.node.address}, or another text-align on ${el.element.address}.`);
       });
     }
