@@ -166,5 +166,9 @@ describe('the contexts that stay refused', () => {
     expect(refused.every((m) => m.includes('a transition from or to an ex, ch or cap length is unsupported')), refused.join('\n')).toBe(true);
     expect(run('.a { width: 20px; transition: width 1s; } .a.on { width: 40px; }')).toEqual([]);
     expect(run('.a { width: 2ch; transition: width 1s; } .a.on { color: red; }')).toEqual([]);
+    // The same 4ch reads 40px and then 80px when only the font size changes, which Chrome animates.
+    const fontOnly = run('.a { width: 4ch; transition: width 1s; } .a.on { font-size: 20px; }');
+    expect(fontOnly.length).toBeGreaterThan(0);
+    expect(fontOnly.every((m) => m.includes('a transition from or to an ex, ch or cap length is unsupported')), fontOnly.join('\n')).toBe(true);
   });
 });

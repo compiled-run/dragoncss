@@ -553,7 +553,9 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           if (listing.delay + listing.duration <= 0) continue;
           const from = endpointOf(p, valueAt(ea, p).value);
           const to = endpointOf(p, valueAt(eb, p).value);
-          if (sameValue(from, to)) continue;
+          // An ex, ch or cap length that reads the same in both states still moves when the font size changes between them.
+          const metricMoves = (fontMetric(valueAt(ea, p).value) || fontMetric(valueAt(eb, p).value)) && JSON.stringify(valueAt(ea, 'font-size').value) !== JSON.stringify(valueAt(eb, 'font-size').value);
+          if (sameValue(from, to) && !metricMoves) continue;
           const kind = animationKind(p);
           if (kind.kind === 'discrete') continue;
           const span = spanFor(after, 'transition-property');
