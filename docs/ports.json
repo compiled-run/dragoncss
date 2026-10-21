@@ -1195,6 +1195,21 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/exclusions/exclusion_space.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "820fa9c7bfe0a4611b52cb54a2ead6155f95e9374bd14ce2324eb510544f312b",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "345-349", "symbol": "ExclusionSpaceInternal::DerivedGeometry::Add", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/float.ts", "symbol": "placeFloat", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
