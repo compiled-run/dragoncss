@@ -3,7 +3,7 @@
 // - <meta http-equiv="content-language" content="en"> seeds the document locale (Document::ContentLanguage), so hyphens: auto
 //   hyphenates under it and not without it. The fixture reader refuses the pragma, since Dragon lowers auto as manual.
 // - Chrome 145 has no -webkit-hyphens (css_properties.json5 lists -webkit-hyphenate-character but no alias for hyphens), so
-//   -webkit-hyphens: none neither parses nor turns off the soft hyphen's break, and Dragon refuses the property.
+//   -webkit-hyphens: none neither parses nor turns off the soft hyphen's break, and Dragon drops the declaration (css/chrome-dropped.ts).
 import { describe, expect, it } from 'vitest';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 

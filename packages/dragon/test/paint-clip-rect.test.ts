@@ -223,11 +223,35 @@ describe('clip: the label of a box its empty rect hides (lower/paint/clip-label.
     expect(p.uikit.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label')).toEqual(expect.objectContaining({ key: 'dragonClipRect.label', technique: 'native-property' }));
     expect(p['android-views'].nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label')).toEqual(expect.objectContaining({ key: 'dragonClipRect.label' }));
   });
-  it('runs an inline-block in with the inline text around it, in tree order and with no separator of its own', () => {
-    const ib = (r: SourceRef, id: string, value: string) => ({ ...div(r, id, ['ib'], [text(r, `${id}-t`, value)]), tag: 'span' });
-    const label = (body: (r: SourceRef) => TreeNode[]) => lowered(`${HIDDEN} .ib { display: inline-block; }`, body).uikit.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label');
-    expect(label((r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'Hello '), ib(r, 's', 'world')])])])).toEqual(expect.objectContaining({ label: 'Hello world' }));
-    expect(label((r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [text(r, 'a-t', 'X'), ib(r, 's', 'Y'), text(r, 'a-u', 'Z')])])])).toEqual(expect.objectContaining({ label: 'XYZ' }));
+  // Chrome 145's name-from-contents text for each subtree (CDP Accessibility.getFullAXTree, the name of a button aria-labelledby the
+  // clipped box): an atomic inline with text is set off by a space on each side, a plain inline is not (ax_node_object.cc).
+  it('sets an atomic inline with text off by a space on each side, in tree order, as Chrome names it', () => {
+    const ib = (r: SourceRef, id: string, kids: TreeNode[], cls: string[] = ['ib']) => ({ ...div(r, id, cls, kids), tag: 'span' });
+    const label = (body: (r: SourceRef) => TreeNode[]) => {
+      const p = lowered(`${HIDDEN} .ib { display: inline-block; } .if { display: inline-flex; } .ig { display: inline-grid; } .h { visibility: hidden; }`, body);
+      const [u, a] = [p.uikit, p['android-views']].map((prog) => {
+        const w = prog.nodes.find((n) => n.id === 'a')?.writes.find((k) => k.kind.startsWith('clip-rect'));
+        return w !== undefined && 'label' in w ? w.label : w?.kind;
+      });
+      expect(a).toBe(u);
+      return u;
+    };
+    const box = (kids: (r: SourceRef) => TreeNode[]) => (r: SourceRef): TreeNode[] => [div(r, 'p', ['p'], [div(r, 'a', ['a'], kids(r))])];
+    // X<span class="ib"><div>Y1</div><div>Y2</div></span>Z: "X Y1 Y2 Z".
+    expect(label(box((r) => [text(r, 'x', 'X'), ib(r, 's', [div(r, 'y1', [], [text(r, 'y1-t', 'Y1')]), div(r, 'y2', [], [text(r, 'y2-t', 'Y2')])]), text(r, 'z', 'Z')]))).toBe('X Y1 Y2 Z');
+    // X<ib>Y</ib>Z, and the same with inline-flex and inline-grid: "X Y Z".
+    for (const cls of ['ib', 'if', 'ig']) expect(label(box((r) => [text(r, 'x', 'X'), ib(r, 's', [text(r, 's-t', 'Y')], [cls]), text(r, 'z', 'Z')])), cls).toBe('X Y Z');
+    // Hello <ib>world</ib>: "Hello world"; <ib>A</ib><ib>B</ib>: "A B"; X<ib><ib>Y</ib></ib>Z: "X Y Z"; X<ib><b>Y</b>W</ib>Z: "X YW Z".
+    expect(label(box((r) => [text(r, 'x', 'Hello '), ib(r, 's', [text(r, 's-t', 'world')])]))).toBe('Hello world');
+    expect(label(box((r) => [ib(r, 's1', [text(r, 's1-t', 'A')]), ib(r, 's2', [text(r, 's2-t', 'B')])]))).toBe('A B');
+    expect(label(box((r) => [text(r, 'x', 'X'), ib(r, 's', [ib(r, 'ss', [text(r, 'ss-t', 'Y')])]), text(r, 'z', 'Z')]))).toBe('X Y Z');
+    expect(label(box((r) => [text(r, 'x', 'X'), ib(r, 's', [{ ...div(r, 'b', [], [text(r, 'b-t', 'Y')]), tag: 'b' }, text(r, 's-t', 'W')]), text(r, 'z', 'Z')]))).toBe('X YW Z');
+    // X <ib> Y </ib> Z: "X Y Z"; an inline-block without exposed text adds nothing: X<ib></ib>Z and X<ib hidden>Y</ib>Z give "XZ".
+    expect(label(box((r) => [text(r, 'x', 'X '), ib(r, 's', [text(r, 's-t', ' Y ')]), text(r, 'z', ' Z')]))).toBe('X Y Z');
+    expect(label(box((r) => [text(r, 'x', 'X'), ib(r, 's', []), text(r, 'z', 'Z')]))).toBe('XZ');
+    expect(label(box((r) => [text(r, 'x', 'X'), ib(r, 's', [text(r, 's-t', 'Y')], ['ib', 'h']), text(r, 'z', 'Z')]))).toBe('XZ');
+    // A plain inline runs in: X<b>Y</b>Z gives "XYZ".
+    expect(label(box((r) => [text(r, 'x', 'X'), { ...div(r, 'b', [], [text(r, 'b-t', 'Y')]), tag: 'b' }, text(r, 'z', 'Z')]))).toBe('XYZ');
   });
   it('leaves out text under visibility: hidden, and keeps the hidden write when that is all the text', () => {
     const kinds = (css: string) => lowered(`${HIDDEN} ${css}`, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'b', ['b'], [text(r, 'b-t', 'YY'), div(r, 'c', ['c'], [text(r, 'c-t', 'ZZ')])])])])]).uikit.nodes.find((n) => n.id === 'a')?.writes.filter((w) => w.kind.startsWith('clip-rect'));

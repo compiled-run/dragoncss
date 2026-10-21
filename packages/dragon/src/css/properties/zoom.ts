@@ -1,8 +1,8 @@
 // zoom (css-viewport-1 §5): <number [0,∞]> | <percentage [0,∞]>, and normal, which Chrome 145 also parses (Zoom::ParseSingleValue:
 // normal, a non-negative number or percentage, a calculation of them); initial 1, not inherited, though it multiplies into the
-// descendants' effective zoom. Chrome computes a percentage to its number and 0 and normal to 1. Dragon scales no subtree yet
-// (ZOOM), so it accepts the values whose zoom is 1 alone, where zoom changes nothing: 1, normal, 100%, 0 and a calculation of them.
-// computed-checks refuses every other value on every target (checkZoom). zoom: 1 is the common legacy hasLayout hack.
+// descendants' effective zoom. Chrome computes a percentage to its number and 0 and normal to 1. The web output keeps any zoom;
+// native multiplies the zoomed subtree's layout lengths by its effective zoom (lower/ios-layout.ts zoomedGet) and refuses what it
+// does not scale yet (analysis/zoom.ts). zoom: 1 is the common legacy hasLayout hack.
 import type { CssNode } from 'css-tree';
 import { asciiLower } from '../escapes.ts';
 import type { PropertyAspect } from '../properties.ts';
@@ -17,9 +17,9 @@ export const ZOOM_INHERITED: readonly (typeof ZOOM_LONGHANDS)[number][] = [];
 export const ZOOM_CONTAINER: readonly (typeof ZOOM_LONGHANDS)[number][] = [];
 export const ZOOM_TEXT_ROLE: readonly (typeof ZOOM_LONGHANDS)[number][] = [];
 
-// Only zoom 1 is accepted, which neither lays out nor paints anything differently.
+// zoom scales the lengths a subtree lays out with; the paint it scales (borders, text) follows from the layout.
 export const ZOOM_ASPECTS: { readonly [P in (typeof ZOOM_LONGHANDS)[number]]: PropertyAspect } = {
-  zoom: { layout: false, paint: false },
+  zoom: { layout: true, paint: false },
 };
 
 const ZOOM_FIX = 'Write zoom as a number or a percentage, or a calc() of numbers.';

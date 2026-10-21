@@ -101,7 +101,7 @@ function visibleTexts(box: LayoutNode, el: ResolvedElement): string[] {
   const walk = (b: LayoutNode): void => {
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
-      if (c.kind === 'box' || c.kind === 'replaced') walk(c);
+      if (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') walk(c);
       else inline(c);
     }
   };

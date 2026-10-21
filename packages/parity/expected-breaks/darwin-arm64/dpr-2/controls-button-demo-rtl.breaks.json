@@ -1,0 +1,16 @@
+{
+  "case": "controls-button-demo-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"title:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"library-button:text0","data":"XXX X","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"skip-back:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"play:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"skip-forward:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"t-1:text0","data":"XXXX XX","lines":1,"units":[0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a-1:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"t-2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"a-2:text0","data":"XXXXX XXXXX XXXXX XXXXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],"blank":[17]}
+  ]
+}

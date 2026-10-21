@@ -13,12 +13,17 @@ svg { display: block; margin-bottom: 4px; }
 .ring { fill: none; stroke: rgb(120, 0, 160); stroke-width: 6; }
 .neg { x: -15; y: -5px; }
 .cneg { cx: -2; cy: 8px; r: 9; }
+.d1 { d: path("M10 10 H70 V60 Z"); }
+.d2 { d: PATH("m90 10 h50 c10 0 10 30 0 30 l-50 20 z"); }
+.d3 { --shape: path("M170 40 Q200 70 230 40 T290 40"); d: var(--shape); fill: none; stroke: rgb(30, 90, 200); stroke-width: 4; }
+.dnone { d: none; }
 </style>
 </head>
 <body data-dragon-id="body">
 <div data-dragon-id="wrap" class="wrap">
 <svg data-dragon-id="s1" class="s1" width="380" height="80"><rect data-dragon-id="g1" class="moved" fill="rgb(20, 160, 80)" x="10" y="10" width="40" height="30"/><rect data-dragon-id="g2" fill="rgb(200, 40, 40)" x="70" y="8" width="30" height="40"/><circle data-dragon-id="c1" class="c1" fill="rgb(30, 90, 200)" cx="150" cy="40" r="10"/><circle data-dragon-id="c2" class="c2 ring"/><circle data-dragon-id="c3" class="v" fill="rgb(220, 140, 20)"/></svg>
 <svg data-dragon-id="s2" width="200" height="100" viewBox="-20 -10 100 50"><rect data-dragon-id="n1" class="neg" fill="rgb(20, 160, 80)" width="30" height="20"/><circle data-dragon-id="n2" class="cneg" fill="rgb(30, 90, 200)" cx="40" cy="20" r="4"/><circle data-dragon-id="n3" fill="rgb(200, 40, 40)" cx="55" cy="25" r="10"/></svg>
+<svg data-dragon-id="s3" width="380" height="80" fill="rgb(20, 160, 80)"><path data-dragon-id="d1" class="d1" d="M5 5 H15 V15 Z"/><path data-dragon-id="d2" class="d2"/><path data-dragon-id="d3" class="d3"/><path data-dragon-id="d4" class="dnone" d="M300 10 H360 V60 Z"/><rect data-dragon-id="d5" class="d1" fill="rgb(200, 40, 40)" x="310" y="20" width="30" height="30"/></svg>
 </div>
 </body>
 </html>

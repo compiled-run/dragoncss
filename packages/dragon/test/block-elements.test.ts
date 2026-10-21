@@ -4,8 +4,9 @@ import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import { SUPPORTED_TAGS, UNSTYLED_TAGS } from '../src/analysis/elements.ts';
+import { CONTROL_TAGS, controlUaKey } from '../src/analysis/elements/controls.ts';
 import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from '../src/analysis/elements/replaced.ts';
-import { computed, replacedKeySpecs, userAgentContexts, userAgentDeclared, userAgentTextFonts } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
+import { computed, elementKeySpecs, replacedKeySpecs, userAgentContexts, userAgentDeclared, userAgentTextFonts } from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { DOC, explainOne, inputFor, staticClass, text } from './helpers.ts';
 
 const project = (direction: 'ltr' | 'rtl' = 'ltr') =>
@@ -20,22 +21,25 @@ const FONT = 'body { font-family: Ahem; }';
 
 describe('the element table', () => {
   it('is exactly the captured tags other than the unstyled probe element, plus the tags that resolve as it', () => {
-    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t) && !REPLACED_TAGS.includes(t) && !SVG_SHAPE_TAGS.includes(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t) && !REPLACED_TAGS.includes(t) && !SVG_SHAPE_TAGS.includes(t) && !CONTROL_TAGS.includes(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+    // FORM-a A3 and A4: the control tags read the ELB-2 element keys instead, by type for input.
+    expect(CONTROL_TAGS.map((t) => elementKeySpecs[controlUaKey(t, undefined) as keyof typeof elementKeySpecs].tag)).toEqual([...CONTROL_TAGS]);
+    expect(elementKeySpecs[controlUaKey('input', 'RANGE') as keyof typeof elementKeySpecs]).toEqual({ tag: 'input', attributes: { type: 'range' } });
     // REPL-a: the replaced tags read REPL-0's replaced keys instead, and so do SVG-a1's shapes.
     expect([...REPLACED_TAGS, ...SVG_SHAPE_TAGS].map((t) => replacedKeySpecs[REPLACED_UA_KEYS[t] as keyof typeof replacedKeySpecs].tag)).toEqual([...REPLACED_TAGS, ...SVG_SHAPE_TAGS]);
     expect([...UNSTYLED_TAGS].every((t) => SUPPORTED_TAGS.has(t) && !(t in computed))).toBe(true);
     expect(SUPPORTED_TAGS.has('pre')).toBe(false);
   });
   it('pins the declared UA values, the ancestor contexts and the unmodelled text fonts Chrome 145 has', () => {
-    expect(userAgentDeclared.p.ltr).toEqual({ display: 'block', 'margin-bottom': '1em', 'margin-top': '1em' });
-    expect(userAgentDeclared.h1.ltr).toEqual({ display: 'block', 'font-size': '2em', 'margin-bottom': '0.67em', 'margin-top': '0.67em' });
+    expect(userAgentDeclared.p.ltr).toEqual({ display: 'block', 'margin-bottom': '1em', 'margin-top': '1em', 'unicode-bidi': 'isolate' });
+    expect(userAgentDeclared.h1.ltr).toEqual({ display: 'block', 'font-size': '2em', 'margin-bottom': '0.67em', 'margin-top': '0.67em', 'unicode-bidi': 'isolate' });
     expect([userAgentDeclared.h2.ltr['font-size'], userAgentDeclared.h3.ltr['font-size'], userAgentDeclared.h4.ltr['font-size'], userAgentDeclared.h5.ltr['font-size'], userAgentDeclared.h6.ltr['font-size']]).toEqual(['1.5em', '1.17em', undefined, '0.83em', '0.67em']);
     expect([userAgentDeclared.h2.ltr['margin-top'], userAgentDeclared.h3.ltr['margin-top'], userAgentDeclared.h4.ltr['margin-top'], userAgentDeclared.h5.ltr['margin-top'], userAgentDeclared.h6.ltr['margin-top']]).toEqual(['0.83em', '1em', '1.33em', '1.67em', '2.33em']);
     expect(userAgentDeclared.ul.ltr['padding-left']).toBe('40px');
     expect(userAgentDeclared.ul.rtl['padding-right']).toBe('40px');
     expect(userAgentDeclared.ul.rtl['padding-left']).toBeUndefined();
-    expect(userAgentDeclared.dd.rtl).toEqual({ display: 'block', 'margin-right': '40px' });
-    expect(userAgentDeclared.li.ltr).toEqual({ display: 'list-item' });
+    expect(userAgentDeclared.dd.rtl).toEqual({ display: 'block', 'margin-right': '40px', 'unicode-bidi': 'isolate' });
+    expect(userAgentDeclared.li.ltr).toEqual({ display: 'list-item', 'unicode-bidi': 'isolate' });
     expect(userAgentDeclared.hr.ltr['border-top-style']).toBe('inset');
     expect(userAgentDeclared.hr.ltr['margin-left']).toBe('auto');
     expect(userAgentDeclared.hr.ltr['margin-top']).toBe('0.5em');
