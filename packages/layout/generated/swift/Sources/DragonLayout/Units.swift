@@ -170,11 +170,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:127
   do {
-    let _a334 = values
-    var _i334 = 0
-    while _i334 < _a334.items.count {
-      let v: Double = _a334.items[_i334]
-      _i334 += 1
+    let _a335 = values
+    var _i335 = 0
+    while _i335 < _a335.items.count {
+      let v: Double = _a335.items[_i335]
+      _i335 += 1
       try total = units_add(total, v)
     }
   }

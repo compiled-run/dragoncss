@@ -559,11 +559,11 @@ public func rtInterpolate_applyTransformOps(_ start: Matrix2D, _ ops: JsArray<Tr
   var m: Matrix2D = start
   // ts: packages/layout/src/rt-interpolate.ts:353
   do {
-    let _a279 = ops
-    var _i279 = 0
-    while _i279 < _a279.items.count {
-      let op: TransformOp = _a279.items[_i279]
-      _i279 += 1
+    let _a280 = ops
+    var _i280 = 0
+    while _i280 < _a280.items.count {
+      let op: TransformOp = _a280.items[_i280]
+      _i280 += 1
       let fam: JsString = try rtInterpolate_family(op.fn)
       // ts: packages/layout/src/rt-interpolate.ts:355
       if (fam == S.s_translate) {
@@ -659,11 +659,11 @@ public func rtInterpolate_multiplySmall(_ digits: JsArray<Double>, _ factor: Dou
   var carry: Double = 0.0
   // ts: packages/layout/src/rt-interpolate.ts:410
   do {
-    let _a280 = digits
-    var _i280 = 0
-    while _i280 < _a280.items.count {
-      let d: Double = _a280.items[_i280]
-      _i280 += 1
+    let _a281 = digits
+    var _i281 = 0
+    while _i281 < _a281.items.count {
+      let d: Double = _a281.items[_i281]
+      _i281 += 1
       let t: Double = ((d * factor) + carry)
       let q: Double = try rtEasing_floorOf((t / 10.0))
       _ = jsPush(out, (t - (q * 10.0)))

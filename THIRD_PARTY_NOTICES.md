@@ -76,6 +76,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/box_painter_base.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/decoration_line_painter.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/paint/nine_piece_image_grid.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/nine_piece_image_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/outline_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/paint_property_tree_builder.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/svg_object_painter.cc`: Copyright 2018 The Chromium Authors

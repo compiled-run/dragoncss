@@ -159,11 +159,11 @@ fun textDecoration_snap(line: String, y: Double, t: Double, input: DecorationInp
 fun textDecoration_has(lines: JsArray<String>, line: String): Boolean {
   // ts: packages/layout/src/text-decoration.ts:131
   run {
-    val _a322 = lines
-    var _i322 = 0
-    while (_i322 < _a322.size) {
-      val l: String = _a322[_i322]
-      _i322++
+    val _a323 = lines
+    var _i323 = 0
+    while (_i323 < _a323.size) {
+      val l: String = _a323[_i323]
+      _i323++
       // ts: packages/layout/src/text-decoration.ts:131
       if (jsStrEq(l, line)) {
         return true
@@ -211,11 +211,11 @@ fun textDecoration_skipInkClear(rect: DecorationRect, glyphs: JsArray<GlyphExten
   val margin: Double = (1.0 / 64.0)
   // ts: packages/layout/src/text-decoration.ts:170
   run {
-    val _a323 = glyphs
-    var _i323 = 0
-    while (_i323 < _a323.size) {
-      val g: GlyphExtent = _a323[_i323]
-      _i323++
+    val _a324 = glyphs
+    var _i324 = 0
+    while (_i324 < _a324.size) {
+      val g: GlyphExtent = _a324[_i324]
+      _i324++
       // ts: packages/layout/src/text-decoration.ts:171
       if (((g.bottom > (bandTop - margin)) && (g.top < (bandBottom + margin)))) {
         return false
@@ -269,11 +269,11 @@ fun textDecoration_skipInkClips(rect: DecorationRect, glyphs: JsArray<GlyphInk>,
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/text-decoration.ts:222
   run {
-    val _a324 = glyphs
-    var _i324 = 0
-    while (_i324 < _a324.size) {
-      val g: GlyphInk = _a324[_i324]
-      _i324++
+    val _a325 = glyphs
+    var _i325 = 0
+    while (_i325 < _a325.size) {
+      val g: GlyphInk = _a325[_i325]
+      _i325++
       // ts: packages/layout/src/text-decoration.ts:223
       if (((g.bottom > bandTop) && (g.top < bandBottom))) {
         jsPush(out, rtEasing_floorOf(((g.left - d) + 0.5)))

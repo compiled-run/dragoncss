@@ -81,11 +81,11 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:39
   do {
-    let _a206 = box.children
-    var _i206 = 0
-    while _i206 < _a206.items.count {
-      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a206.items[_i206]
-      _i206 += 1
+    let _a207 = box.children
+    var _i207 = 0
+    while _i207 < _a207.items.count {
+      let k: any U_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a207.items[_i207]
+      _i207 += 1
       // ts: packages/layout/src/position.ts:40
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
         try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s241, jsConcat(S.s487, (k as! ReplacedLeaf).id, S.s88))

@@ -222,11 +222,11 @@ public func rtBand_atomHolds(_ atom: BandAtom, _ width: Double, _ height: Double
     }
     // ts: packages/layout/src/rt-band.ts:129
     do {
-      let _a240 = atom.comparisons
-      var _i240 = 0
-      while _i240 < _a240.items.count {
-        let c: BandComparison = _a240.items[_i240]
-        _i240 += 1
+      let _a241 = atom.comparisons
+      var _i241 = 0
+      while _i241 < _a241.items.count {
+        let c: BandComparison = _a241.items[_i241]
+        _i241 += 1
         let holds: Bool = try ((c.num == 1.0) ? rtBand_compareScale(rtBand_twoDecimals(actual), rtBand_twoDecimals(c.value), c.op) : rtBand_compareScale(actual, c.value, c.op))
         // ts: packages/layout/src/rt-band.ts:131
         if (!holds) {
@@ -249,11 +249,11 @@ public func rtBand_atomHolds(_ atom: BandAtom, _ width: Double, _ height: Double
     }
     // ts: packages/layout/src/rt-band.ts:139
     do {
-      let _a241 = atom.comparisons
-      var _i241 = 0
-      while _i241 < _a241.items.count {
-        let c: BandComparison = _a241.items[_i241]
-        _i241 += 1
+      let _a242 = atom.comparisons
+      var _i242 = 0
+      while _i242 < _a242.items.count {
+        let c: BandComparison = _a242.items[_i242]
+        _i242 += 1
         // ts: packages/layout/src/rt-band.ts:139
         if try (!rtBand_compareMedia(actual, c.value, c.op, faults)) {
           return false
@@ -278,11 +278,11 @@ public func rtBand_atomHolds(_ atom: BandAtom, _ width: Double, _ height: Double
   }
   // ts: packages/layout/src/rt-band.ts:151
   do {
-    let _a242 = atom.comparisons
-    var _i242 = 0
-    while _i242 < _a242.items.count {
-      let c: BandComparison = _a242.items[_i242]
-      _i242 += 1
+    let _a243 = atom.comparisons
+    var _i243 = 0
+    while _i243 < _a243.items.count {
+      let c: BandComparison = _a243.items[_i243]
+      _i243 += 1
       // ts: packages/layout/src/rt-band.ts:151
       if try (!rtBand_compareMedia((w * c.den), (h * c.num), c.op, faults)) {
         return false
@@ -297,11 +297,11 @@ public func rtBand_truthVector(_ table: BandTable, _ width: Double, _ height: Do
   let out: JsArray<Bool> = JsArray<Bool>([])
   // ts: packages/layout/src/rt-band.ts:158
   do {
-    let _a243 = table.atoms
-    var _i243 = 0
-    while _i243 < _a243.items.count {
-      let a: BandAtom = _a243.items[_i243]
-      _i243 += 1
+    let _a244 = table.atoms
+    var _i244 = 0
+    while _i244 < _a244.items.count {
+      let a: BandAtom = _a244.items[_i244]
+      _i244 += 1
       _ = try jsPush(out, rtBand_atomHolds(a, width, height, env, faults))
     }
   }
@@ -342,11 +342,11 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
   var bits: JsString = S.s0
   // ts: packages/layout/src/rt-band.ts:173
   do {
-    let _a244 = v
-    var _i244 = 0
-    while _i244 < _a244.items.count {
-      let x: Bool = _a244.items[_i244]
-      _i244 += 1
+    let _a245 = v
+    var _i245 = 0
+    while _i245 < _a245.items.count {
+      let x: Bool = _a245.items[_i245]
+      _i245 += 1
       bits += (x ? S.s178 : S.s176)
     }
   }
@@ -385,11 +385,11 @@ public func rtBand_androidPointerReadings(_ sources: JsArray<Double>, _ faults: 
   var anyHover: Bool = false
   // ts: packages/layout/src/rt-band.ts:221
   do {
-    let _a245 = sources
-    var _i245 = 0
-    while _i245 < _a245.items.count {
-      let s: Double = _a245.items[_i245]
-      _i245 += 1
+    let _a246 = sources
+    var _i246 = 0
+    while _i246 < _a246.items.count {
+      let s: Double = _a246.items[_i246]
+      _i246 += 1
       // ts: packages/layout/src/rt-band.ts:222
       if try (((rtBand_hasSource(s, rtBand_SOURCE_MOUSE) || rtBand_hasSource(s, rtBand_SOURCE_STYLUS)) || rtBand_hasSource(s, rtBand_SOURCE_TOUCHPAD)) || rtBand_hasSource(s, rtBand_SOURCE_TRACKBALL)) {
         anyFine = true
