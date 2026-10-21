@@ -6,7 +6,7 @@
 import type { LayoutStyle, ReplacedLeaf } from './input.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import type { Frag, HeightBasis, LengthPercent, MinMax } from './box.ts';
-import { borderBoxFromSpecified, constrain, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolvePaddingWith, sumEdges } from './box.ts';
+import { borderBoxFromSpecified, constrain, hasPercent, lengthHeight, lengthMaxHeight, lengthMaxWidth, lengthMinHeight, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolvePaddingWith, sumEdges } from './box.ts';
 import type { LayoutRatio, LU } from './units.ts';
 import { add, fromCssPx, max, min, mulDiv, snapEdge, snapSize, sub, ZERO } from './units.ts';
 import { unsupported } from './unsupported.ts';
@@ -115,6 +115,9 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
   const width = lengthWidth(nodeId, s.width);
   const minWidth = lengthMinWidth(nodeId, s.minWidth);
   const maxWidth = lengthMaxWidth(nodeId, s.maxWidth);
+  const height = lengthHeight(nodeId, s.height);
+  const minHeight = lengthMinHeight(nodeId, s.minHeight);
+  const maxHeight = lengthMaxHeight(nodeId, s.maxHeight);
 
   // The intrinsic block size for a block length that resolves to its content (BlockSizeFunc).
   const blockContent = (): LU | null => {
@@ -128,15 +131,15 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
   if (mode === 'ignore-block-lengths') {
     blockMm = { min: ZERO, max: null };
   } else {
-    const lo = s.minHeight.kind === 'auto' ? bp.block : blockLength(s, s.minHeight, space.percentBlock, true, bp, faults);
-    const hi = s.maxHeight.kind === 'none' ? null : blockLength(s, s.maxHeight, space.percentBlock, false, bp, faults);
+    const lo = minHeight.kind === 'auto' ? bp.block : blockLength(s, minHeight, space.percentBlock, true, bp, faults);
+    const hi = maxHeight.kind === 'none' ? null : blockLength(s, maxHeight, space.percentBlock, false, bp, faults);
     const loLu = lo === null ? bp.block : lo;
     blockMm = { min: loLu, max: hi === null ? null : max(loLu, hi) };
     if (space.fixedBlock !== null) {
       replacedBlock = space.fixedBlock;
     } else {
       let size: LU | null;
-      if (s.height.kind !== 'auto') size = mainNeedsContent(s.height, space.percentBlock) ? blockContent() : blockLength(s, s.height, space.percentBlock, false, bp, faults);
+      if (height.kind !== 'auto') size = mainNeedsContent(height, space.percentBlock) ? blockContent() : blockLength(s, height, space.percentBlock, false, bp, faults);
       else if (space.blockAutoStretch && space.availableBlock !== null) size = max(bp.block, sub(space.availableBlock, space.blockMargins));
       else size = blockContent();
       if (size !== null) replacedBlock = constrain(size, blockMm);
@@ -251,8 +254,9 @@ export function replacedBorderPadding(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU
   return { inline: sumEdges(bor.left, bor.right, pad.left, pad.right), block: sumEdges(bor.top, bor.bottom, pad.top, pad.bottom) };
 }
 
-/** Whether a block length of the style depends on its percentage basis. */
+/** Whether a block length of the style depends on its percentage basis (a stretch one is refused when the size is resolved). */
 function blockLengthsHavePercent(s: LayoutStyle): boolean {
+  if (s.height.kind === 'stretch' || s.minHeight.kind === 'stretch' || s.maxHeight.kind === 'stretch') return false;
   return (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
 }
 

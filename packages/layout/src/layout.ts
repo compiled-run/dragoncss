@@ -4,7 +4,7 @@ import type { InsetValue, LayoutBox, LayoutInput, LayoutNode } from './input.ts'
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { Frag, OutOfFlow, StaticAxis } from './box.ts';
-import { containsAbsolute, hasPercent, isScrollContainer, resolveBorder, resolveLength, resolveMarginWith, resolvePaddingWith } from './box.ts';
+import { containsAbsolute, hasPercent, isScrollContainer, NO_STRETCH, resolveBorder, resolveLength, resolveMarginWith, resolvePaddingWith } from './box.ts';
 import type { EnvironmentDependencies } from './environment.ts';
 import { applyEnvironment, environmentDependencies, resolveEnvironment } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
@@ -88,6 +88,7 @@ export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, fau
       heightBasis: { kind: 'definite', value: icbHeight },
       formattingContextRoot: true,
       bfcLineOffset: ZERO,
+      blockStretch: NO_STRETCH,
     });
     const offset = relativeOffsetWith(root, icbWidth, { kind: 'definite', value: icbHeight }, icbDirection, ctx.faults);
     if (root.style.position === 'sticky') unsupported('sticky', root.id, 'css-position-3 §3.4', `the root box ${root.id} has no containing block to stick in`);
