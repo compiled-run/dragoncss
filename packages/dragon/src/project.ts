@@ -6,36 +6,46 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
+import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
 import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes } from './digest.ts';
 import { authored, diagnostic, unlocated } from './diagnostics/catalogue.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
 import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
-import type { Declaration, EnclosedRules, LonghandValue, Rule, RuleCondition } from './css/stylesheet.ts';
+import type { ContainerCondition, Declaration, EnclosedRules, LonghandValue, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
-import { checkTranslucent } from './analysis/paint-values/effects.ts';
+import { checkTranslucent, refuseAnimatedGroups } from './analysis/paint-values/effects.ts';
+import { checkGradientPhase } from './analysis/paint-values/gradient-phase.ts';
 import { checkSelectable } from './analysis/selection.ts';
+import { checkBidi } from './analysis/bidi.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
 import { checkTranslucentOutlines } from './analysis/paint-values/outline.ts';
 import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
-import { checkGeneratedIdentity, generatedRuleRefusals } from './analysis/generated.ts';
+import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, nativeInteractionRefusals, ruleIsInteractive } from './analysis/interaction.ts';
-import type { Linked } from './analysis/link.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import type { Linked, LinkedElement } from './analysis/link.ts';
+import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
-import { analyzeAnimations, gateAnimationFeatures, refuseBandedAnimations } from './analysis/animations.ts';
+import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations } from './analysis/animations.ts';
+import { refuseZoomedAnimations } from './analysis/zoom.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
+import { refuseAnimatedFx } from './analysis/fx.ts';
+import { refuseStatefulStrokes } from './analysis/text-stroke.ts';
 import { refuseAnimatedGradients } from './analysis/paint-values/gradient.ts';
+import { refuseAnimatedPixelated } from './analysis/image-rendering.ts';
 import { checkTranslucentRoundedDoubles, refuseAnimatedRoundedDoubles } from './analysis/paint-values/radius.ts';
 import { refuseAnimatedTranslucentPaint } from './analysis/paint-values/translucent-paint.ts';
+import { refuseAnimatedTextFill } from './analysis/paint-values/text-fill.ts';
+import { refuseAnimatedShadowUnders } from './analysis/text-shadow.ts';
 import { webAnimationsOf } from './lower/anim-program.ts';
 import { valueText } from './emit/web-css.ts';
 import * as cssTree from 'css-tree';
@@ -46,6 +56,8 @@ import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
 import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
+import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
 import { emitNativeSupport, supportDigest } from './emit/native-support.ts';
 import { UIKIT_EMITTER_VERSION } from './emit/uikit.ts';
@@ -207,9 +219,11 @@ export type InternalRecord = {
   readonly bands: InternalBands | null;
   /**
    * SELD-R2: the native targets on which a compile outside the parity lanes refuses this document's interaction rules
-   * (nativeInteractionRefusals). In a lanes compile those targets lower, but their cases prove no profile row users could use.
+   * (gateInteractionFeatures). In a lanes compile those targets lower, but their cases prove no profile row users could use.
    */
   readonly laneOnlyNative: readonly ('ios' | 'android')[];
+  /** SELD-R2 PR 5: whether an input can focus some element of the document (focusReachable); with none, focus is forced-only. */
+  readonly focusReachable: boolean;
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
   /** TXT-W: the synthetic bold and oblique plants, which the native lowering reads (native-program.ts textPaint). */
@@ -228,6 +242,8 @@ export type InternalBands = {
   readonly conditions: readonly string[];
   readonly initial: number;
   readonly cases: readonly (readonly InternalBandCase[])[];
+  /** CQ: whether @container rules apply in the bands (their profile row is at-rule:@container). */
+  readonly container: boolean;
 };
 
 /** @internal One case in one band. */
@@ -270,13 +286,13 @@ export type InternalOptions = {
   readonly supportProfiles?: SupportProfiles;
   readonly foldViewport?: Viewport;
   /**
-   * Native targets lower real bundled faces (TXT1a-2 phase C). Off by default: phase R, the device GlyphShaper over the T081 bridges,
-   * is not built, and the device runtime measures and draws only the bundled Ahem (emit/native-support.ts DragonBridge.measurer).
+   * Native targets lower real bundled faces (TXT1a-2 phase C). On by default since phase R: the device bridge measures and draws every
+   * bundled real face through the shim (emit/native-support.ts DragonBridge.faces); false keeps every non-Ahem face refused natively.
    */
   readonly nativeRealFaces?: boolean;
   /**
    * SELD-R2: the parity lanes compile :hover, :active, :focus and :focus-visible on native, to prove each state's resolution ahead
-   * of the native runtime; every other compile refuses them there (nativeInteractionRefusals).
+   * of the native runtime; every other compile refuses them there unless the profile proves them (gateInteractionFeatures).
    */
   readonly interactionLanes?: boolean;
 };
@@ -465,10 +481,13 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
     if (rule.selectors.every((s) => s.dropped)) continue;
     // MQ-a: a rule is checked only for the targets whose band it applies in.
     const ruleTargets = scope === null ? targets : targets.filter((t) => scope(rule).includes(t));
-    for (const d of rule.declarations) {
+    for (const [i, d] of rule.declarations.entries()) {
       if (seen.has(d)) continue;
       seen.add(d);
       for (const lh of d.longhands) {
+        // A later declaration of the same rule that sets the longhand with at least this importance wins wherever the rule
+        // matches (css-cascade-5 §6.1), so the value never applies: `all: initial; font-family: Ahem` needs no font-family: initial.
+        if (rule.declarations.slice(i + 1).some((o) => (o.important === true || d.important !== true) && o.longhands.some((x) => x.property === lh.property))) continue;
         const feature = featureOf(lh.property, lh.value, fonts);
         // checkFamilies reports an unmapped family.
         if (feature === 'font-family:<unmapped>') continue;
@@ -867,7 +886,7 @@ const isFontProfileRefusal = (d: Diagnostic): boolean =>
  * proven only in other contexts blocks with the proven contexts, the alternatives in its own context (T005 rec 6) and, for a
  * shorthand-filled longhand, the shorthand and what to write instead (T005 rec 2).
  */
-function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS): CaseResult[] {
+function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS, containers: ContainerBand | null = null): CaseResult[] {
   const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
@@ -876,17 +895,22 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
     const realFaces = realFacesOf(resolved, projectFonts, options.ua);
-    // Off by default (InternalOptions.nativeRealFaces): native targets keep refusing real faces, and the engine lane lowers them in
-    // engine mode (TXT1a-1's deferred font refusal).
+    // On by default (InternalOptions.nativeRealFaces); turned off, native targets refuse real faces, and the engine lane lowers them
+    // in engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
+    // BG2-t: a no-repeat gradient layer away from the start edge, refused natively unless its tile provably starts inside the box.
+    checkGradientPhase(resolved, targets, diagnostics, refused, options.faults);
     // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
     if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
-    // T154: outside the parity lanes, native refuses an author user-select but none (P6c); the lanes run it to prove its web rows.
+    // T154: outside the parity lanes, native refuses an author user-select that changes what Chrome selects beyond none (P6c); the
+    // lanes run it to prove its web rows.
     if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    // css-writing-modes-4 §2.2: outside the parity lanes, native refuses an author unicode-bidi that can reorder text (analysis/bidi.ts).
+    if (!options.interactionLanes) checkBidi(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
     if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
@@ -946,14 +970,17 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     }
   };
   const interactive = rules.some(ruleIsInteractive);
+  // CQ: a band with @container rules resolves each case twice (analysis/container-rules.ts).
+  const resolve = (root: LinkedElement, ix?: InteractionState): ResolvedElement =>
+    containers === null ? resolveTree(root, rules, options.faults, env, ix) : resolveWithContainers(root, rules, options.faults, env, containers, ix);
   for (const c of linked.cases) {
-    const resolved = resolveTree(c.root, rules, options.faults, env);
+    const resolved = resolve(c.root);
     const used = check(resolved);
     if (!interactive) {
       out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition: emptyPartition(c.root), interaction: [] });
       continue;
     }
-    const built = interactionPartition(c.root, (ix) => resolveTree(c.root, rules, options.faults, env, ix), options.faults);
+    const built = interactionPartition(c.root, (ix) => resolve(c.root, ix), options.faults);
     if (built.over !== null) {
       // R7: refused (package SELD-R2s); the case keeps no interaction state.
       const refusal = interactionCapRefusal(assignmentLabel(c.assignment), built.over, rules, c.root.node.origin);
@@ -981,8 +1008,10 @@ const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initi
  * counted as compiled.
  */
 function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): void {
-  // Outside the lanes every interaction rule is already refused on native (nativeInteractionRefusals).
-  if (options.faults.hitUnmodelledNotRefused || !options.interactionLanes) return;
+  // Forced-only :focus and :focus-visible need no hit test, so outside the lanes this runs whenever gateInteractionFeatures could
+  // accept a mouse or touch row: an enforced profile of a target here proves one.
+  const pointerRows = options.profiles === 'enforce' && NATIVE_TARGETS.some((t) => targets.includes(t) && provesPointerRow(profileFor(options.supportProfiles, t)));
+  if (options.faults.hitUnmodelledNotRefused || (!options.interactionLanes && !pointerRows)) return;
   const seen = new Set<string>();
   for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
     const refusedAt = new Set(diagnostics.filter((d) => d.severity === 'error' && (d.target === null || d.target === t) && d.origin.kind === 'authored').map((d) => {
@@ -996,20 +1025,30 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
       const trees = [c.resolved, ...reachable.map((i) => i.resolved)];
       const fact = trees.map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
       const grid = fact === null ? (trees.map((r) => hitUnmodelledGrid(r, compiles)).find((g) => g !== null) ?? null) : null;
-      if (fact === null && grid === null) continue;
+      const control = fact === null && grid === null ? (trees.map(hitUnmodelledControl).find((g) => g !== null) ?? null) : null;
+      const unmodelled = fact === null && grid === null && control === null ? (trees.map((r) => hitUnmodelledBox(r, compiles)).find((g) => g !== null) ?? null) : null;
+      if (fact === null && grid === null && control === null && unmodelled === null) continue;
       for (const r of rules) {
         const pseudo = firstInteractionPseudo(r);
         if (pseudo === null) continue;
         const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
         const message = fact !== null
           ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
-          : `:${pseudo} needs Dragon hit testing through the grid container ${grid as string}, which is not built yet (package GRID hit model)`;
+          : grid !== null
+            ? `:${pseudo} needs Dragon hit testing through the grid container ${grid}, which is not built yet (package GRID hit model)`
+            : control !== null
+              ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
+              : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
         const manual = fact !== null
           ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
-          : `Use flex or block layout in a document with :${pseudo} rules, or style the state with a component state until grid hit testing is built.`;
+          : grid !== null
+            ? `Use flex or block layout in a document with :${pseudo} rules, or style the state with a component state until grid hit testing is built.`
+            : control !== null
+              ? `Style the state with a component state in a document with a form control until control hit testing is built.`
+              : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
@@ -1065,6 +1104,45 @@ function gateMediaFeatures(conditions: readonly RuleCondition[], targets: readon
         message: `@media ${c.text}: ${missing.join(', ')} has no passing resize-lane proof on ${t} in the ${MEDIA_CONTEXT} context (support profile ${profile.revision})`,
         manual: 'Remove the @media rule for this target until a resize lane proves its features.',
         profile: { target: t, profileRevision: profile.revision, feature: missing[0] as string, context: MEDIA_CONTEXT, status: 'unsupported' },
+      }));
+    }
+  }
+}
+
+/** CQ: the profile row of the @container at-rule, in the media context: a resize lane proves it, as at-rule:@media's. */
+export const CONTAINER_AT_RULE_FEATURE = 'at-rule:@container';
+
+/**
+ * CQ: a native target switches the bands @container rules add at run time only where its profile proves the at-rule, and the
+ * @media at-rule and width feature the bands are switched with, in the media context; each condition is refused elsewhere.
+ */
+function gateContainerRules(conditions: readonly ContainerCondition[], targets: readonly KnownTarget[], profiles: Required<SupportProfiles>, diagnostics: Diagnostic[]): void {
+  for (const t of NATIVE_TARGETS) {
+    if (!targets.includes(t)) continue;
+    const profile = profileFor(profiles, t);
+    const missing = [CONTAINER_AT_RULE_FEATURE, MEDIA_AT_RULE_FEATURE, mediaFeatureKey('width')].filter((k) => !provenContexts(profile, k).includes(MEDIA_CONTEXT));
+    if (missing.length === 0) continue;
+    for (const c of conditions) {
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+        origin: authored(c.span),
+        target: t,
+        message: `@container ${c.text}: ${missing.join(', ')} has no passing resize-lane proof on ${t} in the ${MEDIA_CONTEXT} context (support profile ${profile.revision})`,
+        manual: 'Remove the @container rule for this target until a resize lane proves it.',
+        profile: { target: t, profileRevision: profile.revision, feature: missing[0] as string, context: MEDIA_CONTEXT, status: 'unsupported' },
+      }));
+    }
+  }
+}
+
+/** CQ: a transition or animation in a @container rule would differ per element and band, which no target builds yet. */
+function refuseContainerAnimations(rules: readonly Rule[], diagnostics: Diagnostic[]): void {
+  for (const r of rules) {
+    if (r.container === undefined) continue;
+    for (const d of r.declarations) {
+      if (d.animation === undefined) continue;
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: authored(d.valueSpan),
+        message: `${d.property} inside @container is not supported: transition and animation lists that differ per query container are not built yet`,
       }));
     }
   }
@@ -1190,8 +1268,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
   let animation: AnimationAnalysis | null = null;
   let laneOnlyNative: ('ios' | 'android')[] = [];
+  let focusable = true;
   let bands: Bands | null = null;
   let nativeBand = 0;
+  // CQ: a sheet with @container rules links the document before the band partition, which its containers decide.
+  let preLinked: Linked | null | undefined;
+  const preLinkDiagnostics: Diagnostic[] = [];
+  let containerQueries = false;
   const fontDeferrals = new Set<string>();
   const valid = configDiagnostics.length === 0 ? validateInput(input, config.projectId, diagnostics) : null;
   if (valid !== null) {
@@ -1227,11 +1310,38 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     diagnostics.splice(0, diagnostics.length, ...splitNotApplicable(diagnostics, targets));
     diagnostics.push(...interactionRefusals(rules));
     diagnostics.push(...generatedRuleRefusals(rules));
-    const nativeRefusals = nativeInteractionRefusals(rules, NATIVE_TARGETS.filter((t) => targets.includes(t)));
-    if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
-    else diagnostics.push(...nativeRefusals);
+    diagnostics.push(...markerRuleRefusals(rules));
+    // SELD-R2 PR 5: the native interaction gate needs the linked cases (focusability); its refusals keep this place in the list.
+    const interactionAt = diagnostics.length;
+    const interactionRules = [...rules];
     const conditions = conditionsOf(rules);
-    const partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
+    let partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
+    // CQ: each width a @container query compares with its container's adds a viewport atom; the containers come from resolving
+    // every case in every @media band without the @container rules (analysis/container-rules.ts).
+    const containerConditions = containerConditionsOf(rules);
+    if (containerConditions.length > 0) refuseContainerAnimations(rules, diagnostics);
+    const preFatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
+    if (containerConditions.length > 0 && partition?.kind !== 'refused' && !preFatal) {
+      preLinked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, preLinkDiagnostics);
+      const mediaBands: Bands | null = partition === null ? null : { partition, conditions };
+      const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
+      const found = preLinked;
+      const groups = found === null ? [] : (mediaBands === null ? [null] : mediaBands.partition.bands).map((b) => {
+        const inBand = rulesIn(rules, mediaBands, b, options.faults);
+        return { band: b, trees: found.cases.map((c) => resolveTree(c.root, inBand, options.faults, env)) };
+      });
+      const atoms = containerAtoms(groups, containerConditions, options.faults);
+      if (atoms.length > 0) {
+        const refined = band([...conditions.map((c) => c.list), ...atoms]);
+        if (refined.kind === 'refused') {
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
+            origin: authored((containerConditions[0] as ContainerCondition).span),
+            message: `the @container rules of this document, with its @media rules, split the viewport into ${refined.detail}, which is not supported yet (package MQ-R4)`,
+          }));
+          rules.splice(0, rules.length, ...rules.filter((r) => r.container === undefined));
+        } else partition = refined;
+      }
+    }
     if (partition !== null && partition.kind === 'refused') {
       // The at-rule handler refuses the other band refusals per at-rule; only the band count is a property of the whole sheet.
       diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', {
@@ -1240,11 +1350,12 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       }));
       rules.splice(0, rules.length, ...rules.filter((r) => r.condition === undefined));
     } else if (partition !== null) {
-      bands = { partition, conditions };
+      bands = { partition, conditions: [...conditions, ...containerConditions.map((c) => ({ list: c.list, text: c.text, span: c.span }))] };
       nativeBand = nativeBandIndex(bands, options.foldViewport, options.faults);
       // MQ-R1 (T067 R13): native switches bands at run time where its profile proves each feature; the profile rows decide.
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
     }
+    if (options.profiles === 'enforce' && rules.some((r) => r.container !== undefined)) gateContainerRules(containerConditions, targets, profiles, diagnostics);
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
     checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics);
     checkSvgContent(valid, diagnostics);
@@ -1257,8 +1368,19 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     fonts = compileFonts(input, config.fonts, fontFaces, diagnostics);
     checkFamilies(rules, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
     const keys = fonts.keys;
-    const valuesAt = diagnostics.length;
-    linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
+    let valuesAt = diagnostics.length;
+    if (preLinked === undefined) linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
+    else {
+      linked = preLinked;
+      diagnostics.push(...preLinkDiagnostics);
+    }
+    focusable = focusReachable(interactionRules, linked?.cases ?? null);
+    const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
+    if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
+    else {
+      diagnostics.splice(interactionAt, 0, ...nativeRefusals);
+      valuesAt += nativeRefusals.length;
+    }
     // An unsupported at-rule blocks every output but does not stop the analysis (T005 rec 3): every diagnostic comes in one pass.
     const fatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
     if (linked !== null && !fatal) {
@@ -1266,20 +1388,36 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const projectFonts = fonts;
       // Every band is checked for every target. Each pass reports on its own, its diagnostics without a target scoped to the pass's
       // targets, then all are merged.
+      const containerRefusals: ContainerRefusals = new Map();
+      const unitRefusals: ContainerUnitRefusals = new Map();
+      containerQueries = rules.some((r) => r.container !== undefined);
       const passes = bandList.map((b, k) => {
         const own: Diagnostic[] = [];
         const bandTargets = passTargets(k);
-        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered) };
+        // CQ: cqw and cqi resolve against each element's query container, which the same pass finds. Every pass looks, since a unit
+        // may appear only after var() substitution (a custom property, a registered initial value, an escaped unit).
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, containerBand(b, containerRefusals, unitRefusals)) };
         return { result, diagnostics: scopedTo(own, bandTargets, targets) };
       });
       bandCases = passes.map((p) => p.result);
       diagnostics.push(...mergePasses(passes.map((p) => p.diagnostics)));
+      for (const { condition, reason } of containerRefusals.values()) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_AT_RULE', { origin: authored(condition.span), message: `@container ${condition.text} is not supported here: ${reason}` }));
+      }
+      for (const { span, property, text, reason } of unitRefusals.values()) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: `${property}: ${text} is not supported here: ${reason}`, manual: 'Use %, px, em or rem, or give the element a query container Dragon reads.' }));
+      }
       // GEN-a R12: a generated box and its text are the same in every reachable state, interaction state and band.
       checkGeneratedIdentity(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), diagnostics);
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
-      // REPL-a: the images every band's resolved cases reference, read once.
+      // REPL-a: the images every band's resolved cases and their interaction states reference (img src, background url()), read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
-      images = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]))), config.images, assetBytes, diagnostics);
+      const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
+      const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])));
+      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
+      // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
+      const videos = compileVideos(roots, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
+      images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       // MQ-R1: native runs every band, so every other band's analysis reports too (each diagnostic once).
@@ -1297,15 +1435,25 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const nativeTargets = NATIVE_TARGETS.filter((t) => targets.includes(t));
       // MQ-R1: per-band transition and animation lists are refused on native until MQ-Rt, as on web until ANIM-mq.
       refuseBandedNativeAnimations(rules, inEveryBand, nativeTargets, diagnostics);
+      // ZOOM: native carries animated lengths unzoomed, so a zoomed element's transitions and animations are refused there.
+      const zoomAnimReported = new Set<string>();
+      bandCases.forEach((r, k) => refuseZoomedAnimations(bandAnimations[k] as AnimationAnalysis, r.cases, nativeTargets, diagnostics, zoomAnimReported));
       // BG2c: a gradient box's raster keeps the colours of its first layout, so animating them on native is refused. PNT1b: a rounded
       // double border draws as two rings only in one colour, and the animator feeds each side's colour apart. PNT1: an animated color
       // must not turn a currentcolor dotted, dashed or 3D outline or rounded double border translucent, nor reach a currentcolor
-      // paint native bakes in the resting color. MQ-R1: native switches bands at run time, so every band's cases and animations are
+      // paint native bakes in the resting color, nor text with its own fill (TXT-FX). MQ-R1: native switches bands at run time, so every band's cases and animations are
       // checked (each refusal once).
       const gradientsReported = new Set<string>();
       const doublesReported = new Set<string>();
       const translucentReported = new Set<string>();
       const currentColorReported = new Set<string>();
+      const groupMotionReported = new Set<string>();
+      // ENV-SAFE: the measured insets change without a style change event, so native refuses animating a value that reads them.
+      const safeAreaReported = new Set<string>();
+      const textFillReported = new Set<string>();
+      const fxReported = new Set<string>();
+      const pixelatedReported = new Set<string>();
+      const shadowUnderReported = new Set<string>();
       bandCases.forEach((r, k) => {
         const roots = r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved]));
         const a = bandAnimations[k] as AnimationAnalysis;
@@ -1313,7 +1461,22 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedRoundedDoubles(a, roots, nativeTargets, diagnostics, doublesReported);
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
+        refuseAnimatedSafeAreaInsets(a, roots, nativeTargets, diagnostics, safeAreaReported);
+        refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
+        // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only).
+        if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, groupMotionReported);
+        // FX-0: a backdrop-filter or mix-blend-mode is drawn only on a page that does not animate (analysis/fx.ts).
+        refuseAnimatedFx(a, roots, nativeTargets, diagnostics, fxReported);
+        refuseAnimatedPixelated(a, roots, nativeTargets, diagnostics, pixelatedReported, options.faults);
+        refuseAnimatedShadowUnders(a, roots, nativeTargets, diagnostics, shadowUnderReported);
       });
+      // TXT-FX: a state program's text records carry no stroke, so native refuses a drawn stroke wherever the output is one.
+      const animated = bandAnimations.some((a) => a.cases.some((c) => [...c.elements.values()].some((e) => e.declared || e.animations.some((x) => x.name !== 'none'))));
+      const stateful = cases.some((c) => c.assignment.length > 0) ? 'app states'
+        : bandCases.some((r) => r.cases.some((c) => c.interaction.length > 0)) ? 'interaction states'
+        : animated ? 'transitions or animations'
+        : bands !== null && bands.partition.bands.length > 1 ? 'media bands' : null;
+      refuseStatefulStrokes(stateful, bandCases.flatMap((r) => r.cases.flatMap((c) => [...(c.resolved === null ? [] : [c.resolved]), ...c.interaction.map((i) => i.resolved)])), nativeTargets, diagnostics, options.faults);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
@@ -1332,7 +1495,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
       // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
-      // lane-only on native and proves no native row (pipeline.ts).
+      // lane-only on native and proves no native row (pipeline.ts). So is one with a unicode-bidi that can reorder text (analysis/bidi.ts).
       if (options.interactionLanes) {
         const pending: Diagnostic[] = [];
         const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
@@ -1341,6 +1504,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
             if (r === null) continue;
             checkTranslucent(r, native, pending, new Set());
             checkSelectable(r, native, pending, new Set());
+            checkBidi(r, native, pending, new Set());
             checkStackingClips(r, propagatedFrom(r), native, pending, new Set());
           }
         }
@@ -1348,6 +1512,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         for (const c of bandCases.flatMap((b) => b.cases)) {
           for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkTranslucentPaint(r, native, pending, new Set());
         }
+        bandCases.forEach((r, k) => refuseAnimatedGroups(bandAnimations[k] as AnimationAnalysis, r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), native, pending));
         laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
       }
       // T005 rec 3: the rules inside each unsupported at-rule are analysed with the block unwrapped, in a scratch pass whose
@@ -1439,10 +1604,12 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
       for (const c of lowerings) {
         try {
-          // Off by default (InternalOptions.nativeRealFaces): every non-Ahem face is refused natively until phase R, since the device
-          // runtime measures only Ahem; an element's own font (its strut) counts, not only its text.
-          const real = options.nativeRealFaces ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
-          const refused = options.nativeRealFaces ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until TXT1a-2 phase R';
+          // On by default (InternalOptions.nativeRealFaces); turned off, every non-Ahem face is refused natively; an element's own
+          // font (its strut) counts, not only its text. A compile given the lanes verdict (a user's, whose output can be ready) refuses
+          // them too: a ready output's support files bundle no faces and no shim, so its app could not draw them.
+          const userOutput = options.nativeLanes !== null;
+          const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
+          const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
           const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
@@ -1501,7 +1668,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const webBands = options.faults.mediaFractionalBandDropped ? bandCases.filter((r, k) => k === 0 || whole(r.band)) : bandCases;
       const [base, ...extra] = webBands.map((r) => ({ condition: r.band === null ? 'all' : r.band.condition, cases: r.cases.map((c) => ({ key: c.key, root: c.resolved as ResolvedElement, interaction: webInteraction(c) })) }));
       const first = base as { condition: string; cases: { key: string; root: ResolvedElement; interaction?: WebInteraction | undefined }[] };
-      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated, options.faults.webkitBoxEmittedAsFlowRoot);
+      web = emitWebCss(first.cases, digest, webFonts === null ? null : webFonts.context, extra, animation === null ? null : webAnimationsOf(animation, valueText), first.condition, !options.faults.webHoverUngated, options.faults.webkitBoxEmittedAsFlowRoot, images === null ? new Map() : images.webUrls);
       outputs[key] = { kind: 'ready', digest, files: web.files, assets: webFonts === null ? [] : webFonts.assets() };
     }
   }
@@ -1535,11 +1702,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         table: bandTableOf(bands.partition),
         conditions: bands.partition.bands.map((b) => b.condition),
         initial: nativeBand,
+        container: containerQueries,
         cases: bandCases.map((r, k) => r.cases.map((c) => ({ key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? ((loweredByBand[k] as Map<string, LayoutBox>).get(c.key) ?? null) : null }))),
       },
       laneOnlyNative,
+      focusReachable: focusable,
       images: images === null ? new Map() : images.bytes,
-      textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared },
+      textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
@@ -1677,7 +1846,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     ua: choice.dataset,
     supportProfiles: snapshotProfiles(options.supportProfiles === undefined ? COMMITTED_PROFILES : options.supportProfiles),
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
-    nativeRealFaces: options.nativeRealFaces === true,
+    nativeRealFaces: options.nativeRealFaces !== false,
     interactionLanes: options.interactionLanes === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };

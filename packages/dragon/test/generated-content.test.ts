@@ -3,7 +3,7 @@
 // formatting context, the hosts that may generate one, the refusals of R4, R8 and R12, the statically empty pseudo-elements, the
 // web output, and the eight compiler plants.
 import { describe, expect, it } from 'vitest';
-import type { LayoutBox, InlineChild } from '@dragon/layout';
+import type { ControlBox, LayoutBox, InlineChild } from '@dragon/layout';
 import type { AttributeBinding, Compiled, ElementNode, FrontEndResult, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, iosLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, WEB_CSS_PATH, webClassMap } from '../src/internal.ts';
 import type { CompilerFaults } from '../src/faults.ts';
@@ -48,11 +48,11 @@ function layoutTree(c: Compiled<'ios' | 'web'>): { ids: string[]; texts: Map<str
     if (k.kind === 'text') texts.set(k.id, k.text);
     if (k.kind === 'inline') for (const x of k.children) inline(x);
   };
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     ids.push(b.id);
     styles.set(b.id, b.style);
     for (const k of b.children) {
-      if (k.kind === 'box') walk(k);
+      if (k.kind === 'box' || k.kind === 'control') walk(k);
       else if (k.kind !== 'replaced') inline(k);
     }
   };
@@ -80,13 +80,12 @@ describe('selectors (R5)', () => {
       ['generated', 'before', [0, 0, 2]],
     ]);
   });
-  it('anything after the pseudo-element is refused, naming its owner; ::first-line, ::first-letter and ::marker name GEN-d and GEN-c', () => {
+  it('anything after the pseudo-element is refused, naming its owner; ::first-line and ::first-letter name GEN-d', () => {
     const refused = (css: string): string[] => parseSelectors(`${css} { width: 1px; }`).diagnostics.map((d) => `${d.code} ${d.message}`);
     expect(refused('.a::before:hover')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*GEN-d8\)$/)]);
     expect(refused('.a::after.b')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*GEN-d\)$/)]);
     expect(refused('.a::first-line')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*GEN-d/)]);
     expect(refused('.a::first-letter')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*GEN-d/)]);
-    expect(refused('li::marker')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*GEN-c and GEN-d6/)]);
   });
   it('a pseudo-element inside :is() is invalid in Chrome, and refused as in any forgiving argument', () => {
     const { diagnostics } = parseSelectors(':is(.a::before) { width: 1px; } :not(.a:after) { width: 1px; }');

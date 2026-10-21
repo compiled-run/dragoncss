@@ -19,7 +19,7 @@ import type { DevicePart } from '../device-lanes.ts';
 import { ALL_PARTS, allRunFailures, deviceFailuresText, failuresByKind, runOneDevice } from '../device-lanes.ts';
 import { boot, DEVICE_MATRIX, release, requireDeviceLease, ToolingFault } from '../device-run.ts';
 import { checkLaneParity, committedHostRun, fileStatusProblems, laneSources, lanesFile, readLanesFile, writeLanesFile } from '../lanes.ts';
-import { buildAndroid, buildIos, nativeCases, nativeOut } from '../native-host.ts';
+import { buildAndroid, buildIos, deviceCheckCases, nativeOut } from '../native-host.ts';
 import { repoPath } from '../paths.ts';
 import { nativeTargets } from '../targets.ts';
 
@@ -68,10 +68,10 @@ if (mode === 'one' && (rest.length === 3 || (rest.length === 5 && rest[3] === '-
     artifact = build.artifact;
     appCases = build.cases;
   }
-  const casesOf = (): ReturnType<typeof nativeCases> => {
+  const casesOf = (): ReturnType<typeof deviceCheckCases> => {
     if (!needApp) return [];
-    const cases = nativeCases();
-    if (appCases !== cases.length) throw new Error(`${t.target}: the app holds ${appCases} cases, layoutCases() ${cases.length}`);
+    const cases = deviceCheckCases();
+    if (appCases !== cases.length) throw new Error(`${t.target}: the app holds ${appCases} cases, deviceCheckCases() ${cases.length}`);
     return cases;
   };
   const host = committedHostRun(readLanesFile(), targets, t.target);

@@ -4,7 +4,10 @@
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
 import type { Assignment, BandCase, NativeProgram, ProgramNode } from 'dragon';
-import { BAND_KEY, bandStateProgram, NO_BAND_RUNTIME_FAULTS } from 'dragon';
+import { bandEnvironmentOf, DESKTOP_DEVICE, BAND_KEY, bandStateProgram, NO_BAND_RUNTIME_FAULTS } from 'dragon';
+
+/** MQ-R2: headless Chrome's desktop readings at a scale. */
+const desk = (dpr: number) => bandEnvironmentOf({ ...DESKTOP_DEVICE, dpr });
 import { MediaRuntime } from '../src/media-runtime.ts';
 import { rtBand } from '@dragon/layout';
 import { readFileSync } from 'node:fs';
@@ -20,14 +23,14 @@ import { band, parseMediaQueryList } from '../../dragon/src/media/index.ts';
 const px = (value: number) => ({ kind: 'px', value });
 const auto = { kind: 'auto' };
 const style = (width: number): LayoutBox['style'] => ({
-  display: 'block', position: 'static', top: auto, right: auto, bottom: auto, left: auto, overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box',
+  display: 'block', position: 'static', float: 'none', top: auto, right: auto, bottom: auto, left: auto, overflowX: 'visible', overflowY: 'visible', direction: 'ltr', boxSizing: 'content-box',
   width: px(width), height: auto, minWidth: auto, minHeight: auto, maxWidth: { kind: 'none' }, maxHeight: { kind: 'none' }, marginTop: px(0), marginRight: px(0), marginBottom: px(0), marginLeft: px(0),
   paddingTop: px(0), paddingRight: px(0), paddingBottom: px(0), paddingLeft: px(0), borderTopWidth: px(0), borderRightWidth: px(0), borderBottomWidth: px(0), borderLeftWidth: px(0),
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: auto, order: 0, justifyContent: 'flex-start', alignItems: 'stretch', alignSelf: 'auto', alignContent: 'normal',
   rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: auto,
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, grid: null, gridItem: null,
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, grid: null, gridItem: null, zoom: [],
 }) as unknown as LayoutBox['style'];
-const box = (id: string, width: number): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, children: [] });
+const box = (id: string, width: number): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: style(width), strut: null, marker: null, children: [] });
 const node = (id: string, color: number): ProgramNode => ({
   id, parent: null, host: null, kind: 'element', native: 'DragonBoxView', clips: false, text: null,
   writes: [{ kind: 'background-color', color: { r: color, g: 0, b: 0, alpha: 255 }, key: 'backgroundColor', technique: 'native-property', detail: 'test', css: ['background-color'] }],
@@ -97,7 +100,7 @@ describe('the band lookup over whole device px, off the 8 px grid (PR #140 revie
       for (const dpr of DPRS) {
         for (let px = 0; px <= 2048; px++) {
           for (const [w, h] of [[px, 600], [px, 1400], [600, px], [1400, px]] as const) {
-            const k = rtBand.bandAtPx(bands.table, w, h, dpr, rtBand.NO_BAND_FAULTS);
+            const k = rtBand.bandAtPx(bands.table, w, h, desk(dpr), rtBand.NO_BAND_FAULTS);
             checked++;
             const want = nativeBandOfViewport(s.compiled, { width: rtBand.mediaSize(w, dpr), height: rtBand.mediaSize(h, dpr) });
             if (k !== want) expect(k, `${s.id} ${w}x${h} px at ${dpr}`).toBe(want);
@@ -111,7 +114,7 @@ describe('the band lookup over whole device px, off the 8 px grid (PR #140 revie
   it('the review\'s sheet, (width <= 400px) with (width > 400px), finds the band where both hold at 1400 px and DPR 3.5 (400.0000305 css px)', () => {
     const p = band(['(width <= 400px)', '(width > 400px)'].map((q) => parseMediaQueryList(q)));
     if (p.kind !== 'bands') throw new Error(p.detail);
-    expect(p.bands[rtBand.bandAtPx(bandTableOf(p), 1400, 1000, 3.5, rtBand.NO_BAND_FAULTS)]?.truth).toEqual([true, true]);
+    expect(p.bands[rtBand.bandAtPx(bandTableOf(p), 1400, 1000, desk(3.5), rtBand.NO_BAND_FAULTS)]?.truth).toEqual([true, true]);
   });
 });
 

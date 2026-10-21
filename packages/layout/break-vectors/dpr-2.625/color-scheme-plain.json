@@ -1,0 +1,17 @@
+{
+  "case": "color-scheme-plain",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"s1:text0","lines":[[0,3]]},
+    {"id":"s1e:text0","lines":[[0,2]]},
+    {"id":"s2c:text0","lines":[[0,3]]},
+    {"id":"s3a:text0","lines":[[0,2]]},
+    {"id":"s4:text0","lines":[[0,2]]},
+    {"id":"s5:text0","lines":[[0,2]]},
+    {"id":"s6:text0","lines":[[0,2]]},
+    {"id":"s7:text0","lines":[[0,2]]},
+    {"id":"s8c:text0","lines":[[0,2]]},
+    {"id":"ra:text0","lines":[[0,5]]},
+    {"id":"rb:text0","lines":[[0,2]]}
+  ]
+}

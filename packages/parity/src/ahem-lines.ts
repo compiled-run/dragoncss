@@ -2,24 +2,26 @@
 // device-px glyph pens, the zoomed size and the baseline, placed as pixel-reference.ts glyphLines places the glyphs. Kept apart from
 // pixel-reference.ts (whose paint-samples registry reads paint-samples/text-shadow.ts, which reads this), so a test can import the
 // text-shadow samples first.
-import type { LayoutBox } from '@dragon/layout';
-import { pieceGlyphs, zoomFontSize } from '@dragon/layout';
+import type { ControlBox, LayoutBox } from '@dragon/layout';
+import { markerTextId, pieceGlyphs, zoomFontSize } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
 import { engineTextLines } from './line-breaks.ts';
 import { glyphMeasurer } from './native-host.ts';
 
-/** Each text leaf's css font family and size and its text, by text id. */
+/** Each text leaf's and text marker's css font family and size and its text, by text id. */
 export function cssFontSizes(root: LayoutBox): Map<string, { family: string; size: number; text: string }> {
   const out = new Map<string, { family: string; size: number; text: string }>();
   // Text leaves sit in their block container or, through any depth of inline boxes, inside it (INL1a).
-  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox>): void => {
+  const inline = (c: Exclude<LayoutBox['children'][number], LayoutBox | ControlBox>): void => {
     if (c.kind === 'text') out.set(c.id, { family: c.font.family, size: c.font.size, text: c.text });
     else if (c.kind === 'inline') for (const k of c.children) inline(k);
   };
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
+    // GEN-c: a text marker's text is drawn as a text leaf in the marker's font (line-breaks.ts engineTextLines).
+    if (b.kind === 'box' && b.marker !== null && b.marker.kind === 'text' && b.marker.text !== null) out.set(markerTextId(b.marker.id), { family: b.marker.font.family, size: b.marker.font.size, text: b.marker.text });
     for (const c of b.children) {
-      if (c.kind === 'box') walk(c);
+      if (c.kind === 'box' || c.kind === 'control') walk(c);
       else inline(c);
     }
   };

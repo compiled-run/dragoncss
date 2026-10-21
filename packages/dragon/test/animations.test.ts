@@ -222,13 +222,23 @@ describe('animation analysis', () => {
     expect(packages(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { border-top-width: 3px; }'))).toEqual(['ANIM-p']);
     expect(compile('.a { border-top-width: 1px; border-top-style: solid; transition: border-top-width 1s; } .a.on { width: 3px; }')).toEqual([]);
     expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { flex-grow: 2 } }'))).toEqual(['ANIM-p']);
-    // The spec's row: transform (and opacity, once it is a longhand) names ANIM-b2, the package that admits it.
-    expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { transform: translateX(2px) } }'))).toEqual(['ANIM-b2']);
+    // ANIM-b2 admits transform; transform-origin has no writer yet, and its refusal names ANIM-p.
+    expect(compile('.b { animation: k 1s; } @keyframes k { to { transform: translateX(2px) } }')).toEqual([]);
+    expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { transform-origin: 0 0 } }'))).toEqual(['ANIM-p']);
+    expect(packages(compile('.b { animation: k 1s; } @keyframes k { to { rotate: 30deg } }'))).toEqual(['ANIM-b2']);
   });
 
   it('refuses a transitioned property an animation also sets (R12, ANIM-o) and a currentcolor pair (ANIM-cc)', () => {
     expect(packages(compile('.a { color: rgb(0, 0, 0); transition: color 1s; animation: k 1s infinite; } .a.on { color: rgb(9, 9, 9); } @keyframes k { to { color: rgb(1, 1, 1) } }'))).toEqual(['ANIM-o']);
     expect(packages(compile('.a { border-top-color: currentcolor; transition: all 1s; } .a.on { border-top-color: rgb(9, 9, 9); }'))).toEqual(['ANIM-cc']);
+  });
+
+  it('refuses an hsl() or hwb() colour between 8-bit steps in a transition or keyframes, which Chrome mixes in float (COL4)', () => {
+    const between = (ds: readonly Diagnostic[]): number => ds.filter((d) => d.message.includes('between 8-bit steps')).length;
+    // hwb(10 20% 30%) has red 178.5: Chrome's 50% mix with black is rgb(89, 36, 26), and mixing the 8-bit bytes gives red 90.
+    expect(between(compile('.a { background-color: hwb(10 20% 30%); transition: background-color 1s; } .a.on { background-color: black; }'))).toBeGreaterThan(0);
+    expect(between(compile('.a { animation: k 1s infinite; } @keyframes k { to { color: hsl(120 100% 25%) } }'))).toBeGreaterThan(0);
+    expect(between(compile('.a { background-color: hsl(0 100% 50%); transition: background-color 1s; } .a.on { background-color: black; }'))).toBe(0);
   });
 
   it('refuses a finite animation whose timing changes between states (R11, ANIM-t), and not an infinite one', () => {

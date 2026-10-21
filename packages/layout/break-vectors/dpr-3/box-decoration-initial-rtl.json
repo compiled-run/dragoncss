@@ -1,0 +1,19 @@
+{
+  "case": "box-decoration-initial-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"s1:text0","lines":[[0,6],[6,11]]},
+    {"id":"s2:text0","lines":[[0,3]]},
+    {"id":"s2s:text0","lines":[[0,3],[3,9],[9,11]]},
+    {"id":"s2:text1","lines":[[0,3]]},
+    {"id":"s3:text0","lines":[[0,3]]},
+    {"id":"s3s:text0","lines":[[0,4],[4,7],[7,11]]},
+    {"id":"s4s:text0","lines":[[0,6],[6,8]]},
+    {"id":"s5:text0","lines":[[0,5]]},
+    {"id":"s6c:text0","lines":[[0,6]]},
+    {"id":"s7:text0","lines":[[0,3]]},
+    {"id":"s7s:text0","lines":[[0,3],[3,8]]},
+    {"id":"ra:text0","lines":[[0,5]]},
+    {"id":"rb:text0","lines":[[0,2]]}
+  ]
+}

@@ -7,7 +7,7 @@ import { generate } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../../types.ts';
 import type { AtRuleContext, AtRuleHandler } from '../at-rules.ts';
-import { legacyAliasRefusal, resolveAlias } from '../aliases.ts';
+import { aliasValueParser, legacyAliasRefusal, resolveAlias } from '../aliases.ts';
 import { list, spanOf } from '../ast.ts';
 import { asciiLower, decodeName } from '../escapes.ts';
 import type { Longhand } from '../properties.ts';
@@ -40,6 +40,10 @@ export const NOT_VALID_FOR_KEYFRAME: readonly string[] = [
   'animation-play-state', 'animation-range', 'animation-range-end', 'animation-range-start', 'timeline-trigger', 'timeline-trigger-active-range',
   'timeline-trigger-entry-range',
 ];
+
+// Chrome 145 ignores container-name and container-type in @keyframes too, though css_properties.json5 leaves them valid_for_keyframe
+// (probed: an animation of both keeps normal and none).
+const IGNORED_IN_KEYFRAMES: readonly string[] = ['container', 'container-name', 'container-type'];
 
 const TIMELINE_RANGE_NAMES = ['cover', 'contain', 'entry', 'exit', 'entry-crossing', 'exit-crossing', 'scroll', 'view'];
 
@@ -168,7 +172,7 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       else easing = item.easing;
       continue;
     }
-    if (NOT_VALID_FOR_KEYFRAME.includes(property)) {
+    if (NOT_VALID_FOR_KEYFRAME.includes(property) || IGNORED_IN_KEYFRAMES.includes(property)) {
       refuse('DRAGON_UNSUPPORTED_PROPERTY', `${property} has no effect inside @keyframes in Chrome; remove it`);
       continue;
     }
@@ -190,7 +194,9 @@ function parseBlock(rule: CssNode, src: KeyframesSource, name: string, diagnosti
       refuse('DRAGON_UNSUPPORTED_VALUE', `${property}: ${text} in @keyframes ${name} is unsupported: CSS-wide keywords in keyframes are not built yet (package ANIM-k)`, valueSpan);
       continue;
     }
-    const parsed = parseValue(property as Parameters<typeof parseValue>[0], valueNode, tokens, src.base, src.text);
+    // An alias Chrome parses unlike its property parses its own way here too (aliases.ts aliasValueParser).
+    const own = property === lowered ? undefined : aliasValueParser(lowered);
+    const parsed = own?.(tokens) ?? parseValue(property as Parameters<typeof parseValue>[0], valueNode, tokens, src.base, src.text);
     if (parsed.kind === 'ok') {
       // ENV-SAFE: no frame fixture proves a keyframe that reads a safe-area inset, and keyframe rows are keyed by property alone.
       if (parsed.longhands.some((lh) => lh.value.kind === 'other' && lh.value.type === ENV_VALUE_TYPE)) {

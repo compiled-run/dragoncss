@@ -3,13 +3,16 @@
 // the emitted writer lines and the expected applied alpha (Chrome's paint alpha byte / 255 as a float32).
 import { describe, expect, it } from 'vitest';
 import { opacityAlpha8 } from '@dragon/layout';
-import type { Diagnostic } from '../src/index.ts';
+import type { Diagnostic, DraftTree } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import type { Declaration } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { EFFECTS_EMITTER } from '../src/emit/paint/effects.ts';
+import { BACKGROUND_EMITTER } from '../src/emit/paint/background.ts';
+import { nodeLit, StateEmitError } from '../src/emit/runtime/state.ts';
+import { opacityAlpha8 as foldAlpha8 } from '../src/css/color.ts';
 import type { Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor } from './helpers.ts';
+import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/opacity.css', revision: 'r1', hash: 'sha256:0' };
 
@@ -84,14 +87,16 @@ describe('opacity: parse and computed values (Chrome 145 getComputedStyle)', () 
 describe('opacity: the native targets draw 0 and 1 only', () => {
   it('a fractional opacity is refused on ios by name, at the declaration, naming PNT1-opacity-b, and compiles for web', () => {
     for (const v of ['0.5', '50%', '0.001', 'calc(0.2 * 2)']) {
-      const c = compile(`.a { height: 10px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
+      // A rounded box is neither a fold nor a group native pre-composites.
+      const c = compile(`.a { height: 10px; border-radius: 2px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
       const errs = c.diagnostics.filter((d) => d.severity === 'error');
       expect(errs.map((d) => [d.code, d.target]), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws opacity 0 and 1 only until package PNT1-opacity-b pre-composites the rest$/);
+      expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites \(PNT1-opacity-b\), and this one is not: a has a border radius$/);
       expectCatalogued(errs);
     }
-    // An inherited fraction is refused where it computes; the declaration is the child's inherit.
-    const c = compile('.a { opacity: 25%; } .b { height: 5px; opacity: inherit; }', { ios: { minimum: '15.0' }, web: {} });
+    // An inherited fraction is refused where it computes; the declaration is the child's inherit (a rounded b, as a plain one is a
+    // nested group native pre-composites).
+    const c = compile('.a { opacity: 25%; } .b { height: 5px; border-radius: 1px; opacity: inherit; }', { ios: { minimum: '15.0' }, web: {} });
     expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message.slice(0, 18))).toEqual(['a has opacity 0.25', 'b has opacity 0.25']);
   });
   it('opacity 0, 1 and the values that clamp to them compile on ios', () => {
@@ -99,6 +104,238 @@ describe('opacity: the native targets draw 0 and 1 only', () => {
       const c = compile(`.a { height: 10px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
       expect(c.diagnostics.filter((d) => d.severity === 'error'), v).toEqual([]);
     }
+  });
+});
+
+// PNT1-opacity-b (first part): Chrome folds a group of one draw into the draw (cc PlaybackFoldingIterator), so a box whose only paint
+// is an opaque fill paints as the fill with the opacity's alpha byte; measured equal in Chrome 145 (analysis/paint-values/effects.ts).
+describe('opacity: a group of one opaque fill folds into the fill on native', () => {
+  const native = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  const errors = (css: string): string[] => compile(css, native).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target} ${d.message.slice(0, 16)}`).filter((m) => / has opacity /.test(m));
+  const leaf = 'height: 5px; background-color: rgb(10, 20, 30);';
+  it('compiles on native a fraction on an empty box with an opaque or transparent fill', () => {
+    for (const css of [`.b { ${leaf} opacity: 0.3; }`, '.b { height: 5px; opacity: 45%; }', `.b { ${leaf} border: 0 solid rgb(0, 0, 0); outline: 2px none rgb(0, 0, 0); opacity: 0.7; }`]) {
+      expect(errors(css), css).toEqual([]);
+    }
+  });
+  it('refuses on native a fraction whose group paints more than one fill, or composites as a layer', () => {
+    for (const extra of ['border-radius: 3px;', 'border: 1px dashed rgb(0, 0, 0);', 'border: 1px solid rgb(0, 0, 0); border-left-color: rgb(9, 9, 9);', 'outline: 1px solid rgb(0, 0, 0);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
+      expect(errors(`.b { ${leaf} ${extra} opacity: 0.3; }`), extra).toEqual(['ios b has opacity 0.', 'android b has opacity 0.']);
+    }
+    // A box with a child is a group of more than one draw: it does not fold, and native pre-composites it (opacity-group).
+    expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; }`)).toEqual([]);
+    expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; border-radius: 1px; }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
+  });
+  it('refuses on native a folded fill whose background-color animates or transitions (the animator writes the colour alpha)', () => {
+    const fold = 'animates the fill a fractional opacity is folded into, and the animated colour would drop the opacity: not built yet (package PNT1-opacity-b)';
+    const all = (r: { diagnostics: readonly Diagnostic[] }): string[] => r.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
+    expect(all(compile(`.b { ${leaf} opacity: 0.5; animation: k 1s infinite; } @keyframes k { from { background-color: rgb(255, 0, 0) } to { background-color: rgb(0, 0, 255) } }`, native))).toEqual([`background-color on b ${fold}`]);
+    // A transition between two states, the fold in either.
+    const stated = (css: string) => {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => {
+        const d = div(r, 'b', ['b']);
+        const on = { value: [{ when: eq('open', true), value: { owner: DOC, sheet: 's', name: 'on' } }, { when: not(eq('open', true)), value: null }], origin: d.origin };
+        return [{ ...d, classes: [...d.classes, on] }];
+      });
+      const tree = input.tree as DraftTree;
+      const root = tree.components[0] as DraftTree['components'][number];
+      return createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile({ ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 'open', domain: [false, true], initial: false, origin: root.origin }] }] } });
+    };
+    expect(all(stated(`.b { ${leaf} transition: background-color 1s; } .b.on { background-color: rgb(200, 0, 0); opacity: 0.5; }`))).toEqual([`background-color on b ${fold}`]);
+    expect(all(stated(`.b { ${leaf} opacity: 0.5; } .b.on { background-color: rgb(200, 0, 0); }`))).toEqual([]);
+  });
+  it('writes the fill with the opacity alpha byte and no opacity write; a transparent fill stays transparent', () => {
+    const c = compile(`.b { ${leaf} opacity: 0.3; } .a { height: 20px; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 } });
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const program of [p.programs.uikit, p.programs['android-views']]) {
+      const b = program.nodes.find((n) => n.id === 'b');
+      expect(b?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 10, g: 20, b: 30, alpha: opacityAlpha8(0.3) } })]);
+    }
+    const t = nativePrograms(compile('.b { height: 5px; opacity: 0.3; }', { ios: { minimum: '15.0' }, android: { minSdk: 31 } }), []);
+    if (t.kind !== 'ready') throw new Error(t.reason);
+    expect(t.programs.uikit.nodes.find((n) => n.id === 'b')?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 0, g: 0, b: 0, alpha: 0 } })]);
+  });
+  it('marks a translucent folded fill, which native draws as Chrome\'s opaque bytes; bytes 0 and 255 and plain colours stay unmarked', () => {
+    const bg = (decl: string) => {
+      const p = nativePrograms(compile(`.b { ${decl} }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 } }), []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const n = p.programs.uikit.nodes.find((x) => x.id === 'b');
+      const w = n?.writes.find((x) => x.kind === 'background-color');
+      if (n === undefined || w === undefined || w.kind !== 'background-color') throw new Error(`${decl}: no background write`);
+      return { n, w };
+    };
+    const plain = bg('height: 5px; background-color: rgba(10, 20, 30, 0.3);');
+    expect([`${leaf} opacity: 0.3;`, `${leaf} opacity: 0.999;`, `${leaf} opacity: 0.00196;`].map((d) => [bg(d).w.color.alpha, bg(d).w.folded])).toEqual([[77, true], [255, undefined], [0, undefined]]);
+    expect(plain.w.folded).toBeUndefined();
+    const { n, w } = bg(`${leaf} opacity: 0.3;`);
+    expect(BACKGROUND_EMITTER.lines.uikit('v0', n, w)).toEqual(['  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded: true)']);
+    expect(BACKGROUND_EMITTER.lines['android-views']('v0', n, w)).toEqual(['  dragonBackground(v0, DragonRGBA8(10, 20, 30, 77), folded = true)']);
+    expect(BACKGROUND_EMITTER.lines.uikit('v0', plain.n, plain.w)).toEqual([`  dragonBackground(v0, DragonRGBA8(10, 20, 30, ${plain.w.color.alpha}))`]);
+    // The state runtime has no folded writer, as it has no opacity writer: such a node is refused by name.
+    expect(() => nodeLit('swift', n)).toThrow(StateEmitError);
+    expect(() => nodeLit('kotlin', n)).toThrow(/folded into the fill has no state-node write/);
+  });
+  it('keeps the platform blend for a folded fill whose backdrop may hold more than the ancestors\' background colours', () => {
+    type Tree = Parameters<typeof inputFor>[1];
+    const sibling: Tree = (r) => [div(r, 'a', ['a'], [div(r, 's', ['s']), div(r, 'b', ['b'])])];
+    const folded = (css: string, tree: Tree = sibling) => {
+      const input = inputFor(`body { margin: 0; } .s { height: 5px; background-color: rgb(200, 0, 0); } .b { ${leaf} opacity: 0.3; } ${css}`, tree);
+      const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input), []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const w = p.programs.uikit.nodes.find((x) => x.id === 'b')?.writes.find((x) => x.kind === 'background-color');
+      if (w === undefined || w.kind !== 'background-color') throw new Error(`${css}: no background write`);
+      return w.folded === true;
+    };
+    const lone: Tree = (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'])])];
+    // Nothing but the box and its ancestors paints: the backdrop is their colours wherever layout puts the box.
+    expect(folded('', lone)).toBe(true);
+    expect(folded('.a { background-color: rgb(40, 60, 80); padding: 4px; } .b { position: relative; top: -5px; }', lone)).toBe(true);
+    expect(folded('.s { background-color: transparent; }')).toBe(true);
+    // 1-3: an ancestor's gradient, border or inset shadow can lie under the fill.
+    expect(folded('.a { background-image: linear-gradient(rgb(255, 0, 0), rgb(0, 0, 255)); }', lone)).toBe(false);
+    expect(folded('.a { border: 4px solid rgb(0, 0, 0); } .b { margin-top: -4px; }', lone)).toBe(false);
+    expect(folded('.a { box-shadow: inset 0 0 4px rgb(255, 0, 0); }', lone)).toBe(false);
+    // 4: any other box that paints may lie under it, however flow, a margin, an offset, a wrap or a shrink places them.
+    expect(folded('')).toBe(false);
+    expect(folded('.b { margin-top: -5px; }')).toBe(false);
+    expect(folded('.b { position: relative; top: -5px; }')).toBe(false);
+    expect(folded('.b { position: absolute; top: 0; }')).toBe(false);
+    expect(folded('.a { display: flex; flex-direction: column; flex-wrap: wrap; height: 10px; width: 100px; } .s { width: 80px; } .b { height: 10px; }')).toBe(false);
+    // A sibling's text paints too.
+    expect(folded('.a { font-family: Ahem; font-size: 16px; line-height: 16px; }', (r) => [div(r, 'a', ['a'], [div(r, 't', [], [text(r, 'tx', 'X')]), div(r, 'b', ['b'])])])).toBe(false);
+  });
+  it("the lowering's alpha byte is @dragon/layout's opacityAlpha8", () => {
+    const vals: number[] = [];
+    for (let k = 0; k <= 255; k++) for (const d of [0, 0.4999, 0.5, 0.5001]) vals.push((k + d) / 255);
+    for (let i = 0; i <= 10000; i++) vals.push(i / 10000);
+    for (const v of vals) expect(foldAlpha8(v), String(v)).toBe(opacityAlpha8(v));
+  });
+});
+
+// PNT1-opacity-b (second part): a group native pre-composites itself (analysis paint-values/effects.ts opacityGroupPlans): plain
+// boxes with opaque fills, solid one-colour opaque borders and opaque plain text, over a backdrop of such boxes in its clipping
+// opaque ancestor (or the canvas).
+describe('opacity: a group native pre-composites', () => {
+  const native = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } as const;
+  // w holds an under rect u, an optional labelled p, and the group g with its text and a child k.
+  const build = (css: string, label = false) => {
+    const input = inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } .u { height: 10px; background-color: rgb(0, 0, 200); } .g { margin-top: -5px; height: 20px; background-color: rgb(250, 250, 0); border: 2px solid rgb(0, 90, 0); color: rgb(0, 0, 0); } .k { height: 4px; background-color: rgb(200, 0, 0); } ${css}`, (r) => [
+      div(r, 'w', ['w'], [div(r, 'u', ['u']), ...(label ? [div(r, 'p', ['p'], [text(r, 'pt', 'Hi')])] : []), div(r, 'g', ['g'], [text(r, 'gt', 'Ab'), div(r, 'k', ['k'])])]),
+    ]);
+    return createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+  };
+  const errors = (c: ReturnType<typeof build>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target} ${d.message}`);
+  it('admits a group with text, a border and a child over an earlier rect, with an opacity-group write naming the painters', () => {
+    const c = build('.g { opacity: 0.4; }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const program of [p.programs.uikit, p.programs['android-views']]) {
+      const g = program.nodes.find((n) => n.id === 'g');
+      expect(g?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'opacity-group')).toEqual([expect.objectContaining({ kind: 'opacity-group', key: 'dragonGroup', technique: 'dragon-owned-paint', opacity: 0.4, backdrop: null, painters: expect.arrayContaining(['u']) })]);
+      expect(g?.facts['effects']).toEqual({ opacity: 0.4 });
+      const w = g?.writes.find((x) => x.kind === 'opacity-group');
+      if (w === undefined) throw new Error('no group write');
+      const painters = (w as { painters: readonly string[] }).painters;
+      expect(painters.includes('g') || painters.includes('k'), 'a painter inside the group').toBe(false);
+    }
+    const g = p.programs.uikit.nodes.find((n) => n.id === 'g');
+    const w = g?.writes.find((x) => x.kind === 'opacity-group');
+    expect(EFFECTS_EMITTER.lines.uikit('v0', g as never, w as never)[0]).toMatch(/^ {2}dragonSetOpacityGroup\(t, v0, 0\.4, nil, \[.*"u".*\]\)$/);
+    expect(EFFECTS_EMITTER.lines['android-views']('v0', g as never, w as never)[0]).toMatch(/^ {2}dragonSetOpacityGroup\(t, v0, 0\.4, null, listOf<String>\(.*"u".*\)\)$/);
+  });
+  it('takes an opaque clipping ancestor as the backdrop, and paints the canvas white without one', () => {
+    const c = build('.w { overflow: hidden; background-color: rgb(255, 255, 255); } .g { opacity: 0.4; }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { backdrop: string | null; painters: readonly string[] } | undefined;
+    expect(w?.backdrop).toBe('w');
+    expect(w?.painters[0]).toBe('w');
+  });
+  it('refuses on native a group whose content or backdrop the overlay cannot draw as Chrome does, naming why', () => {
+    const cases: [string, boolean, string][] = [
+      ['.g { opacity: 0.4; } .k { opacity: 0.5; filter: grayscale(1); }', false, 'k has a filter (a shadow, image, filter, clip, transform or will-change)'],
+      ['.g { opacity: 0.4; } .k { opacity: 0; }', false, 'k inside it has opacity 0'],
+      ['.g { opacity: 0.4; } .k { border-top: 1px solid rgba(0, 0, 0, 0.5); border-left: 1px solid rgba(0, 0, 0, 0.5); }', false, 'k has a translucent border on 2 sides, which Chrome draws otherwise than four sides or one'],
+      ['.g { opacity: 0.4; will-change: opacity; }', false, 'it has will-change: opacity, a compositor layer'],
+      ['.g { opacity: 0.4; text-shadow: 1px 1px rgb(0, 0, 0); }', false, 'the text of g has a text-shadow'],
+      ['.g { opacity: 0.4; color: rgba(0, 0, 0, 0.5); }', false, 'the text of g is not opaque'],
+      ['.g { opacity: 0.4; border-left-color: rgb(1, 2, 3); }', false, 'g has border sides in more than one colour, which meet on a diagonal'],
+      ['.g { opacity: 0.4; }', true, 'the text of p paints before it in its backdrop the canvas'],
+      ['.g { opacity: 0.4; } .u { border-radius: 2px; }', false, 'a painter before it in its backdrop: u has a border radius'],
+      ['.g { opacity: 0.4; } .w { overflow: auto; }', false, 'it is inside w, a scroller'],
+      ['.g { opacity: 0.4; } .w { text-decoration: underline; }', false, 'it is inside w, whose text decoration reaches its text'],
+    ];
+    for (const [css, label, why] of cases) {
+      const errs = errors(build(css, label)).filter((m) => / has opacity 0\.4;/.test(m));
+      expect(errs, css).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: ${why.replace(/[.()]/g, (x) => `\\${x}`)}$`))));
+    }
+  });
+  it('draws a box that folds as a folded fill and never as a group, and refuses a group that a folded fill paints before', () => {
+    const c = build('.u { opacity: 0.3; }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const program of [p.programs.uikit, p.programs['android-views']]) {
+      const u = program.nodes.find((n) => n.id === 'u');
+      expect(u?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'opacity-group' || w.kind === 'background-color')).toEqual([expect.objectContaining({ kind: 'background-color', color: { r: 0, g: 0, b: 200, alpha: foldAlpha8(0.3) } })]);
+      // Its siblings paint, so its backdrop is not provably its ancestors' colours: no folded mark (fold-backdrop.ts).
+      expect(u?.writes.find((w) => w.kind === 'background-color')).not.toHaveProperty('folded');
+    }
+    const errs = errors(build('.u { opacity: 0.3; } .g { opacity: 0.4; }')).filter((m) => / has opacity 0\.4;/.test(m));
+    expect(errs).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: u paints before it with opacity 0\\.3$`))));
+  });
+  // S2: translucent fills, translucent borders on four sides or one, and nested groups inside a group; the device builds the layer
+  // in software (DragonGroupView.dragonSoftwareGroup), measured equal to Chrome 145 (pnt1-effects.test).
+  it('admits nested groups and translucent fills and borders in a group, the nested ones with an opacity-nested write', () => {
+    const c = build('.g { opacity: 0.4; background-color: rgba(250, 250, 0, 0.5); border-color: rgba(0, 90, 0, 0.6); } .k { opacity: 0.5; }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    for (const program of [p.programs.uikit, p.programs['android-views']]) {
+      const g = program.nodes.find((n) => n.id === 'g');
+      const k = program.nodes.find((n) => n.id === 'k');
+      expect(g?.writes.filter((w) => w.kind.startsWith('opacity')).map((w) => w.kind)).toEqual(['opacity-group']);
+      // k is a box of one opaque fill, which would fold on its own; inside a group it stays a group, and its fill keeps its colour.
+      expect(k?.writes.filter((w) => w.kind.startsWith('opacity'))).toEqual([expect.objectContaining({ kind: 'opacity-nested', key: 'dragonNestedGroup', technique: 'dragon-owned-paint', opacity: 0.5 })]);
+      expect(k?.writes.find((w) => w.kind === 'background-color')).toEqual(expect.objectContaining({ color: { r: 200, g: 0, b: 0, alpha: 255 } }));
+      // Inside an admitted group the overlay composites it, so it is never a folded fill (which draws over the page backdrop).
+      expect((k?.writes.find((w) => w.kind === 'background-color') as { folded?: true } | undefined)?.folded).toBeUndefined();
+      expect(k?.facts['effects']).toEqual({ opacity: 0.5 });
+    }
+    const k = p.programs.uikit.nodes.find((n) => n.id === 'k');
+    const w = k?.writes.find((x) => x.kind === 'opacity-nested');
+    expect(EFFECTS_EMITTER.lines.uikit('v0', k as never, w as never)).toEqual(['  dragonSetNestedGroup(v0, 0.5)']);
+    expect(EFFECTS_EMITTER.lines['android-views']('v0', k as never, w as never)).toEqual(['  dragonSetNestedGroup(v0, 0.5)']);
+    // Two levels, a lone translucent side, and a group whose only paint is a translucent fill (cc folds it at the float alpha product).
+    expect(errors(build('.g { opacity: 0.4; } .k { opacity: 0.5; border-top: 1px solid rgba(0, 0, 0, 0.3); } .w { opacity: 0.9; }'))).toEqual([]);
+    expect(errors(build('.g { opacity: 0.4; background-color: rgba(250, 250, 0, 0.5); border: 0; color: rgb(0, 0, 0); } .k { background-color: rgba(9, 9, 9, 0.2); }'))).toEqual([]);
+  });
+  it('admits a group under the element whose overflow the viewport takes, which neither clips nor scrolls', () => {
+    for (const css of ['html { overflow-y: scroll; }', 'body { overflow: auto; }', 'html { overflow: hidden; }']) expect(errors(build(`${css} .g { opacity: 0.4; }`)), css).toEqual([]);
+  });
+  it('refuses on native a member\'s text decoration that reaches the text of a box inside it', () => {
+    const input = inputFor('body { margin: 0; font-family: Ahem; font-size: 10px; } .g { height: 20px; background-color: rgb(250, 250, 0); opacity: 0.4; } .k { color: rgb(0, 0, 0); }', (r) => [
+      div(r, 'g', ['g'], [div(r, 'k', ['k'], [text(r, 'kt', 'Ab')])]),
+    ]);
+    const decorated = inputFor('body { margin: 0; font-family: Ahem; font-size: 10px; } .g { height: 20px; background-color: rgb(250, 250, 0); text-decoration: underline; opacity: 0.4; } .k { color: rgb(0, 0, 0); }', (r) => [
+      div(r, 'g', ['g'], [div(r, 'k', ['k'], [text(r, 'kt', 'Ab')])]),
+    ]);
+    const run = (i: typeof input) => errors(createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(i));
+    expect(run(input)).toEqual([]);
+    expect(run(decorated)).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: g has a text-decoration-line, which reaches the text inside it$`))));
+  });
+  it('refuses on native an animation or transition on a member or a backdrop painter', () => {
+    const motion = (who: string) => `on ${who}, which a pre-composited opacity or filter group draws or composites over: the group's composite is recomputed on layout and paint changes, not on animation frames (package PNT1-opacity-b)`;
+    const all = (c: ReturnType<typeof build>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
+    expect(all(build('.g { opacity: 0.4; } .k { animation: k 1s infinite; } @keyframes k { from { height: 4px } to { height: 6px } }'))).toEqual([`an animation ${motion('k')}`, `an animation ${motion('k')}`]);
+    expect(all(build('.g { opacity: 0.4; } .u { transition: height 1s; }'))).toEqual([`a transition ${motion('u')}`, `a transition ${motion('u')}`]);
+    // An ancestor before the group in its backdrop is a painter too.
+    expect(all(build('.g { opacity: 0.4; } .w { transition: height 1s; }'))).toEqual([`a transition ${motion('w')}`, `a transition ${motion('w')}`]);
+    // Without the group, nothing is refused.
+    expect(all(build('.w { transition: height 1s; }'))).toEqual([]);
   });
 });
 

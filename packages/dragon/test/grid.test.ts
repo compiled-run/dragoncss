@@ -144,22 +144,18 @@ describe('grid family: parse and expand', () => {
       expectCatalogued(diagnostics);
     }
   });
-  it('subgrid, math functions and units with no build-time conversion are refused at the token', () => {
+  it('subgrid, math functions outside a track size and units with no build-time conversion are refused at the token', () => {
     for (const [p, v, token] of [
       ['grid-template-columns', 'subgrid [a]', 'subgrid'],
       ['grid-template', 'subgrid / 10px', 'subgrid'],
-      ['grid-template-columns', 'minmax(calc(10px + 5%), 1fr)', 'calc(10px + 5%)'],
       ['grid-auto-rows', 'repeat(2, 10vw)', null],
-      ['grid-template-rows', 'repeat(2, 10vw)', '10vw'],
-      // V1 resolves viewport units in box lengths only; every one is refused inside a grid value, at any depth and in any case.
-      ['grid-template-columns', 'minmax(3vw, auto) 1fr', '3vw'],
-      ['grid-auto-columns', 'fit-content(100VW)', '100VW'],
-      ['grid-auto-rows', '1fr 10vh', '10vh'],
-      ['grid-template-columns', '[a] 2vi', '2vi'],
-      ['grid-template-rows', '2vb', '2vb'],
-      ['grid', 'auto-flow / 1vmin', '1vmin'],
-      ['grid-template', '10px / 1Vmax', '1Vmax'],
+      // A repeat() count and a grid line's integer are not track sizes: a math function there stays refused.
+      ['grid-template-columns', 'repeat(calc(1 + 1), 10px)', 'calc(1 + 1)'],
+      ['grid-template-columns', 'repeat(auto-fill, 10px) repeat(min(2, 3), 5%)', 'min(2, 3)'],
+      ['grid-row-start', 'calc(1 + 1)', 'calc(1 + 1)'],
+      ['grid-area', '1 / span max(1, 2)', 'max(1, 2)'],
       ['grid-template-columns', '10svw', '10svw'],
+      ['grid-template-columns', 'round(10px, 3px)', 'round(10px, 3px)'],
     ] as const) {
       const { declaration, diagnostics, span } = declare(p, v);
       expect(declaration, `${p}: ${v}`).toBeNull();
@@ -184,10 +180,24 @@ describe('grid family: parse and expand', () => {
       'grid-template-rows=[subgrid] 10px', 'grid-template-columns=none', 'grid-template-areas=none', 'grid-auto-rows(i)=auto', 'grid-auto-columns(i)=auto', 'grid-auto-flow=column',
     ]);
   });
+  it('calc(), min(), max(), clamp() and viewport units are track sizes in every track property, at any depth but a repeat() count', () => {
+    for (const [p, v, want] of [
+      ['grid-template-columns', 'minmax(calc(10px + 5%), 1fr)', ['grid-template-columns=minmax(calc(10px + 5%), 1fr)']],
+      ['grid-template-columns', 'repeat(auto-fill, minmax(MIN(100%, 250px), 1fr))', ['grid-template-columns=repeat(auto-fill, minmax(min(100%, 250px), 1fr))']],
+      ['grid-template-rows', 'repeat(2, 10vw) clamp(1px, 2%, 3px)', ['grid-template-rows=repeat(2, 10vw) clamp(1px, 2%, 3px)']],
+      ['grid-auto-columns', 'fit-content(100VW)', ['grid-auto-columns=fit-content(100vw)']],
+      ['grid-auto-rows', '1fr max(10vh, (2 * 3px))', ['grid-auto-rows=1fr max(10vh, (2 * 3px))']],
+      ['grid-template-columns', '[a] 2vi calc(-10px)', ['grid-template-columns=[a] 2vi calc(-10px)']],
+    ] as const) expect(expanded(p, v), `${p}: ${v}`).toEqual(want);
+    expect(expanded('grid', 'auto-flow / 1vmin')).toEqual(['grid-template-rows=none', 'grid-template-columns=1vmin', 'grid-template-areas=none', 'grid-auto-rows(i)=auto', 'grid-auto-columns(i)=auto', 'grid-auto-flow=row']);
+    expect(expanded('grid-template', 'calc(5px + 10%) / 1Vmax')).toEqual(['grid-template-rows=calc(5px + 10%)', 'grid-template-columns=1vmax', 'grid-template-areas=none']);
+    // A calculation that is not a <length-percentage> is invalid there, as Chrome drops it.
+    for (const v of ['calc(1fr)', 'calc(2)', 'min(1px, 2)', 'fit-content(calc(1fr))']) expect(declare('grid-template-columns', v).diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+  });
   it('escaped function names, units and keywords read as their decoded value (css-syntax-3 §4.3.7); names serialize as CSSOM identifiers', () => {
     // CSS-ESC: Chrome 145 decodes escapes before keyword and grammar matching, so these are the unescaped values (probed).
-    expect(declare('grid-template-columns', 'c\\61lc(10px + 5%)').diagnostics.map((d) => d.message)).toEqual([expect.stringContaining('calc() is a css-values-4 math function')]);
-    expect(declare('grid-template-columns', '10\\76w').diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+    expect(expanded('grid-template-columns', 'c\\61lc(10px + 5%)')).toEqual(['grid-template-columns=calc(10px + 5%)']);
+    expect(expanded('grid-template-columns', '10\\76w')).toEqual(['grid-template-columns=10vw']);
     for (const v of ['\\72 epeat(auto-fill, 1fr)', 'repeat(auto-fill, 1\\66r)']) expect(declare('grid-template-columns', v).diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(expanded('grid-template-columns', '2\\65m \\72 epeat(2, 1\\66r) \\6d in-content')).toEqual(['grid-template-columns=2em repeat(2, 1fr) min-content']);
     expect(expanded('grid-row-start', '\\73 pan 2')).toEqual(['grid-row-start=span 2']);
@@ -304,6 +314,12 @@ describe('grid family: computed values', () => {
     const root = resolve('.g { font-size: 10px; grid-template-columns: 2em minmax(1rem, 1fr) 1in; grid-auto-rows: 3em; }', el('html', 'html', [], [el('body', 'body', [], [el('g', 'div', ['g'])])]));
     expect(valueAt(root, [0, 0], 'grid-template-columns')).toBe('20px minmax(16px, 1fr) 96px');
     expect(valueAt(root, [0, 0], 'grid-auto-rows')).toBe('30px');
+  });
+  it('a negative px calculation in a track size computes to 0px, as Blink parses <track-breadth> non-negative; one with a percentage keeps its text', () => {
+    const css = '.g { font-size: 10px; grid-template-columns: calc(-10px) minmax(calc(5px - 10px), 1fr) fit-content(calc(-5px)) repeat(2, calc(10px - 20px)) calc(5% - 10px); grid-template-rows: repeat(auto-fill, calc(5px - 10px)) min(-10px, 5px) calc(1em - 30px); }';
+    const root = resolve(css, el('html', 'html', [], [el('body', 'body', [], [el('g', 'div', ['g'])])]));
+    expect(valueAt(root, [0, 0], 'grid-template-columns')).toBe('0px minmax(0px, 1fr) fit-content(0px) repeat(2, 0px) calc(5% - 10px)');
+    expect(valueAt(root, [0, 0], 'grid-template-rows')).toBe('repeat(auto-fill, 0px) 0px 0px');
   });
   it('justify-items legacy computes to the parent\'s legacy position, and to normal otherwise (css-align-3 §6.2)', () => {
     const tree = el('html', 'html', [], [el('body', 'body', [], [el('p', 'div', ['p'], [el('c', 'div', [], [el('g', 'div', [])]), el('n', 'div', ['n'])])])]);

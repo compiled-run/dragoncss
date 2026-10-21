@@ -91,10 +91,12 @@ export type MinSizeValue = Px | Percent | Auto | LengthCalc;
 export type MaxSizeValue = Px | Percent | NoneValue | LengthCalc;
 /** css-sizing-3 §3.2 fit-content: min(max-content, max(min-content, the stretch size)). */
 export type FitContent = { readonly kind: 'fit-content' };
-/** css-sizing-3 §3.2: the intrinsic size keywords of an inline size, read only on a block-level box in block flow. */
-export type IntrinsicSizeKeyword = MinContent | MaxContent | FitContent;
-export type InlineSizeValue = SizeValue | IntrinsicSizeKeyword;
-export type MaxInlineSizeValue = MaxSizeValue | IntrinsicSizeKeyword;
+/** css-sizing-4 §3.1 stretch (Chrome's -webkit-fill-available computes to it): the size that fills the available space. */
+export type Stretch = { readonly kind: 'stretch' };
+/** css-sizing-3 §3.2 and css-sizing-4 §3.1: the keywords of an inline size, read only on a block-level box in block flow. */
+export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
+export type InlineSizeValue = SizeValue | SizeKeyword;
+export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -129,14 +131,25 @@ export type AspectRatioValue =
  * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
-/** CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4). fixed and sticky are refused by the compiler. */
-export type Position = 'static' | 'relative' | 'absolute';
+/**
+ * CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4), and so does fixed, whose
+ * containing block is the viewport (§10.1 item 3, POSX-f). sticky offsets an in-flow box to keep it inside the viewport less its
+ * insets, at scroll offset 0, without leaving its containing block (css-position-3 §3.4, POSX-s; layout.ts stickyOffset).
+ */
+export type Position = 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+/**
+ * CSS2 §9.5: a float leaves the flow and is shifted to the left or right of its containing block (FLT). The compiler computes none
+ * for an absolutely positioned box (§9.7) and on the root; a flex or grid item ignores it. inline-start and inline-end are refused.
+ */
+export type Float = 'none' | 'left' | 'right';
 /**
  * css-overflow-3 §3: hidden, auto and scroll make a scroll container; clip clips without one. The validator requires a §3.1
  * computed pair: both axes in visible and clip, or both in hidden, auto and scroll.
  */
 export type Overflow = 'visible' | 'hidden' | 'clip' | 'auto' | 'scroll';
 export type Direction = 'ltr' | 'rtl';
+/** css-contain-2 §3.1: the axes size containment applies in. */
+export type ContainSize = 'none' | 'inline-size' | 'size';
 export type BoxSizing = 'content-box' | 'border-box';
 export type FlexDirection = 'row' | 'row-reverse' | 'column' | 'column-reverse';
 export type FlexWrap = 'nowrap' | 'wrap' | 'wrap-reverse';
@@ -198,8 +211,11 @@ export type VerticalAlignValue = VerticalAlignKeywordValue | Px | Percent | Leng
 export type Fr = { readonly kind: 'fr'; readonly value: number };
 export type MinContent = { readonly kind: 'min-content' };
 export type MaxContent = { readonly kind: 'max-content' };
-/** css-grid-2 §7.2.1 <track-breadth>; a % breadth resolves against the grid container's content box in its axis. */
-export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent;
+/**
+ * css-grid-2 §7.2.1 <track-breadth>; a % breadth resolves against the grid container's content box in its axis. A math function
+ * or a viewport length is a non-negative LengthCalc, which the environment pass leaves as px or a calculation with a percentage.
+ */
+export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent | LengthCalc;
 /**
  * css-grid-2 §7.2.1 <track-size>, as Blink's GridTrackSize keeps it: a single breadth, minmax(min, max), or fit-content(limit).
  * A flexible breadth is never a minimum: the compiler writes minmax(auto, <flex>) as the <flex> breadth.
@@ -207,7 +223,7 @@ export type TrackBreadth = Px | Percent | Fr | Auto | MinContent | MaxContent;
 export type TrackSize =
   | { readonly kind: 'breadth'; readonly breadth: TrackBreadth }
   | { readonly kind: 'minmax'; readonly min: TrackBreadth; readonly max: TrackBreadth }
-  | { readonly kind: 'fit-content'; readonly limit: Px | Percent };
+  | { readonly kind: 'fit-content'; readonly limit: Px | Percent | LengthCalc };
 /**
  * One repeater of a track list (Blink GridTrackRepeater): a track written on its own is a repeater of count 1 with one size;
  * repeat(n, sizes) keeps its count unexpanded, since Chrome sizes each size of a repeater as one set of n tracks.
@@ -302,6 +318,7 @@ export type GridItemStyle = {
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
+  readonly float: Float;
   readonly top: InsetValue;
   readonly right: InsetValue;
   readonly bottom: InsetValue;
@@ -350,10 +367,36 @@ export type LayoutStyle = {
    * Chrome computes to flow-root): its content ends after line N and line N ends in an ellipsis when content follows; 0 is none.
    */
   readonly lineClamp: number;
+  /**
+   * css-contain-2 §3.2 layout containment (contain: layout, content or strict; Blink applies it to every box here but an inline box):
+   * the box is an independent formatting context and the containing block of its absolutely positioned descendants, and has no
+   * baseline for anything outside it to align to (Blink LayoutBox::ShouldApplyLayoutContainment).
+   */
+  readonly containLayout: boolean;
+  /**
+   * css-contain-2 §3.4 paint containment (contain: paint, content or strict): an independent formatting context and the containing
+   * block of its absolutely positioned descendants, keeping its baseline. Its clip arrives as overflow clip on both axes.
+   */
+  readonly containPaint: boolean;
+  /**
+   * css-contain-2 §3.1 size containment: size in both axes, inline-size in the inline axis only (also container-type: inline-size,
+   * whose query container css-conditional-5 §2.1 makes an independent formatting context). Never on an inline box. The box sizes as if it had no
+   * contents, its content size being containIntrinsicWidth and containIntrinsicHeight (css-sizing-4 §5.2; none is 0), and then lays
+   * its contents out inside that size.
+   */
+  readonly containSize: ContainSize;
+  readonly containIntrinsicWidth: Px | NoneValue;
+  readonly containIntrinsicHeight: Px | NoneValue;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
+  /**
+   * ZOOM (css-viewport-1 §5): the zoom of each element from the root down to this one that is not 1, root first; an anonymous box
+   * takes its parent's. Its lengths and its text's font sizes and spacings are CSS px at zoom 1, which the environment pass
+   * multiplies by Blink's effective zoom (units.ts effectiveZoom).
+   */
+  readonly zoom: readonly number[];
 };
 
 /**
@@ -384,7 +427,7 @@ export type WhiteSpaceCollapse = 'collapse' | 'preserve' | 'preserve-breaks' | '
 export type TextWrapMode = 'wrap' | 'nowrap';
 /** css-text-3 §5.5 overflow-wrap (word-wrap is its alias). */
 export type OverflowWrap = 'normal' | 'break-word' | 'anywhere';
-/** css-text-3 §5.2 word-break; break-all, keep-all and auto-phrase are refused (code word-break, TXT2-d). */
+/** css-text-3 §5.2 word-break; auto-phrase, and break-all over anything but ASCII letters, digits and spaces, are refused (code word-break, TXT2-d). */
 export type WordBreak = 'normal' | 'break-all' | 'keep-all' | 'break-word' | 'auto-phrase';
 
 /** A text run with every inherited text property written on it by the compiler (goal.md principle 3). */
@@ -413,8 +456,12 @@ export type TextLeaf = {
   readonly smallCaps: boolean;
 };
 
-/** element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4). */
-export type BoxType = 'element' | 'anonymous';
+/**
+ * element: the box of an authored element. anonymous: a box the compiler generated (CSS2 §9.2.1.1, css-flexbox-1 §4).
+ * block-in-inline: an inline box the compiler lays out as the block box of the block-level boxes it alone holds (package BII), a
+ * block box that also places its three line fragments (block.ts withBlockInInlineLines).
+ */
+export type BoxType = 'element' | 'anonymous' | 'block-in-inline';
 
 /** css-images-3 §5.5 object-fit. */
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
@@ -440,8 +487,32 @@ export type ReplacedLeaf = {
   readonly objectPositionY: ObjectPositionValue;
 };
 
-/** A box-level child: an element or anonymous box, or a replaced leaf. */
-export type LayoutNode = LayoutBox | ReplacedLeaf;
+/**
+ * What a form control's box does beyond a plain box (FORM-a, Blink 145):
+ * - range: the input[type=range] flex container, whose intrinsic content inline size is defaultInlineSize CSS px (the compiler
+ *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
+ * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
+ *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
+ * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent).
+ */
+export type ControlKind =
+  | { readonly kind: 'range'; readonly defaultInlineSize: number }
+  | { readonly kind: 'slider-thumb'; readonly ratio: number }
+  | { readonly kind: 'button-block' };
+
+/** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
+export type ControlBox = {
+  readonly kind: 'control';
+  readonly id: string;
+  readonly boxType: BoxType;
+  readonly style: LayoutStyle;
+  readonly control: ControlKind;
+  readonly strut: LineStrut | null;
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
+};
+
+/** A box-level child: an element or anonymous box, a form control's box, or a replaced leaf. */
+export type LayoutNode = LayoutBox | ControlBox | ReplacedLeaf;
 
 /**
  * An inline box (CSS2 §9.2.2): an element with display inline inside an inline formatting context. Its font and line-height are
@@ -465,9 +536,29 @@ export type InlineChild = TextLeaf | InlineBox | LineBreak;
 /** The strut of a block container with inline content (CSS2 §10.8.1): the container's own font and line-height. */
 export type LineStrut = { readonly font: FontSpec; readonly lineHeight: LineHeightValue };
 
+/** css-lists-3 §3: the symbol of an outside disc, circle or square marker (Blink list_marker.cc kSymbol). */
+export type MarkerSymbol = 'disc' | 'circle' | 'square';
+/** A marker drawn as a symbol (no glyph) or as its counter text. */
+export type MarkerKind = 'symbol' | 'text';
+
 /**
- * Children are either all boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks): the compiler
- * wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level, else null.
+ * css-lists-3 §3 and T151 R14: a list item's outside ::marker box, an inline-block with its own line of font and lineHeight (the list
+ * item's). A symbol marker has no glyph: its width comes from the font's ascent (list_marker.cc WidthOfSymbol). A text marker is
+ * its compile-time counter text, trailing space included. id names the marker's rect in the layout result: "<list item>::marker".
+ */
+export type ListMarker = {
+  readonly id: string;
+  readonly kind: MarkerKind;
+  readonly symbol: MarkerSymbol | null;
+  readonly text: string | null;
+  readonly font: FontSpec;
+  readonly lineHeight: LineHeightValue;
+};
+
+/**
+ * Children are either all boxes, control boxes and replaced leaves or all inline-level (text leaves, inline boxes and line breaks):
+ * the compiler wraps mixed content in anonymous boxes. strut is the box's font and line-height when its children are inline-level,
+ * else null.
  */
 export type LayoutBox = {
   readonly kind: 'box';
@@ -475,7 +566,9 @@ export type LayoutBox = {
   readonly boxType: BoxType;
   readonly style: LayoutStyle;
   readonly strut: LineStrut | null;
-  readonly children: readonly (LayoutBox | ReplacedLeaf | InlineChild)[];
+  /** The outside list marker of a list item (T151 R14), or null. */
+  readonly marker: ListMarker | null;
+  readonly children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[];
 };
 
 /** The initial containing block in CSS px. */

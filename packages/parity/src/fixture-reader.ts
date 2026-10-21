@@ -91,6 +91,11 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
         el.end = close === null ? el.openEnd : i + close[0].length;
         i = el.end;
         const rels = (attrs.get('rel') ?? '').toLowerCase().split(/[ \t\n\f\r]+/).filter((r) => r !== '');
+        // TXT2-i: Chrome seeds the document locale from this pragma (Document::ContentLanguage), so hyphens: auto would hyphenate
+        // under it; the element tree carries no document language, so the pragma is refused.
+        if (el.tag === 'meta' && [...attrs].some(([k, v]) => k.toLowerCase() === 'http-equiv' && v.trim().toLowerCase() === 'content-language')) {
+          throw new Error(`<meta http-equiv="content-language"> at ${el.start} is unsupported: it sets the document language, which Dragon does not read`);
+        }
         if (el.tag === 'link' && rels.includes('stylesheet')) {
           if (rels.length !== 1) throw new Error(`<link rel="${attrs.get('rel')}"> at ${el.start}: only rel="stylesheet" is read`);
           const href = attrs.get('href');

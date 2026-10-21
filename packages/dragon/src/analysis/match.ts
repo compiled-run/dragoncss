@@ -1,7 +1,7 @@
 // Selector matching over the linked tree (selectors are parsed in css/selectors.ts). Each case tree is fixed, so every
 // structural match (siblings, :nth-*, :empty, :has()) is decided at build time; state-dependent children are already
 // enumerated into one tree per reachable assignment by link.ts.
-import type { AttributeTest, Compound, GeneratedPseudo, PseudoClass, Selector, Specificity } from '../css/selectors.ts';
+import type { AttributeTest, Compound, GeneratedPseudo, PseudoClass, RangePart, Selector, Specificity } from '../css/selectors.ts';
 import { specificityOf } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
@@ -34,6 +34,9 @@ const HEAD: LinkedElement = { kind: 'element', address: ':head', node: null as n
 
 const last = (path: Path): LinkedElement => path[path.length - 1] as LinkedElement;
 const isElement = (c: LinkedElement | LinkedText): c is LinkedElement => c.kind === 'element';
+
+/** An a element with an href is a hyperlink (HTML §4.6.1): :link and :any-link match it, and :visited never does in Dragon. */
+export const isAnyLink = (el: LinkedElement): boolean => el.tag === 'a' && el.attributes.has('href');
 
 /** The element children of the path's parent, and the element's index among them (the root is the document's only element). */
 function siblings(path: Path): { readonly list: readonly LinkedElement[]; readonly index: number } {
@@ -126,6 +129,8 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
       return !p.selectors.some((s) => complexMatches(rule, s, path, faults, ix));
     case 'has':
       return p.selectors.some((s) => hasMatches(rule, s, path, faults, ix));
+    case 'link':
+      return p.state !== 'visited' && isAnyLink(el);
     case 'interaction': {
       const set = p.pseudo === 'focus-visible' ? 'focusVisible' : p.pseudo;
       ix.probe?.[set].add(el.address);
@@ -221,16 +226,36 @@ function hasMatches(rule: Rule, sel: Selector, anchorPath: Path, faults: Compile
 export function selectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], index: number, part: number, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
   if (index < 0 || chain[index] === undefined) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
-  // A pseudo-element selector styles its generated box (pseudoSelectorMatches), never the element; a statically empty one no box.
+  // A pseudo-element selector styles its generated box (pseudoSelectorMatches) or its range part (partSelectorMatches), never the
+  // element; a statically empty one no box.
   if (sel.pseudoElement !== null) return false;
   return matchFrom(rule, sel, chain.slice(0, index + 1), part, faults, ix, () => true);
 }
 
-/** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before or ::after box of the host chain[chain.length - 1]. */
-export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
-  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'generated' || sel.pseudoElement.name !== pseudo) return false;
+/** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before, ::after or ::marker box of the host chain[chain.length - 1]. */
+export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo | 'marker', faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind === 'static-empty' || sel.pseudoElement.name !== pseudo) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
   return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
+}
+
+/** FORM-a A4: whether sel styles the range part rangePart of the input chain[chain.length - 1]. */
+export function partSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], rangePart: RangePart, faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'range' || sel.pseudoElement.name !== rangePart) return false;
+  if (sel.dropped && !faults.invalidSelectorListKept) return false;
+  return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
+}
+
+/**
+ * NA-NATIVE: whether sel, a ::-webkit-scrollbar selector, reaches the scrollbars of chain[chain.length - 1] (webkit-scrollbar.ts),
+ * at rest or with the whole chain hovered, active and focused, so a rule that applies only in some state is found too.
+ */
+export function scrollbarSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], faults: CompilerFaults): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind !== 'scrollbar') return false;
+  if (sel.dropped && !faults.invalidSelectorListKept) return false;
+  const all = new Set(chain.map((e) => e.address));
+  const engaged: InteractionState = { hover: all, active: all, focus: all, focusVisible: all };
+  return matchFrom(rule, sel, chain, 0, faults, NO_INTERACTION, () => true) || matchFrom(rule, sel, chain, 0, faults, engaged, () => true);
 }
 
 /**

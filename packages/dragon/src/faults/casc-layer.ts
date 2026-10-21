@@ -5,6 +5,8 @@ export type CascLayerFaults = {
   readonly layersIgnored: boolean;
   /** !important declarations order the layers among themselves as normal ones do, as a cascade that never reversed them would. */
   readonly layerImportantNotReversed: boolean;
+  /** revert-layer rolls back to the user-agent origin as revert does, as a cascade that never looked at the layers below would. */
+  readonly revertLayerAsRevert: boolean;
 };
 
-export const CASC_LAYER_FAULTS: CascLayerFaults = { layersIgnored: false, layerImportantNotReversed: false };
+export const CASC_LAYER_FAULTS: CascLayerFaults = { layersIgnored: false, layerImportantNotReversed: false, revertLayerAsRevert: false };

@@ -6,27 +6,33 @@
 // refuses every value Chrome parses differently: -webkit-transform takes a unitless perspective() length (UseAliasParsing,
 // css_parsing_utils.cc ConsumePerspective), and -webkit-perspective a unitless length (longhands_custom.cc
 // Perspective::ParseSingleValue). The other aliases Chrome parses with UseAliasParsing (-webkit-background-origin,
-// -webkit-background-size) wait for their property's lane, -webkit-appearance is the appearance family's (aliases/appearance.ts), the
+// -webkit-background-size) are rewritten into the standard value (legacyAliasValue), -webkit-appearance is the appearance family's (aliases/appearance.ts), the
 // -webkit-mask-* aliases are the mask family's (aliases/mask.ts),
 // -webkit-background-clip parses alike (aliases/background-layers.ts), -webkit-border-radius is the radius
 // family's own shorthand (properties/radius.ts), -webkit-border-image the border image family's (properties/border-image.ts),
+// -webkit-box-decoration-break is a surrogate that cascades as an alias (aliases/box-decoration.ts),
 // -webkit-writing-mode is a surrogate, not an alias, and grid-gap, grid-row-gap
 // and grid-column-gap are already shorthands of the grid family (properties/grid.ts).
 // The animation family's targets are the transition and animation list properties, which stay out of LONGHANDS (T065 option B).
 import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand } from './properties.ts';
 import type { AnimLonghand } from './properties/animation.ts';
+import type { CssNode } from 'css-tree';
+import type { ParsedValue } from './stylesheet.ts';
 import { isAnimationProperty } from './properties/animation.ts';
 import { ANIMATION_ALIASES } from './aliases/animation.ts';
 import { APPEARANCE_ALIASES } from './aliases/appearance.ts';
-import { BACKGROUND_LAYERS_ALIASES } from './aliases/background-layers.ts';
+import { BACKGROUND_LAYERS_ALIASES, legacyBackgroundValue } from './aliases/background-layers.ts';
 import { BOX_ALIASES } from './aliases/box.ts';
+import { BOX_DECORATION_ALIASES } from './aliases/box-decoration.ts';
+import { CLIP_PATH_ALIASES } from './aliases/clip-path.ts';
 import { EFFECTS_ALIASES } from './aliases/effects.ts';
 import { FILTER_ALIASES } from './aliases/filter.ts';
 import { FLEX_ALIASES } from './aliases/flex.ts';
 import { FONT_FEATURES_ALIASES } from './aliases/font-features.ts';
 import { LOGICAL_ALIASES } from './aliases/logical.ts';
-import { MASK_ALIASES } from './aliases/mask.ts';
+import { MASK_ALIAS_PARSERS, MASK_ALIASES } from './aliases/mask.ts';
+import { MULTICOL_ALIASES } from './aliases/multicol.ts';
 import { RADIUS_ALIASES } from './aliases/radius.ts';
 import { SELECTION_ALIASES } from './aliases/selection.ts';
 import { SHADOW_ALIASES } from './aliases/shadow.ts';
@@ -39,12 +45,15 @@ export const ALIAS_FAMILIES: { readonly [family: string]: { readonly [alias: str
   appearance: APPEARANCE_ALIASES,
   'background-layers': BACKGROUND_LAYERS_ALIASES,
   box: BOX_ALIASES,
+  'box-decoration': BOX_DECORATION_ALIASES,
+  'clip-path': CLIP_PATH_ALIASES,
   effects: EFFECTS_ALIASES,
   filter: FILTER_ALIASES,
   flex: FLEX_ALIASES,
   'font-features': FONT_FEATURES_ALIASES,
   logical: LOGICAL_ALIASES,
   mask: MASK_ALIASES,
+  multicol: MULTICOL_ALIASES,
   radius: RADIUS_ALIASES,
   selection: SELECTION_ALIASES,
   shadow: SHADOW_ALIASES,
@@ -58,6 +67,17 @@ if (ALIASES.size !== Object.values(ALIAS_FAMILIES).reduce((n, f) => n + Object.k
 for (const [alias, property] of ALIASES) {
   if (isLonghand(alias) || isShorthand(alias) || isAnimationProperty(alias)) throw new Error(`${alias} is both an alias and a property`);
   if (!isLonghand(property) && !isShorthand(property) && !isAnimationProperty(property)) throw new Error(`${alias} aliases ${property}, which is not a Dragon property`);
+}
+
+/** An alias's own value parser, for an alias Chrome parses unlike its property (UseAliasParsing); null defers to the property's parser. */
+export type AliasValueParser = (tokens: readonly CssNode[]) => ParsedValue | null;
+
+/** Each family's alias value parsers, one line per family. */
+const ALIAS_VALUE_PARSERS: ReadonlyMap<string, AliasValueParser> = new Map([...Object.entries(MASK_ALIAS_PARSERS)]);
+
+/** The value parser of a lower-cased alias Chrome parses unlike its property, or undefined. */
+export function aliasValueParser(alias: string): AliasValueParser | undefined {
+  return ALIAS_VALUE_PARSERS.get(alias);
 }
 
 /** The property a lower-cased property name stands for: its alias target, or the name itself. */
@@ -78,4 +98,9 @@ export function legacyAliasRefusal(alias: string, source: string): string | null
   if (alias === '-webkit-perspective') return PLAIN_PERSPECTIVE.test(source) ? null : 'Chrome parses -webkit-perspective with legacy rules (a unitless length), and Dragon parses only perspective';
   if (alias !== '-webkit-transform' || !/perspective|var\(|env\(|\\/i.test(source)) return null;
   return 'Chrome parses -webkit-transform with legacy rules (a unitless perspective() length), and Dragon parses only transform';
+}
+
+/** The value node an alias declaration stands for under its property, its own when the two parse alike, or a refusal. */
+export function legacyAliasValue(alias: string, value: CssNode, source: string, important: boolean): CssNode | { readonly refusal: string } {
+  return legacyBackgroundValue(alias, value, source, important) ?? value;
 }

@@ -40,35 +40,37 @@ describe('captured Chrome defaults and the webref grammar', () => {
 describe('UA versus initial origin, per tag and longhand', () => {
   it('pins the longhands a Chrome UA rule sets', () => {
     expect(userAgentLonghands).toEqual({
-      html: [],
+      // Chrome 145 html.css :root { view-transition-name: root }.
+      html: ['view-transition-name'],
+      // HTML §15.3.5 (Chrome 145 html.css): the block-level elements of the flow and sectioning content take unicode-bidi: isolate.
       body: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
-      div: ['display'],
-      p: ['display', 'margin-bottom', 'margin-top'],
-      h1: ['display', 'font-size', 'margin-bottom', 'margin-top'],
-      h2: ['display', 'font-size', 'margin-bottom', 'margin-top'],
-      h3: ['display', 'font-size', 'margin-bottom', 'margin-top'],
-      h4: ['display', 'margin-bottom', 'margin-top'],
-      h5: ['display', 'font-size', 'margin-bottom', 'margin-top'],
-      h6: ['display', 'font-size', 'margin-bottom', 'margin-top'],
-      section: ['display'],
-      article: ['display'],
-      header: ['display'],
-      footer: ['display'],
-      nav: ['display'],
-      main: ['display'],
-      aside: ['display'],
-      ul: ['display', 'margin-bottom', 'margin-top', 'padding-left'],
+      div: ['display', 'unicode-bidi'],
+      p: ['display', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      h1: ['display', 'font-size', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      h2: ['display', 'font-size', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      h3: ['display', 'font-size', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      h4: ['display', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      h5: ['display', 'font-size', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      h6: ['display', 'font-size', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      section: ['display', 'unicode-bidi'],
+      article: ['display', 'unicode-bidi'],
+      header: ['display', 'unicode-bidi'],
+      footer: ['display', 'unicode-bidi'],
+      nav: ['display', 'unicode-bidi'],
+      main: ['display', 'unicode-bidi'],
+      aside: ['display', 'unicode-bidi'],
+      ul: ['display', 'margin-bottom', 'margin-top', 'padding-left', 'unicode-bidi'],
       // GEN-b (T151 R13): ol's list-style-type: decimal is a modelled UA value now that list-style-type is a longhand.
-      ol: ['display', 'list-style-type', 'margin-bottom', 'margin-top', 'padding-left'],
-      li: ['display'],
-      blockquote: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
-      figure: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
-      figcaption: ['display'],
-      address: ['display'],
-      hr: ['border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'color', 'display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'overflow-x', 'overflow-y'],
-      dl: ['display', 'margin-bottom', 'margin-top'],
-      dt: ['display'],
-      dd: ['display', 'margin-left'],
+      ol: ['display', 'list-style-type', 'margin-bottom', 'margin-top', 'padding-left', 'unicode-bidi'],
+      li: ['display', 'unicode-bidi'],
+      blockquote: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'unicode-bidi'],
+      figure: ['display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'unicode-bidi'],
+      figcaption: ['display', 'unicode-bidi'],
+      address: ['display', 'unicode-bidi'],
+      hr: ['border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'color', 'display', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'overflow-x', 'overflow-y', 'unicode-bidi'],
+      dl: ['display', 'margin-bottom', 'margin-top', 'unicode-bidi'],
+      dt: ['display', 'unicode-bidi'],
+      dd: ['display', 'margin-left', 'unicode-bidi'],
       'dragon-unstyled': [],
     });
   });
@@ -96,6 +98,11 @@ describe('UA versus initial origin, per tag and longhand', () => {
       }
     });
   }
+  it('the root keeps its UA view-transition-name: root, which the capture holds computed (no declared row for the root)', () => {
+    expect(root.props.get('view-transition-name')).toMatchObject({ value: { kind: 'keyword', value: 'root' }, origin: 'user-agent' });
+    const b = body !== undefined && body.kind === 'element' ? body : null;
+    expect(b?.props.get('view-transition-name')).toMatchObject({ value: { kind: 'keyword', value: 'none' }, origin: 'initial' });
+  });
   it('the root display is blockified (css-display-3 §2.7), with initial origin', () => {
     expect(root.props.get('display')).toMatchObject({ value: { kind: 'keyword', value: 'block' }, origin: 'initial' });
   });
@@ -118,6 +125,12 @@ describe('dependency boundaries', () => {
     const imports = [...text.matchAll(/^import .*$/gm)].map((m) => m[0]);
     expect(imports).toEqual([
       "import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';",
+      // NA-NATIVE: whether an element's ::-webkit-scrollbar rules hide its scrollbars, recorded on its resolution (no matching here).
+      "import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';",
+      // ::marker: a list item's resolved marker color, from the resolved tree alone.
+      "import { markerOf } from '../analysis/resolve.ts';",
+      // FORM-a A4: which resolved elements are a range's shadow parts, a fact of the resolved tree (no matching).
+      "import { rangePartOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",
@@ -127,10 +140,13 @@ describe('dependency boundaries', () => {
       // TXT2-g: the line-clamp longhand names and the clamp container's authored display, from the resolved element alone.
       "import { LINE_CLAMP_LONGHANDS } from '../css/properties/line-clamp.ts';",
       // MASK-CLIP: the mask longhand names and their initial values, to leave initial masks unwritten.
-      "import { isInitialMask, MASK_LONGHANDS } from '../css/properties/mask.ts';",
+      "import { isInitialMask, MASK_LONGHANDS, maskDeclarationName } from '../css/properties/mask.ts';",
       // MISC-PAINT: the border image longhand names and their initial values, to leave initial border images unwritten.
       "import { BORDER_IMAGE_LONGHANDS, isInitialBorderImage } from '../css/properties/border-image.ts';",
+      "import { blendModeOf, FX_LONGHANDS, hasBackdropFilter } from '../css/properties/fx.ts';",
       "import { webDisplayOf, writesLineClamp } from '../analysis/line-clamp.ts';",
+      // BII: whether the resolver laid an inline box out as its blocks' block box, from the resolved element alone.
+      "import { isBlockInInline } from '../analysis/block-in-inline.ts';",
       "import type { CssValue } from '../css/stylesheet.ts';",
       // TXT1-C: the font-family rewrite through the font map, from the resolved value alone.
       "import { familyListText } from '../css/values.ts';",
@@ -151,6 +167,8 @@ describe('dependency boundaries', () => {
   it('colour conversion and rounding live only in css/color.ts', () => {
     for (const f of files(src)) {
       if (f.endsWith(join('css', 'color.ts'))) continue;
+      // COL4: css/color-space.ts ports Blink's Color, gfx colour conversions and skcms in float32 (Math.fround) with color.ts; only that file.
+      if (f.endsWith(join('css', 'color-space.ts'))) continue;
       // The font metrics port Blink's float32 arithmetic (Math.fround, floorf), so src/fonts/** is exempt by path.
       if (f.includes(`${join('src', 'fonts')}${sep}`)) continue;
       // The forms port Blink's Decimal and geometry math (LayoutUnit truncation), so src/forms/** is exempt by path.
@@ -179,6 +197,7 @@ describe('dependency boundaries', () => {
 // ELB-2: the element keys are captured into tables of their own; the pins above cover only the element-table tags.
 describe('UA longhands of the element keys (ELB-2)', () => {
   it('pins the longhands a Chrome UA rule sets per element key', () => {
+    // FORM-a A2: appearance (auto, from html.css) joins the three form-control keys once it is a longhand.
     expect(elementKeyLonghands).toEqual({
       button: ['appearance', 'background-color', 'border-bottom-style', 'border-bottom-width', 'border-left-style', 'border-left-width', 'border-right-style', 'border-right-width', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'text-align'],
       input: ['appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],

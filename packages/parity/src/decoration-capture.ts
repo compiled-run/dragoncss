@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
-import type { LayoutBox, InlineChild, TextFont } from '@dragon/layout';
+import type { ControlBox, LayoutBox, InlineChild, TextFont } from '@dragon/layout';
 import { pieceGlyphs, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
 import { appliedDecorationsOf, NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
@@ -130,10 +130,10 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
       for (const x of k.children) inline(x);
     }
   };
-  const walk = (b: LayoutBox): void => {
+  const walk = (b: LayoutBox | ControlBox): void => {
     if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
     for (const k of b.children) {
-      if (k.kind === 'box') walk(k);
+      if (k.kind === 'box' || k.kind === 'control') walk(k);
       // A replaced leaf (REPL-a) holds no text, so it has no decoration font.
       else if (k.kind !== 'replaced') inline(k);
     }
@@ -157,7 +157,7 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
   const analysis = appliedDecorationsOf(p.decorated, c.assignment, compilerFaults);
   if (analysis === null) throw new Error(`${c.id}: the decorated compile did not resolve`);
   if (analysis.unproven.length > 0) throw new Error(`${c.id}: decorations in an unproven context: ${JSON.stringify(analysis.unproven)}`);
-  const inkOf = resolvedTextColors(p.decorated, c.assignment);
+  const inkOf = resolvedTextColors(p.decorated, c.assignment, null, true);
   const rects: PaintedRect[] = [];
   for (const t of p.texts) {
     const list = analysis.applied.get(t.id) ?? [];

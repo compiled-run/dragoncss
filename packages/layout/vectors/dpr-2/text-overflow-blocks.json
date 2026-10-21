@@ -35,6 +35,7 @@
    "style": {
     "display": "block",
     "position": "static",
+    "float": "none",
     "top": {
      "kind": "auto"
     },
@@ -149,10 +150,21 @@
      "value": 0
     },
     "lineClamp": 0,
+    "containLayout": false,
+    "containPaint": false,
+    "containSize": "none",
+    "containIntrinsicWidth": {
+     "kind": "none"
+    },
+    "containIntrinsicHeight": {
+     "kind": "none"
+    },
     "grid": null,
-    "gridItem": null
+    "gridItem": null,
+    "zoom": []
    },
    "strut": null,
+   "marker": null,
    "children": [
     {
      "kind": "box",
@@ -161,6 +173,7 @@
      "style": {
       "display": "block",
       "position": "static",
+      "float": "none",
       "top": {
        "kind": "auto"
       },
@@ -275,10 +288,21 @@
        "value": 0
       },
       "lineClamp": 0,
+      "containLayout": false,
+      "containPaint": false,
+      "containSize": "none",
+      "containIntrinsicWidth": {
+       "kind": "none"
+      },
+      "containIntrinsicHeight": {
+       "kind": "none"
+      },
       "grid": null,
-      "gridItem": null
+      "gridItem": null,
+      "zoom": []
      },
      "strut": null,
+     "marker": null,
      "children": [
       {
        "kind": "box",
@@ -287,6 +311,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -402,10 +427,21 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": null,
+       "marker": null,
        "children": [
         {
          "kind": "box",
@@ -414,6 +450,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -528,10 +565,21 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
+         "marker": null,
          "children": [
           {
            "kind": "box",
@@ -540,6 +588,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -655,8 +704,18 @@
              "value": 0
             },
             "lineClamp": 0,
+            "containLayout": false,
+            "containPaint": false,
+            "containSize": "none",
+            "containIntrinsicWidth": {
+             "kind": "none"
+            },
+            "containIntrinsicHeight": {
+             "kind": "none"
+            },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": {
             "font": {
@@ -672,6 +731,7 @@
              "kind": "normal"
             }
            },
+           "marker": null,
            "children": [
             {
              "kind": "text",
@@ -712,6 +772,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -827,8 +888,18 @@
              "value": 0
             },
             "lineClamp": 0,
+            "containLayout": false,
+            "containPaint": false,
+            "containSize": "none",
+            "containIntrinsicWidth": {
+             "kind": "none"
+            },
+            "containIntrinsicHeight": {
+             "kind": "none"
+            },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": {
             "font": {
@@ -844,6 +915,7 @@
              "kind": "normal"
             }
            },
+           "marker": null,
            "children": [
             {
              "kind": "text",
@@ -888,6 +960,7 @@
        "style": {
         "display": "block",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -1003,10 +1076,21 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": null,
+       "marker": null,
        "children": [
         {
          "kind": "box",
@@ -1015,6 +1099,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1129,10 +1214,21 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": null,
+         "marker": null,
          "children": [
           {
            "kind": "box",
@@ -1141,6 +1237,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -1256,8 +1353,18 @@
              "value": 0
             },
             "lineClamp": 0,
+            "containLayout": false,
+            "containPaint": false,
+            "containSize": "none",
+            "containIntrinsicWidth": {
+             "kind": "none"
+            },
+            "containIntrinsicHeight": {
+             "kind": "none"
+            },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": {
             "font": {
@@ -1273,6 +1380,7 @@
              "kind": "normal"
             }
            },
+           "marker": null,
            "children": [
             {
              "kind": "text",
@@ -1313,6 +1421,7 @@
            "style": {
             "display": "block",
             "position": "static",
+            "float": "none",
             "top": {
              "kind": "auto"
             },
@@ -1428,8 +1537,18 @@
              "value": 0
             },
             "lineClamp": 0,
+            "containLayout": false,
+            "containPaint": false,
+            "containSize": "none",
+            "containIntrinsicWidth": {
+             "kind": "none"
+            },
+            "containIntrinsicHeight": {
+             "kind": "none"
+            },
             "grid": null,
-            "gridItem": null
+            "gridItem": null,
+            "zoom": []
            },
            "strut": {
             "font": {
@@ -1445,6 +1564,7 @@
              "kind": "normal"
             }
            },
+           "marker": null,
            "children": [
             {
              "kind": "text",
@@ -1489,6 +1609,7 @@
        "style": {
         "display": "flex",
         "position": "static",
+        "float": "none",
         "top": {
          "kind": "auto"
         },
@@ -1604,10 +1725,21 @@
          "value": 0
         },
         "lineClamp": 0,
+        "containLayout": false,
+        "containPaint": false,
+        "containSize": "none",
+        "containIntrinsicWidth": {
+         "kind": "none"
+        },
+        "containIntrinsicHeight": {
+         "kind": "none"
+        },
         "grid": null,
-        "gridItem": null
+        "gridItem": null,
+        "zoom": []
        },
        "strut": null,
+       "marker": null,
        "children": [
         {
          "kind": "box",
@@ -1616,6 +1748,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1730,8 +1863,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": {
           "font": {
@@ -1747,6 +1890,7 @@
            "kind": "normal"
           }
          },
+         "marker": null,
          "children": [
           {
            "kind": "text",
@@ -1787,6 +1931,7 @@
          "style": {
           "display": "block",
           "position": "static",
+          "float": "none",
           "top": {
            "kind": "auto"
           },
@@ -1901,8 +2046,18 @@
            "value": 0
           },
           "lineClamp": 0,
+          "containLayout": false,
+          "containPaint": false,
+          "containSize": "none",
+          "containIntrinsicWidth": {
+           "kind": "none"
+          },
+          "containIntrinsicHeight": {
+           "kind": "none"
+          },
           "grid": null,
-          "gridItem": null
+          "gridItem": null,
+          "zoom": []
          },
          "strut": {
           "font": {
@@ -1918,6 +2073,7 @@
            "kind": "normal"
           }
          },
+         "marker": null,
          "children": [
           {
            "kind": "text",

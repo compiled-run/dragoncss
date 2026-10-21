@@ -9,12 +9,14 @@ import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutBox, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
-import { deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { AHEM_FACE_ID, deviceShapedMeasurer, layout, LU_PER_PX, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { emitAndroidViewsCases, emitNativeSupport, emitUikitCases, engineLayoutProjection, expectedDigest, expectedDump, nativePrograms, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
 import { stateEmits } from './state-cases.ts';
 import { animEmits } from './anim-samples.ts';
+import { resizeEmits } from './resize-scripts.ts';
+import { envEmits } from './device-env.ts';
 import { deviceHitSource } from './hit-capture.ts';
 import { deviceTraceSources } from './trace-lane.ts';
 import type { ParityCase } from './cases.ts';
@@ -24,14 +26,16 @@ import type { EncoderLanguage } from './native-encoders.ts';
 import { constructDump, encoderSource, KOTLIN_DUMP_PACKAGE } from './native-encoders.ts';
 import { referenceDump } from './native-compare.ts';
 import type { NativeDump } from './native-dump.ts';
+import { forcedDeviceCases } from './forced-device.ts';
 import { NATIVE_CONFIG, nativeCompileOnce } from './native-compile.ts';
 export { NATIVE_CONFIG, nativeCompile, nativeCompileOnce } from './native-compile.ts';
 import { BUILD_CACHE, hit, publish, pruneCache, replace } from '../../translate/src/build-cache.ts';
 import { repoPath } from './paths.ts';
 import type { NativeTarget } from './targets.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
-import { deviceDprs, vectorCaseIds } from './targets.ts';
-import { buildShim, SHIM_ANDROID_ABIS, SHIM_SWIFT_INCLUDE, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
+import { deviceCaseIds, deviceDprs } from './targets.ts';
+import type { ShimFace } from './native-shim.ts';
+import { buildShim, SHIM_ANDROID_ABIS, SHIM_FACE_DIRS, SHIM_SWIFT_INCLUDE, shimFaces, shimModuleMapSha256, shimSources, shimToken } from './native-shim.ts';
 import { ahemFaceId, fontDataOf, hostShaper, vendoredFaceIds } from './text-shaper-host.ts';
 
 export const BACKEND_OF: { readonly [T in NativeTarget]: NativeBackend } = { ios: 'uikit', android: 'android-views' };
@@ -54,12 +58,12 @@ export type NativeCase = {
 let records: readonly NativeCase[] | null = null;
 
 /**
- * Every device case (targets.ts vectorCaseIds: every layout case but the shaped ones, which the device runtime cannot draw until
- * TXT1a-2 phase R), each with the programs of its one native compile; a case that cannot be lowered throws.
+ * Every device case (targets.ts deviceCaseIds: every layout case, a shaped one in its bundled real faces since TXT1a-2 phase R), each
+ * with the programs of its one native compile; a case that cannot be lowered throws.
  */
 export function nativeCases(): readonly NativeCase[] {
   if (records !== null) return records;
-  const device = new Set(vectorCaseIds());
+  const device = new Set(deviceCaseIds());
   const out: NativeCase[] = [];
   for (const f of layoutCases()) {
     for (const c of f.cases) {
@@ -74,6 +78,32 @@ export function nativeCases(): readonly NativeCase[] {
   return out;
 }
 
+let forcedRecords: readonly NativeCase[] | null = null;
+
+/** SELD-R2 PR 5: every forced device case (forced-device.ts) as a device case, with its interaction state's native programs. */
+export function forcedNativeCases(): readonly NativeCase[] {
+  if (forcedRecords !== null) return forcedRecords;
+  forcedRecords = forcedDeviceCases().map((f) => {
+    const compiled = nativeCompileOnce(f.spec, f.case.environment.direction);
+    if (f.case.interaction === undefined) throw new Error(`${f.case.id}: a forced device case without an interaction state`);
+    const p = nativePrograms(compiled, f.case.assignment, f.case.interaction);
+    if (p.kind !== 'ready') throw new Error(`${f.case.id}: no native programs in its interaction state: ${p.reason}`);
+    return { spec: f.spec, case: f.case, compiled, programs: p.programs };
+  });
+  return forcedRecords;
+}
+
+/** The cases the device check lanes run (targets.ts deviceCheckCaseIds): every device case, then every forced device case. */
+export const deviceCheckCases = (): readonly NativeCase[] => [...nativeCases(), ...forcedNativeCases()];
+
+/** engineCases with every forced device case after them: the cases the device lines check reads break vectors and breaks of. */
+export function deviceEngineCases(): readonly EngineCase[] {
+  return [...engineCases(), ...forcedNativeCases().map((n): EngineCase => {
+    if (JSON.stringify(n.programs.uikit.root) !== JSON.stringify(n.programs['android-views'].root)) throw new Error(`${n.case.id}: the uikit and android-views programs hold different engine inputs`);
+    return { case: n.case, root: n.programs.uikit.root, inputAt: (dpr) => programInput(n.programs.uikit, n.case.environment.viewport, dpr) };
+  })];
+}
+
 /** A layout case with the engine input tree the engine lane lays it out from (the break vectors and break captures read these). */
 export type EngineCase = { readonly case: ParityCase; readonly root: LayoutBox; readonly inputAt: (dpr: number) => LayoutInput };
 
@@ -81,7 +111,7 @@ let engineRecords: readonly EngineCase[] | null = null;
 
 /**
  * Every layout case in layoutCases() order: a device case through its native programs (both backends hold one engine input tree),
- * and a shaped case, which native refuses until TXT1a-2 phase R, through engineLayoutProjection of its derive compile.
+ * and any other through engineLayoutProjection of its derive compile.
  */
 export function engineCases(): readonly EngineCase[] {
   if (engineRecords !== null) return engineRecords;
@@ -109,12 +139,38 @@ export function engineCases(): readonly EngineCase[] {
 }
 
 /**
- * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the bundled Ahem's FontData and the WASM
- * HarfBuzz, as each app's bridge composes it over its own shim. A fresh measurer per call: its shaped items are cached per layout.
+ * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the FontData of every face the apps bundle
+ * (Ahem and the real faces, native-shim.ts shimFaces) and the WASM HarfBuzz, as each app's bridge composes it over its own shim. A
+ * fresh measurer per call: its shaped items are cached per layout.
  */
 export function referenceMeasurer(): TextMeasurer {
-  const ahem = ahemFaceId();
-  return deviceShapedMeasurer(new Map([[ahem, fontDataOf(ahem)]]), hostShaper);
+  return deviceShapedMeasurer(new Map(shimFaces().map((f) => [f.id, fontDataOf(f.id)] as const)), hostShaper);
+}
+
+/**
+ * Every face a program measures or draws text in that the apps do not bundle (shimFaces), as "<case>: <face>": every font spec in it
+ * (font writes, the layout tree's text leaves and struts, a state or frame program's), each of which the device reads.
+ */
+export function unbundledFaces(cases: readonly { readonly id: string; readonly program: unknown }[], bundled: readonly ShimFace[] = shimFaces()): string[] {
+  const ids = new Set(bundled.map((f) => f.id));
+  const out = new Set<string>();
+  const visit = (id: string, v: unknown): void => {
+    if (Array.isArray(v)) {
+      for (const x of v) visit(id, x);
+      return;
+    }
+    if (v === null || typeof v !== 'object') return;
+    for (const [k, x] of Object.entries(v)) {
+      if (k === 'font' && x !== null && typeof x === 'object' && 'family' in x) {
+        const family = (x as { family: unknown }).family;
+        if (typeof family !== 'string') throw new Error(`${id}: a font spec's family is ${JSON.stringify(family)}, not a face id`);
+        if (!ids.has(family)) out.add(`${id}: ${family}`);
+      }
+      visit(id, x);
+    }
+  };
+  for (const c of cases) visit(c.id, c.program);
+  return [...out];
 }
 
 /**
@@ -145,7 +201,7 @@ export function emitCases(target: NativeTarget): EmitCase[] {
 function computeEmitCases(target: NativeTarget): EmitCase[] {
   const backend = BACKEND_OF[target];
   const m = expectedEngine();
-  return nativeCases().map((n) => {
+  return deviceCheckCases().map((n) => {
     const program = n.programs[backend];
     const viewport = n.case.environment.viewport;
     return {
@@ -180,12 +236,17 @@ final class DragonAppDelegate: UIResponder, UIApplicationDelegate {
   }
 }
 
+/// MQ-R1: the host allows landscape so device-env can rotate the scene (requestGeometryUpdate); every lane run starts portrait.
+final class DragonHostController: UIViewController {
+  override var supportedInterfaceOrientations: UIInterfaceOrientationMask { return .allButUpsideDown }
+}
+
 final class DragonSceneDelegate: UIResponder, UIWindowSceneDelegate {
   var window: UIWindow?
   func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
     guard let ws = scene as? UIWindowScene else { return }
     let w = UIWindow(windowScene: ws)
-    let vc = UIViewController()
+    let vc = DragonHostController()
     vc.view.backgroundColor = .white
     w.rootViewController = vc
     w.makeKeyAndVisible()
@@ -210,6 +271,8 @@ func dragonRun(window: UIWindow, host: UIView) {
   UIView.setAnimationsEnabled(false)
   // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
   dragonForeignViewLoadsSrc = false
+  // MEDIA-EL: nor open a video stream; the players' frames and gravity are what the lanes prove.
+  dragonVideoViewLoadsStream = false
   let env = ProcessInfo.processInfo.environment
   guard let out = env["DRAGON_OUT"] else { fatalError("dragon host: DRAGON_OUT is not set") }
   // --dragon-cases wins over a run file left in the container by an earlier run.
@@ -220,6 +283,8 @@ func dragonRun(window: UIWindow, host: UIView) {
   DragonBridge.shaper = dragonGlyphShaper()
   let bridge = DragonBridge.shared
   if !bridge.shaped { fatalError("dragon host: the bridge does not shape with the shim") }
+  // TXT1a-2 phase R: the bridge holds every bundled real face, with the host's FontData.
+  dragonCheckFaces()
   dragonWrite(out + "/bridge-ios.json", bridge.record(platform: "ios"))
   let scale = Double(window.screen.scale)
   if Double(window.traitCollection.displayScale) != scale { fatalError("dragon host: traitCollection.displayScale differs from UIScreen.scale") }
@@ -243,6 +308,15 @@ func dragonRun(window: UIWindow, host: UIView) {
   dragonCase(0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
 }
 
+/// MQ-R1 (T067 R6) and MQ-R2 (R9): a mount's environment record: its root as the root view observed it, the media size and band
+/// the machine took, and the readings it answers the device features from, with the platform inputs they come from.
+func dragonEnvironment(_ mount: DragonStateMount, scale: Double) -> DumpEnvironment {
+  let px = mount.media.sizePx
+  let r = mount.machine.readings
+  let readings = DumpEnvironmentReadings(pointer: r.pointer, hover: r.hover ? "hover" : "none", anyPointer: (r.anyCoarse ? ["coarse"] : []) + (r.anyFine ? ["fine"] : []), anyHover: r.anyHover ? "hover" : "none", reducedMotion: r.reducedMotion ? "reduce" : "no-preference", colorScheme: r.darkScheme ? "dark" : "light", source: mount.injected ? "injected" : "platform", inputs: DragonReadings.platformInputs())
+  return DumpEnvironment(rootPx: [px.0, px.1], dpr: scale, media: [try! rtBand_mediaSize(px.0, scale), try! rtBand_mediaSize(px.1, scale)], band: Double(mount.machine.bandIndex), readings: readings)
+}
+
 /// The warm-up capture's sha256 by case, and the cases whose dumped capture differed from it (evidence only, warmup-ios.txt).
 var dragonWarmSha: [String: String] = [:]
 var dragonWarmDiffers: [String] = []
@@ -255,6 +329,7 @@ func dragonWarmUp(_ run: DragonRun, stage: UIView, scale: Double, bridge: Dragon
     let tree = DragonTree()
     c.build(tree)
     stage.addSubview(tree.root)
+    tree.safeArea = dragonSafeArea(stage)
     do {
       try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
     } catch {
@@ -275,6 +350,11 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     exit(0)
   }
   let id = run.ids[k]
+  // MQ-R1 device-env (T067 R7 (c)): "<script>~env~<phase>" runs one phase of a rotation on the env mount.
+  if id.contains("~env~") {
+    dragonEnvCase(k, id: id, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+    return
+  }
   // SELD-R1a: a case script runs on a state mount, whose every setter rebuilds and lays out the views on the stage; an id that is
   // both a layout case and a script fails rather than running one of them.
   let script = dragonStateCaseTable[id]
@@ -292,15 +372,22 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   guard let c = script?.dragonCase ?? layoutCase else { fatalError("dragon host: no case \(id)") }
   let t0: CFTimeInterval
   let tree: DragonTree
+  var mountedMedia: UIView? = nil
+  var environment: DumpEnvironment? = nil
   if let script = script {
     t0 = CACurrentMediaTime()
-    let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge)
-    script.run(mount.machine)
+    // MQ-R1: the mount's media root starts at the script's start size; resize steps change it, and it hands each size to the machine.
+    let mount = DragonStateMount(machine: script.make(), stage: stage, measurer: bridge.measurer, scale: scale, bridge: bridge, size: script.start)
+    script.run(mount)
+    mountedMedia = mount.media
+    // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
+    environment = dragonEnvironment(mount, scale: scale)
     tree = mount.tree
   } else {
     tree = DragonTree()
     c.build(tree)
     stage.addSubview(tree.root)
+    tree.safeArea = dragonSafeArea(stage)
     t0 = CACurrentMediaTime()
     do {
       try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
@@ -315,12 +402,13 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
   let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
   if let warm = dragonWarmSha[id], warm != pixels.sha256 { dragonWarmDiffers.append(id) }
   let t2 = CACurrentMediaTime()
-  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000))
+  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000), environment: environment)
   dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
   // SELD-R1b: the device-hit record, the translated hit test on the case's own input and the device's measurer.
   if let facts = dragonHitFactsTable[id] { dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".hit", dragonHitRuns(c, facts, scale: scale, measurer: bridge.measurer)) }
   let next = {
     tree.root.removeFromSuperview()
+    mountedMedia?.removeFromSuperview()
     dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
   }
   if !run.hold {
@@ -333,6 +421,102 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     if FileManager.default.fileExists(atPath: out + "/release-" + id) { next() } else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { wait() } }
   }
   wait()
+}
+
+/// MQ-R1 device-env: the fill-the-stage mount kept across the portrait, landscape, back and (MQ-R2) motion and scheme phases.
+var dragonEnvMount: DragonStateMount? = nil
+
+/// One env phase (T067 R7 (c)): portrait builds the mount, its root pinned to the host's safe area so it fills the stage at any
+/// orientation, and runs the script's setters; landscape and back request the scene's orientation (requestGeometryUpdate, iOS 16+,
+/// used only here: the iOS 15 floor's path is the root's own layoutSubviews). The phase is dumped once the root has the phase's
+/// orientation and the same size on three polls; the dump carries the environment the root observed.
+func dragonEnvCase(_ k: Int, id: String, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
+  let parts = id.components(separatedBy: "~env~")
+  guard parts.count == 2, let script = dragonStateCaseTable[parts[0] + "~env"] else { fatalError("dragon host: no env script for \(id)") }
+  let phase = parts[1]
+  let landscape = phase == "landscape"
+  guard let host = stage.superview, let window = host.window, let scene = window.windowScene else { fatalError("dragon host: \(id): no window scene") }
+  let t0 = CACurrentMediaTime()
+  if phase == "motion" || phase == "motion-back" || phase == "scheme" || phase == "scheme-back" {
+    // MQ-R2 (T067 R9): the host turns the OS's Reduce Motion, or its dark appearance, on or off while the app holds; the mount's
+    // observer (the root's trait change for the appearance) moves the band.
+    guard let mount = dragonEnvMount else { fatalError("dragon host: \(id) without its portrait phase") }
+    let motion = phase.hasPrefix("motion")
+    let on = phase == "motion" || phase == "scheme"
+    dragonWrite(out + "/hold-" + id, "ok")
+    var released = 0
+    func poll() {
+      // Once released, the phase dumps when the readings follow the setting, or after 5 s if they never do (the lane then fails
+      // the readings, as it must for a reading that misses the OS setting).
+      if FileManager.default.fileExists(atPath: out + "/release-" + id) { released += 1 }
+      let followed = (motion ? mount.machine.readings.reducedMotion : mount.machine.readings.darkScheme) == on
+      if released == 0 || (!followed && released < 100) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { poll() }
+        return
+      }
+      host.layoutIfNeeded()
+      dragonEnvDump(k, id: id, phase: phase, mount: mount, script: script, t0: t0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+    }
+    poll()
+    return
+  }
+  if phase == "portrait" {
+    let mount = DragonStateMount(machine: script.make(), stage: host, measurer: bridge.measurer, scale: scale, bridge: bridge, size: (Double(stage.bounds.width), Double(stage.bounds.height)))
+    let m = mount.media
+    m.translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      m.leadingAnchor.constraint(equalTo: host.safeAreaLayoutGuide.leadingAnchor), m.trailingAnchor.constraint(equalTo: host.safeAreaLayoutGuide.trailingAnchor),
+      m.topAnchor.constraint(equalTo: host.safeAreaLayoutGuide.topAnchor), m.bottomAnchor.constraint(equalTo: host.safeAreaLayoutGuide.bottomAnchor),
+    ])
+    stage.isHidden = true
+    host.layoutIfNeeded()
+    script.run(mount)
+    dragonEnvMount = mount
+  } else {
+    guard #available(iOS 16.0, *) else { fatalError("dragon host: \(id): rotating the scene needs iOS 16 (requestGeometryUpdate)") }
+    window.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+    scene.requestGeometryUpdate(.iOS(interfaceOrientations: landscape ? .landscapeRight : .portrait)) { e in fatalError("dragon host: \(id): requestGeometryUpdate failed: \(e)") }
+  }
+  guard let mount = dragonEnvMount else { fatalError("dragon host: \(id) without its portrait phase") }
+  var stable = 0
+  var last = (-1.0, -1.0)
+  var tries = 0
+  func settle() {
+    host.layoutIfNeeded()
+    let px = mount.media.sizePx
+    if (px.0 > px.1) == landscape && px == last { stable += 1 } else { stable = 0 }
+    last = px
+    tries += 1
+    if tries > 600 { fatalError("dragon host: \(id): the root did not settle \(landscape ? "landscape" : "portrait") (\(px.0)x\(px.1) px)") }
+    if stable < 3 {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { settle() }
+      return
+    }
+    dragonEnvDump(k, id: id, phase: phase, mount: mount, script: script, t0: t0, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge)
+  }
+  settle()
+}
+
+/// Dumps an env phase with the environment the root observed, then runs the next case; the last phase (scheme-back) unmounts.
+func dragonEnvDump(_ k: Int, id: String, phase: String, mount: DragonStateMount, script: DragonStateScript, t0: CFTimeInterval, run: DragonRun, out: String, stage: UIView, scale: Double, device: DumpDevice, bridge: DragonBridge) {
+  let tree = mount.tree
+  tree.root.layoutIfNeeded()
+  CATransaction.flush()
+  let t1 = CACurrentMediaTime()
+  let base = script.dragonCase
+  // The phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
+  let c = DragonCase(id: id, fixture: base.fixture, direction: base.direction, compilerDigest: base.compilerDigest, viewport: (width: mount.machine.viewport.0, height: mount.machine.viewport.1), expectedDigests: [scale: "device-env"], input: base.input, build: base.build)
+  let pixels = dragonCapture(tree.root, scale: scale, points: run.points[id] ?? [])
+  let t2 = CACurrentMediaTime()
+  let environment = dragonEnvironment(mount, scale: scale)
+  let dump = tree.dump(c, scale: scale, device: device, pixels: pixels, timing: DumpTiming(settleMs: (t1 - t0) * 1000, dumpMs: (CACurrentMediaTime() - t2) * 1000), environment: environment)
+  dragonWrite(out + "/" + id + "@" + DumpJsonWriter.format(scale) + ".json", dumpJson(dump))
+  if phase == "scheme-back" {
+    mount.media.removeFromSuperview()
+    stage.isHidden = false
+    dragonEnvMount = nil
+  }
+  DispatchQueue.main.async { dragonCase(k + 1, run: run, out: out, stage: stage, scale: scale, device: device, bridge: bridge) }
 }
 
 _ = UIApplicationMain(CommandLine.argc, CommandLine.unsafeArgv, nil, NSStringFromClass(DragonAppDelegate.self))
@@ -353,6 +537,8 @@ function iosInfoPlist(): string {
   <key>MinimumOSVersion</key><string>15.0</string>
   <key>UIDeviceFamily</key><array><integer>1</integer><integer>2</integer></array>
   <key>UILaunchScreen</key><dict/>
+  <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
+  <key>UISupportedInterfaceOrientations~ipad</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
   <key>UIApplicationSupportsIndirectInputEvents</key><true/>
   <key>UIApplicationSceneManifest</key>
   <dict>
@@ -371,6 +557,7 @@ function iosInfoPlist(): string {
 const ANDROID_ACTIVITY = String.raw`package dev.dragon.host
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Build
@@ -385,20 +572,26 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import dev.dragon.cases.dragonCaseTable
 import dev.dragon.dump.DumpDevice
+import dev.dragon.dump.DumpEnvironment
+import dev.dragon.dump.DumpEnvironmentReadings
 import dev.dragon.dump.DumpJsonWriter
 import dev.dragon.dump.DumpPixels
 import dev.dragon.dump.DumpTiming
 import dev.dragon.dump.dumpJson
 import dev.dragon.views.DragonBridge
+import dev.dragon.views.DragonCase
 import dev.dragon.views.DragonInteractionMount
 import dev.dragon.views.DragonInteractionScript
 import dev.dragon.views.DragonMachinePointer
+import dev.dragon.views.DragonReadings
 import dev.dragon.views.DragonRun
 import dev.dragon.views.DragonStateMount
 import dev.dragon.views.DragonTree
 import dev.dragon.views.dragonForeignViewLoadsSrc
 import dev.dragon.views.dragonReadRun
+import dev.dragon.views.dragonSafeArea
 import dev.dragon.views.dragonSamples
+import dev.dragon.views.dragonVideoViewLoadsStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -421,6 +614,10 @@ class DragonActivity : Activity() {
     super.onCreate(savedInstanceState)
     // R9: lane and test hosts never load network content; every iframe web view loads about:blank.
     dragonForeignViewLoadsSrc = false
+    // MQ-R1: the activity handles rotation itself (configChanges) and lane runs start portrait; device-env rotates it on purpose.
+    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    // MEDIA-EL: nor open a video stream; the players' frames are what the lanes prove.
+    dragonVideoViewLoadsStream = false
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     frame.setBackgroundColor(0xffffffff.toInt())
     frame.setOnApplyWindowInsetsListener { v, insets ->
@@ -440,6 +637,8 @@ class DragonActivity : Activity() {
     DragonBridge.shaper = dragonGlyphShaper(this)
     bridge = DragonBridge.shared(this)
     check(bridge.shaped) { "dragon host: the bridge does not shape with the shim" }
+    // TXT1a-2 phase R: the bridge holds every bundled real face, with the host's FontData.
+    dragonCheckFaces(this)
     File(out, "bridge-android.json").writeText(bridge.record("android"))
     scale = resources.displayMetrics.density.toDouble()
     val os = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ", " + Build.ID + ")"
@@ -467,6 +666,74 @@ class DragonActivity : Activity() {
     File(out, "device-android.json").writeText("{\"platform\":\"android\",\"model\":" + q(device.model) + ",\"os\":" + q(device.os) + ",\"build\":" + q(Build.DISPLAY) + ",\"scale\":" + f(scale) + ",\"densityDpi\":" + resources.displayMetrics.densityDpi + ",\"windowPx\":[" + d.width + "," + d.height + "],\"stagePx\":[" + (frame.width - frame.paddingLeft - frame.paddingRight) + "," + (frame.height - frame.paddingTop - frame.paddingBottom) + "],\"rootOriginPx\":[" + at[0] + "," + at[1] + "],\"textScale\":\"" + resources.configuration.fontScale + "\"}")
   }
 
+  /** MQ-R1 device-env: the fill-the-stage mount kept across the portrait, landscape and back phases, and the phase now settled. */
+  private var envMount: DragonStateMount? = null
+  private var envReady: String? = null
+
+  /**
+   * One env phase: portrait builds the mount (its root fills the stage, MATCH_PARENT inside the bar insets) and runs the script's
+   * setters; landscape and back request the orientation. Either way the phase runs once the root has the phase's orientation and the
+   * same size on three polls with no layout pending; the activity handles the rotation itself (configChanges), so nothing is rebuilt.
+   */
+  private fun envPrepare(k: Int, id: String, phase: String) {
+    val landscape = phase == "landscape"
+    if (phase == "portrait") {
+      val script = dev.dragon.cases.dragonStateCaseTable[id.substringBefore("~env~") + "~env"] ?: throw IllegalStateException("dragon host: no env script for " + id)
+      val w = (frame.width - frame.paddingLeft - frame.paddingRight) / scale
+      val h = (frame.height - frame.paddingTop - frame.paddingBottom) / scale
+      val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge, Pair(w, h))
+      mount.media.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+      script.run(mount)
+      envMount = mount
+    } else if (phase == "motion" || phase == "motion-back" || phase == "scheme" || phase == "scheme-back") {
+      // MQ-R2 (T067 R9): the host sets the OS's animator duration scale, or its night mode, while the app holds; the mount's
+      // observer (the root's onConfigurationChanged for the night mode, uiMode being in configChanges) moves the band.
+      val m = envMount ?: throw IllegalStateException("dragon host: " + id + " without its portrait phase")
+      val motion = phase.startsWith("motion")
+      val on = phase == "motion" || phase == "scheme"
+      File(out, "hold-" + id).writeText("ok")
+      val release = File(out, "release-" + id)
+      var released = 0
+      val poll = object : Runnable {
+        override fun run() {
+          // Once released, the phase dumps when the readings follow the setting, or after 5 s if they never do (the lane then fails
+          // the readings, as it must for a reading that misses the OS setting).
+          if (release.exists()) released++
+          val followed = (if (motion) m.machine.readings.reducedMotion else m.machine.readings.darkScheme) == on
+          val settled = followed && !m.media.isLayoutRequested && !frame.isLayoutRequested
+          if (released == 0 || (!settled && released < 100)) {
+            main.postDelayed(this, 50)
+            return
+          }
+          envReady = id
+          runCase(k)
+        }
+      }
+      main.postDelayed(poll, 50)
+      return
+    } else requestedOrientation = if (landscape) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    val m = envMount ?: throw IllegalStateException("dragon host: " + id + " without its portrait phase")
+    var stable = 0
+    var last = Pair(-1, -1)
+    var tries = 0
+    val poll = object : Runnable {
+      override fun run() {
+        val px = Pair(m.media.width, m.media.height)
+        if ((px.first > px.second) == landscape && px == last && !m.media.isLayoutRequested && !frame.isLayoutRequested) stable++ else stable = 0
+        last = px
+        tries++
+        if (tries > 600) throw IllegalStateException("dragon host: " + id + ": the root did not settle " + (if (landscape) "landscape" else "portrait") + " (" + px.first + "x" + px.second + " px)")
+        if (stable < 3) {
+          main.postDelayed(this, 100)
+          return
+        }
+        envReady = id
+        runCase(k)
+      }
+    }
+    main.postDelayed(poll, 100)
+  }
+
   private fun traceText(lines: List<String>): String = lines.joinToString("") { it + "\n" }
 
   /**
@@ -485,6 +752,17 @@ class DragonActivity : Activity() {
     frame.post { runCase(k + 1) }
   }
 
+  /**
+   * MQ-R1 (T067 R6) and MQ-R2 (R9): a mount's environment record: its root as the root view observed it, the media size and band the
+   * machine took, and the readings it answers the device features from, with the platform inputs they come from.
+   */
+  private fun dragonEnvironment(mount: DragonStateMount, scale: Double): DumpEnvironment {
+    val m = mount.media
+    val r = mount.machine.readings
+    val readings = DumpEnvironmentReadings(r.pointer, if (r.hover) "hover" else "none", (if (r.anyCoarse) listOf("coarse") else emptyList()) + (if (r.anyFine) listOf("fine") else emptyList()), if (r.anyHover) "hover" else "none", if (r.reducedMotion) "reduce" else "no-preference", if (r.darkScheme) "dark" else "light", if (mount.injected) "injected" else "platform", DragonReadings.platformInputs())
+    return DumpEnvironment(listOf(m.widthPx, m.heightPx), scale, listOf(dev.dragon.layout.rtBand_mediaSize(m.widthPx, scale), dev.dragon.layout.rtBand_mediaSize(m.heightPx, scale)), mount.machine.bandIndex.toDouble(), readings)
+  }
+
   private fun runCase(k: Int) {
     if (k >= run.ids.size) {
       File(out, "done-android").writeText("ok")
@@ -492,9 +770,15 @@ class DragonActivity : Activity() {
       return
     }
     val id = run.ids[k]
+    // MQ-R1 device-env (T067 R7 (c)): "<script>~env~<phase>" runs one phase of a rotation on the env mount, after its root settles.
+    val envPhase = if (id.contains("~env~")) id.substringAfter("~env~") else null
+    if (envPhase != null && envReady != id) {
+      envPrepare(k, id, envPhase)
+      return
+    }
     // SELD-R1a: a case script runs on a state mount, whose every setter rebuilds and lays out the views on the stage; an id that
     // is both a layout case and a script fails rather than running one of them.
-    val script = dev.dragon.cases.dragonStateCaseTable[id]
+    val script = dev.dragon.cases.dragonStateCaseTable[if (envPhase != null) id.substringBefore("~env~") + "~env" else id]
     val layoutCase = dev.dragon.cases.dragonCaseTable[id]
     if (script != null && layoutCase != null) throw IllegalStateException("dragon host: " + id + " is both a layout case and a case script")
     val interaction = dev.dragon.cases.dragonInteractionCaseTable[id]
@@ -503,18 +787,38 @@ class DragonActivity : Activity() {
       runInteraction(k, id, interaction)
       return
     }
-    val c = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
+    val envMounted = envMount
+    val base = script?.dragonCase ?: layoutCase ?: throw IllegalStateException("dragon host: no case " + id)
+    // An env phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
+    val c = if (envPhase != null && envMounted != null) DragonCase(id, base.fixture, base.direction, base.compilerDigest, envMounted.machine.viewport.first, envMounted.machine.viewport.second, mapOf(scale to "device-env"), base.input, base.build) else base
     val t0: Long
     val tree: DragonTree
-    if (script != null) {
+    // A state mount on screen: its media root leaves the frame, and it stops observing the platform readings, after the dump.
+    var mounted: DragonStateMount? = null
+    var environment: DumpEnvironment? = null
+    if (envPhase != null) {
+      val mount = envMounted ?: throw IllegalStateException("dragon host: " + id + " without its portrait phase")
       t0 = SystemClock.elapsedRealtimeNanos()
-      val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge)
-      script.run(mount.machine)
+      environment = dragonEnvironment(mount, scale)
+      tree = mount.tree
+      if (envPhase == "scheme-back") {
+        mounted = mount
+        envMount = null
+      }
+    } else if (script != null) {
+      t0 = SystemClock.elapsedRealtimeNanos()
+      // MQ-R1: the mount's media root starts at the script's start size; resize steps change it, and it hands each size to the machine.
+      val mount = DragonStateMount(script.make(), frame, bridge.measurer, scale, bridge, script.start)
+      script.run(mount)
+      mounted = mount
+      // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
+      environment = dragonEnvironment(mount, scale)
       tree = mount.tree
     } else {
       tree = DragonTree(this)
       c.build(tree)
       t0 = SystemClock.elapsedRealtimeNanos()
+      tree.safeArea = dragonSafeArea(frame, scale)
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
@@ -564,7 +868,7 @@ class DragonActivity : Activity() {
             // dump and the run goes on: the reader fails the case as dump-invalid with the message (device-lanes.ts), never a pass.
             val dumpFile = File(out, id + "@" + DumpJsonWriter.format(scale) + ".json")
             try {
-              val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6))
+              val dump = tree.dump(c, scale, device, pixels, DumpTiming((t1 - t0) / 1e6, (SystemClock.elapsedRealtimeNanos() - t2) / 1e6), environment)
               dumpFile.writeText(dumpJson(dump))
             } catch (e: RuntimeException) {
               android.util.Log.e("DragonHost", "dragon host: " + id + ": the dump failed", e)
@@ -574,6 +878,10 @@ class DragonActivity : Activity() {
             dragonHitFactsTable[id]?.let { facts -> File(out, id + "@" + DumpJsonWriter.format(scale) + ".hit").writeText(dragonHitRuns(c, facts, scale, bridge.measurer)) }
             val next = Runnable {
               frame.removeView(tree.root)
+              mounted?.let {
+                it.close()
+                frame.removeView(it.media)
+              }
               frame.post { runCase(k + 1) }
             }
             if (!run.hold) next.run()
@@ -736,7 +1044,7 @@ function androidManifest(): string {
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${HOST_BUNDLE}" android:versionCode="1" android:versionName="1.0">
   <uses-sdk android:minSdkVersion="${NATIVE_CONFIG.android.minSdk}" android:targetSdkVersion="${ANDROID_TARGET_SDK}" />
   <application android:label="Dragon host" android:hasCode="true" android:allowBackup="false">
-    <activity android:name=".DragonActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:screenOrientation="portrait">
+    <activity android:name=".DragonActivity" android:exported="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:screenOrientation="unspecified" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|uiMode">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
@@ -759,6 +1067,9 @@ const PLANTED: { readonly [P in Exclude<BuildPlant, SupportPlant>]: GeneratedFil
 export function hostSources(target: NativeTarget, toolchain: string, plant: BuildPlant | null = null): GeneratedFile[] {
   const backend = BACKEND_OF[target];
   const cases = emitCases(target);
+  // TXT1a-2 phase R: the apps draw only the faces they bundle; a case naming another would stop on the device.
+  const unbundled = unbundledFaces([...cases, ...stateEmits(target), ...animEmits(target)]);
+  if (unbundled.length > 0) throw new Error(`the ${target} app bundles no face for ${unbundled.slice(0, 10).join('; ')}`);
   const files: GeneratedFile[] = [];
   if (target === 'ios') {
     const engine = repoPath('packages/layout/generated/swift/Sources/DragonLayout');
@@ -780,7 +1091,8 @@ export function hostSources(target: NativeTarget, toolchain: string, plant: Buil
   files.push(...emitNativeSupport(backend, supportPlant));
   files.push(...(backend === 'uikit' ? emitUikitCases(cases) : emitAndroidViewsCases(cases)));
   // SELD-R1a: the state programs and their case scripts; ANIM-b1: the frame cases' state programs, animation tables and sample scripts.
-  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...animEmits(target)]));
+  // MQ-R1: the resize cases' band programs and prefix scripts follow those, then the device-env rotation script.
+  files.push(...emitStatePrograms(backend, [...stateEmits(target), ...animEmits(target), ...resizeEmits(target), ...envEmits(target)]));
   // SELD-R1b: the device-hit facts and runner.
   files.push(deviceHitSource(target));
   // SELD-R2 (T064 R14): the interaction programs and their device-traces scripts.
@@ -954,8 +1266,12 @@ export function casesCodeProblems(path: string, text: string): string[] {
   return [...new Set([...words, ...ternary])].map((w) => `${path}: ${w} in code built at -Onone (DragonCases holds construction code only)`);
 }
 
+/** The commands that copy each bundled real face ($FONTS is vendor/fonts) to <root>/<its app path> (native-shim.ts shimFaces). */
+const faceCopies = (faces: readonly ShimFace[], root: string, pathOf: (f: ShimFace) => string): AppCommand[] =>
+  faces.filter((f) => f.id !== AHEM_FACE_ID).map((f) => ['cp', `$FONTS/${f.source}`, `${root}/${pathOf(f)}`]);
+
 /** The iOS app's build commands for its source paths ($CORES is the -j width, which changes no output). */
-export function iosCommands(paths: readonly string[]): AppCommand[] {
+export function iosCommands(paths: readonly string[], faces: readonly ShimFace[] = shimFaces()): AppCommand[] {
   const mods = iosModules(paths);
   const src = (ps: readonly string[]): string[] => ps.map((p) => `$W/src/${p}`);
   // -I: DragonCore's shim wrapper imports CDragonHB, a module map over dragon_hb.h, which every module importing DragonCore must find.
@@ -971,6 +1287,8 @@ export function iosCommands(paths: readonly string[]): AppCommand[] {
     [...swiftc, '-O', '-module-name', 'DragonHost', '-I', '$W/modules', ...implicit('-import-module', 'DragonCore'), ...implicit('-testable-import-module', 'DragonCases'), ...load('DragonCore'), ...load('DragonCases'), '-L', '$SHIM_IOS_LIB', '-ldragon_hb', '-lc++', '-o', '$W/DragonHost.app/DragonHost', ...src(mods.host)],
     ['cp', '$W/src/Info.plist', '$W/DragonHost.app/Info.plist'],
     ['cp', '$AHEM', '$W/DragonHost.app/Ahem.ttf'],
+    ['mkdir', '-p', `$W/DragonHost.app/${SHIM_FACE_DIRS.ios}`],
+    ...faceCopies(faces, '$W/DragonHost.app', (f) => f.iosFile),
     ['codesign', '--force', '--sign', '-', '--timestamp=none', '$W/DragonHost.app'],
   ];
 }
@@ -994,8 +1312,10 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
     writeSources(work, files);
     mkdirSync(join(work, 'modules'), { recursive: true });
     mkdirSync(join(work, 'DragonHost.app'), { recursive: true });
-    const values = { W: work, CORES: String(availableParallelism()), AHEM: repoPath('vendor/fonts/Ahem.ttf'), SHIM_SWIFT_INCLUDE, ...shim.files };
-    const names = ['swiftc DragonCore -O', 'swiftc DragonCases -Onone', 'swiftc DragonHost -O', 'Info.plist', 'Ahem.ttf', 'codesign --sign - (ad hoc)'];
+    const values = { W: work, CORES: String(availableParallelism()), AHEM: repoPath('vendor/fonts/Ahem.ttf'), FONTS: repoPath('vendor/fonts'), SHIM_SWIFT_INCLUDE, ...shim.files };
+    const faces = commands.length - 7;
+    const names = ['swiftc DragonCore -O', 'swiftc DragonCases -Onone', 'swiftc DragonHost -O', 'Info.plist', 'Ahem.ttf', SHIM_FACE_DIRS.ios, ...Array.from({ length: faces }, (_x, k) => `face ${k + 1} of ${faces}`), 'codesign --sign - (ad hoc)'];
+    if (names.length !== commands.length) throw new Error(`the iOS build names ${names.length} steps for ${commands.length} commands`);
     for (const [i, c] of commands.entries()) {
       const t0 = Date.now();
       const [cmd, ...args] = expand(c, values);
@@ -1006,11 +1326,12 @@ export function buildIos(opts: BuildOptions = {}): BuildResult {
   return { target: 'ios', cases: emitCases('ios').length, sourceSha256: sha, artifact: join(dir, 'DragonHost.app'), log: [shim.log, ...log] };
 }
 
-/** The Android APK's build commands for its Kotlin source paths (tokens: the SDK tools, the jars, the keystore and Ahem). */
-export function androidCommands(ktPaths: readonly string[]): AppCommand[] {
+/** The Android APK's build commands for its Kotlin source paths (tokens: the SDK tools, the jars, the keystore, Ahem and the faces). */
+export function androidCommands(ktPaths: readonly string[], faces: readonly ShimFace[] = shimFaces()): AppCommand[] {
   return [
-    ['mkdir', '-p', '$W/assets/fonts', '$W/dex', ...SHIM_ANDROID_ABIS.map((abi) => `$W/lib/${abi}`)],
+    ['mkdir', '-p', '$W/assets/fonts', `$W/assets/${SHIM_FACE_DIRS.android}`, '$W/dex', ...SHIM_ANDROID_ABIS.map((abi) => `$W/lib/${abi}`)],
     ['cp', '$AHEM', '$W/assets/fonts/Ahem.ttf'],
+    ...faceCopies(faces, '$W/assets', (f) => f.androidAsset),
     ...SHIM_ANDROID_ABIS.map((abi) => ['cp', `$${shimToken(abi)}`, `$W/lib/${abi}/libdragon_hb.so`]),
     ['$BT/aapt2', 'link', '--manifest', '$W/src/AndroidManifest.xml', '-I', '$ANDROID_JAR', '-A', '$W/assets', '--min-sdk-version', String(NATIVE_CONFIG.android.minSdk), '--target-sdk-version', String(ANDROID_TARGET_SDK), '-o', '$W/base.apk'],
     ['$KOTLINC', '-J-Xmx8g', '-cp', '$ANDROID_JAR', '-jvm-target', '1.8', '-nowarn', '-d', '$W/classes.jar', ...ktPaths.map((p) => `$W/src/${p}`)],
@@ -1059,8 +1380,10 @@ export function buildAndroid(opts: BuildOptions = {}): BuildResult & { readonly 
   const dexesOf = (d: string): string[] => (existsSync(join(d, 'dex')) ? readdirSync(join(d, 'dex')).filter((f) => /^classes\d*\.dex$/.test(f)).sort().map((x) => join(d, 'dex', x)) : []);
   const { dir, log } = cachedApp('apk', key, 'DragonHost.apk', (d) => dexesOf(d).length > 0, opts.reuse === true, (work, out) => {
     writeSources(work, files);
-    const values = { W: work, AHEM: repoPath('vendor/fonts/Ahem.ttf'), BT: tools.buildTools, ANDROID_JAR: tools.androidJar, KOTLINC: tools.kotlinc, KOTLIN_STDLIB: tools.kotlinStdlib, KEYSTORE: keystore, ...shim.files };
-    const names = ['mkdir', 'Ahem.ttf', ...SHIM_ANDROID_ABIS.map((abi) => `libdragon_hb.so (${abi})`), 'aapt2 link', 'kotlinc', 'd8', 'zip classes.dex', 'zip libdragon_hb.so', 'zipalign', 'apksigner sign'];
+    const values = { W: work, AHEM: repoPath('vendor/fonts/Ahem.ttf'), FONTS: repoPath('vendor/fonts'), BT: tools.buildTools, ANDROID_JAR: tools.androidJar, KOTLINC: tools.kotlinc, KOTLIN_STDLIB: tools.kotlinStdlib, KEYSTORE: keystore, ...shim.files };
+    const faces = commands.length - 9 - SHIM_ANDROID_ABIS.length;
+    const names = ['mkdir', 'Ahem.ttf', ...Array.from({ length: faces }, (_x, k) => `face ${k + 1} of ${faces}`), ...SHIM_ANDROID_ABIS.map((abi) => `libdragon_hb.so (${abi})`), 'aapt2 link', 'kotlinc', 'd8', 'zip classes.dex', 'zip libdragon_hb.so', 'zipalign', 'apksigner sign'];
+    if (names.length !== commands.length) throw new Error(`the Android build names ${names.length} steps for ${commands.length} commands`);
     for (const [i, c] of commands.entries()) {
       const t0 = Date.now();
       const [cmd, ...args] = expand(c, values);

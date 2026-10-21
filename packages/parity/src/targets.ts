@@ -2,15 +2,19 @@
 // layout cases, SHARED_DPRS and EXTRA_DPRS, and the committed corpus manifests. Tolerances, sample rules, dump faults and the
 // layout projection are imported, so no target can hold a weaker copy.
 import { readdirSync, readFileSync } from 'node:fs';
-import { nativeLayoutProjection } from 'dragon';
+import { NATIVE_DEVICE_DPRS, nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { animSampleIds } from './anim-samples.ts';
-import { DUMP_FAULTS } from './native-compare.ts';
+import { forcedDeviceCaseIds } from './forced-device.ts';
+import { DUMP_FAULTS } from './dump-faults.ts';
 import { repoPath } from './paths.ts';
 import { SAMPLE_RULES } from './samples.ts';
+import { directionSuffix, environmentsOf, FIXTURES } from './fixtures.ts';
+import { RESIZE_SCRIPTS } from './fixture-groups/media-runtime.ts';
 import { shapedCaseIds } from './text-latin-run.ts';
 import { traceScriptIds } from './trace-lane.ts';
+import { ENV_SCRIPTS, MEDIA_ENVIRONMENT_FIXTURES } from './fixture-groups/media-environment.ts';
 
 export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-frames', 'device-applied', 'device-lines', 'device-pixels',
   // SELD-R1b (notes/T047 §3.3 item 5): the case scripts' dumps, and the device hit test's answers.
@@ -18,7 +22,9 @@ export const LANES = ['layout-vectors-host', 'layout-vectors-device', 'device-fr
   // ANIM-b1 3b (T065 R18): every frame sample's dump.
   'device-anim',
   // SELD-R2 (T064 R14): the interaction scripts' traces, through the entry points (and on Android through MotionEvents too).
-  'device-traces'] as const;
+  'device-traces',
+  // MQ-R1 (notes/T067 R7 (c)): one real rotation per device.
+  'device-env'] as const;
 export type LaneId = (typeof LANES)[number];
 export type NativeTarget = 'ios' | 'android';
 export const NATIVE_TARGETS: readonly NativeTarget[] = ['ios', 'android'];
@@ -78,6 +84,20 @@ export function vectorCaseIds(): readonly string[] {
   return vectorIds;
 }
 
+/**
+ * The layout case ids the device lanes run (device-frames, -applied, -lines and -pixels), in fixture order: every layout case. A
+ * shaped case is drawn on the device in its bundled real faces through the shim since TXT1a-2 phase R (native-host.ts nativeCases
+ * throws for a case native refuses); its vectors stay the text-latin suite's.
+ */
+export const deviceCaseIds = (): readonly string[] => layoutCaseIds();
+
+let checkIds: readonly string[] | null = null;
+/** The cases the device check lanes run: every device case, then the forced device cases (forced-device.ts, SELD-R2 PR 5). */
+export function deviceCheckCaseIds(): readonly string[] {
+  checkIds ??= [...deviceCaseIds(), ...forcedDeviceCaseIds()];
+  return checkIds;
+}
+
 const extraName = (dpr: number): string | null => EXTRA_DPRS.find((e) => e.dpr === dpr)?.name ?? null;
 
 function dprSet(dpr: number, ids: readonly string[]): CaseSet {
@@ -89,6 +109,9 @@ function dprSet(dpr: number, ids: readonly string[]): CaseSet {
 export function deviceDprs(target: NativeTarget): readonly number[] {
   return [...SHARED_DPRS, ...EXTRA_DPRS.filter((e) => e.platform === target).map((e) => e.dpr)];
 }
+
+// The compiler's BG2-t phase check names a refused layer's device scale from its own copy of these (gradient-phase.ts).
+for (const t of ['ios', 'android'] as const) if (deviceDprs(t).join() !== NATIVE_DEVICE_DPRS[t].join()) throw new Error(`dragon NATIVE_DEVICE_DPRS.${t} (${NATIVE_DEVICE_DPRS[t].join(', ')}) is not deviceDprs('${t}') (${deviceDprs(t).join(', ')})`);
 
 /** The corpus suites beside the vectors, counted from the manifests' own parameters. */
 export function corpusSuites(): readonly CorpusSuite[] {
@@ -109,6 +132,12 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'p1', suite: 'animator', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/animator/cases.json').cases.length },
     // SELD-R2 (T064 R12): the interaction runtime's scripts, built in code (packages/translate/src/corpus-interaction.ts).
     { corpus: 'p1', suite: 'interaction', cases: p1.cases['interaction'] ?? 0 },
+    // MQ-R1 (T067 R4): one band case per media fixture band table (packages/layout/rt-vectors/band/cases.json).
+    { corpus: 'p1', suite: 'band', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/band/cases.json').cases.length },
+    // MQ-R2 (T067 R9): one pointer case per input-device source set (packages/layout/rt-vectors/pointer/cases.json).
+    { corpus: 'p1', suite: 'pointer', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/pointer/cases.json').cases.length },
+    // T154 slice 2b-1: one select case per selection document (packages/layout/rt-vectors/select/cases.json).
+    { corpus: 'p1', suite: 'select', cases: readJson<{ readonly cases: readonly unknown[] }>('packages/layout/rt-vectors/select/cases.json').cases.length },
     // A shaped case's vectors are the text-latin suite's (TXT1a-2), so engine-dpr counts the plain ones.
     { corpus: 'extended', suite: 'engine-dpr', cases: vectorCaseIds().length * x.dprSets.length },
     { corpus: 'extended', suite: 'units-m2', cases: x.unitsPerFunction * x.unitsFunctions.length },
@@ -127,13 +156,33 @@ export function corpusSuites(): readonly CorpusSuite[] {
   ];
 }
 
+/**
+ * MQ-R1 device-env (device-env.ts): the rotation's three phases of the fill-the-stage fixture, in the order one launch runs them.
+ * MQ-R2 (T067 R9): then two more on both platforms, the OS's reduced-motion setting turned on and back off while the app holds
+ * (Android's animator duration scale over adb; iOS's Reduce Motion, the simulator's com.apple.Accessibility default and its
+ * change notification), and two with the OS's dark appearance (Android's night mode, cmd uimode night; iOS's simctl ui appearance).
+ */
+export function envCaseIds(_target: NativeTarget): readonly string[] {
+  return ['portrait', 'landscape', 'back', 'motion', 'motion-back', 'scheme', 'scheme-back'].map((p) => `mqr-rotate~env~${p}`);
+}
+
+export function resizeScriptIds(): readonly string[] {
+  // MQ-R2: then the media-environment scripts, whose fixtures run only as scripts.
+  return [...RESIZE_SCRIPTS, ...ENV_SCRIPTS].flatMap((s) => {
+    const spec = [...FIXTURES, ...MEDIA_ENVIRONMENT_FIXTURES].find((f) => f.id === s.fixture);
+    if (spec === undefined) throw new Error(`resize script ${s.fixture}: no such fixture`);
+    return environmentsOf(spec).flatMap((env) => Array.from({ length: s.steps.length + 1 }, (_, k) => `${s.fixture}${directionSuffix(env.direction)}~resize${k}`));
+  });
+}
+
 let scripts: readonly string[] | null = null;
 /**
  * Every case script id (state-cases.ts deriveScripts), from the layout cases alone: one per case of a tree fixture with free states,
  * "<fixture>~script<k>" with k the case's assignment index and "-rtl" for right-to-left.
  */
 export function stateScriptIds(): readonly string[] {
-  if (scripts === null) scripts = layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`));
+  // MQ-R1: then every resize prefix script (resize-scripts.ts), after the state groups' scripts as the hosts list them.
+  if (scripts === null) scripts = [...layoutCases().flatMap((f) => f.cases.filter((c) => f.spec.format === 'tree' && c.assignment.length > 0).map((c) => `${f.spec.id}~script${c.index}${c.environment.direction === 'rtl' ? '-rtl' : ''}`)), ...resizeScriptIds()];
   return scripts;
 }
 
@@ -143,8 +192,8 @@ export function stateScriptIds(): readonly string[] {
  */
 export function hitCaseIds(): readonly string[] {
   const refused = readJson<{ readonly refused?: Readonly<Record<string, string>> }>('packages/layout/rt-vectors/hit/facts.json').refused ?? {};
-  // TXT1a-2: a shaped case is not a device case (vectorCaseIds), so device-hit never runs one.
-  return vectorCaseIds().filter((id) => refused[id] === undefined);
+  // TXT1a-2: hit-capture.ts hitRefusal refuses a shaped case, so the facts list it as refused.
+  return deviceCaseIds().filter((id) => refused[id] === undefined);
 }
 
 /** The declared lane: vectors lanes hold every top-level and DPR vector plus the corpora; device lanes the cases at the device DPRs. */
@@ -155,12 +204,13 @@ export function declaredLane(target: NativeTarget, lane: LaneId): LaneConfig {
     const vectors = vectorCaseIds();
     return { lane, kind: 'vectors', where, sets: [{ dpr: 1, role: 'top-level', extra: null, ids: vectors }, ...DPRS.map((d) => dprSet(d, vectors))], corpora: corpusSuites() };
   }
+  if (lane === 'device-env') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, envCaseIds(target))), corpora: [] };
   if (lane === 'device-states') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, stateScriptIds())), corpora: [] };
   if (lane === 'device-anim') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, animSampleIds(target))), corpora: [] };
-  // TXT1a-2: a shaped case is not a device case until phase R gives the device runtime its shaper (the device measures only Ahem).
+  // TXT1a-2: device-hit runs no shaped case yet (hitCaseIds); the other device lanes run every case (deviceCaseIds).
   if (lane === 'device-hit') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, hitCaseIds())), corpora: [] };
   if (lane === 'device-traces') return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, traceScriptIds())), corpora: [] };
-  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, vectorCaseIds())), corpora: [] };
+  return { lane, kind: 'device', where, sets: deviceDprs(target).map((d) => dprSet(d, deviceCheckCaseIds())), corpora: [] };
 }
 
 function targetConfig(target: NativeTarget): TargetConfig {

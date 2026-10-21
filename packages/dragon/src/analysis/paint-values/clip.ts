@@ -5,22 +5,23 @@
 // hides the box view, and with it every view inside it (lower/paint/clip.ts). Refused on the native targets: any other rect on
 // such a box, and an empty one whose subtree paints a view outside the box view: an outline (in the root view), the box's own
 // box-shadow (a companion beside it) and a layer item with a z-index other than 0 (which may be hosted under a stacking context
-// outside it); a box that is not visible as well, whose visibility readback reads the same hidden flag; and text anywhere in the
-// subtree, which Chrome keeps in the accessibility tree (the visually-hidden pattern) while the native views that hide it leave it:
-// UIKit leaves a hidden view out, and Android's View.isVisibleToUser is false under an ancestor that is not VISIBLE or at alpha 0, and
-// under an ancestor's clip bounds that leave nothing (ViewGroup.getChildVisibleRect), so TalkBack skips it. Only text views are
+// outside it); a box that is not visible as well, whose visibility readback reads the same hidden flag. A hidden view leaves the
+// accessibility tree natively (UIKit leaves a hidden view out; Android's View.isVisibleToUser is false under an INVISIBLE ancestor),
+// while Chrome keeps clipped text there (the visually-hidden pattern), so a box with text takes the clip label write instead: it
+// draws nothing and carries the text as its accessibility label, and text one label cannot carry is refused (clip-label.ts). Only text views are
 // accessibility elements natively (native-support.ts), so a subtree without text loses nothing there. An em or rem edge whose font
 // size has no build-time value is refused for that.
-// clip-path (css-masking-1 §6.1): an inset() edge computes to px (em and rem as above), a percentage stays a percentage of the
-// border box's width or height. Chrome clips the box's own paint and every descendant, positioned ones included, to the inset rect.
-// Natively Dragon clips the box view and the views inside it to that rect after layout. Refused on the native targets: the root and
-// body, an inline box (whose fragments clip one by one), the box's own box-shadow and an outline in the subtree (views outside the
-// box view), and any text in the subtree: the clip covers every descendant, overflowing text and positioned descendants included, so
-// any inset can cut text out of sight while Chrome keeps it in the accessibility tree, and the native accessibility tree of a
-// clipped view is not proven yet.
+// overflow and background-clip: text: the text a native padding-box clip view could hide is refused in clip-view-text.ts.
+// clip-path (css-masking-1 §6.1): a shape length computes to px (em and rem as above), a percentage stays a percentage of the
+// border box's width, height or (a circle radius) normalized diagonal. Chrome clips the box's own paint and every descendant,
+// positioned ones included, to the shape. Natively Dragon clips the box view and the views inside it to that shape after layout.
+// Refused on the native targets: the root and body, an inline box (whose fragments clip one by one), the box's own box-shadow and
+// an outline in the subtree (views outside the box view), and any text in the subtree: the clip covers every descendant,
+// overflowing text and positioned descendants included, so any shape can cut text out of sight while Chrome keeps it in the
+// accessibility tree, and the native accessibility tree of a clipped view is not proven yet.
 import type { Longhand } from '../../css/properties.ts';
-import type { InsetEdges } from '../../css/properties/clip-path.ts';
-import { clipPathEdges, insetEdgesOf, insetValue } from '../../css/properties/clip-path.ts';
+import type { ClipShape } from '../../css/properties/clip-path.ts';
+import { clipPathShape, clipShapeOf, mapShapeLengths, shapeLengths, shapeValue } from '../../css/properties/clip-path.ts';
 import type { ClipEdges } from '../../css/properties/clip-rect.ts';
 import { appliedClipEdges, clipEdgesOf, clipHidesBox, clipRectValue } from '../../css/properties/clip-rect.ts';
 import { zIndexOf } from '../../css/properties/effects.ts';
@@ -30,7 +31,10 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { valueToString } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { checkClipViewText } from './clip-view-text.ts';
 import { paintedOutlineStyle } from './outline.ts';
+import { clipLabelRefusal } from './clip-label.ts';
+import { exposedTextInside } from './clip-hidden-text.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
 const keywordOf = (el: Pick<ResolvedElement, 'props'>, p: Longhand): string => {
@@ -58,10 +62,10 @@ export function textInside(el: ResolvedElement): string | null {
   return null;
 }
 
-/** Why each native target loses a hidden view from the accessibility tree. */
-const A11Y_DROP: { readonly [t: string]: string } = {
-  ios: 'ios hides the box view, and UIKit leaves a hidden view out of the accessibility tree, so VoiceOver would not read it',
-  android: 'android makes the box view invisible, and a view under an invisible, transparent or empty-clip-bounds ancestor is not visible to the user (View.isVisibleToUser), so TalkBack would skip it',
+/** How each native target keeps the text of a box its clip hides: the one accessibility element it reads. */
+const A11Y_LABEL: { readonly [t: string]: string } = {
+  ios: 'ios carries the text only as the accessibilityLabel of the box view, which VoiceOver reads as one element',
+  android: 'android carries the text only as the contentDescription of the box view, which TalkBack reads as one node',
 };
 
 /** Why the subtree of a box its clip hides paints a view outside the box view, or null: the first such element in preorder. */
@@ -95,8 +99,9 @@ const checkClip: PaintCheck = (el, targets, diagnostics, reported) => {
   const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
   const hides = clipHidesBox(el);
   const why = hides === true ? viewOutsideClip(el) : null;
-  const text = hides === true && why === null ? textInside(el) : null;
-  if (hides === true && why === null && text === null) return;
+  const text = hides === true && why === null ? exposedTextInside(el) : null;
+  const unlabelled = text === null ? null : clipLabelRefusal(el);
+  if (hides === true && why === null && unlabelled === null) return;
   const at = `${el.element.address}`;
   const rect = valueToString(v.value);
   // An edge left in em or rem: compute had no build-time font size for it.
@@ -111,28 +116,27 @@ const checkClip: PaintCheck = (el, targets, diagnostics, reported) => {
       : hides !== true
         ? `${at} has clip: ${rect}, which clips it to a rect that is not empty at every size; ${t} draws only a clip that hides the whole box (an empty rect, such as rect(0, 0, 0, 0))`
         : text !== null
-          ? `${at} has clip: ${rect}, which hides it whole, but its text ${text} stays in Chrome's accessibility tree and screen readers read it; ${A11Y_DROP[t] ?? `${t} would drop it from the accessibility tree`}`
+          ? `${at} has clip: ${rect}, which hides it whole, and its text ${text} stays in Chrome's accessibility tree, but ${unlabelled}; ${A11Y_LABEL[t] ?? `${t} carries the text as one accessibility label only`}`
           : `${at} has clip: ${rect}, which hides it whole, but ${why}; ${t} hides the box view and the views inside it only`;
     const manual = unresolved !== undefined && unresolved !== null
       ? `Write the clip edges of ${at} in px, or give the font size they depend on a build-time value.`
       : hides !== true
         ? 'Use an overflow clip on a wrapper sized to the rect, or an empty rect to hide the box.'
         : text !== null
-          ? `Keep the text of ${at} visible on native targets, or move it out of ${at}; the native targets hide only boxes without text, so nothing leaves the accessibility tree.`
+          ? `Keep only plain text in ${at} (div, span, p and inline emphasis, nothing focusable and no accessibility attributes), or move the rest out of it.`
           : `Move what ${at} must not hide out of it, or remove it from ${at}.`;
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
   }
 };
 
-/** The inset() edges with em and rem computed to px against the element's font sizes; null while one has no build-time base. */
-function computeInsets(edges: InsetEdges, ctx: PaintValueContext): InsetEdges | null {
-  const out = edges.map((e) => {
+/** The shape with em and rem lengths computed to px against the element's font sizes; null while one has no build-time base. */
+function computeShape(shape: ClipShape, ctx: PaintValueContext): ClipShape | null {
+  return mapShapeLengths(shape, (e) => {
     if (e.unit === CANONICAL_LENGTH_UNIT || e.unit === '%') return e;
-    if ((e.unit === 'em' && ctx.em === null) || (e.unit === 'rem' && ctx.rem === null)) return undefined;
+    if ((e.unit === 'em' && ctx.em === null) || (e.unit === 'rem' && ctx.rem === null)) return null;
     const px = lengthToPx(e.value, e.unit, { em: ctx.em ?? 0, rem: ctx.rem ?? 0 });
-    return px === null ? undefined : { value: px, unit: CANONICAL_LENGTH_UNIT };
+    return px === null ? null : { value: px, unit: CANONICAL_LENGTH_UNIT };
   });
-  return out.some((e) => e === undefined) ? null : (out as unknown as InsetEdges);
 }
 
 /** Why a clip-path clip would lose what Chrome clips with the box, or null: the first such fact, the box's own before its subtree's. */
@@ -155,22 +159,19 @@ function clipPathRefusal(el: ResolvedElement): { readonly fact: string; readonly
   };
   const ringed = outline(el, true);
   if (ringed !== null) return { fact: `${ringed} an outline, which Dragon draws in the root view, outside the clip`, manual: `Remove the outline inside ${at}, or the clip-path.` };
-  // The clip covers every descendant, text that overflows the border box and positioned descendants included, so even an inset of 0
-  // or less can hide text whole. Chrome keeps clipped text in the accessibility tree; until a device run proves the native clip keeps
-  // it there too (VoiceOver, TalkBack), the native targets refuse a clip-path over any text, as they refuse clip: rect().
-  const text = textInside(el);
-  if (text !== null) return { fact: `its text ${text} can be clipped out of sight, which Chrome keeps in its accessibility tree and screen readers read; the native accessibility tree of a clipped view is not proven yet`, manual: `Clip a box without text, or move the text out of ${at}.` };
+  // The clip covers every descendant, text included, which Chrome keeps in the accessibility tree; the native clip touches no view's
+  // accessibility either, as the clip-text readback proves on the device (lower/paint/clip.ts).
   return null;
 }
 
 const checkClipPath: PaintCheck = (el, targets, diagnostics, reported) => {
-  const edges = clipPathEdges(el);
-  if (edges === null) return;
+  const shape = clipPathShape(el);
+  if (shape === null) return;
   const v = el.props.get('clip-path') as ResolvedValue;
   const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
   const at = el.element.address;
-  const shape = valueToString(v.value);
-  const unresolved = edges.find((e) => e.unit !== CANONICAL_LENGTH_UNIT && e.unit !== '%');
+  const text = valueToString(v.value);
+  const unresolved = shapeLengths(shape).find((e) => e.unit !== CANONICAL_LENGTH_UNIT && e.unit !== '%');
   const refusal = unresolved === undefined ? clipPathRefusal(el) : null;
   if (unresolved === undefined && refusal === null) return;
   for (const t of targets) {
@@ -179,9 +180,9 @@ const checkClipPath: PaintCheck = (el, targets, diagnostics, reported) => {
     if (reported.has(id)) continue;
     reported.add(id);
     const message = unresolved !== undefined
-      ? `${at} has clip-path: ${shape}, whose ${unresolved.unit} edge has no build-time font size to compute it against; ${t} needs every inset edge in px or % at build time`
-      : `${at} has clip-path: ${shape}, but ${(refusal as { fact: string }).fact}; ${t} clips the box view and the views inside it only`;
-    const manual = unresolved !== undefined ? `Write the inset edges of ${at} in px or %, or give the font size they depend on a build-time value.` : (refusal as { manual: string }).manual;
+      ? `${at} has clip-path: ${text}, whose ${unresolved.unit} length has no build-time font size to compute it against; ${t} needs every shape length in px or % at build time`
+      : `${at} has clip-path: ${text}, but ${(refusal as { fact: string }).fact}; ${t} clips the box view and the views inside it only`;
+    const manual = unresolved !== undefined ? `Write the clip-path lengths of ${at} in px or %, or give the font size they depend on a build-time value.` : (refusal as { manual: string }).manual;
     diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual, basis: 'computed-value' }));
   }
 };
@@ -197,12 +198,14 @@ export const CLIP_VALUES: PaintValues = {
     }
     const p = props.get('clip-path');
     if (p === undefined) return;
-    const insets = insetEdgesOf(p.value);
-    const computed = insets === null ? null : computeInsets(insets, ctx);
-    if (computed !== null) props.set('clip-path', { ...p, value: insetValue(computed) });
+    const shape = clipShapeOf(p.value);
+    const computed = shape === null ? null : computeShape(shape, ctx);
+    if (computed !== null) props.set('clip-path', { ...p, value: shapeValue(computed) });
   },
   check: (el, targets, diagnostics, reported, propagated) => {
     checkClip(el, targets, diagnostics, reported, propagated);
+    // Judged at the parent, which decides a clip box's flex-basis and stretch.
+    checkClipViewText(el, targets, diagnostics, reported, propagated);
     checkClipPath(el, targets, diagnostics, reported, propagated);
   },
 };

@@ -1,0 +1,16 @@
+{
+  "case": "casc-all",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"w1:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"w1:text1","data":" ZZ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"u1:text0","data":"YY","lines":1,"units":[0,0],"blank":[]},
+    {"id":"i1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"i2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"r1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"r2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"h1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"m1:text0","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}

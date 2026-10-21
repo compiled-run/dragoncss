@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.v1 { font-size: 4vw; }
+.v2 { font-size: clamp(1rem, 5vw, 1.5rem); }
+.v3 { font-size: calc(1em + 2vw); }
+.v4 { font-size: calc(50% + 3vmin); }
+.v5 { font-size: max(12px, 6vh); }
+.v6 { font-size: min(3vw, 2em); }
+.m { margin: 0.5em 1em; padding: calc(0.25em + 1px); }
+.lp { line-height: 150%; }
+.le { line-height: 1.5em; }
+.lc { line-height: calc(1em + 4px); }
+.ln { line-height: 1.25; }
+.big { font-size: 20px; }
+.px { font-size: 9px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="v1">XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX</div>
+<div data-dragon-id="b" class="v2">XX XX X</div>
+<div data-dragon-id="c" class="big"><div data-dragon-id="c1" class="v3">XX X</div></div>
+<div data-dragon-id="d" class="big"><div data-dragon-id="d1" class="v4">XX X</div></div>
+<div data-dragon-id="e" class="v5">XX X</div>
+<div data-dragon-id="f" class="v6">XX X</div>
+<div data-dragon-id="g" class="v1 m">XX XX</div>
+<div data-dragon-id="h" class="v2 lp">XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX</div>
+<div data-dragon-id="i" class="v1 le">XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX</div>
+<div data-dragon-id="j" class="v3 lc">XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX</div>
+<div data-dragon-id="k" class="v1 ln"><div data-dragon-id="k1">XX X</div><div data-dragon-id="k2" class="px">XX X</div></div>
+<div data-dragon-id="l">XX <span data-dragon-id="l1" class="v1">XX</span> X <span data-dragon-id="l2" class="v2">XX</span> X</div>
+</body>
+</html>

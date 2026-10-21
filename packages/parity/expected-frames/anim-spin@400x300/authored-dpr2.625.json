@@ -1,0 +1,699 @@
+{
+ "schema": "dragon-frames-capture/1",
+ "case": "anim-spin@400x300",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2.625,
+ "direction": "ltr",
+ "viewport": {
+  "width": 400,
+  "height": 300
+ },
+ "steps": 35,
+ "samples": [
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 40,
+     "y": 40,
+     "width": 40,
+     "height": 20,
+     "computed": {
+      "transform": "matrix(1, 0, 0, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 1,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 39.99686050415039,
+     "y": 39.993717193603516,
+     "width": 40.006282806396484,
+     "height": 20.0125675201416,
+     "computed": {
+      "transform": "matrix(1, 0.000314159, -0.000314159, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 5000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 50,
+     "y": 30,
+     "width": 20,
+     "height": 40,
+     "computed": {
+      "transform": "matrix(0, 1, -1, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 5000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 50,
+     "y": 30,
+     "width": 20,
+     "height": 40,
+     "computed": {
+      "transform": "matrix(0, 1, -1, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 6000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 50,
+     "y": 30,
+     "width": 20,
+     "height": 40,
+     "computed": {
+      "transform": "matrix(0, 1, -1, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 6000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 50,
+     "y": 30,
+     "width": 20,
+     "height": 40,
+     "computed": {
+      "transform": "matrix(0, 1, -1, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 11000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 40,
+     "y": 40,
+     "width": 40,
+     "height": 20,
+     "computed": {
+      "transform": "matrix(-1, 0, 0, -1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 13000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 37.94180679321289,
+     "y": 30.154125213623047,
+     "width": 44.11638641357422,
+     "height": 39.69175338745117,
+     "computed": {
+      "transform": "matrix(-0.809017, -0.587785, 0.587785, -0.809017, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 16000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 50,
+     "y": 30,
+     "width": 20,
+     "height": 40,
+     "computed": {
+      "transform": "matrix(0, -1, 1, 0, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 20999,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 39.99686050415039,
+     "y": 39.993717193603516,
+     "width": 40.006282806396484,
+     "height": 20.0125675201416,
+     "computed": {
+      "transform": "matrix(1, -0.000314159, 0.000314159, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 21000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 40,
+     "y": 40,
+     "width": 40,
+     "height": 20,
+     "computed": {
+      "transform": "matrix(1, 0, 0, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 21001,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 39.99686050415039,
+     "y": 39.993717193603516,
+     "width": 40.006282806396484,
+     "height": 20.0125675201416,
+     "computed": {
+      "transform": "matrix(1, 0.000314159, -0.000314159, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 40999,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 39.99686050415039,
+     "y": 39.993717193603516,
+     "width": 40.006282806396484,
+     "height": 20.0125675201416,
+     "computed": {
+      "transform": "matrix(1, -0.000314159, 0.000314159, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 41000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 40,
+     "y": 40,
+     "width": 40,
+     "height": 20,
+     "computed": {
+      "transform": "matrix(1, 0, 0, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 41001,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 39.99686050415039,
+     "y": 39.993717193603516,
+     "width": 40.006282806396484,
+     "height": 20.0125675201416,
+     "computed": {
+      "transform": "matrix(1, 0.000314159, -0.000314159, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 20000999,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 39.99686050415039,
+     "y": 39.993717193603516,
+     "width": 40.006282806396484,
+     "height": 20.0125675201416,
+     "computed": {
+      "transform": "matrix(1, -0.000314159, 0.000314159, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 20001000,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 40,
+     "y": 40,
+     "width": 40,
+     "height": 20,
+     "computed": {
+      "transform": "matrix(1, 0, 0, 1, 0, 0)"
+     }
+    }
+   ]
+  },
+  {
+   "at": 20001001,
+   "settle": true,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 100,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 40,
+     "width": 400,
+     "height": 20,
+     "computed": {}
+    },
+    {
+     "id": "rec",
+     "kind": "element",
+     "hasBox": true,
+     "x": 39.99686050415039,
+     "y": 39.993717193603516,
+     "width": 40.006282806396484,
+     "height": 20.0125675201416,
+     "computed": {
+      "transform": "matrix(1, 0.000314159, -0.000314159, 1, 0, 0)"
+     }
+    }
+   ]
+  }
+ ]
+}

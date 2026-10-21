@@ -621,6 +621,23 @@ snapshots:
     const sh = shared(ctx);
     for (const s of STEPS) expect(stepInputs(s, ctx, sh).files.size, s.name).toBeGreaterThan(0);
   });
+  it('the Chrome steps do not key on the host and device lane runners, so a fix there leaves chrome-1 nothing to do', () => {
+    const t = snapshotTree(repoPath('.'));
+    const read = (p: string): string => readFileSync(repoPath(p), 'utf8');
+    const ctx: Context = { tree: t, read, scripts: (JSON.parse(read('package.json')) as { scripts: Record<string, string> }).scripts, env: {}, machine: 'm' };
+    const sh = shared(ctx);
+    // lanes-host's own code: profile:rows reads lanes.json through lanes-file.ts and the lane ids through lane-ids.ts.
+    const host = ['lanes.ts', 'cli/lanes.ts', 'device-lanes.ts', 'device-run.ts', 'device-jobs.ts', 'device-vectors.ts', 'device-exec.ts', 'device-evidence.ts', 'device-ci.ts', 'cli/device-ci.ts'].map((f) => `packages/parity/src/${f}`);
+    for (const s of STEPS.filter((x) => x.name !== 'lanes-host')) {
+      const files = stepInputs(s, ctx, sh).files;
+      expect(host.filter((f) => files.has(f)), s.name).toEqual([]);
+    }
+    // The dump schema: the capture steps reach the break-line grouping through dump-line-groups.ts.
+    for (const name of ['capture', 'dpr-capture', 'vectors', 'dpr-vectors', 'wpt']) {
+      const s = STEPS.find((x) => x.name === name)!;
+      expect(stepInputs(s, ctx, sh).files.has('packages/parity/src/native-dump.ts'), name).toBe(false);
+    }
+  });
 });
 
 describe('regen cache entries', () => {

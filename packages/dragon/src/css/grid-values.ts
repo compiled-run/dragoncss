@@ -10,7 +10,7 @@ import { asciiLower, decodeName, serializeIdentifier } from './escapes.ts';
 import type { Longhand } from './properties.ts';
 import type { LonghandValue, ParsedValue } from './stylesheet.ts';
 import type { FontBases } from './units.ts';
-import { V1_MATH_FUNCTIONS } from './math.ts';
+import { computedLengthMathText, mathInvalidity, V1_MATH_FUNCTIONS } from './math.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, mathFunctionRefusal, normalizeUnit, unitEntry, unitRefusal } from './units.ts';
 import type { CssValue } from './values.ts';
 import { CSS_WIDE, kw } from './values.ts';
@@ -57,6 +57,8 @@ function splitSlash(tokens: readonly CssNode[]): CssNode[][] {
 // emitted CSS must give Chrome the value it computed from the authored CSS.
 
 type DimensionText = (value: string, unit: string) => string;
+/** A math function in its computed form, or null to keep it as written. */
+type MathTextHook = (n: CssNode) => string | null;
 /** A CSS number in its shortest form: +5 is 5, .5 is 0.5, 1e1 is 10, 12.50 is 12.5, -0 is 0. */
 const cssNumber = (raw: string): string => String(Number(raw) + 0);
 const keepDimension: DimensionText = (value, unit) => `${cssNumber(value)}${unit}`;
@@ -65,7 +67,7 @@ const keepDimension: DimensionText = (value, unit) => `${cssNumber(value)}${unit
 const nameText = (n: CssNode): string => serializeIdentifier(decodeName(String(n['name'])));
 
 /** A track-list token as CSS text in Chrome's computed form (the comment above). */
-function trackText(n: CssNode, dim: DimensionText): string {
+function trackText(n: CssNode, dim: DimensionText, math?: MathTextHook): string {
   switch (n.type) {
     case 'Identifier':
       return lowerIdent(n) as string;
@@ -81,6 +83,7 @@ function trackText(n: CssNode, dim: DimensionText): string {
       return children(n).length === 0 ? '' : `[${children(n).map(nameText).join(' ')}]`;
     case 'Function': {
       const name = asciiLower(String(n['name']));
+      if (V1_MATH_FUNCTIONS.has(name)) return math?.(n) ?? mathText(n, dim);
       const parts: CssNode[][] = [[]];
       for (const c of children(n)) {
         if (c.type === 'Operator' && c['value'] === ',') parts.push([]);
@@ -88,11 +91,11 @@ function trackText(n: CssNode, dim: DimensionText): string {
       }
       // css-grid-2 §7.2.4: a flexible size is minmax(auto, <flex>), and Chrome writes it as the flex.
       const [first, second] = parts as [CssNode[], CssNode[]?];
-      if (name === 'minmax' && first.length === 1 && lowerIdent(first[0]) === 'auto' && second?.length === 1 && isFlex(second[0])) return trackText(second[0] as CssNode, dim);
+      if (name === 'minmax' && first.length === 1 && lowerIdent(first[0]) === 'auto' && second?.length === 1 && isFlex(second[0])) return trackText(second[0] as CssNode, dim, math);
       const text = parts.map((a, i) => {
         // Blink ConsumeGridTrackRepeatFunction: a repetition count is clamped so the repeat() holds at most kGridMaxTracks tracks.
         if (name === 'repeat' && i === 0 && a.length === 1 && isInteger(a[0])) return String(clampCount(Number((a[0] as CssNode)['value']), (parts[1] ?? []).filter((t) => t.type !== 'Brackets').length));
-        return tracksText(a, dim);
+        return tracksText(a, dim, math);
       });
       return `${name}(${text.join(', ')})`;
     }
@@ -101,7 +104,31 @@ function trackText(n: CssNode, dim: DimensionText): string {
   }
 }
 
-const tracksText = (tokens: readonly CssNode[], dim: DimensionText = keepDimension): string => tokens.map((t) => trackText(t, dim)).filter((t) => t !== '').join(' ');
+/** A math function's tokens as written, with each length through dim: its numbers are numbers, not track sizes. */
+function mathText(n: CssNode, dim: DimensionText): string {
+  switch (n.type) {
+    case 'Number':
+      return cssNumber(String(n['value']));
+    case 'Dimension':
+      return dim(String(n['value']), normalizeUnit(String(n['unit'])));
+    case 'Percentage':
+      return `${cssNumber(String(n['value']))}%`;
+    case 'Operator':
+    {
+      // css-tree keeps the whitespace around + and - in the operator's value.
+      const op = String(n['value']).trim();
+      return op === ',' ? ', ' : ` ${op} `;
+    }
+    case 'Parentheses':
+      return `(${children(n).map((c) => mathText(c, dim)).join('')})`;
+    case 'Function':
+      return `${asciiLower(String(n['name']))}(${children(n).map((c) => mathText(c, dim)).join('')})`;
+    default:
+      return generate(n);
+  }
+}
+
+const tracksText = (tokens: readonly CssNode[], dim: DimensionText = keepDimension, math?: MathTextHook): string => tokens.map((t) => trackText(t, dim, math)).filter((t) => t !== '').join(' ');
 
 /** Blink kGridMaxTracks: grid line integers are clamped to ±1e7, and a repeat() to 1e7 tracks. */
 const GRID_MAX_TRACKS = 10000000;
@@ -113,7 +140,9 @@ const clampCount = (count: number, tracks: number): number => {
 
 /**
  * css-values-4 §6: the lengths of a track-list value computed to px (em against the element's computed font-size, rem against the
- * root's, absolute units by their ratio); fr, % and px stay as written.
+ * root's, absolute units by their ratio); fr, % and px stay as written. A math function takes Chrome's computed form: one px length
+ * when it holds no percentage, clamped to 0 (a <track-breadth> is non-negative), else its leaves folded to a percentage and a px sum
+ * (math.ts computedLengthMathText).
  */
 export function absolutizeGridText(text: string, fonts: FontBases): string {
   const node = parse(text, { context: 'value' });
@@ -121,7 +150,7 @@ export function absolutizeGridText(text: string, fonts: FontBases): string {
     if (unit === CANONICAL_LENGTH_UNIT || unitEntry(unit) === null) return `${cssNumber(value)}${unit}`;
     const px = lengthToPx(Number(value), unit, fonts);
     return px === null ? `${cssNumber(value)}${unit}` : `${cssNumber(String(px))}${CANONICAL_LENGTH_UNIT}`;
-  });
+  }, (n) => computedLengthMathText(generate(n), fonts, (x) => cssNumber(String(x)), 'non-negative'));
 }
 
 // ---- Refusals ------------------------------------------------------------------------------------------------------------
@@ -130,40 +159,62 @@ const SUBGRID_REASON = 'subgrid needs the grid engine and its subgrid package';
 /** Where subgrid is the track-list keyword; elsewhere, and inside line-name brackets, it is a name like any other. */
 const SUBGRID_PROPERTIES: ReadonlySet<string> = new Set(['grid-template-columns', 'grid-template-rows', 'grid-template', 'grid']);
 
-/** calc(), min(), max() and clamp(), which V1 of the value model lowers only for box lengths, not inside grid values. */
-function trackMathRefusal(name: string): { reason: string; fix: string } | null {
+/** The properties whose track sizes take calc(), min(), max(), clamp() and viewport units, as the engine resolves them. */
+const TRACK_MATH_PROPERTIES: ReadonlySet<string> = new Set([...GRID_TRACK_LONGHANDS, 'grid-template', 'grid']);
+
+/**
+ * calc(), min(), max() and clamp() where the value is not a track size: a grid line's integer, a repeat() count, or any grid
+ * value other than a track list's.
+ */
+function nonTrackMathRefusal(name: string): { reason: string; fix: string } | null {
   const lower = asciiLower(name);
   if (!V1_MATH_FUNCTIONS.has(lower)) return null;
-  return { reason: `${lower}() is a css-values-4 math function, which grid values take only with the grid engine`, fix: 'Write the size as px, a percentage, fr or a keyword.' };
+  return { reason: `${lower}() is a css-values-4 math function, which grid values take only as a track size`, fix: 'Write the number as an integer.' };
 }
 
-/** vw, vh, vi, vb, vmin and vmax, which V1 of the value model resolves only in box lengths, not inside grid values. */
-function trackViewportRefusal(unit: string): { reason: string; fix: string } | null {
+/** vw, vh, vi, vb, vmin and vmax outside a track size. */
+function nonTrackViewportRefusal(unit: string): { reason: string; fix: string } | null {
   if (unitEntry(unit)?.conversion.kind !== 'viewport') return null;
-  return { reason: `${unit} is a viewport unit, which grid values take only with the grid engine`, fix: 'Write the size as px, em, rem, a percentage, fr or a keyword.' };
+  return { reason: `${unit} is a viewport unit, which grid values take only in a track size`, fix: 'Write the size as px, em, rem, a percentage, fr or a keyword.' };
 }
 
 /**
- * The first token Dragon cannot express: a unit with no build-time conversion, a viewport unit or a math function at any depth,
- * or the top-level subgrid keyword of a track list.
+ * The first token Dragon cannot express: a unit with no build-time conversion, a math function other than calc(), min(), max()
+ * and clamp(), a math function or viewport unit outside a track size (tracks false), or the top-level subgrid keyword of a track
+ * list.
  */
-function refusal(property: string, tokens: readonly CssNode[], base: Span, top = true): ParsedValue | null {
+function refusal(property: string, tokens: readonly CssNode[], base: Span, top = true, tracks = TRACK_MATH_PROPERTIES.has(property)): ParsedValue | null {
   for (const t of tokens) {
     let found: { reason: string; fix: string } | null = null;
     if (t.type === 'Dimension') {
       const unit = normalizeUnit(String(t['unit']));
-      found = unitRefusal(unit) ?? trackViewportRefusal(unit);
-    } else if (t.type === 'Function') found = mathFunctionRefusal(String(t['name'])) ?? trackMathRefusal(String(t['name']));
+      found = unitRefusal(unit) ?? (tracks ? null : nonTrackViewportRefusal(unit));
+    } else if (t.type === 'Function') found = mathFunctionRefusal(String(t['name'])) ?? (tracks ? null : nonTrackMathRefusal(String(t['name'])));
     else if (top && SUBGRID_PROPERTIES.has(property) && lowerIdent(t) === 'subgrid') found = { reason: SUBGRID_REASON, fix: 'Give the element its own track list.' };
     if (found !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${found.reason}`, manual: found.fix }) };
     }
-    if (t.type === 'Function' || t.type === 'Brackets') {
-      const inner = refusal(property, children(t), base, false);
+    if (t.type === 'Function' && fnName(t) === 'repeat') {
+      // repeat()'s first argument is its count, never a track size.
+      const [count, ...rest] = splitComma(children(t));
+      const inner = refusal(property, count ?? [], base, false, false) ?? refusal(property, rest.flat(), base, false, tracks);
+      if (inner !== null) return inner;
+    } else if (t.type === 'Function' || t.type === 'Brackets' || t.type === 'Parentheses') {
+      const inner = refusal(property, children(t), base, false, tracks);
       if (inner !== null) return inner;
     }
   }
   return null;
+}
+
+/** Tokens split at each top-level comma. */
+function splitComma(tokens: readonly CssNode[]): CssNode[][] {
+  const parts: CssNode[][] = [[]];
+  for (const t of tokens) {
+    if (t.type === 'Operator' && t['value'] === ',') parts.push([]);
+    else (parts[parts.length - 1] as CssNode[]).push(t);
+  }
+  return parts;
 }
 
 // ---- Grid lines ----------------------------------------------------------------------------------------------------------
@@ -257,6 +308,8 @@ const nonNegative = (n: CssNode): boolean => Number(n['value']) >= 0;
 /** <length-percentage [0,∞]>: a length in a length unit, a percentage, or a unitless zero; never negative. */
 function isFixedBreadth(n: CssNode | undefined): boolean {
   if (n === undefined) return false;
+  // A math function of the <length-percentage> type; Chrome clamps a negative result to 0 when it lays the track out.
+  if (n.type === 'Function') return V1_MATH_FUNCTIONS.has(fnName(n) ?? '') && mathInvalidity(generate(n), 'length-percentage') === null;
   if (n.type === 'Percentage') return nonNegative(n);
   if (n.type === 'Number') return Number(n['value']) === 0;
   if (n.type !== 'Dimension') return false;

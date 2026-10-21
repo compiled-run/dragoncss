@@ -1,0 +1,12 @@
+{
+  "case": "grid-track-math-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"f1:text0","lines":[[0,5],[5,7]]},
+    {"id":"f2:text0","lines":[[0,14],[14,15]]},
+    {"id":"t1:text0","lines":[[0,1]]},
+    {"id":"t2:text0","lines":[[0,4]]},
+    {"id":"t3:text0","lines":[[0,1]]},
+    {"id":"t5:text0","lines":[[0,4],[4,8],[8,11]]}
+  ]
+}

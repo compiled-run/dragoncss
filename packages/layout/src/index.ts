@@ -27,6 +27,7 @@ export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, Objec
 export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
 export type { ReplacedPaint } from './paint.ts';
 export { opacityAlpha8, replacedPaint } from './paint.ts';
+export { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
@@ -38,6 +39,7 @@ export { platformFontSize, snapEdge, textRunLayoutUnit, zoomFontSize } from './u
 export type { LinePiece, PlacedLine } from './inline.ts';
 export { inlineBoxes, inlineBreaks, inlineLeaves, leafFontOf, placeLines } from './inline.ts';
 export { clampedInput } from './line-clamp.ts';
+export { markerTextId } from './marker.ts';
 export type { Ctx } from './block.ts';
 export { resolvePadding } from './box.ts';
 export type { DprPlatformRule, DprPlatformRuleNode } from './platform-rules.ts';
@@ -47,8 +49,8 @@ export { applyEnvironment } from './environment.ts';
 export type { BoxShape } from './paint.ts';
 export type { RadiusFaults, RadiusLength } from './paint-radius.ts';
 export { borderDoubleRings, hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from './paint-radius.ts';
-export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from './paint-shadow.ts';
-export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, textShadowLayerOver } from './paint-shadow.ts';
+export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape, TextLinePaint } from './paint-shadow.ts';
+export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, textShadowLayerOver, textShadowLayerOverTexts } from './paint-shadow.ts';
 export { boxBlurMargin, hasNoBlur, NO_BLUR_FAULTS, shadowSigma } from './paint-blur.ts';
 export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
 export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from './paint-dash.ts';
@@ -80,6 +82,8 @@ export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';
+// Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
+export { buttonContentShift, controlAsBox, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
 export type { SvgBounds, SvgMatrix, SvgSegment, SvgShape, ViewBox } from './svg-geometry.ts';

@@ -1,0 +1,14 @@
+{
+  "case": "text-stroke-ahem",
+  "dpr": 2,
+  "texts": [
+    {"id":"inh:text0","lines":[[0,3],[3,5]]},
+    {"id":"s2:text0","lines":[[0,3],[3,5]]},
+    {"id":"s4:text0","lines":[[0,3],[3,5]]},
+    {"id":"s8:text0","lines":[[0,3],[3,5]]},
+    {"id":"s1:text0","lines":[[0,3]]},
+    {"id":"cur:text0","lines":[[0,2]]},
+    {"id":"pl:text0","lines":[[0,3]]},
+    {"id":"sp:text0","lines":[[0,2]]}
+  ]
+}

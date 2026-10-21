@@ -121,9 +121,10 @@ describe('the LayoutStyle constructor arguments', () => {
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
     const kotlin = emitAndroidViewsCases([emitCase(p.programs['android-views'])]).map((f) => f.text).join('\n');
     // INL1a: verticalAlign follows aspectRatio (input.ts order), always baseline from the compiler; then TXT2-f's textOverflow,
-    // TXT2-h's textIndent, TXT2-g's lineClamp, and GRID's grid and gridItem, nil off a grid.
-    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), Px(JsString("px"), 0.0), 0.0, nil, nil)';
-    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", Px("px", 0.0), 0.0, null, null)';
+    // TXT2-h's textIndent, TXT2-g's lineClamp, CONTAIN's containLayout, containPaint, containSize and contain-intrinsic sizes, and
+    // GRID's grid and gridItem, nil off a grid, and ZOOM's zoom chain, empty without zoom.
+    const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), Px(JsString("px"), 0.0), 0.0, false, false, JsString("none"), NoneValue(JsString("none")), NoneValue(JsString("none")), nil, nil, JsArray<Double>([]))';
+    const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", Px("px", 0.0), 0.0, false, false, "none", NoneValue("none"), NoneValue("none"), null, null, jsArrayOf<Double>())';
     expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0)${swiftAlign}`);
     expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0)${swiftAlign}`);
     expect(swift).toContain(`JsString("start"), Auto(JsString("auto"))${swiftAlign}`);
@@ -244,7 +245,7 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
     const leaf = { kind: 'text', id: 'p:t', text: 'XX', font, lineHeight: lhCalc, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false } as const;
     const width = { kind: 'calc', range: 'non-negative', expr: { kind: 'lh', value: 2, font, lineHeight: lhCalc } } as const;
     // INL1a: the container's strut has the leaf's font and line-height (validate.ts leaf-font), so it is a third LineHeightCalc.
-    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, children: [leaf] } as const;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: style(width), strut: { font, lineHeight: lhCalc }, marker: null, children: [leaf] } as const;
     for (const lang of ['swift', 'kotlin'] as const) {
       const src = inputFunctions(lang, root as never, 't').decls.join('\n');
       const q = lang === 'swift' ? (s: string) => `JsString("${s}")` : (s: string) => `"${s}"`;
@@ -254,7 +255,7 @@ describe('a calculated line height is built as the engine\'s LineHeightCalc (non
   });
   it('refuses a style without its grid fields instead of building it (they are null where unused)', () => {
     const { grid: _grid, ...rest } = nativeRoot().style;
-    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, strut: null, children: [] } as const;
+    const root = { kind: 'box', id: 'p', boxType: 'element', style: rest, strut: null, marker: null, children: [] } as const;
     for (const lang of ['swift', 'kotlin'] as const) expect(() => inputFunctions(lang, root as never, 't'), lang).toThrow('LayoutStyle.grid is missing');
   });
 });
@@ -276,6 +277,14 @@ describe('movingTransforms', () => {
     expect(moved.length).toBe(1);
     expect(moved[0]).toMatch(/p/);
     expect([...movingTransforms([a, a, null], null)]).toEqual([]);
+  });
+  // Review of #511 at 78f4d9cf: an individual transform that differs between cases moves the element too.
+  it('a rotate, scale or translate that differs between cases moves', () => {
+    for (const [x, y] of [['rotate: 10deg', 'rotate: 20deg'], ['scale: 2', 'scale: 3'], ['translate: 1px', 'translate: 2px']]) {
+      const moved = [...movingTransforms([resolvedOf(`.p { ${x}; }`), resolvedOf(`.p { ${y}; }`)], null)];
+      expect(moved.length, x).toBe(1);
+      expect(moved[0]).toMatch(/p/);
+    }
   });
 });
 

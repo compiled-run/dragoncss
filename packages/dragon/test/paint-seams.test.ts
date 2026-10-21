@@ -75,12 +75,13 @@ describe('EMS: the paint registries', () => {
         for (const b of ['uikit', 'android-views'] as const) expect(VOCABULARY[b][k as keyof (typeof VOCABULARY)['uikit']]).toEqual((m.vocabulary[b] as Record<string, unknown>)[k]);
       }
     }
-    // TXT-W adds the text run's synthetic-oblique shear and synthetic-bold stroke after its font and colour.
-    for (const b of ['uikit', 'android-views'] as const) expect(Object.keys(VOCABULARY[b]), b).toEqual([...PAINT_EMITTERS.flatMap((m) => m.kinds), 'font', 'text-color', 'synthetic-oblique', 'synthetic-bold']);
+    // TXT-W adds the text run's synthetic-oblique shear and synthetic-bold stroke after its font and colour, and TXT-FX its text stroke.
+    for (const b of ['uikit', 'android-views'] as const) expect(Object.keys(VOCABULARY[b]), b).toEqual([...PAINT_EMITTERS.flatMap((m) => m.kinds), 'font', 'text-color', 'synthetic-oblique', 'synthetic-bold', 'text-stroke']);
     expect(isPaintKind('font')).toBe(false);
     expect(isPaintKind('text-color')).toBe(false);
     expect(isPaintKind('synthetic-oblique')).toBe(false);
     expect(isPaintKind('synthetic-bold')).toBe(false);
+    expect(isPaintKind('text-stroke')).toBe(false);
   });
   it('the lowering registry refuses a write kind lowered by two modules, a vocabulary that disagrees with the longhands, or a reordered list', () => {
     expect(() => checkPaintLowerings(PAINT_LOWERINGS)).not.toThrow();
@@ -187,7 +188,7 @@ describe('EMS: native support', () => {
       expect(kotlin).toMatch(new RegExp(`var ${p} = .*\\n    set\\(value\\) \\{ field = value; invalidate\\(\\) \\}`));
     }
     expect(swift).toContain('public func dragonEnableClip()');
-    expect(kotlin).toContain('fun dragonBackground(v: DragonBoxView, c: DragonRGBA8)');
+    expect(kotlin).toContain('fun dragonBackground(v: DragonBoxView, c: DragonRGBA8, folded: Boolean = false)');
     expect(swift).toContain('public func node(_ id: String) -> DragonNodeView?');
     expect(kotlin).toContain('fun node(id: String): DragonNodeView?');
   });
@@ -199,7 +200,7 @@ describe('EMS: native support', () => {
 
 describe('EMS: CSS families and paint values', () => {
   it('registers the paint families, each empty until its package fills it (PNT2 filled transform), and wired when filled', () => {
-    expect(transform.TRANSFORM_LONGHANDS).toEqual(['transform', 'transform-origin', 'will-change']);
+    expect(transform.TRANSFORM_LONGHANDS).toEqual(['transform', 'transform-origin', 'will-change', 'translate', 'rotate', 'scale']);
     expect(transform.TRANSFORM_SHORTHANDS).toEqual([]);
     // PIN-DERIVE: an empty family is wholly empty; a filled one has an aspect per longhand, each a registered longhand, and a
     // handler per shorthand, so a family is never half registered.
@@ -296,11 +297,12 @@ describe('REPL-a foreign view: a production build loads the iframe src (R9)', ()
   });
   // #72 landing device run: every Dragon group draws its children unclipped, and a WebView drawn without a clip cleared the whole
   // window behind it on the emulator (blank captures of the iframe fixtures). The host group clips the web view to its frame.
-  it('the Android web view host group clips its web view to its frame, which no other Dragon group does', () => {
+  it('the Android web view and video host groups clip their view to their frame, which no other Dragon group does', () => {
     const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
     expect(body(kotlin, 'open class DragonGroup(ctx: Context) : ViewGroup(ctx) {')).toContain('\n    clipChildren = false\n');
-    const host = body(kotlin, 'class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {');
-    expect(host).toContain('\n  init {\n    clipChildren = true\n  }\n');
-    expect(kotlin.match(/clipChildren = true/g)).toEqual(['clipChildren = true']);
+    for (const signature of ['class DragonForeignHost(ctx: Context) : DragonGroup(ctx) {', 'class DragonVideoHost(ctx: Context) : DragonGroup(ctx) {']) {
+      expect(body(kotlin, signature)).toContain('\n  init {\n    clipChildren = true\n  }\n');
+    }
+    expect(kotlin.match(/clipChildren = true/g)).toEqual(['clipChildren = true', 'clipChildren = true']);
   });
 });

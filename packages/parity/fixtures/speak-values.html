@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; --m: digits; }
+.box { width: 80px; height: 10px; background-color: rgb(40, 90, 200); }
+.ro { speak: spell-out; }
+.up { SPEAK: Literal-Punctuation; }
+.v { speak: var(--m); }
+.par { speak: none; width: 120px; height: 20px; background-color: rgb(200, 60, 40); }
+.inh { speak: inherit; width: 60px; height: 10px; }
+.ini { speak: initial; width: 60px; height: 10px; }
+.uns { speak: unset; width: 60px; height: 10px; }
+.f { display: flex; width: 200px; height: 20px; speak: no-punctuation; }
+.fi { width: 60px; height: 20px; background-color: rgb(20, 160, 80); }
+.rel { position: relative; width: 60px; height: 20px; speak: digits; }
+.abs { position: absolute; left: 4px; top: 2px; width: 20px; height: 10px; speak: normal; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="ro" class="box ro">X</div>
+<div data-dragon-id="up" class="box up">X</div>
+<div data-dragon-id="v" class="box v">X</div>
+<div data-dragon-id="par" class="par"><div data-dragon-id="inh" class="inh">XX</div><div data-dragon-id="ini" class="ini">X</div></div>
+<div data-dragon-id="par2" class="par"><div data-dragon-id="uns" class="uns">X</div></div>
+<div data-dragon-id="f" class="f"><div data-dragon-id="f1" class="fi">XXXX</div><div data-dragon-id="f2" class="fi">X</div></div>
+<div data-dragon-id="rel" class="rel"><div data-dragon-id="abs" class="abs">X</div></div>
+</body>
+</html>

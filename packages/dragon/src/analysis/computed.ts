@@ -8,9 +8,11 @@ import { absolutizeGridText, GRID_TRACK_LONGHANDS } from '../css/grid-values.ts'
 import { properties as grammar } from '../css/grammar.generated.ts';
 import type { Longhand } from '../css/properties.ts';
 import { COLOR_LONGHANDS, INHERITED } from '../css/properties.ts';
-import type { CssValue, Declaration } from '../css/stylesheet.ts';
+import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
-import { isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
+import type { FoldBases } from '../css/math.ts';
+import { foldableUnits, foldLength, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
+import { FOLDED_MATH_PROPERTIES, isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
 import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
@@ -24,6 +26,7 @@ import type { LinkedElement } from './link.ts';
 import type { Substitution, VarScope } from './variables.ts';
 import { substituteWinner } from './variables.ts';
 import { computePaintValues } from './paint-values/index.ts';
+import { lineHeightPercentPx } from '../fonts/line-height-percent.ts';
 
 /** environment: the root's direction and font, seeded from the reference environment (docs/api.md §7), never from an author declaration. */
 /** presentational-hint: an HTML attribute mapped to a property (HTML §15.4.5), below author rules (css-cascade-5 §6.1). */
@@ -35,7 +38,17 @@ export type Origin = 'author' | 'presentational-hint' | 'inherited' | 'user-agen
  * leaves the root font-family at the dataset's value.
  */
 /** registered: the document's @property registrations (css/at-rules/property.ts); none when absent. */
-export type ResolveEnvironment = { readonly direction: 'ltr' | 'rtl'; readonly rootFont: RootFont; readonly ua: UaDataset; readonly registered?: Registrations };
+export type ResolveEnvironment = {
+  readonly direction: 'ltr' | 'rtl';
+  readonly rootFont: RootFont;
+  readonly ua: UaDataset;
+  readonly registered?: Registrations;
+  /**
+   * CQ: whether a @container rule applies to an element, given its ancestors (a generated box's end with its host) and the element
+   * (null for a generated box); absent, no @container rule applies (analysis/container-rules.ts finds the containers without them).
+   */
+  readonly container?: (rule: Rule, ancestors: readonly LinkedElement[], self: LinkedElement | null) => boolean;
+};
 
 export type RootFont = 'ahem' | 'ua-default';
 
@@ -198,9 +211,28 @@ const SPEC_ABSOLUTE_SIZE_PX: { readonly [k: string]: number } = { 'xx-small': 9.
  * are already px. rem uses text scale 1 (docs/decisions.md, Text scale).
  */
 export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSize: number | null, rootFontSize: number | null, faults: TxtFsFaults = TXT_FS_FAULTS): void {
+  const foldMath = (p: Longhand, bases: FoldBases, f: TxtFsFaults): void => {
+    const v = props.get(p);
+    if (v === undefined || v.origin === 'inherited' || v.value.kind !== 'other' || v.value.type.startsWith(REFUSED_MATH_PREFIX) || !FOLDED_MATH_PROPERTIES.has(p)) return;
+    const context = mathContextFor(p);
+    if ('refused' in context) return;
+    const parsed = parseMath(v.value.text, context);
+    if (!parsed.ok) return;
+    if (!foldableUnits(parsed.node)) {
+      // A font-size calculation that reads the viewport stays a calculation the engine resolves on the device (CALC-2), with its em,
+      // rem and % made px here, as css-values-4 §6.1.1 and ConvertFontSize take them of the parent's and the root's sizes.
+      if (p === 'font-size' && mathHasViewport(parsed.node)) props.set(p, { ...v, value: { ...v.value, text: fontRelativeAsPx(v.value.text, f.calcPercentOfRoot ? { ...bases, percent: bases.rem } : bases) } });
+      return;
+    }
+    if (Number.isNaN(bases.em)) return;
+    const px = foldLength(parsed.node, f.calcPercentOfRoot ? { ...bases, percent: bases.rem } : bases);
+    props.set(p, { ...v, value: { kind: 'length', value: Number.isNaN(px) || px < 0 ? 0 : px, unit: CANONICAL_LENGTH_UNIT } });
+  };
   const toPx = (p: Longhand, em: number | null, rem: number | null): void => {
     const v = props.get(p) as ResolvedValue;
-    if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT) return;
+    // An inherited length is the parent's computed value: one still relative was taken of a font size that follows the viewport,
+    // which analysis/computed-checks.ts checkViewportFont refuses where it reaches text, never this element's own size (CALC-2).
+    if (v.value.kind !== 'length' || v.value.unit === CANONICAL_LENGTH_UNIT || v.origin === 'inherited') return;
     const needs = v.value.unit === 'em' ? em : v.value.unit === 'rem' ? rem : 0;
     if (needs === null) return;
     const px = lengthToPx(v.value.value, v.value.unit, { em: em ?? 0, rem: rem ?? 0 });
@@ -220,10 +252,38 @@ export function computeLengths(props: Map<Longhand, ResolvedValue>, parentFontSi
   if (fs.value.kind === 'percentage' && of !== null) {
     props.set('font-size', { ...fs, value: { kind: 'length', value: (fs.value.value * of) / 100, unit: CANONICAL_LENGTH_UNIT } });
   }
+  // CALC-2: a font-size calculation reads em and % of the parent's size and rem of the root's (css-values-4 §6.1.1), clamped to its
+  // non-negative range (§10.10); kept in double, as every compiler length is (the engine stores font sizes as float32 on entry).
+  if (parentFontSize !== null) foldMath('font-size', { em: parentFontSize, rem: rootFontSize ?? parentFontSize, percent: parentFontSize }, faults);
+  // Under a parent size that follows the viewport, only rem is known here: a viewport calculation's rem is made px, and one
+  // with em or % stays relative, which analysis/computed-checks.ts checkViewportFont refuses.
+  else if (rootFontSize !== null) foldMath('font-size', { em: Number.NaN, rem: rootFontSize, percent: Number.NaN }, faults);
+  if (faults.viewportFontReadsHeight) {
+    const v = props.get('font-size') as ResolvedValue;
+    if (v.value.kind === 'length' && v.value.unit === 'vw') props.set('font-size', { ...v, value: { ...v.value, unit: 'vh' } });
+    if (v.value.kind === 'other') props.set('font-size', { ...v, value: { ...v.value, text: v.value.text.replace(/(\d)vw\b/gi, '$1vh') } });
+  }
   toPx('font-size', parentFontSize, rootFontSize ?? parentFontSize);
   const own = pxOf((props.get('font-size') as ResolvedValue).value);
+  // A line-height calculation reads em and % of the element's own size (ConvertLineHeight) and computes to an absolute length.
+  if (own !== null) foldMath('line-height', { em: own, rem: rootFontSize ?? own, percent: own }, faults);
+  // A percentage line-height computes to that share of the element's own size (ConvertLineHeight), which its children inherit.
+  const lh = props.get('line-height');
+  // Blink stores float(computed * int(percent)) / 100.0 as a float (fonts/line-height-percent.ts).
+  if (own !== null && lh !== undefined && lh.origin !== 'inherited' && lh.value.kind === 'percentage') props.set('line-height', { ...lh, value: { kind: 'length', value: lineHeightPercentPx(own, lh.value.value), unit: CANONICAL_LENGTH_UNIT } });
   for (const p of props.keys()) if (p !== 'font-size') toPx(p, own, rootFontSize ?? own);
   computePaintValues(props, { em: own, rem: rootFontSize ?? own });
+}
+
+const FONT_RELATIVE_IN_MATH = /(^|[\s(*/+,-])((?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(r?em|%)(?![\w-])/gi;
+
+/** A calculation's text with each em, rem and % leaf written as the px it reads (bases), for a calculation that stays one. */
+function fontRelativeAsPx(text: string, bases: FoldBases): string {
+  return text.replace(FONT_RELATIVE_IN_MATH, (all, before: string, n: string, unit: string) => {
+    const u = unit.toLowerCase();
+    const px = Number(n) * (u === 'em' ? bases.em : u === 'rem' ? bases.rem : bases.percent / 100);
+    return !Number.isFinite(px) || /e/i.test(String(px)) ? all : `${before}${String(px)}${CANONICAL_LENGTH_UNIT}`;
+  });
 }
 
 /** Inherited lengths whose value may be a calculation: their em and rem compute at the declaring element (css-values-4 §6). */
@@ -373,6 +433,29 @@ export function synthesizesBold(props: ReadonlyMap<Longhand, ResolvedValue>, fro
   return synthesisAllowedOf(props).weight && textFontOfProps(props).weight >= from;
 }
 
+/**
+ * Chrome 145's appearance display adjustment, measured on every display value with appearance auto and none
+ * (packages/parity/fixtures/controls-button-display*.html): when appearance is not none, an inline, math or table-internal display
+ * becomes inline-block and a table or list-item display becomes block, keyed by the display's keywords in sorted order. Blink does
+ * this in LGPL layout_theme.cc:274-289 LayoutTheme::AdjustStyle, a reference only: the table is the measurement, not that code.
+ */
+const APPEARANCE_DISPLAY: ReadonlyMap<string, string> = new Map([
+  ['inline', 'inline-block'], ['flow inline', 'inline-block'], ['inline-table', 'inline-block'], ['inline table', 'inline-block'],
+  ['math', 'inline-block'], ['inline math', 'inline-block'],
+  ['table-row-group', 'inline-block'], ['table-header-group', 'inline-block'], ['table-footer-group', 'inline-block'], ['table-row', 'inline-block'],
+  ['table-column-group', 'inline-block'], ['table-column', 'inline-block'], ['table-cell', 'inline-block'], ['table-caption', 'inline-block'],
+  ['table', 'block'], ['block table', 'block'],
+  ['list-item', 'block'], ['block list-item', 'block'], ['flow list-item', 'block'], ['block flow list-item', 'block'],
+]);
+
+/** The display after the appearance adjustment above, or the display itself when appearance is none or the display is not adjusted. */
+export function appearanceDisplay(display: ResolvedValue, appearance: ResolvedValue): ResolvedValue {
+  if (appearance.value.kind === 'keyword' && appearance.value.value === 'none') return display;
+  const keys = display.value.kind === 'keyword' ? display.value.value : display.value.kind === 'other' && display.value.type === 'list' ? display.value.text.trim().split(/\s+/).sort().join(' ') : null;
+  const to = keys === null ? undefined : APPEARANCE_DISPLAY.get(keys);
+  return to === undefined ? display : { ...display, value: { kind: 'keyword', value: to } };
+}
+
 // css-display-3 §2.7: the root element's display is blockified (Chrome reports block for html even under display: initial).
 export function blockifyRoot(v: ResolvedValue): ResolvedValue {
   return v.value.kind === 'keyword' && v.value.value === 'inline' ? { ...v, value: { kind: 'keyword', value: 'block' } } : v;
@@ -390,7 +473,7 @@ export function valueToString(v: CssValue): string {
     case 'number':
       return String(v.value);
     case 'color':
-      return serializeColor(v.value);
+      return v.css ?? serializeColor(v.value);
     case 'ratio':
       return `${v.auto ? 'auto ' : ''}${v.width} / ${v.height}`;
     case 'position':

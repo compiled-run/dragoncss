@@ -5,7 +5,7 @@ import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, Layou
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { ceilToInt, divLu, equalShare, floorToInt, frLeftover, frShareToLu, intDiv, intMod, rawOverFloat, setFlexFactor } from '../src/units.ts';
-import { ahemFont, anon, box, neutralEnvironment, span, text } from './helpers.ts';
+import { ahemFont, anon, box, control, neutralEnvironment, span, text } from './helpers.ts';
 
 const fr = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'fr', value } });
 const px = (value: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'px', value } });
@@ -148,6 +148,29 @@ describe('the validator\'s grid rules, each with a planted input', () => {
     const replacedGrid = input(box('root', {}, []));
     (replacedGrid.root as unknown as { children: unknown[] }).children = [leaf({ display: 'grid', grid: gridStyle({}) })];
     expect(codes(replacedGrid)).toContain('grid-shape $.root.children[0].style.grid');
+  });
+  it('checks a form control child of a grid container like a box child, outside one too, and keeps a slider thumb out of one', () => {
+    const button = (style: Record<string, unknown>): unknown => JSON.parse(JSON.stringify(control('btn', { kind: 'button-block' }, style)));
+    const withControl = (style: Record<string, unknown>): unknown => mutate((r) => {
+      (r.children[0] as unknown as { children: unknown[] }).children = [button(style)];
+    });
+    expect(codes(withControl({ gridItem: autoItem }))).toEqual([]);
+    // The engine places no control in a grid yet: a control grid item is unsupported, never an internal error.
+    const placed = layout(withControl({ gridItem: autoItem }) as LayoutInput, ahemMeasurer);
+    expect(placed.kind === 'unsupported' ? [placed.unsupported.code, placed.unsupported.nodeId] : placed.kind).toEqual(['grid-control', 'btn']);
+    expect(codes(withControl({}))).toContain('grid-shape $.root.children[0].children[0].style.gridItem');
+    const placedOutside = input(box('root', {}, []));
+    (placedOutside.root as unknown as { children: unknown[] }).children = [button({ gridItem: autoItem })];
+    expect(codes(placedOutside)).toContain('grid-shape $.root.children[0].style.gridItem');
+    // A control that is a grid container carries its grid style like a box, and its own children their placements.
+    const controlGrid = input(box('root', {}, []));
+    (controlGrid.root as unknown as { children: unknown[] }).children = [button({ display: 'grid', width: { kind: 'px', value: 100 } })];
+    expect(codes(controlGrid)).toContain('grid-shape $.root.children[0].style.grid');
+    // A slider thumb moves only in a block container's flow, so a grid container is not its parent.
+    const thumbIn = mutate((r) => {
+      (r.children[0] as unknown as { children: unknown[] }).children = [JSON.parse(JSON.stringify(control('thumb', { kind: 'slider-thumb', ratio: 0.5 }, { gridItem: autoItem })))];
+    });
+    expect(codes(thumbIn)).toContain('bad-value $.root.children[0].children[0].control');
   });
   it('takes an inline box only inside an anonymous grid item, never as a grid item or a grid container (INL1a with GRID G1a)', () => {
     // css-grid-2 §6: inline content in a grid container is wrapped in an anonymous, auto-placed grid item.
@@ -538,5 +561,35 @@ describe('percentages in a grid item\'s padding and margins while its auto colum
       const m = boxesOf({ ...g, style: { ...g.style, height: { kind: 'px', value: 5 } } });
       expect(m.get('b')?.y, paddingTop.kind).toBe(10 * 64);
     }
+  });
+});
+
+describe('calculated and viewport track sizes (Blink GridTrackSize over a calculated Length)', () => {
+  const pp = (pixels: number, percent: number): TrackSize => ({ kind: 'breadth', breadth: { kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: pixels }, { kind: 'percent', value: percent }] }, range: 'non-negative' } });
+  const cols = (sizes: readonly TrackSize[]): GridContainerStyle => gridStyle({ templateColumns: sizes.map((s) => ({ count: 1, sizes: [s] })), explicitColumnCount: sizes.length });
+  const items = (n: number): LayoutBox[] => Array.from({ length: n }, (_, k) => h10(`i${k}`));
+
+  it('resolves calc(50% - 10px) against the width, and clamps a negative result to 0 (ValueRange::kNonNegative)', () => {
+    expect(inGrid(grid(cols([pp(-10, 50), fr(1)]), items(2)), ['i0', 'i1'])).toEqual([[0, 0, 40 * 64, 640], [40 * 64, 0, 60 * 64, 640]]);
+    expect(inGrid(grid(cols([pp(10, -20), fr(1)]), items(2)), ['i0', 'i1'])).toEqual([[0, 0, 0, 640], [0, 0, 100 * 64, 640]]);
+  });
+  it('resolves a viewport length and a calculation without a percentage to px in the environment pass', () => {
+    const vw: TrackSize = { kind: 'breadth', breadth: { kind: 'calc', expr: { kind: 'viewport', value: 10, axis: 'width', size: 'large' }, range: 'non-negative' } };
+    // 10vw of the 400px viewport.
+    expect(inGrid(grid(cols([vw, fr(1)]), items(2)), ['i0', 'i1'])).toEqual([[0, 0, 40 * 64, 640], [40 * 64, 0, 60 * 64, 640]]);
+  });
+  it('counts auto-fill repetitions of minmax(min(100%, 30px), 1fr) with the calculation resolved against the width', () => {
+    const min: TrackSize = { kind: 'minmax', min: { kind: 'calc', expr: { kind: 'min', terms: [{ kind: 'percent', value: 100 }, { kind: 'px', value: 30 }] }, range: 'non-negative' }, max: { kind: 'fr', value: 1 } };
+    // floor(100 / 30) = 3 columns sharing 100px; the fourth item wraps.
+    expect(inGrid(grid(gridStyle({ autoRepeatColumns: fillOf('auto-fill', [min]) }), items(4)), ['i2', 'i3'])).toEqual([[4266, 0, 2133, 640], [0, 640, 2133, 640]]);
+    // Over 20px, min(100%, 30px) is 20px: one column.
+    expect(inGrid(grid(gridStyle({ autoRepeatColumns: fillOf('auto-fill', [min]) }), items(2), 20), ['i1'])).toEqual([[0, 640, 1280, 640]]);
+  });
+  it('sizes a row whose calculation has a percentage as auto against an indefinite height (GridSet normalization)', () => {
+    const g = box('g', { display: 'grid', width: { kind: 'px', value: 100 }, grid: gridStyle({ templateRows: [{ count: 1, sizes: [pp(30, 50)] }], explicitRowCount: 1 }) }, [h10('i0')]);
+    expect(inGrid(g, ['g', 'i0'])).toEqual([[0, 0, 6400, 640], [0, 0, 6400, 640]]);
+    const definite = box('g', { display: 'grid', width: { kind: 'px', value: 100 }, height: { kind: 'px', value: 40 }, grid: gridStyle({ templateRows: [{ count: 1, sizes: [pp(30, 50)] }], explicitRowCount: 1 }) }, [box('i0', { gridItem: autoItem })]);
+    // 30px + 50% of 40px, and the item stretches to the row.
+    expect(inGrid(definite, ['i0'])).toEqual([[0, 0, 6400, 50 * 64]]);
   });
 });

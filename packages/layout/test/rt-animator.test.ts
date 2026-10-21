@@ -1,15 +1,15 @@
 // T065 ANIM-b1 3b: the runtime animator's own rules on hand-built tables. Its equality with Chrome at every sample is the frame
 // lanes' (packages/parity anim-frames.test.ts); its translation is the animator suite's (packages/translate).
 import { describe, expect, it } from 'vitest';
-import type { LayoutInput } from '../src/input.ts';
+import type { ControlBox, LayoutInput } from '../src/input.ts';
 import { NO_RT_FAULTS } from '../src/rt-easing.ts';
 import type { AnimTables, EasingCode, ListingCode, ValueCode } from '../src/rt-animator.ts';
-import { animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
+import { animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorRestyle, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
 import { legacyColor, serializeColor, serializeValue } from '../src/rt-interpolate.ts';
-import { box, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
+import { box, control, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
 
 const LINEAR: EasingCode = { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 1, position: 'end' };
-const NONE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false };
+const NONE: ValueCode = { kind: 'none', r: 0, g: 0, b: 0, alpha: 0, px: 0, percent: 0, calc: false, ops: [] };
 const rgb = (r: number, g: number, b: number): ValueCode => ({ ...NONE, kind: 'color', r, g, b, alpha: 1 });
 const listed = (duration: number): ListingCode => ({ present: true, mode: 'listed', delay: 0, duration, easing: LINEAR });
 const viewport = { width: 400, height: 300 };
@@ -32,6 +32,7 @@ const TABLES: AnimTables = {
   rendered: [{ node: 'root', values: [true, true, true] }, { node: 'a', values: [true, true, false] }],
   bases: [],
   closure: [{ source: { node: 'a', property: 'background-color' }, writes: [{ node: 'b', property: 'color' }] }],
+  origins: [],
 };
 const INPUTS = [input(10), input(110), input(0, false)];
 const show = (v: Parameters<typeof serializeValue>[0]): string => serializeValue(v, 0, 0, { sin: Math.sin, cos: Math.cos });
@@ -95,6 +96,22 @@ describe('rt-animator', () => {
     expect(patchInput(INPUTS[0] as LayoutInput, [], TABLES)).toBe(INPUTS[0]);
   });
 
+  it('reads and patches the lengths of a form control and of a box inside one, as of any box (FORM-a)', () => {
+    const inner = box('in', { paddingLeft: px(3) });
+    const button = control('btn', { kind: 'button-block' }, { width: px(40) }, [inner]);
+    const withControl: LayoutInput = { viewport, devicePixelRatio: 1, ...neutralEnvironment(viewport), root: { ...box('root', {}), children: [button] } };
+    expect(show(lengthBase(withControl, 'btn', 'width') as never)).toBe('40px');
+    expect(show(lengthBase(withControl, 'in', 'padding-left') as never)).toBe('3px');
+    const v = (n: number) => ({ kind: 'length' as const, number: 0, length: { kind: 'px' as const, px: n, percent: 0 }, color: { r: 0, g: 0, b: 0, alpha: 0 }, ops: [] });
+    const tables: AnimTables = { ...TABLES, slots: [], bases: [{ node: 'btn', property: 'width', kind: 'length', range: 'non-negative', values: [NONE, NONE, NONE] }, { node: 'in', property: 'padding-left', kind: 'length', range: 'non-negative', values: [NONE, NONE, NONE] }] };
+    const patched = patchInput(withControl, [{ node: 'btn', property: 'width', value: v(55) }, { node: 'in', property: 'padding-left', value: v(9) }], tables);
+    const c = patched.root.children[0] as ControlBox;
+    expect(c.kind).toBe('control');
+    expect(c.control).toEqual({ kind: 'button-block' });
+    expect(c.style.width).toEqual({ kind: 'px', value: 55 });
+    expect((c.children[0] as ReturnType<typeof box>).style.paddingLeft).toEqual({ kind: 'px', value: 9 });
+  });
+
   it('draws colours with Chrome serialised channels and 8-bit alpha, and carries an animated colour to its closure', () => {
     for (const [r, g, b, alpha] of [[0.4999, 127.5, 254.6, 1], [12.25, 99.5, 200.75, 0.5], [1, 2, 3, 0.002], [300, -4, 255, 0.999]] as const) {
       const c = legacyColor(r, g, b, alpha);
@@ -112,5 +129,49 @@ describe('rt-animator', () => {
     const frame = animatorFrame(s, TABLES, NO_RT_FAULTS);
     expect(frameColors(frame, TABLES, NO_ANIMATOR_FAULTS).map((c) => `${c.node} ${c.property} ${c.rgba.r},${c.rgba.g},${c.rgba.b},${c.rgba.alpha}`)).toEqual(['a background-color 64,64,64,255', 'b color 64,64,64,255']);
     expect(frameColors(frame, TABLES, { ...NO_ANIMATOR_FAULTS, inheritedNotPropagated: true }).map((c) => c.node)).toEqual(['a']);
+  });
+
+  // MQ-R1: a size change of the media root re-resolves every viewport-relative length; the event across it reads the before-change
+  // style at the old size and the after-change style at the new one, as Chrome's restyle after a resize does.
+  describe('a style change event across a size change (animatorRestyle)', () => {
+    // The same assignments at a wider media root: a's width is a viewport-relative length, so it resolves wider.
+    const WIDE = [input(50), input(150), input(0, false)];
+    const frame = (s: ReturnType<typeof animatorStart>): string[] => frameText(TABLES, s).filter((e) => e.startsWith('a width'));
+
+    it('is animatorEvent when the inputs do not change', () => {
+      let a = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      let b = a;
+      a = animatorEvent(a, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      b = animatorRestyle(b, TABLES, INPUTS, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(b).toEqual(a);
+    });
+
+    it('transitions a length the size change moved, from its old to its new resolved value', () => {
+      let s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      // An event that kept the old inputs would see no change and start nothing: the stale case.
+      expect(frame(animatorAdvance(animatorEvent(s, TABLES, INPUTS, 0, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS), TABLES, INPUTS, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS))).toEqual([]);
+      s = animatorRestyle(s, TABLES, INPUTS, WIDE, 0, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorAdvance(s, TABLES, WIDE, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(frame(s)).toEqual(['a width 30px']);
+    });
+
+    it('retargets a running transition to the end value at the new size, from where it is', () => {
+      let s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorEvent(s, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorAdvance(s, TABLES, INPUTS, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(frame(s)).toEqual(['a width 60px']);
+      const stale = animatorAdvance(animatorEvent(s, TABLES, INPUTS, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS), TABLES, INPUTS, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorRestyle(s, TABLES, INPUTS, WIDE, 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      s = animatorAdvance(s, TABLES, WIDE, 0, 500, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      // Kept on the old inputs, the transition ran on to its stale end (110px) and is over; Chrome starts a new one from the
+      // current 60px to the new end 150px (css-transitions-1 §3, a running transition whose end value changed).
+      expect(frame(stale)).toEqual([]);
+      expect(frame(s)).toEqual(['a width 105px']);
+    });
+
+    it('refuses inputs that do not cover every assignment', () => {
+      const s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
+      expect(() => animatorRestyle(s, TABLES, INPUTS, WIDE.slice(0, 2), 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS)).toThrow(/3 and 2 resolved engine inputs for 3 assignments/);
+    });
   });
 });

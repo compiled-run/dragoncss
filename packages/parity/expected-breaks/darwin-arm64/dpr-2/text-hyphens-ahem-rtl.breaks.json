@@ -1,0 +1,14 @@
+{
+  "case": "text-hyphens-ahem-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"h1:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"h2:text0","data":"internationalization extraordinary","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[20]},
+    {"id":"h3:text0","data":"uncharacteristically interesting stories","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2],"blank":[20,32]},
+    {"id":"h4:text0","data":"extraordinarily long words","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2],"blank":[15,20]},
+    {"id":"h5:text0","data":"XXX XXXX XX XXXXX","lines":4,"units":[0,0,0,0,1,1,1,1,1,2,2,2,3,3,3,3,3],"blank":[3,8,11]},
+    {"id":"ra:text0","data":"characterization","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"rb:text0","data":"ab cd","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}

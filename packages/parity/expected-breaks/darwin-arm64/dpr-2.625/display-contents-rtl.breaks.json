@@ -1,0 +1,22 @@
+{
+  "case": "display-contents-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","data":"xx ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"a:text1","data":" ww","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"a1:text0","data":"yy ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"a2:text0","data":"zz","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b2:text0","data":"one","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"b3:text0","data":"two","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n2:text0","data":"deep","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t1:text0","data":"loose ","lines":1,"units":[0,0,0,0,0,0],"blank":[5]},
+    {"id":"t2:text0","data":"bold","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t3:text0","data":"x","lines":1,"units":[0],"blank":[]},
+    {"id":"p:text0","data":"pp ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"p:text1","data":" rr","lines":1,"units":[0,0,0],"blank":[0]},
+    {"id":"p1:text0","data":"qq","lines":1,"units":[0,0],"blank":[]},
+    {"id":"p1::before:text0","data":"b","lines":1,"units":[0],"blank":[]},
+    {"id":"p1::after:text0","data":"a","lines":1,"units":[0],"blank":[]}
+  ]
+}

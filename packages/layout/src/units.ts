@@ -668,6 +668,19 @@ export function computedFontSize(specified: number, absoluteSize: boolean, zoom:
   return zoomed < MAX_FONT_SIZE ? zoomed : MAX_FONT_SIZE;
 }
 
+/**
+ * Blink's effective zoom (StyleResolverState::SetZoom, ComputedStyleBuilder::SetEffectiveZoom): the root's is the device zoom, and
+ * each zoomed element's is its parent's times its own zoom in float, clamped to [1e-6, 1e6].
+ */
+export function effectiveZoom(deviceZoom: number, zooms: readonly number[]): number {
+  let z = deviceZoom;
+  for (const own of zooms) {
+    const zoomed = Math.fround(z * Math.fround(own));
+    z = zoomed < 1e-6 ? 1e-6 : zoomed > 1e6 ? 1e6 : zoomed;
+  }
+  return z;
+}
+
 /** SimpleFontData x-height on macOS: the bounds of glyph x, the font instance size times float(units / unitsPerEm) in float. */
 export function glyphBoundsMetricPx(instanceSizePx: number, unitsPerEm: number, units: number): number {
   return Math.fround(Math.fround(instanceSizePx) * Math.fround(units / unitsPerEm));

@@ -1,0 +1,22 @@
+{
+  "case": "scroll-scrollbar-values",
+  "dpr": 2,
+  "texts": [
+    {"id":"c1:text0","lines":[[0,5]]},
+    {"id":"c2:text0","lines":[[0,2]]},
+    {"id":"c3:text0","lines":[[0,2]]},
+    {"id":"c4:text0","lines":[[0,2]]},
+    {"id":"c5:text0","lines":[[0,2]]},
+    {"id":"c6:text0","lines":[[0,2]]},
+    {"id":"c7:text0","lines":[[0,2]]},
+    {"id":"f1:text0","lines":[[0,2]]},
+    {"id":"rc1:text0","lines":[[0,1]]},
+    {"id":"rc2:text0","lines":[[0,1]]},
+    {"id":"qc1:text0","lines":[[0,1]]},
+    {"id":"q2:text0","lines":[[0,1]]},
+    {"id":"gc1:text0","lines":[[0,1]]},
+    {"id":"gc2:text0","lines":[[0,1]]},
+    {"id":"c8:text0","lines":[[0,2]]},
+    {"id":"c9:text0","lines":[[0,2]]}
+  ]
+}

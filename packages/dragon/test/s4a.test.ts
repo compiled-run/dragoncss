@@ -193,14 +193,14 @@ describe('the root font size the engine input carries (V2 rootFontSize)', () => 
   it('is the root font size in px when it computes to px', () => {
     // INL1a: larger computes to the parent's size times 1.2 (css-fonts-4 §2.5, Blink FontDescription::LargerSize), at the root the
     // initial 16px, so it is px now. TXT-FS: an <absolute-size> keyword is Chrome's table at medium 16px, and a percentage is the
-    // parent's size (at the root the initial 16px) times it, so both are px too.
-    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2], ['medium', 16], ['small', 13], ['120%', 19.2]] as const) {
+    // parent's size (at the root the initial 16px) times it, so both are px too. CALC-2: a calculation of px, %, em and rem folds to px.
+    for (const [fontSize, px] of [['2em', 32], ['1rem', 16], ['12px', 12], ['larger', 19.2], ['medium', 16], ['small', 13], ['120%', 19.2], ['calc(50% + 2px)', 10], ['calc(1rem + 1px)', 17]] as const) {
       const p = iosLayoutProjection(compileRoot(fontSize), { ...ENV, direction: 'ltr' }, []);
       expect(p.kind === 'ready' ? p.input.rootFontSize : p.reason, fontSize).toBe(px);
     }
   });
   it('blocks the ios output with a typed diagnostic, instead of throwing at projection, when it does not compute to px', () => {
-    for (const fontSize of ['calc(10px + 1vw)', 'calc(50% + 2px)']) {
+    for (const fontSize of ['calc(10px + 1vw)']) {
       const c = compileRoot(fontSize);
       expect(c.outputs.ios.kind, fontSize).toBe('blocked');
       expect(c.diagnostics.map((d) => d.code), fontSize).toEqual(['DRAGON_LOWERING_FAILED']);
@@ -239,13 +239,15 @@ describe('C5: a text leaf carries the text-align and direction of its block cont
 
 describe('C6: nested rules and every other non-declaration child of a rule block are diagnosed, never skipped', () => {
   const cases: readonly { css: string; code: string; span: string }[] = [
-    { css: '.a { width: 1px; & .b { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_NESTED_RULE', span: '& .b { width: 2px; }' },
-    { css: '.a { &:hover { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_NESTED_RULE', span: '&:hover { width: 2px; }' },
-    { css: '.a { width: 1px; @media (min-width: 1px) { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@media (min-width: 1px) { width: 2px; }' },
-    { css: '.a { width: 1px; @supports (display: flex) { .b { width: 2px; } } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@supports (display: flex) { .b { width: 2px; } }' },
+    // css-nesting-1: & cannot stand for a pseudo-element, so a rule nested in a ::before rule is refused (the others are resolved).
+    { css: '.a::before { content: "x"; & .b { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_NESTED_RULE', span: '& .b' },
+    { css: '.a { .b { width: 2px; } width 1px; height: 2px; }', code: 'DRAGON_CSS_PARSE', span: 'width 1px' },
+    // @media and @supports nested in a rule are resolved (css-nesting-1 §3.3); other nested at-rules are refused.
+    { css: '.a { width: 1px; @layer x { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@layer x { width: 2px; }' },
+    { css: '.a { width: 1px; @container (min-width: 1px) { .b { width: 2px; } } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@container (min-width: 1px) { .b { width: 2px; } }' },
     { css: '.a { width 1px; height: 2px; }', code: 'DRAGON_CSS_PARSE', span: 'width 1px;' },
-    // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
-    { css: '@container (min-width: 1px) { .a { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@container (min-width: 1px) { .a { width: 2px; } }' },
+    // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @starting-style.
+    { css: '@starting-style { .a { width: 2px; } }', code: 'DRAGON_UNSUPPORTED_AT_RULE', span: '@starting-style { .a { width: 2px; } }' },
   ];
   for (const k of cases) {
     it(`${k.css} -> ${k.code}, blocking every output`, () => {
@@ -266,7 +268,8 @@ describe('C6: nested rules and every other non-declaration child of a rule block
   it('the parser has no silent skip left: every non-Rule and non-Declaration node goes through refuseNode', () => {
     const src = readFileSync(new URL('../src/css/stylesheet.ts', import.meta.url), 'utf8');
     expect(src).not.toMatch(/type !== 'Declaration'\) continue|type !== 'Rule'\) continue/);
-    // The definition, the top-level and rule-block callers, and the two callers inside an unsupported at-rule (T005 rec 3).
-    expect(src.match(/refuseNode\(/g)?.length).toBe(5);
+    // The definition, the top-level and rule-block callers, the two callers inside an unsupported at-rule (T005 rec 3), and the
+    // at-rule caller in a block that nests rules (css-nesting-1).
+    expect(src.match(/refuseNode\(/g)?.length).toBe(6);
   });
 });

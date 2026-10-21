@@ -64,18 +64,19 @@ describe('MQ-a: @media in the parse driver', () => {
     expect(c?.text).toBe('screen and (max-width: 25em)');
     expect(text.slice(c?.span.start, c?.span.end)).toBe(text);
   });
-  it('environment features (until MQ-R2 or MQ-R3) and values Dragon does not evaluate are refused on every target', () => {
+  it('environment features (until MQ-R3) and values Dragon does not evaluate are refused on every target', () => {
     for (const [prelude, why] of [
-      ['(prefers-color-scheme: dark)', '(prefers-color-scheme: dark) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
-      ['(max-width: 400px) and (resolution: 2dppx)', '(resolution: 2dppx) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
-      ['(hover)', '(hover) depends on the device or the user, which Dragon does not read yet (package MQ-R2)'],
+      // MQ-R2 reads resolution, pointer, hover, reduced motion and the colour scheme; a list that also uses a refused feature is
+      // refused for that one alone.
+      ['(prefers-color-scheme: dark) and (prefers-reduced-transparency: reduce)', '(prefers-reduced-transparency: reduce) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
       ['(prefers-contrast: more)', '(prefers-contrast: more) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
-      ['(hover) and (color)', '(hover), (color) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
+      ['(hover) and (color)', '(color) depends on the device or the user, which Dragon does not read yet (package MQ-R3)'],
       ['(max-width: 10vw)', '(max-width: 10vw) uses a value Dragon does not evaluate'],
+      ['(min-resolution: calc(2dppx))', '(min-resolution: calc(2dppx)) uses a value Dragon does not evaluate'],
     ] as const) {
       const { rules, diagnostics, enclosed } = parse(`@media ${prelude} { .a { width: 2px; } }`);
       expect(rules, prelude).toEqual([]);
-      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported: ${why.replace(/[()/]/g, '\\$&')}; only width, height, orientation and aspect-ratio media features are supported$`))]]);
+      expect(diagnostics.map((d) => [d.code, d.target, d.message]), prelude).toEqual([['DRAGON_UNSUPPORTED_AT_RULE', null, expect.stringMatching(new RegExp(`^@media .* in the stylesheet is not supported: ${why.replace(/[()/]/g, '\\$&')}; only width, height, orientation, aspect-ratio, resolution, -webkit-device-pixel-ratio, pointer, any-pointer, hover, any-hover, prefers-reduced-motion and prefers-color-scheme media features are supported$`))]]);
       expect(enclosed.length, prelude).toBe(1);
     }
   });
@@ -86,8 +87,18 @@ describe('MQ-a: @media in the parse driver', () => {
       expect(rules.map((r) => r.condition?.map((c) => c.text)), prelude).toEqual([[prelude.replace('4/3', '4 / 3')]]);
     }
   });
-  it('@media in a rule block (css-nesting-1) and @media without a block stay refused', () => {
-    expect(parse('.a { @media (min-width: 1px) { width: 2px; } }').diagnostics.map((d) => d.message)).toEqual(['@media in a rule block is not supported in milestone 1']);
+  it('MQ-R2: the device features are conditional, prefers-color-scheme in its keyword and boolean forms among them', () => {
+    for (const prelude of ['(prefers-color-scheme: dark)', '(prefers-color-scheme: light) and (max-width: 500px)', '(prefers-color-scheme)', '(prefers-reduced-motion: reduce)', '(hover: none)']) {
+      const { rules, diagnostics } = parse(`@media ${prelude} { .a { width: 2px; } }`);
+      expect(diagnostics, prelude).toEqual([]);
+      expect(rules.map((r) => r.condition?.map((c) => c.text)), prelude).toEqual([[prelude]]);
+    }
+  });
+  it('@media in a rule block (css-nesting-1 §3.3) keeps its condition, and @media without a block stays refused', () => {
+    const nested = parse('.a { @media (min-width: 1px) { width: 2px; } }');
+    expect(nested.diagnostics).toEqual([]);
+    expect(nested.rules.map((r) => r.condition?.map((c) => c.text) ?? [])).toEqual([[], ['(min-width: 1px)']]);
+    expect(parse('.a { @media (min-width: 1px); }').diagnostics.map((d) => d.message)).toEqual(['@media in a rule block is not supported in milestone 1']);
     expect(parse('@media (min-width: 1px);').diagnostics.map((d) => d.message)).toEqual(['@media in the stylesheet is not supported in milestone 1']);
   });
   it('an unsupported at-rule inside @media is refused with the @media label, and its rules keep the @media condition', () => {

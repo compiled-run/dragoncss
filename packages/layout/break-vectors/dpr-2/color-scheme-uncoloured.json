@@ -1,0 +1,8 @@
+{
+  "case": "color-scheme-uncoloured",
+  "dpr": 2,
+  "texts": [
+    {"id":"d:text0","lines":[[0,5]]},
+    {"id":"e:text0","lines":[[0,3]]}
+  ]
+}

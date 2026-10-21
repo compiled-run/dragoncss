@@ -116,18 +116,63 @@ describe('list items (display: list-item) whose marker generates no box', () => 
       el(r, 'fl', 'ul', ['f', 'n'], [el(r, 'fi', 'li', [], [text(r, 'v', 'X')])]),
     ])).toEqual([]);
   });
-  it('an item with a marker is refused on every target, naming its type and GEN-c', () => {
-    const want = (type: string, id = 'li') => [`DRAGON_UNSUPPORTED_VALUE ios display: list-item on <li> ${id} generates a ${type} marker (::marker, css-lists-3 §3), which Dragon draws from the GEN-c package`, `DRAGON_UNSUPPORTED_VALUE web display: list-item on <li> ${id} generates a ${type} marker (::marker, css-lists-3 §3), which Dragon draws from the GEN-c package`];
-    expect(messages(NO_FAULTS, FONT, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li')])])).toEqual(want('disc'));
-    expect(messages(NO_FAULTS, `${FONT} .s { list-style: '>> '; }`, (r) => [el(r, 'ul', 'ul', ['s'], [el(r, 'li', 'li')])])).toEqual(want('">> "'));
-    expect(messages(NO_FAULTS, `${FONT} .s { list-style: square inside; }`, (r) => [el(r, 'ul', 'ul', ['s'], [el(r, 'li', 'li')])])).toEqual(want('square'));
+  it('GEN-c: outside disc, square, text and string markers compile on every target; iOS refuses circle; inside markers are refused everywhere', () => {
+    const msg = (target: string, type: string, why: string) => `DRAGON_UNSUPPORTED_VALUE ${target} display: list-item on <li> li generates a ${type} marker (::marker, css-lists-3 §3): ${why}`;
+    const list = (css: string) => messages(NO_FAULTS, `${FONT} ${css}`, (r) => [el(r, 'ul', 'ul', ['s'], [el(r, 'li', 'li')])]);
+    expect(list('')).toEqual([]);
+    expect(list('.s { list-style-type: square; }')).toEqual([]);
+    expect(list('.s { list-style-type: circle; }')).toEqual([msg('ios', 'circle', 'a circle marker is a 1 device px hairline (Skia SkScan_Antihair), which Dragon does not draw on iOS and Android yet')]);
+    expect(list(".s { list-style: '>> '; }")).toEqual([]);
+    expect(list('.s { list-style-type: upper-roman; }')).toEqual([]);
+    expect(list('.s { list-style-type: decimal; }')).toEqual([]);
+    expect(list('.s { list-style-type: lower-alpha; }')).toEqual([]);
+    const inside = 'an inside marker is not supported yet (::marker and inside markers, GEN-d6)';
+    expect(list('.s { list-style: square inside; }')).toEqual([msg('ios', 'square', inside), msg('web', 'square', inside)]);
+    expect(list('.s { list-style-type: hebrew; }')).toHaveLength(2);
+  });
+  it('GEN-c on iOS: a text marker whose inherited text properties the text view would not draw is refused', () => {
+    const msg = (why: string) => `DRAGON_UNSUPPORTED_VALUE ios display: list-item on <li> li generates a decimal marker (::marker, css-lists-3 §3): ${why}`;
+    const list = (css: string, li: string[] = []) => messages(NO_FAULTS, `${FONT} .s { list-style-type: decimal; } ${css}`, (r) => [el(r, 'ul', 'ul', ['s'], [el(r, 'li', 'li', li)])]);
+    expect(list('.r { direction: rtl; }', ['r'])).toEqual([msg('a text marker in a right-to-left list item is reordered by the bidi algorithm (UAX #9), which Dragon does not draw on iOS and Android yet')]);
+    expect(list('.l { letter-spacing: 2px; }', ['l'])).toEqual([msg('letter-spacing: 2px reaches its text marker, which the engine lays out without spacing')]);
+    expect(list('.w { word-spacing: 3px; }', ['w'])).toEqual([msg('word-spacing: 3px reaches its text marker, which the engine lays out without spacing')]);
+    expect(list('.t { text-shadow: 1px 1px red; }', ['t'])).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_VALUE ios .*: text-shadow: .* reaches its text marker, which Dragon does not draw on iOS and Android$/)]);
+    expect(list('.k { -webkit-text-fill-color: red; }', ['k'])).toEqual([expect.stringMatching(/: -webkit-text-fill-color: .* reaches its text marker, which Dragon paints in color$/)]);
+    expect(list('.k { -webkit-text-stroke-width: 1px; }', ['k'])).toEqual([msg('-webkit-text-stroke-width: 1px reaches its text marker, which Dragon does not stroke')]);
+    expect(list('.u { text-decoration-line: underline; }', ['u'])).toEqual([msg('text-decoration-line on li may decorate its text marker, which no Chrome case proves on iOS and Android')]);
+    expect(list('.s { text-decoration-line: underline; }').filter((m) => m.includes('marker'))).toEqual([msg('text-decoration-line on ul may decorate its text marker, which no Chrome case proves on iOS and Android')]);
+    // A symbol marker draws no text, so the same properties leave it drawn.
+    expect(messages(NO_FAULTS, `${FONT} .l { letter-spacing: 2px; direction: rtl; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', ['l'])])])).toEqual([]);
+  });
+  it('GEN-c on iOS: a list item that clips, or whose first child is a grid container, keeps its marker refused', () => {
+    expect(messages(NO_FAULTS, `${FONT} .o { overflow: hidden; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', ['o'])])]).map((m) => m.split(' ')[1])).toEqual(['ios']);
+    expect(messages(NO_FAULTS, `${FONT} .g { display: grid; }`, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', [], [el(r, 'g', 'div', ['g'])])])]).filter((m) => m.includes('grid container'))).toHaveLength(1);
+  });
+  it('GEN-c lowers the marker: a disc symbol in the item\'s font, named "<item>::marker"', () => {
+    const p = iosLayoutProjection(project().compile(inputFor(FONT, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li', [], [text(r, 't', 'X')])])])), ENV, []);
+    if (p.kind !== 'ready') throw new Error(`projection blocked: ${p.reason}`);
+    const find = (b: LayoutBox): LayoutBox | null => (b.id === 'li' ? b : b.children.reduce<LayoutBox | null>((f, c) => f ?? (c.kind === 'box' ? find(c) : null), null));
+    expect(find(p.input.root)?.marker).toEqual({ id: 'li::marker', kind: 'symbol', symbol: 'disc', text: null, font: expect.objectContaining({ family: 'Ahem', size: 16 }), lineHeight: { kind: 'normal' } });
   });
   it('an inline or flow-root list item stays refused as a multi-keyword display', () => {
     expect(messages(NO_FAULTS, `${FONT} .i { display: flow-root list-item; list-style: none; }`, (r) => [el(r, 'd', 'div', ['i'])])).toEqual(['DRAGON_UNSUPPORTED_VALUE null multi-token value "flow-root list-item" for display is not supported in milestone 1']);
   });
   it('plants: listItemNoneMarkerRefused refuses the preflight shape, listStyleNoneSetsImageOnly leaves its items a disc marker, and listItemDiscAccepted accepts the UA disc', () => {
     expect(messages({ ...NO_FAULTS, listItemNoneMarkerRefused: true }, PREFLIGHT_CSS, preflight).filter((m) => m.includes('generates a none marker'))).toHaveLength(4);
-    expect(messages({ ...NO_FAULTS, listStyleNoneSetsImageOnly: true }, PREFLIGHT_CSS, preflight).filter((m) => m.includes('generates a disc marker'))).toHaveLength(4);
-    expect(messages({ ...NO_FAULTS, listItemDiscAccepted: true }, FONT, (r) => [el(r, 'ul', 'ul', [], [el(r, 'li', 'li')])])).toEqual([]);
+    // Under GEN-c a disc marker compiles, so the plant shows as markers where Chrome draws none (the parity layout lane fails it).
+    const markers = (faults: CompilerFaults): (string | null)[] => {
+      const p = iosLayoutProjection(project(faults).compile(inputFor(PREFLIGHT_CSS, preflight)), ENV, []);
+      if (p.kind !== 'ready') throw new Error(`projection blocked: ${p.reason}`);
+      const out: (string | null)[] = [];
+      const walk = (b: LayoutBox): void => {
+        if (b.id.startsWith('li')) out.push(b.marker === null ? null : b.marker.symbol);
+        for (const c of b.children) if (c.kind === 'box') walk(c);
+      };
+      walk(p.input.root);
+      return out;
+    };
+    expect(markers(NO_FAULTS)).toEqual([null, null]);
+    expect(markers({ ...NO_FAULTS, listStyleNoneSetsImageOnly: true })).toEqual(['disc', 'disc']);
+    expect(messages({ ...NO_FAULTS, listItemDiscAccepted: true }, `${FONT} .s { list-style: square inside; }`, (r) => [el(r, 'ul', 'ul', ['s'], [el(r, 'li', 'li')])])).toEqual([]);
   });
 });

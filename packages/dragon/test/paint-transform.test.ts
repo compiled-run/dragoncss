@@ -163,6 +163,15 @@ describe('PNT2: where a transform may sit', () => {
     expect(errors(compile('.a { position: relative; transform: translate(5px); } .p { position: absolute; }', abs))).toEqual([]);
     expect(errors(compile('.a { transform: translate(5px); } .m { position: relative; } .p { position: absolute; }', abs))).toEqual([]);
   });
+  it('refuses a static filtered element that would become the containing block of an absolutely positioned or fixed descendant', () => {
+    const e = errors(compile('.a { filter: grayscale(1); opacity: 0; } .p { position: absolute; top: 5px; }', abs)).join();
+    expect(e).toContain('DRAGON_UNSUPPORTED_VALUE "grayscale(1)"');
+    expect(e).toContain('a filter on a makes it the containing block of the absolutely positioned p');
+    expect(errors(compile('.a { filter: grayscale(1); } .p { position: fixed; }', abs)).join()).toContain('a filter on a makes it the containing block of the fixed p');
+    // filter: none, or a positioned box between: the containing block does not change.
+    expect(errors(compile('.a { filter: none; } .p { position: absolute; }', abs))).toEqual([]);
+    expect(errors(compile('.a { filter: grayscale(1); opacity: 0; } .m { position: relative; } .p { position: absolute; }', abs)).join()).not.toContain('containing block');
+  });
   it('refuses a transform on html or body', () => {
     expect(errors(compile('body { transform: rotate(1deg); }')).join()).toContain('a transform on <body>');
   });
@@ -175,7 +184,7 @@ describe('PNT2: lowering and emission', () => {
     const w = n.uikit.writes.find((x) => x.kind === 'transform');
     expect(w).toMatchObject({
       key: 'dragonTransform',
-      css: ['transform', 'transform-origin'],
+      css: ['transform', 'translate', 'rotate', 'scale', 'transform-origin'],
       ops: [
         { fn: 'translate', x: { kind: 'percent', px: 0, percent: -50 }, y: { kind: 'px', px: 2, percent: 0 }, angle: 0, sx: 1, sy: 1 },
         { fn: 'rotate', angle: 0 },

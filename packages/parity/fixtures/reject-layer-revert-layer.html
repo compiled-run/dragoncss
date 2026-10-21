@@ -5,7 +5,7 @@
 body { margin: 0; }
 @layer base, top;
 @layer base { .a { width: 30px; height: 4px; } }
-@layer top { .a { width: revert-layer; } }
+@layer top { .a { width: revert-layer!important; } }
 </style>
 </head>
 <body data-dragon-id="body">

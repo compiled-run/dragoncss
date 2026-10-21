@@ -26,7 +26,11 @@ export const EVIDENCE_CODE: readonly string[] = [
   'packages/parity/src/device-run.ts',
   'packages/parity/src/device-vectors.ts',
   'packages/parity/src/dpr.ts',
+  'packages/parity/src/dump-faults.ts',
+  'packages/parity/src/dump-line-groups.ts',
   'packages/parity/src/frame-capture.ts',
+  'packages/parity/src/lane-ids.ts',
+  'packages/parity/src/lanes-file.ts',
   'packages/parity/src/lanes.ts',
   'packages/parity/src/line-breaks.ts',
   'packages/parity/src/native-compare.ts',
@@ -57,7 +61,8 @@ export const EVIDENCE_DATA: readonly string[] = [
   'packages/parity/expected-frames',
   'packages/parity/expected-pixels',
   'packages/layout/break-vectors',
-  'vendor/fonts/Ahem.ttf',
+  // Ahem and every real face the apps bundle (native-shim.ts shimFaces).
+  'vendor/fonts',
 ];
 
 /** The toolchain label the app digest is taken with: the version is a fact of the run (recorded apart), not of the sources. */

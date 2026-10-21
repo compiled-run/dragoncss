@@ -1,6 +1,7 @@
 // The element table: the HTML tags the compiler resolves, each with captured Chrome UA defaults (ua/chrome-145.*.generated.ts).
 // Every other tag is refused by the projection. pre is refused: white-space: pre is not supported.
 import type { CapturedTag, UaKey } from '../ua/datasets.ts';
+import { CONTROL_TAGS, controlUaKey } from './elements/controls.ts';
 import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from './elements/replaced.ts';
 
 export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
@@ -11,6 +12,7 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'br',
   ...REPLACED_TAGS,
   ...SVG_SHAPE_TAGS,
+  ...CONTROL_TAGS,
   'b', 'strong', 'em', 'i',
 ]);
 
@@ -27,9 +29,14 @@ export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label',
  */
 export const GENERATED_TAGS: ReadonlySet<string> = new Set(['::before', '::after']);
 
-/** The UA dataset row an element's tag reads. */
-export function uaTagOf(tag: string): UaKey {
+/** The tag of the element resolve.ts cascades a list item's ::marker rules on; only its color is read (markerOf). */
+export const MARKER_TAG = '::marker';
+
+/** The UA dataset row an element's tag reads; a control's also depends on its type attribute. */
+export function uaTagOf(tag: string, type?: string): UaKey {
   if (Object.hasOwn(REPLACED_UA_KEYS, tag)) return REPLACED_UA_KEYS[tag] as UaKey;
-  if (GENERATED_TAGS.has(tag)) return 'dragon-unstyled';
+  if (GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return 'dragon-unstyled';
+  const control = controlUaKey(tag, type);
+  if (control !== null) return control;
   return (UNSTYLED_TAGS.has(tag) ? 'dragon-unstyled' : tag) as CapturedTag;
 }

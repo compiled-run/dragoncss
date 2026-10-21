@@ -1,0 +1,10 @@
+{
+  "case": "filter-matrix-over-rects-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"fr-a:text0","lines":[[0,1]]},
+    {"id":"fr-b:text0","lines":[[0,2]]},
+    {"id":"fr-e:text0","lines":[[0,1]]},
+    {"id":"fr-f:text0","lines":[[0,2],[2,3]]}
+  ]
+}

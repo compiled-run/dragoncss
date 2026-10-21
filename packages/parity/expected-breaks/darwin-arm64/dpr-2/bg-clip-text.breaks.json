@@ -1,0 +1,20 @@
+{
+  "case": "bg-clip-text",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"fill-a:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fill-b:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fill-c:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fill-d:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fill-e:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fill-f:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fill-g:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"keep-e:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"keep-a:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"keep-k:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"keep-c:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"keep-d:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"fill-h:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]}
+  ]
+}

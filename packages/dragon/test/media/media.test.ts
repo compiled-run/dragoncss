@@ -6,6 +6,7 @@ import {
   band,
   bandAt,
   compareMedia,
+  DESKTOP_DEVICE,
   emulatedDevicePx,
   emulatedMediaViewport,
   evaluateInBand,
@@ -46,8 +47,11 @@ describe('media queries against Chrome 145 matchMedia', () => {
   it('refuses exactly the environment features and the values Dragon does not evaluate', () => {
     const r = compareCapture(capture, NO_MEDIA_FAULTS);
     expect(r.refused).toEqual(CORPUS.refusedQueries);
-    const hover = evaluateMediaQueryList(parseMediaQueryList('(max-width: 600px), (hover)'), { width: 400, height: 300 });
-    expect(hover).toEqual({ kind: 'refused', refusals: [{ feature: '(hover)', reason: 'environment' }] });
+    const contrast = evaluateMediaQueryList(parseMediaQueryList('(max-width: 600px), (prefers-contrast: more)'), { width: 400, height: 300 });
+    expect(contrast).toEqual({ kind: 'refused', refusals: [{ feature: '(prefers-contrast: more)', reason: 'environment' }] });
+    // MQ-R2 reads the colour scheme: Chrome's default page is light, and the boolean form holds in either scheme.
+    const scheme = (q: string, colorScheme: 'light' | 'dark') => evaluateMediaQueryList(parseMediaQueryList(q), { width: 400, height: 300, device: { ...DESKTOP_DEVICE, colorScheme } });
+    expect([scheme('(prefers-color-scheme: dark)', 'light'), scheme('(prefers-color-scheme: dark)', 'dark'), scheme('(prefers-color-scheme)', 'light'), scheme('(prefers-color-scheme)', 'dark'), scheme('not (prefers-color-scheme: no-preference)', 'dark')].map((r) => (r.kind === 'matches' ? r.matches : r))).toEqual([false, true, true, true, false]);
   });
 
   it('treats em and rem in a media query as the initial 16px, whatever the root', () => {

@@ -1,0 +1,760 @@
+{
+ "source": "Chrome for Testing 145.0.7632.6 headless shell, --force-color-profile=srgb: getComputedStyle(color) of each input, and its 1px paint on white matched against an rgba() of the 8-bit channels (Playwright probe, COL4). null channels: Chrome drops the value as invalid.",
+ "rows": [
+  {
+   "input": "color(display-p3 0.2 0.5 0.3)",
+   "computed": "color(display-p3 0.2 0.5 0.3)",
+   "rgba": [0, 130, 71, 255]
+  },
+  {
+   "input": "color(display-p3 1 0 0)",
+   "computed": "color(display-p3 1 0 0)",
+   "rgba": [255, 0, 0, 255]
+  },
+  {
+   "input": "color(from #c40379 srgb calc(r * 1.1) calc(g * 0.5) calc(b * 1.2))",
+   "computed": "color(srgb 0.84549 0.00588235 0.569412)",
+   "rgba": [216, 2, 145, 255]
+  },
+  {
+   "input": "color(from color-mix(in oklab, lab(71.8 -106.8 44.1) 74.4%, color(xyz-d65 0.8 0 0.347)) display-p3 min(r, 0.5) calc(g * 2.3) b / alpha)",
+   "computed": "color(display-p3 0.5 1.12936 0.50098)",
+   "rgba": [0, 255, 100, 255]
+  },
+  {
+   "input": "color(from red display-p3 r g b)",
+   "computed": "color(display-p3 0.91753 0.200241 0.138502)",
+   "rgba": [255, 0, 0, 255]
+  },
+  {
+   "input": "color(from red srgb r g b)",
+   "computed": "color(srgb 1 0 0)",
+   "rgba": [255, 0, 0, 255]
+  },
+  {
+   "input": "color(from teal xyz x y x / 0.4)",
+   "computed": "color(xyz-d65 0.11615 0.169951 0.11615 / 0.4)",
+   "rgba": [68, 127, 87, 102]
+  },
+  {
+   "input": "color(srgb 0 0.476 0)",
+   "computed": "color(srgb 0 0.476 0)",
+   "rgba": [0, 121, 0, 255]
+  },
+  {
+   "input": "color(srgb 0.1 0.2 0.3)",
+   "computed": "color(srgb 0.1 0.2 0.3)",
+   "rgba": [26, 51, 77, 255]
+  },
+  {
+   "input": "color(srgb-linear 0.2 0.3 0.4 / 0.7)",
+   "computed": "color(srgb-linear 0.2 0.3 0.4 / 0.7)",
+   "rgba": [124, 149, 170, 179]
+  },
+  {
+   "input": "color(srgb-linear 0.5 0.2 0.1)",
+   "computed": "color(srgb-linear 0.5 0.2 0.1)",
+   "rgba": [188, 124, 89, 255]
+  },
+  {
+   "input": "color(xyz 0.3 0.4 0.5)",
+   "computed": "color(xyz-d65 0.3 0.4 0.5)",
+   "rgba": [92, 184, 181, 255]
+  },
+  {
+   "input": "color(xyz-d50 0.859 0.25 0.1)",
+   "computed": "color(xyz-d50 0.859 0.25 0.1)",
+   "rgba": [255, 0, 106, 255]
+  },
+  {
+   "input": "color(xyz-d50 1 1 0.035)",
+   "computed": "color(xyz-d50 1 1 0.035)",
+   "rgba": [255, 248, 0, 255]
+  },
+  {
+   "input": "color-mix(in a98-rgb, red, blue)",
+   "computed": "color(a98-rgb 0.426364 -0.00755272 0.487894)",
+   "rgba": [128, 0, 128, 255]
+  },
+  {
+   "input": "color-mix(in a98-rgb, rgb(none 3.8 122.9 / 0.81) 53%, lch(33.5 88.79 94))",
+   "computed": "color(a98-rgb 0.339262 0.188798 0.116849 / 0.900235)",
+   "rgba": [97, 44, 22, 230]
+  },
+  {
+   "input": "color-mix(in display-p3, hwb(from black calc(h + 0) w calc(b / 1)) 42.2%, color-mix(in oklab, oklch(0.3 0 339.30) 47.9%, rgb(190.6 203.5 82 / 22%)))",
+   "computed": "color(display-p3 0.12489 0.128562 0.101383 / 0.764994)",
+   "rgba": [32, 33, 25, 195]
+  },
+  {
+   "input": "color-mix(in display-p3, red, blue)",
+   "computed": "color(display-p3 0.458734 0.100055 0.549017)",
+   "rgba": [128, 10, 145, 255]
+  },
+  {
+   "input": "color-mix(in hsl decreasing hue, hsl(30 50% 50%), hsl(300 80% 40%))",
+   "computed": "color(srgb 0.7425 0.1575 0.30375)",
+   "rgba": [189, 40, 77, 255]
+  },
+  {
+   "input": "color-mix(in hsl increasing hue, hsl(30 50% 50%), hsl(300 80% 40%))",
+   "computed": "color(srgb 0.1575 0.7425 0.59625)",
+   "rgba": [40, 189, 152, 255]
+  },
+  {
+   "input": "color-mix(in hsl longer hue, color-mix(in srgb, gold, oklab(0.81 0.1 -0.11) 83.8%) 77%, lch(from lab(3.6 -82 -114 / 24%) calc(l - 0) calc(c - 0.11) h / alpha))",
+   "computed": "color(srgb 0.974982 0.582492 0.509119 / 0.8252)",
+   "rgba": [249, 149, 130, 210]
+  },
+  {
+   "input": "color-mix(in hsl, #7bfec34c, color-mix(in oklch, oklch(0.26 0 43.6) 35%, color(srgb-linear 0.1 0 1)) 94%)",
+   "computed": "color(srgb 0.414238 0.00668097 0.531319 / 0.957882)",
+   "rgba": [106, 2, 135, 244]
+  },
+  {
+   "input": "color-mix(in hsl, hsl(-133.25 11% 68%) 24.7%, oklab(from hwb(38 51.73% 39% / 1.0) l min(a, 1) none / 64.1%))",
+   "computed": "color(srgb 0.633151 0.597609 0.623892 / 0.729673)",
+   "rgba": [161, 152, 159, 186]
+  },
+  {
+   "input": "color-mix(in hsl, oklab(0.67 0 -0.226) 14.9%, color-mix(in xyz, lab(63.4 -106.06 109.58 / 1), rgba(151, 109, 165, 0.80)) 84.9%)",
+   "computed": "color(srgb 0.132825 0.787465 0.580944 / 0.9131)",
+   "rgba": [34, 201, 148, 233]
+  },
+  {
+   "input": "color-mix(in hsl, red, blue)",
+   "computed": "color(srgb 1 0 1)",
+   "rgba": [255, 0, 255, 255]
+  },
+  {
+   "input": "color-mix(in hsl, red, lime 25%)",
+   "computed": "color(srgb 1 0.5 0)",
+   "rgba": [255, 128, 0, 255]
+  },
+  {
+   "input": "color-mix(in hwb, hsl(302.04, 32.2%, 58.7%) 56.6%, lch(from hsl(-201.0 30% 52% / 89%) l h l) 27%)",
+   "computed": "color(srgb 0.834678 0.234378 0.545331 / 0.8063)",
+   "rgba": [213, 60, 139, 206]
+  },
+  {
+   "input": "color-mix(in hwb, red, blue)",
+   "computed": "color(srgb 1 0 1)",
+   "rgba": [255, 0, 255, 255]
+  },
+  {
+   "input": "color-mix(in lab, color-mix(in lch shorter hue, #0ee3, hsl(232.99 8.5% 54%) 81.0%) 91%, lch(36 117.08 219.9 / 70%))",
+   "computed": "lab(54.5029 -7.72766 -16.5349 / 0.83468)",
+   "rgba": [102, 135, 159, 213]
+  },
+  {
+   "input": "color-mix(in lab, color-mix(in rec2020, lab(55.7 -59.05 -10.4 / 99%), hsl(83.4, 94%, 93%)), lab(from hwb(none 54% 42% / 30%) b a b / 21%) 87%)",
+   "computed": "lab(32.7895 -11.6518 1.54819 / 0.31205)",
+   "rgba": [57, 82, 74, 80]
+  },
+  {
+   "input": "color-mix(in lab, lab(38.92 -100 -28.4 / 1.0), hsl(168, 11.4%, 72%) 22.4%)",
+   "computed": "lab(47.287 -78.9992 -22.1212)",
+   "rgba": [0, 140, 148, 255]
+  },
+  {
+   "input": "color-mix(in lab, oklab(from rgba(34, 178, 171, 1) calc(l / 1) min(a, 1) calc(b / 2)), color-mix(in hwb, hwb(146 44.06% 43%) 70.5%, lch(64.93 133.2 303.14 / 76%) 33.2%) 46%)",
+   "computed": "lab(69.8218 -33.8626 -6.66947 / 0.964655)",
+   "rgba": [78, 188, 181, 246]
+  },
+  {
+   "input": "color-mix(in lab, red, blue)",
+   "computed": "lab(41.9277 74.5607 -21.0676)",
+   "rgba": [193, 0, 136, 255]
+  },
+  {
+   "input": "color-mix(in lch increasing hue, transparent, color-mix(in srgb-linear, rgba(131, 167, 183, 0.6) 42.1%, hsl(3.5, 41.8%, 43.95%) 15%))",
+   "computed": "lch(58.9828 6.52061 290.758 / 0.2013)",
+   "rgba": [142, 141, 153, 51]
+  },
+  {
+   "input": "color-mix(in lch longer hue, #449a 0.0%, hsl(-149.62 none 8%))",
+   "computed": "lch(6.49848 51.5174 292.596)",
+   "rgba": [0, 13, 86, 255]
+  },
+  {
+   "input": "color-mix(in lch longer hue, red, blue)",
+   "computed": "lch(41.9277 119.034 171.112)",
+   "rgba": [0, 130, 64, 255]
+  },
+  {
+   "input": "color-mix(in lch, red, blue)",
+   "computed": "lch(41.9277 119.034 351.112)",
+   "rgba": [245, 0, 134, 255]
+  },
+  {
+   "input": "color-mix(in oklab, #336699 25%, white)",
+   "computed": "oklab(0.874822 -0.00822151 -0.0232238)",
+   "rgba": [202, 215, 230, 255]
+  },
+  {
+   "input": "color-mix(in oklab, #36c, gold 40%)",
+   "computed": "oklab(0.67419 -0.0202481 -0.0272397)",
+   "rgba": [131, 155, 168, 255]
+  },
+  {
+   "input": "color-mix(in oklab, color-mix(in srgb-linear, oklch(0 0.21 249), #b140520c) 17.2%, hsl(295.5, 30.8%, 77.66%))",
+   "computed": "oklab(0.749522 0.0530638 -0.0395304 / 0.918047)",
+   "rgba": [195, 160, 198, 234]
+  },
+  {
+   "input": "color-mix(in oklab, red, blue)",
+   "computed": "oklab(0.539974 0.0962086 -0.0928316)",
+   "rgba": [140, 83, 162, 255]
+  },
+  {
+   "input": "color-mix(in oklab, rgba(179, 74, 215, 0.26) 38%, hsl(269 58.5% 78.3%))",
+   "computed": "oklab(0.755542 0.070806 -0.0874811 / 0.718353)",
+   "rgba": [196, 156, 230, 183]
+  },
+  {
+   "input": "color-mix(in oklch increasing hue, rgb(88.0 37 84.1), color-mix(in display-p3, rebeccapurple, hsl(352, 68%, 31.4%)) 8%)",
+   "computed": "oklch(0.360507 0.102363 331.158)",
+   "rgba": [90, 37, 85, 255]
+  },
+  {
+   "input": "color-mix(in oklch longer hue, teal, orange)",
+   "computed": "oklch(0.667904 0.131865 312.713)",
+   "rgba": [176, 123, 206, 255]
+  },
+  {
+   "input": "color-mix(in oklch shorter hue, hsl(247.3, 86.17%, 42.66%), coral)",
+   "computed": "oklch(0.566801 0.20954 335.32)",
+   "rgba": [187, 51, 165, 255]
+  },
+  {
+   "input": "color-mix(in oklch, hsl(none 50% 50%), lab(50 20 30))",
+   "computed": "oklch(0.562471 0.125778 53.5293)",
+   "rgba": [173, 93, 32, 255]
+  },
+  {
+   "input": "color-mix(in oklch, red, blue)",
+   "computed": "oklch(0.539974 0.285457 326.643)",
+   "rgba": [186, 0, 194, 255]
+  },
+  {
+   "input": "color-mix(in oklch, tomato 40%, rebeccapurple)",
+   "computed": "oklch(0.542648 0.174399 338.957)",
+   "rgba": [172, 60, 144, 255]
+  },
+  {
+   "input": "color-mix(in prophoto-rgb, #1285, hwb(60.51 40.9% 55.2% / 0.20))",
+   "computed": "color(prophoto-rgb 0.2463 0.213223 0.393502 / 0.266667)",
+   "rgba": [70, 68, 125, 68]
+  },
+  {
+   "input": "color-mix(in prophoto-rgb, color(from #e68f srgb-linear r calc(g * 2.3) calc(b + 0.04)), color-mix(in rec2020, rgba(131, 243, 96, 0.21) 55%, color(display-p3 0.87 0.698 0.75)) 25%)",
+   "computed": "color(prophoto-rgb 0.748014 0.587847 0.53001 / 0.891618)",
+   "rgba": [235, 157, 150, 227]
+  },
+  {
+   "input": "color-mix(in prophoto-rgb, hsl(-266 13% 38.2% / 0.25) 77%, color-mix(in oklch, oklab(0 -0 -0.02 / 38%), lab(none -83.71 -4.67 / 25%) 27%))",
+   "computed": "color(prophoto-rgb 0.221018 0.248888 0.196484 / 0.271827)",
+   "rgba": [68, 83, 63, 69]
+  },
+  {
+   "input": "color-mix(in prophoto-rgb, red, blue)",
+   "computed": "color(prophoto-rgb 0.519249 0.206658 0.513153)",
+   "rgba": [186, 3, 157, 255]
+  },
+  {
+   "input": "color-mix(in rec2020, color-mix(in rec2020, oklch(0.635 0.26 202.8), #e8b 35%) 1%, oklch(0 0.046 79.77))",
+   "computed": "color(rec2020 0.0021453 0.00609975 0.00601994)",
+   "rgba": [0, 5, 4, 255]
+  },
+  {
+   "input": "color-mix(in rec2020, color-mix(in rec2020, rgba(24, 108, 31, 0.49), hsl(-21 9.6% 24.2% / 1) 86%) 26%, color(srgb 0.7 0.2 0.2))",
+   "computed": "color(rec2020 0.449028 0.204887 0.160928 / 0.981443)",
+   "rgba": [153, 55, 53, 250]
+  },
+  {
+   "input": "color-mix(in rec2020, color-mix(in xyz, oklab(0.029 0.14 -0 / 0.1), rgba(214, 76, 56, 0.7) 33.5%), hwb(126 24% 22.9%))",
+   "computed": "color(rec2020 0.482742 0.612728 0.27696 / 0.650828)",
+   "rgba": [116, 170, 70, 166]
+  },
+  {
+   "input": "color-mix(in rec2020, color-mix(in xyz-d65, lch(16 74.50 103 / 69%), teal), color-mix(in srgb, #e3d, hsl(-372 73.22% 14.47%) 99%))",
+   "computed": "color(rec2020 0.170236 0.17122 0.164459 / 0.9225)",
+   "rgba": [59, 59, 58, 235]
+  },
+  {
+   "input": "color-mix(in rec2020, hsl(from lab(55 -31 39) h none calc(l - 0.18)), color-mix(in xyz, rgba(151, 22, 43, 0.66), lab(46 34 25.52 / 13%)))",
+   "computed": "color(rec2020 0.371268 0.291787 0.284761 / 0.697206)",
+   "rgba": [119, 87, 87, 178]
+  },
+  {
+   "input": "color-mix(in rec2020, hwb(from rgba(220, 226, 249, 0.30) b w min(b, 0)), black)",
+   "computed": "color(rec2020 0.21982 0.200238 0.197047 / 0.65098)",
+   "rgba": [75, 66, 66, 166]
+  },
+  {
+   "input": "color-mix(in rec2020, red, blue)",
+   "computed": "color(rec2020 0.480177 0.141018 0.510213)",
+   "rgba": [162, 19, 147, 255]
+  },
+  {
+   "input": "color-mix(in srgb, #336699 25%, white)",
+   "computed": "color(srgb 0.8 0.85 0.9)",
+   "rgba": [204, 217, 230, 255]
+  },
+  {
+   "input": "color-mix(in srgb, color-mix(in xyz, #251fc07d, rgb(236.0 193.4 170.28 / 0.37) 29%), lab(from coral calc(l * 1) none min(b, 0.6) / calc(alpha / 2)) 26.2%)",
+   "computed": "color(srgb 0.540191 0.473598 0.709168 / 0.466747)",
+   "rgba": [138, 121, 181, 119]
+  },
+  {
+   "input": "color-mix(in srgb, green, white)",
+   "computed": "color(srgb 0.5 0.75098 0.5)",
+   "rgba": [128, 192, 128, 255]
+  },
+  {
+   "input": "color-mix(in srgb, hwb(140.0 40.30% 6.8% / 1), hsl(160.7 88.33% 68.85%))",
+   "computed": "color(srgb 0.408176 0.947824 0.682985)",
+   "rgba": [104, 242, 174, 255]
+  },
+  {
+   "input": "color-mix(in srgb, red 0%, blue 0%)",
+   "computed": "INVALID",
+   "rgba": null
+  },
+  {
+   "input": "color-mix(in srgb, red 120%, blue)",
+   "computed": "INVALID",
+   "rgba": null
+  },
+  {
+   "input": "color-mix(in srgb, red 20%, blue 20%)",
+   "computed": "color(srgb 0.5 0 0.5 / 0.4)",
+   "rgba": [128, 0, 128, 102]
+  },
+  {
+   "input": "color-mix(in srgb, red 30%, blue)",
+   "computed": "color(srgb 0.3 0 0.7)",
+   "rgba": [77, 0, 179, 255]
+  },
+  {
+   "input": "color-mix(in srgb, red 30%, transparent)",
+   "computed": "color(srgb 1 0 0 / 0.3)",
+   "rgba": [255, 0, 0, 77]
+  },
+  {
+   "input": "color-mix(in srgb, red, blue)",
+   "computed": "color(srgb 0.5 0 0.5)",
+   "rgba": [128, 0, 128, 255]
+  },
+  {
+   "input": "color-mix(in srgb, rgb(0 0 255 / 50%), white)",
+   "computed": "color(srgb 0.665796 0.665796 1 / 0.75098)",
+   "rgba": [170, 170, 255, 192]
+  },
+  {
+   "input": "color-mix(in srgb, rgb(from red r g 128), color-mix(in oklab, blue, white) 30%)",
+   "computed": "color(srgb 0.835891 0.191424 0.662159)",
+   "rgba": [213, 49, 169, 255]
+  },
+  {
+   "input": "color-mix(in srgb, rgb(none 20 30), blue)",
+   "computed": "color(srgb 0 0.0392157 0.558824)",
+   "rgba": [0, 10, 143, 255]
+  },
+  {
+   "input": "color-mix(in srgb-linear, lab(from #241ae701 l a calc(b + 0) / 0.0), black 43%)",
+   "computed": "color(srgb-linear 0 0 0 / 0.43)",
+   "rgba": [0, 0, 0, 110]
+  },
+  {
+   "input": "color-mix(in srgb-linear, red, blue)",
+   "computed": "color(srgb-linear 0.5 -6.85395e-9 0.5)",
+   "rgba": [188, 0, 188, 255]
+  },
+  {
+   "input": "color-mix(in srgb-linear, rgb(231.1 126.4 184.2 / 18%) 58.0%, lab(32.9 81.26 69.50 / 0.2) 68%)",
+   "computed": "color(srgb-linear 0.621506 0.0660682 0.201664 / 0.190974)",
+   "rgba": [207, 73, 124, 49]
+  },
+  {
+   "input": "color-mix(in xyz, color(from tomato srgb-linear r g calc(b * 1.8) / 0.5) 58.0%, lch(from #ccb none calc(c * 1.0) c / 0) 23%)",
+   "computed": "color(xyz-d65 0.477514 0.310063 0.14198 / 0.29)",
+   "rgba": [255, 99, 95, 74]
+  },
+  {
+   "input": "color-mix(in xyz, crimson, #0c9 70%)",
+   "computed": "color(xyz-d65 0.283147 0.366506 0.279578)",
+   "rgba": [128, 174, 134, 255]
+  },
+  {
+   "input": "color-mix(in xyz, hsl(from oklab(1 -0.056 -0) h s calc(l / 0.8) / 22%), color-mix(in a98-rgb, gold, lch(3 0 177)))",
+   "computed": "color(xyz-d65 0.416019 0.348527 0.211899 / 0.61)",
+   "rgba": [219, 139, 116, 156]
+  },
+  {
+   "input": "color-mix(in xyz, red, blue)",
+   "computed": "color(xyz-d65 0.296439 0.142411 0.484861)",
+   "rgba": [188, 0, 188, 255]
+  },
+  {
+   "input": "color-mix(in xyz-d50, color(from black display-p3 calc(r / 2) calc(g * 2.4) b), hwb(80.72 7% 1.66%))",
+   "computed": "color(xyz-d50 0.273835 0.390143 0.0516701)",
+   "rgba": [124, 184, 10, 255]
+  },
+  {
+   "input": "color-mix(in xyz-d50, color-mix(in prophoto-rgb, hsl(305, 90.26%, 12.9%), color(rec2020 0.1 1 1 / 22%) 75.9%) 40%, rgba(99, 59, 68, 1) 42%)",
+   "computed": "color(xyz-d50 0.0862888 0.0959876 0.101446 / 0.583192)",
+   "rgba": [72, 90, 100, 149]
+  },
+  {
+   "input": "color-mix(in xyz-d50, color-mix(in xyz-d65, hsl(312.0 17.94% 97.6%) 52%, lch(35 137 210)) 14%, lab(16 62.76 18 / 0.2))",
+   "computed": "color(xyz-d50 0.249309 0.249659 0.270778 / 0.312)",
+   "rgba": [136, 135, 158, 80]
+  },
+  {
+   "input": "color-mix(in xyz-d50, lab(from lab(28.12 86 89.22) calc(l + 0) none calc(b / 1.5)), lab(43 -45.0 70.40) 1.7%)",
+   "computed": "color(xyz-d50 0.0533524 0.056323 -0.00569353)",
+   "rgba": [79, 67, 0, 255]
+  },
+  {
+   "input": "color-mix(in xyz-d50, oklab(from tomato none none calc(b + 0.15)), rgba(56, 163, 218, 0.9))",
+   "computed": "color(xyz-d50 0.118763 0.150509 0.232316 / 0.95098)",
+   "rgba": [32, 118, 149, 243]
+  },
+  {
+   "input": "color-mix(in xyz-d50, red, blue)",
+   "computed": "color(xyz-d50 0.289566 0.141548 0.364006)",
+   "rgba": [188, 0, 188, 255]
+  },
+  {
+   "input": "color-mix(in xyz-d65, color-mix(in xyz, oklch(0.29 0.048 304.67) 58%, hsl(139.9, 98.89%, 63%) 3%) 9.4%, rgba(39, 185, 247, 0.31) 92%)",
+   "computed": "color(xyz-d65 0.299038 0.358087 0.794967 / 0.337633)",
+   "rgba": [41, 172, 229, 86]
+  },
+  {
+   "input": "color-mix(in xyz-d65, hsl(-235.39 68.04% 98.99%), hwb(9.35 52.05% 22%) 73.2%)",
+   "computed": "color(xyz-d65 0.523101 0.50873 0.476762)",
+   "rgba": [214, 182, 175, 255]
+  },
+  {
+   "input": "color-mix(in xyz-d65, oklab(0.1 -0.098 -0 / 80%) 7%, color-mix(in prophoto-rgb, lab(14 87.9 -31.18 / 0.3), #7265 86.8%))",
+   "computed": "color(xyz-d65 0.086023 0.0433564 0.10571 / 0.361908)",
+   "rgba": [111, 8, 92, 92]
+  },
+  {
+   "input": "color-mix(in xyz-d65, rgba(211, 191, 67, 0.12), hwb(from hwb(265.76 27.20% 46.4% / 36%) none h w / 0.7) 48%)",
+   "computed": "color(xyz-d65 0.71496 0.756256 0.754955 / 0.399216)",
+   "rgba": [228, 226, 216, 102]
+  },
+  {
+   "input": "color-mix(red, blue)",
+   "computed": "oklab(0.539974 0.0962086 -0.0928316)",
+   "rgba": [140, 83, 162, 255]
+  },
+  {
+   "input": "hsl(129 91.28% 62.4%)",
+   "computed": "rgb(72, 247, 98)",
+   "rgba": [72, 247, 98, 255]
+  },
+  {
+   "input": "hsl(152.51, 50%, 3.3%)",
+   "computed": "rgb(4, 13, 9)",
+   "rgba": [4, 13, 9, 255]
+  },
+  {
+   "input": "hsl(201 11.93% 65%)",
+   "computed": "rgb(155, 169, 176)",
+   "rgba": [155, 169, 176, 255]
+  },
+  {
+   "input": "hsl(218.50 92.64% 41.5%)",
+   "computed": "rgb(8, 78, 204)",
+   "rgba": [8, 78, 204, 255]
+  },
+  {
+   "input": "hsl(224 96.84% 65.00%)",
+   "computed": "rgb(79, 125, 252)",
+   "rgba": [79, 125, 252, 255]
+  },
+  {
+   "input": "hsl(62.70, 29%, 45.51%)",
+   "computed": "rgb(147, 150, 82)",
+   "rgba": [147, 150, 82, 255]
+  },
+  {
+   "input": "hsl(97.14, 13.08%, 14.8%)",
+   "computed": "rgb(37, 43, 33)",
+   "rgba": [37, 43, 33, 255]
+  },
+  {
+   "input": "hsl(98.74, 60.4%, 57%)",
+   "computed": "rgb(126, 212, 79)",
+   "rgba": [126, 212, 79, 255]
+  },
+  {
+   "input": "hsl(from #c06 calc(h + 120) s l)",
+   "computed": "color(srgb 0.4 0.8 0)",
+   "rgba": [102, 204, 0, 255]
+  },
+  {
+   "input": "hsl(from lch(72 38.1 15 / 0.4) none min(s, 0.4) min(l, 0.0))",
+   "computed": "color(srgb 0 0 0 / 0.4)",
+   "rgba": [0, 0, 0, 102]
+  },
+  {
+   "input": "hsl(from red h s l)",
+   "computed": "color(srgb 1 0 0)",
+   "rgba": [255, 0, 0, 255]
+  },
+  {
+   "input": "hsl(from tomato calc(h + 30) s l)",
+   "computed": "color(srgb 1 0.74902 0.278431)",
+   "rgba": [255, 191, 71, 255]
+  },
+  {
+   "input": "hwb(10 20% 30%)",
+   "computed": "rgb(179, 72, 51)",
+   "rgba": [179, 72, 51, 255]
+  },
+  {
+   "input": "hwb(120 50% 50%)",
+   "computed": "rgb(128, 128, 128)",
+   "rgba": [128, 128, 128, 255]
+  },
+  {
+   "input": "hwb(200 10% 20%)",
+   "computed": "rgb(26, 145, 204)",
+   "rgba": [26, 145, 204, 255]
+  },
+  {
+   "input": "hwb(279.09 41.34% 19.63%)",
+   "computed": "rgb(170, 105, 205)",
+   "rgba": [170, 105, 205, 255]
+  },
+  {
+   "input": "hwb(41.21 29% 24%)",
+   "computed": "rgb(194, 156, 74)",
+   "rgba": [194, 156, 74, 255]
+  },
+  {
+   "input": "hwb(from coral h w b)",
+   "computed": "color(srgb 1 0.498039 0.313726)",
+   "rgba": [255, 127, 80, 255]
+  },
+  {
+   "input": "hwb(from hsl(from hsl(-248.7 42.2% 95.2%) calc(h + 0.15) s l / 0) h w calc(b + 0) / 1)",
+   "computed": "color(srgb 0.937517 0.972256 0.931744)",
+   "rgba": [239, 248, 238, 255]
+  },
+  {
+   "input": "hwb(from hwb(243.77 25.77% 32.1%) calc(h * 2) w min(b, 0.2) / 1)",
+   "computed": "color(srgb 0.2577 0.998 0.350731)",
+   "rgba": [66, 254, 89, 255]
+  },
+  {
+   "input": "hwb(from rgba(69, 94, 22, 0.3) h calc(w + 0.0) calc(b / 3))",
+   "computed": "color(srgb 0.545352 0.789542 0.0862745 / 0.301961)",
+   "rgba": [139, 201, 22, 77]
+  },
+  {
+   "input": "lab(22.2 28.8 72.2)",
+   "computed": "lab(22.2 28.8 72.2)",
+   "rgba": [99, 30, 0, 255]
+  },
+  {
+   "input": "lab(50 20 -30)",
+   "computed": "lab(50 20 -30)",
+   "rgba": [133, 108, 170, 255]
+  },
+  {
+   "input": "lab(50 20 30)",
+   "computed": "lab(50 20 30)",
+   "rgba": [161, 105, 69, 255]
+  },
+  {
+   "input": "lab(50% 20% -30%)",
+   "computed": "lab(50 25 -37.5)",
+   "rgba": [135, 105, 183, 255]
+  },
+  {
+   "input": "lab(71 18.98 29.27 / 5%)",
+   "computed": "lab(71 18.98 29.27 / 0.05)",
+   "rgba": [219, 160, 121, 13]
+  },
+  {
+   "input": "lab(from lab(46 -48 73.10) calc(l * 3) calc(a * 1) b / alpha)",
+   "computed": "lab(100 -48 73.1)",
+   "rgba": [189, 255, 97, 255]
+  },
+  {
+   "input": "lab(from olive l a b / 0.5)",
+   "computed": "lab(52.1491 -9.43703 56.0256 / 0.5)",
+   "rgba": [128, 128, 0, 128]
+  },
+  {
+   "input": "lab(from rgba(214, 90, 150, 1) l a calc(b + 0))",
+   "computed": "lab(56.2267 54.051 -7.44534)",
+   "rgba": [214, 90, 150, 255]
+  },
+  {
+   "input": "lab(from teal l a b / 0.3)",
+   "computed": "lab(47.9851 -30.3787 -8.97611 / 0.3)",
+   "rgba": [0, 128, 128, 77]
+  },
+  {
+   "input": "lch(22 31.90 348)",
+   "computed": "lch(22 31.9 348)",
+   "rgba": [90, 30, 64, 255]
+  },
+  {
+   "input": "lch(60 40 200)",
+   "computed": "lch(60 40 200)",
+   "rgba": [0, 163, 167, 255]
+  },
+  {
+   "input": "lch(from #0a7f5e calc(l + 10) c h)",
+   "computed": "lch(56.9222 38.1796 165.868)",
+   "rgba": [52, 153, 119, 255]
+  },
+  {
+   "input": "lch(from oklab(0.03 -0.26 0 / 100%) none c h / 1)",
+   "computed": "lch(none 3.06694 179.661)",
+   "rgba": [0, 2, 0, 255]
+  },
+  {
+   "input": "oklab(0.07 0 -0.2)",
+   "computed": "oklab(0.07 0 -0.2)",
+   "rgba": [19, 0, 69, 255]
+  },
+  {
+   "input": "oklab(0.14 0.157 0.163)",
+   "computed": "oklab(0.14 0.157 0.163)",
+   "rgba": [63, 0, 0, 255]
+  },
+  {
+   "input": "oklab(0.6 0.1 -0.1)",
+   "computed": "oklab(0.6 0.1 -0.1)",
+   "rgba": [159, 99, 186, 255]
+  },
+  {
+   "input": "oklab(from hsl(63, 1%, 50%) calc(l * 2.6) none l)",
+   "computed": "oklab(1 none 0.601579)",
+   "rgba": [255, 185, 0, 255]
+  },
+  {
+   "input": "oklab(from hsl(from #8aeb h calc(s + 0) calc(l - 0)) min(l, 1) min(a, 0) b)",
+   "computed": "oklab(0.739486 -0.0117788 -0.105327 / 0.733333)",
+   "rgba": [136, 170, 238, 187]
+  },
+  {
+   "input": "oklch(0.03 0 125)",
+   "computed": "oklch(0.03 0 125)",
+   "rgba": [0, 0, 0, 255]
+  },
+  {
+   "input": "oklch(0.7 0.1 150)",
+   "computed": "oklch(0.7 0.1 150)",
+   "rgba": [111, 176, 125, 255]
+  },
+  {
+   "input": "oklch(0.7 0.15 30)",
+   "computed": "oklch(0.7 0.15 30)",
+   "rgba": [237, 118, 101, 255]
+  },
+  {
+   "input": "oklch(1 0.1 182.57 / 0)",
+   "computed": "oklch(1 0.1 182.57 / 0)",
+   "rgba": [174, 255, 255, 0]
+  },
+  {
+   "input": "oklch(70% 0.1 30deg / 0.5)",
+   "computed": "oklch(0.7 0.1 30 / 0.5)",
+   "rgba": [213, 134, 121, 128]
+  },
+  {
+   "input": "oklch(from blue calc(l * 0.8) c h)",
+   "computed": "oklch(0.361585 0.31321 264.051)",
+   "rgba": [19, 0, 222, 255]
+  },
+  {
+   "input": "oklch(from hsl(127.4, 64.43%, 36.6%) min(l, 0) min(c, 0.7) none / alpha)",
+   "computed": "oklch(0 0.176722 none)",
+   "rgba": [5, 0, 0, 255]
+  },
+  {
+   "input": "oklch(from navy calc(l + 0.2) c h / 60%)",
+   "computed": "oklch(0.47113 0.187885 264.051 / 0.6)",
+   "rgba": [33, 79, 194, 153]
+  },
+  {
+   "input": "oklch(from red l c h)",
+   "computed": "oklch(0.627966 0.257704 29.2346)",
+   "rgba": [255, 0, 0, 255]
+  },
+  {
+   "input": "rgb(0.9 110.4 237.17 / 62%)",
+   "computed": "rgba(1, 110, 237, 0.62)",
+   "rgba": [1, 110, 237, 158]
+  },
+  {
+   "input": "rgb(85.9 none 179.6 / 66%)",
+   "computed": "rgba(86, 0, 180, 0.66)",
+   "rgba": [86, 0, 180, 168]
+  },
+  {
+   "input": "rgb(from #123456 calc(r * 2) g calc(b - 10) / calc(alpha / 2))",
+   "computed": "color(srgb 0.141176 0.203922 0.298039 / 0.5)",
+   "rgba": [36, 52, 76, 128]
+  },
+  {
+   "input": "rgb(from color(a98-rgb 0.1 0.4 0.72) min(r, 0.4) none b)",
+   "computed": "color(srgb -0.23278 none 0.735638)",
+   "rgba": [0, 0, 188, 255]
+  },
+  {
+   "input": "rgb(from color-mix(in hsl, transparent 0.3%, hsl(-221.8 68.64% 49.45% / 0.33)) r calc(g - 0) calc(b * 2) / calc(alpha / 2))",
+   "computed": "color(srgb 0.155075 0.833925 0.721986 / 0.164505)",
+   "rgba": [40, 213, 184, 42]
+  },
+  {
+   "input": "rgb(from color-mix(in srgb, orange, purple) b r g / calc(alpha - 0.25))",
+   "computed": "color(srgb 0.25098 0.75098 0.323529 / 0.75)",
+   "rgba": [64, 192, 83, 191]
+  },
+  {
+   "input": "rgb(from red calc(r / 2) g b)",
+   "computed": "color(srgb 0.5 0 0)",
+   "rgba": [128, 0, 0, 255]
+  },
+  {
+   "input": "rgb(from red r g b / 50%)",
+   "computed": "color(srgb 1 0 0 / 0.5)",
+   "rgba": [255, 0, 0, 128]
+  },
+  {
+   "input": "rgb(from red r g b)",
+   "computed": "color(srgb 1 0 0)",
+   "rgba": [255, 0, 0, 255]
+  },
+  {
+   "input": "rgb(from red r g b, 5)",
+   "computed": "INVALID",
+   "rgba": null
+  },
+  {
+   "input": "rgb(from teal r g calc(b / 2))",
+   "computed": "color(srgb 0 0.501961 0.25098)",
+   "rgba": [0, 128, 64, 255]
+  },
+  {
+   "input": "rgba(25, 253, 102, 0.52)",
+   "computed": "rgba(25, 253, 102, 0.52)",
+   "rgba": [25, 253, 102, 133]
+  },
+  {
+   "input": "rgba(255, 150, 200, 0.4)",
+   "computed": "rgba(255, 150, 200, 0.4)",
+   "rgba": [255, 150, 200, 102]
+  }
+ ]
+}

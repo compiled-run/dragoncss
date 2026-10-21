@@ -1,0 +1,10 @@
+component App(open: boolean = false) {
+  <html>
+    <body>
+      <div frame class="frame">
+        <div panel class="panel" ui-open={open} />
+        <div sib class="sib" />
+      </div>
+    </body>
+  </html>
+}

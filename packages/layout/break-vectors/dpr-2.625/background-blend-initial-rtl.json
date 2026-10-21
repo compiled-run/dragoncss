@@ -1,0 +1,15 @@
+{
+  "case": "background-blend-initial-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"n1:text0","lines":[[0,6],[6,8]]},
+    {"id":"n2:text0","lines":[[0,5]]},
+    {"id":"n3:text0","lines":[[0,6]]},
+    {"id":"n4:text0","lines":[[0,2]]},
+    {"id":"n5c:text0","lines":[[0,6]]},
+    {"id":"n6c:text0","lines":[[0,2]]},
+    {"id":"n7:text0","lines":[[0,5]]},
+    {"id":"ra:text0","lines":[[0,2]]},
+    {"id":"rb:text0","lines":[[0,5]]}
+  ]
+}

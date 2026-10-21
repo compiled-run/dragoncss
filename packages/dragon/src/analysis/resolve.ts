@@ -7,7 +7,7 @@ import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
-import type { GeneratedPseudo } from '../css/selectors.ts';
+import type { GeneratedPseudo, RangePart } from '../css/selectors.ts';
 import { GENERATED_PSEUDOS } from '../css/selectors.ts';
 import type { CompilerFaults } from '../faults.ts';
 import { STRING_VALUE_TYPE } from '../css/properties/lists.ts';
@@ -17,22 +17,27 @@ import { blockify } from './blockify.ts';
 import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
-import { blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, synthesizesSmallCaps, userAgentValue } from './computed.ts';
-import { uaTagOf } from './elements.ts';
+import { appearanceDisplay, blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, synthesizesSmallCaps, userAgentValue } from './computed.ts';
+import { MARKER_TAG, uaTagOf } from './elements.ts';
 import { generatedElement, generatedText, generatedTextNode, hostRefusal } from './generated.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
+import { isRangeType } from './elements/controls.ts';
+import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
+import type { BlockInInlineChild } from './block-in-inline.ts';
+import { blockInInlineBlocker, isBlockInInline, markBlockInInline } from './block-in-inline.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
 import type { TransformItem } from './text-transform.ts';
 import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
-import { NO_INTERACTION } from './match.ts';
+import { NO_INTERACTION, partSelectorMatches, pseudoSelectorMatches, selectorMatches } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
 import { computeResize } from '../css/properties/resize.ts';
 import { computeFontStretch } from '../css/properties/font-stretch.ts';
 import { computeTouchAction } from '../css/properties/touch-action.ts';
+import { applyWebkitScrollbar, hasScrollbarRules } from './webkit-scrollbar.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -206,11 +211,21 @@ export function phaseOneContext(runs: readonly (string | null)[], modes: readonl
   return runs.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
 
-/** CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7). */
-const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline';
+/**
+ * CSS2 §9.2.2: an element whose box is an inline box (display: inline after blockification, css-display-3 §2.7); a replaced element
+ * with display: inline is an atomic inline instead (§2.4).
+ */
+const isInlineBox = (el: ResolvedElement): boolean => displayOf(el) === 'inline' && !isReplacedTag(el.element.tag);
 
-/** CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification. */
-const isAtomicInline = (el: ResolvedElement): boolean => displayOf(el) === 'inline-block' || displayOf(el) === 'inline-flex' || displayOf(el) === 'inline-grid';
+/**
+ * CSS2 §9.2.4: an atomic inline, an inline-block, inline-flex or inline-grid box that stayed inline-level after blockification, or
+ * an inline-level replaced element (RF-INL).
+ */
+const isAtomicInline = (el: ResolvedElement): boolean => {
+  const d = displayOf(el);
+  if (isReplacedTag(el.element.tag)) return d === 'inline' || d === 'inline-block';
+  return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
+};
 
 /** An atomic inline's run in collapseInlineContext: U+FFFC, which is not white space (Blink inline_items_builder.cc:1245-1251). */
 const ATOMIC_RUN = '\ufffc';
@@ -219,6 +234,49 @@ const displayOf = (el: ResolvedElement): string => {
   const v = (el.props.get('display') as ResolvedValue).value;
   return v.kind === 'keyword' ? v.value : '';
 };
+
+const outOfFlow = (k: ResolvedElement): boolean => {
+  const position = (k.props.get('position') as ResolvedValue).value;
+  const float = (k.props.get('float') as ResolvedValue).value;
+  return (position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed')) || (float.kind === 'keyword' && float.value !== 'none');
+};
+
+/** Whether an inline box holds anything a line box is made for: text that is not white space, a <br>, or an atomic inline. */
+function inlineHasContent(el: ResolvedElement): boolean {
+  if (el.element.tag === 'br') return true;
+  return el.children.some((k) => (k.kind === 'text' ? /[^ \t\n]/u.test(k.text) : displayOf(k) !== 'none' && !outOfFlow(k) && (!isInlineBox(k) || inlineHasContent(k))));
+}
+
+/**
+ * CSS2 §8.3.1: whether a block box may be empty, so that its top and bottom margins collapse through it: a block container that
+ * is no formatting context root, with no positive height or min-height, no vertical padding or border, and nothing in flow but
+ * such boxes and white space. Conservative: a percentage height or a float inside counts as nothing.
+ */
+function mayCollapseThrough(el: ResolvedElement): boolean {
+  const value = (p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
+  const positive = (v: CssValue): boolean => (v.kind === 'length' || v.kind === 'percentage') && v.value > 0;
+  const drawn = (side: 'top' | 'bottom'): boolean => {
+    const st = value(`border-${side}-style` as Longhand);
+    return !(st.kind === 'keyword' && (st.value === 'none' || st.value === 'hidden')) && !(value(`border-${side}-width` as Longhand).kind === 'length' && (value(`border-${side}-width` as Longhand) as { value: number }).value === 0);
+  };
+  const overflow = value('overflow-x');
+  if (displayOf(el) !== 'block' || isReplacedTag(el.element.tag) || !(overflow.kind === 'keyword' && overflow.value === 'visible')) return false;
+  const height = value('height');
+  if ((height.kind === 'length' && height.value > 0) || (value('min-height').kind === 'length' && positive(value('min-height')))) return false;
+  if (positive(value('padding-top')) || positive(value('padding-bottom')) || drawn('top') || drawn('bottom')) return false;
+  return el.children.every((k) => (k.kind === 'text' ? !/[^ \t\n]/u.test(k.text) : displayOf(k) === 'none' || outOfFlow(k) || (isInlineBox(k) ? !inlineHasContent(k) : mayCollapseThrough(k))));
+}
+
+/** A child of an inline box as blockInInlineBlocker reads it. */
+export function blockInInlineChild(k: ResolvedElement | { readonly kind: 'text'; readonly text: string }): BlockInInlineChild {
+  if (k.kind === 'text') return { kind: 'text', blank: /^[ \t\n]*$/u.test(k.text) };
+  if (isBlockInInline(k)) return { kind: 'nested', address: k.element.address };
+  const d = displayOf(k);
+  if (d === 'none') return { kind: 'none' };
+  // An absolutely positioned or floated child leaves the flow: it neither splits the inline box nor makes it a block's.
+  if (outOfFlow(k)) return { kind: 'out-of-flow' };
+  return isInlineBox(k) || isAtomicInline(k) || d === 'contents' || d.startsWith('inline') ? { kind: 'inline-level' } : { kind: 'block', empty: mayCollapseThrough(k) };
+}
 
 /** css-variables-1 §2: every resolved element's computed custom properties (ANIM-v substitutes transition and animation values with them). */
 const RESOLVED_CUSTOMS = new WeakMap<ResolvedElement, CustomProperties>();
@@ -237,20 +295,36 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // GEN-a: the generated pseudo-elements some rule selects; only these are cascaded on each element.
   const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
-  const rulesOf = new Map(GENERATED_PSEUDOS.map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' && sel.pseudoElement.name === p))] as const));
+  const rulesOf = new Map([...GENERATED_PSEUDOS, 'marker' as const].map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind !== 'static-empty' && sel.pseudoElement.name === p))] as const));
+  const markerRules = rulesOf.get('marker') as readonly Rule[];
+  const scrollbarRules = hasScrollbarRules(rules);
+  // CQ: a @container rule takes part only where environment.container says its query container matches. Its query is decided only
+  // for an element one of its selectors matches, so a container Dragon cannot read refuses only the rules that reach inside it.
+  const contained = rules.some((r) => r.container !== undefined);
+  const applying = (rs: readonly Rule[], ancestors: readonly LinkedElement[], self: LinkedElement | null, selects: (r: Rule) => boolean): readonly Rule[] => {
+    if (!contained) return rs;
+    const holds = environment.container;
+    return rs.filter((r) => r.container === undefined || (selects(r) && holds !== undefined && holds(r, ancestors, self)));
+  };
   let resolvedRoot: ResolvedElement | null = null;
   // css-variables-1 §2: custom properties inherit; each element's are computed from its parent's.
   const customsOf = RESOLVED_CUSTOMS;
   // The children of each inline box, waiting for its block container's inline formatting context to collapse their text.
   const pendingInline = new Map<ResolvedElement, readonly (ResolvedElement | LinkedText)[]>();
-  // GEN-a (R2): pseudo is set for a host's ::before or ::after box, el is its element (generated.ts generatedElement) and chain
-  // ends with the host; the box cascades its pseudo-element's rules on the host's chain and inherits from parent, the host.
-  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | null = null): ResolvedElement => {
-    const here = pseudo === null ? [...chain, el] : chain;
+  // GEN-a (R2): pseudo is set for a host's ::before, ::after or ::marker box, el is its element (generated.ts generatedElement,
+  // markerElement) and chain ends with the host; the box cascades its pseudo-element's rules on the host's chain and inherits from
+  // parent, the host.
+  // FORM-a A4: part is set for a part of a range input's UA shadow tree, which likewise cascades its pseudo-element's rules on
+  // the input's chain (chain ends with the input); it has no chain of its own.
+  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | 'marker' | null = null, part: RangeShadowPart | null = null): ResolvedElement => {
+    const here = pseudo === null && part === null ? [...chain, el] : chain;
+    const partName = part === null ? null : PART_PSEUDO[part];
+    const selects = (r: Rule): boolean => r.selectors.some((sel) => (pseudo !== null ? pseudoSelectorMatches(r, sel, here, pseudo, faults, interaction) : part !== null ? partName !== null && partSelectorMatches(r, sel, here, partName, faults, interaction) : selectorMatches(r, sel, here, here.length - 1, 0, faults, interaction)));
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
-    const { winners, matched, scope } = cascadeElement(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo);
+    const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
+    const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart);
     const props = new Map<Longhand, ResolvedValue>();
-    const tag = uaTagOf(el.tag);
+    const tag = uaTagOf(el.tag, el.attributes.get('type'));
     const none = { declaration: null, declared: null, losing: [] } as const;
     const fromParent = (p: Longhand): ResolvedValue => {
       // The UA capture has no font-weight or font-style (datasets.ts TEXT_FONT_LONGHANDS); the root takes their initial value.
@@ -267,7 +341,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const defaulted = new Set<Longhand>();
     // Longhands whose author winner is revert or revert-layer: they keep that declaration while taking the rolled-back value.
     const revertedProps = new Set<Longhand>();
-    const hints = presentationalHints(el.tag, el.attributes);
+    const hints = part === null ? presentationalHints(el.tag, el.attributes) : new Map();
     for (const p of LONGHANDS) {
       const raw = winners.get(p);
       const w = raw === undefined ? undefined : substituteVariables(raw, p, el, scope);
@@ -283,8 +357,10 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       // css-color-4 §4.4: currentcolor as the value of color behaves as inherit.
       const currentColorOnColor = p === 'color' && w !== undefined && w.value.kind === 'keyword' && w.value.value === 'currentcolor';
       // css-cascade-5 §7.3, §7.4: revert in the author origin rolls back to the user-agent origin (there is no user origin), and
-      // revert-layer outside any layer is revert; presentational hints are author-level, so they are rolled back too.
+      // revert-layer outside any layer is revert; presentational hints are author-level, so revert rolls them back too.
       const reverted = !faults.revertAsUnset && w !== undefined && w.value.kind === 'keyword' && (w.value.value === 'revert' || w.value.value === 'revert-layer');
+      // revert-layer with no author layer below rolls back to the presentational hints, which sit below every layer (Chrome 145).
+      const toHint = reverted && w.value.kind === 'keyword' && w.value.value === 'revert-layer' && hints.has(p);
       if (w !== undefined && !currentColorOnColor && !reverted && !(w.value.kind === 'keyword' && ['inherit', 'initial', 'unset', 'revert', 'revert-layer'].includes(w.value.value))) {
         props.set(p, { value: w.value, origin: 'author', span: w.declaration.span, ...author });
       } else if (w !== undefined && !reverted && w.value.kind === 'keyword') {
@@ -292,7 +368,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
         const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
         props.set(p, { ...r, span: w.declaration.span, ...author });
-      } else if (w === undefined && hints.has(p)) {
+      } else if ((w === undefined || toHint) && hints.has(p)) {
         // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
         // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
         const value = hints.get(p) as CssValue;
@@ -311,7 +387,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         props.set(p, defaultFor(p));
         defaulted.add(p);
       }
-      if (reverted && w !== undefined) {
+      if (reverted && w !== undefined && !toHint) {
         props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author });
         revertedProps.add(p);
       }
@@ -325,6 +401,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
+    if (part !== null) applyShadowUserAgent(part, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
     for (const p of LONGHANDS) {
@@ -340,10 +417,14 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeLetterSpacing(props, faults.zeroNotNormal);
     computeWordSpacing(props, faults.wordNormalNotZero);
     computeFontStretch(props);
+    // Blink LayoutTheme::AdjustStyle: an appearance other than none makes an inline or table display inline-block or block.
+    props.set('display', appearanceDisplay(props.get('display') as ResolvedValue, props.get('appearance') as ResolvedValue));
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     blockify(props, parent === null ? null : parent.props, faults);
     adjustLineClampDisplay(props);
     computeOverflowPair(props);
+    // NA-NATIVE: a scroll container whose ::-webkit-scrollbar rules hide its scrollbars takes scrollbar-width: none.
+    if (pseudo === null && scrollbarRules) applyWebkitScrollbar(props, here, rules, faults);
     computeResize(props);
     computeTouchAction(props);
     const ownFontSize = pxOf((props.get('font-size') as ResolvedValue).value);
@@ -351,11 +432,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
     if (pseudo === null) computeLists(props, faults);
-    else computePseudoContent(props, faults);
+    else if (pseudo !== 'marker') computePseudoContent(props, faults);
     // R3: a generated box's one text child (none for an empty string); the element is built once its content is computed.
-    const content = pseudo === null ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
+    const content = pseudo === null || pseudo === 'marker' ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
     const host = pseudo === null ? null : (chain[chain.length - 1] as LinkedElement);
-    const own = pseudo === null || host === null || content === null || content === '' ? el : generatedElement(host, pseudo, [generatedTextNode(host, pseudo, content, props.get('content') as ResolvedValue)]);
+    const own = pseudo === null || pseudo === 'marker' || host === null || content === null || content === '' ? el : generatedElement(host, pseudo, [generatedTextNode(host, pseudo, content, props.get('content') as ResolvedValue)]);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
       kind: 'element',
       element: own,
@@ -365,7 +446,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
     const kids: (ResolvedElement | LinkedText)[] = own.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
-    if (pseudo === null) {
+    // css-lists-3 §3.1: a list item's ::marker rules cascade onto its marker, which inherits from the item; it is kept beside the
+    // tree (markerOf), as only its color is drawn (generated.ts markerRuleRefusals refuses every other property).
+    if (pseudo === null && part === null && markerRules.length > 0 && isListItem(props.get('display') as ResolvedValue)) {
+      markers.set(self, visit(markerElement(el), here, self, 'marker'));
+    }
+    if (pseudo === null && part === null) {
       // GEN-a (R2-R4): the host's ::before box is its first child and its ::after box its last. A box on a host R4 refuses is not
       // built; it is recorded for the computed-value checks (refusedGenerationOf).
       const boxParent = faults.pseudoInheritsFromHostParent && parent !== null ? parent : self;
@@ -387,8 +473,22 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else kids.push(box);
       }
     }
-    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it.
-    if (parent !== null && isInlineBox(self)) {
+    if (pseudo === null) {
+      // FORM-a A4: input[type=range] holds Chrome's UA shadow tree, container > track > thumb, each a div (forms/ua-shadow.generated.ts).
+      const host = part === null ? (el.tag === 'input' && isRangeType(el.attributes.get('type')) ? el : null) : (rangeParts.get(parent as ResolvedElement) as RangePartInfo).host;
+      const next: RangeShadowPart | null = part === null ? (host === null ? null : 'container') : part === 'container' ? 'track' : part === 'track' ? 'thumb' : null;
+      if (part !== null) rangeParts.set(self, { part, host: host as LinkedElement });
+      else if (host !== null) rangeParts.set(self, { part: null, host });
+      if (next !== null && host !== null) kids.push(visit(partElement(host, next), here, self, null, next));
+    }
+    // BII: an inline box that holds only block-level boxes, with no box of its own, lays out as their block box (block-in-inline.ts).
+    if (parent !== null && isInlineBox(self) && blockInInlineBlocker(props, kids.map(blockInInlineChild), environment.ua) === null) {
+      props.set('display', { ...(props.get('display') as ResolvedValue), value: { kind: 'keyword', value: 'block' } });
+      markBlockInInline(self);
+    }
+    // CSS2 §9.2.2: an inline box's content belongs to its block container's inline formatting context, which collapses it, and so
+    // does a display: contents element's, whose children take its place in its parent's box (css-display-3 §2.5).
+    if (parent !== null && (isInlineBox(self) || displayOf(self) === 'contents')) {
       pendingInline.set(self, kids);
       return self;
     }
@@ -422,6 +522,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
           modes.push(collapseModeOf(owner));
           transforms.push({ kind: 'text', node: kid, transform: textTransformOf(owner) });
         } else if (displayOf(kid) === 'none') continue;
+        else if (displayOf(kid) === 'contents' && pendingInline.has(kid)) gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') {
             run.push(null);
@@ -483,6 +584,25 @@ export type RefusedGeneration = { readonly pseudo: GeneratedPseudo; readonly con
 const generated = new WeakMap<ResolvedElement, GeneratedInfo>();
 const refused = new WeakMap<ResolvedElement, readonly RefusedGeneration[]>();
 
+const markers = new WeakMap<ResolvedElement, ResolvedElement>();
+const isListItem = (v: ResolvedValue): boolean => v.value.kind === 'keyword' && v.value.value === 'list-item';
+
+/** The element resolve.ts cascades a list item's ::marker rules on: "<item>::marker", located at the item, with no children. */
+function markerElement(host: LinkedElement): LinkedElement {
+  return { kind: 'element', address: `${host.address}::marker`, node: host.node, instance: host.instance, owner: host.owner, tag: MARKER_TAG, classes: [], attributes: new Map(), children: [] };
+}
+
+/**
+ * The resolved ::marker of a list item when some rule selects ::marker (its color is the marker's), or undefined: then the marker
+ * takes every value from the item.
+ */
+export function markerOf(item: ResolvedElement): ResolvedElement | undefined {
+  return markers.get(item);
+}
+
+/** The element whose color a list item's marker is drawn in: its resolved ::marker, or the item itself. */
+export const markerStyleOf = (item: ResolvedElement): ResolvedElement => markers.get(item) ?? item;
+
 /** The pseudo-element and host of a ::before or ::after box resolveTree built, or undefined for every other element. */
 export function generatedPseudoOf(el: ResolvedElement): GeneratedInfo | undefined {
   return generated.get(el);
@@ -501,7 +621,45 @@ function computePseudoContent(props: Map<Longhand, ResolvedValue>, faults: Compi
   if (content.value.kind === 'keyword' && content.value.value === 'normal') props.set('content', { ...content, value: normal });
 }
 
+/** The parts of the UA shadow tree of input[type=range] (FORM-a A4). */
+export type RangeShadowPart = 'container' | 'track' | 'thumb';
+const PART_PSEUDO: Readonly<Record<RangeShadowPart, RangePart | null>> = { container: null, track: 'track', thumb: 'thumb' };
+
+/** A range input (part null) or one of its shadow parts, with the input element. */
+export type RangePartInfo = { readonly part: RangeShadowPart | null; readonly host: LinkedElement };
+const rangeParts = new WeakMap<ResolvedElement, RangePartInfo>();
+
+/** The range input or shadow part a resolved element is, or undefined for every other element. */
+export function rangePartOf(el: ResolvedElement): RangePartInfo | undefined {
+  return rangeParts.get(el);
+}
+
+/** A shadow part as an element: a div at "<input address>::<part>", located at the input, with no class or attribute. */
+function partElement(host: LinkedElement, part: RangeShadowPart): LinkedElement {
+  return { kind: 'element', address: `${host.address}::${part}`, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children: [] };
+}
+
 const keywordDirection = (v: ResolvedValue): Direction => (v.value.kind === 'keyword' && v.value.value === 'rtl' ? 'rtl' : 'ltr');
+
+/** The shadow rules' properties that no longhand models, and why each changes nothing Dragon lays out or paints. */
+const UNMODELLED_SHADOW = new Set(['unicode-bidi', '-webkit-user-modify']);
+
+/**
+ * A part's UA declarations after the div rules (RANGE_UA_SHADOW, user-agent origin, in cascade order) for the longhands no author
+ * declaration set: min-inline-size is min-width in horizontal writing; inherit takes the parent's value. unicode-bidi: isolate
+ * (the parts hold no text) and -webkit-user-modify (editing) are not modelled; any other property is an error.
+ */
+function applyShadowUserAgent(part: RangeShadowPart, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, fromParent: (p: Longhand) => ResolvedValue): void {
+  for (const rule of RANGE_UA_SHADOW[part]) {
+    for (const [name, text, important] of rule.declarations) {
+      if (UNMODELLED_SHADOW.has(name)) continue;
+      const p = (name === 'min-inline-size' ? 'min-width' : name) as Longhand;
+      if (important || !(LONGHANDS as readonly string[]).includes(p)) throw new Error(`the range ${part}'s UA rule sets ${name}: ${text}, which Dragon does not model`);
+      if (!defaulted.has(p)) continue;
+      props.set(p, text === 'inherit' ? { ...fromParent(p), origin: 'user-agent' } : { value: parseValueText(p, text), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
+    }
+  }
+}
 
 /** The environment a root returned by resolveTree was resolved in; the computed-value checks read its UA dataset. */
 export function environmentOf(root: ResolvedElement): ResolveEnvironment {
@@ -527,7 +685,9 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
     // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
     const none = reverted.has(p) ? { span: was.span, declaration: was.declaration, declared: was.declared, losing: was.losing, ...(was.substitution === undefined ? {} : { substitution: was.substitution }) } : unset;
     if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
-    else if (was.origin === 'user-agent') props.set(p, INHERITED.has(p) && parent !== null ? { ...fromParent(p), ...none } : { value: initialValue(p, ua), origin: 'initial', ...none });
+    // The capture derives no declared values for the root (its UA values, as :root { view-transition-name: root }, are captured
+    // computed), so the root keeps a captured UA value.
+    else if (was.origin === 'user-agent' && parent !== null) props.set(p, INHERITED.has(p) && parent !== null ? { ...fromParent(p), ...none } : { value: initialValue(p, ua), origin: 'initial', ...none });
   }
 }
 

@@ -633,9 +633,9 @@ export function serializeTransform(ops: readonly TransformOp[], boxWidth: number
 // ---------------------------------------------------------------------------------------------------------------------
 // One animated value of any supported kind.
 
-/** A computed value: `kind` picks the field (opacity uses `number`, the rotate property `number` in degrees). */
+/** A computed value: `kind` picks the field (opacity uses `number`, the rotate property `number` in degrees); none is no value. */
 export type AnimatedValue = {
-  readonly kind: 'opacity' | 'length' | 'angle' | 'color' | 'transform';
+  readonly kind: 'none' | 'opacity' | 'length' | 'angle' | 'color' | 'transform';
   readonly number: number;
   readonly length: LengthValue;
   readonly color: LegacyColor;
@@ -649,7 +649,7 @@ export type InterpolatedValue = {
 };
 
 export function interpolateValue(from: AnimatedValue, to: AnimatedValue, progress: number, faults: RtFaults): InterpolatedValue {
-  if (from.kind !== to.kind) return { refused: true, value: from };
+  if (from.kind !== to.kind || from.kind === 'none') return { refused: true, value: from };
   const base: AnimatedValue = { kind: from.kind, number: 0, length: ZERO_PX, color: TRANSPARENT, ops: [] };
   if (from.kind === 'opacity') return { refused: false, value: { kind: base.kind, number: interpolateOpacity(from.number, to.number, progress), length: base.length, color: base.color, ops: base.ops } };
   if (from.kind === 'length') return { refused: false, value: { kind: base.kind, number: 0, length: interpolateLengthProperty(from.length, to.length, progress), color: base.color, ops: base.ops } };
@@ -661,6 +661,7 @@ export function interpolateValue(from: AnimatedValue, to: AnimatedValue, progres
 
 /** The getComputedStyle string of a value on an element with the given float border-box size. */
 export function serializeValue(v: AnimatedValue, boxWidth: number, boxHeight: number, trig: Trig): string {
+  if (v.kind === 'none') return 'none';
   if (v.kind === 'opacity') return serializeNumber(v.number);
   if (v.kind === 'length') return serializeLength(v.length);
   if (v.kind === 'angle') return serializeAngle(v.number);

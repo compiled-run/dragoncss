@@ -94,6 +94,30 @@ export function generatedRuleRefusals(rules: readonly Rule[]): Diagnostic[] {
   return out;
 }
 
+/** The list-marker package that owns ::marker beyond its color. */
+export const MARKER_OWNER = 'the list-marker package GEN-d6';
+
+/**
+ * Rule-level refusals of ::marker: Dragon draws a marker's color from its ::marker rules (resolve.ts markerOf) and nothing else, so
+ * every other declaration in a rule that styles ::marker, custom properties included, is refused on every target.
+ */
+export function markerRuleRefusals(rules: readonly Rule[]): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const rule of rules) {
+    if (!rule.selectors.some((s) => s.pseudoElement !== null && s.pseudoElement.kind === 'marker')) continue;
+    for (const d of rule.declarations) {
+      if (d.property === 'color' && d.alias === undefined && d.custom === undefined) continue;
+      const name = d.alias ?? d.property;
+      out.push(diagnostic('DRAGON_UNSUPPORTED_PROPERTY', {
+        origin: authored(d.span),
+        message: `${name} in a rule that styles ::marker is not supported yet: Dragon draws only a marker's color (${MARKER_OWNER})`,
+        edits: [{ span: d.span, replacement: '' }],
+      }));
+    }
+  }
+  return out;
+}
+
 type Generated = { readonly text: string | null; readonly declaration: Declaration | null; readonly host: Origin };
 
 /** Per host address, the content of each generated box of one resolution (text null: no box). */

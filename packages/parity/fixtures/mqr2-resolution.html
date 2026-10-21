@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.a { width: 80px; height: 12px; background-color: #ccc; }
+.b { width: 80px; height: 12px; background-color: #ccc; }
+.c { width: 80px; height: 12px; background-color: #ccc; }
+.d { width: 80px; height: 12px; background-color: #ccc; }
+@media (resolution < 2x) { .a { background-color: #c00; } }
+@media (min-resolution: 2dppx) { .b { background-color: #0a0; } }
+@media (-webkit-min-device-pixel-ratio: 2.625) { .c { background-color: #00c; } }
+@media (min-resolution: 288dpi) { .d { background-color: #a0a; } }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="a"></div>
+<div data-dragon-id="b" class="b"></div>
+<div data-dragon-id="c" class="c"></div>
+<div data-dragon-id="d" class="d"></div>
+</body>
+</html>

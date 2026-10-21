@@ -30,3 +30,11 @@ export function usedColors(el: ResolvedElement): ElementColors {
   }
   return out;
 }
+
+/** compat §5: the colour an element's glyphs are filled in, its -webkit-text-fill-color, or its color where the fill is currentcolor. */
+export function glyphFill(el: ResolvedElement): Rgba8 {
+  const fill = el.props.get('-webkit-text-fill-color');
+  if (fill === undefined) throw new Error(`${el.element.address}: -webkit-text-fill-color did not resolve`);
+  if (fill.value.kind === 'keyword' && fill.value.value === 'currentcolor') return usedColors(el).color;
+  return colorChannels(fill.value, el.element.address);
+}

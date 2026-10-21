@@ -1,0 +1,23 @@
+{
+  "case": "text-font-size-vw-ahem",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","lines":[[0,24],[24,44]]},
+    {"id":"b:text0","lines":[[0,7]]},
+    {"id":"c1:text0","lines":[[0,4]]},
+    {"id":"d1:text0","lines":[[0,4]]},
+    {"id":"e:text0","lines":[[0,4]]},
+    {"id":"f:text0","lines":[[0,4]]},
+    {"id":"g:text0","lines":[[0,5]]},
+    {"id":"h:text0","lines":[[0,21],[21,42],[42,63],[63,65]]},
+    {"id":"i:text0","lines":[[0,24],[24,48],[48,65]]},
+    {"id":"j:text0","lines":[[0,21],[21,42],[42,63],[63,65]]},
+    {"id":"k1:text0","lines":[[0,4]]},
+    {"id":"k2:text0","lines":[[0,4]]},
+    {"id":"l:text0","lines":[[0,3]]},
+    {"id":"l1:text0","lines":[[0,2]]},
+    {"id":"l:text1","lines":[[0,3]]},
+    {"id":"l2:text0","lines":[[0,2]]},
+    {"id":"l:text2","lines":[[0,2]]}
+  ]
+}

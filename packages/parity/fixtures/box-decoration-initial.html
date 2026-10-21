@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 60px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.s { box-decoration-break: slice; }
+.U { BOX-DECORATION-BREAK: SLICE; }
+.w { -webkit-box-decoration-break: slice; }
+.both { -webkit-box-decoration-break: slice; box-decoration-break: slice; }
+.imp { box-decoration-break: slice !important; }
+.k { box-decoration-break: initial; }
+.u { -webkit-box-decoration-break: unset; }
+.i { box-decoration-break: inherit; }
+.v { --bdb: slice; box-decoration-break: var(--bdb); }
+.row { display: flex; width: 200px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="box s">XX XX XX XX</div>
+<div data-dragon-id="s2" class="box U">XX <span data-dragon-id="s2s" class="s">XX XX XX XX</span> XX</div>
+<div data-dragon-id="s3" class="box w">XX <span data-dragon-id="s3s" class="w">XXX XX XXXX</span></div>
+<div data-dragon-id="s4" class="box both"><span data-dragon-id="s4s" class="i">XX XX XX</span></div>
+<div data-dragon-id="s5" class="box imp k">XX XX</div>
+<div data-dragon-id="s6" class="box u"><div data-dragon-id="s6c" class="i">XXX XX</div></div>
+<div data-dragon-id="s7" class="box v">XX <span data-dragon-id="s7s" class="v">XX XX XX</span></div>
+<div data-dragon-id="row" class="row s"><div data-dragon-id="ra" class="box w">XX XX</div><div data-dragon-id="rb" class="box U">XX</div></div>
+</body>
+</html>

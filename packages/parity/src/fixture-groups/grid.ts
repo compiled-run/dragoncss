@@ -52,6 +52,11 @@ export const GRID: readonly FixtureSpec[] = [
   both('grid-item-units'),
   both('grid-item-keywords'),
   both('grid-item-calc-percent'),
+  // calc(), min(), max(), clamp() and viewport units as track sizes: in fixed, minmax(), fit-content() and repeat() tracks of every
+  // track property and the grid-template shorthand; in auto-fill counts; a percentage one against a definite size, against an
+  // indefinite height (as auto) and in a shrink-to-fit grid; a negative result clamped to 0; and two equal calculations as one
+  // definite track.
+  both('grid-track-math'),
   // G-INL: an inline-grid is an atomic inline on its line; one inside an inline box stays refused (INL2c), as inline-block and inline-flex are.
   reject('reject-grid-inline-grid', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="box" class="box"><span data-dragon-id="cell" class="cell">X</span></span>', 'inline-grid <span> box is an atomic inline inside the inline box <span> s'),
   reject('reject-grid-subgrid', 'DRAGON_UNSUPPORTED_VALUE', 'subgrid', 'grid-template-columns: subgrid is unsupported: subgrid needs the grid engine'),

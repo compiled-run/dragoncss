@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { androidProfile, COMMITTED_PROFILES, createProjectWith, iosLayoutProjection, iosProfile, nativeLayoutProjection, NO_FAULTS, webProfile } from '../src/internal.ts';
+import { androidProfile, COMMITTED_PROFILES, createProjectWith, iosLayoutProjection, iosProfile, nativeLayoutProjection, NO_FAULTS, PROFILE_NOTES, webProfile } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -22,13 +22,23 @@ describe('android support profile', () => {
   it('has exactly the iOS rows, statuses and proofs (animation rows: the same claims): no row, status or proof iOS does not have', () => {
     expect(androidProfile.rows.length).toBeGreaterThan(0);
     // Animation rows follow each target's own device-anim record, so their proving cases may differ by target; the features
-    // and statuses they claim may not.
+    // and statuses they claim may not. MQ-R2 (T067 R9): a media row iOS answers with a caveat (its reduced-motion and iPad
+    // pointer readings) may be exact on Android; an overscroll-behavior row carries Android's no-overscroll-effect note
+    // (profileNoteFor); every other row, status and proof is the iOS one.
+    const asIos = (r: (typeof androidProfile.rows)[number], i: number) => {
+      const o = iosProfile.rows[i];
+      const row = o !== undefined && r.context === 'media' && o.status === 'caveat' && r.status === 'exact' ? { ...r, status: 'caveat' as const } : r;
+      if (row.note !== PROFILE_NOTES.androidNoOverscrollEffect || o?.note !== undefined) return row;
+      const { note: _, ...rest } = row;
+      return rest;
+    };
+    const android = androidProfile.rows.map(asIos);
     const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== 'animation');
     const claims = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context === 'animation').map((r) => `${r.feature} ${r.status}`);
-    expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows));
-    expect(claims(androidProfile.rows)).toEqual(claims(iosProfile.rows));
+    expect(layout(android)).toEqual(layout(iosProfile.rows));
+    expect(claims(android)).toEqual(claims(iosProfile.rows));
     const ios = new Set(layout(iosProfile.rows).map((r) => JSON.stringify(r)));
-    expect(layout(androidProfile.rows).filter((r) => !ios.has(JSON.stringify(r)))).toEqual([]);
+    expect(layout(android).filter((r) => !ios.has(JSON.stringify(r)))).toEqual([]);
   });
   it('is a configured target with androidProfile: COMMITTED_PROFILES holds web, ios and android, and android.ts is generated', () => {
     expect(Object.keys(COMMITTED_PROFILES).sort()).toEqual(['android', 'ios', 'web']);

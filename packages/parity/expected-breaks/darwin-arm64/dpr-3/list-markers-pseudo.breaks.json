@@ -1,0 +1,23 @@
+{
+  "case": "list-markers-pseudo",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"d1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"d2:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"s1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"s2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"n1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"n2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"n3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"c1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"c2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"c3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"m1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"m2:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"n1::marker:text0","data":"1. ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n2::marker:text0","data":"2. ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n3::marker:text0","data":"3. ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"m1::marker:text0","data":"1. ","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

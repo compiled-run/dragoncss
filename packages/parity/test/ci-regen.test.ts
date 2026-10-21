@@ -2,12 +2,13 @@
 // and the pushed-head check. Then regen-on-ci.yml's own shell, run locally with a stub gh: branch mode's head check, master's warm
 // run still yielding to branch regens but never to patch-mode runs, and the push refusing a branch that moved.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { COMMIT_SUBJECT, type Deps, EXIT, FIXED_STEP, findReusable, DEVICE_YIELD_S, main, parseArgs, parseCommits, parseRun, parseTitle, PLACEHOLDER, PUSH_STEP, pushedCommit, REGEN_BRANCH_SLOTS, type Run, runTitle, SLOT_POLL_S } from '../../../scripts/ci-regen.ts';
 import { regenTitle } from '../../../scripts/land-devices-ci.ts';
+import { MERGE_BY_HAND } from '../../../scripts/regen.ts';
 import { repoPath } from '../src/paths.ts';
 
 const REPO = 'o/r';
@@ -314,8 +315,9 @@ describe('pnpm ci:regen verdicts', () => {
 
 // regen-on-ci.yml's shell steps, run as GitHub runs them: the block scalar with its indentation removed, under bash -e.
 const yml = readFileSync(repoPath('.github/workflows/regen-on-ci.yml'), 'utf8');
-function stepScript(name: string): string {
-  const lines = yml.split('\n');
+const roundYml = readFileSync(repoPath('.github/workflows/regen-on-ci-round.yml'), 'utf8');
+function stepScript(name: string, text: string = yml): string {
+  const lines = text.split('\n');
   const at = lines.findIndex((l) => l.trim() === `- name: ${name}`);
   expect(at, name).toBeGreaterThan(0);
   const run = lines.findIndex((l, i) => i > at && l.trim() === 'run: |');
@@ -527,10 +529,10 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(last({}).stdout).toContain('chrome-1 reported nothing');
     expect(last({ C1: 'true', N1: 'true', H1: 'true', C2: 'true', H2: 'true', C3: 'true' }).stdout).toContain('no fixed point after 5 rounds');
     // Each later round runs only when the round before it changed files and left the other side something to do.
-    expect(yml).toContain("if: needs.chrome-1.outputs.next != 'false'");
+    expect(yml).toContain("(needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false'");
     for (const [prev, cur] of [['host-1', 'chrome-2'], ['chrome-2', 'host-2'], ['host-2', 'chrome-3']]) {
       const job = yml.slice(yml.indexOf(`\n  ${cur}:\n`), yml.indexOf('uses:', yml.indexOf(`\n  ${cur}:\n`)));
-      expect(job).toContain(`if: needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false'`);
+      expect(job).toContain(`if: ${'${{'} !cancelled() && needs.${prev}.result == 'success' && needs.${prev}.outputs.changed == 'true' && needs.${prev}.outputs.next != 'false' }}`);
     }
   });
   it('the run-name gives branch mode its branch, head and nonce; patch mode keeps "regen of <sha>"', () => {
@@ -558,6 +560,19 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     const head = git(w, 'rev-parse', 'HEAD');
     writeFileSync(join(w, 'out.json'), '2\n');
     const patch = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, 'pad.txt'), 'a\nB\nc\n');
+    const wide = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, '.gitattributes'), 'out.json merge=dragon-generated\npad.txt merge=dragon-generated\n');
+    const claiming = git(w, 'diff', '--binary') + '\n';
+    // MERGE_BY_HAND's files are regen outputs too.
+    git(w, 'checkout', '-q', '--', '.');
+    writeFileSync(join(w, 'out.json'), '2\n');
+    mkdirSync(join(w, 'packages', 'wpt', 'expectations'), { recursive: true });
+    writeFileSync(join(w, 'packages', 'wpt', 'expectations', 'web.json'), '{}\n');
+    git(w, 'add', '-N', 'packages');
+    const byHand = git(w, 'diff', '--binary') + '\n';
+    git(w, 'rm', '-q', '--cached', '-r', 'packages');
+    rmSync(join(w, 'packages'), { recursive: true });
     git(w, 'checkout', '-q', '--', '.');
     writeFileSync(join(w, 'later.ts'), 'y\n');
     git(w, 'add', '.');
@@ -671,5 +686,268 @@ if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\n' "$body"; fi`;
     expect(pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.later }], commit: { message } }])), URL, r.head, BR)).toBe(pushed);
     // The Onto: line must name the commit's own parent.
     expect(() => pushedCommit(parseCommits(JSON.stringify([{ sha: pushed, parents: [{ sha: r.base }], commit: { message } }])), URL, r.head, BR)).toThrow('is not a regen commit on top of');
+  });
+});
+
+describe('regen-on-ci.yml resume: chrome-1 taken from an earlier run, run locally', () => {
+  const check = stepScript('Check the run to resume from');
+  // The branch the run regenerates and this run's id, as resolve and GitHub give them.
+  const base = { BRANCH: BR, GITHUB_RUN_ID: '5000', RUNS_TRIED: '5' };
+  const RUN = '4242';
+  // The run as GitHub gives it: by default a label run of BR made from this repository.
+  const ownRun = { path: '.github/workflows/regen-on-ci.yml', event: 'pull_request', head_branch: BR, display_title: 'Batch 3 landing', repository: { full_name: REPO }, head_repository: { full_name: REPO } };
+  const ghFor = (o: { readonly run?: object; readonly artifacts?: readonly object[]; readonly jobs?: readonly object[]; readonly missing?: boolean; readonly labelled?: readonly object[]; readonly dispatched?: readonly object[]; readonly also?: readonly number[]; readonly failed?: readonly number[] } = {}) => `
+case "$2" in
+  *workflows/regen-on-ci.yml/runs?event=pull_request*) body='${JSON.stringify({ workflow_runs: o.labelled ?? [] })}' ;;
+  *workflows/regen-on-ci.yml/runs?event=workflow_dispatch*) body='${JSON.stringify({ workflow_runs: o.dispatched ?? [] })}' ;;
+  repos/${REPO}/actions/runs/[0-9]*/artifacts*|repos/${REPO}/actions/runs/[0-9]*/jobs*|repos/${REPO}/actions/runs/[0-9]*) id=$(cut -d/ -f6 <<<"$2" | cut -d'?' -f1); [ "$id" = ${RUN} ] || [[ " ${[...(o.also ?? []), ...(o.failed ?? [])].join(' ')} " == *" $id "* ]] || { echo '{"message":"Not Found"}'; exit 1; } ;;&
+  repos/${REPO}/actions/runs/[0-9]*/jobs*) [[ " ${(o.failed ?? []).join(' ')} " != *" $id "* ]] || { body='{"jobs":[{"name":"chrome-1 / round","conclusion":"failure"}]}'; jq -r "$4" <<<"$body"; exit 0; } ;;&
+  repos/${REPO}/actions/runs/[0-9]*/artifacts*) [ "$id" = ${RUN} ] || [[ " ${(o.failed ?? []).join(' ')} " == *" $id "* ]] || { body='{"artifacts":[]}'; if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; fi; exit 0; } ;;&
+  repos/${REPO}/actions/runs/[0-9]*/artifacts*) body='${JSON.stringify({ artifacts: o.artifacts ?? [{ name: 'chrome-1', expired: false }] })}' ;;
+  repos/${REPO}/actions/runs/${RUN}/jobs*) body='${JSON.stringify({ jobs: o.jobs ?? [{ name: 'resolve', conclusion: 'success' }, { name: 'chrome-1 / round', conclusion: 'success' }, { name: 'host-1 / round', conclusion: 'failure' }] })}' ;;
+  repos/${REPO}/actions/runs/[0-9]*) ${o.missing === true ? `echo '{"message":"Not Found"}'; exit 1` : `body='${JSON.stringify({ ...ownRun, ...o.run })}'`} ;;
+  *) echo "unexpected gh $*" >&2; exit 9 ;;
+esac
+if [ "$3" = -q ]; then jq -r "$4" <<<"$body"; else printf '%s\\n' "$body"; fi`;
+  it('takes a regen-on-ci run whose chrome-1 succeeded, and a run given resume saves no cache', () => {
+    expect(runStep(check, { ...base, RESUME: RUN, MODE: 'patch' }, ghFor()).out).toEqual({ resume: RUN, save: 'false' });
+    expect(runStep(check, { ...base, RESUME: RUN, MODE: 'push' }, ghFor()).out).toEqual({ resume: RUN, save: 'false' });
+    // A chrome-1 that resume-chrome-1 itself supplied (its round skipped) qualifies too, so resumes chain.
+    expect(runStep(check, { ...base, RESUME: RUN, MODE: 'patch' }, ghFor({ jobs: [{ name: 'resume-chrome-1', conclusion: 'success' }, { name: 'chrome-1', conclusion: 'skipped' }] })).out).toEqual({ resume: RUN, save: 'false' });
+    // Without resume, patch mode saves nothing and the other modes save as before.
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'patch' }, 'exit 9').out).toEqual({ resume: '', save: 'false' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, 'exit 9').out).toEqual({ resume: '', save: 'true' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'warm' }, 'exit 9').out).toEqual({ resume: '', save: 'true' });
+  });
+  it('a label run or a branch dispatch takes the newest earlier run of its branch that qualifies, and then saves no cache', () => {
+    const lab = (id: number, head_branch = BR, from = REPO) => ({ id, head_branch, display_title: 'Batch 3 landing', head_repository: { full_name: from } });
+    const dis = (id: number, branch = BR) => ({ id, head_branch: 'master', display_title: runTitle(branch, HEAD, NONCE), head_repository: { full_name: REPO } });
+    // 4242 qualifies; 4300 (newer) has no such run in the stub, so it is passed over; 6000 is newer than this run; other branches never count.
+    const found = runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4300), lab(4242), lab(6000), lab(4400, 'other')], dispatched: [dis(4350, 'other'), dis(4100)] }));
+    expect(found.status, found.stderr).toBe(0);
+    expect(found.out).toEqual({ resume: RUN, save: 'false' });
+    expect(found.stdout).toContain('not resuming from run 4300: run 4300 was not found');
+    expect(found.stdout).not.toContain('4400');
+    expect(found.stdout).not.toContain('4350');
+    // A branch dispatch (run-name "regen of branch <b> at ...") counts too.
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ run: { event: 'workflow_dispatch', head_branch: 'master', display_title: runTitle(BR, HEAD, NONCE) }, dispatched: [dis(4242)] })).out).toEqual({ resume: RUN, save: 'false' });
+    // A fork's pull request from a branch of the same name is never looked at.
+    const fork = runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4242, BR, 'fork/r')] }));
+    expect(fork.out).toEqual({ resume: '', save: 'true' });
+    expect(fork.stdout).not.toContain('4242');
+    // Label runs with no chrome-1 (another label) do not use up the tries.
+    const busy = runStep(check, { ...base, RESUME: '', MODE: 'push', RUNS_TRIED: '1' }, ghFor({ labelled: [lab(4300), lab(4290), lab(4242)], also: [4300, 4290] }));
+    expect(busy.out).toEqual({ resume: RUN, save: 'false' });
+    expect(busy.stdout).toContain('not resuming from run 4300: run 4300 has no live chrome-1 artifact');
+    // Nothing that qualifies, or a failed list: no resume, and the cache is saved as before.
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, ghFor({ labelled: [lab(4300)] })).out).toEqual({ resume: '', save: 'true' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'push' }, 'echo nope; exit 1').out).toEqual({ resume: '', save: 'true' });
+    // At most RUNS_TRIED regen runs are tried.
+    const capped = runStep(check, { ...base, RESUME: '', MODE: 'push', RUNS_TRIED: '1' }, ghFor({ labelled: [lab(4300), lab(4242)], failed: [4300] }));
+    expect(capped.stdout).toContain("not resuming from run 4300: run 4300's chrome-1 did not succeed");
+    expect(capped.out).toEqual({ resume: '', save: 'true' });
+    // Patch mode (the landing driver) and master's warm run never look for one.
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'patch' }, ghFor({ labelled: [lab(4242)] })).out).toEqual({ resume: '', save: 'false' });
+    expect(runStep(check, { ...base, RESUME: '', MODE: 'warm' }, ghFor({ labelled: [lab(4242)] })).out).toEqual({ resume: '', save: 'true' });
+  });
+  it('warns and regenerates from scratch for a run that does not qualify, and refuses an id that is not a number', () => {
+    for (const [o, why] of [
+      [{ missing: true }, `run ${RUN} was not found`],
+      [{ run: { path: '.github/workflows/test-files.yml' } }, `run ${RUN} is not a regen-on-ci run`],
+      // A fork's pull request runs its own copy of the workflow (the same path), so its artifacts are its own.
+      [{ run: { head_repository: { full_name: 'fork/r' } } }, `run ${RUN} was not made from ${REPO}`],
+      [{ run: { repository: { full_name: 'fork/r' } } }, `run ${RUN} was not made from ${REPO}`],
+      [{ run: { head_repository: null } }, `run ${RUN} was not made from ${REPO}`],
+      [{ run: { event: 'schedule' } }, `run ${RUN} came from a schedule event`],
+      [{ run: { event: 'workflow_dispatch', head_branch: 'lane/y', display_title: runTitle(BR, HEAD, NONCE) } }, `run ${RUN} was not dispatched from master`],
+      [{ run: { event: 'workflow_dispatch', head_branch: 'master', display_title: runTitle('other', HEAD, NONCE) } }, `run ${RUN} regenerated another branch`],
+      [{ run: { head_branch: 'other' } }, `run ${RUN} regenerated another branch`],
+      [{ run: { event: 'push', head_branch: 'master' } }, `run ${RUN} regenerated another branch`],
+      [{ artifacts: [{ name: 'chrome-1', expired: true }] }, `run ${RUN} has no live chrome-1 artifact`],
+      [{ artifacts: [] }, `run ${RUN} has no live chrome-1 artifact`],
+      [{ jobs: [{ name: 'chrome-1 / round', conclusion: 'failure' }] }, `run ${RUN}'s chrome-1 did not succeed`],
+      [{ jobs: [{ name: 'chrome-1 / round', conclusion: 'cancelled' }] }, `run ${RUN}'s chrome-1 did not succeed`],
+      [{ jobs: [{ name: 'chrome-1 / round', conclusion: null }] }, `run ${RUN}'s chrome-1 did not succeed`],
+    ] as const) {
+      const r = runStep(check, { ...base, RESUME: RUN, MODE: 'push' }, ghFor(o));
+      expect(r.status, why).toBe(0);
+      expect(r.stdout, why).toContain(`::warning::${why}; chrome-1 runs from scratch`);
+      expect(r.out, why).toEqual({ resume: '', save: 'false' });
+    }
+    // Patch mode names no branch: any branch's run of this repository qualifies, a fork's never.
+    expect(runStep(check, { ...base, BRANCH: '', RESUME: RUN, MODE: 'patch' }, ghFor({ run: { head_branch: 'other' } })).out).toEqual({ resume: RUN, save: 'false' });
+    expect(runStep(check, { ...base, BRANCH: '', RESUME: RUN, MODE: 'patch' }, ghFor({ run: { head_repository: { full_name: 'fork/r' } } })).out).toEqual({ resume: '', save: 'false' });
+    const bad = runStep(check, { ...base, RESUME: '12; rm -rf /', MODE: 'patch' }, 'exit 9');
+    expect(bad.status).toBe(1);
+    expect(bad.stdout).toContain('::error::resume is not a run id');
+  });
+  it('wires resume-chrome-1 in front of chrome-1, and host-1 and converge take whichever supplied chrome-1', () => {
+    const job = (name: string): string => {
+      const at = yml.indexOf(`\n  ${name}:\n`);
+      expect(at, name).toBeGreaterThan(0);
+      const end = yml.slice(at + 1).search(/\n {2}[a-z0-9-]+:\n/);
+      return yml.slice(at, end < 0 ? undefined : at + 1 + end);
+    };
+    expect(job('chrome-1')).toContain("needs.resume-chrome-1.outputs.resumed != 'true'");
+    expect(job('chrome-1')).toContain("seed_run: '${{ needs.resolve.outputs.resume }}'");
+    expect(job('host-1')).toContain("(needs.chrome-1.result == 'success' || needs.resume-chrome-1.outputs.resumed == 'true')");
+    expect(job('converge')).toContain("C1: ${{ needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.changed || needs.chrome-1.outputs.changed }}");
+    // Every round saves only when resolve says so (never with resume, never in patch mode).
+    expect(yml.match(/save_cache: "\$\{\{ needs\.resolve\.outputs\.save == 'true' \}\}"/g)).toHaveLength(5);
+    expect(yml).not.toContain("save_cache: \"${{ needs.resolve.outputs.mode != 'patch' }}\"");
+  });
+
+  const git = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).trim();
+  /** The earlier run's commit (out.json 1, a regen output), this run's commit on it (a host-only change), and the earlier chrome-1's patch (out.json 2), and one that also changes pad.txt. */
+  function repo() {
+    const d = tmpDir();
+    const w = join(d, 'w');
+    git(d, 'init', '-q', w);
+    writeFileSync(join(w, 'out.json'), '1\n');
+    writeFileSync(join(w, 'pad.txt'), 'a\nb\nc\n');
+    writeFileSync(join(w, '.gitignore'), 'node_modules/\n');
+    writeFileSync(join(w, '.gitattributes'), 'out.json merge=dragon-generated\n');
+    git(w, 'add', '.');
+    git(w, 'commit', '-q', '-m', 'earlier');
+    writeFileSync(join(w, 'out.json'), '2\n');
+    const patch = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, 'pad.txt'), 'a\nB\nc\n');
+    const wide = git(w, 'diff', '--binary') + '\n';
+    writeFileSync(join(w, '.gitattributes'), 'out.json merge=dragon-generated\npad.txt merge=dragon-generated\n');
+    const claiming = git(w, 'diff', '--binary') + '\n';
+    // MERGE_BY_HAND's files are regen outputs too.
+    git(w, 'checkout', '-q', '--', '.');
+    writeFileSync(join(w, 'out.json'), '2\n');
+    mkdirSync(join(w, 'packages', 'wpt', 'expectations'), { recursive: true });
+    writeFileSync(join(w, 'packages', 'wpt', 'expectations', 'web.json'), '{}\n');
+    git(w, 'add', '-N', 'packages');
+    const byHand = git(w, 'diff', '--binary') + '\n';
+    git(w, 'rm', '-q', '--cached', '-r', 'packages');
+    rmSync(join(w, 'packages'), { recursive: true });
+    git(w, 'checkout', '-q', '--', '.');
+    writeFileSync(join(w, 'host.kt'), 'fix\n');
+    git(w, 'add', '.');
+    git(w, 'commit', '-q', '-m', 'host fix');
+    return { w, sha: git(w, 'rev-parse', 'HEAD'), patch, wide, claiming, byHand };
+  }
+  /** RUNNER_TEMP with prev/outputs.patch and prev/store.tar.zst (a plain tar: zstd is stubbed as cat), and stubs for zstd and node. */
+  function temp(patch: string, chrome: object[], host: object[]) {
+    const d = tmpDir();
+    mkdirSync(join(d, 'prev'));
+    writeFileSync(join(d, 'prev', 'outputs.patch'), patch);
+    mkdirSync(join(d, 'st', 'v2', 'capture'), { recursive: true });
+    writeFileSync(join(d, 'st', 'v2', 'capture', 'k.json'), '{}\n');
+    execFileSync('tar', ['-cf', join(d, 'prev', 'store.tar.zst'), '-C', join(d, 'st'), 'v2']);
+    mkdirSync(join(d, 'bin'));
+    writeFileSync(join(d, 'bin', 'zstd'), '#!/usr/bin/env bash\ncat "${@: -1}"\n');
+    // regen --explain writes last-run.json: the Chrome steps' records for --skip lanes-host, lanes-host's for --only.
+    writeFileSync(join(d, 'bin', 'node'), `#!/usr/bin/env bash\nmkdir -p node_modules/.cache/dragon-regen\nif [ "$3" = --only ]; then echo '${JSON.stringify(host)}'; else echo '${JSON.stringify(chrome)}'; fi > node_modules/.cache/dragon-regen/last-run.json\n`);
+    for (const f of ['zstd', 'node']) chmodSync(join(d, 'bin', f), 0o755);
+    return d;
+  }
+  const judge = stepScript('Would chrome-1 change anything on this commit');
+  const skipped = (step: string) => ({ pass: 1, step, action: 'skipped', ms: 0, changed: 0, why: 'unchanged' });
+  const runJudge = (r: ReturnType<typeof repo>, d: string) => runStep(judge, { SHA: r.sha, RESUME: '4242', RUNNER_TEMP: d, PATH: `${join(d, 'bin')}:${process.env['PATH']}` }, 'exit 9', r.w);
+  it('takes the earlier tree when every Chrome step is covered on this commit, with its patch made again against this commit', () => {
+    const r = repo();
+    const d = temp(r.patch, [skipped('capture'), skipped('profile-rows')], [{ ...skipped('lanes-host'), action: 'would run', why: 'host.kt changed' }]);
+    const res = runJudge(r, d);
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.out).toEqual({ ok: 'true', changed: 'true', next: 'true' });
+    expect(readFileSync(join(res.dir, 'summary'), 'utf8')).toContain(`chrome-1 (resumed from run 4242): all 2 Chrome steps covered on ${r.sha}, changed files: true; host-1 runs`);
+    // The new patch is against this commit and gives the earlier chrome-1's outputs on it.
+    git(r.w, 'checkout', '-q', '-f', r.sha);
+    git(r.w, 'apply', '--binary', join(d, 'out', 'outputs.patch'));
+    expect(readFileSync(join(r.w, 'out.json'), 'utf8')).toBe('2\n');
+    expect(readFileSync(join(r.w, 'host.kt'), 'utf8')).toBe('fix\n');
+    expect(readFileSync(join(r.w, '.git', 'dragon-regen', 'v2', 'capture', 'k.json'), 'utf8')).toBe('{}\n');
+    expect(execFileSync('tar', ['-tf', join(d, 'out', 'store.tar.zst')], { encoding: 'utf8' })).toContain('v2/capture/k.json');
+    expect(JSON.parse(readFileSync(join(d, 'out', 'chrome-explain.json'), 'utf8'))).toHaveLength(2);
+    // lanes-host covered too: host-1 would change nothing.
+    const r2 = repo();
+    const all = runJudge(r2, temp(r2.patch, [skipped('capture')], [skipped('lanes-host')]));
+    expect(all.out).toEqual({ ok: 'true', changed: 'true', next: 'false' });
+    // A MERGE_BY_HAND output (the WPT expectations) is taken like any other output.
+    const r4 = repo();
+    expect(runJudge(r4, temp(r4.byHand, [skipped('wpt')], [skipped('lanes-host')])).out).toEqual({ ok: 'true', changed: 'true', next: 'false' });
+    // The judge's list of them is MERGE_BY_HAND's.
+    expect(/by_hand='([^']*)'/.exec(judge)?.[1]?.split(' ')).toEqual(MERGE_BY_HAND.map((h) => h.path).sort());
+    // An earlier chrome-1 at its fixed point: an empty patch, changed false.
+    const r3 = repo();
+    const fixed = runJudge(r3, temp('', [skipped('capture')], [skipped('lanes-host')]));
+    expect(fixed.out).toEqual({ ok: 'true', changed: 'false', next: 'false' });
+  });
+  it('leaves chrome-1 to run when a Chrome step would run or restore, the outputs do not apply, or explain judged nothing', () => {
+    const cases: [string, (r: ReturnType<typeof repo>) => string, string][] = [
+      ['run', (r) => temp(r.patch, [skipped('capture'), { ...skipped('ua'), action: 'would run', why: 'packages/parity/src/x.ts changed' }], []), 'this commit changes Chrome-step inputs: ua (would run: packages/parity/src/x.ts changed); chrome-1 runs'],
+      ['restore', (r) => temp(r.patch, [{ ...skipped('capture'), action: 'would restore', why: 'outputs differ' }], []), 'this commit changes Chrome-step inputs: capture (would restore'],
+      ['apply', (r) => temp(r.patch.replace('\n-1\n', '\n-7\n'), [skipped('capture')], []), 'outputs do not apply to'],
+      ['none', (r) => temp(r.patch, [], []), 'regen --explain judged no step; chrome-1 runs'],
+      // Only regen outputs come from the earlier run: a patch that also changes another file (pad.txt) is not taken.
+      ['unclaimed', (r) => temp(r.wide, [skipped('capture')], []), 'changes files no regen step claims (pad.txt); chrome-1 runs'],
+      // A patch cannot claim its own paths: .gitattributes is read at this commit.
+      ['self-claim', (r) => temp(r.claiming, [skipped('capture')], []), 'changes files no regen step claims (.gitattributes pad.txt); chrome-1 runs'],
+    ];
+    for (const [name, make, msg] of cases) {
+      const r = repo();
+      const res = runJudge(r, make(r));
+      expect(res.status, `${name}: ${res.stderr}`).toBe(0);
+      expect(res.stdout + res.stderr, name).toContain(msg);
+      expect(res.out, name).toEqual({});
+    }
+  });
+
+  const seed = stepScript('Seed the regen cache from it', roundYml);
+  it('a seeded round takes the store and the outputs\' blobs, and leaves the worktree at the commit', () => {
+    const r = repo();
+    const d = temp(r.patch, [], []);
+    renameSync(join(d, 'prev'), join(d, 'seed'));
+    const res = runStep(seed, { RUNNER_TEMP: d, PATH: `${join(d, 'bin')}:${process.env['PATH']}` }, 'exit 9', r.w);
+    expect(res.status, res.stderr).toBe(0);
+    expect(git(r.w, 'status', '--porcelain')).toBe('');
+    expect(readFileSync(join(r.w, 'out.json'), 'utf8')).toBe('1\n');
+    expect(readFileSync(join(r.w, '.git', 'dragon-regen', 'v2', 'capture', 'k.json'), 'utf8')).toBe('{}\n');
+    // The blob of out.json "2" is in the object database, so regen can restore it.
+    const blob = execFileSync('git', ['hash-object', '--stdin'], { cwd: r.w, input: '2\n', encoding: 'utf8' }).trim();
+    expect(git(r.w, 'cat-file', '-p', blob)).toBe('2');
+  });
+});
+
+describe('regen-on-ci.yml host-precheck: the android host lanes on Linux, beside host-1', () => {
+  const judge = stepScript('Judge the android host lanes');
+  const AGREE = 'parity:lanes: lanes, case lists, tolerances, sample rules, dump faults and the projection agree on ios and android';
+  const block = (target: string, host: string) => [`${target} (device DPRs 2, 3; projection p):`, `  layout-vectors-host: ${host}; cases [2: 10] + corpora 5 = 15`, '  layout-vectors-device: pass; cases [2: 10] + corpora 0 = 10', '  device-pixels: fail (carried); cases [2: 10] + corpora 0 = 10', '  device-traces: fail; cases [2: 3] + corpora 0 = 3'];
+  const run = (log: string[], code = 1) => {
+    const d = tmpDir();
+    writeFileSync(join(d, 'lanes.log'), `${log.join('\n')}\n`);
+    writeFileSync(join(d, 'lanes.code'), `${code}\n`);
+    return runStep(judge, { RUNNER_TEMP: d }, 'exit 9');
+  };
+  it('passes when lane parity agrees and every android lane but the carried device lanes passes, whatever iOS reads', () => {
+    const ok = run([...block('ios', 'blocked (owner tooling) (swiftc not found)'), ...block('android', 'pass'), AGREE]);
+    expect(ok.status, ok.stdout + ok.stderr).toBe(0);
+    expect(run([...block('ios', 'blocked (owner tooling)'), ...block('android', 'pass'), AGREE], 0).status).toBe(0);
+  });
+  it('fails on an android host lane that does not pass, a parity failure, no android block or a crash', () => {
+    const lane = run([...block('ios', 'blocked (owner tooling)'), ...block('android', 'fail (kotlin suite vectors 3/10)'), AGREE]);
+    expect(lane.status).toBe(1);
+    expect(lane.stdout).toContain('::error::an android host lane does not pass');
+    expect(lane.stdout).toContain('layout-vectors-host: fail');
+    const parity = run([...block('android', 'pass'), 'parity:lanes: parity FAILS:', '  layout-vectors-host: ios and android differ in their case lists']);
+    expect(parity.status).toBe(1);
+    expect(parity.stdout).toContain('::error::lane parity fails');
+    expect(parity.stdout).toContain('differ in their case lists');
+    expect(run([...block('ios', 'pass'), AGREE]).stdout).toContain('::error::parity:lanes printed no android lanes');
+    const crash = run(['TypeError: x is undefined'], 2);
+    expect(crash.status).toBe(1);
+    expect(crash.stdout).toContain('::error::parity:lanes --run-host exited 2 on Linux');
+  });
+  it('runs beside host-1 under the same condition, never as a need of a round', () => {
+    const at = yml.indexOf('\n  host-precheck:\n');
+    const job = yml.slice(at, yml.indexOf('\n  host-1:\n'));
+    const host1 = yml.slice(yml.indexOf('\n  host-1:\n'), yml.indexOf('\n  chrome-2:\n'));
+    const cond = (j: string) => /\n {4}if: (.+)\n/.exec(j)?.[1];
+    expect(cond(job)).toBe(cond(host1));
+    for (const j of ['chrome-2', 'host-2', 'chrome-3', 'converge', 'patch', 'push']) expect(yml.slice(yml.indexOf(`\n  ${j}:\n`)).split('\n').find((l) => l.startsWith('    needs:')), j).not.toContain('host-precheck');
   });
 });

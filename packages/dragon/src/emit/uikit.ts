@@ -31,6 +31,8 @@ function writeLines(v: string, n: ProgramNode, w: ProgramWrite): string[] {
       return [`  ${v}.dragonSetGlyphShear(${doubleLit(w.shear)})`];
     case 'synthetic-bold':
       return [`  ${v}.dragonSetSyntheticBold(keys: [${w.keys.map(doubleLit).join(', ')}], values: [${w.values.map(doubleLit).join(', ')}])`];
+    case 'text-stroke':
+      return [`  ${v}.dragonSetTextStroke(width: ${doubleLit(w.width)}, color: ${rgba(w.color)})`];
   }
   throw new Error(`${n.id}: write kind ${w.kind} has no UIKit lines`);
 }

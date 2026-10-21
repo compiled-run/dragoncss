@@ -1,13 +1,14 @@
 // Profile rows derived from a parity run (M1): the single definition used by scripts/gen-profile-rows.ts and by the
 // committed profile-proof test in parity.test.ts.
 import type { Longhand, ProfileNote, ProfileRow, Proof } from 'dragon';
-import { MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
+import { interactionContext, interactionRowFeature, MEDIA_CONTEXT, nativeOutlinePending, PROFILE_NOTES, profileNoteFor, PROPERTY_ASPECTS } from 'dragon';
 import { existsSync, readFileSync } from 'node:fs';
 import type { LaneFailure } from './device-lanes.ts';
-import { ANIM_LANE, DEVICE_CHECK_LANES, HIT_LANE, STATE_LANE, TRACE_LANE } from './device-lanes.ts';
+import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { LanesFile } from './lanes.ts';
-import { ranIds, readLanesFile, staleLanes } from './lanes.ts';
+import { carryDeviceLanes, hostLaneStale, ranIds, readLanesFile, staleLanes } from './lanes-file.ts';
 import { repoPath } from './paths.ts';
+import { traceScriptOfForced } from './cases.ts';
 import type { CaseOutcome } from './pipeline.ts';
 import type { NativeTarget, TargetConfig } from './targets.ts';
 import { nativeTargets } from './targets.ts';
@@ -47,8 +48,11 @@ export function deriveRows(target: ProfileTarget, cases: readonly CaseOutcome[])
       if (aspects.paint && dual.length === 0) continue;
       if (aspects.layout) proofs.push(proof('layout', 'linux-dragon-layout', layout));
       if (aspects.paint) proofs.push(proof('computed-value', 'chrome-dual', dual));
-      // No lane renders native paint in milestone 1, so a row with any paint aspect is capped at caveat.
-      rows.push({ feature, context, status: aspects.paint ? 'caveat' : 'exact', proofs });
+      // No lane renders native paint in milestone 1, so a row with any paint aspect is capped at caveat; so is a row whose claim
+      // rests on what the device measures but no device lane checks (PROFILE_NOTES).
+      const note = profileNoteFor(target, feature);
+      const status = aspects.paint || note === 'measuredSafeArea' ? 'caveat' : 'exact';
+      rows.push(note === null ? { feature, context, status, proofs } : { feature, context, status, proofs, note: PROFILE_NOTES[note] });
     } else {
       const dual = passing('chrome-dual');
       if (dual.length === 0) continue;
@@ -100,6 +104,60 @@ export function deriveAnimationRows(target: ProfileTarget, passing: readonly Pas
 }
 
 /**
+ * SELD-R2 PR 5: the device lanes a forced device case (forced-device.ts) must pass at every DPR before it proves an interaction row:
+ * the four device checks on the case itself (its state's programs drawn as a layout case), and device-traces on its group's script,
+ * whose forced steps put the device's interaction machine into that state.
+ */
+export const INTERACTION_ROW_LANES = [...DEVICE_CHECK_LANES, TRACE_LANE] as const;
+
+/** A force step of a device-traces script as keptForceSteps (trace-lane.ts) names it. */
+export const forceStepKey = (f: { readonly pseudo: string; readonly address: string }): string => `${f.pseudo}@${f.address}`;
+
+/** The pseudo-classes a forced device case forces that its group's device-traces script does not keep after the step cut (pure). */
+export function cutForceSteps(force: readonly { readonly pseudo: string; readonly address: string }[], kept: ReadonlySet<string>): string[] {
+  return force.map(forceStepKey).filter((k) => !kept.has(k));
+}
+
+/** A forced device case as the rows read it: its host case id, its device case id, the force steps its trace cut, its features. */
+export type ForcedRowCase = { readonly id: string; readonly device: string; readonly cut: readonly string[]; readonly features: readonly string[] };
+
+/**
+ * Why a forced device case is not device-proven on a target, or null when it passes every INTERACTION_ROW_LANES lane at every DPR
+ * (pure): the check lanes run its device id, device-traces its host case's group script, which must keep every step it forces.
+ */
+export function interactionDeviceBlocker(ev: DeviceEvidence, c: Pick<ForcedRowCase, 'id' | 'device' | 'cut'>): string | null {
+  if (ev.unavailable !== null) return ev.unavailable;
+  for (const lane of INTERACTION_ROW_LANES) {
+    const l = ev.lanes.find((x) => x.lane === lane);
+    if (l === undefined) return `${ev.target} has no ${lane} lane`;
+    const run = lane === TRACE_LANE ? traceScriptOfForced(c.id) : c.device;
+    if (!l.cases.has(run)) return `${run} is not run by ${ev.target} ${lane} at every DPR`;
+    if (l.failing.has(run)) return `${run} fails ${ev.target} ${lane}`;
+    if (lane === TRACE_LANE && c.cut.length > 0) return `${run} cuts the force steps ${c.cut.join(', ')} of ${c.device} at MAX_TRACE_STEPS`;
+  }
+  return null;
+}
+
+/**
+ * SELD-R2 PR 5 (step 5a): the native interaction rows in context interaction/forced-only, from the forced cases that pass the host
+ * lanes and force :focus or :focus-visible in a case with no focusable element. iOS and Android: exact, only for the cases that pass
+ * every INTERACTION_ROW_LANES lane on that target's committed device record. Web keeps its rows from deriveRows; no touch or mouse
+ * rows. A proof names the host cases (chrome-dual), whose device cases carry a state digest.
+ */
+export function deriveInteractionRows(target: ProfileTarget, passing: readonly ForcedRowCase[], device: DeviceEvidence | null): ProfileRow[] {
+  if (target === 'web' || device === null) return [];
+  const context = interactionContext('forced-only');
+  const allowed = (['focus', 'focus-visible'] as const).map(interactionRowFeature);
+  const proven = passing.filter((c) => interactionDeviceBlocker(device, c) === null);
+  const features = [...new Set(proven.flatMap((c) => c.features))].filter((f) => allowed.includes(f)).sort();
+  return features.map((feature) => {
+    const ids = proven.filter((c) => c.features.includes(feature)).map((c) => c.id);
+    const valueSubset = feature.slice(feature.indexOf(':') + 1);
+    return { feature, context, status: 'exact', proofs: [{ aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context, cases: ids }] };
+  });
+}
+
+/**
  * MQ-R1 (notes/T067 R13): the media rows (context `media`) from the resize cases that pass the resize host lanes
  * (resize-capture.ts resizeReport): native through the band runtime's engine frames and colours against Chrome after every step,
  * web through chrome-dual after every step. A native target accepts @media only with these rows (project.ts gateMediaFeatures).
@@ -112,9 +170,23 @@ export function deriveMediaRows(target: ProfileTarget, passing: readonly { reado
     const proof: Proof = target === 'web'
       ? { aspect: 'computed-value', lane: 'chrome-dual', valueSubset, context: MEDIA_CONTEXT, cases: ids }
       : { aspect: 'layout', lane: 'linux-dragon-layout', valueSubset, context: MEDIA_CONTEXT, cases: ids };
-    return { feature, context: MEDIA_CONTEXT, status: 'exact', proofs: [proof] };
+    return { feature, context: MEDIA_CONTEXT, status: MEDIA_CAVEATS[target].includes(feature) ? 'caveat' : 'exact', proofs: [proof] };
   });
 }
+
+/**
+ * MQ-R2 (T067 R9): the media rows a target answers with a caveat. iOS reports reduced motion as UIAccessibility's setting, whose
+ * simulator toggle (device-env) has no passing device run yet, so the row stays caveat (R9); and an iPad's pointer and hover readings
+ * (a touch screen with a mouse) have no Chrome on iOS to match; any-pointer also leaves out a paired Apple Pencil, which WebKit
+ * counts (hasStylusDevice) and the iOS reading does not. Every other row is exact: Android's readings are Chromium's own rules
+ * (vectors and device-env), and the colour scheme is one bit both platforms report and both can switch (R9: exact both, by the lane
+ * injection and device-env's scheme phase, simctl ui appearance and cmd uimode night).
+ */
+export const MEDIA_CAVEATS: { readonly [T in ProfileTarget]: readonly string[] } = {
+  web: [],
+  ios: ['media-feature:prefers-reduced-motion', 'media-feature:pointer', 'media-feature:any-pointer', 'media-feature:hover', 'media-feature:any-hover'],
+  android: [],
+};
 
 /** The PROFILE_NOTES key of a row's note, written by reference so the generated profile never restates the fact. */
 function noteKey(r: ProfileRow): ProfileNote | null {
@@ -308,8 +380,8 @@ export function checkedFailures(v: unknown, what: string): LaneFailure[] {
     };
     if (!isObject(f)) bad('not an object');
     const o = f as Record<string, unknown>;
-    // allRunFailures writes every device lane's failures, the script, hit and frame sample lanes' too.
-    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE, TRACE_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
+    // allRunFailures writes every device lane's failures, the script, hit, frame sample, trace and rotation lanes' too.
+    if (![...DEVICE_CHECK_LANES, STATE_LANE, HIT_LANE, ANIM_LANE, TRACE_LANE, ENV_LANE].includes(o['lane'] as string)) bad(`lane ${JSON.stringify(o['lane'])} is not a device lane`);
     if (typeof o['case'] !== 'string' || o['case'] === '') bad('case is not a non-empty string');
     if (typeof o['dpr'] !== 'number' || !(o['dpr'] > 0)) bad('dpr is not a positive number');
     if (o['node'] !== null && typeof o['node'] !== 'string') bad('node is neither null nor a string');
@@ -348,15 +420,34 @@ export function checkedLanes(v: unknown, what: string): LanesFile {
   return v as LanesFile;
 }
 
-/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes; records behind the tree are not stale), each target's failure list and verdict. */
+/**
+ * A lanes file judged as the next host lanes run will leave it (pure): stale is staleLanes over the file as it is; the device evidence
+ * and the verdict are judged on the device records lanes-host will carry (carryDeviceLanes), and the verdict leaves out a host lane's
+ * own changed case list (hostLaneStale), which lanes-host reruns before regen-on-ci's second Chrome round re-judges it. So a case list
+ * that changed under a lane voids only the evidence of the records the next lanes run drops, and the rows that evidence proves, with
+ * native-lanes.ts, come out in the round that changed the cases, not one round after lanes-host. A fresh file is its own carry.
+ */
+export function judgedLanes(lanes: LanesFile | null, configured: readonly TargetConfig[], failuresOf: (target: NativeTarget) => readonly LaneFailure[] | null): { readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
+  const stale = lanes === null ? [] : staleLanes(lanes, configured);
+  if (lanes === null || stale.length === 0) return { stale, evidence: (target) => deviceEvidence(target, lanes, failuresOf(target), configured, stale), verdict: (target) => nativeVerdict(target, lanes, failuresOf(target), configured) };
+  const carried = carryDeviceLanes(lanes, configured);
+  return {
+    stale,
+    evidence: (target) => deviceEvidence(target, carried, failuresOf(target), configured, []),
+    verdict: (target) => {
+      const v = nativeVerdict(target, carried, failuresOf(target), configured);
+      return { ...v, stale: v.stale.filter((p) => !hostLaneStale(p, configured)) };
+    },
+  };
+}
+
+/** The committed device inputs: packages/parity/out/lanes.json, its staleness (staleLanes; records behind the tree are not stale), each target's device evidence, failure list and verdict (judgedLanes). */
 export function committedLanes(): { readonly lanes: LanesFile | null; readonly stale: readonly string[]; readonly evidence: (target: NativeTarget) => DeviceEvidence; readonly verdict: (target: NativeTarget) => NativeVerdict } {
   const raw = readLanesFile();
   const lanes = raw === null ? null : checkedLanes(raw, 'packages/parity/out/lanes.json');
-  const configured = nativeTargets();
-  const stale = lanes === null ? [] : staleLanes(lanes, configured);
   const failuresOf = (target: NativeTarget): readonly LaneFailure[] | null => {
     const path = repoPath(`packages/parity/out/device-failures-${target}.json`);
     return existsSync(path) ? checkedFailures(JSON.parse(readFileSync(path, 'utf8')) as unknown, `packages/parity/out/device-failures-${target}.json`) : null;
   };
-  return { lanes, stale, evidence: (target) => deviceEvidence(target, lanes, failuresOf(target), configured, stale), verdict: (target) => nativeVerdict(target, lanes, failuresOf(target), configured) };
+  return { lanes, ...judgedLanes(lanes, nativeTargets(), failuresOf) };
 }

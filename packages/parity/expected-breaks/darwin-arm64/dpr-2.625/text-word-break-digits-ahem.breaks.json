@@ -1,0 +1,11 @@
+{
+  "case": "text-word-break-digits-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a:text0","data":"XY12ZW34 XX","lines":3,"units":[0,0,0,0,1,1,1,1,1,2,2],"blank":[8]},
+    {"id":"b:text0","data":"1234567890 12","lines":4,"units":[0,0,0,0,1,1,1,1,2,2,2,2,3],"blank":[]},
+    {"id":"c:text0","data":"XX-XX XX/XX XX","lines":4,"units":[0,0,0,1,1,1,2,2,2,2,2,2,3,3],"blank":[5,11]},
+    {"id":"e:text0","data":"XXXXX.XXXXX 12","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,1,1],"blank":[11]}
+  ]
+}

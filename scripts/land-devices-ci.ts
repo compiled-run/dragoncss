@@ -130,7 +130,13 @@ export const TOOLING_STEP = 'Device tooling';
 export const DEVICE_RUN_STEP = /^Device run /;
 
 /**
- * The real jobs (not the resolve job) that failed, split by the step that failed: a verdict step (a failure of the tree) or a
+ * Jobs that only report (regen-on-ci.yml host-precheck, which runs continue-on-error): their failure judges nothing and is not CI
+ * trouble either, so failedJobs never counts them.
+ */
+export const REPORT_ONLY_JOBS: ReadonlySet<string> = new Set(['host-precheck']);
+
+/**
+ * The real jobs (not the resolve job or a REPORT_ONLY_JOBS one) that failed, split by the step that failed: a verdict step (a failure of the tree) or a
  * setup step (CI's own trouble). A job that failed or timed out with no failed step is judged by the step it stopped in, but a
  * device run that timed out (DEVICE_RUN_STEP) is setup.
  */
@@ -138,7 +144,7 @@ export function failedJobs(jobs: readonly CiJob[]): { verdict: string[]; setup: 
   const verdict: string[] = [];
   const setup: string[] = [];
   for (const j of jobs) {
-    if (j.name === 'resolve' || j.status !== 'completed' || (j.conclusion !== 'failure' && j.conclusion !== 'timed_out')) continue;
+    if (j.name === 'resolve' || REPORT_ONLY_JOBS.has(j.name) || j.status !== 'completed' || (j.conclusion !== 'failure' && j.conclusion !== 'timed_out')) continue;
     const step = j.steps.find((st) => st.conclusion === 'failure') ?? j.steps.find((st) => st.status !== 'completed' || (st.conclusion !== 'success' && st.conclusion !== 'skipped'));
     if (j.conclusion === 'timed_out' && step !== undefined && DEVICE_RUN_STEP.test(step.name)) {
       setup.push(`${j.name} (timed out in ${step.name})`);

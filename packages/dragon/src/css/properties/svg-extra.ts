@@ -1,0 +1,81 @@
+// The SVG properties of what Dragon does not build yet, and the SVG rendering hints, each with its Chrome 145 initial value and
+// inheritance (css_properties.json5): baseline-shift (0) of SVG text; and shape-rendering (auto), color-interpolation (srgb),
+// color-interpolation-filters (linearrgb), color-rendering (auto) and buffered-rendering (auto), the hints. shape-rendering and the
+// colour hints are inherited. None changes an HTML box or a shape Dragon draws at its initial value: Dragon draws no SVG text, and
+// draws its shapes antialiased in sRGB, as auto and srgb ask. So it accepts the initial values alone and refuses every other value
+// (analysis/scroll-containment.ts); shape-rendering: crispEdges would change how a shape is drawn. stop-opacity, flood-opacity,
+// mask-type, text-anchor, dominant-baseline and alignment-baseline are SVG-inert-b's (properties/svg.ts), accepted at every value.
+// Rows are proven by the computed value, as no layout lane reads them. A spelling Chrome 145 computes to the initial value is that
+// value: baseline-shift: baseline or a zero length or zero length calculation (0em, calc(1px - 1px)). A keyword-only longhand takes
+// Chrome's keywords alone, and drops any other value as Chrome does; packages/parity/test/render-anchor-parse.test.ts pins each
+// against Chrome.
+import type { CssNode } from 'css-tree';
+import { generate } from 'css-tree';
+import { asciiLower } from '../escapes.ts';
+import { BLINK_MATH_FUNCTIONS, foldScaled, parseMath } from '../math.ts';
+import type { MathNode } from '../math.ts';
+import type { PropertyAspect } from '../properties.ts';
+import { unitEntry } from '../units.ts';
+import type { CssValue } from '../values.ts';
+import type { InitialOnlyParser } from './initial-only.ts';
+import { keywordLonghand, kwInitial, nonInitial, ZERO_LENGTH } from './initial-only.ts';
+
+export const SVG_EXTRA_LONGHANDS = ['baseline-shift', 'shape-rendering', 'color-interpolation', 'color-interpolation-filters', 'color-rendering', 'buffered-rendering'] as const;
+export const SVG_EXTRA_SHORTHANDS = [] as const;
+export const SVG_EXTRA_INHERITED: readonly (typeof SVG_EXTRA_LONGHANDS)[number][] = ['shape-rendering', 'color-interpolation', 'color-interpolation-filters', 'color-rendering'];
+export const SVG_EXTRA_CONTAINER: readonly (typeof SVG_EXTRA_LONGHANDS)[number][] = [];
+export const SVG_EXTRA_TEXT_ROLE: readonly (typeof SVG_EXTRA_LONGHANDS)[number][] = [];
+
+type SvgExtraLonghand = (typeof SVG_EXTRA_LONGHANDS)[number];
+
+const PAINT_ONLY: PropertyAspect = { layout: false, paint: true };
+export const SVG_EXTRA_ASPECTS = Object.fromEntries(SVG_EXTRA_LONGHANDS.map((p) => [p, PAINT_ONLY])) as { readonly [P in SvgExtraLonghand]: PropertyAspect };
+
+/** Each longhand's initial value, the only one Dragon accepts. */
+export const SVG_EXTRA_INITIAL: { readonly [P in SvgExtraLonghand]: CssValue } = {
+  'baseline-shift': ZERO_LENGTH,
+  'shape-rendering': kwInitial('auto'),
+  'color-interpolation': kwInitial('srgb'),
+  'color-interpolation-filters': kwInitial('linearrgb'),
+  'color-rendering': kwInitial('auto'),
+  'buffered-rendering': kwInitial('auto'),
+};
+
+/** Whether a calculation is a zero length whatever the font and viewport: no percentage, and zero under two unrelated unit scales. */
+function zeroLengthCalc(t: CssNode): boolean {
+  if (t.type !== 'Function' || !BLINK_MATH_FUNCTIONS.has(asciiLower(String(t['name'])))) return false;
+  const parsed = parseMath(generate(t), { type: 'length', percent: true });
+  if (!parsed.ok) return false;
+  const percent = (n: MathNode): boolean => (n.t === 'lit' ? n.unit === '%' : n.args.some(percent));
+  if (percent(parsed.node)) return false;
+  const scale = (salt: number) => (unit: string): number => (unit === 'px' || unit === '' ? 1 : 1 + [...unit].reduce((h, c) => (h * 31 + c.charCodeAt(0) * salt) % 9973, 7) / 997);
+  return foldScaled(parsed.node, scale(3)) === 0 && foldScaled(parsed.node, scale(11)) === 0;
+}
+
+/**
+ * baseline-shift: baseline, a zero number or length in any registered unit (0em computes to 0px) and a zero length calculation
+ * compute to the initial 0px in Chrome 145; a zero percentage computes to 0%, which is kept and refused, as is any other value.
+ */
+const parseBaselineShift: InitialOnlyParser = (tokens) => {
+  const t = tokens[0];
+  if (t === undefined) return { kind: 'invalid', reason: 'baseline-shift needs a value' };
+  // Chrome 145 parses three keywords (baseline, sub, super) and drops any other, as css-inline-3's top, center and bottom.
+  if (tokens.length === 1 && t.type === 'Identifier' && !['baseline', 'sub', 'super'].includes(asciiLower(String(t['name'])))) return { kind: 'invalid', reason: 'baseline-shift takes baseline, sub, super, a length or a percentage (Chrome 145 drops any other keyword)' };
+  const zero = tokens.length === 1 && ((t.type === 'Identifier' && asciiLower(String(t['name'])) === 'baseline') || (t.type === 'Number' && Number(t['value']) === 0)
+    || (t.type === 'Dimension' && Number(t['value']) === 0 && unitEntry(asciiLower(String(t['unit']))) !== null) || zeroLengthCalc(t));
+  return { kind: 'ok', longhands: [{ property: 'baseline-shift', value: zero ? ZERO_LENGTH : nonInitial(tokens), explicit: true }] };
+};
+
+/** The keywords Chrome 145 parses for each keyword-only longhand (css_properties.json5), lowercase. */
+const SVG_EXTRA_KEYWORDS = {
+  'shape-rendering': ['auto', 'optimizespeed', 'crispedges', 'geometricprecision'],
+  'color-interpolation': ['auto', 'srgb', 'linearrgb'],
+  'color-interpolation-filters': ['auto', 'srgb', 'linearrgb'],
+  'color-rendering': ['auto', 'optimizespeed', 'optimizequality'],
+  'buffered-rendering': ['auto', 'static', 'dynamic'],
+} as const;
+
+export const SVG_EXTRA_VALUE_PARSERS = {
+  ...Object.fromEntries(Object.entries(SVG_EXTRA_KEYWORDS).map(([p, ks]) => [p, keywordLonghand(p as SvgExtraLonghand, SVG_EXTRA_INITIAL[p as SvgExtraLonghand], ks)])),
+  'baseline-shift': parseBaselineShift,
+} as { readonly [P in SvgExtraLonghand]: InitialOnlyParser };

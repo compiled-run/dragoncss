@@ -104,7 +104,7 @@ describe('(f2) querySupport from the public entry (docs/api.md §6.3)', () => {
     const q = (over: Record<string, unknown>): SupportAnswer => querySupport({ kind: 'resolved', result: c, target: 'web', node: 'a', instance: 'doc', assignment: [], property: 'width', ...over } as Parameters<typeof querySupport>[0]);
     expect(q({ node: 'nope' }).kind).toBe('invalid-query');
     expect(q({ instance: 'other' }).kind).toBe('invalid-query');
-    expect(q({ property: 'column-count' }).kind).toBe('invalid-query');
+    expect(q({ property: 'shape-outside' }).kind).toBe('invalid-query');
     expect(q({ assignment: [{ state: { instance: 'doc', state: 'open' }, value: true }] })).toMatchObject({ kind: 'invalid-query', diagnostics: [{ code: 'DRAGON_STATE_UNKNOWN' }] });
     const webOnly = createProject({ projectId: 'test', targets: { web: {} } }).compile(inputFor(`${FONT} .a { width: 50px; }`, (r) => [div(r, 'a', ['a'])]));
     expect(querySupport({ kind: 'resolved', result: webOnly, target: 'ios' as 'web', node: 'a', instance: 'doc', assignment: [], property: 'width' }).kind).toBe('invalid-query');
@@ -155,7 +155,7 @@ describe('(f3) whole-snapshot replacement (docs/api.md §8)', () => {
   it('A, then an invalid A\' (outputs blocked, never relabelled current), then a fixed A\'\' equals a fresh compile of A\'\'', () => {
     const project = both();
     const a = project.compile(snapshotA(`${FONT} .box { width: 30px; height: 4px; }`).input);
-    const broken = project.compile(snapshotA(`${FONT} .box { width: 30px; height: 4px; column-count: 2; }`).input);
+    const broken = project.compile(snapshotA(`${FONT} .box { width: 30px; height: 4px; shape-outside: circle(); }`).input);
     expect(broken.ok).toBe(false);
     expect([broken.outputs.ios.kind, broken.outputs.web.kind]).toEqual(['blocked', 'blocked']);
     expect(broken.digest).not.toBe(a.digest);
@@ -189,8 +189,8 @@ describe('T005 rec 2: a shorthand-set longhand names the authored shorthand, its
 });
 
 describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in the same pass', () => {
-  // A width @media is native too since MQ-R1, so the unsupported at-rule here is @container, which every target refuses.
-  const R3 = 'body { margin: 0; }\n@container (min-width: 300px) {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-right: 6mm; }\n';
+  // A width @media is native too since MQ-R1, so the unsupported at-rule here is @starting-style, which every target refuses.
+  const R3 = 'body { margin: 0; }\n@starting-style {\n  .caption { width: 80px; }\n}\n.caption { font-size: 10px; line-height: 12px; color: #24292e; margin-right: 6mm; }\n';
   it('T005 R3 through the public entry: DRAGON_UNSUPPORTED_AT_RULE, DRAGON_UNSUPPORTED_FONT and DRAGON_UNPROVEN_CONTEXT in one pass, every output blocked', () => {
     const input = inputFor(R3, (r) => [div(r, 'caption', ['caption'], [text(r, 't', 'CAPTION TEXT')])]);
     const c = both().compile(input);
@@ -201,8 +201,9 @@ describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in 
     expectCatalogued(c.diagnostics);
   });
   it('the enclosed rules are analysed with the block unwrapped, top-level and nested: their diagnostics are related entries that start with the code, and nothing is emitted', () => {
-    // A top-level @media is conditional since MQ-a, so the unsupported top-level at-rule here is @container.
-    const css = `${FONT}\n@container (min-width: 1px) { .a { display: inline-table; } }\n.b { width: 5px; @supports (display: flex) { margin-right: 6mm; } }\n`;
+    // A top-level @media is conditional since MQ-a and @container since CQ, so the unsupported top-level at-rule here is
+    // @starting-style; a nested @media or @supports is a nested conditional rule (css-nesting-1), a nested @container is not.
+    const css = `${FONT}\n@starting-style { .a { display: inline-table; } }\n.b { width: 5px; @container (min-width: 2px) { margin-right: 6mm; } }\n`;
     const input = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
     const c = both().compile(input);
     const atRules = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_AT_RULE');
@@ -218,25 +219,28 @@ describe('T005 rec 3: diagnostics inside an unsupported at-rule are reported in 
 });
 
 describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in their target', () => {
-  it('display: inline-table on ios and web renders as one block listing both targets; the objects stay one per target; formatDiagnostic is unchanged', () => {
-    const c = both().compile(inputFor('.g { display: inline-table; }', (r) => [div(r, 'g', ['g'])]));
-    expect(c.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'web']]);
+  // The native targets share their rows, so their messages match; web's alternatives differ (no inherit in block flow).
+  const natives = () => createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } });
+  it('display: inline-table on android and ios renders as one block listing both targets; the objects stay one per target; formatDiagnostic is unchanged', () => {
+    const c = natives().compile(inputFor('.g { display: inline-table; }', (r) => [div(r, 'g', ['g'])]));
+    expect(c.diagnostics.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
     const grouped = formatDiagnostics(c.diagnostics, c.sources);
     const single = formatDiagnostic(c.diagnostics[0] as Diagnostic, c.sources);
-    expect(single.split('\n')[0]).toMatch(/: error DRAGON_UNSUPPORTED_VALUE \[ios\]: display: inline-table is unsupported/);
-    expect(grouped.split('\n')[0]).toBe(single.split('\n')[0]?.replace('[ios]', '[ios, web]'));
+    expect(single.split('\n')[0]).toMatch(/: error DRAGON_UNSUPPORTED_VALUE \[android\]: display: inline-table is unsupported/);
+    expect(grouped.split('\n')[0]).toBe(single.split('\n')[0]?.replace('[android]', '[android, ios]'));
     expect(grouped.split('\n').slice(1)).toEqual(single.split('\n').slice(1));
     expect(grouped.match(/DRAGON_UNSUPPORTED_VALUE/g)?.length).toBe(1);
     // Diagnostics that differ in more than the target stay separate blocks, each exactly as formatDiagnostic renders it.
-    const two = both().compile(inputFor('.g { display: inline-table; column-count: 2; }', (r) => [div(r, 'g', ['g'])]));
+    const two = natives().compile(inputFor('.g { display: inline-table; shape-outside: circle(); }', (r) => [div(r, 'g', ['g'])]));
     expect(formatDiagnostics(two.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY'), two.sources)).toBe(formatDiagnostic(two.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_PROPERTY') as Diagnostic, two.sources));
   });
 });
 
 describe('T005 rec 6: unsupported-value and unproven-context messages list the supported alternatives in context, from the profile rows', () => {
-  it('display: inline-table in block flow lists block, flex, grid, list-item, none and the CSS-wide keywords proven there (GEN-b, CASC)', () => {
+  it('display: inline-table in block flow lists block, contents, flex, grid, list-item, none and the CSS-wide keywords proven there (GEN-b, CASC, casc-all inherit)', () => {
     const c = both().compile(inputFor('.g { display: inline-table; }', (r) => [div(r, 'g', ['g'])]));
-    for (const d of c.diagnostics) expect(d.message).toMatch(/^display: inline-table is unsupported \(support profile m1-s5\); in block\/ltr use block, flex, grid, list-item, none, revert or revert-layer$/);
+    // display: inline is proven in block flow on both (an inline-level child of a block); inherit there on native only.
+    for (const d of c.diagnostics) expect(d.message).toBe(`display: inline-table is unsupported (support profile m1-s5); in block/ltr use block, contents, flex, grid, ${d.target === 'web' ? '' : 'inherit, '}inline, list-item, none, revert or revert-layer`);
   });
   it('margin-right: 6mm in block flow lists the margin-right values proven there', () => {
     const c = both().compile(inputFor(`${FONT} .a { margin-right: 6mm; }`, (r) => [div(r, 'a', ['a'])]));

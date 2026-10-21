@@ -23,7 +23,9 @@ import { compilePattern, matchSegments } from './macroscope-ignore.ts';
 import { importClosure, lockClosure, NODE_IMPORT_CONDITIONS, parseLock, type ReadText, scanSource, type Tree, type Workspace, workspaceOf } from './regen-inputs.ts';
 import { BG2 } from './regen-steps/bg2.ts';
 import { ENV_SAFE } from './regen-steps/env-safe.ts';
+import { GEN_C } from './regen-steps/gen-c.ts';
 import { MQ_R1 } from './regen-steps/mq-r1.ts';
+import { MQ_R2 } from './regen-steps/mq-r2.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
@@ -82,7 +84,8 @@ const LEGACY_STEPS: readonly Step[] = [
     name: 'profile-rows',
     argv: pnpm('profile:rows'),
     outputs: ['packages/dragon/src/profiles/ios.ts', 'packages/dragon/src/profiles/android.ts', 'packages/dragon/src/profiles/web.ts', 'packages/dragon/src/profiles/native-lanes.ts'],
-    reads: [FIXTURES, FONTS, ...EVIDENCE_READS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
+    // EVIDENCE_READS are digested only by device-evidence.ts, which profile:rows does not load (lanes-file.ts, lane-ids.ts).
+    reads: [FIXTURES, FONTS, 'packages/parity/expected/**', 'packages/parity/expected-*/**', 'packages/parity/out/*.json', 'packages/layout/vectors/**', 'packages/layout/break-vectors/**', 'packages/layout/rt-vectors/**', 'packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'],
   },
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
   { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json', 'packages/parity/expected-hit/dpr-*/*.hit.json'], reads: [FIXTURES, FONTS], lists: ['packages/parity/expected-hit'] },
@@ -96,6 +99,8 @@ const LEGACY_STEPS: readonly Step[] = [
   { name: 'anim-capture', argv: pnpm('parity:anim-capture'), outputs: ['packages/parity/expected-frames/**'], reads: [FIXTURES, FONTS] },
   // ANIM-b1 3b: the animator suite's vectors (every frame case's tables, resolved inputs and script); native-gen reads them.
   { name: 'anim-vectors', argv: pnpm('parity:anim-vectors'), outputs: ['packages/layout/rt-vectors/animator/**'], reads: [FIXTURES, FONTS] },
+  // T154 slice 2a: the select suite's vectors (the selection documents' inputs, facts, points and drags); native-gen reads them.
+  { name: 'select-vectors', argv: pnpm('parity:select-vectors'), outputs: ['packages/layout/rt-vectors/select/**'], reads: [FIXTURES, FONTS, 'packages/parity/src/select-cases.ts'] },
   // EMS: each paint feature's vectors from its committed inputs.jsonl through the TypeScript harness (units mode).
   { name: 'paint-vectors', argv: pnpm('layout:paint-vectors'), outputs: ['packages/layout/paint-vectors/*/vectors.json'], reads: ['packages/layout/paint-vectors/**', ...ENGINE_SOURCES], imports: ['packages/translate/src/generate.ts', 'packages/translate/harness/harness.ts'] },
   { name: 'native-gen', argv: pnpm('native:gen'), outputs: ['packages/layout/generated/**', 'packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'], reads: [...ENGINE_SOURCES, 'packages/layout/vectors/**', 'packages/layout/rt-vectors/**', 'packages/translate/corpus-m1-cases.json', 'packages/translate/package.json'] },
@@ -125,7 +130,9 @@ const LEGACY_STEPS: readonly Step[] = [
 export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   bg2: BG2,
   'env-safe': ENV_SAFE,
+  'gen-c': GEN_C,
   'mq-r1': MQ_R1,
+  'mq-r2': MQ_R2,
   ovfl: OVFL,
   pnt1: PNT1,
   pnt2: PNT2,

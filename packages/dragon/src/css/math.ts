@@ -4,7 +4,7 @@
 // CSS-level CalcExpr (packages/layout/src/input.ts). Blink's tree is binary; the engine's sums and products fold left to right,
 // so a left-deep chain becomes one sum and every other shape keeps its nesting. What V1 does not support is refused with a reason.
 import type { CalcExpr, LengthCalc } from '@dragon/layout';
-import { mathFunctionRefusal, unitEntry } from './units.ts';
+import { LAYOUT_CONTAINER_UNITS, mathFunctionRefusal, unitEntry } from './units.ts';
 import type { SafeAreaSide } from './env.ts';
 import { SAFE_AREA_NAMES } from './env.ts';
 
@@ -546,7 +546,8 @@ class Parser {
     if (FONT_METRIC.has(unit)) return refuse(`${unit} is measured from the primary font at its rendered size, which needs the value-model package V2`, 'Use em, rem or px.');
     if (LINE_HEIGHT_UNITS.has(unit)) return refuse(`${unit} is the used line height, which needs the value-model package V2`, 'Use em, rem or px.');
     if (SIZED_VIEWPORT.test(unit)) return refuse(`${unit} is a small, large or dynamic viewport unit, which needs the viewport inputs of the value-model package V2`, 'Use vw, vh, vi, vb, vmin or vmax.');
-    if (CONTAINER_UNITS.has(unit)) return refuse(`${unit} is a container query unit, and container queries are not supported`, 'Use %, px, em or rem.');
+    if (LAYOUT_CONTAINER_UNITS.has(unit)) return lit(value, unit);
+    if (CONTAINER_UNITS.has(unit)) return refuse(`${unit} is a block-axis container query unit: an inline-size query container answers only the inline axis, so it falls back to the small viewport, which needs the viewport inputs of the value-model package V2`, 'Use cqw or cqi, or %, px, em or rem.');
     return refuse(`${unit === '' ? 'a number' : `the unit ${unit}`} is not a length`);
   }
   private multiplicative(depth: number): { node: MathNode; ws: boolean } {
@@ -589,7 +590,7 @@ export type PercentRefusal = { readonly reason: string; readonly fix: string };
 export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
 
 const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'font-weight', 'stroke-miterlimit']);
-const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font-size', 'line-height', 'font']);
+const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font']);
 /**
  * Border, outline and column-rule widths are a <line-width>, which has no percentage (css-backgrounds-3 §3.3, css-ui-4 §3.2,
  * css-multicol-1 §4.2), so a calculation with one is invalid and Chrome drops the declaration: Chrome 145.0.7632.6 gives
@@ -659,28 +660,39 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
  * 145.0.7632.6): ConsumeLength takes kCalcLength only (a <line-width>), ConsumeLengthOrPercent a length, a percentage or a mix
  * (kCalcLengthFunction), ConsumeNumber and ConsumeInteger a number, and ConsumeLineHeight or the flex shorthand either.
  */
-export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage' | 'angle' | 'font';
+export type MathGrammar = 'length' | 'length-percentage' | 'number' | 'number-or-length-percentage' | 'number-or-percentage' | 'number-or-angle' | 'angle' | 'font';
 
 // aspect-ratio: each <ratio> part is a <number [0,∞]> (css-sizing-4 §5.1), so a math function in it resolves to a number.
 // font-feature-settings and font-variation-settings: a setting's value is an <integer> or a <number> (css-fonts-4 §6.12, §7.2).
+// orphans and widows: Blink ConsumePositiveInteger takes a calculation that resolves to a number (properties/fragmentation.ts).
 // font-weight: Chrome's ConsumeFontWeight takes ConsumeNumber, as StrokeMiterlimit::ParseSingleValue does; font-style: its oblique angle is ConsumeAngle (css-fonts-4 §2.2, §2.3).
-const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set']);
+// font-size-adjust: a <number [0,∞]>, after an optional metric keyword (css-fonts-5 §2.6).
+const NUMBER_GRAMMAR: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'text-combine-upright', 'aspect-ratio', 'z-index', 'font-weight', '-webkit-box-flex', '-webkit-box-ordinal-group', '-webkit-line-clamp', 'font-feature-settings', 'font-variation-settings', 'stroke-miterlimit', 'counter-reset', 'counter-increment', 'counter-set', 'orphans', 'widows', 'font-size-adjust']);
 const ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['font-style']);
+// rotate (css-transforms-2 §4): its axis numbers are ConsumeNumber and its angle ConsumeAngle, so Chrome keeps calc(1) 0 0 45deg.
+const NUMBER_OR_ANGLE_GRAMMAR: ReadonlySet<string> = new Set(['rotate']);
+// scale: each factor is ConsumeNumberOrPercent, so Chrome drops calc(2px).
+const NUMBER_OR_PERCENT_GRAMMAR: ReadonlySet<string> = new Set(['scale']);
 // The font shorthand's parts take a number (weight, line-height), a length-percentage (size, line-height) or an angle (oblique).
 const FONT_GRAMMAR: ReadonlySet<string> = new Set(['font']);
-/** opacity, fill-opacity and stroke-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
+/** opacity, fill-opacity, stroke-opacity, stop-opacity and flood-opacity are <number> | <percentage> (css-color-4 §3.2, css-fill-stroke-3 §3.4); Chrome resolves a calculation in them as a number or a percentage. */
 // stroke-width, stroke-dasharray and stroke-dashoffset take a unitless number too (SVG's quirk, Chrome StrokeWidth,
 // StrokeDasharray and StrokeDashoffset ::ParseSingleValue in SVG attribute mode), and so do the geometry properties cx, cy, r, x
 // and y and the corner radii rx and ry (ConsumeSVGGeometryPropertyLength parses them in SVG attribute mode).
-const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom']);
+// tab-size is <number> | <length> (css-text-3 §4.2); its parser (properties/tab-size.ts) refuses every calculation.
+const NUMBER_OR_LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['line-height', 'flex', 'opacity', 'fill-opacity', 'stroke-opacity', 'stop-opacity', 'flood-opacity', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'zoom', 'tab-size']);
 /** Properties whose syntax is a plain <length> or a <line-width> outside LINE_WIDTH (css-ui-4 §3.4 outline-offset, compat §5 the text
- * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), and the table spacings (CSS2 §17.6.1 border-spacing). */
-const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing']);
+ * stroke width, css-transforms-2 §5 perspective), text-shadow's lengths (Blink TextShadow), the table spacings (CSS2 §17.6.1
+ * border-spacing), and every scroll-margin property (css-scroll-snap-1 §6, Blink ScrollMargin* ConsumeLength). */
+const LENGTH_GRAMMAR: ReadonlySet<string> = new Set(['outline-offset', '-webkit-text-stroke-width', '-webkit-text-stroke', 'text-shadow', 'perspective', 'border-spacing', '-webkit-border-horizontal-spacing', '-webkit-border-vertical-spacing',
+  ...['', '-top', '-right', '-bottom', '-left', '-inline', '-block', '-inline-start', '-inline-end', '-block-start', '-block-end'].map((s) => `scroll-margin${s}`)]);
 
 /** The grammar a top-level math function of a property resolves against; every other numeric property takes <length-percentage>. */
 export function mathGrammarFor(property: string): MathGrammar {
   if (NUMBER_GRAMMAR.has(property)) return 'number';
   if (ANGLE_GRAMMAR.has(property)) return 'angle';
+  if (NUMBER_OR_ANGLE_GRAMMAR.has(property)) return 'number-or-angle';
+  if (NUMBER_OR_PERCENT_GRAMMAR.has(property)) return 'number-or-percentage';
   if (FONT_GRAMMAR.has(property)) return 'font';
   if (NUMBER_OR_LENGTH_GRAMMAR.has(property)) return 'number-or-length-percentage';
   if (LINE_WIDTH.test(property) || LENGTH_GRAMMAR.has(property)) return 'length';
@@ -1073,6 +1085,8 @@ const GRAMMAR_ACCEPTS: { readonly [g in MathGrammar]: readonly VCategory[] } = {
   length: ['length'],
   'length-percentage': ['length', 'percent', 'length-function'],
   number: ['number'],
+  'number-or-angle': ['number', 'angle'],
+  'number-or-percentage': ['number', 'percent'],
   'number-or-length-percentage': ['number', 'length', 'percent', 'length-function'],
   angle: ['angle'],
   font: ['number', 'length', 'percent', 'length-function', 'angle'],
@@ -1081,6 +1095,8 @@ const GRAMMAR_NAMES: { readonly [g in MathGrammar]: string } = {
   length: 'a length without a percentage (a <line-width> takes no percentage, css-backgrounds-3 §3.3)',
   'length-percentage': 'a length or a percentage',
   number: 'a number',
+  'number-or-angle': 'a number or an angle',
+  'number-or-percentage': 'a number or a percentage',
   'number-or-length-percentage': 'a number, a length or a percentage',
   angle: 'an angle',
   font: 'a number, a length, a percentage or an angle (the font shorthand\'s parts)',
@@ -1114,7 +1130,7 @@ export function mathInvalidity(text: string, grammar: MathGrammar): string | nul
 // ---------------------------------------------------------------- lowering to the engine
 
 /** The font sizes em and rem read, in px: the element's specified size and the root's, at text scale 1. */
-export type MathFonts = { readonly em: number; readonly rem: number };
+export type MathFonts = { readonly em: number; readonly rem: number; readonly emSize?: CalcExpr };
 
 /** Whether a calculation reads the element's font size (em) or the root's (rem). */
 export function fontUnitsIn(n: MathNode): { readonly em: boolean; readonly rem: boolean } {
@@ -1130,12 +1146,13 @@ function lowerLeaf(n: MathLiteral, fonts: MathFonts, faults: MathFaults): CalcEx
   if (side !== null) return { kind: 'env', value: n.value, side: faults.envSideSwapped ? OPPOSITE[side] : side };
   if (n.unit === '') return n.inverseOf === null ? { kind: 'number', value: n.value } : { kind: 'invert', term: { kind: 'number', value: n.inverseOf } };
   if (n.unit === '%') return { kind: 'percent', value: n.value };
-  if (n.unit === 'em') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.em } };
+  if (n.unit === 'em') return { kind: 'em', value: n.value, fontSize: fonts.emSize ?? { kind: 'px', value: fonts.em } };
   if (n.unit === 'rem') return { kind: 'em', value: n.value, fontSize: { kind: 'px', value: fonts.rem } };
   if (n.unit === 'vw' || n.unit === 'vi') return { kind: 'viewport', value: n.value, axis: 'width', size: 'large' };
   if (n.unit === 'vh' || n.unit === 'vb') return { kind: 'viewport', value: n.value, axis: 'height', size: 'large' };
   if (n.unit === 'vmin') return { kind: 'viewport', value: n.value, axis: 'min', size: 'large' };
   if (n.unit === 'vmax') return { kind: 'viewport', value: n.value, axis: 'max', size: 'large' };
+  if (LAYOUT_CONTAINER_UNITS.has(n.unit)) throw new Error(`${n.unit} reached the lowering: analysis/container-rules.ts resolves container query units first`);
   // An absolute unit: ZoomedComputedPixels multiplies by its px ratio, then by the zoom.
   return { kind: 'px', value: n.value * (pxPer(n.unit) as number) };
 }
@@ -1220,11 +1237,61 @@ export function lowerLengthCalc(n: MathNode, fonts: MathFonts, range: LengthCalc
   return { kind: 'calc', expr: lowerMathNode(n, fonts, faults), range };
 }
 
+/** Whether a calculation's type reduces to a percentage alone (calc(50%), max(50%, 40%)): Blink's CSSPrimitiveValue::IsPercentage. */
+export function isPercentMath(n: MathNode): boolean {
+  return (isLit(n) ? unitCategory(n.unit) : n.category) === 'percent';
+}
+
+/** The px each em, rem and % of a calculation folded at build time reads (foldLength). */
+export type FoldBases = { readonly em: number; readonly rem: number; readonly percent: number };
+
+/** The units a calculation that is folded at build time may hold: numbers, %, em, rem and the absolute lengths. */
+export function foldableUnits(n: MathNode): boolean {
+  if (!isLit(n)) return n.args.every(foldableUnits);
+  return n.unit === '' || n.unit === '%' || n.unit === 'em' || n.unit === 'rem' || pxPer(n.unit) !== null;
+}
+
+const VIEWPORT_UNITS: ReadonlySet<string> = new Set(['vw', 'vh', 'vi', 'vb', 'vmin', 'vmax']);
+
+/** Whether a calculation reads the large viewport (vw, vh, vi, vb, vmin or vmax). */
+export function mathHasViewport(n: MathNode): boolean {
+  return isLit(n) ? VIEWPORT_UNITS.has(n.unit) : n.args.some(mathHasViewport);
+}
+
+/** CALC-2: the units a font-size calculation may hold: the foldable units and the large viewport units, which the engine resolves. */
+export function fontSizeUnits(n: MathNode): boolean {
+  if (!isLit(n)) return n.args.every(fontSizeUnits);
+  return VIEWPORT_UNITS.has(n.unit) || foldableUnits(n);
+}
+
+/**
+ * A length calculation of foldable units (foldableUnits) folded to px in double: an em or rem leaf is value times its font size, a
+ * percentage that share of bases.percent (css-values-4 §10.10, the font-size and line-height cases).
+ */
+export function foldLength(n: MathNode, bases: FoldBases): number {
+  if (isLit(n)) {
+    if (n.unit === '') return n.value;
+    if (n.unit === '%') return (n.value * bases.percent) / 100;
+    if (n.unit === 'em') return n.value * bases.em;
+    if (n.unit === 'rem') return n.value * bases.rem;
+    const k = pxPer(n.unit);
+    if (k === null) throw new Error(`${n.unit} is not a foldable unit`);
+    return n.value * k;
+  }
+  return evaluateOperator(n.args.map((a) => foldLength(a, bases)), n.op);
+}
+
 /** A constant number calculation, folded in double (Blink CSSMathFunctionValue::ComputeNumber). */
 export function foldNumber(n: MathNode): number {
   if (isLit(n)) return n.value;
   const values = n.args.map(foldNumber);
   return evaluateOperator(values, n.op);
+}
+
+/** A calculation's value with each literal scaled by its unit's factor ('' for a number, '%' for a percentage, else the unit). */
+export function foldScaled(n: MathNode, scale: (unit: string) => number): number {
+  if (isLit(n)) return n.value * scale(n.unit);
+  return evaluateOperator(n.args.map((a) => foldScaled(a, scale)), n.op);
 }
 
 // ---------------------------------------------------------------- serialization (css-values-4 §10.12, Blink CustomCSSText)
@@ -1329,4 +1396,152 @@ export function computedMathNode(e: CalcExpr): MathNode {
     case 'font-calc':
       return refuse(`a ${e.kind} leaf has no computed form`);
   }
+}
+
+// ---------------------------------------------------------------- computed form of a length calculation
+
+type PixelsAndPercentExpr = Extract<CalcExpr, { readonly kind: 'pixels-and-percent' }>;
+/** Rounds a double to float32 as Blink's float Length stores it (a typed array, as paint-data/libm.ts does). */
+const F32 = new Float32Array(1);
+const f32 = (v: number): number => {
+  F32[0] = v;
+  return F32[0] as number;
+};
+const ppOf = (pixels: number, percent: number, explicitPixels: boolean, explicitPercent: boolean): PixelsAndPercentExpr => ({ kind: 'pixels-and-percent', pixels, percent, explicitPixels, explicitPercent });
+const ppSum = (a: PixelsAndPercentExpr, b: PixelsAndPercentExpr): PixelsAndPercentExpr => ppOf(f32(a.pixels + b.pixels), f32(a.percent + b.percent), a.explicitPixels || b.explicitPixels, a.explicitPercent || b.explicitPercent);
+const ppTimes = (a: PixelsAndPercentExpr, n: number): PixelsAndPercentExpr => ppOf(f32(a.pixels * n), f32(a.percent * n), a.explicitPixels, a.explicitPercent);
+const simplePixels = (e: CalcExpr): e is PixelsAndPercentExpr => e.kind === 'pixels-and-percent' && e.percent === 0;
+
+/**
+ * CSSMathExpressionNode::ToCalcValue at zoom 1 for a calculation of px, percentage, em (at a known font size) and number leaves,
+ * as the engine's environment pass does it (packages/layout/src/environment.ts toCalcExpression): PixelsAndPercent for sums and
+ * products by a number, folded comparisons of plain pixels, the tree otherwise. Null for a leaf with no computed value here.
+ */
+function computedCalc(e: CalcExpr): CalcExpr | null {
+  switch (e.kind) {
+    case 'number':
+      return { kind: 'number', value: f32(e.value) };
+    case 'px':
+      return ppOf(f32(e.value), 0, true, false);
+    case 'em':
+      return e.fontSize.kind === 'px' ? ppOf(f32(e.value * e.fontSize.value), 0, true, false) : null;
+    case 'percent':
+      return ppOf(0, f32(e.value), false, true);
+    case 'sum': {
+      let acc = computedCalc(e.terms[0] as CalcExpr);
+      for (const t of e.terms.slice(1)) {
+        const next = computedCalc(t);
+        if (acc === null || next === null) return null;
+        if (acc.kind === 'pixels-and-percent' && next.kind === 'pixels-and-percent') acc = ppSum(acc, next);
+        else acc = acc.kind === 'sum' ? { kind: 'sum', terms: [...acc.terms, next] } : { kind: 'sum', terms: [acc, next] };
+      }
+      return acc;
+    }
+    case 'product': {
+      const terms: CalcExpr[] = [];
+      for (const t of e.terms) {
+        const c = computedCalc(t);
+        if (c === null) return null;
+        terms.push(c);
+      }
+      if (terms.length !== 2) return { kind: 'product', terms };
+      const [lhs, rhs] = terms as [CalcExpr, CalcExpr];
+      const num = lhs.kind === 'number' ? lhs : rhs.kind === 'number' ? rhs : null;
+      const other = num === lhs ? rhs : lhs;
+      if (num !== null && num.kind === 'number' && other.kind === 'pixels-and-percent') return ppTimes(other, num.value);
+      if (rhs.kind === 'invert' && rhs.term.kind === 'number' && lhs.kind === 'pixels-and-percent') return ppTimes(lhs, f32(1 / rhs.term.value));
+      return { kind: 'product', terms };
+    }
+    case 'invert': {
+      const term = computedCalc(e.term);
+      if (term === null) return null;
+      return term.kind === 'number' ? { kind: 'number', value: f32(1 / term.value) } : { kind: 'invert', term };
+    }
+    case 'min':
+    case 'max': {
+      const terms: CalcExpr[] = [];
+      for (const t of e.terms) {
+        const c = computedCalc(t);
+        if (c === null) return null;
+        terms.push(c);
+      }
+      if (!terms.every(simplePixels)) return { kind: e.kind, terms };
+      const px = (terms as PixelsAndPercentExpr[]).map((t) => t.pixels);
+      return ppOf(e.kind === 'min' ? Math.min(...px) : Math.max(...px), 0, true, false);
+    }
+    case 'clamp': {
+      const lo = computedCalc(e.min);
+      const v = computedCalc(e.value);
+      const hi = computedCalc(e.max);
+      if (lo === null || v === null || hi === null) return null;
+      if (!simplePixels(lo) || !simplePixels(v) || !simplePixels(hi)) return { kind: 'clamp', min: lo, value: v, max: hi };
+      return ppOf(Math.max(lo.pixels, Math.min(v.pixels, hi.pixels)), 0, true, false);
+    }
+    default:
+      return null;
+  }
+}
+
+/** Whether a calculation reads the viewport (vw, vh, vi, vb, vmin, vmax). */
+function viewportIn(n: MathNode): boolean {
+  return isLit(n) ? V1_RELATIVE.has(n.unit) && n.unit !== 'em' && n.unit !== 'rem' : n.args.some(viewportIn);
+}
+
+/** CSSMathExpressionNode::ComputeLengthPx: a calculation without a percentage evaluated in double, em at its font size. */
+function lengthDoubleOf(e: CalcExpr): number | null {
+  switch (e.kind) {
+    case 'number':
+    case 'px':
+      return e.value;
+    case 'em':
+      return e.fontSize.kind === 'px' ? e.value * e.fontSize.value : null;
+    case 'sum':
+    case 'product':
+    case 'min':
+    case 'max': {
+      const values: number[] = [];
+      for (const t of e.terms) {
+        const v = lengthDoubleOf(t);
+        if (v === null) return null;
+        values.push(v);
+      }
+      if (e.kind === 'sum') return values.reduce((a, b) => a + b, 0);
+      if (e.kind === 'product') return values.reduce((a, b) => a * b, 1);
+      return e.kind === 'min' ? Math.min(...values) : Math.max(...values);
+    }
+    case 'invert': {
+      const v = lengthDoubleOf(e.term);
+      return v === null ? null : 1 / v;
+    }
+    case 'clamp': {
+      const lo = lengthDoubleOf(e.min);
+      const v = lengthDoubleOf(e.value);
+      const hi = lengthDoubleOf(e.max);
+      return lo === null || v === null || hi === null ? null : Math.max(lo, Math.min(v, hi));
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * A <length-percentage> math function as getComputedStyle writes its computed value (on an element whose resolved value is the
+ * computed one): without a percentage, its px value computed in double (CSSPrimitiveValue::ConvertToLength, Length::Fixed); with
+ * one, the CalculationValue rebuilt as a math function (CSSMathExpressionNode::Create), percentage before pixels. em and rem take
+ * the element's font sizes. Null when the text is not such a calculation or reads a viewport unit or env(), whose px only the
+ * browser knows: Dragon's web CSS keeps those as written. range non-negative clamps a px result to 0; a calculation with a
+ * percentage keeps its text, and the engine clamps its value (LengthCalc range).
+ */
+export function computedLengthMathText(text: string, fonts: MathFonts, fmt: NumberFormat, range: 'all' | 'non-negative' = 'all'): string | null {
+  const parsed = parseMath(text, { type: 'length', percent: true });
+  if (!parsed.ok || mathHasEnv(parsed.node) || viewportIn(parsed.node)) return null;
+  const expr = lowerMathNode(parsed.node, fonts);
+  const leaves = computedCalc(expr);
+  if (leaves === null) return null;
+  if (leaves.kind === 'pixels-and-percent' && !leaves.explicitPercent) {
+    const px = lengthDoubleOf(expr);
+    // A non-negative context (a grid <track-breadth>, kNonNegative in Blink's parser) clamps the px value, writing -0 as 0.
+    return px === null ? null : `${fmt(range === 'non-negative' ? Math.max(0, px) : px)}px`;
+  }
+  return serializeMath(computedMathNode(leaves), fmt);
 }

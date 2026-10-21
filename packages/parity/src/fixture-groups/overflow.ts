@@ -41,5 +41,9 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // non-scrolling grid inside a scroll container.
   both('overflow-grid'),
   // OVFL-p: a percentage relative offset inside a scroll container is refused on native targets (overflow.ts does not decide it).
+  // The native clip view keeps text it may show (clip-view-text.ts): cards in flex and grid rows, a fixed-height card the text
+  // fits, and an icon beside a label. The refused cases (a carousel slide past a px width, an image-replacement text-indent) are
+  // native-only, which the reject fixtures' web-blocked contract cannot hold, so dragon's paint-clip-view-text.test.ts pins them.
+  both('overflow-text-cards'),
   reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
 ];

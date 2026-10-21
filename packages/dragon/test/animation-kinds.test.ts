@@ -19,9 +19,10 @@ describe('animation kinds', () => {
     expect(wrong).toEqual([]);
   });
 
-  it('admits colour and length only (ANIM-b1)', () => {
+  it('admits colour and length (ANIM-b1) and transform (ANIM-b2) only', () => {
     const kinds = new Set(LONGHANDS.filter((p) => admitted(ANIMATION_KINDS[p])).map((p) => ANIMATION_KINDS[p].kind));
-    expect([...kinds].sort()).toEqual(['color', 'length']);
+    expect([...kinds].sort()).toEqual(['color', 'length', 'transform']);
+    expect(LONGHANDS.filter((p) => ANIMATION_KINDS[p].kind === 'transform')).toEqual(['transform']);
     expect(ANIMATION_KINDS['padding-left']).toEqual({ kind: 'length', range: 'non-negative' });
     expect(ANIMATION_KINDS['margin-left']).toEqual({ kind: 'length', range: 'all' });
   });
