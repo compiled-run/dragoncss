@@ -1,4 +1,6 @@
 // background-color on the box view: UIView.backgroundColor on UIKit, a ColorDrawable on Android Views (both fill the border box).
+// The root box's colour is the canvas's (css-backgrounds-3 §2.11.2; html carries body's when it propagates, lower/paint/background.ts):
+// the root view (DragonRootView) takes it too, so it covers the viewport beyond html's box. The compiler refuses a translucent one.
 // A box the radius module rounds paints its background colour itself instead, inside the rounded border box (the background
 // stage), and its native background is off; the readback then reports the colour it paints. PNT1-opacity-b: a folded fill (a
 // fractional opacity folded into a translucent fill, lower/paint/background.ts) is drawn at the background stage as an opaque
@@ -41,6 +43,8 @@ public func dragonSyncBackground(_ v: DragonBoxView) {
   } else {
     v.backgroundColor = nil
   }
+  // The root box's colour is the canvas's: the root view paints it over the whole viewport, or Chrome's white base under none.
+  if let root = v.superview as? DragonRootView { root.backgroundColor = v.dragonBackgroundColor.a == 255 ? dragonUIColor(v.dragonBackgroundColor) : .white }
   v.setNeedsDisplay()
 }
 
@@ -139,6 +143,8 @@ fun dragonSyncBackground(v: DragonBoxView) {
   } else {
     v.background = if (square) ColorDrawable(dragonArgb(v.dragonBackgroundColor)) else null
   }
+  // The root box's colour is the canvas's: the root view paints it over the whole viewport, or Chrome's white base under none.
+  (v.parent as? DragonRootView)?.background = ColorDrawable(if (v.dragonBackgroundColor.a == 255) dragonArgb(v.dragonBackgroundColor) else 0xffffffff.toInt())
   v.invalidate()
 }
 

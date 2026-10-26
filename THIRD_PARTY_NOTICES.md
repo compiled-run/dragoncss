@@ -78,6 +78,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.h`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/text_decoration_offset.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/background_image_geometry.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/paint/box_background_paint_context.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/paint/box_background_paint_context.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_fragment_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_painter_base.cc`: Copyright 2014 The Chromium Authors
@@ -89,6 +91,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/text_decoration_info.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_fragment_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/text_painter.cc`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/paint/view_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/display_style.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/opentype/open_type_caps_support.cc`: Copyright 2015 The Chromium Authors

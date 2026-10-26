@@ -10,6 +10,7 @@ import type { BoxItem, GradientSpec, LayerGeometrySpec, Obscures } from '../../a
 import { bleedAvoidanceOf, compositesSubtree, linearSlope, obscuresOf, resolvedLayers } from '../../analysis/paint-values/gradient.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { elementMaskGradient } from '../../analysis/mask.ts';
+import { bodyPropagates, canvasRasterColor, canvasSourceOf } from '../../analysis/paint-values/canvas.ts';
 import type { Rgba8 } from '../../css/color.ts';
 import type { ColorLonghand, Longhand } from '../../css/properties.ts';
 import { SIDES } from '../../css/properties.ts';
@@ -101,7 +102,12 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite | BackgroundImageWri
   },
   lower: ({ el, images, transformMoves }) => {
     if (el === null) return [];
-    const layers = resolvedLayers(el);
+    // The canvas (analysis/paint-values/canvas.ts): html's box draws its source's layers over the canvas colour; a body whose
+    // background propagates draws none.
+    if (bodyPropagates(el)) return lowerMask(el);
+    const canvas = el.element.tag === 'html';
+    const source = canvas ? canvasSourceOf(el) : el;
+    const layers = resolvedLayers(source);
     const id = el.element.address;
     if (layers.some((l) => l.image.kind === 'url')) return [lowerUrlLayer(id, layers, images, transformMoves), ...lowerMask(el)];
     if (!layers.some((l) => l.image.kind === 'gradient')) return lowerMask(el);
@@ -111,7 +117,7 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite | BackgroundImageWri
     const lowered: LoweredLayer[] = [];
     for (const l of layers) {
       if (l.image.kind !== 'gradient') continue;
-      lowered.push({ geometry: { ...l.geometry, repeatX: repeat(l.geometry.repeatX, id), repeatY: repeat(l.geometry.repeatY, id) }, gradient: lowerGradient(l.image.gradient, colors.color, id) });
+      lowered.push({ geometry: { ...l.geometry, repeatX: repeat(l.geometry.repeatX, id), repeatY: repeat(l.geometry.repeatY, id) }, gradient: lowerGradient(l.image.gradient, usedColors(source).color, id) });
     }
     const bottom = layers[layers.length - 1];
     if (bottom === undefined) throw new ProgramError(`${id}: background layers without a bottom layer`);
@@ -122,6 +128,6 @@ export const GRADIENT_LOWERING: PaintLowering<GradientWrite | BackgroundImageWri
     if (compositesSubtree(el)) throw new ProgramError(`${id}: a gradient box in a composited layer the native check refuses (BG2c)`);
     const bleed = bleedAvoidanceOf(el);
     if (bleed === 'layer') throw new ProgramError(`${id}: a rounded box whose background Chrome paints into a bleed-avoidance layer, which the native check refuses (BG2c)`);
-    return [{ kind: 'background-layers', color: colors['background-color'], colorClip: bottom.geometry.clip, obscures, layers: lowered, lastIsBottom: bottom.image.kind === 'gradient' && bleed !== 'shrink', layerOrigin: [0, 0] }, ...masks];
+    return [{ kind: 'background-layers', color: canvas ? canvasRasterColor(source) : colors['background-color'], colorClip: canvas ? 'border-box' : bottom.geometry.clip, obscures, layers: lowered, lastIsBottom: bottom.image.kind === 'gradient' && bleed !== 'shrink', layerOrigin: [0, 0] }, ...masks];
   },
 };

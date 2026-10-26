@@ -26,6 +26,7 @@ import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.
 import type { AnimationAnalysis } from '../animations.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
+import { canvasRasterColor, checkCanvasColor, checkCanvasLayers, isCanvasSource } from './canvas.ts';
 
 export { linearSlope } from '../../paint-data/libm.ts';
 
@@ -710,7 +711,7 @@ export function resolvedLayers(el: ResolvedElement): ElementLayer[] {
 }
 
 /** Whether an element's layers can be read: it has them, and none keeps an unfolded length (refused by CALC-p before it is read). */
-function readableLayers(el: ResolvedElement): boolean {
+export function readableLayers(el: ResolvedElement): boolean {
   if (el.props.get('background-image') === undefined) return false;
   return !BACKGROUND_LAYERS_LONGHANDS.some((p) => {
     const v = el.props.get(p as Longhand);
@@ -767,9 +768,9 @@ function refuse(el: ResolvedElement, at: ResolvedValue, targets: readonly string
 }
 
 /**
- * The element refusals of BG2. Every target: a gradient on html or body (it paints the canvas) or on an inline box (painted per
- * line fragment), which no target models yet (BG2c). The native targets only: a background colour clipped inside a border that
- * shows the backdrop (reported at background-clip); an angle off the measured grid or a corner (R3, BG2b); a layer Chrome would
+ * The element refusals of BG2. Every target: a gradient on an inline box (painted per line fragment), which no target models yet
+ * (BG2c). The native targets only: a canvas gradient that is not one tile in html's box (canvas.ts); a background colour clipped
+ * inside a border that shows the backdrop (reported at background-clip); an angle off the measured grid or a corner (R3, BG2b); a layer Chrome would
  * tile (R8, BG2-t); a rounded box whose background Chrome paints into a bleed-avoidance layer (BG2c); a stack translucent over
  * an unknown backdrop (R6, BG2c); a composited layer Dragon does not model (R4, BG2c); a gradient in a transformed subtree (R13,
  * BG2-x, refused for every gradient below an element whose transform is not the identity).
@@ -806,6 +807,9 @@ function checkTextClip(el: ResolvedElement, clip: ResolvedValue, targets: readon
 
 const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
   const native = targets.filter((t) => t !== 'web');
+  // The canvas background (canvas.ts): html decides whether its body's propagates, and a translucent canvas colour is refused.
+  const canvas = isCanvasSource(el);
+  if (canvas) checkCanvasColor(el, native, diagnostics, reported);
   if (transformsSubtree(el)) refuseTransformed(el, el, native, diagnostics, reported);
   if (compositesSubtree(el, propagated)) refuseComposited(el, el, native, diagnostics, reported);
   for (const p of BACKGROUND_LAYERS_LONGHANDS) {
@@ -829,12 +833,9 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
     return;
   }
   if (!layers.some((l) => l.image.kind === 'gradient')) return;
-  const tag = el.element.tag;
   const display = (el.props.get('display') as ResolvedValue).value;
-  if (tag === 'html' || tag === 'body') {
-    refuse(el, image, targets, 'background-layers-canvas', `background-image on ${el.element.address}: a gradient on <${tag}> paints the canvas (css-backgrounds-3 §2.11.2), which Dragon does not model (${BG2C})`, 'Put the gradient on a descendant box that covers the page.', diagnostics, reported);
-    return;
-  }
+  // A body under an html with a background of its own paints its own box like any other (css-backgrounds-3 §2.11.2).
+  if (canvas && checkCanvasLayers(el, image, native, diagnostics, reported)) return;
   if (display.kind === 'keyword' && display.value === 'inline') {
     refuse(el, image, targets, 'background-layers-inline', `background-image on ${el.element.address}: a gradient on an inline box is painted per line fragment, which Dragon does not model (${BG2C})`, 'Put the gradient on a block box.', diagnostics, reported);
     return;
@@ -867,7 +868,7 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
     return;
   }
   const colors = usedColors(el);
-  const translucent = translucencyRefusal(layers, colors['background-color'], colors.color, boxWidths(el));
+  const translucent = translucencyRefusal(layers, canvas ? canvasRasterColor(el) : colors['background-color'], colors.color, boxWidths(el));
   if (translucent !== null) {
     refuse(el, image, native, 'background-layers-translucent', `background-image on ${el.element.address}: ${translucent}`, 'Give the box an opaque background-color or an opaque repeating gradient layer beneath.', diagnostics, reported);
     return;

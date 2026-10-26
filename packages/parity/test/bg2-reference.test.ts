@@ -5,7 +5,8 @@
 // exceed the gradient allowance (allowances/gradient.ts, GATE_CHANNEL_DELTA: no allowance, R2). Planted faults, each a Chrome
 // behaviour the reference must model, must each make some pixel differ: the libm table ignored (R3, fdlibm slopes), unpremultiplied
 // stops, no dither, the page origin for a composited layer (R4), the single-tile models swapped (R5), an obscuring border ignored
-// and the root scroll origin of a right-to-left page ignored (R4).
+// and the root scroll origin of a right-to-left page ignored (R4), and the canvas layers placed in body's box instead of the root
+// element's (box_background_paint_context.cc: the view positions them in the root box, analysis/paint-values/canvas.ts).
 import { backgroundPixelExact, backgroundRow, gradientFaults } from '@dragon/layout';
 import type { GradientFaults } from '@dragon/layout';
 import { borderDevicePx, programInput } from 'dragon';
@@ -46,14 +47,25 @@ function withRootScrollIgnored(p: NativeProgram, rootX: number): NativeProgram {
   return { ...p, nodes };
 }
 
+/** The program with the root's canvas layers drawn in its body child's box instead (the canvasInBody plant). */
+function withCanvasInBody(p: NativeProgram): NativeProgram {
+  const root = p.nodes.find((n) => n.parent === null);
+  const canvas = root?.writes.find((w) => w.kind === 'background-layers');
+  const body = p.nodes.find((n) => n.parent === root?.id && n.id === 'body');
+  if (root === undefined || canvas === undefined || body === undefined) return p;
+  const nodes = p.nodes.map((n) => (n === root ? { ...n, writes: n.writes.filter((w) => w !== canvas) } : n === body ? { ...n, writes: [...n.writes.filter((w) => w.kind !== 'background-layers'), canvas] } : n));
+  return { ...p, nodes };
+}
+
 /** Every exact painted pixel of every gradient box of every case, at every DPR, against the committed Chrome PNG. */
-function compareAll(faults: GradientFaults, libmTableIgnored = false, rootScrollIgnored = false): { tally: Tally; cases: number; boxes: number } {
+function compareAll(faults: GradientFaults, libmTableIgnored = false, rootScrollIgnored = false, canvasInBody = false): { tally: Tally; cases: number; boxes: number } {
   const tally: Tally = { pixels: 0, differing: 0, maxDelta: 0, first: null };
   let cases = 0;
   let boxes = 0;
   const engine = expectedEngine();
   for (const n of nativeCases()) {
-    const base = libmTableIgnored ? withFdlibmSlopes(n.programs['android-views']) : n.programs['android-views'];
+    const own = libmTableIgnored ? withFdlibmSlopes(n.programs['android-views']) : n.programs['android-views'];
+    const base = canvasInBody ? withCanvasInBody(own) : own;
     if (!base.nodes.some((node) => node.writes.some((w) => w.kind === 'background-layers'))) continue;
     cases++;
     for (const dpr of DPRS) {
@@ -107,6 +119,11 @@ describe('BG2 reference raster against Chrome 145 (host stage of the two-stage p
   it('catches the rootScrollIgnored plant: the root layer of a right-to-left page overflowing to the left starts at its scroll origin (R4)', () => {
     const { tally } = compareAll(gradientFaults('none'), false, true);
     console.log(`bg2-reference --plant rootScrollIgnored: ${tally.differing} of ${tally.pixels} pixels differ, max ${tally.maxDelta}`);
+    expect(tally.differing).toBeGreaterThan(0);
+  }, 600_000);
+  it('catches the canvasInBody plant: the canvas layers are positioned in the root element\'s box, not body\'s (canvas-gradient-*)', () => {
+    const { tally } = compareAll(gradientFaults('none'), false, false, true);
+    console.log(`bg2-reference --plant canvasInBody: ${tally.differing} of ${tally.pixels} pixels differ, max ${tally.maxDelta}`);
     expect(tally.differing).toBeGreaterThan(0);
   }, 600_000);
   it('catches the libmTableIgnored plant: fdlibm slopes move Chrome pixels on the table\'s angles (R3)', () => {

@@ -7,6 +7,7 @@ import { groupPlanAt, opacityFolds } from '../../analysis/paint-values/effects.t
 import type { Rgba8 } from '../../css/color.ts';
 import { opacityAlpha8, TRANSPARENT } from '../../css/color.ts';
 import { textClipFillOf } from '../../analysis/paint-values/gradient.ts';
+import { bodyPropagates, canvasSourceOf } from '../../analysis/paint-values/canvas.ts';
 import { opacityOf } from '../../css/properties/effects.ts';
 import type { ResolvedElement } from '../../analysis/resolve.ts';
 import { usedColors } from './colors.ts';
@@ -24,8 +25,18 @@ export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   css: { 'background-color': ['background-color'] },
   // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transparent. A colour clipped to
   // text is drawn by the box's glyphs instead (native-program.ts textPaint).
-  lower: ({ el, foldBackdrops }) => [el === null || textClipFillOf(el) !== null ? { kind: 'background-color', color: TRANSPARENT } : foldedBackground(el, foldBackdrops)],
+  lower: ({ el, foldBackdrops }) => [el === null || textClipFillOf(el) !== null || bodyPropagates(el) ? { kind: 'background-color', color: TRANSPARENT } : canvasBackground(el) ?? foldedBackground(el, foldBackdrops)],
 };
+
+/**
+ * html's colour when its body's background is the canvas's (analysis/paint-values/canvas.ts), which body then does not paint; the
+ * root view paints html's colour over the rest of the canvas (emit/paint/background.ts). Null for any other element.
+ */
+function canvasBackground(el: ResolvedElement): BackgroundWrite | null {
+  if (el.element.tag !== 'html') return null;
+  const source = canvasSourceOf(el);
+  return source === el ? null : { kind: 'background-color', color: usedColors(source)['background-color'] };
+}
 
 /** The fractional opacity of an element whose group folds into its fill, or null; a group nested in a pre-composited one stays a group. */
 export function foldedOpacity(el: ResolvedElement): number | null {

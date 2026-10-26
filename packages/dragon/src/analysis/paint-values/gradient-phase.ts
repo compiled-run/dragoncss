@@ -16,6 +16,7 @@ import type { ColorLonghand } from '../../css/properties.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
 import type { BoxItem, ElementLayer } from './gradient.ts';
 import { BG2_TILING, obscuresOf, paintsGradient, resolvedLayers } from './gradient.ts';
+import { canvasElement } from './canvas.ts';
 
 /** The device scales each native target's device lanes run at (parity targets.ts deviceDprs checks it holds the same). */
 export const NATIVE_DEVICE_DPRS: { readonly ios: readonly number[]; readonly android: readonly number[] } = { ios: [2, 3], android: [2, 3, 2.625] };
@@ -352,7 +353,7 @@ export function checkGradientPhase(root: ResolvedElement, targets: readonly stri
   if (native.length === 0 || faults.gradientPhaseUnchecked) return;
   const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[]): void => {
     if (keyword(el, 'display') === 'none') return;
-    if (el.element.tag !== 'html' && el.element.tag !== 'body' && keyword(el, 'display') !== 'inline' && paintsGradient(el)) check(el, ancestors);
+    if (!canvasElement(el) && keyword(el, 'display') !== 'inline' && paintsGradient(el)) check(el, ancestors);
     for (const c of el.children) if (c.kind === 'element') walk(c, [...ancestors, el]);
   };
   const kw = environmentOf(root).ua.borderWidthKeywords;
