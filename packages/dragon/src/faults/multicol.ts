@@ -1,7 +1,7 @@
-// The multicol family; Dragon accepts its initial values alone.
+// The multicol family (analysis/multicol.ts).
 
 export type MulticolFaults = {
-  /** A column-width, column-count, column rule, column-span or column-fill other than its initial value is accepted, though no target builds columns. */
+  /** A multi-column container the engine does not lay out, a column-width or column-count it does not read, and a column rule, column-span or column-fill other than its initial value are accepted. */
   readonly multicolAccepted: boolean;
 };
 
