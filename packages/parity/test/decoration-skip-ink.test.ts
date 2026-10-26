@@ -85,7 +85,7 @@ describe('TDEC-d: skip-ink intercepts of Lato glyphs against a live Chrome 145',
   });
 
   it('each planted intercept fault breaks a case', () => {
-    for (const k of ['inkBoxNotOutline', 'bandUnscaled'] as const) {
+    for (const k of ['pointsUnquantized', 'baselineUnrounded', 'inkBoxNotOutline', 'bandUnscaled'] as const) {
       expect(run({ ...gi.NO_INTERCEPT_FAULTS, [k]: true }).failed.length, k).toBeGreaterThan(0);
     }
   });

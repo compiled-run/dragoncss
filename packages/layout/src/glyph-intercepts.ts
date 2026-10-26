@@ -4,9 +4,8 @@
 //     px vertically, relative to the baseline; Font::GetTextIntercepts hands it to SkTextBlob::getIntercepts.
 //   - SkTextBlob.cpp:872-924 get_glyph_run_intercepts takes each glyph's path at kCanonicalTextSizeForPaths (SkFontPriv.h:36, 64)
 //     unhinted, divides the band by scale = size / 64, and maps each interval back by interval * scale + the glyph's x.
-//   - SkScalerContext_mac_ct.cpp:549-677: the path is Core Text's CTFontCreatePathForGlyph at that size, y flipped, its elements
-//     narrowed to float (SkCTPathGeometrySink drops a segment whose points all equal the current point). For a TrueType face that
-//     is the glyf contour: quadratic segments with the implied on-curve midpoints, lines between on-curve points.
+//   - The path is the glyf contour scaled to 26.6 at that size (glyphGap), its implied on-curve midpoints taken in 26.6, as the
+//     live captures on macOS and Linux show: quadratic segments, lines between on-curve points.
 //   - SkPath.cpp:337-437 Iter(path, false) closes each contour with a line when its last point is not its first.
 //   - SkGlyph.cpp:540-598 ensureIntercepts skips a glyph whose path bounds miss the band; SkGlyph.cpp:438-538 calculate_path_gap
 //     widens [left, right] by every line and quad crossing of the band's two edges and every segment point inside the band.
@@ -14,18 +13,22 @@
 //     Discriminant and Roots and 164-167 EvalAt, in doubles.
 // The fused multiply-adds of Discriminant's error terms and of EvalAt are computed exactly with Dekker's product split.
 // A composite glyph with a component scale, or whose components are placed by points, is not read (null): the caller refuses it.
-import { floorOf, froundOf } from './rt-easing.ts';
+import { floorOf, froundOf, roundOf } from './rt-easing.ts';
 import { sqrt64 } from './paint-aa.ts';
 
 /** Planted faults; the live Chrome skip-ink fixture must catch each one. */
 export type InterceptFaults = {
+  /** The outline's points are scaled to 64 px in floats instead of 26.6. */
+  readonly pointsUnquantized: boolean;
+  /** The decoration capture takes the band against the unrounded baseline (it reads this plant; the port has no baseline). */
+  readonly baselineUnrounded: boolean;
   /** A glyph crossing the band clips its whole ink box x extent (the Ahem rule) instead of the outline's crossings. */
   readonly inkBoxNotOutline: boolean;
   /** The band is not divided by size / 64, so it is taken in device px against the 64 px path. */
   readonly bandUnscaled: boolean;
 };
 
-export const NO_INTERCEPT_FAULTS: InterceptFaults = { inkBoxNotOutline: false, bandUnscaled: false };
+export const NO_INTERCEPT_FAULTS: InterceptFaults = { pointsUnquantized: false, baselineUnrounded: false, inkBoxNotOutline: false, bandUnscaled: false };
 
 /** SkFontPriv.h:36 kCanonicalTextSizeForPaths. */
 export const CANONICAL_TEXT_SIZE_FOR_PATHS = 64;
@@ -36,7 +39,7 @@ const TAG_LOCA = 0x6c6f6361;
 const TAG_GLYF = 0x676c7966;
 const POW2: readonly number[] = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
-/** A segment of an outline, LINE or QUAD, then its points: [kind, x0, y0, x1, y1, x2, y2] (a line's x2, y2 repeat x1, y1). */
+/** A segment of a scaled outline, LINE or QUAD, then its points: [kind, x0, y0, x1, y1, x2, y2] (a line's x2, y2 repeat x1, y1). */
 export const SEGMENT_STRIDE = 7;
 export const LINE = 1;
 export const QUAD = 2;
@@ -110,28 +113,37 @@ function pushSegment(out: number[], kind: number, x0: number, y0: number, x1: nu
 }
 
 /**
- * One closed contour's segments in font units: from its first on-curve point (or the last point, or the midpoint of the last and
- * first off-curve points), a line to each on-curve point, a quad through each off-curve point to the next on-curve point or to
- * the implied midpoint of two off-curve points, back to the start.
+ * One closed contour's segments from its points (x, y, on-curve as 1 or 0, from index first, n points), as FreeType's
+ * FT_Outline_Decompose walks it and Skia's path generators emit it: from its first on-curve point (or the last point, or the
+ * midpoint of the last and first off-curve points), a line to each on-curve point, a quad through each off-curve point to the
+ * next on-curve point or to the midpoint of two off-curve points, back to the start. A midpoint is (a + b) / 2 truncated toward
+ * zero, in the points' 26.6 units; a segment whose points all equal the current point is dropped.
  */
-function contourSegments(xs: readonly number[], ys: readonly number[], on: readonly boolean[], first: number, last: number, dx: number, dy: number, out: number[]): void {
-  const n = last - first + 1;
+function contourSegments(pts: readonly number[], first: number, n: number, out: number[]): void {
   if (n < 2) return;
+  const last = first + n - 1;
+  const px = (i: number): number => pts[i * 3] as number;
+  const py = (i: number): number => pts[i * 3 + 1] as number;
+  const on = (i: number): boolean => (pts[i * 3 + 2] as number) === 1;
   let sx: number;
   let sy: number;
   let k0: number;
-  if (on[first] as boolean) {
-    sx = xs[first] as number;
-    sy = ys[first] as number;
+  let count: number;
+  if (on(first)) {
+    sx = px(first);
+    sy = py(first);
     k0 = 1;
-  } else if (on[last] as boolean) {
-    sx = xs[last] as number;
-    sy = ys[last] as number;
+    count = n - 1;
+  } else if (on(last)) {
+    sx = px(last);
+    sy = py(last);
     k0 = 0;
+    count = n - 1;
   } else {
-    sx = ((xs[last] as number) + (xs[first] as number)) / 2;
-    sy = ((ys[last] as number) + (ys[first] as number)) / 2;
+    sx = Math.trunc((px(last) + px(first)) / 2);
+    sy = Math.trunc((py(last) + py(first)) / 2);
     k0 = 0;
+    count = n;
   }
   let cx = sx;
   let cy = sy;
@@ -139,27 +151,25 @@ function contourSegments(xs: readonly number[], ys: readonly number[], on: reado
   let qx = 0;
   let qy = 0;
   const emitLine = (x: number, y: number): void => {
-    if (x !== cx || y !== cy) pushSegment(out, LINE, cx + dx, cy + dy, x + dx, y + dy, x + dx, y + dy);
+    if (x !== cx || y !== cy) pushSegment(out, LINE, cx, cy, x, y, x, y);
     cx = x;
     cy = y;
   };
   const emitQuad = (x: number, y: number): void => {
-    if (qx !== cx || qy !== cy || x !== cx || y !== cy) pushSegment(out, QUAD, cx + dx, cy + dy, qx + dx, qy + dy, x + dx, y + dy);
+    if (qx !== cx || qy !== cy || x !== cx || y !== cy) pushSegment(out, QUAD, cx, cy, qx, qy, x, y);
     cx = x;
     cy = y;
   };
-  // The points after the start, wrapping round; when the start is the last point, every point before it.
-  const count = on[first] as boolean ? n - 1 : (on[last] as boolean ? n - 1 : n);
   for (let j = 0; j < count; j++) {
     const i = first + k0 + j;
-    const x = xs[i] as number;
-    const y = ys[i] as number;
-    if (on[i] as boolean) {
+    const x = px(i);
+    const y = py(i);
+    if (on(i)) {
       if (hasControl) emitQuad(x, y);
       else emitLine(x, y);
       hasControl = false;
     } else {
-      if (hasControl) emitQuad((qx + x) / 2, (qy + y) / 2);
+      if (hasControl) emitQuad(Math.trunc((qx + x) / 2), Math.trunc((qy + y) / 2));
       qx = x;
       qy = y;
       hasControl = true;
@@ -170,8 +180,9 @@ function contourSegments(xs: readonly number[], ys: readonly number[], on: reado
 }
 
 /**
- * A glyph's outline as segments (SEGMENT_STRIDE numbers each) in font units, y up, read from glyf: simple glyphs, and composite
- * glyphs whose components are offset by x and y alone. [] for an empty glyph; null for what this port does not read.
+ * A glyph's contours read from glyf, in font units, y up: for each contour its point count, then x, y and on-curve (1 or 0) per
+ * point. Simple glyphs, and composite glyphs whose components are offset by x and y alone. [] for an empty glyph; null for what
+ * this port does not read.
  */
 export function glyfOutline(b: readonly number[], glyph: number): number[] | null {
   const out: number[] = [];
@@ -256,10 +267,21 @@ function appendGlyph(b: readonly number[], glyph: number, dx: number, dy: number
   let first = 0;
   for (let c = 0; c < contours; c++) {
     const last = ends[c] as number;
-    contourSegments(xs, ys, on, first, last, dx, dy, out);
+    out.push(last - first + 1);
+    for (let i = first; i <= last; i++) {
+      out.push((xs[i] as number) + dx);
+      out.push((ys[i] as number) + dy);
+      out.push(on[i] as boolean ? 1 : 0);
+    }
     first = last + 1;
   }
   return true;
+}
+
+/** FT_MulFix: a * b / 65536 rounded half away from zero. */
+function mulFix(a: number, b: number): number {
+  const v = (a * b) / 65536;
+  return v < 0 ? -floorOf(-v + 0.5) : floorOf(v + 0.5);
 }
 
 /** Dekker's split: hi + lo = a exactly, each with at most 26 significant bits. */
@@ -342,17 +364,45 @@ function quadCrossings(x0: number, y0: number, x1: number, y1: number, x2: numbe
 
 /**
  * SkGlyph.cpp:438-598: the [left, right] gap of one glyph's path at 64 px (path space, y down) between the band edges top and
- * bottom, or [] when the path misses the band. segments are the glyph's outline in font units (glyfOutline).
+ * bottom, or [] when the path misses the band. contours are the glyph's glyfOutline, in font units.
  */
-export function glyphGap(segments: readonly number[], unitsPerEm: number, top: number, bottom: number, faults: InterceptFaults): number[] {
-  // SkScalerContext_mac_ct.cpp: Core Text's points at 64 px, y flipped, narrowed to float.
+export function glyphGap(contours: readonly number[], unitsPerEm: number, top: number, bottom: number, faults: InterceptFaults): number[] {
+  // The path at 64 px: each point scaled to 26.6 by FT_MulFix with the 16.16 scale FT_DivFix(64 * 64, unitsPerEm), as FreeType
+  // and Fontations scale an unhinted glyf outline; the contours walked in those units (contourSegments); y flipped to Skia's
+  // y down. Planted fault pointsUnquantized scales the points in floats instead.
+  const scale16 = roundOf((CANONICAL_TEXT_SIZE_FOR_PATHS * 64 * 65536) / unitsPerEm);
+  const scaled: number[] = [];
+  for (let i = 0; i < contours.length; ) {
+    const n = contours[i] as number;
+    scaled.push(n);
+    for (let k = 0; k < n; k++) {
+      const at = i + 1 + k * 3;
+      if (faults.pointsUnquantized) {
+        scaled.push(((contours[at] as number) * CANONICAL_TEXT_SIZE_FOR_PATHS * 64) / unitsPerEm);
+        scaled.push(((contours[at + 1] as number) * CANONICAL_TEXT_SIZE_FOR_PATHS * 64) / unitsPerEm);
+      } else {
+        scaled.push(mulFix(contours[at] as number, scale16));
+        scaled.push(mulFix(contours[at + 1] as number, scale16));
+      }
+      scaled.push(contours[at + 2] as number);
+    }
+    i = i + 1 + n * 3;
+  }
+  const segs: number[] = [];
+  for (let i = 0; i < scaled.length; ) {
+    const n = scaled[i] as number;
+    const pts: number[] = [];
+    for (let k = 0; k < n * 3; k++) pts.push(scaled[i + 1 + k] as number);
+    contourSegments(pts, 0, n, segs);
+    i = i + 1 + n * 3;
+  }
   const p: number[] = [];
-  for (let i = 0; i < segments.length; i++) {
-    const v = segments[i] as number;
+  for (let i = 0; i < segs.length; i++) {
+    const v = segs[i] as number;
     const k = i - floorOf(i / SEGMENT_STRIDE) * SEGMENT_STRIDE;
     if (k === 0) p.push(v);
-    else if (k === 1 || k === 3 || k === 5) p.push(f32((v * CANONICAL_TEXT_SIZE_FOR_PATHS) / unitsPerEm));
-    else p.push(f32(-((v * CANONICAL_TEXT_SIZE_FOR_PATHS) / unitsPerEm)));
+    else if (k === 1 || k === 3 || k === 5) p.push(f32(v / 64));
+    else p.push(f32(-v / 64));
   }
   let bx0 = FLT_MAX;
   let bx1 = -FLT_MAX;

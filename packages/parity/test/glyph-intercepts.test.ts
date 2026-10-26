@@ -52,7 +52,7 @@ function isScaledComposite(b: readonly number[], glyph: number): boolean {
 }
 
 describe('TDEC-d glyph intercepts over glyf outlines', () => {
-  it("reads every Lato and Ahem glyph's outline as closed contours whose points span the glyph's glyf bounds", () => {
+  it("reads every Lato and Ahem glyph's contours, whose points span the glyph's glyf bounds", () => {
     for (const file of ['vendor/fonts/Lato/Lato-Regular.ttf', 'vendor/fonts/Lato/Lato-Bold.ttf', 'vendor/fonts/Ahem.ttf']) {
       const b = bytesOf(file);
       expect(gi.glyfUnitsPerEm(b), file).toBeGreaterThan(0);
@@ -71,13 +71,17 @@ describe('TDEC-d glyph intercepts over glyf outlines', () => {
           expect(segs, `${file} ${g}`).toEqual([]);
           continue;
         }
+        // Each contour is its point count, then x, y and on-curve per point; the points span the glyph's glyf bounds.
         const xs: number[] = [];
         const ys: number[] = [];
-        for (let s = 0; s < segs.length; s += gi.SEGMENT_STRIDE) {
-          for (let k = 1; k < gi.SEGMENT_STRIDE; k += 2) {
-            xs.push(segs[s + k] as number);
-            ys.push(segs[s + k + 1] as number);
+        for (let i = 0; i < segs.length; ) {
+          const n = segs[i] as number;
+          expect(n, `${file} glyph ${g}`).toBeGreaterThan(0);
+          for (let k = 0; k < n; k++) {
+            xs.push(segs[i + 1 + k * 3] as number);
+            ys.push(segs[i + 2 + k * 3] as number);
           }
+          i += 1 + n * 3;
         }
         expect([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], `${file} glyph ${g}`).toEqual(want);
       }
@@ -90,12 +94,12 @@ describe('TDEC-d glyph intercepts over glyf outlines', () => {
 
   it('takes the gap of a square and of a quad bowl as calculate_path_gap does', () => {
     // A 1000-unit square at 64 px is 64 px wide, y from -64 to 0: a band inside it crosses both sides.
-    const square = [gi.LINE, 0, 0, 1000, 0, 1000, 0, gi.LINE, 1000, 0, 1000, 1000, 1000, 1000, gi.LINE, 1000, 1000, 0, 1000, 0, 1000, gi.LINE, 0, 1000, 0, 0, 0, 0];
+    const square = [4, 0, 0, 1, 1000, 0, 1, 1000, 1000, 1, 0, 1000, 1];
     expect(gi.glyphGap(square, 1000, -40, -20, gi.NO_INTERCEPT_FAULTS)).toEqual([0, 64]);
     expect(gi.glyphGap(square, 1000, 2, 4, gi.NO_INTERCEPT_FAULTS)).toEqual([]);
     // A bowl from (0, 0) through (500, -1000) to (1000, 0) font units is, at 64 px with y down, x = 64 t and y = 128 t (1 - t),
     // 32 px deep: the band [16, 24] is widest at its top edge, where t = 0.5 -+ sqrt(0.25 - 16 / 128).
-    const bowl = [gi.QUAD, 0, 0, 500, -1000, 1000, 0, gi.LINE, 1000, 0, 0, 0, 0, 0];
+    const bowl = [3, 0, 0, 1, 500, -1000, 0, 1000, 0, 1];
     const gap = gi.glyphGap(bowl, 1000, 16, 24, gi.NO_INTERCEPT_FAULTS);
     expect(gap[0]).toBeCloseTo(64 * (0.5 - Math.sqrt(0.25 - 16 / 128)), 4);
     expect(gap[1]).toBeCloseTo(64 * (0.5 + Math.sqrt(0.25 - 16 / 128)), 4);

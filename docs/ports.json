@@ -2210,11 +2210,13 @@
       "fileSha256": "1187a19a392111089b3e9011498e75dc9bd1c109ff125ea91402071a45cbdc67",
       "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
       "ranges": [
-        { "lines": "550-557", "symbol": null, "source": "cited" }
+        { "lines": "550-557", "symbol": null, "source": "cited" },
+        { "lines": "78-81", "symbol": "PhysicalBoxRect", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/emit/paint/text-decoration.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/lower/paint/text-decoration.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/parity/src/decoration-capture.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/marker.ts", "symbol": "symbolPaintRect", "use": "port" },
         { "file": "packages/layout/src/paint-marker.ts", "symbol": "symbolCoverage", "use": "port" }
@@ -3854,9 +3856,7 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
-        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
-        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "glyphGap", "use": "port" }
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" }
       ]
     },
     {

@@ -9,7 +9,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
 import type { ControlBox, LayoutBox, InlineChild, TextFont } from '@dragon/layout';
-import { glyphIntercepts as gi, pieceGlyphs, platformFontSize, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { absoluteRects, glyphIntercepts as gi, layout, pieceGlyphs, platformFontSize, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
 import { appliedDecorationsOf, NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
 import { readSfnt } from '../../dragon/src/fonts/sfnt.ts';
@@ -128,6 +128,7 @@ type Prepared = {
   readonly root: LayoutBox;
   readonly metricsOf: (font: TextFont) => td.DecorationFont;
   readonly measurer: ReturnType<typeof referenceShapedMeasurer>;
+  readonly blockTops: ReadonlyMap<string, number>;
 };
 
 const prepared = new Map<string, Prepared>();
@@ -144,6 +145,10 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
   if (projection.kind !== 'ready') throw new Error(`${key}: the stripped copy has no layout projection: ${projection.reason}`);
   const m = referenceShapedMeasurer();
   const texts = engineTextLines(projection.input, m);
+  // The top of each block in zoomed px: Chrome paints a block's text from its top rounded to a whole pixel (skip-ink, TDEC-d).
+  const laid = layout(projection.input, m);
+  if (laid.kind !== 'ok') throw new Error(`${key}: the stripped copy does not lay out`);
+  const blockTops = new Map([...absoluteRects(laid.boxes)].map(([id, r]) => [id, r.y / 64] as const));
   // The zoomed input's fonts: an inline box's own, and each IFC root's strut (the root inline box a block's decoration uses).
   const zoomed = zoomInput(projection.input, NO_ENGINE_FAULTS);
   const fonts = new Map<string, TextFont>();
@@ -166,7 +171,7 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
     const a = m.metrics(font).ascent / 64;
     return { floatAscent: a, ascent: a, size: font.size, underlineThickness: underlineThicknessOf(font.family)(font.size) };
   };
-  const out = { decorated, texts, fonts, root: zoomed.root, metricsOf, measurer: m };
+  const out = { decorated, texts, fonts, root: zoomed.root, metricsOf, measurer: m, blockTops };
   prepared.set(key, out);
   return out;
 }
@@ -221,7 +226,11 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
               if (!g.ok) throw new Error(`${c.id}: ${t.id} has no shaped glyphs: ${g.reason}`);
               const outlines = g.glyphs.map((id) => face.outline(id));
               if (outlines.some((o) => o === null)) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} ${r.line} at DPR ${dpr}: a glyph whose glyf outline the port does not read (a scaled composite) (TDEC-d)` };
-              const band = gi.interceptBand(r.y, r.thickness, baseline);
+              // text_fragment_painter.cc:78-81 paints the text from its block's top rounded to a whole pixel, and the glyphs' ink
+              // with it, while the line keeps its unrounded place: the band is taken against the rounded baseline.
+              const top = p.blockTops.get(t.container);
+              if (top === undefined) throw new Error(`${c.id}: no block ${t.container}`);
+              const band = gi.interceptBand(r.y, r.thickness, interceptFaults.baselineUnrounded ? baseline : baseline + Math.floor(top + 0.5) - top);
               const intercepts = gi.runIntercepts(outlines as number[][], g.xs, face.unitsPerEm, platformFontSize(t.font.size), band[0] as number, band[1] as number, interceptFaults);
               clips = faults.skipInkUndilated ? gi.interceptClips(input.left, intercepts, 0, 0) : gi.interceptClips(input.left, intercepts, r.thickness, td.DECORATION_CLIP_MAX_DILATION);
             } else {
