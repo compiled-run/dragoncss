@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 28416
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 28416
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 28416
+  },
+  {
+   "id": "card",
+   "parent": "stage",
+   "x": 50304,
+   "y": 3456,
+   "width": 23040,
+   "height": 21504
+  },
+  {
+   "id": "a1",
+   "parent": "card",
+   "x": 0,
+   "y": 0,
+   "width": 23040,
+   "height": 5376
+  },
+  {
+   "id": "a2",
+   "parent": "card",
+   "x": 0,
+   "y": 6912,
+   "width": 23040,
+   "height": 5376
+  },
+  {
+   "id": "a3",
+   "parent": "card",
+   "x": 2304,
+   "y": 13824,
+   "width": 18432,
+   "height": 5376
+  },
+  {
+   "id": "framed",
+   "parent": "stage",
+   "x": 20352,
+   "y": 3456,
+   "width": 24192,
+   "height": 18432
+  },
+  {
+   "id": "b1",
+   "parent": "framed",
+   "x": 1536,
+   "y": 1536,
+   "width": 21120,
+   "height": 6528
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 444,
+   "width": 1200,
+   "height": 444
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 444,
+   "width": 1200,
+   "height": 444
+  },
+  {
+   "id": "stage",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 444,
+   "width": 1200,
+   "height": 444
+  },
+  {
+   "id": "card",
+   "left": 786,
+   "top": 54,
+   "right": 1146,
+   "bottom": 390,
+   "width": 360,
+   "height": 336
+  },
+  {
+   "id": "a1",
+   "left": 786,
+   "top": 54,
+   "right": 1146,
+   "bottom": 138,
+   "width": 360,
+   "height": 84
+  },
+  {
+   "id": "a2",
+   "left": 786,
+   "top": 162,
+   "right": 1146,
+   "bottom": 246,
+   "width": 360,
+   "height": 84
+  },
+  {
+   "id": "a3",
+   "left": 822,
+   "top": 270,
+   "right": 1110,
+   "bottom": 354,
+   "width": 288,
+   "height": 84
+  },
+  {
+   "id": "framed",
+   "left": 318,
+   "top": 54,
+   "right": 696,
+   "bottom": 342,
+   "width": 378,
+   "height": 288
+  },
+  {
+   "id": "b1",
+   "left": 342,
+   "top": 78,
+   "right": 672,
+   "bottom": 180,
+   "width": 330,
+   "height": 102
+  }
+ ]
+}

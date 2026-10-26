@@ -5,6 +5,11 @@
 // rect, each operation in the outline colour or a 3D style's lighter or darker colour. The root view's outline views stay after its content in Blink's outline-phase order (each box's
 // descendants' outlines, then its own; boxes in tree order), so they paint as Chrome's root stacking context paints its outline phase. The readback is every ring's outer and inner rect in
 // device px from the root, from the view's live frame, or null when the view is not after the root's content.
+// Blink paints the outline under the box's local border-box clip (paint_property_tree_builder.cc UpdateLocalBorderBoxContext): its
+// ancestors' overflow clips, not its own. The view clips its drawing to the one clip view that holds the box, moved into its own
+// coordinates: the clip view's bounds, or the rounded padding-edge path the radius module masks the clip view's children with
+// (dragonOutlineClip). The compiler refuses a box under two clips, a scroller or a rounded clip off the device px grid
+// (analysis/paint-values/outline.ts checkOutlinePlacement); the device throws on the first two.
 import type { OutlineWrite } from '../../lower/paint/outline.ts';
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
@@ -31,6 +36,8 @@ public let dragonOutlinePlantDevicePx: Double = 0
 public let dragonOutlineGapUnfitted = false
 /// Whether a 3D outline swaps its lighter and darker colours; false except in the outline-tones-swapped raster plant build.
 public let dragonOutlineTonesSwapped = false
+/// Whether the outline ignores the overflow clip above its box; false except in the outline-clip-ignored raster plant build.
+public let dragonOutlineClipIgnored = false
 
 /// An outline's view: its rings in device px relative to the view (24 numbers each: outer rect, inner rect, outer and inner radii),
 /// filled even-odd in the outline colour, or for a dotted, dashed or 3D outline the side painter's operations in device px from the
@@ -43,6 +50,8 @@ public final class DragonOutlineView: UIView {
   /// The colours the operations name: the outline colour, a 3D style's lighter and its darker colour.
   public var tones: [DragonRGBA8] = []
   public var scaleFactor: Double = 1
+  /// The box whose outline this is, whose ancestors' overflow clip the drawing takes.
+  public weak var owner: DragonBoxView? = nil
   public init() {
     super.init(frame: .zero)
     isOpaque = false
@@ -55,6 +64,10 @@ public final class DragonOutlineView: UIView {
   public override func draw(_ rect: CGRect) {
     guard let ctx = UIGraphicsGetCurrentContext() else { return }
     let s = scaleFactor
+    if !dragonOutlineClipIgnored, let clip = dragonOutlineClip(self) {
+      ctx.addPath(clip)
+      ctx.clip()
+    }
     if !ops.isEmpty {
       dragonDrawOutlineOps(ctx, ops, tones, CGFloat(s), origin)
       return
@@ -115,6 +128,35 @@ func dragonDrawOutlineOps(_ ctx: CGContext, _ ops: [BorderOp], _ tones: [DragonR
   ctx.restoreGState()
 }
 
+/// The clip an outline view draws under (Blink's local border-box clip: the overflow clips above the box, not its own): the clip
+/// view holding the box, as its bounds or the radius module's rounded mask path, in the outline view's points; nil when no clip view
+/// holds the box. A box inside a scroll view or under two clip views is refused by the compiler, so it throws here.
+public func dragonOutlineClip(_ o: DragonOutlineView) -> CGPath? {
+  guard let root = o.superview else { return nil }
+  guard let v = o.owner else { fatalError("dragon: an outline view in the root view has no box") }
+  var found: UIView? = nil
+  var child: UIView = v
+  var at = v.superview
+  while let a = at, a !== root {
+    if let b = a as? DragonBoxView, let c = b.dragonClipView, c === child {
+      if !(c is DragonClipView) { fatalError("dragon: \(v.dragonId): the outline is inside the scroll view of \(b.dragonId)") }
+      if found != nil { fatalError("dragon: \(v.dragonId): the outline is under two overflow clips, the inner one \(b.dragonId)") }
+      found = c
+    }
+    child = a
+    at = a.superview
+  }
+  if at == nil { fatalError("dragon: \(v.dragonId): the box is not in its outline's root view") }
+  guard let c = found else { return nil }
+  if let path = (c.layer.mask as? CAShapeLayer)?.path {
+    let p = c.convert(CGPoint.zero, to: o)
+    var shift = CGAffineTransform(translationX: p.x, y: p.y)
+    guard let moved = path.copy(using: &shift) else { fatalError("dragon: \(v.dragonId): the outline clip path did not move") }
+    return moved
+  }
+  return CGPath(rect: c.convert(c.bounds, to: o), transform: nil)
+}
+
 /// Moves every outline view of the root after the root's other views, in Blink's outline-phase order: a box paints its
 /// descendants' outlines before its own (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order.
 public func dragonRaiseOutlines(_ root: UIView) {
@@ -136,6 +178,7 @@ public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ style: Strin
   let o = v.dragonOutlineView ?? DragonOutlineView()
   o.color = color
   o.tones = dragonOutlineTonesSwapped ? [color, dark, light] : [color, light, dark]
+  o.owner = v
   if o.superview !== t.root {
     o.removeFromSuperview()
     t.root.addSubview(o)
@@ -236,6 +279,8 @@ const val DRAGON_OUTLINE_PLANT_DEVICE_PX = 0.0
 const val DRAGON_OUTLINE_GAP_UNFITTED = false
 /** Whether a 3D outline swaps its lighter and darker colours; false except in the outline-tones-swapped raster plant build. */
 const val DRAGON_OUTLINE_TONES_SWAPPED = false
+/** Whether the outline ignores the overflow clip above its box; false except in the outline-clip-ignored raster plant build. */
+const val DRAGON_OUTLINE_CLIP_IGNORED = false
 
 /**
  * An outline's view: its rings in device px relative to the view (24 numbers each: outer rect, inner rect, outer and inner radii),
@@ -249,9 +294,18 @@ class DragonOutlineView(ctx: Context) : DragonGroup(ctx) {
   var color = DragonRGBA8(0, 0, 0, 0)
   /** The colours the operations name: the outline colour, a 3D style's lighter and its darker colour. */
   var tones: Array<DragonRGBA8> = emptyArray()
+  /** The box whose outline this is, whose ancestors' overflow clip the drawing takes. */
+  var owner: DragonBoxView? = null
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
+    val clip = if (DRAGON_OUTLINE_CLIP_IGNORED) null else dragonOutlineClip(this)
+    canvas.save()
+    if (clip != null) canvas.clipPath(clip)
+    drawRings(canvas)
+    canvas.restore()
+  }
+  private fun drawRings(canvas: Canvas) {
     if (ops.isNotEmpty()) {
       dragonDrawOutlineOps(canvas, ops, tones, origin)
       return
@@ -297,6 +351,50 @@ fun dragonDrawOutlineOps(canvas: Canvas, ops: List<BorderOp>, tones: Array<Drago
 }
 
 /**
+ * The clip an outline view draws under (Blink's local border-box clip: the overflow clips above the box, not its own): the clip view
+ * holding the box, as its bounds or the radius module's rounded padding-edge path (what the clip view clips its children to), in the
+ * outline view's device px; null when no clip view holds the box. A box inside a scroll view or under two clip views is refused by
+ * the compiler, so it throws here.
+ */
+fun dragonOutlineClip(o: DragonOutlineView): Path? {
+  val root = o.parent as? ViewGroup ?: return null
+  val v = o.owner ?: throw IllegalStateException("dragon: an outline view in the root view has no box")
+  var found: DragonBoxView? = null
+  var child: View = v
+  var at = v.parent
+  while (at is View && at !== root) {
+    if (at is DragonBoxView && at.dragonClipView === child) {
+      if (child is DragonScrollView) throw IllegalStateException("dragon: " + v.dragonId + ": the outline is inside the scroll view of " + at.dragonId)
+      if (found != null) throw IllegalStateException("dragon: " + v.dragonId + ": the outline is under two overflow clips, the inner one " + found.dragonId)
+      found = at
+    }
+    child = at
+    at = at.parent
+  }
+  if (at !== root) throw IllegalStateException("dragon: " + v.dragonId + ": the box is not in its outline's root view")
+  val b = found ?: return null
+  val c = b.dragonClipView ?: throw IllegalStateException("dragon: " + b.dragonId + ": the clip view went away")
+  var x = 0f
+  var y = 0f
+  var p: View = c
+  while (p !== root) {
+    x += p.left.toFloat()
+    y += p.top.toFloat()
+    p = p.parent as? View ?: throw IllegalStateException("dragon: " + v.dragonId + ": the clip view is not in the root view")
+  }
+  x -= o.left.toFloat()
+  y -= o.top.toFloat()
+  val rounded = dragonRoundedPath(b, b.dragonShape, true)
+  if (rounded != null) {
+    rounded.offset(x - b.dragonShape.borders[3].toFloat(), y - b.dragonShape.borders[0].toFloat())
+    return rounded
+  }
+  val r = Path()
+  r.addRect(x, y, x + c.width.toFloat(), y + c.height.toFloat(), Path.Direction.CW)
+  return r
+}
+
+/**
  * Moves every outline view of the root after the root's other views, in Blink's outline-phase order: a box paints its descendants'
  * outlines before its own (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order.
  */
@@ -322,6 +420,7 @@ fun dragonSetOutline(t: DragonTree, v: DragonBoxView, style: String, width: Doub
   val o = v.dragonOutlineView ?: DragonOutlineView(v.context)
   o.color = color
   o.tones = if (DRAGON_OUTLINE_TONES_SWAPPED) arrayOf(color, dark, light) else arrayOf(color, light, dark)
+  o.owner = v
   if (o.parent !== t.root) {
     (o.parent as? ViewGroup)?.removeView(o)
     t.root.addView(o)
@@ -392,7 +491,7 @@ const setOutline = (v: string, w: OutlineWrite): string[] => {
   return [`  dragonSetOutline(t, ${v}, ${keywordLit(w.style)}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)}, ${rgbaLit(light)}, ${rgbaLit(dark)})`];
 };
 
-export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped'> = {
+export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped' | 'outline-clip-ignored'> = {
   name: 'outline',
   kinds: ['outline'],
   lines: {
@@ -431,6 +530,13 @@ export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outl
       replace: {
         uikit: ['public let dragonOutlineTonesSwapped = false\n', 'public let dragonOutlineTonesSwapped = true\n'],
         'android-views': ['const val DRAGON_OUTLINE_TONES_SWAPPED = false\n', 'const val DRAGON_OUTLINE_TONES_SWAPPED = true\n'],
+      },
+    },
+    {
+      name: 'outline-clip-ignored',
+      replace: {
+        uikit: ['public let dragonOutlineClipIgnored = false\n', 'public let dragonOutlineClipIgnored = true\n'],
+        'android-views': ['const val DRAGON_OUTLINE_CLIP_IGNORED = false\n', 'const val DRAGON_OUTLINE_CLIP_IGNORED = true\n'],
       },
     },
   ],

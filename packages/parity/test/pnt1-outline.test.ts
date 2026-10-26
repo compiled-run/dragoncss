@@ -7,9 +7,10 @@
 // width and truncated offset, the half-size clamp of a negative offset, the outset radii, double bands of round(width / 3)), the
 // side painter's dashes, dots, miters and 3D colours (Color::Dark and Light, CalculateInsetOutsetColor) and the paint order (an
 // outline over a later flow sibling, a parent's outline over its child's) before any device runs; every fixture but outline-values
-// must have outline points. In each plant's cases (device-run.ts PLANT_CASES), the model with the plant's host twin must fail: the
-// rings one device px to the right (outline-offset-1), the nominal dash gap (outline-dash-unfitted), the 3D tones swapped
-// (outline-tones-swapped).
+// must have outline points. An outline is clipped by its box's ancestors' overflow clips (outline-clip, outline-clip-rounded), and
+// both clip fixtures must hold outline points the clip decides. In each plant's cases (device-run.ts PLANT_CASES), the model with the
+// plant's host twin must fail: the rings one device px to the right (outline-offset-1), the nominal dash gap (outline-dash-unfitted),
+// the 3D tones swapped (outline-tones-swapped), the clips ignored (outline-clip-ignored).
 import { describe, expect, it } from 'vitest';
 import { androidProfile, createProjectWith, iosProfile, laneOnlyNative, nativePrograms, NO_FAULTS, webProfile } from 'dragon';
 import { casesOf, fixtureInput } from '../src/cases.ts';
@@ -27,19 +28,21 @@ import { NO_OUTLINE_FAULTS, outlineModelAt, outlineOrder, outlines } from './out
 const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).filter((f) => f.kind === 'layout');
 
 /** Each outline plant's host twin: a shift in device px and the model's faults. */
-const TWINS: Record<'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped', { readonly shift: number; readonly faults: OutlineFaults }> = {
+const TWINS: Record<'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped' | 'outline-clip-ignored', { readonly shift: number; readonly faults: OutlineFaults }> = {
   'outline-offset-1': { shift: 1, faults: NO_OUTLINE_FAULTS },
   'outline-dash-unfitted': { shift: 0, faults: { dash: { phase1: false, gapUnfitted: true }, tonesSwapped: false } },
   'outline-tones-swapped': { shift: 0, faults: { ...NO_OUTLINE_FAULTS, tonesSwapped: true } },
+  'outline-clip-ignored': { shift: 0, faults: { ...NO_OUTLINE_FAULTS, clipIgnored: true } },
 };
 const PLANTS = Object.keys(TWINS) as (keyof typeof TWINS)[];
 
 describe('PNT1 outline: the paint model at every sample point equals the committed Chrome pixels', () => {
-  it('covers the seven outline fixtures in both directions', () => {
-    expect(OUTLINE_FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'outline-rounded', 'outline-dashed', 'outline-3d', 'outline-web']);
+  it('covers the nine outline fixtures in both directions', () => {
+    expect(OUTLINE_FIXTURES.map((f) => f.id)).toEqual(['outline-values', 'outline-solid', 'outline-double', 'outline-rounded', 'outline-dashed', 'outline-3d', 'outline-web', 'outline-clip', 'outline-clip-rounded']);
     expect(PLANT_CASES['outline-offset-1']).toEqual(['outline-solid']);
     expect(PLANT_CASES['outline-dash-unfitted']).toEqual(['outline-dashed']);
     expect(PLANT_CASES['outline-tones-swapped']).toEqual(['outline-3d']);
+    expect(PLANT_CASES['outline-clip-ignored']).toEqual(['outline-clip']);
   });
   it('orders a parent outline after its descendants, and siblings in tree order', () => {
     const box = (id: string, parent: string | null): Box => ({ node: { id, parent } as Box['node'], l: 0, t: 0, r: 0, b: 0, border: [], radii: null });
@@ -89,6 +92,8 @@ describe('PNT1 outline: the paint model at every sample point equals the committ
           expect(outlinePoints, 'outline points').toBeGreaterThan(0);
           // A plant runs on its cases only; elsewhere a sample point need not move under its fault.
           for (const k of PLANTS) if (PLANT_CASES[k].includes(spec.id)) expect(caught[k], `the ${k} model fault`).toBeGreaterThan(0);
+          // Both clip fixtures hold ring points outside their clip, where the clip, not the ring, decides the colour.
+          if (spec.id.startsWith('outline-clip')) expect(caught['outline-clip-ignored'], 'points the clip decides').toBeGreaterThan(0);
         }
       });
     }

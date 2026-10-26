@@ -150,17 +150,54 @@ describe('outline: the native targets draw every style but auto, the side painte
     const contents = errors(compile('.a { display: contents; outline: 2px dashed red; }', targets));
     expect(contents).toEqual([]);
   });
-  it("an outline inside an overflow clip or scroller is refused on ios, at the outline, naming the clip; the viewport's propagated overflow does not count", () => {
-    for (const overflow of ['hidden', 'clip', 'auto']) {
-      const c = tree(`.p { height: 20px; overflow: ${overflow}; } .b { height: 5px; outline: 2px solid red; }`, (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])]);
-      const outline = errors(c).filter((d) => d.message.includes('outline'));
-      expect(outline.map((d) => [d.target, d.message]), overflow).toEqual([['ios', `b has an outline inside the overflow clip of p, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context${SUFFIX}`]]);
-      expect(outline[0]?.origin.kind, overflow).toBe('authored');
-      expectCatalogued(outline);
+  it("an outline under one overflow hidden or clip box compiles, square or rounded on the device px grid; the box's own clip does not count", () => {
+    const both: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+    for (const p of ['overflow: hidden', 'overflow: clip', 'overflow: hidden; border: 3px solid', 'overflow: hidden; border-radius: 16px', 'overflow: clip; border-radius: 24px 8px / 8px', 'overflow: hidden; border-radius: 0 16px 0 0; border: 2.5px solid']) {
+      const c = tree(`.p { height: 20px; ${p}; } .b { height: 5px; outline: 2px solid red; }`, (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])], both);
+      expect(errors(c), p).toEqual([]);
     }
+    // Two levels down, and on a box that clips its own overflow: still one clip above the outline.
+    const deep = tree('.p { height: 30px; overflow: hidden; } .w { padding: 2px; } .b { height: 5px; overflow: hidden; outline: 4px dashed red; }', (r) => [div(r, 'p', ['p'], [div(r, 'w', ['w'], [div(r, 'b', ['b'])])])], both);
+    expect(errors(deep)).toEqual([]);
     // body's overflow goes to the viewport while html's is visible (css-overflow-3 §3.3), so body does not clip.
-    const propagated = tree('body { overflow: hidden; } .b { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'b', ['b'])]);
+    const propagated = tree('body { overflow: hidden; } .p { height: 20px; overflow: hidden; } .b { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])], both);
     expect(errors(propagated)).toEqual([]);
+  });
+  it('an outline under a scroller, under paint containment, or under two clips (a clip chain) is refused on ios, at the outline, naming the clips', () => {
+    const scroller = tree('.p { height: 20px; overflow: auto; } .b { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])]);
+    const s = errors(scroller).filter((d) => d.message.includes('outline'));
+    expect(s.map((d) => [d.target, d.message])).toEqual([['ios', `b has an outline inside the scroll container p, whose content Dragon scrolls under its clip view while native outlines stay in the root view${SUFFIX}`]]);
+    expect(s[0]?.origin.kind).toBe('authored');
+    expectCatalogued(s);
+    const chain = tree('.p { height: 40px; overflow: hidden; } .q { height: 20px; overflow: clip; } .b { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'p', ['p'], [div(r, 'q', ['q'], [div(r, 'b', ['b'])])])]);
+    const c = errors(chain).filter((d) => d.message.includes('outline'));
+    expect(c.map((d) => [d.target, d.message])).toEqual([['ios', `b has an outline under the nested overflow clips of p and q (a clip chain), and Dragon clips a native outline to one overflow clip only${SUFFIX}`]]);
+    expectCatalogued(c);
+    const contained = tree('.p { height: 20px; contain: paint; } .b { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])]);
+    const k = errors(contained).filter((d) => d.message.includes('outline'));
+    expect(k.map((d) => [d.target, d.message])).toEqual([['ios', `b has an outline inside the clip of p, which is not overflow hidden or clip on both axes, so it has no overflow clip view${SUFFIX}`]]);
+    expectCatalogued(k);
+    // The outline of q itself sits under p alone, so it compiles beside the refused one.
+    const outer = tree('.p { height: 40px; overflow: hidden; } .q { height: 20px; overflow: clip; outline: 2px solid red; }', (r) => [div(r, 'p', ['p'], [div(r, 'q', ['q'])])]);
+    expect(errors(outer).filter((d) => d.message.includes('outline'))).toEqual([]);
+  });
+  it('an outline under a rounded clip off the device px grid is refused per target: a % radius on both, a radius off 2.625 on android only', () => {
+    const both: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
+    const at = (radius: string) => errors(tree(`.p { height: 20px; overflow: hidden; border-radius: ${radius}; } .b { height: 5px; outline: 2px solid red; }`, (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])], both)).filter((d) => d.message.includes('outline'));
+    const pct = at('10%');
+    expect(pct.map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    expect(pct[0]?.message).toMatch(/^b has an outline inside the rounded overflow clip of p, whose border-top-left-radius is not in px, so its curve may fall off the device px grid; /);
+    expectCatalogued(pct);
+    // 6px is 12 and 18 device px at DPR 2 and 3, and 15.75 at Android's 2.625.
+    const six = at('6px');
+    expect(six.map((d) => [d.target, d.message.split(';')[0]])).toEqual([['android', 'b has an outline inside the rounded overflow clip of p, whose border-top-left-radius of 6px is 15.75 device px at DPR 2.625, off the device px grid']]);
+    expectCatalogued(six);
+    // One corner off the grid is enough; 8px multiples are whole at every DPR.
+    expect(at('8px 8px 8px 3px').map((d) => d.target)).toEqual(['android']);
+    expect(at('8px 16px / 24px')).toEqual([]);
+    // A rounded outline box under a square clip needs no grid: its own radius is not the clip's.
+    const own = errors(tree('.p { height: 20px; overflow: hidden; } .b { height: 5px; border-radius: 5px; outline: 2px solid red; }', (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])], both));
+    expect(own).toEqual([]);
   });
   it('an outline in a case with a layer item of the stacking tree is refused on ios (Chrome paints its layer above the outlines); web compiles', () => {
     const layers = [

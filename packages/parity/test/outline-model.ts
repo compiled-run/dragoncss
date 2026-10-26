@@ -3,7 +3,9 @@
 // in the root view: a solid or double outline as the rings of the TS paint-radius.ts outlineRings, a dotted, dashed or 3D one as
 // the TS paint-dash.ts outlinePaintOps around the ring's outer rect, evaluated at the pixel centre (clips, transparency layers
 // composited at their alpha, the operations' colours from the write's colour and 3D tones). The centre decides only a crisp pixel,
-// which is what the sample module picks for these styles.
+// which is what the sample module picks for these styles. Each outline is clipped by the overflow clips of its box's ancestors (the
+// padding box, rounded by the padding-edge radii), not by its own: Blink paints it under the box's local border-box clip
+// (paint_property_tree_builder.cc UpdateLocalBorderBoxContext), what the device's outline view takes from the clip view above it.
 import type { BorderOp, DashFaults } from '@dragon/layout';
 import { NO_DASH_FAULTS, outlineNeedsSidePainter, outlineOffsetPx, outlinePaintOps, outlineRings, outlineWidthPx } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
@@ -15,11 +17,22 @@ import { insideRounded, modelAt, over } from './paint-model.ts';
  * An outline: its rings, its colour, and for a side painter style its operations and their palette (indexed by an operation's side:
  * the colour, the lighter tone, the darker tone).
  */
-export type Rings = { readonly box: Box; readonly rings: readonly number[]; readonly color: Rgba; readonly ops: readonly BorderOp[] | null; readonly palette: readonly Rgba[] };
+export type Rings = { readonly box: Box; readonly rings: readonly number[]; readonly color: Rgba; readonly ops: readonly BorderOp[] | null; readonly palette: readonly Rgba[]; readonly clips?: readonly Box[] };
 
-/** The model's faults, the host twins of the device plants: the unfitted dash gap (outline-dash-unfitted), the tones swapped (outline-tones-swapped). */
-export type OutlineFaults = { readonly dash: DashFaults; readonly tonesSwapped: boolean };
-export const NO_OUTLINE_FAULTS: OutlineFaults = { dash: NO_DASH_FAULTS, tonesSwapped: false };
+/**
+ * The model's faults, the host twins of the device plants: the unfitted dash gap (outline-dash-unfitted), the tones swapped
+ * (outline-tones-swapped), the ancestors' overflow clips ignored (outline-clip-ignored).
+ */
+export type OutlineFaults = { readonly dash: DashFaults; readonly tonesSwapped: boolean; readonly clipIgnored?: boolean };
+export const NO_OUTLINE_FAULTS: OutlineFaults = { dash: NO_DASH_FAULTS, tonesSwapped: false, clipIgnored: false };
+
+/** The clipping ancestors of a box in the list, nearest first. */
+export function clipsAbove(list: readonly Box[], b: Box): Box[] {
+  const byId = new Map(list.map((x) => [x.node.id, x]));
+  const out: Box[] = [];
+  for (let a = b.node.parent === null ? undefined : byId.get(b.node.parent); a !== undefined; a = a.node.parent === null ? undefined : byId.get(a.node.parent)) if (a.node.clips) out.push(a);
+  return out;
+}
 
 /** The boxes in Blink's outline-phase order: each box after its descendants, siblings in tree order. */
 export function outlineOrder(list: readonly Box[]): Box[] {
@@ -61,7 +74,8 @@ export function outlines(p: NativeProgram, list: readonly Box[], dpr: number, sh
   for (const b of outlineOrder(list)) {
     const w = outlineWrite({ program: p } as never, b.node.id);
     if (w === null) continue;
-    out.push(boxOutline(b, w.style, w.width, w.offset, rgba(w.color), dpr, shift, w.tones === null ? null : [rgba(w.tones[0]), rgba(w.tones[1])], faults));
+    const o = boxOutline(b, w.style, w.width, w.offset, rgba(w.color), dpr, shift, w.tones === null ? null : [rgba(w.tones[0]), rgba(w.tones[1])], faults);
+    out.push(faults.clipIgnored === true ? o : { ...o, clips: clipsAbove(list, b) });
   }
   return out;
 }
@@ -125,6 +139,8 @@ export function ringsOver(colour: Rgba, rings: readonly Rings[], x: number, y: n
   const cy = y + 0.5;
   let out = colour;
   for (const o of rings) {
+    const clipped = (o.clips ?? []).some((a) => !insideRounded(cx, cy, a.l + (a.border[3] as number), a.t + (a.border[0] as number), a.r - (a.border[1] as number), a.b - (a.border[2] as number), a.radii === null ? null : a.radii.slice(8, 16)));
+    if (clipped) continue;
     if (o.ops !== null) {
       out = opsOver(out, o.ops, o.palette, cx, cy);
       continue;
