@@ -66,8 +66,8 @@ describe('@supports conditions', () => {
       expect(decide(`not (${decl})`), decl).toBe(`Dragon cannot tell whether Chrome keeps (${decl}) (Chrome may keep "${keyword}" for ${decl.split(':')[0]}, a keyword the CSS grammar Dragon checks does not list)`);
     }
     // Chrome's prefixed sizing keywords are in the grammar now (css/size-keywords.ts): -webkit-fill-available computes to stretch,
-    // which no web row proves for height.
-    expect(decide('not (height: -webkit-fill-available)')).toBe('Dragon cannot tell whether Chrome keeps (height: -webkit-fill-available) (height:stretch is not a value Dragon has proven Chrome 145 keeps)');
+    // which web rows prove for height, so Chrome keeps it.
+    expect(decide('not (height: -webkit-fill-available)')).toBe(false);
     expect(decide('(foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\) \(foo is not supported/);
     // An undecidable operand refuses the condition even where the decided one settles it.
     expect(decide('(width: 1px 2px) and (foo: bar)')).toMatch(/^Dragon cannot tell whether Chrome keeps \(foo: bar\)/);

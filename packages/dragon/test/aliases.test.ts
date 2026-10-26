@@ -342,10 +342,9 @@ describe('profile diagnostics name the alias as written', () => {
     return [...new Set(c.diagnostics.map((d) => `${d.code} ${d.message}`))];
   };
   it('an unsupported value says which alias set it', () => {
-    // One message per target (ios, web), each listing that target's proven values.
+    // ios and web have proven the same flex-basis values in block flow, so their messages are one.
     expect(messages('body { margin: 0 } .a { -webkit-flex-basis: min-content }', 'ltr', (r) => [div(r, 'a', ['a'])])).toEqual([
       'DRAGON_UNSUPPORTED_VALUE flex-basis: min-content (set by -webkit-flex-basis: min-content) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-px>, <length-rem>, <max()>, <min()>, <percentage>, auto, inherit, initial or revert',
-      'DRAGON_UNSUPPORTED_VALUE flex-basis: min-content (set by -webkit-flex-basis: min-content) is unsupported (support profile m1-s5); in block/ltr use <calc()>, <clamp()>, <length-px>, <length-rem>, <max()>, <min()>, <percentage>, auto or inherit',
     ]);
   });
   it('a CSS-wide keyword that leaves the value unchanged needs no row of its own (CASC)', () => {
