@@ -8,7 +8,8 @@ import type { ProfileRow } from '../src/profiles/types.ts';
 import type { SupportProfiles } from '../src/project.ts';
 import { nativeOutputState } from '../src/project.ts';
 import { div, inputFor, text } from './helpers.ts';
-import { HIT_PRESERVED_FACE, unmodelledHitText } from '../src/internal.ts';
+import { HIT_PRESERVED_FACE, hitTextLeaves, unmodelledHitText } from '../src/internal.ts';
+import { inlineLeaves } from '../../layout/src/inline.ts';
 import { internalRecord } from '../src/project.ts';
 import { AHEM_FACE_ID } from '../../layout/src/text.ts';
 import type { LayoutBox } from '@dragon/layout';
@@ -159,6 +160,18 @@ describe('SELD-R2 §1: the user-app interaction file', () => {
     const collapsed = internalRecord(plain)?.cases[0]?.nativeLowered;
     if (collapsed === null || collapsed === undefined) throw new Error('no lowered tree');
     expect(unmodelledHitText(collapsed)).toBeNull();
+    // The copy of layout inline.ts inlineLeaves (the core imports layout for types only) gives its leaves on every block of both trees.
+    const blocks = (b: LayoutBox): LayoutBox[] => [b, ...b.children.flatMap((k) => (k.kind === 'box' ? blocks(k) : []))];
+    const nested = inputFor(`${BODY}.f { white-space: pre-wrap; }`, (r) => [div(r, 'f', ['f'], [text(r, 't', 'a '), { ...div(r, 's', []), tag: 'span' } as never, text(r, 'u', 'b')])]);
+    const nestedTree = internalRecord(compile(nested))?.cases[0]?.nativeLowered;
+    let compared = 0;
+    for (const root of [tree, collapsed, real, ...(nestedTree === null || nestedTree === undefined ? [] : [nestedTree])]) {
+      for (const b of blocks(root)) {
+        expect(hitTextLeaves(b), b.id).toEqual(inlineLeaves(b));
+        compared += inlineLeaves(b).length;
+      }
+    }
+    expect(compared).toBeGreaterThanOrEqual(3);
   });
 
   it('fails closed for a document whose native output also switches @media bands or runs transitions', () => {

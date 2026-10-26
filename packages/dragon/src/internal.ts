@@ -580,8 +580,7 @@ import { deriveInteractionProgram as deriveDocumentInteractionProgram } from './
 import { deriveStateProgram as deriveDocumentStateProgram, StateProgramError as DocumentStateProgramError } from './lower/state-program.ts';
 import type { InteractionProgramEmit } from './emit/runtime/interaction.ts';
 import type { GeneratedFile } from './types.ts';
-import type { ControlBox, LayoutBox, TextLeaf } from '@dragon/layout';
-import { inlineLeaves } from '@dragon/layout';
+import type { ControlBox, InlineChild, LayoutBox, TextLeaf } from '@dragon/layout';
 export type { InteractionProgramEmit } from './emit/runtime/interaction.ts';
 export { emitInteractionUserFile, interactionUserMount, interactionUserName } from './emit/runtime/interaction.ts';
 import { emitInteractionUserFile, InteractionEmitError as DocumentInteractionEmitError } from './emit/runtime/interaction.ts';
@@ -638,10 +637,23 @@ export const HIT_PRESERVED_FACE = 'Ahem';
  * or with inline padding that is not a plain px length, the hit table throws; in Ahem it checks each fragment against the engine's
  * own line piece only on the device, so a mismatch there would stop the app. The machine's hit table fatalErrors on a throw.
  */
+/** A block's text leaves in inline order, through its inline boxes: layout inline.ts inlineLeaves (the core imports layout for types only). */
+export function hitTextLeaves(box: LayoutBox): TextLeaf[] {
+  const out: TextLeaf[] = [];
+  const walk = (kids: readonly InlineChild[]): void => {
+    for (const k of kids) {
+      if (k.kind === 'text') out.push(k);
+      else if (k.kind === 'inline') walk(k.children);
+    }
+  };
+  walk(box.children.filter((k): k is InlineChild => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br'));
+  return out;
+}
+
 export function unmodelledHitText(root: LayoutBox): string | null {
   const visit = (b: LayoutBox | ControlBox): string | null => {
     if (b.kind === 'box') {
-      const preserved = inlineLeaves(b).filter((l) => l.whiteSpaceCollapse !== 'collapse');
+      const preserved = hitTextLeaves(b).filter((l) => l.whiteSpaceCollapse !== 'collapse');
       const face = preserved.find((l) => l.font.family !== HIT_PRESERVED_FACE);
       if (face !== undefined) return `${face.id}: preserved white space in the face ${face.font.family}, which the device hit table models in ${HIT_PRESERVED_FACE} only`;
       if (preserved.length > 0 && (b.style.paddingLeft.kind !== 'px' || b.style.paddingRight.kind !== 'px')) return `${b.id}: preserved white space in a box whose inline padding is not a px length, whose content width the device hit table does not resolve`;
