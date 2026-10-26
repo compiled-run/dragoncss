@@ -82,7 +82,7 @@ import { checkBackgroundBlend } from './background-blend.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
-import { uaTagOf } from './elements.ts';
+import { MONOSPACE_UA_TAGS, uaTagOf } from './elements.ts';
 import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
@@ -1107,7 +1107,9 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const declared = size.origin === 'author' ? size.declared : null;
     const relative = declared !== null && (declared.kind === 'percentage' || isPercentFontSizeMath(declared) || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
-    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'))).contexts;
+    // pre's captured contexts are Chrome's generic-monospace size (its 1em margins of 13px under a keyword-sized ancestor, against
+    // the scan's px-sized reference); html.css keys no pre rule on an ancestor, and a pre compiles only with an author font-family.
+    const keyed = MONOSPACE_UA_TAGS.has(tag) ? [] : uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'))).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -1549,6 +1551,21 @@ const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] 
 ];
 
 /**
+ * code and pre (MONOSPACE_UA_TAGS): Chrome's UA font-family: monospace is the generic monospace alone, which Chrome sizes at its
+ * default fixed font size (13px for medium, and em and keyword sizes of that); Dragon does not model that size, so the element
+ * compiles only with an author font-family (a pinned monospace is written as its bundled family, at the ordinary sizes).
+ */
+function checkMonospaceUa(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const tag = el.element.tag;
+  if (!MONOSPACE_UA_TAGS.has(tag)) return;
+  const family = el.props.get('font-family') as ResolvedValue;
+  const reverted = family.declared !== null && family.declared.kind === 'keyword' && (family.declared.value === 'revert' || family.declared.value === 'revert-layer');
+  if (family.declaration !== null && !reverted) return;
+  const address = el.element.address;
+  refuseOn(el, family, 'monospace', 'DRAGON_UNSUPPORTED_FONT', targets, diagnostics, reported, `<${tag}> ${address} uses Chrome's user-agent font-family: monospace, which Chrome sizes at its fixed font size (13px for medium); Dragon does not model that size`, `Set font-family on <${tag}> ${address} (or font-family: inherit).`);
+}
+
+/**
  * FORM-a A3: a button is laid out as a block container that centres its contents, or as the flex container its display says,
  * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
  * display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control font (R13).
@@ -1751,6 +1768,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkImageRendering(el, targets, diagnostics, reported, faults);
     if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
+    if (!here) checkMonospaceUa(el, targets, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
