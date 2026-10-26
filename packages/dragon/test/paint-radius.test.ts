@@ -103,6 +103,98 @@ describe('border-radius: parse and computed values (Chrome 145 getComputedStyle)
   });
 });
 
+describe('border-radius: calculations computed as Chrome 145 CSSPrimitiveValue::ConvertToLength makes them', () => {
+  // [declaration, the four computed corners]: a length to px (negative and NaN 0, infinite the CSS length range's bound), a
+  // percentage alone to a percentage, a mix to calc(<percentage> + <px>) with its numbers in full. Chrome parity is radius-calc.
+  const cases: [string, string[]][] = [
+    ['border-radius: calc(infinity * 1px)', Array(4).fill('33554428px')],
+    ['border-radius: calc(50% - 2px)', Array(4).fill('calc(50% - 2px)')],
+    ['--r: 6px; border-radius: calc(var(--r) * 2)', Array(4).fill('12px')],
+    ['border-radius: calc(50%) / calc(1em + 2px)', Array(4).fill('50% 22px')],
+    ['border-top-left-radius: calc(10px + 5%) 4px', ['calc(5% + 10px) 4px', '0px', '0px', '0px']],
+    ['border-top-left-radius: calc(10px + 5%) calc(5% + 10px)', ['calc(5% + 10px)', '0px', '0px', '0px']],
+    ['border-radius: max(10px, 1em) min(1rem, 30px) clamp(2px, 1em, 3px) 4px', ['20px', '16px', '3px', '4px']],
+    ['border-radius: calc(-5px) calc(infinity * -1px) calc(infinity * 0px) calc(-10% * 2)', ['0px', '0px', '0px', '0%']],
+    ['border-radius: calc(100% / 3 - 2px)', Array(4).fill('calc(33.33333206176758% - 2px)')],
+    ['border-radius: calc(-10% + 20px)', Array(4).fill('calc(-10% + 20px)')],
+    ['border-radius: calc(20px - 50% + 50%)', Array(4).fill('calc(0% + 20px)')],
+    ['border-radius: calc(2em - 1rem + 50%)', Array(4).fill('calc(50% + 24px)')],
+    ['border-radius: calc(pi * 1px) calc(e * 1px)', ['3.141592653589793px', '2.718281828459045px', '3.141592653589793px', '2.718281828459045px']],
+    ['-webkit-border-radius: calc(1px + 1%) calc(2px * 3)', Array(4).fill('calc(1% + 1px) 6px')],
+  ];
+  for (const [decl, want] of cases) {
+    it(`${decl} computes to ${want.join(' | ')}`, () => {
+      const { c } = compile(`.a { width: 100px; height: 50px; ${decl}; }`, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+      expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+      for (const target of ['web', 'ios', 'android'] as const) expect(CORNERS.map((p) => explainOne(c, target, 'a', p).value), target).toEqual(want);
+    });
+  }
+
+  it('a computed calculation inherits as computed: em and rem were taken of the parent', () => {
+    const { c } = compile('.a { font-size: 10px; border-radius: calc(1em + 10%) calc(2em + 1px); } .b { font-size: 30px; border-radius: inherit; }');
+    expect(CORNERS.map((p) => explainOne(c, 'ios', 'b', p).value)).toEqual(['calc(10% + 10px)', '21px', 'calc(10% + 10px)', '21px']);
+  });
+
+  it('a calculation Chrome drops is DRAGON_CSS_INVALID_VALUE', () => {
+    for (const v of ['calc(5)', 'calc(1px * 2px)', 'calc(1px + 2)', 'min(1px, 2)', 'calc(1px +2px)']) {
+      const { declaration, diagnostics } = declare('border-top-left-radius', v);
+      expect(declaration, v).toBeNull();
+      expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
+    }
+  });
+
+  it('refuses, on the token with the reason, what Dragon does not compute: an expression of a percentage and a length, an infinite mix, nan, other units and functions', () => {
+    const cases: [string, string][] = [
+      ['min(10px, 5%)', 'min(), max() or clamp() of a percentage and a length stays an expression'],
+      ['clamp(1px, 10%, 2em)', 'min(), max() or clamp() of a percentage and a length stays an expression'],
+      ['calc(infinity * 1%)', 'it computes to an infinite or NaN percentage'],
+      ['calc(50% + infinity * 1px)', 'it mixes a percentage with an infinite or NaN value'],
+      ['calc(nan * 1px)', 'the calculation constant nan is not supported'],
+      ['calc(1px + 1vw)', 'a calculation in a border radius takes px, %, em, rem and absolute lengths'],
+      ['calc(1px + 1cqw)', 'a calculation in a border radius takes px, %, em, rem and absolute lengths'],
+      ['calc(1px + 1ex)', 'ex is measured from the primary font'],
+      ['-webkit-calc(1px + 1%)', '-webkit-calc() in a border radius is not supported'],
+    ];
+    for (const [v, why] of cases) {
+      const { declaration, diagnostics, css } = declare('border-radius', `4px ${v}`);
+      expect(declaration, v).toBeNull();
+      expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
+      expect(diagnostics[0]?.message.startsWith('border-radius: '), v).toBe(true);
+      expect(diagnostics[0]?.message, v).toContain(` is unsupported: ${why}`);
+      expect(spanOf(css, diagnostics[0] as Diagnostic), v).toBe(v);
+      expectCatalogued(diagnostics);
+    }
+  });
+
+  it('lowers a mix to a calc length (percentage and px), a pill to the bound in px, and emits them on both backends', () => {
+    const { c } = compile('.a { width: 100px; height: 40px; border-radius: calc(50% - 2px) calc(infinity * 1px) / calc(0% + 6px) 1px; }', { ios: { minimum: '15.0' }, android: { minSdk: 31 } });
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const a = p.programs.uikit.nodes.find((n) => n.id === 'a');
+    const w = a?.writes.find((x) => x.kind === 'border-radius');
+    if (w === undefined || w.kind !== 'border-radius') throw new Error('no radius write');
+    const mix = { percent: false, value: 50, calc: true, px: -2 };
+    const pill = { percent: false, value: 33554428, calc: false, px: 0 };
+    const six = { percent: false, value: 0, calc: true, px: 6 };
+    const one = { percent: false, value: 1, calc: false, px: 0 };
+    expect(w.lengths).toEqual([mix, pill, mix, pill, six, one, six, one]);
+    expect(a?.facts['radius']).toEqual({ lengths: w.lengths });
+    expect(RADIUS_EMITTER.lines.uikit('v0', a as never, w)[0]).toContain('[RadiusLength(false, 50.0, true, -2.0), RadiusLength(false, 33554428.0, false, 0.0), ');
+    expect(RADIUS_EMITTER.lines['android-views']('v0', a as never, w)[0]).toContain('arrayOf(RadiusLength(false, 50.0, true, -2.0), RadiusLength(false, 33554428.0, false, 0.0), ');
+    const box = { left: 0, top: 0, right: 200, bottom: 80, width: 200, height: 80 } as never;
+    const applied = RADIUS_EMITTER.applied({ paint: { roundedShape } } as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box, size: [200, 80], fontSize: null, replaced: null, scroll: null });
+    // At DPR 2: 50% of 200 less 4 is 96; the pill corner, 33554428 device px, overflows the top side, so ConstrainRadii scales all.
+    const raw = [96, 33554428, 96, 33554428, 12, 2, 12, 2];
+    const f = Math.fround(200 / Math.fround(96 + 33554428));
+    expect(applied).toEqual(raw.map((r) => Math.fround(r * f)));
+  });
+
+  it('a calculation rounds a corner for the native refusals, as Blink\'s style keeps it calculated', () => {
+    const { c } = compile('.a { width: 40px; height: 20px; border: 2px dashed blue; border-radius: calc(10% - 20px); }', { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE').map((d) => d.target).sort()).toEqual(['android', 'ios']);
+  });
+});
+
 describe('flow-relative corners (css-logical-1 §7, horizontal-tb): each sets one physical corner by the element\'s direction', () => {
   // [declarations, the four physical corners in ltr, then in rtl]; Chrome parity is radius-logical (fixture-groups/radius.ts).
   const cases: [string, string[], string[]][] = [
@@ -139,7 +231,7 @@ describe('flow-relative corners (css-logical-1 §7, horizontal-tb): each sets on
       expect(declaration, v).toBeNull();
       expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     }
-    for (const [v, span] of [['calc(10px + 5%)', 'calc(10px + 5%)'], ['2vw 4px', '2vw'], ['1ex', '1ex'], ['4px env(safe-area-inset-top)', 'env(safe-area-inset-top)']]) {
+    for (const [v, span] of [['calc(10px + 2vw)', 'calc(10px + 2vw)'], ['2vw 4px', '2vw'], ['1ex', '1ex'], ['4px env(safe-area-inset-top)', 'env(safe-area-inset-top)']]) {
       const { declaration, diagnostics, css } = declare('border-start-end-radius', v as string);
       expect(declaration, v).toBeNull();
       expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
@@ -160,8 +252,8 @@ describe('flow-relative corners (css-logical-1 §7, horizontal-tb): each sets on
 });
 
 describe('border-radius: refusals', () => {
-  it('a calculation, a viewport unit and a font-metric unit in a radius are DRAGON_UNSUPPORTED_VALUE on the token', () => {
-    for (const [p, v, span] of [['border-radius', 'calc(10px + 5%)', 'calc(10px + 5%)'], ['border-top-left-radius', '2vw 4px', '2vw'], ['border-radius', '1ex', '1ex'], ['border-radius', '10px / min(5px, 2%)', 'min(5px, 2%)']]) {
+  it('a calculation with a viewport unit or of a percentage in min(), a viewport unit and a font-metric unit in a radius are DRAGON_UNSUPPORTED_VALUE on the token', () => {
+    for (const [p, v, span] of [['border-radius', 'calc(10px + 2vw)', 'calc(10px + 2vw)'], ['border-top-left-radius', '2vw 4px', '2vw'], ['border-radius', '1ex', '1ex'], ['border-radius', '10px / min(5px, 2%)', 'min(5px, 2%)']]) {
       const { declaration, diagnostics, css } = declare(p as string, v as string);
       expect(declaration, v).toBeNull();
       expect(diagnostics.map((d) => d.code), v).toEqual(['DRAGON_UNSUPPORTED_VALUE']);
@@ -420,10 +512,9 @@ describe('border-radius: lowering and emission', () => {
   it('a box with a rounded corner gets one border-radius write of eight components and radius facts; square boxes get none', () => {
     const p = programs('.a { width: 100px; height: 50px; border-radius: 10px 50% / 1rem 2px; } .b { border-radius: 0 10px / 10px 0; }');
     const a = p.uikit.nodes.find((n) => n.id === 'a');
-    const lengths = [
-      { percent: false, value: 10 }, { percent: true, value: 50 }, { percent: false, value: 10 }, { percent: true, value: 50 },
-      { percent: false, value: 16 }, { percent: false, value: 2 }, { percent: false, value: 16 }, { percent: false, value: 2 },
-    ];
+    const px = (value: number) => ({ percent: false, value, calc: false, px: 0 });
+    const pct = (value: number) => ({ percent: true, value, calc: false, px: 0 });
+    const lengths = [px(10), pct(50), px(10), pct(50), px(16), px(2), px(16), px(2)];
     expect(a?.writes.filter((w) => w.kind === 'border-radius')).toEqual([expect.objectContaining({ kind: 'border-radius', key: 'dragonRadius.radiiPx', technique: 'dragon-owned-paint', lengths })]);
     // PNT1 stacking publishes its facts on every box too (rt-hit reads them); the radius facts are a's own.
     expect(Object.keys(a?.facts ?? {}).sort()).toEqual(['radius', 'stacking']);
@@ -438,8 +529,8 @@ describe('border-radius: lowering and emission', () => {
     const a = p.uikit.nodes.find((n) => n.id === 'a');
     const w = a?.writes.find((x) => x.kind === 'border-radius');
     if (w === undefined || w.kind !== 'border-radius') throw new Error('no radius write');
-    expect(RADIUS_EMITTER.lines.uikit('v0', a as never, w)).toEqual(['  dragonSetRadii(v0, [RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0), RadiusLength(false, 60.0)])']);
-    expect(RADIUS_EMITTER.lines['android-views']('v0', a as never, w)[0]).toMatch(/^ {2}dragonSetRadii\(v0, arrayOf\(RadiusLength\(false, 60\.0\)/);
+    expect(RADIUS_EMITTER.lines.uikit('v0', a as never, w)).toEqual([`  dragonSetRadii(v0, [${Array(8).fill('RadiusLength(false, 60.0, false, 0.0)').join(', ')}])`]);
+    expect(RADIUS_EMITTER.lines['android-views']('v0', a as never, w)[0]).toMatch(/^ {2}dragonSetRadii\(v0, arrayOf\(RadiusLength\(false, 60\.0, false, 0\.0\)/);
     const box = { left: 0, top: 0, right: 200, bottom: 80, width: 200, height: 80 } as never;
     const applied = RADIUS_EMITTER.applied({ paint: { roundedShape } } as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box, size: [200, 80], fontSize: null, replaced: null, scroll: null });
     // 120 + 120 device px over an 80 px side: the §5.5 factor 80 / 240 scales every radius to 40.

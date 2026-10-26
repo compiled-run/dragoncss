@@ -362,7 +362,7 @@ describe('outline: lowering and emission', () => {
       const a = p[b].nodes.find((n) => n.id === 'a');
       const w = a?.writes.find((x) => x.kind === 'outline');
       expect(w, b).toEqual(expect.objectContaining({ kind: 'outline', key: 'dragonOutline.rings', technique: 'dragon-owned-paint', style: 'double', width: 4, offset: 1.5, color: { r: 10, g: 20, b: 30, alpha: 255 }, css: ['outline-color', 'outline-style', 'outline-width', 'outline-offset'] }));
-      expect((w as { radii: unknown }).radii, b).toEqual([4, 4, 4, 4, 4, 4, 4, 4].map((value) => ({ percent: false, value })));
+      expect((w as { radii: unknown }).radii, b).toEqual([4, 4, 4, 4, 4, 4, 4, 4].map((value) => ({ percent: false, value, calc: false, px: 0 })));
       expect(p[b].nodes.find((n) => n.id === 'b')?.writes.some((x) => x.kind === 'outline'), b).toBe(false);
     }
     const square = programs('.a { height: 20px; outline: 1px solid red; }');

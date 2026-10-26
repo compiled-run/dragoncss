@@ -442,9 +442,9 @@
       "ruling": {
         "class": "A",
         "basis": "Chrome observation (the constants INT_MAX / 64 - 2 and INT_MIN / 64 + 2)",
-        "proof": [],
+        "proof": ["packages/layout/test/paint-radius.test.ts", "packages/dragon/test/paint-radius.test.ts"],
         "task": "T120",
-        "note": "no Chrome golden yet; T120 CALC-2 adds one"
+        "note": "the radius-calc Chrome fixture (calc(infinity * 1px) pills) pins the bound for border radii; T120 CALC-2 adds a layout golden"
       },
       "licencePhrase": "GNU Library General Public License",
       "copyright": "Copyright (C) 2004, 2005, 2006, 2007, 2008, 2012 Apple Inc. All rights",
@@ -458,7 +458,10 @@
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/transform.ts", "symbol": "readAngle", "use": "reference" },
-        { "file": "packages/dragon/src/css/color.ts", "symbol": "degreesOf", "use": "reference" }
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "degreesOf", "use": "reference" },
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" },
+        { "file": "packages/dragon/src/css/math.ts", "symbol": "CSS_LENGTH_MAX", "use": "reference" },
+        { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -2863,7 +2866,8 @@
         "proof": [
           "packages/layout/test/units.test.ts",
           "packages/layout/test/dpr-rules.test.ts",
-          "packages/layout/test/calc.test.ts"
+          "packages/layout/test/calc.test.ts",
+          "packages/layout/test/paint-radius.test.ts"
         ]
       },
       "licencePhrase": "GNU Library General Public License",
@@ -2877,7 +2881,8 @@
       "dragon": [
         { "file": "packages/layout/src/units.ts", "symbol": "percentOf", "use": "reference" },
         { "file": "packages/layout/src/units.ts", "symbol": "pixelsAndPercentPlainOrder", "use": "reference" },
-        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-radius.ts", "symbol": "radiusComponent", "use": "reference" }
       ]
     },
     {
