@@ -41,7 +41,8 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('FORM-a A3 identity: every case that predates the button package is unchanged', () => {
   it('covers every earlier layout fixture, and the controls group adds only its own', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(7);
+    // RF-INL added controls-button-inline to the seven A3 and A4 layout fixtures.
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(8);
   });
 
   it('no earlier element is a control, and the display adjustment leaves every one alone (appearance-values sets appearance only on displays Chrome keeps)', () => {
@@ -111,7 +112,8 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
 // input or part, each lowers to its committed vector input with no range or thumb control box, and emits its committed web body
 // (the committed vectors and emitted CSS of these cases are byte-identical to A3, git diff form-a3 in the receipt).
 describe('FORM-a A4 identity: every case that predates the range package is unchanged', () => {
-  const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-'));
+  // RF-INL's controls-button-inline came after the range package.
+  const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-') && f.id !== 'controls-button-inline');
   const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && c.control.kind !== 'button-block' ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
   it('covers every earlier layout fixture, the A3 controls cases included', () => {
     expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(5);
