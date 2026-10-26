@@ -89,7 +89,7 @@ describe('SELD-R2 §1: the user-app interaction file', () => {
   });
 
   it('fails closed to analysis-only, naming why: an id with no type name, or a name the support files use', () => {
-    for (const [id, why] of [['2fa', /gives no Swift or Kotlin type name/], ['interaction-machine', /names DragonInteractionMachine, but the (uikit|android-views) support files already use DragonInteractionMachine/]] as const) {
+    for (const [id, why] of [['2fa', /gives no Swift or Kotlin type name/], ['interaction-machine', /names DragonInteractionMachine, but the support files already use DragonInteractionMachine/]] as const) {
       const c = compile(doc(FOCUS, id));
       for (const t of ['ios', 'android'] as const) {
         const o = c.outputs[t];
@@ -100,6 +100,34 @@ describe('SELD-R2 §1: the user-app interaction file', () => {
         }
       }
     }
+  });
+
+  it('fails closed on a file name a support file has, on both targets alike, compared without case', () => {
+    for (const id of ['dragon', 'Dragon', '_dragon', 'draGon', 'interaction']) {
+      const c = compile(doc(FOCUS, id));
+      for (const t of ['ios', 'android'] as const) {
+        const o = c.outputs[t];
+        expect(o.kind, `${id} ${t}`).toBe('analysis-only');
+        if (o.kind === 'analysis-only') expect(o.reason, `${id} ${t}`).toMatch(/but (a support file already has that name|the support files already use )/);
+      }
+    }
+    expect(() => emitInteractionUserFile('android-views', { id: 'x', program: { levels: [], variants: [], program: {} }, facts: [] } as never, 'dragon')).toThrow(/names the file DragonInteraction, but a support file already has that name/);
+  });
+
+  it('fails closed, keeping the web output, when the state runtime cannot write a paint the document uses', () => {
+    for (const paint of ['border-radius: 2px', 'box-shadow: 1px 1px red', 'outline: 1px solid red', 'transform: translateX(1px)', 'background-image: linear-gradient(red, blue)', 'overflow: hidden']) {
+      const c = compile(doc(`.f { ${paint}; } ${FOCUS}`));
+      expect(c.outputs.web.kind, paint).toBe('ready');
+      for (const t of ['ios', 'android'] as const) {
+        const o = c.outputs[t];
+        // Some of these may also be refused natively before any emit; none may be ready, and none may throw out of compile.
+        expect(o.kind, `${paint} ${t}`).not.toBe('ready');
+        if (o.kind === 'analysis-only') expect(o.reason, `${paint} ${t}`).toMatch(/its interaction program could not be emitted for a user app: f: /);
+      }
+    }
+    // The case the landing review found: border-radius compiles natively, so the emit refusal is what keeps it from ready.
+    const radius = compile(doc(`.f { border-radius: 2px; } ${FOCUS}`));
+    for (const t of ['ios', 'android'] as const) expect(radius.outputs[t], t).toMatchObject({ kind: 'analysis-only', reason: expect.stringMatching(/the state runtime cannot write border-radius yet/) });
   });
 
   it('fails closed for a document whose native output also switches @media bands or runs transitions', () => {

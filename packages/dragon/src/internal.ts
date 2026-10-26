@@ -616,7 +616,7 @@ export function documentInteractionEmit(compiled: object, target: 'ios' | 'andro
     const sp = deriveDocumentStateProgram(backend, cases.map((c) => c.state));
     return { id, program: deriveDocumentInteractionProgram(sp, cases.map((c) => c.input)), facts: cases.map((c) => c.facts) };
   } catch (e) {
-    if (e instanceof DocumentStateProgramError) throw new DocumentInteractionEmitError(`${id}: ${e.message}`);
+    if (e instanceof DocumentStateProgramError || e instanceof ProgramError) throw new DocumentInteractionEmitError(`${id}: ${e.message}`);
     throw e;
   }
 }
