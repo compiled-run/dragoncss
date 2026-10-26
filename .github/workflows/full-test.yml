@@ -346,6 +346,8 @@ jobs:
       - name: regen --only needs #124
         run: |
           grep -q -- "'--only'" scripts/regen.ts || { echo "::error::scripts/regen.ts has no --only (regen-on-ci, PR 124); the split fixed-point check cannot run"; exit 1; }
+      - name: Select Xcode 27.0 (27A266a), the Swift lanes.json records
+        run: bash scripts/select-xcode27.sh
       - name: JDK 17 and kotlinc, checked against the toolchains lanes.json records (lanes-host writes them)
         env:
           JAVA_HOME: /opt/homebrew/opt/openjdk@17
