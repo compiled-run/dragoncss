@@ -97,6 +97,7 @@ import {
   viewportUnitBase,
   zoomCssPx,
   zoomViewportPx,
+  truncPxToInt,
 } from './units.ts';
 
 /** The viewport size viewport units of one kind read, in CSS px after R6. */
@@ -272,7 +273,7 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
  */
 function editorLineHeightIsNormal(c: Extract<ControlKind, { kind: 'text-field' }>, style: LayoutStyle, env: Env): boolean {
   if (c.lineHeight.kind === 'normal') return false;
-  const lh = Math.trunc(computedLineHeightPx(c.lineHeight, c.font, env));
+  const lh = truncPxToInt(computedLineHeightPx(c.lineHeight, c.font, env));
   if (computedSize(c.font, env) >= lh) return true;
   const h = style.height;
   return h.kind === 'percent' || (h.kind === 'calc' && calcHasPercent(h.expr)) || (h.kind === 'px' && h.value > lh);
