@@ -2,7 +2,7 @@
 import type { Auto, ControlBox, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
-import type { Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
+import type { BlockStretch, Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
@@ -210,6 +210,10 @@ export type EngineFaults = {
   readonly containedContentSized: boolean;
   /** CQ: an inline-size contained block joins its parent's block formatting context (margins collapse through it). */
   readonly containerJoinsFlow: boolean;
+  /** TXT-TW: text-wrap-style balance and pretty lay lines out greedily, as auto does (inline.ts wrapStyleLines). */
+  readonly wrapStyleGreedy: boolean;
+  /** css-inline-3 §5.1: text-box-trim is ignored; every line keeps its line box's block-start and block-end edges. */
+  readonly textBoxTrimIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -297,6 +301,8 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampEllipsisOnExactLastLine: false,
   containedContentSized: false,
   containerJoinsFlow: false,
+  wrapStyleGreedy: false,
+  textBoxTrimIgnored: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
@@ -321,6 +327,8 @@ export type ContentsArgs = {
   readonly formattingContextRoot: boolean;
   /** The box's border-box line-left offset in its parent's block formatting context; a formatting context root's children start at 0. */
   readonly bfcLineOffset: LU;
+  /** What a block size of stretch fills: the space in block flow (stretchOf), or refused for any other box. */
+  readonly blockStretch: BlockStretch;
 };
 
 export type ContentsResult = {
@@ -411,8 +419,8 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
   const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
   const contentWidth = contentBox(a.borderBoxWidth, hbp);
-  const minMax = blockMinMaxWith(box, a.heightBasis, vbp, ctx.faults);
-  const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSizeWith(box, a.heightBasis, vbp, ctx.faults) : null;
+  const minMax = blockMinMaxWith(box, a.heightBasis, vbp, ctx.faults, a.blockStretch);
+  const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSizeWith(box, a.heightBasis, vbp, ctx.faults, a.blockStretch) : null;
   // css-sizing-4 §5.1: an auto height comes from the ratio; it is definite for the children before content (ratio.ts).
   const fromRatio = a.forcedBorderBoxHeight === null && specified === null ? ratioInitialBlockSize(box, a.borderBoxWidth, hbp, vbp) : null;
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
@@ -469,6 +477,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
     bfcLineOffset: a.formattingContextRoot ? ZERO : a.bfcLineOffset,
     origin: { x: add(bor.left, pad.left), y: add(bor.top, pad.top) },
     canCollapseTop,
+    keepsEndMargin: a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0,
     childBasis,
     marker,
   });
@@ -670,10 +679,24 @@ type FlowArgs = {
   readonly bfcLineOffset: LU;
   readonly origin: Point;
   readonly canCollapseTop: boolean;
+  /** Whether the box has a bottom border or padding or is a formatting context root: its children's end margins count for stretch. */
+  readonly keepsEndMargin: boolean;
   readonly childBasis: HeightBasis;
   /** The list item's outside marker (T151 R14), placed against the first baseline of the content, or null. */
   readonly marker: MarkerBox | null;
 };
+
+/**
+ * css-sizing-4 §3.1: a block-level child's stretch fills its containing block's block size less its margins, as a percentage of it
+ * resolves; a start or end margin counts only where the container has a border or padding on that side or is a formatting context
+ * root, since otherwise it may collapse with the container's (Blink ResolveBlockLengthInternal kStretch; measured: margins of
+ * a child that cannot adjoin its container's are still left out on a side with no border or padding).
+ */
+function stretchOf(a: FlowArgs, inline: BlockLevelInline): BlockStretch {
+  const top = a.canCollapseTop ? ZERO : inline.marginTop;
+  const bottom = a.keepsEndMargin ? inline.marginBottom : ZERO;
+  return { kind: 'available', basis: a.childBasis, margins: add(top, bottom) };
+}
 
 type FlowResult = {
   /** Bottom border edge of the last in-flow box with content, relative to the content box top. */
@@ -715,6 +738,9 @@ const clampsLines = (box: LayoutBox, last: LU | null): boolean => box.style.line
 
 function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   const kids = box.children;
+  if (box.style.multicol !== null && ((box.strut === null && kids.length > 0) || a.marker !== null)) {
+    unsupported('multicol', box.id, 'css-multicol-1 §3', `the multi-column container ${box.id} ${a.marker !== null ? 'is a list item' : 'holds block-level boxes'}, which is not yet proven against Chrome`);
+  }
   if (box.strut !== null) {
     // CSS2 §9.2.1.1: the compiler wraps inline content beside block boxes in anonymous boxes; validateLayoutInput rejects anything else.
     const r = layoutInline(ctx, box, a.contentWidth, a.origin);
@@ -726,6 +752,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     return { cursor: r.height, placed: r.placed, escapeTop: EMPTY_STRUT, endStrut: EMPTY_STRUT, hasContent: r.lines > 0, baseline: first, outOfFlow: [], lastBaseline: last, lastBaselineFlex: '', defaultLastBaseline: clampsLines(box, last) ? null : last, defaultLastBaselineFlex: clampsLines(box, last) ? box.id : '', markerY };
   }
   if (kids.some((k) => k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced')) throw new Error(`${box.id}: inline content without a strut (validateLayoutInput rejects it)`);
+  // css-inline-3 §5.1: text-box-trim reaches the first and last lines of block children (BoxFragmentBuilder::SetInitialTextBoxTrim),
+  // which the engine does not trim; the compiler refuses it (analysis/text-box.ts).
+  if (box.style.textBoxTrim !== null && kids.length > 0) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which holds block-level boxes, is not yet proven against Chrome`);
   const direction = directionOf(ctx, box);
   const placed: Placed[] = [];
   let strut = EMPTY_STRUT;
@@ -780,7 +809,8 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
     // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
-    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block');
+    // css-multicol-1 §2: a multi-column container establishes a new block formatting context too.
+    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block') || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).
@@ -804,6 +834,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         heightBasis: a.childBasis,
         formattingContextRoot: newFormattingContext,
         bfcLineOffset: inline.bfcLineOffset,
+        blockStretch: stretchOf(a, inline),
       });
     }
     // BII: where the box is the blocks' inline formatting context and its top is fixed (a box before, or a border, padding or new

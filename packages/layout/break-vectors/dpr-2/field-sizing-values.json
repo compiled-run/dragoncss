@@ -1,0 +1,16 @@
+{
+  "case": "field-sizing-values",
+  "dpr": 2,
+  "texts": [
+    {"id":"s1:text0","lines":[[0,5]]},
+    {"id":"s2c:text0","lines":[[0,6]]},
+    {"id":"s3:text0","lines":[[0,2]]},
+    {"id":"s4:text0","lines":[[0,2]]},
+    {"id":"s5c:text0","lines":[[0,2]]},
+    {"id":"ra:text0","lines":[[0,5]]},
+    {"id":"rb:text0","lines":[[0,2]]},
+    {"id":"ga:text0","lines":[[0,2]]},
+    {"id":"gb:text0","lines":[[0,4]]},
+    {"id":"abs:text0","lines":[[0,2]]}
+  ]
+}

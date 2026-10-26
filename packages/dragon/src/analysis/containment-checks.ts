@@ -17,8 +17,8 @@ function containOrigin(el: ResolvedElement): Origin {
 
 /**
  * The containment Dragon refuses, on every target: layout, paint or size containment on html or body (it stops the viewport taking body's overflow, css-overflow-3
- * §3.3), on a replaced element or inside an <svg>; size containment without layout containment, on a flex or grid container or item,
- * or on a line-clamp container, which the engine does not size yet; and a fixed descendant of a layout- or paint-contained box,
+ * §3.3), on a replaced element or inside an <svg>; size containment without layout containment, size containment in both axes on a
+ * flex or grid container or item, or size containment on a line-clamp container, which the engine does not size yet; and a fixed descendant of a layout- or paint-contained box,
  * whose containing block it would become.
  */
 export function checkContainment(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
@@ -47,11 +47,14 @@ export function checkContainment(root: ResolvedElement, targets: readonly string
       const own = appliedContainment(el);
       if (own.size !== 'none') {
         const item = parent !== null && FLEX_OR_GRID.includes(displayOf(parent)) && !['absolute', 'fixed'].includes(keyword(el, 'position'));
+        // Inline-size containment only zeroes the intrinsic inline size, which the engine lays out on flex and grid boxes as it does
+        // for container-type: inline-size (layout/src/intrinsic.ts); size in both axes is laid out on blocks alone.
+        const both = own.size === 'size';
         const why = !own.layout
           ? 'size containment without layout containment'
-          : FLEX_OR_GRID.includes(display)
+          : both && FLEX_OR_GRID.includes(display)
             ? `size containment on a ${display} container`
-            : item
+            : both && item
               ? `size containment on a ${displayOf(parent as ResolvedElement)} item`
               : lineClampOf(el) > 0 ? 'size containment on a line-clamp container' : null;
         if (why !== null) refuse(el, 'size', `contain: ${written} on ${at} is unsupported: Dragon does not lay out ${why} yet (css-contain-2 §3.1)`, `Use contain: strict or size layout on a block or inline-block outside flex and grid, or remove the size containment from ${el.element.address}.`);
