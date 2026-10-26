@@ -1744,7 +1744,9 @@
         { "file": "packages/layout/src/grid.ts", "symbol": "firstBaselineOrSynthesize", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "lastBaselineOf", "use": "port" },
         { "file": "packages/layout/src/grid.ts", "symbol": "inlineBaseline", "use": "port" },
-        { "file": "packages/layout/src/inline-box.ts", "symbol": "inlineGridBaseline", "use": "port" }
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "port" },
+        { "file": "packages/layout/src/inline-box.ts", "symbol": "inlineGridBaseline", "use": "port" },
+        { "file": "packages/layout/test/controls.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
