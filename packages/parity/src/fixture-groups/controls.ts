@@ -15,7 +15,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-button-inline'),
   both('controls-appearance-display'),
   reject('reject-controls-button-theme', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', '<button> b with appearance: auto and no author background or border is painted by the platform theme'),
-  reject('reject-controls-button-inline', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', 'display: inline-grid on <button> b makes it an inline-level control'),
+  reject('reject-controls-button-inline', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid', 'display: inline-grid on <button> b makes it an inline-level control'),
   reject('reject-controls-button-font', 'DRAGON_UNSUPPORTED_FONT', '<button data-dragon-id="b">XX</button>', '<button> b uses Chrome\'s user-agent control font'),
   reject('reject-controls-button-abspos', 'DRAGON_UNSUPPORTED_VALUE', 'absolute', 'position: absolute on <button> b is not supported on a form control'),
   reject('reject-controls-button-flex-width', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', '<button> b is a flex button with an auto width in block flow'),

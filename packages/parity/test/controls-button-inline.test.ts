@@ -46,6 +46,13 @@ describe('RF-INL: inline-block and inline-flex buttons on their lines, as in Chr
     expect(lanes(out)).toEqual([['ltr', 'pass', 'pass'], ['rtl', 'pass', 'pass']]);
   }, 300_000);
 
+  it('reject-controls-button-inline: an inline-grid button stays refused, naming RF-INL', async () => {
+    const reject = FIXTURES.find((x) => x.id === 'reject-controls-button-inline');
+    if (reject === undefined) throw new Error('no reject-controls-button-inline');
+    const out = await runFixture(reject, browser, { authored: liveAuthored(browser), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'enforce' });
+    expect(out.reason).toBeNull();
+  });
+
   it('in Chrome, a button with no author display computes inline-block, and the inline-flex ones inline-flex', async () => {
     const html = readFileSync(new URL(`../fixtures/${ID}.html`, import.meta.url), 'utf8');
     const page = await browser.newPage();
