@@ -130,7 +130,8 @@ describe('dependency boundaries', () => {
       // ::marker: a list item's resolved marker color, from the resolved tree alone.
       "import { markerOf } from '../analysis/resolve.ts';",
       // FORM-a A4: which resolved elements are a range's shadow parts, a fact of the resolved tree (no matching).
-      "import { rangePartOf, textFieldPartOf } from '../analysis/resolve.ts';",
+      // FORM-b: a text field's parts and the placeholder its value hides, facts of the resolved tree (no matching).
+      "import { hiddenPlaceholderOf, rangePartOf, textFieldPartOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",

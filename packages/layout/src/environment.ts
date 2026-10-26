@@ -281,7 +281,19 @@ function editorLineHeightIsNormal(c: Extract<ControlKind, { kind: 'text-field' }
 /** An inner editor whose strut and text take line-height normal (editorLineHeightIsNormal). */
 function withNormalLineHeight(e: ControlBox): ControlBox {
   const normal: LineHeightValue = { kind: 'normal' };
-  return { ...e, strut: e.strut === null ? null : { font: e.strut.font, lineHeight: normal }, children: e.children.map((k) => (k.kind === 'text' ? { ...k, lineHeight: normal } : k)) };
+  const children = e.children.map((k) => withNormalLeaf(k, normal));
+  const strut: LineStrut | null = e.strut === null ? null : { font: e.strut.font, lineHeight: normal };
+  return { ...e, strut, children };
+}
+
+/** A child of an inner editor, a text leaf taking line-height normal. */
+function withNormalLeaf(k: LayoutBox | ControlBox | ReplacedLeaf | InlineChild, normal: LineHeightValue): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
+  if (k.kind !== 'text') return k;
+  return withNormalText(k, normal);
+}
+
+function withNormalText(t: TextLeaf, normal: LineHeightValue): TextLeaf {
+  return { ...t, lineHeight: normal };
 }
 
 function resolveInline(c: InlineChild, parent: Env): InlineChild {
