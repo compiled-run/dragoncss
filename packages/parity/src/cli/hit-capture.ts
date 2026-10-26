@@ -9,7 +9,9 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { launchChrome } from '../chrome.ts';
 import { zoomGuard } from '../dpr.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
-import { captureHits, captureHitsAt, expectedHitDir, expectedHitDprDir, expectedHitDprPath, HIT_DPR_CAPTURES, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, withoutPointerEvents } from '../hit-capture.ts';
+import { captureHits, captureHitsAt, compareHitsAt, expectedHitDir, expectedHitDprDir, hitCaptureFile, type ComparedAt, divergenceSource, HIT_DIVERGENCE_PATH, hitDivergenceDeltas, hitDprCaptures, REWRITTEN_BEGIN, REWRITTEN_END, rewrittenFrom, HIT_MEMO, expectedHitPath, HIT_FACTS_PATH, hitCaptureJson, hitCases, hitFactsJson, IDENTITY_MANIFEST, IDENTITY_ROOTS, parseHitCaptureArgs, replaceDirWhenFilled, staleDprDirs, withoutPointerEvents } from '../hit-capture.ts';
+import type { NativeCase } from '../native-host.ts';
+import { HIT_DIVERGENCE } from '../hit-divergence.ts';
 import { repoPath } from '../paths.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
 
@@ -57,29 +59,41 @@ try {
 } finally {
   await browser.close();
 }
-// The DPR captures (HIT_DPR_CAPTURES): one launch per DPR at that forced device scale factor, behind the zoom guard.
+// The DPR captures (hitDprCaptures): one launch per DPR at that forced device scale factor, behind the zoom guard, each DPR's folder
+// replaced only once all its captures are written.
 const byId = new Map(cases.map((n) => [n.case.id, n]));
-for (const f of readdirSync(dir, { withFileTypes: true })) {
-  if (f.isDirectory() && /^dpr-/.test(f.name) && !HIT_DPR_CAPTURES.some((d) => `dpr-${d.dpr}` === f.name)) rmSync(`${dir}/${f.name}`, { recursive: true });
-}
-for (const { dpr, ids } of HIT_DPR_CAPTURES) {
+const dprCaptures = hitDprCaptures(cases);
+const folders = readdirSync(dir, { withFileTypes: true }).filter((f) => f.isDirectory()).map((f) => f.name);
+for (const name of staleDprDirs(folders, dprCaptures.map((d) => d.dpr))) rmSync(`${dir}/${name}`, { recursive: true });
+const compared: ComparedAt[] = [];
+for (const { dpr, ids } of dprCaptures) {
   const own = ids.map((id) => {
     const n = byId.get(id);
-    if (n === undefined) throw new Error(`HIT_DPR_CAPTURES names ${id} at DPR ${dpr}, which is not a hit case`);
+    if (n === undefined) throw new Error(`hitDprCaptures names ${id} at DPR ${dpr}, which is not a hit case`);
     return n;
   });
-  const at = expectedHitDprDir(dpr);
-  rmSync(at, { recursive: true, force: true });
-  mkdirSync(at, { recursive: true });
-  const b = await launchChrome(dpr);
-  try {
-    await zoomGuard(b, dpr);
-    for (const c of await inOrder(own, CHROME_PAGES, (n) => captureHitsAt(b, n, dpr))) {
-      points += c.points;
-      writeFileSync(expectedHitDprPath(c.case, dpr), hitCaptureJson(c));
+  await replaceDirWhenFilled(expectedHitDprDir(dpr), async (into) => {
+    const b = await launchChrome(dpr);
+    try {
+      await zoomGuard(b, dpr);
+      const caps = await inOrder(own, CHROME_PAGES, (n) => captureHitsAt(b, n, dpr));
+      caps.forEach((c, i) => {
+        points += c.points;
+        writeFileSync(`${into}/${hitCaptureFile(c.case)}`, hitCaptureJson(c));
+        compared.push({ case: c.case, dpr, ...compareHitsAt(own[i] as NativeCase, c, dpr) });
+      });
+    } finally {
+      await b.close();
     }
-  } finally {
-    await b.close();
-  }
+  });
 }
-console.log(`parity:hit-capture: ${cases.length} cases and ${HIT_DPR_CAPTURES.reduce((k, d) => k + d.ids.length, 0)} DPR captures (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);
+console.log(`parity:hit-capture: ${cases.length} cases and ${dprCaptures.reduce((k, d) => k + d.ids.length, 0)} DPR captures (${HIT_MEMO.hits} remembered, ${HIT_MEMO.misses} read; chrome-memo.ts), ${points} points into packages/parity/expected-hit`);
+// The captures are written; regen fails unless every case's mismatches at every device DPR are exactly its reviewed points. The
+// log carries the reviewed file as rewritten (between the markers), so a CI regen's failure holds what --write would make of it.
+const deltas = hitDivergenceDeltas(HIT_DIVERGENCE, compared);
+if (deltas.length > 0) {
+  console.error(`parity:hit-capture: ${deltas.length} differences from the reviewed known divergences (${HIT_DIVERGENCE_PATH}):\n  ${deltas.join('\n  ')}`);
+  console.error(`${REWRITTEN_BEGIN}\n${divergenceSource(rewrittenFrom(HIT_DIVERGENCE, compared))}${REWRITTEN_END}`);
+  console.error('Run pnpm run parity:hit-divergence -- --write, review the diff, write a reason for every TODO reason, commit, and re-run.');
+  process.exit(1);
+}

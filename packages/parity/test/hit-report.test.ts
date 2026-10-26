@@ -2,10 +2,14 @@
 // in packages/parity/expected-hit for every layout case at every point of its derived grid, must equal the TypeScript hit test
 // (packages/layout/src/rt-hit.ts) over the engine's boxes at every point; each hit plant must fail it; a tap activates the
 // nearest ancestor of Chrome's element that has an activation handler.
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { capturedIds, caseHitTable, committedHits, committedHitsAt, compareHits, compareHitsAt, gridSha256, HIT_DPR_CAPTURES, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitGridAt, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
+import { capturedIds, caseHitTable, committedHits, committedHitsAt, compareHits, compareHitsAt, divergenceDelta, divergenceSource, gridSha256, HIT_DIVERGENCE_PATH, HIT_FACTS_PATH, hitCases, hitDivergenceDeltas, hitDprCaptures, hitFactsJson, hitGrid, hitGridAt, hitProvenIds, hitRefusal, hitRefusedCases, parseIndexRuns, reasonPrefix, reasonText, replaceDirWhenFilled, restoreInterruptedSwap, reviewedAt, rewrittenDivergence, staleDprDirs, tapTarget, TODO_REASON } from '../src/hit-capture.ts';
+import { DPRS } from '../src/dpr.ts';
+import { HIT_DIVERGENCE } from '../src/hit-divergence.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { deviceCheckCases, nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
@@ -103,36 +107,169 @@ describe('the host hit lane', () => {
   });
 });
 
-describe('the host hit lane at a fractional device DPR', () => {
-  // Chrome at --force-device-scale-factor=2.625 lays out in device px and snaps text rects there, as rt-hit.ts does at that DPR: the
-  // device-hit lane's expectedHitRuns and the device-traces reference hit test with that model, so it must name Chrome's element too.
-  it('names Chrome\'s element at every point of every DPR capture, on the grid its table derives at that DPR', () => {
-    const byId = new Map(cases.map((n) => [n.case.id, n]));
-    expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
-    for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl']);
-      const mismatches: string[] = [];
-      for (const id of ids) {
+describe('the host hit lane at the device DPRs', () => {
+  // Chrome at --force-device-scale-factor=N lays out in device px and snaps text rects there, as rt-hit.ts does at that DPR: the
+  // device-hit lane's expectedHitRuns and the device-traces reference hit test with that model, so it must name Chrome's element at
+  // every point of every hit case at DPR 2, 3 and 2.625 (elementFromPoint's float point, its CSS px viewport gate, and pre-wrap's
+  // hanging spaces, which only show at a fractional device scale).
+  const dprCaptures = hitDprCaptures(cases);
+  it('captures every hit case at every device DPR', () => {
+    expect(dprCaptures.map((d) => d.dpr)).toEqual(DPRS);
+    for (const d of dprCaptures) expect(d.ids).toEqual(cases.map((n) => n.case.id));
+  });
+
+  // One test per DPR, each case compared at every point of its committed capture on the grid its table derives now (a stale grid
+  // fails by name): Chrome's element everywhere but the reviewed known divergences (hit-divergence.ts), and exactly those points
+  // there, so a new case, an extra point and a fixed point all fail. A pinned case is not proven at that DPR (hitProvenIds).
+  for (const dpr of DPRS) {
+    it(`names Chrome's element at every point of every hit case's capture at DPR ${dpr} but exactly its reviewed divergences`, () => {
+      const byId = new Map(cases.map((n) => [n.case.id, n]));
+      const own = dprCaptures.find((d) => d.dpr === dpr);
+      if (own === undefined) throw new Error(`no hit captures at DPR ${dpr}`);
+      const delta: string[] = [];
+      const stale: string[] = [];
+      let points = 0;
+      for (const id of own.ids) {
         const n = byId.get(id);
         if (n === undefined) throw new Error(`${id} is not a hit case`);
-        const c = committedHitsAt(id, dpr);
-        const grid = hitGridAt(caseHitTable(n, undefined, dpr), n.case.environment.viewport, dpr);
-        expect([id, c.dpr, c.points, c.gridSha256]).toEqual([id, dpr, grid.length, gridSha256(grid)]);
-        const r = compareHitsAt(n, c, dpr);
-        expect(r.stale, id).toBe(false);
-        for (const m of r.mismatches.slice(0, 3)) mismatches.push(`${m.case} (${m.x / (dpr * 64)}, ${m.y / (dpr * 64)}): Chrome ${m.chrome}, Dragon ${m.dragon}`);
-        // The device-traces step (2, 30) is on c's bottom edge, y 30, over d: c's text rect snapped to device px (53
-        // to 79) holds the band from 78.75 to 79 device px at 2.625, so Chrome names c there, where DPR 1 names d.
-        const w = n.case.environment.viewport.width;
-        // c's 10 px X, snapped to device px: 0 to 26 at 2.625 (390 to 400 in rtl: 1024 to 1050).
-        const [x0, x1] = id.endsWith('-rtl') ? [Math.round((w - 10) * dpr) * 64, Math.round(w * dpr) * 64] : [0, Math.round(10 * dpr) * 64];
-        const chrome = capturedIds(c);
-        const [y0, y1] = [30 * dpr * 64, Math.ceil(30 * dpr) * 64];
-        const row = grid.flatMap(([gx, gy], i) => (gy >= y0 && gy < y1 && gx >= x0 && gx < x1 ? [[gx, gy, chrome[i]]] : []));
-        expect(row.length, id).toBeGreaterThan(1);
-        expect(row.filter(([, , h]) => h !== 'c'), id).toEqual([]);
+        const r = compareHitsAt(n, committedHitsAt(id, dpr), dpr);
+        if (r.stale) stale.push(id);
+        points += r.points;
+        delta.push(...divergenceDelta(id, dpr, r.grid, r.mismatches, reviewedAt(HIT_DIVERGENCE, id, dpr)));
       }
-      expect(mismatches).toEqual([]);
+      expect(stale).toEqual([]);
+      expect(delta).toEqual([]);
+      expect(points).toBeGreaterThan(0);
+      // Not proven at this DPR wherever a claim could be made: the proven set leaves out every pinned case.
+      const pinned = HIT_DIVERGENCE.filter((e) => e.at[String(dpr)] !== undefined).map((e) => e.case);
+      const proven = new Set(hitProvenIds(dpr, own.ids, HIT_DIVERGENCE));
+      expect(pinned.filter((id) => proven.has(id))).toEqual([]);
+      expect(proven.size).toBe(own.ids.length - pinned.length);
+    });
+  }
+
+  it('reviews every known divergence: hit cases at captured DPRs, in case order, one written reason line naming its DPRs', () => {
+    const ids = new Set(cases.map((n) => n.case.id));
+    expect(HIT_DIVERGENCE.filter((e) => !ids.has(e.case)).map((e) => e.case)).toEqual([]);
+    expect(HIT_DIVERGENCE.flatMap((e) => Object.keys(e.at).filter((d) => !DPRS.map(String).includes(d)).map((d) => `${e.case} ${d}`))).toEqual([]);
+    expect(HIT_DIVERGENCE.filter((e) => Object.keys(e.at).length === 0).map((e) => e.case)).toEqual([]);
+    expect(HIT_DIVERGENCE.map((e) => e.case)).toEqual([...new Set(HIT_DIVERGENCE.map((e) => e.case))].sort());
+    // Each reason starts with exactly the DPRs its case pins, then a written reason on one line.
+    expect(HIT_DIVERGENCE.filter((e) => !e.reason.startsWith(reasonPrefix(e.at))).map((e) => e.case)).toEqual([]);
+    expect(HIT_DIVERGENCE.filter((e) => { const t = reasonText(e.reason); return t === null || t === TODO_REASON || t.trim().length === 0 || e.reason.includes('\n'); }).map((e) => e.case)).toEqual([]);
+    // The file is exactly what the helper writes for its own entries (only reasons are edited by hand).
+    expect(readFileSync(repoPath(HIT_DIVERGENCE_PATH), 'utf8')).toBe(divergenceSource(HIT_DIVERGENCE));
+  });
+
+  describe('the reviewed known divergences', () => {
+    const grid: [number, number][] = Array.from({ length: 10 }, (_, i): [number, number] => [i * 128, 0]);
+    const sha = gridSha256(grid);
+    const m = (index: number, chrome = 'a', dragon = 'b') => ({ case: 'c', index, x: index * 128, y: 0, chrome, dragon });
+    const at = (points: Record<string, string>) => ({ grid: sha, points });
+    it('passes exactly the reviewed points and pairs', () => {
+      expect(divergenceDelta('c', 2, grid, [m(2), m(3), m(4), m(7, 'x', 'y')], at({ 'a b': '2-4', 'x y': '7' }))).toEqual([]);
+      expect(divergenceDelta('c', 2, grid, [], undefined)).toEqual([]);
+    });
+    it('fails extra points, a new case, fixed points, a changed pair and another grid, naming the delta', () => {
+      const pinned = at({ 'a b': '2-4 7' });
+      expect(divergenceDelta('c', 2, grid, [m(2), m(3), m(4), m(7), m(9)], pinned)).toEqual(['c at DPR 2: 1 points not reviewed, first (9, 0) Chrome a, Dragon b']);
+      expect(divergenceDelta('c', 2, grid, [m(1)], undefined)).toEqual(['c at DPR 2: a new divergence of 1 points, first (1, 0) Chrome a, Dragon b']);
+      expect(divergenceDelta('c', 2, grid, [m(2), m(4), m(7)], pinned)).toEqual(['c at DPR 2: 1 reviewed points now name Chrome\'s element, first (3, 0)']);
+      expect(divergenceDelta('c', 2, grid, [], pinned)).toEqual(['c at DPR 2: 4 reviewed points now name Chrome\'s element, first (2, 0); (3, 0); (4, 0)']);
+      expect(divergenceDelta('c', 2, grid, [m(2), m(3, 'a', 'z'), m(4), m(7)], pinned)).toEqual(['c at DPR 2: 1 reviewed points name another pair, first (3, 0) Chrome a, Dragon z (reviewed a b)']);
+      expect(divergenceDelta('c', 2, grid, [m(2)], { grid: 'other', points: { 'a b': '2' } })).toEqual(['c at DPR 2: the reviewed points were found on another grid']);
+      const deltas = hitDivergenceDeltas([{ case: 'gone', reason: 'DPR 2: r', at: { 2: at({ 'a b': '1' }) } }, { case: 'c', reason: 'DPR 7: r', at: { 7: at({ 'a b': '1' }) } }], [{ case: 'c', dpr: 2, grid, stale: true, mismatches: [] }]);
+      expect(deltas).toEqual(['gone: reviewed, but not a hit case', 'c at DPR 2: its capture is not on the grid its table derives (run pnpm run parity:hit-capture)', 'c: reviewed at DPR 7, which is not captured']);
+    });
+    it('refuses malformed point runs and pairs', () => {
+      expect(parseIndexRuns('2-4 7', 10, 'w')).toEqual([2, 3, 4, 7]);
+      expect(() => parseIndexRuns('2-4 5', 10, 'w')).toThrow(/not after the run before it with a gap/);
+      expect(() => parseIndexRuns('4-2', 10, 'w')).toThrow(/does not ascend/);
+      expect(() => parseIndexRuns('3 x', 10, 'w')).toThrow(/is not a grid index run/);
+      expect(() => parseIndexRuns('9-10', 10, 'w')).toThrow(/outside the grid of 10 points/);
+      expect(() => parseIndexRuns('', 10, 'w')).toThrow(/is not a grid index run/);
+      expect(() => divergenceDelta('c', 2, grid, [], at({ 'a b': '1', 'x y': '1' }))).toThrow(/grid point 1 is pinned under two pairs/);
+      expect(() => divergenceDelta('c', 2, grid, [], at({ ab: '1' }))).toThrow(/is not a "<Chrome's element> <Dragon's element>" pair/);
+      expect(() => divergenceDelta('c', 2, grid, [], at({}))).toThrow(/no pinned points/);
+    });
+    it('rewrites through the helper: a reason kept only while its points stay or shrink, TODO when they grow or gain a DPR', () => {
+      const p = (index: number, chrome = 'a', dragon = 'b') => ({ index, chrome, dragon });
+      const before = [
+        { case: 'grow', reason: 'DPR 2: grow reason', at: { 2: at({ 'a b': '1' }) } },
+        { case: 'newdpr', reason: 'DPR 2: newdpr reason', at: { 2: at({ 'a b': '1' }) } },
+        { case: 'pair', reason: 'DPR 2: pair reason', at: { 2: at({ 'a b': '1' }) } },
+        { case: 'shrink', reason: 'DPR 2, 3: shrink reason', at: { 2: at({ 'a b': '1-3' }), 3: at({ 'a b': '1' }) } },
+        { case: 'zfixed', reason: 'DPR 3: fixed now', at: { 3: at({ 'a b': '5' }) } },
+      ];
+      const next = rewrittenDivergence(before, [
+        { case: 'grow', dpr: 2, grid: sha, points: [p(1), p(2)] },
+        { case: 'newdpr', dpr: 2, grid: sha, points: [p(1)] }, { case: 'newdpr', dpr: 2.625, grid: sha, points: [p(7)] },
+        { case: 'pair', dpr: 2, grid: sha, points: [p(1, 'a', 'z')] },
+        { case: 'shrink', dpr: 2, grid: sha, points: [p(3), p(1)] },
+        { case: 'added', dpr: 3, grid: sha, points: [p(0, 'x', 'y'), p(4), p(5)] },
+        { case: 'zfixed', dpr: 3, grid: sha, points: [] },
+      ]);
+      expect(next).toEqual([
+        { case: 'added', reason: `DPR 3: ${TODO_REASON}`, at: { 3: at({ 'a b': '4-5', 'x y': '0' }) } },
+        { case: 'grow', reason: `DPR 2: ${TODO_REASON}`, at: { 2: at({ 'a b': '1-2' }) } },
+        { case: 'newdpr', reason: `DPR 2, 2.625: ${TODO_REASON}`, at: { 2: at({ 'a b': '1' }), 2.625: at({ 'a b': '7' }) } },
+        { case: 'pair', reason: `DPR 2: ${TODO_REASON}`, at: { 2: at({ 'a z': '1' }) } },
+        { case: 'shrink', reason: 'DPR 2: shrink reason', at: { 2: at({ 'a b': '1 3' }) } },
+      ]);
+      // Rewriting what was just written keeps every reason.
+      const again = rewrittenDivergence(next.map((e) => ({ ...e, reason: e.reason.replace(TODO_REASON, 'written') })), [
+        { case: 'added', dpr: 3, grid: sha, points: [p(0, 'x', 'y'), p(4), p(5)] }, { case: 'shrink', dpr: 2, grid: sha, points: [p(3)] },
+      ]);
+      expect(again.map((e) => e.reason)).toEqual(['DPR 3: written', 'DPR 2: shrink reason']);
+      expect(hitProvenIds(2.625, ['newdpr', 'shrink', 'c'], next)).toEqual(['shrink', 'c']);
+      expect(hitProvenIds(2, ['newdpr', 'shrink', 'c'], next)).toEqual(['c']);
+      expect(hitProvenIds(1, ['newdpr'], next)).toEqual(['newdpr']);
+      expect(reasonText('DPR 2, 2.625: why')).toBe('why');
+      expect(reasonText('why')).toBeNull();
+    });
+    it('round-trips the reviewed file through the helper: written, imported and written again the same', async () => {
+      const entries = rewrittenDivergence([], [{ case: 'a', dpr: 2.625, grid: sha, points: [{ index: 3, chrome: 'x', dragon: 'y' }] }, { case: 'a', dpr: 3, grid: sha, points: [{ index: 1, chrome: '#none', dragon: 'b' }] }]);
+      const root = mkdtempSync(join(tmpdir(), 'dragon-hit-div-'));
+      try {
+        const path = join(root, 'hit-divergence.ts');
+        writeFileSync(path, divergenceSource(entries).replace("from './hit-capture.ts'", `from '${repoPath('packages/parity/src/hit-capture.ts')}'`));
+        const read = (await import(path)) as { HIT_DIVERGENCE: typeof entries };
+        expect(read.HIT_DIVERGENCE).toEqual(entries);
+        expect(divergenceSource(read.HIT_DIVERGENCE)).toBe(divergenceSource(entries));
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+  });
+
+  it('lets no profile row claim the hit test from a device lane, so the proven set is the only hit claim', async () => {
+    // device-hit compares the device with the TS hit test, not with Chrome; a row citing it would claim what hitProvenIds bounds.
+    const { webProfile } = await import('../../dragon/src/profiles/web.ts');
+    const { iosProfile } = await import('../../dragon/src/profiles/ios.ts');
+    const { androidProfile } = await import('../../dragon/src/profiles/android.ts');
+    for (const profile of [webProfile, iosProfile, androidProfile]) {
+      expect(profile.rows.length, profile.target).toBeGreaterThan(0);
+      const lanes = new Set(profile.rows.flatMap((r) => r.proofs.map((p) => p.lane)));
+      expect([...lanes].filter((l) => !['linux-dragon-layout', 'chrome-dual', 'device-anim'].includes(l)), profile.target).toEqual([]);
+    }
+  });
+
+  it('names c at interaction-combo\'s step point (2, 30) at 2.625, where DPR 1 names d', () => {
+    const dpr = 2.625;
+    for (const id of ['interaction-combo', 'interaction-combo-rtl']) {
+      const n = cases.find((x) => x.case.id === id);
+      if (n === undefined) throw new Error(`${id} is not a hit case`);
+      const c = committedHitsAt(id, dpr);
+      const grid = hitGridAt(caseHitTable(n, undefined, dpr), n.case.environment.viewport, dpr);
+      // c's 10 px X, snapped to device px: 0 to 26 at 2.625 (390 to 400 in rtl: 1024 to 1050); the step's y 30 is 78.75 device
+      // px, inside c's text rect snapped to device px (53 to 79).
+      const w = n.case.environment.viewport.width;
+      const [x0, x1] = id.endsWith('-rtl') ? [Math.round((w - 10) * dpr) * 64, Math.round(w * dpr) * 64] : [0, Math.round(10 * dpr) * 64];
+      const chrome = capturedIds(c);
+      const [y0, y1] = [30 * dpr * 64, Math.ceil(30 * dpr) * 64];
+      const row = grid.flatMap(([gx, gy], i) => (gy >= y0 && gy < y1 && gx >= x0 && gx < x1 ? [[gx, gy, chrome[i]]] : []));
+      expect(row.length, id).toBeGreaterThan(1);
+      expect(row.filter(([, , h]) => h !== 'c'), id).toEqual([]);
     }
   });
 
@@ -141,6 +278,57 @@ describe('the host hit lane at a fractional device DPR', () => {
     if (n === undefined) throw new Error('no interaction-combo hit case');
     expect(() => compareHitsAt(n, committedHits('interaction-combo'), 2.625)).toThrow(/a capture at DPR 1 compared at DPR 2.625/);
     expect(() => compareHitsAt(n, committedHitsAt('interaction-combo', 2.625), 1)).toThrow(/a capture at DPR 2.625 compared at DPR 1/);
+  });
+
+  it('swaps a DPR capture folder in only once its capture finished: a failed capture leaves the old folder intact', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dragon-hit-dpr-'));
+    try {
+      const dir = join(root, 'dpr-2.625');
+      mkdirSync(dir);
+      writeFileSync(join(dir, 'old.hit.json'), 'old');
+      await expect(replaceDirWhenFilled(dir, async (into) => {
+        writeFileSync(join(into, 'half.hit.json'), 'half');
+        throw new Error('Chrome went away');
+      })).rejects.toThrow(/Chrome went away/);
+      expect(readdirSync(root)).toEqual(['dpr-2.625']);
+      expect(readdirSync(dir)).toEqual(['old.hit.json']);
+      await replaceDirWhenFilled(dir, async (into) => writeFileSync(join(into, 'new.hit.json'), 'new'));
+      expect(readdirSync(root)).toEqual(['dpr-2.625']);
+      expect(readdirSync(dir)).toEqual(['new.hit.json']);
+      // A first capture has no folder to keep.
+      await replaceDirWhenFilled(join(root, 'dpr-3'), async (into) => writeFileSync(join(into, 'a.hit.json'), 'a'));
+      expect(readdirSync(root).sort()).toEqual(['dpr-2.625', 'dpr-3']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('restores a DPR capture folder a swap left only as its .old sibling, and the sweep keeps a live DPR\'s .old and .partial', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'dragon-hit-dpr-'));
+    try {
+      // A run that died between moving dpr-2 to dpr-2.old and moving dpr-2.partial in.
+      const dir = join(root, 'dpr-2');
+      mkdirSync(`${dir}.old`);
+      writeFileSync(join(`${dir}.old`, 'old.hit.json'), 'old');
+      mkdirSync(`${dir}.partial`);
+      writeFileSync(join(`${dir}.partial`, 'half.hit.json'), 'half');
+      expect(staleDprDirs(readdirSync(root), [2, 3])).toEqual([]);
+      restoreInterruptedSwap(dir);
+      expect(readdirSync(root).sort()).toEqual(['dpr-2', 'dpr-2.partial']);
+      expect(readdirSync(dir)).toEqual(['old.hit.json']);
+      // A failed capture after that still leaves the restored folder; replaceDirWhenFilled restores before it starts too.
+      rmSync(`${dir}.partial`, { recursive: true });
+      renameSync(dir, `${dir}.old`);
+      await expect(replaceDirWhenFilled(dir, async () => {
+        throw new Error('Chrome went away');
+      })).rejects.toThrow(/Chrome went away/);
+      expect(readdirSync(root)).toEqual(['dpr-2']);
+      expect(readdirSync(dir)).toEqual(['old.hit.json']);
+      // Only a DPR no capture names any more is swept, with its siblings.
+      expect(staleDprDirs(['dpr-2', 'dpr-2.old', 'dpr-2.partial', 'dpr-1.5', 'dpr-1.5.old', 'dpr-1.5.partial', 'other'], [2, 3])).toEqual(['dpr-1.5', 'dpr-1.5.old', 'dpr-1.5.partial']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

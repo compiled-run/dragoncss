@@ -1,7 +1,8 @@
 // Dragon's hit test (notes/T047-runtime-spec.md RT-9 and amendment T063J), ported from Chrome 145 (47e20adcc15f, Chromium BSD):
 // third_party/blink/renderer/core/paint/box_fragment_painter.cc NodeAtPoint, HitTestAllPhases, HitTestBlockChildren,
 // HitTestItemsChildren, HitTestTextItem, HitTestLineBoxFragment and HitTestClippedOutByBorder; layout/inline/fragment_item.cc
-// ComputeTextBoundsRectForHitTest; paint/contoured_border_geometry.cc, platform/geometry/contoured_rect.cc and
+// ComputeTextBoundsRectForHitTest; dom/tree_scope.cc (elementFromPoint's point and viewport gate at a device scale);
+// paint/contoured_border_geometry.cc, platform/geometry/contoured_rect.cc and
 // float_rounded_rect.cc (the inclusive border test); paint/clip_rect.cc Intersects; ui/gfx/geometry/quad_f.cc IntersectsRect. The
 // point semantics (floor to 1/64 px, a 1x1 px box, exclusive rect intersection), the layer order (positioned boxes in reverse
 // document order, then the root) and the layer clips (a clipping layer clips its in-flow content to its border box, and descendant
@@ -10,16 +11,17 @@
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
-import { isScrollContainer, resolveBorder } from './box.ts';
+import { hasPercent, isScrollContainer, resolveBorder, resolvePadding } from './box.ts';
 import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
-import { fromRaw } from './units.ts';
+import { fromRaw, ZERO } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
-import { floorOf, roundOf } from './rt-easing.ts';
+import { floorOf, froundOf, roundOf } from './rt-easing.ts';
 import type { TextMeasurer } from './text.ts';
+import { AHEM_FACE_ID } from './text.ts';
 
 /** One hit node: a box, or a text piece or line of a block's inline content. target is the node index hit testing returns. */
 export type HitNode = {
@@ -359,8 +361,8 @@ export function activationTarget(nodes: readonly HitNode[], activation: readonly
 /** One element's hit facts from the compiler: computed pointer-events, whether it was inherited, and its activation handler. */
 export type HitFact = { readonly pointerEvents: PointerEvents; readonly inherited: boolean; readonly activation: boolean };
 
-/** A table: the nodes hitTest takes, the id each names, and each node's activation flag. */
-export type HitTable = { readonly nodes: readonly HitNode[]; readonly ids: readonly string[]; readonly activation: readonly boolean[] };
+/** A table: the nodes hitTest takes, the id each names, each node's activation flag, and the device scale it was laid out at. */
+export type HitTable = { readonly nodes: readonly HitNode[]; readonly ids: readonly string[]; readonly activation: readonly boolean[]; readonly dpr: number };
 
 /** Planted fault pointerEventsNotInherited: an inherited pointer-events value is read as auto. */
 export type HitTableFaults = { readonly pointerEventsNotInherited: boolean };
@@ -510,8 +512,64 @@ type LineMetrics = { readonly lineHeight: number; readonly halfLeading: number; 
 /** A width every line fits in, so the probe line holds the run's first visible text; only its metrics are read. */
 const LINE_PROBE_WIDTH = fromRaw(1073741824);
 
-/** A text piece and whether its leaf inks the whole em box. */
-type HitPiece = { readonly rect: LayoutRect; readonly full: boolean };
+/**
+ * A text piece, whether its leaf inks the whole em box, whether it hangs (pre-wrap's hanging spaces, TXT2-c: outside the line box)
+ * and whether it shows no glyph (its text is all spaces, so its ink overflow is its own rect).
+ */
+type HitPiece = { readonly rect: LayoutRect; readonly full: boolean; readonly hangs: boolean; readonly inkless: boolean };
+
+/** What the fragment rects do not carry about one engine line piece: whether it hangs and whether it shows no glyph. */
+type PieceFlags = { readonly x: number; readonly width: number; readonly hangs: boolean; readonly inkless: boolean };
+
+/** Whether code points [start, end) of a text are all spaces (U+0020). */
+function allSpaces(text: string, start: number, end: number): boolean {
+  let i = 0;
+  for (const ch of text) {
+    if (i >= end) break;
+    const cp = ch.codePointAt(0);
+    if (cp === undefined) continue;
+    if (i >= start && cp !== 0x20) return false;
+    i++;
+  }
+  return true;
+}
+
+/**
+ * Each leaf's piece flags in the order the engine lays out its <leaf>:line<j> fragments (inline.ts collectFragments: line by line,
+ * a truncated piece twice), from the engine's own lines at the block's content width. Only preserved text has hanging or
+ * spaces-only fragments of their own; any other run gets no flags (every list empty) and keeps the glyph ink model.
+ */
+function pieceFlags(s: TableState, b: LayoutBox, zb: LayoutBox, zLeaves: readonly TextLeaf[]): PieceFlags[][] {
+  const out: PieceFlags[][] = zLeaves.map((): PieceFlags[] => []);
+  let preserved = false;
+  for (const l of zLeaves) {
+    if (l.whiteSpaceCollapse !== 'collapse') preserved = true;
+  }
+  if (!preserved) return out;
+  // inline.ts joins a real face's fragments of one leaf on a line into one piece (joinedFragments), hanging spaces included, so its
+  // pieces carry no hangs flag: the hit table models preserved text in Ahem only.
+  for (const l of zLeaves) {
+    if (l.font.family !== AHEM_FACE_ID) throw new HitError(`${l.id}: preserved text in ${l.font.family}, whose hanging spaces the engine joins into its text piece; the hit table models preserved text in Ahem only`);
+  }
+  const st = zb.style;
+  if (hasPercent(st.paddingLeft) || hasPercent(st.paddingRight)) throw new HitError(`${b.id}: preserved text in a box with percentage inline padding, whose content width the hit table does not resolve`);
+  const border = resolveBorder(st, s.ctx.devicePixelRatio);
+  const padding = resolvePadding(st, ZERO);
+  const r = rectOf(s, b.id);
+  const inset = border.left + padding.left;
+  const content = r.width - inset - border.right - padding.right;
+  for (const line of placeLines(s.ctx, zb, fromRaw(content > 0 ? content : 0))) {
+    for (const p of line.pieces) {
+      const own = out[p.leaf];
+      const leaf = zLeaves[p.leaf];
+      if (own === undefined || leaf === undefined) throw new HitError(`${b.id}: a line piece of no leaf ${p.leaf}`);
+      const inkless = allSpaces(leaf.text, p.start, p.end);
+      own.push({ x: r.x + inset + p.x, width: p.width, hangs: p.hangs, inkless });
+      if (p.truncated) own.push({ x: r.x + inset + p.x, width: p.truncatedWidth, hangs: p.hangs, inkless });
+    }
+  }
+  return out;
+}
 
 function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[]): void {
   const zb = zoomedBox(s, b.id);
@@ -532,15 +590,35 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
   for (const l of zLeaves) {
     if (l.font.size !== size) throw new HitError(`${b.id}: text leaves of two font sizes; one inline formatting context holds one font`);
   }
-  // The line pieces (<leaf>:line<j>), grouped into lines by their top; a line box starts half-leading above its text.
+  // The line pieces (<leaf>:line<j>), grouped into lines by their top; a line box starts half-leading above its text. Each takes
+  // its engine piece's flags, which must be the same pieces (one per fragment, of its width).
+  const flags = pieceFlags(s, b, zb, zLeaves);
+  let flagged = false;
+  for (const f of flags) {
+    if (f.length > 0) flagged = true;
+  }
   const pieces: HitPiece[] = [];
-  for (const leaf of leaves) {
+  for (let li = 0; li < leaves.length; li++) {
+    const leaf = leaves[li];
+    const own = flags[li];
+    if (leaf === undefined || own === undefined) throw new HitError(`${b.id}: no leaf ${li}`);
     const full = inkAbove(leaf);
     let j = 0;
     while (s.abs.has(`${leaf.id}:line${j}`)) {
-      pieces.push({ rect: rectOf(s, `${leaf.id}:line${j}`), full });
+      const rect = rectOf(s, `${leaf.id}:line${j}`);
+      let hangs = false;
+      let inkless = false;
+      if (flagged) {
+        const f = own[j];
+        if (f === undefined) throw new HitError(`${leaf.id}: fragment ${j} has no engine line piece`);
+        if (f.x !== rect.x || f.width !== rect.width) throw new HitError(`${leaf.id}: fragment ${j} at ${rect.x} is ${rect.width} wide, its engine line piece at ${f.x} ${f.width}`);
+        hangs = f.hangs;
+        inkless = f.inkless;
+      }
+      pieces.push({ rect, full, hangs, inkless });
       j++;
     }
+    if (flagged && own.length !== j) throw new HitError(`${leaf.id}: ${j} fragments, ${own.length} engine line pieces`);
     if (hasPartialInk(leaf) && full && j > 1) throw new HitError(`${leaf.id}: Ahem p glyphs mixed with full glyphs over several lines give each line its own ink, which the hit table does not model`);
   }
   // Grouped by top with one stable sort (piece order within a line), so the table is not quadratic in the pieces.
@@ -568,9 +646,12 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
 function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, own: readonly HitPiece[], top: number, k: number): void {
   const firstPiece = own[0];
   if (firstPiece === undefined) throw new HitError(`${b.id}: an empty line`);
+  // The line box spans its pieces but the hanging spaces (third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc
+  // 370-379: the line's inline size less the hang width); their rects still reach the line's ink overflow through its text pieces.
   let x0 = firstPiece.rect.x;
   let x1 = x0 + firstPiece.rect.width;
   for (const p of own) {
+    if (p.hangs) continue;
     if (p.rect.x < x0) x0 = p.rect.x;
     if (p.rect.x + p.rect.width > x1) x1 = p.rect.x + p.rect.width;
   }
@@ -584,8 +665,8 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     const above = p.full ? floorOf(-0.8 * em) : 0;
     pushNode(s, {
       kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
-      layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
-      inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe,
+      layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: p.inkless ? q.y : baseline + above * LU_PX,
+      inkRight: p.inkless ? q.x + q.width : q.x - floorOf(-(glyphs * em)) * LU_PX, inkBottom: p.inkless ? q.y + q.height : baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe,
     }, q.id, false);
   }
 }
@@ -752,7 +833,7 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   indexZoomed(zmap, rmap, zoomed.root);
   const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, facts, faults };
   boxNodes(s, input.root, -1, null, -1, 'auto');
-  return { nodes: s.nodes, ids: s.ids, activation: s.activation };
+  return { nodes: s.nodes, ids: s.ids, activation: s.activation, dpr: input.devicePixelRatio };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -766,11 +847,44 @@ function addAxis(out: number[], a: number, b: number): void {
   for (const v of values) out.push(v);
 }
 
-function cross(out: HitPoint[], xs: readonly number[], ys: readonly number[], width: number, height: number): void {
+/**
+ * elementFromPoint's point at a device scale (third_party/blink/renderer/core/dom/tree_scope.cc 239-254, HitTestInDocumentImpl):
+ * the CSS px coordinate as a float (gfx::PointF), scaled in float by the layout zoom (PointInFrameContentIfVisible), then floored to
+ * LU (measured, as at DPR 1). A grid point on a fractional device px edge can land one LU short of it.
+ */
+export function chromePoint(cssPx: number, dpr: number): number {
+  return floorOf(froundOf(froundOf(cssPx) * froundOf(dpr)) * LU_PX);
+}
+
+/** A grid point in device LU as the CSS px coordinate elementFromPoint is given for it. */
+function cssOf(v: number, dpr: number): number {
+  return v / (dpr * LU_PX);
+}
+
+/** gfx::ToRoundedInt of a float: half away from zero. */
+function roundedFloat(v: number): number {
+  const f = froundOf(v);
+  return f < 0 ? -floorOf(-f + 0.5) : floorOf(f + 0.5);
+}
+
+/**
+ * Whether elementFromPoint answers a grid coordinate: the float CSS coordinate, rounded, inside the viewport scaled to CSS px and
+ * rounded (tree_scope.cc 216-237, PointInFrameContentIfVisible: a gate before the zoom). Points left of or above the origin are not
+ * probed.
+ */
+function inView(v: number, size: number, dpr: number): boolean {
+  return v >= 0 && roundedFloat(cssOf(v, dpr)) < roundOf(size / (dpr * LU_PX));
+}
+
+/** hitAt at a grid point in device LU, as Chrome's elementFromPoint takes it at that device scale (chromePoint). */
+export function hitAtGridPoint(prepared: HitPrepared, x: number, y: number, dpr: number): number {
+  return hitAt(prepared, chromePoint(cssOf(x, dpr), dpr), chromePoint(cssOf(y, dpr), dpr));
+}
+
+function cross(out: HitPoint[], xs: readonly number[], ys: readonly number[], width: number, height: number, dpr: number): void {
   for (const x of xs) {
     for (const y of ys) {
-      // elementFromPoint answers only points whose rounded position is inside the viewport (a gate before the hit test).
-      if (x < 0 || y < 0 || x >= width - LU_PX / 2 || y >= height - LU_PX / 2) continue;
+      if (!inView(x, width, dpr) || !inView(y, height, dpr)) continue;
       out.push({ x, y });
     }
   }
@@ -790,13 +904,13 @@ export function hitGrid(t: HitTable, width: number, height: number): HitPoint[] 
     const ys: number[] = [];
     addAxis(xs, n.x, n.x + n.width);
     addAxis(ys, n.y, n.y + n.height);
-    cross(all, xs, ys, width, height);
+    cross(all, xs, ys, width, height, t.dpr);
     if (n.kind === 'text') {
       const sx: number[] = [];
       const sy: number[] = [];
       addAxis(sx, roundPx(n.x), roundPx(n.x + n.width));
       addAxis(sy, roundPx(n.y), roundPx(n.y + n.height));
-      cross(all, sx, sy, width, height);
+      cross(all, sx, sy, width, height, t.dpr);
     }
     if (n.kind === 'line') {
       const block = t.nodes[n.parent];
@@ -805,7 +919,7 @@ export function hitGrid(t: HitTable, width: number, height: number): HitPoint[] 
       const ly: number[] = [];
       addAxis(lx, roundPx(n.x), roundPx(n.x + block.width));
       addAxis(ly, roundPx(n.y), roundPx(n.y + block.height));
-      cross(all, lx, ly, width, height);
+      cross(all, lx, ly, width, height, t.dpr);
     }
   });
   const sorted = all.slice(0).sort((p, q) => (p.y === q.y ? p.x - q.x : p.y - q.y));
@@ -825,7 +939,7 @@ export function hitRuns(t: HitTable, grid: readonly HitPoint[], faults: HitFault
   let prev = '';
   let count = 0;
   for (const p of grid) {
-    const id = t.ids[hitAt(prepared, p.x, p.y)];
+    const id = t.ids[hitAtGridPoint(prepared, p.x, p.y, t.dpr)];
     if (id === undefined) throw new HitError('a hit outside the table');
     if (count > 0 && id === prev) {
       count++;

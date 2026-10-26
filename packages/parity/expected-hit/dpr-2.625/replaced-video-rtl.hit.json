@@ -1,0 +1,20 @@
+{
+  "case": "replaced-video-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2.625,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 94,
+  "gridSha256": "da15e895210200dccb9f004ec93c015e3e890d51861cbd52c0542537d3b79d65",
+  "ids": [
+    "body",
+    "v1",
+    "v2",
+    "wrap"
+  ],
+  "runs": [[0,3],[3,5],[1,6],[3,2],[1,22],[3,2],[1,7],[2,3],[3,2],[1,4],[3,20],[2,4],[0,3],[3,7],[2,4]]
+}

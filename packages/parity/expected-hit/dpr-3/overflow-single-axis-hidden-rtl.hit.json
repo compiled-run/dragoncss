@@ -1,0 +1,19 @@
+{
+  "case": "overflow-single-axis-hidden-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 3,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 110,
+  "gridSha256": "906f57f5c0aa95ebc9932a414fa08ed0aad4166f7f395513815fcf7781aeaa8d",
+  "ids": [
+    "a",
+    "body",
+    "html"
+  ],
+  "runs": [[1,4],[0,4],[1,4],[0,4],[1,2],[0,4],[1,2],[0,4],[1,2],[0,4],[1,4],[0,4],[1,4],[0,4],[2,60]]
+}

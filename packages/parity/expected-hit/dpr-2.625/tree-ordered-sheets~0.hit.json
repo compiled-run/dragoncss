@@ -1,0 +1,20 @@
+{
+  "case": "tree-ordered-sheets#0",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2.625,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 177,
+  "gridSha256": "c7407efeb07967c7d2ee1f63a834db5f036ac054f11cddef4ab85ed59fd5ea16",
+  "ids": [
+    "body",
+    "box/frame",
+    "box/inner",
+    "html"
+  ],
+  "runs": [[1,4],[0,4],[1,24],[2,6],[1,5],[2,6],[1,5],[2,6],[1,5],[2,6],[1,5],[2,6],[1,5],[2,6],[1,40],[0,4],[1,4],[0,4],[1,4],[0,4],[3,24]]
+}

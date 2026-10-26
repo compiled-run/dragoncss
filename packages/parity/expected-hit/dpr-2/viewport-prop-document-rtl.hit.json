@@ -1,0 +1,18 @@
+{
+  "case": "viewport-prop-document-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 76,
+  "gridSha256": "b9bbb0b6a77b3cb5cab4c794f3a4fa8750a728bb32e8a801e8da016e139eec6b",
+  "ids": [
+    "html",
+    "t"
+  ],
+  "runs": [[0,26],[1,9],[0,3],[1,9],[0,3],[1,9],[0,3],[1,9],[0,3],[1,2]]
+}

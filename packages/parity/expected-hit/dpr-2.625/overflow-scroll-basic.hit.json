@@ -1,0 +1,19 @@
+{
+  "case": "overflow-scroll-basic",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2.625,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 126,
+  "gridSha256": "e2d3f9808ee6597a2e45396580acee5f9ae90c0ef9caa3aa12ddd5d5b497a35a",
+  "ids": [
+    "a",
+    "body",
+    "html"
+  ],
+  "runs": [[0,5],[1,7],[0,5],[1,6],[0,4],[1,4],[0,5],[1,6],[0,4],[1,4],[0,5],[1,6],[0,5],[1,6],[0,5],[1,6],[0,4],[1,4],[2,35]]
+}

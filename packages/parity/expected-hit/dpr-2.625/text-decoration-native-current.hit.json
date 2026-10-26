@@ -1,0 +1,22 @@
+{
+  "case": "text-decoration-native-current",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "dpr": 2.625,
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 949,
+  "gridSha256": "7be2b00d2473524e529da82e66d5f8f2a9bcaee2c7b786380965ee37843e8a4e",
+  "ids": [
+    "html",
+    "n1",
+    "n2",
+    "n3n",
+    "n3r",
+    "n4"
+  ],
+  "runs": [[1,153],[2,193],[3,193],[4,193],[5,193],[0,24]]
+}

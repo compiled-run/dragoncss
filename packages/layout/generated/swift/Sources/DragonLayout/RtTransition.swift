@@ -167,7 +167,7 @@ public func rtTransition_transitionValue(_ t: RunningTransition, _ range: JsStri
   }
   // ts: packages/layout/src/rt-transition.ts:96
   if try jsUnwrap(v).refused {
-    throw JsError(message: S.s553)
+    throw JsError(message: S.s554)
   }
   return try jsUnwrap(v).value
 }
@@ -254,7 +254,7 @@ public func rtTransition_stateAt(_ states: JsArray<TransitionState>, _ i: Double
   let s: TransitionState? = (jsIsInteger(i) ? (jsAt(states, i) as TransitionState?) : (nil as TransitionState?))
   // ts: packages/layout/src/rt-transition.ts:175
   if (s == nil) {
-    throw JsError(message: jsConcat(S.s1142, jsNumberToString(i), S.s120, jsNumberToString(jsLength(states)), S.s162))
+    throw JsError(message: jsConcat(S.s1112, jsNumberToString(i), S.s123, jsNumberToString(jsLength(states)), S.s165))
   }
   return try jsUnwrap(s)
 }
@@ -266,11 +266,11 @@ public func rtTransition_runTransitionScript(_ states: JsArray<TransitionState>,
   let out: JsArray<TransitionReading> = JsArray<TransitionReading>([])
   // ts: packages/layout/src/rt-transition.ts:184
   do {
-    let _a324 = steps
-    var _i324 = 0
-    while _i324 < _a324.items.count {
-      let step: ScriptStep = _a324.items[_i324]
-      _i324 += 1
+    let _a321 = steps
+    var _i321 = 0
+    while _i321 < _a321.items.count {
+      let step: ScriptStep = _a321.items[_i321]
+      _i321 += 1
       // ts: packages/layout/src/rt-transition.ts:185
       if (step.kind == S.s_state) {
         let next: TransitionState = try rtTransition_stateAt(states, step.state)
