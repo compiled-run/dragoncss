@@ -60,6 +60,11 @@ function hostFace(id: string): HostFace {
   return f;
 }
 
+/** A registered face's bytes (TDEC-d reads its glyf outlines). */
+export function faceBytes(id: string): Uint8Array {
+  return hostFace(id).bytes;
+}
+
 function fontAt(id: string, size: number): number {
   const f = hostFace(id);
   let font = f.fonts.get(size);

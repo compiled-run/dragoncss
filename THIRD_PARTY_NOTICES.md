@@ -159,6 +159,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/include/core/SkColorSpace.h`: Copyright 2016 Google Inc.
 - `third_party/skia/include/core/SkPaint.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/modules/skcms/skcms.cc`: Copyright 2018 Google Inc.
+- `third_party/skia/src/base/SkBezierCurves.cpp`: Copyright 2012 Google LLC
+- `third_party/skia/src/base/SkQuads.cpp`: Copyright 2023 Google LLC
 - `third_party/skia/src/base/SkTSort.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkAnalyticEdge.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlitRow_D32.cpp`: Copyright 2011 Google Inc.
@@ -171,13 +173,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkDraw.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkEdgeBuilder.cpp`: Copyright 2011 Google Inc.
 - `third_party/skia/src/core/SkFont.cpp`: Copyright 2014 Google Inc.
+- `third_party/skia/src/core/SkFontPriv.h`: Copyright 2018 Google Inc.
 - `third_party/skia/src/core/SkGaussFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkGeometry.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkGeometry.h`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkGlyph.cpp`: Copyright 2018 Google LLC
 - `third_party/skia/src/core/SkGlyphRunPainter.cpp`: Copyright 2018 The Android Open Source Project
 - `third_party/skia/src/core/SkMaskBlurFilter.cpp`: Copyright 2017 Google Inc.
 - `third_party/skia/src/core/SkMaskFilterBase.cpp`: Copyright 2025 Google LLC
 - `third_party/skia/src/core/SkMatrix.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkPath.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkPathMakers.h`: Copyright 2019 Google Inc.
 - `third_party/skia/src/core/SkPathPriv.cpp`: Copyright 2025 Google Inc.
 - `third_party/skia/src/core/SkPathPriv.h`: Copyright 2015 Google Inc.
@@ -191,6 +196,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkStrikeSpec.cpp`: Copyright 2019 The Android Open Source Project
 - `third_party/skia/src/core/SkStroke.cpp`: Copyright 2008 The Android Open Source Project
 - `third_party/skia/src/core/SkSwizzlePriv.h`: Copyright 2016 Google Inc.
+- `third_party/skia/src/core/SkTextBlob.cpp`: Copyright 2014 Google Inc.
 - `third_party/skia/src/core/SkTextFormatParams.h`: Copyright 2010 The Android Open Source Project
 - `third_party/skia/src/effects/colorfilters/SkComposeColorFilter.cpp`: Copyright 2023 Google LLC
 - `third_party/skia/src/effects/colorfilters/SkMatrixColorFilter.cpp`: Copyright 2011 Google Inc.

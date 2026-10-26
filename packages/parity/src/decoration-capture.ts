@@ -9,7 +9,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
 import type { ControlBox, LayoutBox, InlineChild, TextFont } from '@dragon/layout';
-import { pieceGlyphs, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { glyphIntercepts as gi, pieceGlyphs, platformFontSize, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
 import { appliedDecorationsOf, NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
 import { readSfnt } from '../../dragon/src/fonts/sfnt.ts';
@@ -24,7 +24,7 @@ import type { RgbaImage } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { decodePng } from './pixel-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import { faceIdOf, referenceShapedMeasurer, shapedInk } from './text-shaper-host.ts';
+import { faceBytes, faceIdOf, referenceShapedMeasurer, shapedInk } from './text-shaper-host.ts';
 
 /** Every DPR the decoration capture renders, DPR 1 included. */
 export const DECORATION_DPRS: readonly number[] = [1, 2, 3, 2.625];
@@ -89,6 +89,29 @@ function underlineThicknessOf(face: string): (size: number) => number {
   return f;
 }
 
+/** A face with TrueType outlines: its unitsPerEm and each glyph's glyf segments (null where the port does not read one). */
+type GlyfFace = { readonly unitsPerEm: number; readonly outline: (glyph: number) => number[] | null };
+const glyfFaces = new Map<string, GlyfFace | null>();
+/** The registered face's glyf outlines (TDEC-d), or null for a face without glyf (a CFF face) or not registered with the host. */
+function glyfFace(id: string): GlyfFace | null {
+  if (!glyfFaces.has(id)) {
+    let face: GlyfFace | null = null;
+    try {
+      const bytes = Array.from(faceBytes(id));
+      const unitsPerEm = gi.glyfUnitsPerEm(bytes);
+      const cache = new Map<number, number[] | null>();
+      if (unitsPerEm > 0) face = { unitsPerEm, outline: (g) => {
+        if (!cache.has(g)) cache.set(g, gi.glyfOutline(bytes, g));
+        return cache.get(g) ?? null;
+      } };
+    } catch {
+      face = null;
+    }
+    glyfFaces.set(id, face);
+  }
+  return glyfFaces.get(id) ?? null;
+}
+
 /** A computed thickness or underline offset in zoomed px. */
 function decorationLength(v: AppliedDecoration['thickness'], dpr: number): td.DecorationLength {
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value * dpr };
@@ -150,9 +173,10 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
 
 /**
  * The engine's decorations of one case at a DPR: the stripped copy's layout and the decorated compile's applied decorations.
- * faults plant the geometry; compilerFaults the propagation.
+ * faults plant the geometry; compilerFaults the propagation; interceptFaults the glyph intercepts of a face with glyf outlines.
+ * ahemByOutline takes Ahem's intercepts from its glyf outlines too, to cross-check them with its ink boxes (ahemLineInk).
  */
-export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, faults: td.DecorationFaults = td.NO_DECORATION_FAULTS, compilerFaults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS): Prediction {
+export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, faults: td.DecorationFaults = td.NO_DECORATION_FAULTS, compilerFaults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS, interceptFaults: gi.InterceptFaults = gi.NO_INTERCEPT_FAULTS, ahemByOutline = false): Prediction {
   const p = prepare(f, c, dpr);
   const analysis = appliedDecorationsOf(p.decorated, c.assignment, compilerFaults);
   if (analysis === null) throw new Error(`${c.id}: the decorated compile did not resolve`);
@@ -182,12 +206,24 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
           if (r.line !== 'line-through' && d.skipInk === 'auto') {
             // A double line's skip-ink band spans both of its lines (DecorationLinePainter::Bounds), which skipInkClips does not model.
             if (input.double) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} double ${r.line} at DPR ${dpr}: skip-ink auto over a double line (TDEC-d)` };
-            if (t.font.family === 'Ahem') {
+            if (t.font.family === 'Ahem' && !ahemByOutline) {
               // TDEC-d for Ahem: each glyph's ink box at its pen x (the line's shaped glyphs), clipped out dilated by the thickness.
               const shown = String.fromCodePoint(...line.cps);
               const g = pieceGlyphs(p.measurer, shown, t.textFont, 0, line.cps.length);
               if (!g.ok || g.xs.length !== line.cps.length) throw new Error(`${c.id}: ${t.id} has no glyph per code point: ${g.ok ? g.xs.length : g.reason}`);
               clips = td.skipInkClips(r, td.ahemLineInk(line.cps, g.xs.map((x) => input.left + x), t.font.size, baseline), faults);
+            } else if (glyfFace(t.font.family) !== null) {
+              // TDEC-d for a pinned face with glyf outlines: Skia's intercepts of each glyph's outline (layout glyph-intercepts.ts)
+              // at its pen x (the line's shaped glyphs), clipped out dilated by the thickness.
+              const face = glyfFace(t.font.family) as GlyfFace;
+              const shown = String.fromCodePoint(...line.cps);
+              const g = pieceGlyphs(p.measurer, shown, t.textFont, 0, line.cps.length);
+              if (!g.ok) throw new Error(`${c.id}: ${t.id} has no shaped glyphs: ${g.reason}`);
+              const outlines = g.glyphs.map((id) => face.outline(id));
+              if (outlines.some((o) => o === null)) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} ${r.line} at DPR ${dpr}: a glyph whose glyf outline the port does not read (a scaled composite) (TDEC-d)` };
+              const band = gi.interceptBand(r.y, r.thickness, baseline);
+              const intercepts = gi.runIntercepts(outlines as number[][], g.xs, face.unitsPerEm, platformFontSize(t.font.size), band[0] as number, band[1] as number, interceptFaults);
+              clips = faults.skipInkUndilated ? gi.interceptClips(input.left, intercepts, 0, 0) : gi.interceptClips(input.left, intercepts, r.thickness, td.DECORATION_CLIP_MAX_DILATION);
             } else {
               const glyphs = shapedInk(t.font.family, t.font.size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing, t.textFont.wordSpacing).flatMap((g) => (g === null ? [] : [{ top: baseline - g.top, bottom: baseline - g.bottom }]));
               if (!td.skipInkClear(r, glyphs)) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} ${r.line} at DPR ${dpr}: a glyph's ink crosses the skip-ink band (TDEC-d)` };

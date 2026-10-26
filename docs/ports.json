@@ -2235,6 +2235,8 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "skipInkThicknessProven", "use": "reference" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "interceptClips", "use": "port" },
         { "file": "packages/layout/src/paint-shadow.ts", "symbol": "textShadowLayerOver", "use": "port" },
         { "file": "packages/layout/src/text-decoration.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/test/text-decoration.test.ts", "symbol": null, "use": "reference" }
@@ -3739,6 +3741,107 @@
       ]
     },
     {
+      "upstream": "third_party/skia/src/core/SkGlyph.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 Google LLC",
+      "fileSha256": "3996dada6804e4d30d020d46b463be84d828aa24775b6d33db0b191db7addf2e",
+      "headerSha256": "6d5bf914a0a08990ea1f9964c61f4b7793fb76145cf2e87446121a7ae77f6f0a",
+      "ranges": [
+        { "lines": "438-538", "symbol": "calculate_path_gap", "source": "located" },
+        { "lines": "540-598", "symbol": "SkGlyph::ensureIntercepts", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "glyphGap", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkTextBlob.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 Google Inc.",
+      "fileSha256": "9d6ea3dc364100bfb608a5215def4de364759d7b5b2d1309248b41d6c66e1254",
+      "headerSha256": "09fb410fe807746e5c9d267a697de002ac415d5dd13d48c20717ab180ccb1f05",
+      "ranges": [
+        { "lines": "872-924", "symbol": "get_glyph_run_intercepts", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "runIntercepts", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/base/SkBezierCurves.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 Google LLC",
+      "fileSha256": "812edc7c88ebbcdc6c46d7f86e429f0591febabe1a1c1b8251d8d67c0a950404",
+      "headerSha256": "3647ef65108d0b45aec6f61e3e7344606a6ad22c8a1a987600273775d5e8ee27",
+      "ranges": [
+        { "lines": "141-150", "symbol": "pinTRange", "source": "located" },
+        { "lines": "188-228", "symbol": "SkBezierQuad::IntersectWithHorizontalLine", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "pinT", "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "quadCrossings", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/base/SkQuads.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 Google LLC",
+      "fileSha256": "e7ec9c9a80643b136895890cf2a7ac764fc7a9c7f097cad269475cd7fd799457",
+      "headerSha256": "85ff422ad7c33f6f9ba935e804196db0376f469dc396329d2b12172cdb055a52",
+      "ranges": [
+        { "lines": "47-96", "symbol": "SkQuads::Discriminant", "source": "located" },
+        { "lines": "98-129", "symbol": "SkQuads::Roots", "source": "located" },
+        { "lines": "164-167", "symbol": "SkQuads::EvalAt", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "discriminant", "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "quadRoots", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkPath.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2006 The Android Open Source Project",
+      "fileSha256": "a6e19af8d9cd6adfa9de57483e318e7ab04c1860964978e2d7f9292720738cfe",
+      "headerSha256": "97092871374832c18d6b4e768112377cbc928853bf18d6599adc7d9b69a05586",
+      "ranges": [
+        { "lines": "337-437", "symbol": "SkPath::Iter::next", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkFontPriv.h",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 Google Inc.",
+      "fileSha256": "bc08cd47af8d9f07a6589a7ac566461c13cb6b62de455692348cb02be01d7e11",
+      "headerSha256": "ed67bfe7c89c823c159b5d24b529709cd52f9f6597d2056236d8107d11e58925",
+      "ranges": [
+        { "lines": "36-36", "symbol": "kCanonicalTextSizeForPaths", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "CANONICAL_TEXT_SIZE_FOR_PATHS", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/skia/src/ports/SkScalerContext_mac_ct.cpp",
       "licence": "bsd-skia",
       "noticeText": "skia-bsd",
@@ -3751,7 +3854,9 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": null, "use": "port" },
-        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" }
+        { "file": "packages/dragon/src/fonts/metrics.ts", "symbol": "faceMetrics", "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/glyph-intercepts.ts", "symbol": "glyphGap", "use": "port" }
       ]
     },
     {

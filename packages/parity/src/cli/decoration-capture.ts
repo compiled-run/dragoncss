@@ -3,39 +3,18 @@
 // flags and the zoom guard, into packages/parity/expected-decorations/<platform>/dpr-<d>/<case>[.stripped].png with a manifest.
 // The two renderings must lay out the same frames and lines (no tolerance): if any case differs, nothing is trusted and it exits 1.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import type { Browser, Page } from 'playwright';
 import { captureFixture } from '../capture.ts';
-import type { ParityCase } from '../cases.ts';
-import { CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
+import { CHROME_VERSION, launchChrome } from '../chrome.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
 import { DECORATION_DPRS, DECORATION_MANIFEST, decorationCases, decorationDir, decorationPath, sha256, strippedHtml } from '../decoration-capture.ts';
 import type { DecorationManifest } from '../decoration-capture.ts';
 import { atDpr, zoomGuard } from '../dpr.ts';
+import { layoutFrames as frames, shootDecoration as shoot } from '../decoration-shoot.ts';
 import { referenceTransform } from '../fonts-run.ts';
 import { repoPath } from '../paths.ts';
-import { decodePng, rasterSize } from '../pixel-reference.ts';
 import { hostPlatform, REFERENCE_PLATFORM } from '../platform.ts';
 
 if (hostPlatform() !== REFERENCE_PLATFORM) throw new Error(`decoration captures are taken on ${REFERENCE_PLATFORM}`);
-
-async function shoot(browser: Browser, html: string, c: ParityCase, dpr: number, prepare: ((page: Page) => Promise<void>) | undefined): Promise<Buffer> {
-  const page = await openPage(browser, html, atDpr(c.environment, dpr));
-  try {
-    if (prepare !== undefined) await prepare(page);
-    const cdp = await page.context().newCDPSession(page);
-    const r = (await cdp.send('Page.captureScreenshot', { format: 'png' })) as { data: string };
-    const png = Buffer.from(r.data, 'base64');
-    const img = decodePng(png);
-    const want = rasterSize(c.environment.viewport, dpr);
-    if (img.width !== want.width || img.height !== want.height) throw new Error(`${c.id}@${dpr}: ${img.width}x${img.height}, the raster rule is ${want.width}x${want.height}`);
-    return png;
-  } finally {
-    await page.context().close();
-  }
-}
-
-const frames = (nodes: readonly { id: string; kind: string; hasBox: boolean; x: number; y: number; width: number; height: number }[]): string =>
-  JSON.stringify(nodes.map((n) => [n.id, n.kind, n.hasBox, n.x, n.y, n.width, n.height]));
 
 const cases = decorationCases();
 const out: DecorationManifest['cases'][number][] = [];

@@ -56,6 +56,15 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   font('text-decoration-double', FONT_REFERENCE_MAP, { d1: 'Lato-Regular', d2: 'Lato-Regular', d3: 'Lato-Regular', d4: 'Lato-Regular', d5: 'Lato-Regular', d6: 'Ahem' }),
 ];
 
+/**
+ * TDEC-d for pinned faces: Lato auto underlines crossed by descenders (g, j, p, q, y) at 15 to 32px, a link's default underline,
+ * px and percent thicknesses, a px offset, and wrapped lines. Proved against a live Chrome 145 (decoration-skip-ink.test.ts)
+ * rather than committed captures, so they are not in FONT_FIXTURES.
+ */
+export const SKIP_INK_FIXTURES: readonly FontFixture[] = [
+  font('text-decoration-skip-ink-lato', FONT_REFERENCE_MAP, Object.fromEntries(['k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8'].map((id) => [id, 'Lato-Regular']))),
+];
+
 /** An invalid map: a pinned entry with no faces. */
 const INVALID_MAP = { generics: { 'sans-serif': { mode: 'pinned', family: 'Dragon Sans', faces: [] } } } as unknown as FontMap;
 
@@ -69,7 +78,7 @@ export const FONTS: readonly FixtureSpec[] = [
 ];
 
 const MAPS: ReadonlyMap<string, FontMap> = new Map([
-  ...FONT_FIXTURES.flatMap((f) => (f.map === null ? [] : [[f.spec.id, f.map] as const])),
+  ...[...FONT_FIXTURES, ...SKIP_INK_FIXTURES].flatMap((f) => (f.map === null ? [] : [[f.spec.id, f.map] as const])),
   ['reject-fonts-quoted-generic', FONT_REFERENCE_MAP],
   ['reject-fonts-map-invalid', INVALID_MAP],
   // TXT1a-2: the real-font FIXTURES groups compile with the reference map (text-weight's two Ahem cases are no real-font case).

@@ -92,3 +92,4 @@ export type { ScrollRange, ScrollRangeRefusal, ScrollRangesResult } from './over
 export { scrollRanges } from './overflow.ts';
 // TDEC-a: the decoration line geometry (css-text-decor-3/4), namespaced.
 export * as textDecoration from './text-decoration.ts';
+export * as glyphIntercepts from './glyph-intercepts.ts';
