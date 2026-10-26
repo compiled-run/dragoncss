@@ -661,6 +661,65 @@ export function refuseAnimatedSafeAreaInsets(analysis: AnimationAnalysis, roots:
   }
 }
 
+/** The sizing longhands whose intrinsic size keywords interpolate-size: allow-keywords lets Chrome interpolate (css-values-5 §8.2); the logical ones resolve to these. */
+const KEYWORD_SIZED: readonly Longhand[] = ['width', 'height', 'min-width', 'min-height', 'max-width', 'max-height', 'flex-basis'];
+
+/**
+ * css-values-5 §8.2: under interpolate-size: allow-keywords Chrome interpolates a sizing longhand to and from an intrinsic size
+ * keyword (auto, min-content, fit-content), where numeric-only flips it at the midpoint. Native interpolates no such keyword, so it
+ * refuses allow-keywords on an element that transitions a sizing longhand, or whose animation keyframes one with a keyword or from
+ * or to the element's own keyword value. Anything else interpolates as with numeric-only, and web keeps it, since Chrome runs the
+ * animation.
+ * Planted fault animationExtraAccepted accepts it.
+ */
+export function refuseKeywordSizeInterpolation(analysis: AnimationAnalysis, roots: readonly ResolvedElement[], nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: { readonly animationExtraAccepted: boolean }): void {
+  if (faults.animationExtraAccepted || nativeTargets.length === 0) return;
+  const trees = roots.map((r) => byAddress(r));
+  const isKeyword = (v: CssValue | undefined): boolean => v !== undefined && v.kind === 'keyword';
+  for (const c of analysis.cases) {
+    for (const ea of c.elements.values()) {
+      const els = trees.flatMap((t) => {
+        const el = t.get(ea.address);
+        return el === undefined ? [] : [el];
+      });
+      const allowing = els.find((el) => {
+        const v = (el.props.get('interpolate-size') as ResolvedValue).value;
+        return v.kind === 'keyword' && v.value === 'allow-keywords';
+      });
+      if (allowing === undefined) continue;
+      const valuesOf = (p: Longhand): CssValue[] => els.map((el) => (el.props.get(p) as ResolvedValue).value);
+      let found: [Longhand, 'an animation' | 'a transition'] | null = null;
+      for (const [p, l] of ea.listings) {
+        if (found !== null || !KEYWORD_SIZED.includes(p) || l.mode !== 'listed' || l.delay + l.duration <= 0) continue;
+        // The states that start a transition (an interaction, a band, a case) need not be among these trees, so any transition of a
+        // sizing longhand counts: one of its endpoints may be a keyword.
+        found = [p, 'a transition'];
+      }
+      for (const a of ea.animations) {
+        if (found !== null || a.name === 'none' || !a.hasKeyframes) continue;
+        for (const b of analysis.keyframes.get(a.name)?.blocks ?? []) {
+          const v = b.values.find((x) => KEYWORD_SIZED.includes(x.property) && (isKeyword(x.value) || valuesOf(x.property).some(isKeyword)));
+          if (v !== undefined && found === null) found = [v.property, 'an animation'];
+        }
+      }
+      if (found === null) continue;
+      const [p, what] = found;
+      const at = allowing.props.get('interpolate-size') as ResolvedValue;
+      for (const t of nativeTargets) {
+        const id = `${t}|${ea.address}|interpolate-size`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+          origin: at.span !== null ? authored(at.span) : allowing.element.node.origin,
+          target: t,
+          message: `interpolate-size: allow-keywords on ${ea.address} lets Chrome interpolate ${what} of ${p} to and from an intrinsic size keyword, which the native animator does not interpolate (it would flip at the midpoint)`,
+          manual: `Remove interpolate-size: allow-keywords from ${ea.address}, or animate ${p} between lengths.`,
+        }));
+      }
+    }
+  }
+}
+
 // PNT1-opacity-b: a fractional opacity folded into its box's fill (lower/paint/background.ts) puts the alpha on the fill, which the
 // animator's background-color writes replace with the animated colour's own alpha; refused until the animator carries the fold.
 const FOLD_ANIMATED = (address: string): string => `background-color on ${address} animates the fill a fractional opacity is folded into, and the animated colour would drop the opacity: not built yet (package PNT1-opacity-b)`;

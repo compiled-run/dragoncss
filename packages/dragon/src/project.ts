@@ -36,7 +36,7 @@ import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
-import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations } from './analysis/animations.ts';
+import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations, refuseKeywordSizeInterpolation } from './analysis/animations.ts';
 import { refuseZoomedAnimations } from './analysis/zoom.ts';
 import { refuseAnimatedCurrentColorPaint } from './analysis/paint-values/current-color-paint.ts';
 import { refuseAnimatedFx } from './analysis/fx.ts';
@@ -1482,6 +1482,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const groupMotionReported = new Set<string>();
       // ENV-SAFE: the measured insets change without a style change event, so native refuses animating a value that reads them.
       const safeAreaReported = new Set<string>();
+      const keywordSizeReported = new Set<string>();
       const textFillReported = new Set<string>();
       const fxReported = new Set<string>();
       const pixelatedReported = new Set<string>();
@@ -1494,6 +1495,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         refuseAnimatedTranslucentPaint(a, roots, nativeTargets, diagnostics, translucentReported);
         refuseAnimatedCurrentColorPaint(a, roots, nativeTargets, diagnostics, currentColorReported);
         refuseAnimatedSafeAreaInsets(a, roots, nativeTargets, diagnostics, safeAreaReported);
+        // An interaction state can set allow-keywords (or a keyword size) that the resting tree lacks.
+        refuseKeywordSizeInterpolation(a, r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)])), nativeTargets, diagnostics, keywordSizeReported, options.faults);
         refuseAnimatedTextFill(a, roots, nativeTargets, diagnostics, textFillReported);
         // PNT1-opacity-b: motion under a pre-composited group; lane-gated like checkTranslucent (the lanes make such a case lane-only).
         if (!options.interactionLanes) refuseAnimatedGroups(a, roots, nativeTargets, diagnostics, groupMotionReported);

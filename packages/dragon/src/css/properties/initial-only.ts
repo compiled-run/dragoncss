@@ -5,7 +5,7 @@
 import type { CssNode } from 'css-tree';
 import { generate } from 'css-tree';
 import type { Span } from '../../types.ts';
-import { asciiLower } from '../escapes.ts';
+import { asciiLower, decodeName } from '../escapes.ts';
 import type { Longhand } from '../properties.ts';
 import type { LonghandValue, ParsedValue } from '../stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT } from '../units.ts';
@@ -62,6 +62,39 @@ export function keywordLonghand(property: Longhand, initial: CssValue, keywords:
     return { kind: 'ok', longhands: [{ property, value: spellsInitial(initial, t) ? initial : nonInitial(tokens), explicit: true }] };
   };
 }
+
+/** The value type of a comma-separated list of <dashed-ident> names (featureOf key <longhand>:<dashed-ident-list>). */
+export const DASHED_IDENT_LIST_TYPE = 'dashed-ident-list';
+
+/**
+ * A longhand of the grammar <initial keyword> | <keyword>* | <dashed-ident>#: a keyword alone in any ASCII case, or names joined by
+ * commas, kept as written (Chrome 145 serializes them so); any other value is invalid, as Chrome drops it
+ * (packages/parity/test/render-anchor-parse.test.ts pins the spellings against Chrome).
+ */
+export function dashedIdentListLonghand(property: Longhand, initial: CssValue, keywords: readonly string[] = []): InitialOnlyParser {
+  return (tokens) => {
+    const invalid: ParsedValue = { kind: 'invalid', reason: `${property} takes ${[valueToText(initial), ...keywords].join(', ')} or a comma-separated list of <dashed-ident> names (Chrome 145 drops any other value)` };
+    const first = tokens[0];
+    if (tokens.length === 1 && spellsInitial(initial, first)) return { kind: 'ok', longhands: [{ property, value: initial, explicit: true }] };
+    const k = tokens.length === 1 && first !== undefined && first.type === 'Identifier' ? asciiLower(String(first['name'])) : null;
+    if (k !== null && keywords.includes(k)) return { kind: 'ok', longhands: [{ property, value: { kind: 'keyword', value: k }, explicit: true }] };
+    if (tokens.length % 2 === 0) return invalid;
+    const names: string[] = [];
+    for (const [i, t] of tokens.entries()) {
+      if (i % 2 === 1) {
+        if (!(t.type === 'Operator' && t['value'] === ',')) return invalid;
+        continue;
+      }
+      // Chrome serializes a name with its escapes decoded (--\61 is --a); -- alone is a name too.
+      const name = t.type === 'Identifier' ? decodeName(String(t['name'])) : '';
+      if (!name.startsWith('--')) return invalid;
+      names.push(name);
+    }
+    return { kind: 'ok', longhands: [{ property, value: { kind: 'other', type: DASHED_IDENT_LIST_TYPE, text: names.join(', ') }, explicit: true }] };
+  };
+}
+
+const valueToText = (v: CssValue): string => (v.kind === 'keyword' ? v.value : '');
 
 /**
  * A shorthand of one to max values over longhands that share one initial value: when every value spells it, each longhand takes
