@@ -249,7 +249,7 @@ describe('T005 rec 6: unsupported-value and unproven-context messages list the s
   });
 });
 
-describe('T039 M3: absolutely positioned boxes beside text are refused with a true message and a why that claims no missing proof', () => {
+describe('T039 M3: absolutely positioned boxes beside text in block flow are refused with a true message and a why that claims no missing proof', () => {
   const refusal = (display: string): Diagnostic[] => {
     const input = inputFor(`${FONT} .p { position: relative; display: ${display}; } .a { position: absolute; }`, (r) => [div(r, 'p', ['p'], [text(r, 't', 'XX'), div(r, 'a', ['a'])])]);
     const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
@@ -259,15 +259,10 @@ describe('T039 M3: absolutely positioned boxes beside text are refused with a tr
     expectCatalogued(c.diagnostics);
     return hits;
   };
-  it('in a flex parent: the text is an anonymous flex item and the box is not a flex item', () => {
-    const hits = refusal('flex');
-    expect(hits.map((d) => d.target).sort()).toEqual(['ios', 'web']);
-    for (const d of hits) {
-      expect(d.message).toMatch(/beside text in the flex container p: the text becomes an anonymous flex item \(css-flexbox-1 §4\) and the absolutely positioned child is not a flex item \(§4\.1\)/);
-      expect(d.message).not.toMatch(/inline formatting context/);
-      expect(d.why).toBe(CATALOGUE.DRAGON_UNSUPPORTED_VALUE.computedWhy);
-      expect(d.why).not.toMatch(/proof/);
-    }
+  it('in a flex parent the box compiles: the text is an anonymous flex item and the box takes its static position alone (POSX-IFC-f)', () => {
+    const input = inputFor(`${FONT} .p { position: relative; display: flex; } .a { position: absolute; }`, (r) => [div(r, 'p', ['p'], [text(r, 't', 'XX'), div(r, 'a', ['a'])])]);
+    const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
   });
   it('in a block parent: the text\'s inline formatting context', () => {
     for (const d of refusal('block')) {

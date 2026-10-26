@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* The app screens' text in flex items (examples/real-pages): reset controls that inherit their font, chips, a logo and a badge with
+   tracking, a tab label with a unitless line height and rem-sized text. */
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 1.2; }
+.chips { display: flex; gap: 4px; }
+.chip { flex: none; padding: 2px 6px; font: inherit; background-color: #ddd; }
+.action { display: flex; align-items: center; justify-content: center; height: 24px; font: inherit; background-color: #36c; color: #fff; }
+.brand { display: flex; align-items: center; gap: 6px; }
+.logo { letter-spacing: -0.02em; font-size: 16px; }
+.hero { display: flex; flex-direction: column; align-items: flex-start; }
+.badge { padding: 2px 4px; letter-spacing: 0.08em; background-color: #fe8; }
+.tabs { display: flex; justify-content: space-around; }
+.tab { display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.4; font-size: 11px; }
+.icon { width: 12px; height: 12px; background-color: #888; }
+.divider { display: flex; align-items: center; gap: 4px; font-size: 0.8125rem; }
+.rule { flex: 1; height: 1px; background-color: #999; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="chips" class="chips"><div data-dragon-id="c1" class="chip">For you</div><div data-dragon-id="c2" class="chip">News</div></div>
+<div data-dragon-id="action" class="action">Get started</div>
+<div data-dragon-id="brand" class="brand"><div data-dragon-id="mark" class="icon"></div><div data-dragon-id="logo" class="logo">Logo</div></div>
+<div data-dragon-id="hero" class="hero"><div data-dragon-id="badge" class="badge">NEW</div></div>
+<div data-dragon-id="tabs" class="tabs"><div data-dragon-id="t1" class="tab"><div data-dragon-id="t1i" class="icon"></div>Home</div><div data-dragon-id="t2" class="tab"><div data-dragon-id="t2i" class="icon"></div>Me</div></div>
+<div data-dragon-id="divider" class="divider"><div data-dragon-id="r1" class="rule"></div>or<div data-dragon-id="r2" class="rule"></div></div>
+</body>
+</html>

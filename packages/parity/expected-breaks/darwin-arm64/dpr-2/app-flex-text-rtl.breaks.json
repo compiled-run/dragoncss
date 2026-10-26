@@ -1,0 +1,15 @@
+{
+  "case": "app-flex-text-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"c1:text0","data":"For you","lines":1,"units":[0,0,0,0,0,0,0],"blank":[]},
+    {"id":"c2:text0","data":"News","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"action:text0","data":"Get started","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"logo:text0","data":"Logo","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"badge:text0","data":"NEW","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"t1:text0","data":"Home","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"Me","lines":1,"units":[0,0],"blank":[]},
+    {"id":"divider:text0","data":"or","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

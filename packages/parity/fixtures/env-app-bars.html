@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* app-bars under a phone's safe area: the sticky header and the fixed tab bar pad themselves past the insets, as the app screens do. */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.header { position: sticky; top: 0; display: flex; align-items: center; padding: calc(env(safe-area-inset-top) + 8px) 16px 6px; background-color: #fff; border-bottom: 1px solid #ccc; }
+.mark { width: 20px; height: 20px; background-color: #36c; }
+.item { height: 30px; margin: 4px 16px; background-color: #ddd; }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-around; padding: 6px 0 calc(env(safe-area-inset-bottom) + 8px); background-color: #f8f8f8; border-top: 1px solid #aaa; }
+.tab { width: 24px; height: 24px; background-color: #888; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="header" class="header"><div data-dragon-id="m1" class="mark"></div>Hi</div>
+<div data-dragon-id="i1" class="item"></div>
+<div data-dragon-id="i2" class="item"></div>
+<div data-dragon-id="tabs" class="tabs"><div data-dragon-id="t1" class="tab"></div><div data-dragon-id="t2" class="tab"></div><div data-dragon-id="t3" class="tab"></div></div>
+</body>
+</html>

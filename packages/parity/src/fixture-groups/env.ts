@@ -22,6 +22,8 @@ export const ENV_FIXTURES: readonly EnvFixture[] = [
   envFixture('env-safe-area-zero', { top: 0, right: 0, bottom: 0, left: 0 }),
   // Four different insets, so a side read from the wrong inset shows.
   envFixture('env-safe-area-math', { top: 13, right: 7, bottom: 29, left: 3 }),
+  // APP-LAYOUT: an app screen's sticky header and fixed tab bar padded past the portrait insets.
+  envFixture('env-app-bars', { top: 47, right: 0, bottom: 34, left: 0 }),
 ];
 
 export const ENV: readonly FixtureSpec[] = [

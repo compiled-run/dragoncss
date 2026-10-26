@@ -1,0 +1,8 @@
+{
+  "case": "app-row-ellipsis",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"label:text0","lines":[[0,24]]},
+    {"id":"value:text0","lines":[[0,2]]}
+  ]
+}

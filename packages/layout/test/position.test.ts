@@ -255,4 +255,12 @@ describe('absolutely positioned boxes leave the in-flow layout (fixtures positio
     const r = layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('html', {}, [box('p', {}, [anon('p:anon0', {}, [text('t', 'XX')]), box('a', absolute)])]) }, ahemMeasurer, NO_ENGINE_FAULTS);
     expect(r.kind === 'unsupported' && r.unsupported).toMatchObject({ code: 'abspos-in-inline', nodeId: 'a' });
   });
+  it('an absolutely positioned child beside text in a flex container takes its static position as the sole flex item (POSX-IFC-f)', () => {
+    const c = (kids: Parameters<typeof box>[2]) => [box('c', { display: 'flex', ...rel, width: px(100), height: px(40), justifyContent: 'center', alignItems: 'center' }, kids)];
+    const a = box('a', { ...absolute, width: px(10), height: px(6) });
+    const withText = run(c([anon('c:anon0', {}, [text('t', 'XX')]), a]));
+    const [cx, cy] = at(withText, 'c') as [number, number];
+    expect(at(withText, 'a')).toEqual([cx + 45 * 64, cy + 17 * 64, 10 * 64, 6 * 64]);
+    expect(at(withText, 'a')).toEqual(at(run(c([a])), 'a'));
+  });
 });

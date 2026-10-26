@@ -3,6 +3,7 @@ import type { BackgroundResetLonghand, DiagnosticCode, Environment, WritingModeR
 import { ALIASES } from './fixture-groups/aliases.ts';
 import { ANIMATIONS_PAINT } from './fixture-groups/animations-paint.ts';
 import { ANIMATIONS } from './fixture-groups/animations.ts';
+import { APP_LAYOUT } from './fixture-groups/app-layout.ts';
 import { APPEARANCE } from './fixture-groups/appearance.ts';
 import { ATOMIC_INLINE } from './fixture-groups/atomic-inline.ts';
 import { ATTRIBUTES } from './fixture-groups/attributes.ts';
@@ -175,6 +176,7 @@ export const GROUPS = {
   aliases: ALIASES,
   animations: ANIMATIONS,
   'animations-paint': ANIMATIONS_PAINT,
+  'app-layout': APP_LAYOUT,
   appearance: APPEARANCE,
   'atomic-inline': ATOMIC_INLINE,
   attributes: ATTRIBUTES,

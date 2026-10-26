@@ -1,0 +1,14 @@
+{
+  "case": "app-flex-text",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"c1:text0","lines":[[0,7]]},
+    {"id":"c2:text0","lines":[[0,4]]},
+    {"id":"action:text0","lines":[[0,11]]},
+    {"id":"logo:text0","lines":[[0,4]]},
+    {"id":"badge:text0","lines":[[0,3]]},
+    {"id":"t1:text0","lines":[[0,4]]},
+    {"id":"t2:text0","lines":[[0,2]]},
+    {"id":"divider:text0","lines":[[0,2]]}
+  ]
+}
