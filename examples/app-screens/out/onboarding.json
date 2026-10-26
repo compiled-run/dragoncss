@@ -1,0 +1,923 @@
+{
+ "id": "onboarding",
+ "mode": "authored",
+ "rounds": 2,
+ "residualTargetless": 0,
+ "firstTargets": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "firstOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "lastOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "found": [
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "opacity: 0.5",
+   "line": 39,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "transform: scale(0.97)",
+   "line": 82,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "background: var(--brand-pressed)",
+   "line": 84,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "outline: 3px solid rgba(79, 70, 229, 0.5)",
+   "line": 86,
+   "message": ":focus-visible is not supported on ios: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/keyboard, selector:pseudo-class(:focus-visible) in interaction/mouse, selector:pseudo-class(:focus-visible) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "opacity: 0.5",
+   "line": 39,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "transform: scale(0.97)",
+   "line": 82,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "background: var(--brand-pressed)",
+   "line": 84,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "outline: 3px solid rgba(79, 70, 229, 0.5)",
+   "line": 86,
+   "message": ":focus-visible is not supported on android: no passing device proof of selector:pseudo-class(:focus-visible) in interaction/keyboard, selector:pseudo-class(:focus-visible) in interaction/mouse, selector:pseudo-class(:focus-visible) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "\"Brand\", sans-serif",
+   "line": 22,
+   "message": "font-family: \"Brand\" , sans-serif is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use Ahem or inherit; in text-in-flex-item/row/ltr use Ahem or inherit",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "\"Brand\", sans-serif",
+   "line": 22,
+   "message": "font-family: \"Brand\" , sans-serif is unsupported (support profile m1-s5); in text-in-flex-item/column/ltr use Ahem or inherit; in text-in-flex-item/row/ltr use Ahem or inherit",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "linear-gradient(180deg, #eef2ff 0%, #ffffff 60%)",
+   "line": 26,
+   "message": "background-image on body: a gradient on <body> paints the canvas (css-backgrounds-3 §2.11.2), which Dragon does not model (BG2c)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "linear-gradient(180deg, #eef2ff 0%, #ffffff 60%)",
+   "line": 26,
+   "message": "background-image on body: a gradient on <body> paints the canvas (css-backgrounds-3 §2.11.2), which Dragon does not model (BG2c)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "linear-gradient(180deg, #eef2ff 0%, #ffffff 60%)",
+   "line": 26,
+   "message": "background-image on body: a gradient on <body> paints the canvas (css-backgrounds-3 §2.11.2), which Dragon does not model (BG2c)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip with appearance: auto and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which waits for the FORM-b package",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip with appearance: auto and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which waits for the FORM-b package",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip with appearance: auto and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which waits for the FORM-b package",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip inherits line-height: 1.5, which Chrome's user-agent button rule resets; Dragon does not model that reset yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip inherits line-height: 1.5, which Chrome's user-agent button rule resets; Dragon does not model that reset yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip inherits line-height: 1.5, which Chrome's user-agent button rule resets; Dragon does not model that reset yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "web",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "<button> skip uses Chrome's user-agent control font (Arial), which the font map does not pin",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": null,
+   "where": "calc(var(--radius) * 1.5)",
+   "line": 47,
+   "message": "border-radius: calc(var(--radius) * 1.5) substitutes to \"calc(16px * 1.5)\": border-radius: calc(16px*1.5) is unsupported: a calculation in a border radius is not supported (PNT1 takes one length or percentage per component)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0 12px 32px rgba(79, 70, 229, 0.25)",
+   "line": 48,
+   "message": "<img> illustration has a box-shadow; android does not draw shadows of replaced elements yet (no comparison proves them)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0 12px 32px rgba(79, 70, 229, 0.25)",
+   "line": 48,
+   "message": "<img> illustration has a box-shadow; ios does not draw shadows of replaced elements yet (no comparison proves them)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"btn btn-primary\" data-dragon-id=\"btn\">Get started</button>",
+   "line": null,
+   "message": "<button> btn needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"btn btn-primary\" data-dragon-id=\"btn\">Get started</button>",
+   "line": null,
+   "message": "<button> btn needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"btn btn-secondary\" data-dragon-id=\"btn-2\">I already have an account</button>",
+   "line": null,
+   "message": "<button> btn-2 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"btn btn-secondary\" data-dragon-id=\"btn-2\">I already have an account</button>",
+   "line": null,
+   "message": "<button> btn-2 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: outset on <button> skip comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: outset",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: outset on <button> skip comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: outset",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "<button type=\"button\" class=\"skip\" data-dragon-id=\"skip\">Skip</button>",
+   "line": null,
+   "message": "border-top-style, border-right-style, border-bottom-style, border-left-style: outset on <button> skip comes from Chrome's user-agent stylesheet, and no fixture proves how a target draws border-style: outset",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "ios",
+   "where": "Skip",
+   "line": null,
+   "message": "font-family: Arial on skip:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_FONT",
+   "severity": "error",
+   "target": "android",
+   "where": "Skip",
+   "line": null,
+   "message": "font-family: Arial on skip:text0 has no layout mapping (expected Ahem (the milestone-1 layout font))",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "\"Brand\", sans-serif",
+   "line": 22,
+   "message": "font-family:<declared> on logo:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/row/ltr: <pinned>, Ahem or inherit",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "-0.02em",
+   "line": 37,
+   "message": "letter-spacing:<length-em> on logo:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no letter-spacing value is proven in text-in-flex-item/row/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "-0.02em",
+   "line": 37,
+   "message": "letter-spacing:<length-em> on logo:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no letter-spacing value is proven in text-in-flex-item/row/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "-0.02em",
+   "line": 37,
+   "message": "letter-spacing:<length-em> on logo:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no letter-spacing value is proven in text-in-flex-item/row/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "\"Brand\", sans-serif",
+   "line": 22,
+   "message": "font-family:<declared> on badge:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-family values proven in text-in-flex-item/column/ltr: <pinned>, Ahem or inherit",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0.08em",
+   "line": 60,
+   "message": "letter-spacing:<length-em> on badge:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no letter-spacing value is proven in text-in-flex-item/column/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.08em",
+   "line": 60,
+   "message": "letter-spacing:<length-em> on badge:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no letter-spacing value is proven in text-in-flex-item/column/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0.08em",
+   "line": 60,
+   "message": "letter-spacing:<length-em> on badge:text0 is used in the text-in-flex-item/column/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no letter-spacing value is proven in text-in-flex-item/column/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-style:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-as-anonymous-flex-item/row/ltr: oblique; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-style:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-as-anonymous-flex-item/row/ltr: oblique; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-style:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-as-anonymous-flex-item/row/ltr: oblique; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "line-height:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-as-anonymous-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "line-height:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-as-anonymous-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "line-height:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-as-anonymous-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-ligatures value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-ligatures value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-ligatures value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-caps:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-as-anonymous-flex-item/row/ltr: small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-caps:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-as-anonymous-flex-item/row/ltr: small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-caps:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-as-anonymous-flex-item/row/ltr: small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-alternates value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-alternates value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-alternates value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-numeric value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-numeric value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-numeric value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-east-asian value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-east-asian value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-east-asian value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-position:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-position value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-position:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-position value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-position:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-position value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-emoji value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-emoji value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-emoji value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-kerning:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-kerning:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-kerning:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-language-override:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-language-override:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-language-override:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-stretch:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-stretch value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-stretch:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-stretch value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-stretch:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-stretch value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-feature-settings:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-feature-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-feature-settings:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-feature-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-feature-settings:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-feature-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variation-settings:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variation-settings:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-variation-settings:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-size-adjust:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-size-adjust value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-size-adjust:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-size-adjust value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 77,
+   "message": "font-size-adjust:inherit (set by font: inherit) on btn:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-size-adjust value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.5",
+   "line": 39,
+   "message": "skip has opacity 0.5; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: skip is a <button>, a control, replaced or svg box",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.5",
+   "line": 39,
+   "message": "skip has opacity 0.5; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: skip is a <button>, a control, replaced or svg box",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "3px solid rgba(79, 70, 229, 0.5)",
+   "line": 86,
+   "message": "btn has an outline, and skip has opacity: 0.5, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context; android draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "3px solid rgba(79, 70, 229, 0.5)",
+   "line": 86,
+   "message": "btn has an outline, and skip has opacity: 0.5, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context; ios draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "3px solid rgba(79, 70, 229, 0.5)",
+   "line": 86,
+   "message": "btn-2 has an outline, and skip has opacity: 0.5, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context; android draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "3px solid rgba(79, 70, 229, 0.5)",
+   "line": 86,
+   "message": "btn-2 has an outline, and skip has opacity: 0.5, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context; ios draws solid and double outlines, and dotted, dashed, groove, ridge, inset and outset ones on square corners (PNT1)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0 4px 14px rgba(79, 70, 229, 0.4)",
+   "line": 83,
+   "message": "btn has a box-shadow and a transform; android draws the outer shadows in a companion view that the box's transform and compositing group do not cover",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0 4px 14px rgba(79, 70, 229, 0.4)",
+   "line": 83,
+   "message": "btn has a box-shadow and a transform; ios draws the outer shadows in a companion view that the box's transform and compositing group do not cover",
+   "round": 1
+  }
+ ]
+}

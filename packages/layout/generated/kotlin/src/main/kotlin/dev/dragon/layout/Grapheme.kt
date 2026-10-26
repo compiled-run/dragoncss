@@ -72,12 +72,12 @@ fun grapheme_pictographicZwjBefore(cps: JsArray<Double>, i: Double): Boolean {
   // ts: packages/layout/src/grapheme.ts:54
   run {
     var j: Double = (i - 2.0)
-    loop52@ while ((j >= 0.0)) {
-      loop52_body@ do {
+    loop54@ while ((j >= 0.0)) {
+      loop54_body@ do {
         val cp: Double = jsUnwrap(jsAt(cps, j))
         // ts: packages/layout/src/grapheme.ts:56
         if ((grapheme_graphemeBreakProperty(cp) == graphemeData_GCB_EXTEND)) {
-          break@loop52_body
+          break@loop54_body
         }
         return grapheme_isPictographic(cp)
       } while (false)

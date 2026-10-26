@@ -18,9 +18,9 @@ import { fontDataOf, vendoredFaceIds } from '../src/text-shaper-host.ts';
 const STRIDE = 7;
 const probe = shimProbe();
 
-/** The integer lists of a generated probe file, in order: Swift `glyphs: [...]` or Kotlin `intArrayOf(...)` after the features. */
+/** The integer lists of a generated probe file, in order: Swift `glyphs: [...]` or Kotlin `dragonInts("...")` after the features. */
 function glyphLists(text: string, target: 'ios' | 'android'): number[][] {
-  const re = target === 'ios' ? /glyphs: \[(-?\d[^\]]*)\]/g : /intArrayOf\(([^)]*)\)\),/g;
+  const re = target === 'ios' ? /glyphs: \[(-?\d[^\]]*)\]/g : /dragonInts\("([^"]*)"\)\),/g;
   return [...text.matchAll(re)].map((m) => (m[1] as string).split(',').map((x) => Number(x.trim())));
 }
 

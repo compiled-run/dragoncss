@@ -99,7 +99,9 @@ describe('the initial-only scroll and containment families', () => {
   it('parse an initial spelling to the initial values, and keep every other value as written', () => {
     expect(parsed('contain: none none')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('contain-intrinsic-size: none')).toEqual(['contain-intrinsic-width: none', 'contain-intrinsic-height: none']);
-    expect(parsed('contain-intrinsic-size: auto none')).toEqual(['contain-intrinsic-width: ?auto none', 'contain-intrinsic-height: ?auto none']);
+    // contain-intrinsic-width and -height read none, lengths and auto (css/properties/containment.ts parseIntrinsicSize; test/contain-intrinsic.test.ts).
+    expect(parsed('contain-intrinsic-size: auto none')).toEqual(['contain-intrinsic-width: auto none', 'contain-intrinsic-height: auto none']);
+    expect(parsed('contain-intrinsic-size: auto auto')).toEqual(['contain-intrinsic-width: ?auto auto', 'contain-intrinsic-height: ?auto auto']);
     expect(parsed('container: none')).toEqual(['container-name: none', 'container-type: normal']);
     expect(parsed('container: none / Normal')).toEqual(['container-name: none', 'container-type: normal']);
     expect(parsed('container: none / size')).toEqual(['container-name: none', 'container-type: size']);
@@ -146,10 +148,10 @@ describe('the initial-only scroll and containment families', () => {
 
   it('refuse every other value on every target, once per element and family, computed', () => {
     for (const d of ['content-visibility: hidden', 'content-visibility: auto',
-      'contain-intrinsic-size: 10px', 'contain-intrinsic-block-size: auto none', 'container-type: size', 'container: card / scroll-state']) {
+      'contain-intrinsic-inline-size: 10px', 'contain-intrinsic-block-size: auto none', 'container-type: size', 'container: card / scroll-state']) {
       expect(errorsAt(d), d).toEqual(REFUSED);
     }
-    expect(errorsAt('contain-intrinsic-size: 10px; content-visibility: hidden')).toEqual(REFUSED);
+    expect(errorsAt('contain-intrinsic-inline-size: 10px; content-visibility: hidden')).toEqual(REFUSED);
     expect(errorsAt('content-visibility: auto; container-type: size')).toEqual([...REFUSED, ...REFUSED].sort());
     expect(errorsAt('--t: size; container-type: var(--t)')).toEqual(REFUSED);
   });

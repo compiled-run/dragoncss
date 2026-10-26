@@ -20,6 +20,7 @@ import { IMAGE_RENDERING_INITIAL } from '../src/css/properties/image-rendering.t
 import { SVG_EXTRA_INITIAL } from '../src/css/properties/svg-extra.ts';
 import { VIEW_TRANSITION_INITIAL } from '../src/css/properties/view-transition.ts';
 import { ANIMATION_EXTRA_INITIAL } from '../src/css/properties/animation-extra.ts';
+import { MOTION_INITIAL } from '../src/css/properties/motion.ts';
 import { div, expectCatalogued, explainOne, inputFor, spanTextOf, text } from './helpers.ts';
 import { floorProblems } from './floor.ts';
 
@@ -104,9 +105,9 @@ describe("rec1 colour_rows: the 'paint' role", () => {
       'border-image-source': ['none', 'NONE'], 'border-image-slice': ['100%', '100.0%'], 'border-image-width': ['1', '1.0'], 'border-image-outset': ['0', '0.0'],
       'border-image-repeat': ['stretch', 'STRETCH'],
       perspective: ['none', 'NONE'], 'perspective-origin': ['50% 50%', 'CENTER'],
-      // The overscroll, scroll-snap, containment, container-query and multicol longhands, which accept their initial values alone, at those
+      // The overscroll, scroll-snap, containment, container-query, multicol and motion path longhands, which accept their initial values alone, at those
       // values in two spellings.
-      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL, ...MULTICOL_INITIAL, ...IMAGE_RENDERING_INITIAL, ...ANCHOR_POSITION_INITIAL, ...SVG_EXTRA_INITIAL, ...VIEW_TRANSITION_INITIAL, ...ANIMATION_EXTRA_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : v.kind === 'number' ? [String(v.value), `${v.value}.0`] : ['0', '0px']])),
+      ...Object.fromEntries(Object.entries({ ...OVERSCROLL_INITIAL, ...SCROLL_SNAP_INITIAL, ...CONTAINMENT_INITIAL, ...CONTAINER_QUERY_INITIAL, ...MULTICOL_INITIAL, ...IMAGE_RENDERING_INITIAL, ...ANCHOR_POSITION_INITIAL, ...SVG_EXTRA_INITIAL, ...VIEW_TRANSITION_INITIAL, ...ANIMATION_EXTRA_INITIAL, ...MOTION_INITIAL }).map(([p, v]) => [p, v.kind === 'keyword' ? [v.value, v.value.toUpperCase()] : v.kind === 'number' ? [String(v.value), `${v.value}.0`] : ['0', '0px']])),
       // isolation, whose isolate makes a stacking context and so changes paint order alone, at auto and isolate.
       isolation: ['auto', 'isolate'],
       // PNT2: the individual transforms (css-transforms-2 §4).
