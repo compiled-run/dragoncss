@@ -4,12 +4,15 @@
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults } from '@dragon/layout';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
-import { ANDROID_MIN_SDK, createProjectWith, NO_FAULTS } from 'dragon';
+import { ANDROID_MIN_SDK, createProjectWith, nativePrograms, NO_FAULTS } from 'dragon';
+import { casesOf, fixtureInput } from '../src/cases.ts';
 import type { DprCaseOutcome } from '../src/dpr.ts';
 import { committedDprCapture, DPRS, layoutCases, runDprCase } from '../src/dpr.ts';
 import { fixtureToInput, PROJECT_ID } from '../src/fixture-reader.ts';
 import { TEXT_OVERFLOW } from '../src/fixture-groups/text-overflow.ts';
-import { ENVIRONMENT } from '../src/fixtures.ts';
+import { ENVIRONMENT, FIXTURE_GROUPS } from '../src/fixtures.ts';
+import { NATIVE_CONFIG } from '../src/native-compile.ts';
+import { uprightGlyphLines } from '../src/pixel-reference.ts';
 import { compileFixture } from '../src/pipeline.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 
@@ -47,6 +50,29 @@ describe('TXT2-f: text-overflow: ellipsis against Chrome 145', () => {
       return n.x + n.width;
     };
     expect(right('r1:text0:line1')).toBe(right('r1:text0:line0'));
+  });
+
+  it('the pixel reference draws an rtl truncated text where Chrome paints it: its kept end at the right edge, the ellipsis on its left', () => {
+    const spec = FIXTURE_GROUPS.flatMap((g) => g.fixtures).find((f) => f.id === 'text-overflow-rtl');
+    if (spec === undefined) throw new Error('no text-overflow-rtl fixture');
+    const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: REFERENCE_PLATFORM, rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport, interactionLanes: true });
+    const c = casesOf(spec, fixtureInput(spec))[0];
+    if (c === undefined) throw new Error('text-overflow-rtl has no case');
+    const programs = nativePrograms(project.compile(fixtureInput(spec)), c.assignment);
+    if (programs.kind !== 'ready') throw new Error(programs.reason);
+    for (const p of [programs.programs.uikit, programs.programs['android-views']]) {
+      const glyphs = (id: string): number[][] => {
+        const line = uprightGlyphLines(p, ENVIRONMENT.viewport, 1).find((l) => l.id === `${id}:text0:line0`);
+        if (line === undefined) throw new Error(`no line for ${id}`);
+        return line.glyphs.map((g) => [g.left, g.right]);
+      };
+      // r1 (XX XX XX XX in 55px): Chrome paints "X XX" at 15..55 and the ellipsis at 5..15.
+      expect(glyphs('r1')).toEqual([[15, 25], [35, 45], [45, 55], [5, 15]]);
+      // r13 (XXXXXX in 55px): four X at 15..55, the ellipsis at 5..15.
+      expect(glyphs('r13')).toEqual([[15, 25], [25, 35], [35, 45], [45, 55], [5, 15]]);
+      // r7 (XXXX in 15px): one X at 5..15, the ellipsis over the left edge at -5..5.
+      expect(glyphs('r7')).toEqual([[5, 15], [-5, 5]]);
+    }
   });
 
   it('planted faults ellipsisInTextFont and truncateChangesBlockSize are caught', () => {

@@ -143,20 +143,23 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       const last = mine[mine.length - 1];
       if (first === undefined || last === undefined) continue;
       const piece = pieces[used];
+      // A truncated first piece paints only its second fragment, at truncatedX and its truncated width, from paintStart.
+      const shown = first.truncated ? pieces[used + 1] : piece;
       let n = 0;
       for (const q of mine) n += q.truncated ? 2 : 1;
-      if (piece === undefined || used + n > pieces.length) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      if (piece === undefined || shown === undefined || used + n > pieces.length) throw new Error(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
       used += n;
       const a = abs.get(piece.id);
-      const e = snapped.get(piece.id);
-      if (a === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
+      const pa = abs.get(shown.id);
+      const e = snapped.get(shown.id);
+      if (a === undefined || pa === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
       const el = line.ellipsis !== null && line.ellipsis.leaf === li ? line.ellipsis : null;
       const ellipsis = el === null ? null : { x: a.x + el.x - first.x, cps: [...el.text].map((ch) => ch.codePointAt(0) as number), font: el.font };
       const cps = mine.flatMap((q) => scalars.slice(q.paintStart, q.paintEnd).map((ch) => ch.codePointAt(0) as number));
       // Only a line of collapsed text is justified, and it has one piece per leaf; preserved pieces have no shifts.
       const shifts = mine.flatMap((q) => q.shifts);
       const fragments = mine.flatMap((q) => Array.from({ length: q.truncated ? 2 : 1 }, () => [utf16(q.start), utf16(q.end)] as const));
-      own.push({ start: utf16(first.start), end: utf16(last.end), cps, shifts, rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, halfLeading: first.top - line.top, ellipsis, fragments });
+      own.push({ start: utf16(first.paintStart), end: utf16(last.end), cps, shifts, rect: pa, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, halfLeading: first.top - line.top, ellipsis, fragments });
     }
     if (used !== pieces.length) throw new Error(`${r.id}: the engine's breaks give ${used} fragments, its layout ${pieces.length}`);
     out.push({ id: r.id, container: pId, font: leaf.font, textFont: leafFontOf(leaf), lines: own });
