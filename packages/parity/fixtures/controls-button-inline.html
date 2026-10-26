@@ -19,6 +19,8 @@ button { font-family: inherit; font-size: inherit; appearance: none; background-
 .flexh { display: inline-flex; height: 30px; align-items: flex-end; }
 .inner { width: 20px; height: 8px; background-color: #f80; }
 .left { text-align: left; }
+.clip { overflow: hidden; }
+.h14 { height: 14px; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -34,6 +36,8 @@ button { font-family: inherit; font-size: inherit; appearance: none; background-
 <div data-dragon-id="empty" class="c">XX <button data-dragon-id="b10" class="e"></button> XX</div>
 <div data-dragon-id="block" class="c">XX <button data-dragon-id="b11" class="h40"><div data-dragon-id="b11-in" class="inner"></div></button> XX</div>
 <div data-dragon-id="margin" class="c">XX <button data-dragon-id="b12" class="mg">YY</button> XX</div>
+<div data-dragon-id="clipshort" class="c">XX <button data-dragon-id="b15" class="h6 clip">YY</button> XX</div>
+<div data-dragon-id="cliplines" class="c">XX <button data-dragon-id="b16" class="lines h14 clip">YY YY YY</button> XX</div>
 <div data-dragon-id="iflex" class="c">XX <button data-dragon-id="b13" class="flex">YY<div data-dragon-id="b13-in" class="inner"></div></button> XX</div>
 <div data-dragon-id="iflexh" class="c">XX <button data-dragon-id="b14" class="flexh">YY</button> XX</div>
 </body>

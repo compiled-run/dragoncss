@@ -409,6 +409,15 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     if (e.kind !== 'ok') throw new Error(JSON.stringify(e));
     const eabs = absoluteRects(e.boxes);
     expect([(eabs.get('b') as LayoutRect).y / 64, (eabs.get('a:line0') as LayoutRect).y / 64, (eabs.get('root') as LayoutRect).height / 64]).toEqual([0, 3, 14]);
+    // A scroll container button clamps its last baseline to [0, its border-box height] (logical_box_fragment.h:61-70): a 6px
+    // overflow: hidden button's 8px line baseline becomes 6px, so its top sits 2px down; a visible one keeps 8px, at the top.
+    const clipped = (overflow: 'hidden' | 'visible'): number => {
+      const b = control('b', { kind: 'button-block' }, { display: 'inline-block', height: px(6), overflowX: overflow, overflowY: overflow }, [text('b:text0', 'YY')]);
+      const o = layout(line(b), ahemMeasurer);
+      if (o.kind !== 'ok') throw new Error(JSON.stringify(o));
+      return (absoluteRects(o.boxes).get('b') as LayoutRect).y / 64;
+    };
+    expect([clipped('hidden'), clipped('visible')]).toEqual([2, 0]);
     // Only a button control is inline-level: a range among inline content stays refused.
     const inlineRange = control('r', { kind: 'range', defaultInlineSize: 129 }, { display: 'inline-block' });
     expect(codes(line(inlineRange))).not.toEqual([]);

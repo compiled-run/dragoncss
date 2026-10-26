@@ -89,10 +89,16 @@ function atomicWidth(ctx: Ctx, box: AtomicBox, cbInline: LU, margins: LU): LU {
  * out by BlockLayoutAlgorithm like any inline-block (html_button_element.cc:59-74), so it takes its last line box's baseline too,
  * moved down with its centred contents (block_layout_algorithm.cc:1442-1451, box_fragment_builder.cc:402-410); without one it
  * synthesizes the baseline at its content box's bottom edge (html_button_element.cc:76-80 sets kContentBox, and
- * logical_box_fragment.cc:70-81 BaselineMetrics synthesizes off it), and overflow never forces the synthesis.
+ * logical_box_fragment.cc:70-81 BaselineMetrics synthesizes off it), and overflow never forces the synthesis; a scroll container
+ * button clamps its last baseline to [0, its border-box height] instead (logical_box_fragment.h:61-70).
  */
 function atomicBaseline(ctx: Ctx, box: AtomicBox, frag: Frag, last: LU | null, lastFlex: string, cbInline: LU): LU | null {
-  if (box.kind === 'control') return last !== null ? last : buttonContentBaseline(ctx, box, frag, cbInline);
+  if (box.kind === 'control') {
+    if (last === null) return buttonContentBaseline(ctx, box, frag, cbInline);
+    // A scroll container's last baseline stays within [0, its block size] (logical_box_fragment.h:61-70).
+    if (isScrollContainer(box.style) && !ctx.faults.overflowBaselineIgnored) return max(ZERO, min(last, frag.height));
+    return last;
+  }
   if (box.style.display === 'inline-grid') return inlineGridBaseline(ctx, box, frag);
   if (box.style.display === 'inline-flex') {
     if (!ctx.faults.inlineFlexLastBaseline) return frag.baseline;

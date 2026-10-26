@@ -1,7 +1,7 @@
 // RF-INL slice 1: a <button> with Chrome's UA display (inline-block), or inline-flex, is an atomic inline on its line. The fixture
 // controls-button-inline (fixture-groups/controls.ts) puts buttons between words, in a bigger font, at width 100%, on a wrapped line,
 // with padding and a radius, taller and shorter than their content, with a fixed width, on several lines, empty, holding a block,
-// with margins, and as inline-flex. Against a live Chrome 145 capture, so the proof needs no regen: the fixture passes chrome-dual
+// with margins, as scroll containers (overflow: hidden, whose baseline Chrome clamps to the border box), and as inline-flex. Against a live Chrome 145 capture, so the proof needs no regen: the fixture passes chrome-dual
 // and linux-dragon-layout in both directions, and in Chrome every button without an author display computes inline-block.
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
@@ -60,7 +60,7 @@ describe('RF-INL: inline-block and inline-flex buttons on their lines, as in Chr
       await page.setContent(html);
       // A string expression: this test project has no DOM types.
       const displays = (await page.evaluate(`[...document.querySelectorAll('button')].map((e) => getComputedStyle(e).display)`)) as string[];
-      expect(displays).toEqual([...Array(12).fill('inline-block'), 'inline-flex', 'inline-flex']);
+      expect(displays).toEqual([...Array(14).fill('inline-block'), 'inline-flex', 'inline-flex']);
     } finally {
       await page.close();
     }
