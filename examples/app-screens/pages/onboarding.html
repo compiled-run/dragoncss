@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+@font-face { font-family: "Brand"; src: url("../../../vendor/fonts/Lato/Lato-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Brand"; src: url("../../../vendor/fonts/Lato/Lato-Bold.ttf"); font-weight: 700; }
+
+:root {
+  --brand: #4f46e5;
+  --brand-pressed: #3730a3;
+  --text: #0f172a;
+  --muted: #64748b;
+  --surface: #ffffff;
+  --radius: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Brand", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 60%);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: calc(env(safe-area-inset-top) + 16px) 24px calc(env(safe-area-inset-bottom) + 24px);
+}
+
+.top-bar { display: flex; justify-content: space-between; align-items: center; height: 44px; }
+.logo { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+.skip { color: var(--muted); font-size: 15px; font-weight: 700; padding: 8px; }
+.skip:active { opacity: 0.5; }
+
+.hero { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.illustration {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: calc(var(--radius) * 1.5);
+  box-shadow: 0 12px 32px rgba(79, 70, 229, 0.25);
+  margin-bottom: 32px;
+}
+.badge {
+  align-self: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: var(--brand-pressed);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+h1 { font-size: 30px; line-height: 1.15; margin: 16px 0 12px; }
+.lede { color: var(--muted); font-size: 17px; margin: 0 auto; max-width: 320px; }
+
+.dots { display: flex; justify-content: center; gap: 8px; margin: 32px 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; transition: width 0.3s ease, background-color 0.3s ease; }
+.dot.active { width: 24px; border-radius: 4px; background: var(--brand); }
+
+.actions { display: flex; flex-direction: column; gap: 12px; }
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  transition: transform 0.1s ease, background-color 0.2s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--brand); color: #fff; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4); }
+.btn-primary:active { background: var(--brand-pressed); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: #e2e8f0; }
+.btn:focus-visible { outline: 3px solid rgba(79, 70, 229, 0.5); outline-offset: 2px; }
+
+.legal { margin: 16px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+
+@media (min-width: 600px) {
+  .screen { max-width: 480px; margin: 0 auto; }
+}
+</style>
+</head>
+<body>
+<div class="screen">
+<div class="top-bar"><span class="logo">Lumen</span><button type="button" class="skip">Skip</button></div>
+<div class="hero"><img class="illustration" src="img/hero.png" alt="Three friends planning a trip"><span class="badge">Step 1 of 3</span><h1>Plan trips together</h1><p class="lede">Share ideas, vote on places and keep every booking in one shared itinerary.</p></div>
+<div class="dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span></div>
+<div class="actions"><button type="button" class="btn btn-primary">Get started</button><button type="button" class="btn btn-secondary">I already have an account</button></div>
+<p class="legal">By continuing you agree to our Terms and Privacy Policy.</p>
+</div>
+</body>
+</html>
