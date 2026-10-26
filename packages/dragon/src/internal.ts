@@ -580,6 +580,8 @@ import { deriveInteractionProgram as deriveDocumentInteractionProgram } from './
 import { deriveStateProgram as deriveDocumentStateProgram, StateProgramError as DocumentStateProgramError } from './lower/state-program.ts';
 import type { InteractionProgramEmit } from './emit/runtime/interaction.ts';
 import type { GeneratedFile } from './types.ts';
+import type { ControlBox, LayoutBox, TextLeaf } from '@dragon/layout';
+import { inlineLeaves } from '@dragon/layout';
 export type { InteractionProgramEmit } from './emit/runtime/interaction.ts';
 export { emitInteractionUserFile, interactionUserMount, interactionUserName } from './emit/runtime/interaction.ts';
 import { emitInteractionUserFile, InteractionEmitError as DocumentInteractionEmitError } from './emit/runtime/interaction.ts';
@@ -598,6 +600,12 @@ export function documentInteractionEmit(compiled: object, target: 'ios' | 'andro
   const id = record.documentId ?? 'the document';
   if (record.bands !== null && record.bands.partition.bands.length > 1) throw new DocumentInteractionEmitError(`${id}: its native output switches ${record.bands.partition.bands.length} @media bands at run time, which the interaction machine does not`);
   if (record.animation !== null && record.animation.features.length > 0) throw new DocumentInteractionEmitError(`${id}: it has transitions or animations, which the interaction machine does not run`);
+  for (const c of record.cases) {
+    for (const tree of [c.nativeLowered, ...c.interaction.map((i) => i.nativeLowered)]) {
+      const why = tree === null ? null : unmodelledHitText(tree);
+      if (why !== null) throw new DocumentInteractionEmitError(`${id}: ${why}`);
+    }
+  }
   const backend: NativeBackend = target === 'ios' ? 'uikit' : 'android-views';
   const need = [target] as const;
   const cases = record.cases.map((c) => {
@@ -619,6 +627,34 @@ export function documentInteractionEmit(compiled: object, target: 'ios' | 'andro
     if (e instanceof DocumentStateProgramError || e instanceof ProgramError) throw new DocumentInteractionEmitError(`${id}: ${e.message}`);
     throw e;
   }
+}
+
+/** The face id the hit table (rt-hit.ts, text.ts AHEM_FACE_ID) models preserved text in. */
+export const HIT_PRESERVED_FACE = 'Ahem';
+
+/**
+ * Why the device hit table (layout rt-hit.ts inlineNodes and pieceFlags) would stop on some block of a lowered tree, or null. A
+ * block whose inline content holds preserved text (white-space-collapse other than collapse) is refused: in a face other than Ahem,
+ * or with inline padding that is not a plain px length, the hit table throws; in Ahem it checks each fragment against the engine's
+ * own line piece only on the device, so a mismatch there would stop the app. The machine's hit table fatalErrors on a throw.
+ */
+export function unmodelledHitText(root: LayoutBox): string | null {
+  const visit = (b: LayoutBox | ControlBox): string | null => {
+    if (b.kind === 'box') {
+      const preserved = inlineLeaves(b).filter((l) => l.whiteSpaceCollapse !== 'collapse');
+      const face = preserved.find((l) => l.font.family !== HIT_PRESERVED_FACE);
+      if (face !== undefined) return `${face.id}: preserved white space in the face ${face.font.family}, which the device hit table models in ${HIT_PRESERVED_FACE} only`;
+      if (preserved.length > 0 && (b.style.paddingLeft.kind !== 'px' || b.style.paddingRight.kind !== 'px')) return `${b.id}: preserved white space in a box whose inline padding is not a px length, whose content width the device hit table does not resolve`;
+      if (preserved.length > 0) return `${(preserved[0] as TextLeaf).id}: preserved white space, whose line fragments the device hit table checks against the engine's line pieces only on the device`;
+    }
+    for (const k of b.children) {
+      if (k.kind !== 'box' && k.kind !== 'control') continue;
+      const why = visit(k);
+      if (why !== null) return why;
+    }
+    return null;
+  };
+  return visit(root);
 }
 
 /** The ready native output's interaction file of a compiled document (emitInteractionUserFile), or none without interaction states. */

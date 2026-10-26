@@ -7,7 +7,11 @@ import { interactionContext, interactionRowFeature } from '../src/analysis/inter
 import type { ProfileRow } from '../src/profiles/types.ts';
 import type { SupportProfiles } from '../src/project.ts';
 import { nativeOutputState } from '../src/project.ts';
-import { div, inputFor } from './helpers.ts';
+import { div, inputFor, text } from './helpers.ts';
+import { HIT_PRESERVED_FACE, unmodelledHitText } from '../src/internal.ts';
+import { internalRecord } from '../src/project.ts';
+import { AHEM_FACE_ID } from '../../layout/src/text.ts';
+import type { LayoutBox } from '@dragon/layout';
 
 const TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } };
 const PASSING = { recorded: true, stale: [], notPassing: [] } as const;
@@ -128,6 +132,33 @@ describe('SELD-R2 §1: the user-app interaction file', () => {
     // The case the landing review found: border-radius compiles natively, so the emit refusal is what keeps it from ready.
     const radius = compile(doc(`.f { border-radius: 2px; } ${FOCUS}`));
     for (const t of ['ios', 'android'] as const) expect(radius.outputs[t], t).toMatchObject({ kind: 'analysis-only', reason: expect.stringMatching(/the state runtime cannot write border-radius yet/) });
+  });
+
+  it('fails closed where the device hit table would stop on preserved white space (layout rt-hit.ts, #502), one reason per condition', () => {
+    const withText = (css: string): FrontEndResult => {
+      const input = inputFor(`${BODY}${css}`, (r) => [div(r, 'f', ['f'], [text(r, 't', 'a  b ')])]);
+      return input;
+    };
+    expect(HIT_PRESERVED_FACE).toBe(AHEM_FACE_ID);
+    // Collapsed text keeps the file.
+    const plain = compile(withText(FOCUS));
+    for (const t of ['ios', 'android'] as const) expect(plain.outputs[t].kind, t).toBe('ready');
+    // Preserved text in Ahem: its fragments are checked against the engine's line pieces only on the device.
+    const ahem = compile(withText(`.f { white-space: pre-wrap; } ${FOCUS}`));
+    expect(ahem.outputs.web.kind).toBe('ready');
+    for (const t of ['ios', 'android'] as const) expect(ahem.outputs[t], t).toMatchObject({ kind: 'analysis-only', reason: expect.stringMatching(/preserved white space, whose line fragments the device hit table checks against the engine's line pieces only on the device/) });
+    // Preserved text with percentage inline padding.
+    const padded = compile(withText(`.f { white-space: pre-wrap; padding-left: 10%; } ${FOCUS}`));
+    for (const t of ['ios', 'android'] as const) expect(padded.outputs[t], t).toMatchObject({ kind: 'analysis-only', reason: expect.stringMatching(/f: preserved white space in a box whose inline padding is not a px length/) });
+    // Preserved text in a real face (a user compile refuses real faces natively first, so the check is shown on the lowered tree).
+    const tree = internalRecord(ahem)?.cases[0]?.nativeLowered;
+    if (tree === null || tree === undefined) throw new Error('no lowered tree');
+    const real = JSON.parse(JSON.stringify(tree), (k, v: unknown) => (k === 'family' && v === AHEM_FACE_ID ? 'Inter' : v)) as LayoutBox;
+    expect(unmodelledHitText(real)).toMatch(/^f:text0: preserved white space in the face Inter, which the device hit table models in Ahem only$/);
+    expect(unmodelledHitText(tree)).toMatch(/^f:text0: preserved white space, whose line fragments/);
+    const collapsed = internalRecord(plain)?.cases[0]?.nativeLowered;
+    if (collapsed === null || collapsed === undefined) throw new Error('no lowered tree');
+    expect(unmodelledHitText(collapsed)).toBeNull();
   });
 
   it('fails closed for a document whose native output also switches @media bands or runs transitions', () => {
