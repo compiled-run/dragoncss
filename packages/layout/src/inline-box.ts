@@ -87,9 +87,12 @@ function atomicWidth(ctx: Ctx, box: AtomicBox, cbInline: LU, margins: LU): LU {
  * UseLastBaselineForInlineBaseline, so a scroll container keeps it too (logical_box_fragment.cc:20-28, physical_box_fragment.h
  * :163-172). A last baseline that a flex container inside the inline-block would decide is refused. An inline-block button is laid
  * out by BlockLayoutAlgorithm like any inline-block (html_button_element.cc:59-74), so it takes its last line box's baseline too,
- * moved down with its centred contents (block_layout_algorithm.cc:1442-1451, box_fragment_builder.cc:402-410).
+ * moved down with its centred contents (block_layout_algorithm.cc:1442-1451, box_fragment_builder.cc:402-410); without one it
+ * synthesizes the baseline at its content box's bottom edge (html_button_element.cc:76-80 sets kContentBox, and
+ * logical_box_fragment.cc:70-81 BaselineMetrics synthesizes off it), and overflow never forces the synthesis.
  */
-function atomicBaseline(ctx: Ctx, box: AtomicBox, frag: Frag, last: LU | null, lastFlex: string): LU | null {
+function atomicBaseline(ctx: Ctx, box: AtomicBox, frag: Frag, last: LU | null, lastFlex: string, cbInline: LU): LU | null {
+  if (box.kind === 'control') return last !== null ? last : buttonContentBaseline(ctx, box, frag, cbInline);
   if (box.style.display === 'inline-grid') return inlineGridBaseline(ctx, box, frag);
   if (box.style.display === 'inline-flex') {
     if (!ctx.faults.inlineFlexLastBaseline) return frag.baseline;
@@ -102,6 +105,17 @@ function atomicBaseline(ctx: Ctx, box: AtomicBox, frag: Frag, last: LU | null, l
   if (ctx.faults.inlineBlockFirstBaseline) return frag.baseline;
   if (lastFlex !== '') unsupported('flex-baseline', lastFlex, 'CSS2 §10.8.1, css-flexbox-1 §8.5', `the last baseline of flex container ${lastFlex} would give the baseline of inline-block ${box.id}`);
   return last;
+}
+
+/**
+ * logical_box_fragment.cc:70-81 (kContentBox, alphabetic): the baseline at the content box's block-end edge, its size clamped to at
+ * least 0, from the border-box top.
+ */
+function buttonContentBaseline(ctx: Ctx, box: ControlBox, frag: Frag, cbInline: LU): LU {
+  const pad = resolvePaddingWith(box.style, cbInline, ctx.faults);
+  const bor = resolveBorder(box.style, ctx.devicePixelRatio);
+  const top = add(bor.top, pad.top);
+  return add(top, max(sub(frag.height, add(top, add(bor.bottom, pad.bottom))), ZERO));
 }
 
 /**
@@ -145,7 +159,7 @@ export function layoutAtomic(ctx: Ctx, atom: AtomicBox | ReplacedLeaf, cbInline:
     formattingContextRoot: true,
     bfcLineOffset: ZERO,
   });
-  const baseline = atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
+  const baseline = atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex, cbInline);
   const marginBox = add(add(marginTop, r.frag.height), marginBottom);
   const above = baseline === null ? marginBox : add(marginTop, baseline);
   return { frag: r.frag, marginLeft, marginRight, marginTop, advance: add(add(marginLeft, width), marginRight), above, below: sub(marginBox, above) };

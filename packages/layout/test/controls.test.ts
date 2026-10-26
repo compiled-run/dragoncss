@@ -402,6 +402,13 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     if (plain.kind !== 'ok') throw new Error(JSON.stringify(plain));
     const pabs = absoluteRects(plain.boxes);
     expect([(pabs.get('b') as LayoutRect).y / 64, (pabs.get('b:text0:line0') as LayoutRect).y / 64, (pabs.get('a:line0') as LayoutRect).y / 64]).toEqual([0, 0, 0]);
+    // With no line box, the baseline is synthesized at the content box's bottom (html_button_element.cc:76-80, kContentBox): a 14px
+    // border box with 2px borders and 1px paddings puts it 11px down, 3px above its bottom, so the 8px text ascent sits 3px down.
+    const empty = control('b', { kind: 'button-block' }, { display: 'inline-block', height: px(14), boxSizing: 'border-box', borderTopWidth: px(2), borderBottomWidth: px(2), paddingTop: px(1), paddingBottom: px(1) });
+    const e = layout(line(empty), ahemMeasurer);
+    if (e.kind !== 'ok') throw new Error(JSON.stringify(e));
+    const eabs = absoluteRects(e.boxes);
+    expect([(eabs.get('b') as LayoutRect).y / 64, (eabs.get('a:line0') as LayoutRect).y / 64, (eabs.get('root') as LayoutRect).height / 64]).toEqual([0, 3, 14]);
     // Only a button control is inline-level: a range among inline content stays refused.
     const inlineRange = control('r', { kind: 'range', defaultInlineSize: 129 }, { display: 'inline-block' });
     expect(codes(line(inlineRange))).not.toEqual([]);
