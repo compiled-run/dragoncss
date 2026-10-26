@@ -502,13 +502,6 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   let shaped = false;
   for (const t of flat.leaves) if (t.font.family !== AHEM_FACE_ID) shaped = true;
   if (shaped) checkShapedText(ctx, box, flat.leaves, items);
-  // INL2a scope: Blink's LineBreaker for real-font text (shaping.ts) has no atomic item here (INL2c).
-  const atom = flat.atomics[0];
-  if (shaped && atom !== undefined) {
-    for (const t of flat.leaves) {
-      if (t.font.family !== AHEM_FACE_ID) unsupported('atomic-beside-shaped-text', t.id, 'CSS2 §9.2.4', `text ${t.id} in a real face shares the inline formatting context of ${box.id} with atomic inline ${atom.id} (INL2c)`);
-    }
-  }
   for (const t of flat.leaves) {
     // The generated hyphen at a soft hyphen break is shaped as its own item; how Blink spaces it is not measured yet.
     if (leafFontOf(t).letterSpacing !== 0) {
@@ -726,7 +719,8 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
   }
   let last = -1;
   for (const it of items) {
-    if (it.kind === 'br') last = -1;
+    // ShapeText ends the run at any item that is not text or a tag, so an atomic inline separates its neighbours' runs.
+    if (it.kind === 'br' || it.kind === 'atomic') last = -1;
     if (it.kind !== 'char' || it.leaf === last) continue;
     const prev = last < 0 ? null : (leaves[last] as TextLeaf);
     const t = leaves[it.leaf] as TextLeaf;
@@ -816,23 +810,24 @@ function opportunities(ctx: Ctx, box: LayoutBox, cps: readonly number[], wrap: b
     for (const cp of cps) if (cp === OBJECT) unsupported('word-break', box.id, 'css-text-3 §5.2', `word-break: break-all beside an atomic inline in ${box.id} is not measured`);
     if (!shaped) for (const cp of cps) if (coveredIndex(cp) < 0) unsupported('line-break', box.id, 'css-text-3 §5', `U+${cp.toString(16).toUpperCase()} is outside the code points the line breaker decides`);
   }
-  const base = breakAll ? breakAllOpportunities(box, cps, wrap) : shaped ? latinOpportunities(box, cps, wrap, faults) : atomicOpportunities(box, cps, wrap, ctx.faults.noBreakAroundAtomic, faults);
+  const base = breakAll ? breakAllOpportunities(box, cps, wrap) : atomicOpportunities(box, cps, wrap, ctx.faults.noBreakAroundAtomic, faults, shaped);
   return wrap && mode === 'break-spaces' ? withEverySpace(cps, base) : base;
 }
 
 /**
- * Soft wrap opportunities of a run holding atomic inlines (U+FFFC): the text between them is broken on its own, and an
+ * Soft wrap opportunities of a run holding atomic inlines (U+FFFC): the text between them is broken on its own (by the Latin
+ * breaker for real-font text, else the Ahem one), and an
  * atomic allows a break before and after it (Blink line_breaker.cc:1127-1150, :1174-1210; INL-P f5-break-around), except
  * before a space, which hangs (after-space-run), and before U+200B (UAX #14 LB7). Planted fault noBreakAroundAtomic drops them.
  */
-function atomicOpportunities(box: LayoutBox, cps: readonly number[], wrap: boolean, noBreak: boolean, faults: LineBreakFaults): number[] {
+function atomicOpportunities(box: LayoutBox, cps: readonly number[], wrap: boolean, noBreak: boolean, faults: LineBreakFaults, shaped: boolean): number[] {
   const out: number[] = [];
   let start = 0;
   for (let i = 0; i <= cps.length; i++) {
     if (i < cps.length && (cps[i] as number) !== OBJECT) continue;
     const seg: number[] = [];
     for (let j = start; j < i; j++) seg.push(cps[j] as number);
-    for (const p of ahemOpportunities(box, seg, wrap, faults)) out.push(start + p);
+    for (const p of shaped ? latinOpportunities(box, seg, wrap, faults) : ahemOpportunities(box, seg, wrap, faults)) out.push(start + p);
     start = i + 1;
   }
   if (!wrap || noBreak) return out;
@@ -1469,6 +1464,16 @@ function needsAccurateEnd(ctx: Ctx, box: LayoutBox): boolean {
   return a === 'end' || a === 'center' || a === 'justify' || (a === 'left' && rtl) || (a === 'right' && !rtl);
 }
 
+/** The next char or atomic inline after item i (skipping tags), or -1 at a <br> or the end: where a line after item i starts. */
+function nextContentAfter(ifc: Ifc, i: number): number {
+  for (let j = i + 1; j < ifc.items.length; j++) {
+    const it = ifc.items[j] as Item;
+    if (it.kind === 'char' || it.kind === 'atomic') return j;
+    if (it.kind === 'br' || it.kind === 'nl') return -1;
+  }
+  return -1;
+}
+
 /** The next char after item i (skipping tags), or -1 at a <br> or the end. */
 function nextCharAfter(ifc: Ifc, i: number): number {
   for (let j = i + 1; j < ifc.items.length; j++) {
@@ -1511,7 +1516,7 @@ function graphemeAt(ifc: Ifc, i: number): boolean {
   return false;
 }
 
-function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
+function shapedItemsOf(ctx: Ctx, ifc: Ifc, adv: readonly LU[]): ShapedItems {
   const items: BreakItem[] = [];
   const firstItem: number[] = [];
   // TXT2-a: each item's break-character opportunities (grapheme cluster starts inside it, and whether one follows its end).
@@ -1538,9 +1543,9 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       const leads: number[] = [];
       for (let o = 1; o < i - first; o++) if (leadAt(ifc, first + o)) leads.push(o);
       // CanBreakAfter: an opportunity before the next char; none before a <br> (UAX #14 LB6); the end of the text is one.
-      const next = nextCharAfter(ifc, i - 1);
+      const next = nextContentAfter(ifc, i - 1);
       let atEnd = next >= 0 ? opportunityAt(ifc, next) : true;
-      if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char'; j++) if ((ifc.items[j] as Item).kind === 'br' || (ifc.items[j] as Item).kind === 'nl') atEnd = false;
+      if (next < 0) for (let j = i; j < ifc.items.length && (ifc.items[j] as Item).kind !== 'char' && (ifc.items[j] as Item).kind !== 'atomic'; j++) if ((ifc.items[j] as Item).kind === 'br' || (ifc.items[j] as Item).kind === 'nl') atEnd = false;
       if (next >= 0 && leadAt(ifc, next)) leads.push(i - first);
       items.push({ kind: 'text', item: s.item, result: s.result, opportunities: opps, atEnd, leads, offset });
       firstItem.push(first);
@@ -1552,7 +1557,10 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc): ShapedItems {
       continue;
     }
     if (it.kind === 'open') items.push({ kind: 'open', offset });
-    else if (it.kind === 'close') {
+    else if (it.kind === 'atomic') {
+      items.push({ kind: 'atomic', offset, width: adv[it.atom] as LU });
+      offset++;
+    } else if (it.kind === 'close') {
       const before = prevCharBefore(ifc, i);
       const after = nextCharAfter(ifc, i);
       items.push({ kind: 'close', offset, spaceBefore: before >= 0 && (ifc.items[before] as Item).cp === SPACE, spaceAfter: after >= 0 && (ifc.items[after] as Item).cp === SPACE });
@@ -1577,14 +1585,14 @@ function itemIndexOf(ifc: Ifc, s: ShapedItems, index: number, offset: number): n
 // css-text-3 §5 for real-font text: Blink's LineBreaker over the shaped leaves (shaping.ts breakItemLines), with its fit test
 // (one LayoutUnit of epsilon; planted fault fitWithoutEpsilon drops it) and ShapeLine's reshaping at line edges. A line's text
 // results keep their inline sizes, which place the pieces.
-function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, indent: LU): Line[] {
+function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, indent: LU): Line[] {
   const firstLeaf = ifc.leaves[0];
   let slack = ZERO;
   if (ctx.faults.breakOffByOne && firstLeaf !== undefined) {
     const glyph = ctx.measurer.measure('X', fontOf(firstLeaf.font));
     if (glyph.ok) slack = glyph.measure.width;
   }
-  const s = shapedItemsOf(ctx, ifc);
+  const s = shapedItemsOf(ctx, ifc, adv);
   const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
   const anywhere: AnywhereBreak = { anywhere: ifc.anywhere, always: ifc.anywhere && ctx.faults.breakAnywhereAlways, graphemes: s.graphemes, graphemeAtEnd: s.graphemeAtEnd };
   const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve', indent, ctx.faults.indentEveryLine, ctx.faults.indentAfterBr, anywhere);
@@ -1629,6 +1637,10 @@ function spanWidth(ctx: Ctx, ifc: Ifc, adv: readonly LU[], line: Line, start: nu
   if (line.justified !== null) return justifiedSpan(line.justified, start, end);
   if (!ifc.shaped) return width(ctx, ifc, adv, start, end);
   let total = ZERO;
+  for (let j = start; j < end; j++) {
+    const it = ifc.items[j] as Item;
+    if (it.kind === 'atomic') total = add(total, adv[it.atom] as LU);
+  }
   for (const p of line.pieces) {
     if (p.from < start || p.from >= end) continue;
     if (end >= p.to) total = add(total, p.width);
@@ -1899,7 +1911,7 @@ function layoutAtomics(ctx: Ctx, ifc: Ifc, available: LU): AtomicLayout[] {
 function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly AtomicLayout[], available: LU): AtomicLine[] {
   const adv = atoms.map((a) => a.advance);
   const indent = textIndentOf(ctx, box, ifc, available);
-  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
+  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, adv, available, indent) : breakLines(ctx, ifc, adv, available, indent);
   const rtl = directionOf(ctx, box) === 'rtl';
   checkClampContext(ctx, box, ifc, atoms.length);
   const out: AtomicLine[] = [];
@@ -2357,9 +2369,9 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
 // boundary, so it is the widest segment. Each is measured without its hanging spaces, min-content by cached positions (R4).
 export function inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max'): LU {
   const ifc = buildIfc(ctx, box);
-  if (ifc.shaped) return shapedIntrinsicSize(ctx, box, ifc, kind);
   // css-sizing-3 §5.2: an atomic inline contributes its margin box at the same kind of size.
   const adv = ifc.atomics.map((a) => atomicContribution(ctx, a, kind));
+  if (ifc.shaped) return shapedIntrinsicSize(ctx, box, ifc, kind, adv);
   let widest = ZERO;
   let start = 0;
   let afterForced = false;
@@ -2398,15 +2410,15 @@ const NEARLY_MAX_RAW = 2147483646;
  * is the widest segment between soft wrap opportunities by cached positions (HandleTextForFastMinContent), with the generated
  * hyphen of a segment that ends at a soft hyphen.
  */
-function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | 'max'): LU {
+function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | 'max', adv: readonly LU[]): LU {
   let widest = ZERO;
   if (kind === 'max') {
-    const lines = breakShapedLines(ctx, box, ifc, fromRaw(NEARLY_MAX_RAW), ZERO);
+    const lines = breakShapedLines(ctx, box, ifc, adv, fromRaw(NEARLY_MAX_RAW), ZERO);
     // At max-content preserved spaces at the end of a line count, as on the Ahem path (intrinsicEndOf): LineBreaker at an unlimited
     // width keeps pre and break-spaces spaces, and pre-wrap's trailing spaces fit there, so none hangs.
     for (let n = 0; n < lines.length; n++) {
       const line = lines[n] as Line;
-      const w = spanWidth(ctx, ifc, [], line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max'));
+      const w = spanWidth(ctx, ifc, adv, line, line.start, intrinsicEndOf(ctx, ifc, line.start, line.end, 'max'));
       widest = max(widest, intrinsicIndented(ctx, box, n === 0, n > 0 && (lines[n - 1] as Line).forced, w));
     }
     return widest;
@@ -2415,7 +2427,7 @@ function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | '
   let afterForced = false;
   for (const b of minEndsOf(ifc)) {
     const visible = intrinsicEndOf(ctx, ifc, start, b.at, 'min');
-    let w = cachedWidth(ctx, ifc, [], start, visible);
+    let w = cachedWidth(ctx, ifc, adv, start, visible);
     const lastChar = visible > start ? (ifc.items[visible - 1] as Item) : null;
     if (lastChar !== null && lastChar.kind === 'char' && lastChar.cp === 0xad && !b.forced && !ctx.faults.softHyphenWidthMissing) {
       const t = ifc.leaves[lastChar.leaf] as TextLeaf;

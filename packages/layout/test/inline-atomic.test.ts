@@ -4,9 +4,10 @@
 // Chrome in LayoutUnits at device scale: the container, every line box and recorded baseline, every leaf's client rects and every
 // labelled element's bounding rect. The vertical-align and sub/sup cases belong to INL2b and are listed with their refusals.
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
-import type { EngineFaults, GridContainerStyle, GridItemStyle, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutStyle, LineHeightValue } from '../src/index.ts';
+import type { EngineFaults, GridContainerStyle, GridItemStyle, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutStyle, LineHeightValue, TextMeasurer } from '../src/index.ts';
 import { ahemFont, box, br, neutralEnvironment, px, text } from './helpers.ts';
 
 type ProbeRect = readonly [number, number, number, number];
@@ -304,9 +305,26 @@ describe('INL2a refusals and validation', () => {
     expect(validation(box('root', {}, [box('c', {}, [ib('a', { position: 'absolute' })])]))).toContain('bad-value');
     expect(validation(box('root', {}, [box('c', {}, [text('t', 'aa '), ib('a'), text('u', ' bb')])]))).toEqual([]);
   });
-  it('refuses an atomic inline beside text in a face other than Ahem (atomic-beside-shaped-text)', () => {
-    const lato = { ...ahemFont(10), family: 'sha256:0000' };
-    expect(codeOf(box('root', {}, [box('c', {}, [text('t', 'Ab ', { font: lato }), ib('a')], { font: lato, lineHeight: { kind: 'normal' } })]))).toBe('atomic-beside-shaped-text');
+  // The real-font LineBreaker (shaping.ts handleAtomic) places an atomic inline beside real-font text; the parity fixture
+  // text-latin-atomic proves the placements against Chrome.
+  it('places an atomic inline beside real-font text after the text, and wraps it to the next line when it does not fit', async () => {
+    const host = (await import(pathToFileURL(new URL('../../parity/src/text-shaper-host.ts', import.meta.url).pathname).href)) as { readonly referenceShapedMeasurer: () => TextMeasurer; readonly vendoredFaces: () => readonly { readonly id: string; readonly file: string }[] };
+    const m = host.referenceShapedMeasurer();
+    const face = host.vendoredFaces().find((f) => f.file.endsWith('Lato-Regular.ttf'));
+    if (face === undefined) throw new Error('no vendored Lato-Regular.ttf');
+    const lato = { ...ahemFont(10), family: face.id };
+    const lead = m.measure('Ab ', { family: lato.family, size: lato.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+    if (!lead.ok) throw new Error('Lato does not measure "Ab "');
+    const at = (width: number): LayoutRect => {
+      const root = box('root', {}, [box('c', { width: px(width) }, [text('t', 'Ab ', { font: lato }), ib('a'), text('u', ' cd', { font: lato })], { font: lato, lineHeight: { kind: 'normal' } })]);
+      const r = layoutWithFaults(env(root), m, NO_ENGINE_FAULTS);
+      if (r.kind !== 'ok') throw new Error(`${r.unsupported.code}: ${r.unsupported.detail}`);
+      return absoluteRects(r.boxes).get('a') as LayoutRect;
+    };
+    expect(at(200)).toMatchObject({ x: lead.measure.width, y: 0 });
+    const wrapped = at(Math.ceil(lead.measure.width / 64) + 2);
+    expect(wrapped.x).toBe(0);
+    expect(wrapped.y).toBeGreaterThan(0);
   });
   it('in rtl refuses an atomic inline without a letter on both sides in its paragraph, and lays out one between letters or alone', () => {
     const rtl = (kids: (InlineChild | LayoutBox)[]): string => codeOf(box('root', { direction: 'rtl' }, [box('c', { direction: 'rtl' }, kids, { font: ahemFont(10), lineHeight: { kind: 'normal' } })]));
