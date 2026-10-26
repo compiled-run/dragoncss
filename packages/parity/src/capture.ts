@@ -146,6 +146,7 @@ async function captureFixtureLive(browser: Browser, fixture: string, html: strin
       }
     }
     const parts = await captureRangeParts(page, [...LONGHANDS, ...extra]);
+    for (const [id, more] of await captureTextFieldParts(page, [...LONGHANDS, ...extra])) parts.set(id, more);
     return captureOf(fixture, env, parts.size === 0 ? nodes : nodes.flatMap((n) => [n, ...(parts.get(n.id) ?? [])]));
   } finally {
     await page.context().close();
@@ -206,6 +207,98 @@ async function captureRangeParts(page: Page, props: readonly string[]): Promise<
         }
         const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
         nodes.push({ id: `${id}::${part}`, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
+      }
+      out.set(id, nodes);
+    }
+  } finally {
+    await cdp.detach();
+  }
+  return out;
+}
+
+/** The input types whose UA shadow tree is a placeholder and an inner editor alone (dragon's isTextFieldType, HTML §4.10.5). */
+const TEXT_FIELD_TYPES = ['text', 'tel', 'url', 'email', 'password'];
+const INPUT_TYPES = ['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button'];
+const isTextFieldInput = (type: string | undefined): boolean => {
+  const t = type === undefined || !INPUT_TYPES.includes(type.toLowerCase()) ? 'text' : type.toLowerCase();
+  return TEXT_FIELD_TYPES.includes(t);
+};
+
+/**
+ * FORM-b: the UA shadow parts of every single-line text field with a data-dragon-id, as element nodes "<id>::placeholder" (while
+ * Chrome shows one) and "<id>::editor" after the input, each followed by its text node "<id>::<part>:text0" and the text's
+ * fragments "<id>::<part>:text0:line<j>" when it holds text: boxes from DOM.getBoxModel and DOM.getContentQuads (a text node's
+ * quads are its fragments, the rects Range.getClientRects gives light-DOM text), computed values from CSS.getComputedStyleForNode.
+ * A page without a text field opens no CDP session, so every earlier capture is unchanged.
+ */
+async function captureTextFieldParts(page: Page, props: readonly string[]): Promise<Map<string, CapturedNode[]>> {
+  const out = new Map<string, CapturedNode[]>();
+  const count = await page.evaluate((types: readonly string[]) => Array.from(document.querySelectorAll('input[data-dragon-id]')).filter((e) => (e as HTMLInputElement).type !== undefined && types.includes((e as HTMLInputElement).type)).length, TEXT_FIELD_TYPES);
+  if (count === 0) return out;
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const doc = (await cdp.send('DOM.getDocument', { depth: -1, pierce: true })) as { root: DomNode & { nodeType?: number; nodeValue?: string } };
+    const inputs: { id: string; node: DomNode }[] = [];
+    const walk = (n: DomNode): void => {
+      const attrs = n.attributes ?? [];
+      const at = (name: string): string | undefined => {
+        for (let k = 0; k + 1 < attrs.length; k += 2) if (attrs[k] === name) return attrs[k + 1];
+        return undefined;
+      };
+      const id = at('data-dragon-id');
+      if (n.nodeName === 'INPUT' && id !== undefined && isTextFieldInput(at('type'))) inputs.push({ id, node: n });
+      for (const c of n.children ?? []) walk(c);
+    };
+    walk(doc.root);
+    if (inputs.length !== count) throw new Error(`the pierced document holds ${inputs.length} text fields with a data-dragon-id, the page ${count}`);
+    const quadsOf = async (nodeId: number): Promise<number[][] | null> => {
+      try {
+        return ((await cdp.send('DOM.getContentQuads', { nodeId })) as { quads: number[][] }).quads;
+      } catch (e) {
+        if (!String(e).includes('Could not compute content quads')) throw e;
+        return null;
+      }
+    };
+    for (const { id, node } of inputs) {
+      const kids = (node.shadowRoots?.[0]?.children ?? []).filter((k) => k.nodeName === 'DIV');
+      const placeholder = kids.find((k) => (k.attributes ?? []).includes('placeholder'));
+      const editor = kids.find((k) => k !== placeholder);
+      if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
+      const nodes: CapturedNode[] = [];
+      for (const [part, n] of [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const]) {
+        const style = (await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] };
+        const byName = new Map(style.computedStyle.map((e) => [e.name, e.value]));
+        const computed: Record<string, string> = {};
+        for (const p of props) {
+          const v = byName.get(p);
+          if (v === undefined) throw new Error(`${id}::${part}: CDP gave no computed ${p}`);
+          computed[p] = v;
+        }
+        let box: number[] | null = null;
+        try {
+          box = ((await cdp.send('DOM.getBoxModel', { nodeId: n.nodeId })) as { model: { border: number[] } }).model.border;
+        } catch (e) {
+          if (!String(e).includes('Could not compute box model')) throw e;
+        }
+        const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
+        nodes.push({ id: `${id}::${part}`, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
+        const text = (n.children ?? []).find((c) => c.nodeName === '#text');
+        if (text === undefined) continue;
+        const quads = await quadsOf(text.nodeId);
+        const rects = (quads ?? []).map((q) => {
+          const xs = [q[0], q[2], q[4], q[6]] as number[];
+          const ys = [q[1], q[3], q[5], q[7]] as number[];
+          const x = Math.min(...xs);
+          const y = Math.min(...ys);
+          return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+        });
+        const ux = Math.min(...rects.map((r) => r.x));
+        const uy = Math.min(...rects.map((r) => r.y));
+        const union = rects.length === 0 ? { x: 0, y: 0, width: 0, height: 0 } : { x: ux, y: uy, width: Math.max(...rects.map((r) => r.x + r.width)) - ux, height: Math.max(...rects.map((r) => r.y + r.height)) - uy };
+        nodes.push({ id: `${id}::${part}:text0`, kind: 'text', hasBox: rects.length > 0, ...union, computed: null });
+        rects.forEach((r, j) => nodes.push({ id: `${id}::${part}:text0:line${j}`, kind: 'line', hasBox: true, ...r, computed: null }));
       }
       out.set(id, nodes);
     }

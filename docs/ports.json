@@ -936,6 +936,37 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/html/forms/text_control_inner_elements.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2006, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2010 Google Inc. All rights reserved.",
+      "fileSha256": "507698b3cca3c47c2663bde4bcf581476388396ebe3a227f1c81366132db6ff5",
+      "headerSha256": "cea988bc135fa77247259838d4750689e2d6e0d51a196ef9c39a8a7b129b08ef",
+      "ranges": [
+        { "lines": "131-216", "symbol": "TextControlInnerEditorElement::CustomStyleForLayoutObject", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/environment.ts", "symbol": "editorLineHeightIsNormal", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/text_field_input_type.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2010 Google Inc. All rights reserved.; Copyright (C) 2011 Apple Inc. All rights reserved.",
+      "fileSha256": "0038c8d45fc259b11b48bf6b6a827fc307f2dea53659cb9631f0c786af6b5394",
+      "headerSha256": "197231ebf03469885c9b8cf54c5b7a7bd70edd943f314c02ee35bfdc14c8f33c",
+      "ranges": [
+        { "lines": "566-608", "symbol": "TextFieldInputType::UpdatePlaceholderText", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/html/forms/step_range.cc",
       "licence": "lgpl",
       "ruling": {

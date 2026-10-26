@@ -2,9 +2,9 @@
 // present while the value is empty and the placeholder is not, then the inner editor div, which holds the value's text. Neither
 // is reachable from script; Chrome 145's computed values for both are read through CDP (packages/parity/src/capture.ts).
 // - The placeholder takes html.css's ::-webkit-input-placeholder and input::-webkit-input-placeholder rules, and the
-//   display: block !important that text_field_input_type.cc UpdatePlaceholderText writes in its style attribute.
-// - The inner editor's style is built in C++, inheriting from the input (text_control_inner_elements.cc
-//   TextControlInnerEditorElement::CreateInnerEditorStyle), after the div rule of html.css: its declarations are written here as
+//   display: block !important that text_field_input_type.cc:566-608 UpdatePlaceholderText writes in its style attribute.
+// - The inner editor's style is built in C++, inheriting from the input (text_control_inner_elements.cc:131-216
+//   TextControlInnerEditorElement::CustomStyleForLayoutObject), after the div rule of html.css: its declarations are written here as
 //   rules. Its line height is decided in layout (packages/layout/src/controls.ts), which reads the input's font metrics.
 
 /** A UA rule of a shadow part, as RANGE_UA_SHADOW holds them: [property, value, important] in cascade order. */

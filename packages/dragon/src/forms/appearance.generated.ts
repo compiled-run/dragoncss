@@ -2,7 +2,7 @@
 // The devolve probe (R11): at DPR 2, each control's pixels at its centre, border and corner points against a div twin
 // that has the control's computed background and border. 'css' means every point matched (the control is painted as CSS boxes);
 // 'theme' means the platform theme painted it. Blink rule: layout_theme.cc LayoutTheme::AdjustAppearanceWithAuthorStyle and
-// IsControlStyled (push button: author background or border devolves; slider: never), at Chrome 145.0.7632.6.
+// IsControlStyled (push button and text field: author background or border devolves; slider: never), at Chrome 145.0.7632.6.
 export const APPEARANCE_PROBE = {
   "button": {
     "none": "theme",
@@ -16,5 +16,11 @@ export const APPEARANCE_PROBE = {
     "border": "theme",
     "appearance-none": "css",
     "input-none-thumb-auto": "theme"
+  },
+  "textfield": {
+    "none": "theme",
+    "background-color": "css",
+    "border": "css",
+    "appearance-none": "css"
   }
 } as const;

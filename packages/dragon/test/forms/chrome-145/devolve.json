@@ -775,6 +775,350 @@
     }
    ],
    "result": "theme"
+  },
+  {
+   "control": "textfield",
+   "set": "none",
+   "css": "",
+   "thumbCss": "",
+   "points": [
+    {
+     "name": "centre",
+     "x": 42,
+     "y": 12,
+     "control": "#ffffff",
+     "twin": "#ffffff"
+    },
+    {
+     "name": "top outer",
+     "x": 42,
+     "y": 0.25,
+     "control": "#767676",
+     "twin": "#212121"
+    },
+    {
+     "name": "top inner",
+     "x": 42,
+     "y": 1.75,
+     "control": "#ffffff",
+     "twin": "#212121"
+    },
+    {
+     "name": "right outer",
+     "x": 83.75,
+     "y": 12,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "right inner",
+     "x": 82.25,
+     "y": 12,
+     "control": "#ffffff",
+     "twin": "#767676"
+    },
+    {
+     "name": "bottom outer",
+     "x": 42,
+     "y": 23.75,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "bottom inner",
+     "x": 42,
+     "y": 22.25,
+     "control": "#ffffff",
+     "twin": "#767676"
+    },
+    {
+     "name": "left outer",
+     "x": 0.25,
+     "y": 12,
+     "control": "#767676",
+     "twin": "#212121"
+    },
+    {
+     "name": "left inner",
+     "x": 1.75,
+     "y": 12,
+     "control": "#ffffff",
+     "twin": "#212121"
+    },
+    {
+     "name": "top-left corner",
+     "x": 0.25,
+     "y": 0.25,
+     "control": "#ffffff",
+     "twin": "#212121"
+    },
+    {
+     "name": "bottom-right corner",
+     "x": 83.75,
+     "y": 23.75,
+     "control": "#ffffff",
+     "twin": "#767676"
+    }
+   ],
+   "result": "theme"
+  },
+  {
+   "control": "textfield",
+   "set": "background-color",
+   "css": "background-color:rgb(0,128,0)",
+   "thumbCss": "",
+   "points": [
+    {
+     "name": "centre",
+     "x": 42,
+     "y": 12,
+     "control": "#008000",
+     "twin": "#008000"
+    },
+    {
+     "name": "top outer",
+     "x": 42,
+     "y": 0.25,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "top inner",
+     "x": 42,
+     "y": 1.75,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "right outer",
+     "x": 83.75,
+     "y": 12,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "right inner",
+     "x": 82.25,
+     "y": 12,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "bottom outer",
+     "x": 42,
+     "y": 23.75,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "bottom inner",
+     "x": 42,
+     "y": 22.25,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "left outer",
+     "x": 0.25,
+     "y": 12,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "left inner",
+     "x": 1.75,
+     "y": 12,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "top-left corner",
+     "x": 0.25,
+     "y": 0.25,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "bottom-right corner",
+     "x": 83.75,
+     "y": 23.75,
+     "control": "#767676",
+     "twin": "#767676"
+    }
+   ],
+   "result": "css"
+  },
+  {
+   "control": "textfield",
+   "set": "border",
+   "css": "border:4px solid rgb(0,0,255)",
+   "thumbCss": "",
+   "points": [
+    {
+     "name": "centre",
+     "x": 44,
+     "y": 14,
+     "control": "#ffffff",
+     "twin": "#ffffff"
+    },
+    {
+     "name": "top outer",
+     "x": 44,
+     "y": 0.25,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "top inner",
+     "x": 44,
+     "y": 3.75,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "right outer",
+     "x": 87.75,
+     "y": 14,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "right inner",
+     "x": 84.25,
+     "y": 14,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "bottom outer",
+     "x": 44,
+     "y": 27.75,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "bottom inner",
+     "x": 44,
+     "y": 24.25,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "left outer",
+     "x": 0.25,
+     "y": 14,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "left inner",
+     "x": 3.75,
+     "y": 14,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "top-left corner",
+     "x": 0.25,
+     "y": 0.25,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    },
+    {
+     "name": "bottom-right corner",
+     "x": 87.75,
+     "y": 27.75,
+     "control": "#0000ff",
+     "twin": "#0000ff"
+    }
+   ],
+   "result": "css"
+  },
+  {
+   "control": "textfield",
+   "set": "appearance-none",
+   "css": "appearance:none",
+   "thumbCss": "",
+   "points": [
+    {
+     "name": "centre",
+     "x": 42,
+     "y": 12,
+     "control": "#ffffff",
+     "twin": "#ffffff"
+    },
+    {
+     "name": "top outer",
+     "x": 42,
+     "y": 0.25,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "top inner",
+     "x": 42,
+     "y": 1.75,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "right outer",
+     "x": 83.75,
+     "y": 12,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "right inner",
+     "x": 82.25,
+     "y": 12,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "bottom outer",
+     "x": 42,
+     "y": 23.75,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "bottom inner",
+     "x": 42,
+     "y": 22.25,
+     "control": "#767676",
+     "twin": "#767676"
+    },
+    {
+     "name": "left outer",
+     "x": 0.25,
+     "y": 12,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "left inner",
+     "x": 1.75,
+     "y": 12,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "top-left corner",
+     "x": 0.25,
+     "y": 0.25,
+     "control": "#212121",
+     "twin": "#212121"
+    },
+    {
+     "name": "bottom-right corner",
+     "x": 83.75,
+     "y": 23.75,
+     "control": "#767676",
+     "twin": "#767676"
+    }
+   ],
+   "result": "css"
   }
  ]
 }

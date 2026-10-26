@@ -493,12 +493,21 @@ export type ReplacedLeaf = {
  *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
  * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
  *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
- * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent).
+ * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent);
+ * - text-field (FORM-b): a single-line text field, a block container of its placeholder (if any) and its inner editor. Its intrinsic
+ *   content inline size is size x the advance of 0 in its font, rounded up to a whole px; its auto content height is the editor's,
+ *   which it centres unsafely in the block axis, and the placeholder is centred on the editor. font and lineHeight are the input's
+ *   own, which decide the editor's line height (controls.ts textEditorLineHeight);
+ * - text-editor: the inner editor, a block container holding the value's text;
+ * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow.
  */
 export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
-  | { readonly kind: 'button-block' };
+  | { readonly kind: 'button-block' }
+  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'text-editor' }
+  | { readonly kind: 'text-placeholder' };
 
 /** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
 export type ControlBox = {

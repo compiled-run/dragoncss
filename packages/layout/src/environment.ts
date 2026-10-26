@@ -167,6 +167,8 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
  * height is not already its computed px value; the pass returns such an input itself.
  */
 function boxNeedsEnvironment(b: LayoutBox | ControlBox, faults: EngineFaults): boolean {
+  // FORM-b: a text field's editor line height is decided by the pass (editorLineHeightIsNormal).
+  if (b.kind === 'control' && b.control.kind === 'text-field') return true;
   if (styleNeedsEnvironment(b.style)) return true;
   if (b.strut !== null && fontNeedsEnvironment(b.strut.font, b.strut.lineHeight, faults)) return true;
   if (b.kind === 'box' && b.marker !== null && fontNeedsEnvironment(b.marker.font, b.marker.lineHeight, faults)) return true;
@@ -248,8 +250,38 @@ function resolveChildren(children: readonly (LayoutBox | ControlBox | ReplacedLe
 function resolveControl(b: ControlBox, parent: Env): ControlBox {
   const env = atElement(parent, b.id, b.style);
   const c = b.control;
+  const style = resolveStyle(b.style, env);
+  if (c.kind === 'text-field') {
+    // FORM-b: the field's own font and line height (a strut's), and its editor's line height, which needs the font's metrics.
+    const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
+    const normal = editorLineHeightIsNormal(c, style, env);
+    const children = normal ? b.children.map((k) => (k.kind === 'control' && k.control.kind === 'text-editor' ? withNormalLineHeight(k) : k)) : b.children;
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
+  }
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
-  return { kind: 'control', id: b.id, boxType: b.boxType, style: resolveStyle(b.style, env), control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
+  return { kind: 'control', id: b.id, boxType: b.boxType, style, control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
+}
+
+/**
+ * FORM-b: a single-line field's inner editor takes line-height normal when the field's computed font size is at least its
+ * computed line height in whole px, or when the field's height is a percentage or a fixed length above that line height;
+ * otherwise it inherits the field's (text_control_inner_elements.cc:131-216 TextControlInnerEditorElement::
+ * CustomStyleForLayoutObject, where ComputedLineHeight is an int). Probed in Chrome 145 (Ahem 10px: line-height 4px gives a 10px
+ * editor, 30px a 30px one, 12px with height 13px a 10px one, with min-height 20px a 12px one). style is the field's resolved
+ * style, whose fixed height is in zoomed px.
+ */
+function editorLineHeightIsNormal(c: Extract<ControlKind, { kind: 'text-field' }>, style: LayoutStyle, env: Env): boolean {
+  if (c.lineHeight.kind === 'normal') return false;
+  const lh = Math.trunc(computedLineHeightPx(c.lineHeight, c.font, env));
+  if (computedSize(c.font, env) >= lh) return true;
+  const h = style.height;
+  return h.kind === 'percent' || (h.kind === 'calc' && calcHasPercent(h.expr)) || (h.kind === 'px' && h.value > lh);
+}
+
+/** An inner editor whose strut and text take line-height normal (editorLineHeightIsNormal). */
+function withNormalLineHeight(e: ControlBox): ControlBox {
+  const normal: LineHeightValue = { kind: 'normal' };
+  return { ...e, strut: e.strut === null ? null : { font: e.strut.font, lineHeight: normal }, children: e.children.map((k) => (k.kind === 'text' ? { ...k, lineHeight: normal } : k)) };
 }
 
 function resolveInline(c: InlineChild, parent: Env): InlineChild {

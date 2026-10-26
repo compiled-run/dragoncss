@@ -34,7 +34,7 @@ describe('forms reference functions against Chrome 145', () => {
     expect(r.counts['range-value']).toBe(captures.rangeValue.rows.length + captures.rangeGeometry.cases.length);
     expect(r.counts['range-geometry']).toBe(2 * captures.rangeGeometry.cases.length);
     expect(r.counts['button-inner']).toBeGreaterThan(1000);
-    expect(r.counts.appearance).toBe(9);
+    expect(r.counts.appearance).toBe(13);
   });
 
   it('plants the three faults', () => {

@@ -45,8 +45,10 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   ol: ['start', 'reversed'],
   li: ['value'],
   // FORM-a A4: an input's type picks its control (only range is laid out, computed-checks.ts refuses the others); min, max, value
-  // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures).
-  input: ['type', 'min', 'max', 'value', 'step'],
+  // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures). FORM-b: a text
+  // field's value is its editor's text and placeholder its placeholder's (forms/text-field.ts), size its default width
+  // (lower/ios-layout.ts textFieldSize), and readonly only stops editing (no html.css rule reads it; controls-text-field).
+  input: ['type', 'min', 'max', 'value', 'step', 'size', 'placeholder', 'readonly'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */

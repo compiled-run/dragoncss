@@ -83,7 +83,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
-import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
+import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, textFieldAppearance } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -95,7 +95,7 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, textFieldPartOf, valueToString } from './resolve.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import { serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
@@ -1600,6 +1600,53 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   }
 }
 
+/**
+ * FORM-b: a single-line text field (text, email, url, tel and an unknown or missing type) is laid out as its UA shadow tree, the
+ * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
+ * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
+ * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
+ * positioned one or a grid item; one whose font is Chrome's UA control font; and on iOS and Android an editable field, as
+ * Dragon has no caret or keyboard input there yet (the FORM-b editing slice). A readonly field shows its value as drawn text.
+ */
+function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const state = inputTypeState(el.element.attributes.get('type'));
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE', on: readonly string[] = targets): void =>
+    refuseOn(el, v, what, code, on, diagnostics, reported, message, manual);
+  if (state === 'password') {
+    const id = `input-type|${address}`;
+    if (!reported.has(id)) {
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input type=password> ${address} is not supported: Chrome masks its value with the font's bullet glyph, which no fixture proves yet`, manual: `Use a text input, or a div in place of <input> ${address}.` }));
+    }
+    return;
+  }
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  if (textFieldAppearance(el.props) === 'theme') {
+    refuse(appearance, 'theme', `<input> ${address} with appearance: ${valueToString(appearance.value)} and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which Dragon does not draw`, `Set appearance: none, or a background or border, on <input> ${address}.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <input> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <input> ${address}, or make it a flex item.`);
+  } else if (d !== 'block') {
+    refuse(display, 'display', `display: ${d} on <input> ${address} is not supported on a text field; only a block-level field is laid out`, `Set display: block on <input> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos === 'absolute' || pos === 'fixed') {
+    refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
+  }
+  refuseGridItem(el, parentDisplay, refuse);
+  const family = el.props.get('font-family') as ResolvedValue;
+  if (family.origin === 'user-agent') {
+    refuse(family, 'font', `<input> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <input> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
+  }
+  if (!el.element.attributes.has('readonly')) {
+    refuse(null, 'editing', `<input> ${address} is an editable text field: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <input> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+}
+
 /** The container-role longhands of a range input, which Chrome's range layout (a flex container) would read. */
 const RANGE_FLEX_LONGHANDS: readonly Longhand[] = ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'];
 
@@ -1694,7 +1741,8 @@ function refuseScrollInControl(el: ResolvedElement, control: ResolvedElement, ta
 }
 
 function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  refuseScrollInControl(el, button, targets, diagnostics, reported);
+  // FORM-b: a text field's inner editor scrolls in Chrome only once the user edits; at rest it is lowered as a clip (ios-layout.ts).
+  if (textFieldPartOf(el)?.part !== 'editor') refuseScrollInControl(el, button, targets, diagnostics, reported);
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos !== 'absolute' && pos !== 'fixed') return;
@@ -1757,6 +1805,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here && el.element.tag === 'button') {
       checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+    } else if (!here && el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) {
+      checkTextField(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
       checkRange(el, parentDisplay, targets, diagnostics, reported);
