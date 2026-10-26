@@ -7,6 +7,8 @@ export const INLINE_OUT: readonly string[] = [
   'gen-inline-text', 'gen-inline-text-rtl', 'gen-inline-empty', 'gen-cascade', 'gen-cascade-rtl', 'gen-hr-li', 'gen-hr-li-rtl', 'gen-counters-quotes', 'gen-counters-quotes-rtl', 'table-properties', 'table-properties-rtl',
   'inline-mixed-sizes', 'inline-mixed-sizes-rtl', 'inline-empty-boxes', 'inline-empty-boxes-rtl', 'inline-br', 'inline-br-rtl', 'inline-box-boundaries',
   'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
+  // WS-INL's inline-whitespace and inline-whitespace-atomic hold inline boxes and inline-blocks.
+  'inline-whitespace', 'inline-whitespace-rtl', 'inline-whitespace-atomic',
   // #266's float-clear-inert holds an inline box.
   'float-clear-inert', 'float-clear-inert-rtl',
   // TXT2-b's text-spacing-ahem and text-word-spacing-ahem hold an inline box.

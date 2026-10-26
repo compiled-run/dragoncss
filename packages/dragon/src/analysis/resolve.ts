@@ -70,6 +70,10 @@ export type ResolvedText = {
 };
 
 const WHITE_SPACE = /[ \t\n\r\f]/;
+/** Whitespace-only text (HTML ASCII whitespace). */
+const BLANK_TEXT = /^[ \t\n\r\f]*$/;
+/** Blink EndsWithWhitespace (IsASCIISpace): a text whose last code unit is ASCII white space. */
+const ENDS_IN_SPACE = /[ \t\n\v\f\r]$/;
 const ZWSP = '\u200b';
 
 /**
@@ -239,6 +243,12 @@ const outOfFlow = (k: ResolvedElement): boolean => {
   const position = (k.props.get('position') as ResolvedValue).value;
   const float = (k.props.get('float') as ResolvedValue).value;
   return (position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed')) || (float.kind === 'keyword' && float.value !== 'none');
+};
+
+/** Whether an element is absolutely positioned, which a flex or grid container's previous in-flow item skips (floats are items there). */
+const outOfFlowPositioned = (k: ResolvedElement): boolean => {
+  const position = (k.props.get('position') as ResolvedValue).value;
+  return position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed');
 };
 
 /** Whether an inline box holds anything a line box is made for: text that is not white space, a <br>, or an atomic inline. */
@@ -525,14 +535,33 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       modes = [];
       transforms = [];
     };
-    const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>): void => {
+    // Blink Text::TextLayoutObjectIsNeeded (CanHaveWhitespaceChildren): whitespace-only text whose layout parent is a flex or grid
+    // container (placed in it directly or through display: contents) generates no box, except in a <button>, unless the previous
+    // in-flow layout object under that container is a text and the white space preserves breaks or that text does not end in white
+    // space. previous is that object: a text with its DOM string, 'box' for an element, null for none yet.
+    const selfDisplay = displayOf(self);
+    const dropsBlank = self.element.tag !== 'button' && ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(selfDisplay);
+    let previous: { readonly text: string } | 'box' | null = null;
+    const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>, direct: boolean): void => {
       for (const kid of items) {
+        if (kid.kind === 'text' && direct && dropsBlank && BLANK_TEXT.test(kid.text)) {
+          const breaks = !['collapse', 'preserve-spaces'].includes(collapseModeOf(owner));
+          const kept = previous !== null && previous !== 'box' && (breaks || !ENDS_IN_SPACE.test(previous.text));
+          if (!kept) {
+            collapsed.set(kid, '');
+            continue;
+          }
+        }
+        if (direct && dropsBlank) {
+          if (kid.kind === 'text') previous = { text: kid.text };
+          else if (displayOf(kid) !== 'none' && displayOf(kid) !== 'contents' && !outOfFlowPositioned(kid)) previous = 'box';
+        }
         if (kid.kind === 'text') {
           run.push(kid);
           modes.push(collapseModeOf(owner));
           transforms.push({ kind: 'text', node: kid, transform: textTransformOf(owner) });
         } else if (displayOf(kid) === 'none') continue;
-        else if (displayOf(kid) === 'contents' && pendingInline.has(kid)) gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
+        else if (displayOf(kid) === 'contents' && pendingInline.has(kid)) gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props, direct);
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') {
             run.push(null);
@@ -542,7 +571,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
           // Planted fault generatedTextCollapsedAlone: a generated box's text collapses as an inline formatting context of its own.
           const alone = faults.generatedTextCollapsedAlone && generated.has(kid);
           if (alone) flush();
-          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props, false);
           if (alone) flush();
         } else if (isAtomicInline(kid)) {
           // Planted fault atomicCollapsesAsLineEnd: the atomic inline ends the context, so the white space around it goes.
@@ -559,7 +588,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         }
       }
     };
-    gather(kids, props);
+    gather(kids, props, true);
     flush();
     const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
       for (const kid of items) {
