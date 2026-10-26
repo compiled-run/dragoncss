@@ -517,7 +517,8 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
  * placeholder is moved so that its baseline meets the editor's. The field's baseline is the editor's line's, moved with it.
  */
 function layoutTextField(box: LayoutBox, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
-  const editorId = box.children.find((k) => k.kind === 'control' && k.control.kind === 'text-editor')?.id;
+  let editorId = '';
+  for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
   const editor = flow.find((p) => p.frag.id === editorId);
   if (editor === undefined) throw new Error(`${box.id} is a text field without an inner editor; validateLayoutInput rejects this input`);
   const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(editor.frag.height, vbp), minMax);
