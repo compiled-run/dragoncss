@@ -21,14 +21,15 @@ const FONT = 'body { font-family: Ahem; }';
 
 describe('the element table', () => {
   it('is exactly the captured tags other than the unstyled probe element, plus the tags that resolve as it', () => {
-    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t) && !REPLACED_TAGS.includes(t) && !SVG_SHAPE_TAGS.includes(t) && !CONTROL_TAGS.includes(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
+    // code reads dragon-unstyled's defaults with an author font-family (MONOSPACE_UA_TAGS).
+    expect([...SUPPORTED_TAGS].filter((t) => !UNSTYLED_TAGS.has(t) && t !== 'code' && !REPLACED_TAGS.includes(t) && !SVG_SHAPE_TAGS.includes(t) && !CONTROL_TAGS.includes(t)).sort()).toEqual(Object.keys(computed).filter((t) => t !== 'dragon-unstyled').sort());
     // FORM-a A3 and A4: the control tags read the ELB-2 element keys instead, by type for input.
     expect(CONTROL_TAGS.map((t) => elementKeySpecs[controlUaKey(t, undefined) as keyof typeof elementKeySpecs].tag)).toEqual([...CONTROL_TAGS]);
     expect(elementKeySpecs[controlUaKey('input', 'RANGE') as keyof typeof elementKeySpecs]).toEqual({ tag: 'input', attributes: { type: 'range' } });
     // REPL-a: the replaced tags read REPL-0's replaced keys instead, and so do SVG-a1's shapes.
     expect([...REPLACED_TAGS, ...SVG_SHAPE_TAGS].map((t) => replacedKeySpecs[REPLACED_UA_KEYS[t] as keyof typeof replacedKeySpecs].tag)).toEqual([...REPLACED_TAGS, ...SVG_SHAPE_TAGS]);
     expect([...UNSTYLED_TAGS].every((t) => SUPPORTED_TAGS.has(t) && !(t in computed))).toBe(true);
-    expect(SUPPORTED_TAGS.has('pre')).toBe(false);
+    expect(SUPPORTED_TAGS.has('code') && !('code' in computed)).toBe(true);
   });
   it('pins the declared UA values, the ancestor contexts and the unmodelled text fonts Chrome 145 has', () => {
     expect(userAgentDeclared.p.ltr).toEqual({ display: 'block', 'margin-bottom': '1em', 'margin-top': '1em', 'unicode-bidi': 'isolate' });
@@ -137,9 +138,9 @@ describe('refusals of UA defaults Dragon does not model', () => {
     expect(codes(inputFor(FONT, (r) => nest(r, [])))).toEqual(['DRAGON_UNSUPPORTED_VALUE ios', 'DRAGON_UNSUPPORTED_VALUE web']);
     expect(codes(inputFor(`${FONT} .px { font-size: 10.72px; }`, (r) => nest(r, ['px'])))).toEqual([]);
   });
-  it('pre is not in the element table', () => {
+  it("pre is in the element table, refused only with Chrome's UA monospace (checkMonospaceUa)", () => {
     const c = project().compile(inputFor(FONT, (r) => [el(r, 'pre', 'pre')]));
-    expect(c.diagnostics.map((d) => [d.code, d.message])).toEqual([['DRAGON_UNSUPPORTED_ELEMENT', expect.stringMatching(/^<pre> pre is not supported \(supported: html, body, div, p, h1/)]]);
+    expect([...new Set(c.diagnostics.map((d) => `${d.code} ${d.message}`))]).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_FONT <pre> pre uses Chrome's user-agent font-family: monospace/)]);
   });
 });
 

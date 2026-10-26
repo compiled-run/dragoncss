@@ -144,8 +144,8 @@ describe('refusals', () => {
     const wrap = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', ['nw'], [text(r, 't1', 'b c')])])]).diagnostics.filter((d) => d.message.startsWith('text-wrap-mode'));
     expect(wrap.map((d) => String(d.target)).sort()).toEqual(['ios', 'web']);
   });
-  it('the phrasing tags INL1a does not reproduce stay refused: small, code, sub and sup', () => {
-    for (const tag of ['small', 'code', 'sub', 'sup']) {
+  it('the phrasing tags INL1a does not reproduce stay refused: small, sub and sup (code compiles with an author font-family)', () => {
+    for (const tag of ['small', 'sub', 'sup']) {
       const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', tag, [], [text(r, 't1', 'b')])])]).diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_ELEMENT');
       expect(got.length, tag).toBeGreaterThan(0);
     }

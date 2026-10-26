@@ -1,5 +1,5 @@
 // The element table: the HTML tags the compiler resolves, each with captured Chrome UA defaults (ua/chrome-145.*.generated.ts).
-// Every other tag is refused by the projection. pre is refused: white-space: pre is not supported.
+// Every other tag is refused by the projection.
 import type { CapturedTag, UaKey } from '../ua/datasets.ts';
 import { CONTROL_TAGS, controlUaKey } from './elements/controls.ts';
 import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from './elements/replaced.ts';
@@ -8,8 +8,8 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'html', 'body', 'div',
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
   'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd',
-  'form',
-  'span', 'a', 'label',
+  'form', 'pre',
+  'span', 'a', 'label', 'code',
   'br',
   ...REPLACED_TAGS,
   ...SVG_SHAPE_TAGS,
@@ -23,6 +23,14 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
  * take dragon-unstyled's captured defaults, and their text font row (datasets.ts); test/blockify.test.ts pins the tables.
  */
 export const UNSTYLED_TAGS: ReadonlySet<string> = new Set(['span', 'a', 'label', 'br', 'b', 'strong', 'em', 'i']);
+
+/**
+ * Tags whose Chrome 145 UA rule sets font-family: monospace (code, pre). Chrome sizes the generic monospace alone at its default
+ * fixed font size (13px for medium, and em and keyword sizes of it), which Dragon does not model, so such an element compiles only
+ * with an author font-family (checkMonospaceUa). code's only UA longhand is that font-family (the phrasing-key capture, test/
+ * ua-inl.test.ts), so with an author font-family it computes as span does and reads dragon-unstyled's defaults; pre has captured rows.
+ */
+export const MONOSPACE_UA_TAGS: ReadonlySet<string> = new Set(['code', 'pre']);
 
 /**
  * The tags of the elements resolve.ts builds for ::before and ::after boxes (GEN-a, notes/T151-gen-spec.md R2). html.css has no
@@ -39,5 +47,5 @@ export function uaTagOf(tag: string, type?: string): UaKey {
   if (GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return 'dragon-unstyled';
   const control = controlUaKey(tag, type);
   if (control !== null) return control;
-  return (UNSTYLED_TAGS.has(tag) ? 'dragon-unstyled' : tag) as CapturedTag;
+  return (UNSTYLED_TAGS.has(tag) || tag === 'code' ? 'dragon-unstyled' : tag) as CapturedTag;
 }

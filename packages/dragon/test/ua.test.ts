@@ -72,6 +72,8 @@ describe('UA versus initial origin, per tag and longhand', () => {
       dt: ['display', 'unicode-bidi'],
       dd: ['display', 'margin-left', 'unicode-bidi'],
       form: ['display', 'unicode-bidi'],
+      // pre's font-family: monospace compiles only when an author font-family replaces it (checkMonospaceUa).
+      pre: ['display', 'font-family', 'margin-bottom', 'margin-top', 'text-wrap-mode', 'unicode-bidi', 'white-space-collapse'],
       'dragon-unstyled': [],
     });
   });
