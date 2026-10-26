@@ -96,18 +96,19 @@ describe('text-align: justify beside the other text lanes (TXT2 with TXT2-b and 
   });
 });
 
-describe('WS-PRE-INL: white-space: pre text in inline boxes', () => {
+describe('WS-PRE-INL: preserved text in inline boxes', () => {
   const span = (r: Parameters<typeof div>[0], id: string, classes: string[], children: Parameters<typeof div>[3] = []) => ({ ...div(r, id, classes, children), tag: 'span' });
   const errors = (css: string): string[] => {
     const input = inputFor(css, (r) => [div(r, 'a', ['a'], [text(r, 't0', 'XX '), span(r, 's', ['s'], [text(r, 't1', 'YY\n  ZZ')]), text(r, 't2', '\nWW')])]);
     const c = createProjectWith({ projectId: 'test', targets: { web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
     return c.diagnostics.filter((d) => d.severity === 'error' && d.message.includes('white-space')).map((d) => d.message.split(' (')[0] as string);
   };
-  it('compiles a pre context whose text and inline boxes are all pre (the engine lays it out, Chrome proves white-space-pre-inline)', () => {
+  it('compiles a pre or pre-wrap context whose text and inline boxes all match (Chrome proves white-space-pre-inline and white-space-pre-wrap-inline)', () => {
     expect(errors('.a { white-space: pre; }')).toEqual([]);
+    expect(errors('.a { white-space: pre-wrap; }')).toEqual([]);
   });
-  it('keeps refusing a context whose text wraps (pre-wrap, break-spaces), drops newlines (pre-line) or mixes modes', () => {
-    for (const ws of ['pre-wrap', 'break-spaces', 'pre-line']) expect(errors(`.a { white-space: ${ws}; }`).length, ws).toBeGreaterThan(0);
+  it('keeps refusing break-spaces, pre-line and a context that mixes modes or wrapping', () => {
+    for (const ws of ['break-spaces', 'pre-line']) expect(errors(`.a { white-space: ${ws}; }`).length, ws).toBeGreaterThan(0);
     expect(errors('.a { white-space: pre; } .s { white-space: normal; }').length).toBeGreaterThan(0);
     expect(errors('.a { white-space: pre; } .s { white-space: pre-wrap; }').length).toBeGreaterThan(0);
   });
