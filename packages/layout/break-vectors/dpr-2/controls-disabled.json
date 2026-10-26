@@ -1,0 +1,12 @@
+{
+  "case": "controls-disabled",
+  "dpr": 2,
+  "texts": [
+    {"id":"b1:text0","lines":[[0,2]]},
+    {"id":"b2:text0","lines":[[0,2]]},
+    {"id":"b3:text0","lines":[[0,2]]},
+    {"id":"b4:text0","lines":[[0,2]]},
+    {"id":"b5:text0","lines":[[0,2]]},
+    {"id":"d1:text0","lines":[[0,2]]}
+  ]
+}

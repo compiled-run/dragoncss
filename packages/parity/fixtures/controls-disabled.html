@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.wrap { width: 300px; background-color: #eee; }
+button { display: block; font: inherit; appearance: none; border-width: 2px; border-style: solid; padding: 1px 6px; margin: 0 0 4px; }
+button:enabled { padding: 3px 8px; }
+button:disabled { margin-left: 20px; }
+.paint:disabled { background-color: #c00; border-color: #036; color: #fff; }
+.paint:not(:disabled) { background-color: #0a0; }
+.is:is(:disabled, .never) { width: 120px; }
+div:disabled, div:enabled { height: 40px; background-color: #f00; }
+[disabled] + div { height: 7px; background-color: #333; }
+input { appearance: none; display: block; width: 200px; margin: 0 0 4px; }
+input::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; background-color: #c00; }
+input:disabled::-webkit-slider-thumb { background-color: #888; }
+input:enabled::-webkit-slider-runnable-track { background-color: #036; }
+input:disabled { border: 2px solid; padding: 2px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<button data-dragon-id="b1">XX</button>
+<button data-dragon-id="b2" disabled="">XX</button>
+<button data-dragon-id="b3" class="paint">XX</button>
+<button data-dragon-id="b4" class="paint" disabled="disabled">XX</button>
+<button data-dragon-id="b5" class="is" disabled="">XX</button>
+<div data-dragon-id="d1">XX</div>
+<div data-dragon-id="d2"></div>
+<input data-dragon-id="r1" type="range" value="20">
+<input data-dragon-id="r2" type="range" value="70" disabled="">
+</div>
+</body>
+</html>

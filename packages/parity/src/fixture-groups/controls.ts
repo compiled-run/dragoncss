@@ -2,7 +2,8 @@
 // and size to their content in block flow, as flex items, and as flex containers, in both directions; the button type changing
 // nothing; Chrome's appearance display adjustment (an li with appearance: auto is a block, with no marker). The rejects name what
 // A3 refuses: a themed button (FORM-b), an inline-level one (RF-INL), the UA control font, an absolutely positioned button, an
-// auto-width flex button in block flow, and an inline element that appearance makes inline-block.
+// auto-width flex button in block flow, and an inline element that appearance makes inline-block. FORM-c: :disabled and :enabled
+// from the disabled attribute, with Chrome's disabled button and range colours.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
@@ -26,5 +27,6 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-range-thumb-abspos', 'DRAGON_UNSUPPORTED_VALUE', 'absolute', 'position: absolute on <div> r::thumb inside <input> r'),
   reject('reject-controls-range-part-direction', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'direction on the track of <input> r is not supported'),
   reject('reject-controls-range-pseudo-state', 'DRAGON_UNSUPPORTED_SELECTOR', ':hover', null),
+  both('controls-disabled'),
   reject('reject-controls-appearance-inline', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="s" class="a">XX</span>', 'display: inline-block on <span> s makes it an inline-level box'),
 ];
