@@ -855,14 +855,22 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font
     // and line height, which decide its default width and its editor's line height (the engine's controls.ts).
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
+    if (el.element.tag === 'textarea') {
+      // A textarea scrolls (overflow auto, or hidden) from offset 0 with its scrollbars hidden: at rest it clips as overflow: clip
+      // does. rows and cols are HTML §4.10.11's: a valid non-negative integer above zero, else 2 and 20.
+      const clip: LayoutStyle = { ...style, overflowX: 'clip', overflowY: 'clip' };
+      return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight }, strut, children };
+    }
     return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight }, strut, children };
   }
   if (field !== undefined) {
-    // The inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at rest it
-    // clips its text as overflow: clip does. The placeholder clips (overflow: hidden) as it computes.
-    const clipped: LayoutStyle = field.part === 'editor' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
-    // An empty editor still lays out one line of its own font (the engine's block.ts), so it always carries its strut.
-    const own = field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
+    // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at
+    // rest it clips its text as overflow: clip does. A textarea's editor and every placeholder keep their computed overflow.
+    const clipped: LayoutStyle = field.part === 'editor' && field.host.tag === 'input' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
+    // An empty editor still lays out one line of its own font (the engine's block.ts), so it carries its strut; but a textarea's
+    // empty editor beside its placeholder (any placeholder attribute, the empty one too) has no line (Chrome 145: 0 tall).
+    const lineless = field.part === 'editor' && field.host.tag === 'textarea' && field.host.attributes.has('placeholder') && children.length === 0;
+    const own = lineless ? null : field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
     return { kind: 'control', id, boxType: 'element', style: clipped, control: { kind: field.part === 'editor' ? 'text-editor' : 'text-placeholder' }, strut: own, children };
   }
   const range = rangePartOf(el);
@@ -881,9 +889,14 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
 
 /** HTML §2.3.4.2 rules for parsing non-negative integers, for an input's size: a result above zero, or 20. */
 export function textFieldSize(attr: string | undefined): number {
+  return positiveIntegerAttribute(attr, 20);
+}
+
+/** HTML §2.3.4.2 rules for parsing non-negative integers: a result above zero (and in the int range Chrome keeps), or fallback. */
+export function positiveIntegerAttribute(attr: string | undefined, fallback: number): number {
   const m = attr === undefined ? null : /^[\t\n\f\r ]*\+?([0-9]+)/.exec(attr);
   const n = m === null ? 0 : Number(m[1]);
-  return n > 0 && Number.isSafeInteger(n) ? n : 20;
+  return n > 0 && n <= 0x7fffffff ? n : fallback;
 }
 
 const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];

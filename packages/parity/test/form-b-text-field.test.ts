@@ -78,14 +78,14 @@ describe('FORM-b text fields', () => {
 
   it('refuses an editable field on iOS and Android only, and a themed, password or inline-level field everywhere', () => {
     expect(errors(compile('tf-edit', '', '<input data-dragon-id="t" value="XX">'))).toEqual([
-      expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <input> t is an editable text field: Dragon draws its value but has no caret/),
-      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <input> t is an editable text field/),
+      expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <input> t is an editable text control: Dragon draws its value but has no caret/),
+      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <input> t is an editable text control/),
     ]);
     expect(errors(compile('tf-theme', '', '<input data-dragon-id="t" readonly="">', 'input { display: block; font: inherit; margin: 0; }'))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <input> t with appearance: auto and no author background or border/));
     expect(errors(compile('tf-password', '', '<input data-dragon-id="t" readonly="" type="password" value="XX">'))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <input type=password> t is not supported/)]);
     expect(errors(compile('tf-inline', 'input { display: inline-block; }', '<div data-dragon-id="d"><input data-dragon-id="t" readonly=""></div>'))).toContainEqual(expect.stringMatching(/display: inline-block on <input> t makes it an inline-level control/));
-    expect(errors(compile('tf-float', 'input { float: left; }', '<input data-dragon-id="t" readonly="">'))).toContainEqual(expect.stringMatching(/float: left on <input> t is not supported on a text field/));
-    expect(errors(compile('tf-font', 'input { font-family: Lato; }', '<input data-dragon-id="t" readonly="">', BASE, true))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input> t is in font-family: Lato: Chrome sizes a text field by the face's average character width/));
+    expect(errors(compile('tf-float', 'input { float: left; }', '<input data-dragon-id="t" readonly="">'))).toContainEqual(expect.stringMatching(/float: left on <input> t is not supported on a text control/));
+    expect(errors(compile('tf-font', 'input { font-family: Lato; }', '<input data-dragon-id="t" readonly="">', BASE, true))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input> t is in font-family: Lato: Chrome sizes a text control by the face's average character width/));
     expect(errors(compile('tf-font-width', 'input { font-family: Lato; width: 40px; }', '<input data-dragon-id="t" readonly="">', BASE, true)).filter((e) => e.includes('average character width'))).toHaveLength(2);
   });
 });

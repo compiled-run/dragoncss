@@ -55,7 +55,7 @@ export type UaDataset = {
 type TextFontRow = { readonly [property: string]: string };
 
 /** The element keys of the form controls Dragon lays out (FORM-a). */
-export type ControlKey = Extract<ElementKey, 'button' | 'input' | 'input[type=range]'>;
+export type ControlKey = Extract<ElementKey, 'button' | 'input' | 'input[type=range]' | 'textarea'>;
 
 /** A row key of the UA dataset: a captured tag, a replaced key (REPL-0) or a control key (FORM-a). */
 export type UaKey = CapturedTag | ReplacedKey | ControlKey;
@@ -77,7 +77,7 @@ function isReplacedKey(key: UaKey): key is ReplacedKey {
 }
 
 function isControlKey(key: UaKey): key is ControlKey {
-  return key === 'button' || key === 'input' || key === 'input[type=range]';
+  return key === 'button' || key === 'input' || key === 'input[type=range]' || key === 'textarea';
 }
 
 /**
@@ -95,11 +95,25 @@ function controlRows(ua: UaDataset, key: ControlKey): UaRows {
     if (forced[dir]['display'] !== 'inline-block') throw new Error(`the ${key} key's forced rows are ${JSON.stringify(forced)}, without Chrome's display: inline-block`);
     delete rest[dir]['display'];
   }
+  // FORM-b: a textarea's forced overflow: auto is Chrome's adjustment of overflow: visible (StyleAdjuster), which an author
+  // hidden, clip or scroll wins over (probed in Chrome 145), so it is a declared UA value too; computed-checks.ts refuses an author
+  // visible, whose adjustment Dragon does not model.
+  const overflow: Record<string, string> = {};
+  if (key === 'textarea') {
+    for (const dir of ['ltr', 'rtl'] as const) {
+      for (const p of ['overflow-x', 'overflow-y']) {
+        const v = rest[dir][p];
+        if (v === undefined) throw new Error(`the textarea key's forced rows have no ${p}`);
+        overflow[p] = v;
+        delete rest[dir][p];
+      }
+    }
+  }
   const declared = ua.elementKeyDeclared[key];
   return {
     computed: { ...ua.elementKeyComputed[key], display: 'inline-block' },
-    longhands: [...ua.elementKeyLonghands[key], 'display'],
-    declared: { ltr: { ...declared.ltr, display: 'inline-block' }, rtl: { ...declared.rtl, display: 'inline-block' } },
+    longhands: [...ua.elementKeyLonghands[key], 'display', ...Object.keys(overflow)],
+    declared: { ltr: { ...declared.ltr, ...overflow, display: 'inline-block' }, rtl: { ...declared.rtl, ...overflow, display: 'inline-block' } },
     contexts: ua.elementKeyContexts[key],
     textFonts: ua.elementKeyTextFonts[key],
     forced: rest,

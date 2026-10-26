@@ -4,7 +4,7 @@ import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
-import { plainBox, textFieldInlineSize } from './controls.ts';
+import { plainBox, textAreaInlineSize, textFieldInlineSize } from './controls.ts';
 import { gridIntrinsicContentInlineSize } from './grid.ts';
 import { inlineIntrinsicSize } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
@@ -25,6 +25,8 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
   // FORM-b: a text field's is size x the advance of 0, whatever its value (controls.ts textFieldInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-field') return textFieldInlineSize(ctx.measurer, node.control);
+  // FORM-b: a textarea's is cols x the advance of 0, whatever its text (controls.ts textAreaInlineSize).
+  if (node.kind === 'control' && node.control.kind === 'text-area') return textAreaInlineSize(ctx.measurer, node.control);
   const box = plainBox(node);
   // css-contain-2 §3.2 and css-sizing-4 §5.2: a size-contained box sizes as if it had no content, or content of its
   // contain-intrinsic-width. An empty grid keeps its explicit tracks and gaps (Chrome 145: an inline-grid of 30px 40px columns with a

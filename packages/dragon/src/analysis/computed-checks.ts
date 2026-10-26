@@ -83,7 +83,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
-import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, textFieldAppearance } from './elements/controls.ts';
+import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, textAreaAppearance, textFieldAppearance } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -781,8 +781,10 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   if (keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal') refuse(el, 'letter-spacing', `letter-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the letter-spacing or the white-space declaration that reaches ${t.node.address}.`);
   // Blink adds word spacing to every preserved space, the first included (WordSpacingWhiteSpacePre), which no Chrome case covers yet.
   if (wordSpaced(t.props.get('word-spacing') as ResolvedValue)) refuse(el, 'word-spacing', `word-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the word-spacing or the white-space declaration that reaches ${t.node.address}.`);
-  // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet (inline.ts buildIfc).
-  const breaks = (['overflow-wrap', 'word-break'] as const).filter((p) => keywordOf(t.props.get(p) as ResolvedValue) !== 'normal');
+  // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet (inline.ts buildIfc),
+  // but for overflow-wrap: break-word with word-break: normal over preserve, a textarea's (FORM-b, the controls-textarea fixture).
+  const breakWord = mode === 'preserve' && keywordOf(t.props.get('overflow-wrap') as ResolvedValue) === 'break-word' && keywordOf(t.props.get('word-break') as ResolvedValue) === 'normal';
+  const breaks = breakWord ? [] : (['overflow-wrap', 'word-break'] as const).filter((p) => keywordOf(t.props.get(p) as ResolvedValue) !== 'normal');
   if (breaks.length > 0) refuse(el, 'preserved-break', `${breaks.map((p) => `${p}: ${keywordOf(t.props.get(p) as ResolvedValue)}`).join(' and ')} on ${t.node.address}, whose white-space-collapse is ${mode}: breaking preserved white space inside words is not laid out yet`, `Remove the ${breaks.join(' and ')} or the white-space declaration that reaches ${t.node.address}.`);
   if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
@@ -1610,6 +1612,7 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  */
 function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const address = el.element.address;
+  const tag = el.element.tag;
   const state = inputTypeState(el.element.attributes.get('type'));
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE', on: readonly string[] = targets): void =>
     refuseOn(el, v, what, code, on, diagnostics, reported, message, manual);
@@ -1617,34 +1620,34 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
     const id = `input-type|${address}`;
     if (!reported.has(id)) {
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input type=password> ${address} is not supported: Chrome masks its value with the font's bullet glyph, which no fixture proves yet`, manual: `Use a text input, or a div in place of <input> ${address}.` }));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input type=password> ${address} is not supported: Chrome masks its value with the font's bullet glyph, which no fixture proves yet`, manual: `Use a text input, or a div in place of <${tag}> ${address}.` }));
     }
     return;
   }
   const appearance = el.props.get('appearance') as ResolvedValue;
-  if (textFieldAppearance(el.props) === 'theme') {
-    refuse(appearance, 'theme', `<input> ${address} with appearance: ${valueToString(appearance.value)} and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which Dragon does not draw`, `Set appearance: none, or a background or border, on <input> ${address}.`);
+  if ((tag === 'textarea' ? textAreaAppearance(el.props) : textFieldAppearance(el.props)) === 'theme') {
+    refuse(appearance, 'theme', `<${tag}> ${address} with appearance: ${valueToString(appearance.value)} and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which Dragon does not draw`, `Set appearance: none, or a background or border, on <${tag}> ${address}.`);
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);
   if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
-    refuse(display, 'inline', `display: ${d} on <input> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <input> ${address}, or make it a flex item.`);
+    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <${tag}> ${address}, or make it a flex item.`);
   } else if (d !== 'block') {
-    refuse(display, 'display', `display: ${d} on <input> ${address} is not supported on a text field; only a block-level field is laid out`, `Set display: block on <input> ${address}.`);
+    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a text control; only a block-level field is laid out`, `Set display: block on <${tag}> ${address}.`);
   }
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos === 'absolute' || pos === 'fixed') {
-    refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
+    refuse(position, 'position', `position: ${pos} on <${tag}> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <${tag}> ${address} in its flow.`);
   }
   refuseGridItem(el, parentDisplay, refuse);
   const float = el.props.get('float') as ResolvedValue;
   if (keywordOf(float) !== 'none') {
-    refuse(float, 'float', `float: ${valueToString(float.value)} on <input> ${address} is not supported on a text field: the engine lays out only an in-flow field`, `Float a wrapper element and keep <input> ${address} in its flow.`);
+    refuse(float, 'float', `float: ${valueToString(float.value)} on <${tag}> ${address} is not supported on a text control: the engine lays out only an in-flow field`, `Float a wrapper element and keep <${tag}> ${address} in its flow.`);
   }
   const family = el.props.get('font-family') as ResolvedValue;
   if (family.origin === 'user-agent') {
-    refuse(family, 'font', `<input> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <input> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
+    refuse(family, 'font', `<${tag}> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <${tag}> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
   // Chrome sizes a field's intrinsic inline size by the primary face's OS/2 average character width unless that is invalid for
   // the face (Blink's HasValidAvgCharWidth, in an LGPL file), and by the advance of 0 otherwise. The engine uses the advance of 0,
@@ -1652,10 +1655,40 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   // another face is refused natively whatever its width.
   const first = valueToString(family.value).split(',')[0]?.trim().replace(/^["']|["']$/g, '').toLowerCase();
   if (family.origin !== 'user-agent' && first !== 'ahem') {
-    refuse(family, 'width-font', `<input> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text field by the face's average character width, which Dragon proves only for Ahem`, `Draw <input> ${address} in Ahem, or target web only, until real faces are measured for text fields.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
+    refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (!el.element.attributes.has('readonly')) {
-    refuse(null, 'editing', `<input> ${address} is an editable text field: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <input> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+    refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+  if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
+}
+
+/**
+ * FORM-b: what a textarea adds to a text control's refusals, on iOS and Android, where the engine lays it out (an element child
+ * everywhere):
+ * - an element child (HTML parses a textarea's content as text, so only a producer could write one);
+ * - a resizer (resize other than none), whose grip Chrome draws in the corner and Dragon does not (checkResize refuses it);
+ * - a scrollbar gutter: Chrome adds the scrollbar's thickness to the default width when overflow-y is not hidden or clip, and to
+ *   the default height when overflow-x is scroll (probed in Chrome 145 on Linux: 15px for auto, 10px for thin), and that
+ *   thickness is the platform's, so only scrollbar-width: none or no gutter is laid out;
+ * - overflow: visible, which Chrome turns into auto on a textarea and Dragon does not model.
+ * At rest a textarea scrolls from offset 0 with hidden scrollbars, which the native lowering clips; overflowing text cannot be
+ * scrolled natively until FORM-b2.
+ */
+function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], refuse: (v: ResolvedValue | null, what: string, message: string, manual: string, code?: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT', on?: readonly string[]) => void): void {
+  const address = el.element.address;
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  if (el.element.children.some((c) => c.kind !== 'text')) {
+    refuse(null, 'textarea-child', `<textarea> ${address} has an element child; a textarea's content is its text`, `Write only text inside <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', targets);
+  }
+  // The resizer grip of resize: both (html.css) is refused natively by the scroll container check.
+  const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
+  const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
+  const scrollbarWidth = el.props.get('scrollbar-width') as ResolvedValue;
+  if (ox === 'visible' || oy === 'visible') {
+    refuse(el.props.get(ox === 'visible' ? 'overflow-x' : 'overflow-y') as ResolvedValue, 'overflow', `overflow: visible on <textarea> ${address}, which Chrome makes auto, is not modelled`, `Leave overflow at auto, or set hidden, on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
+  } else if (keywordOf(scrollbarWidth) !== 'none' && ((oy !== 'hidden' && oy !== 'clip') || ox === 'scroll')) {
+    refuse(scrollbarWidth, 'gutter', `<textarea> ${address} reserves a scrollbar gutter in its default size (scrollbar-width: ${valueToString(scrollbarWidth.value)}), whose thickness is the platform's`, `Set scrollbar-width: none (or overflow: hidden) on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
   }
 }
 
@@ -1818,7 +1851,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     else if (!here && el.element.tag === 'button') {
       checkButton(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
-    } else if (!here && el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) {
+    } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
       checkTextField(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {

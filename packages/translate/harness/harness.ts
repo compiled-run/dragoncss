@@ -966,6 +966,10 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     const o = obj(v, ['kind', 'size', 'font', 'lineHeight'], path);
     return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
   }
+  if (k === 'text-area') {
+    const o = obj(v, ['kind', 'cols', 'rows', 'font', 'lineHeight'], path);
+    return { kind: 'text-area', cols: numField(o, 'cols', path), rows: numField(o, 'rows', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
   if (k === 'text-editor') {
     obj(v, ['kind'], path);
     return { kind: 'text-editor' };
