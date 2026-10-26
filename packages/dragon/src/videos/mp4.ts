@@ -5,9 +5,10 @@
 // frame from the stream's sequence parameter set (ITU-T H.264 §7.3.2.1.1: the macroblock counts less the frame cropping), so Dragon
 // requires the two to agree. It draws only what every target plays the same: progressive 8-bit 4:2:0 H.264 Baseline, Main or High
 // in an avc1 entry (its one SPS out of band) with square pixels, no clean aperture and identity movie and track matrices; anything
-// else is a refusal naming what differs.
+// else is a refusal naming what differs. untagged says why the platform players are not proven to show it as Chrome does: the
+// device lanes (replaced-video-frame) play only limited-range streams with no colour description, in the stream or the sample entry.
 
-export type Mp4Facts = { readonly width: number; readonly height: number; readonly profile: number };
+export type Mp4Facts = { readonly width: number; readonly height: number; readonly profile: number; readonly untagged: string | null };
 
 export type Mp4Parse = { readonly ok: true; readonly facts: Mp4Facts } | { readonly ok: false; readonly reason: string };
 
@@ -94,9 +95,21 @@ const HIGH_PROFILES = new Set([100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 13
 /** Baseline (66), Main (77) and High (100): the H.264 profiles Chrome, AVFoundation and Android's MediaCodec all decode. */
 const DRAWN_PROFILES = new Set([66, 77, 100]);
 
-export type SpsFacts = { readonly profile: number; readonly width: number; readonly height: number; readonly chromaFormat: number; readonly bitDepth: number; readonly progressive: boolean; readonly sar: readonly [number, number] | null };
+export type SpsFacts = {
+  readonly profile: number;
+  readonly width: number;
+  readonly height: number;
+  readonly chromaFormat: number;
+  readonly bitDepth: number;
+  readonly progressive: boolean;
+  readonly sar: readonly [number, number] | null;
+  /** Annex E.2.1 video_full_range_flag. */
+  readonly fullRange: boolean;
+  /** Annex E.2.1 colour_description_present_flag: the stream names its colour primaries, transfer and matrix. */
+  readonly colourDescription: boolean;
+};
 
-/** H.264 §7.3.2.1.1 seq_parameter_set_data up to the VUI aspect ratio, from an SPS NAL unit (its header byte included). */
+/** H.264 §7.3.2.1.1 seq_parameter_set_data up to the VUI video signal type, from an SPS NAL unit (its header byte included). */
 export function parseSps(nal: Uint8Array): SpsFacts {
   if (nal.length < 4 || ((nal[0] as number) & 0x1f) !== 7) throw new RangeError('the first parameter set is not a sequence parameter set');
   const r = new Bits(rbsp(nal.subarray(1)));
@@ -154,13 +167,23 @@ export function parseSps(nal: Uint8Array): SpsFacts {
   const width = widthMbs * 16 - unitX * ((crop[0] as number) + (crop[1] as number));
   const height = (2 - frameMbsOnly) * heightUnits * 16 - unitY * ((crop[2] as number) + (crop[3] as number));
   let sar: readonly [number, number] | null = null;
-  if (r.bit() === 1 && r.bit() === 1) {
-    // Annex E.2.1, Table E-1: aspect_ratio_idc, 255 for an explicit sar_width and sar_height.
-    const idc = r.bits(8);
-    sar = idc === 255 ? [r.bits(16), r.bits(16)] : (SAR_TABLE[idc] ?? null);
-    if (sar === null) throw new RangeError(`its aspect_ratio_idc ${idc} is reserved`);
+  let fullRange = false;
+  let colourDescription = false;
+  if (r.bit() === 1) {
+    // Annex E.1.1 vui_parameters, Table E-1: aspect_ratio_idc, 255 for an explicit sar_width and sar_height.
+    if (r.bit() === 1) {
+      const idc = r.bits(8);
+      sar = idc === 255 ? [r.bits(16), r.bits(16)] : (SAR_TABLE[idc] ?? null);
+      if (sar === null) throw new RangeError(`its aspect_ratio_idc ${idc} is reserved`);
+    }
+    if (r.bit() === 1) r.bit(); // overscan_info_present_flag, overscan_appropriate_flag
+    if (r.bit() === 1) {
+      r.bits(3); // video_format
+      fullRange = r.bit() === 1;
+      colourDescription = r.bit() === 1;
+    }
   }
-  return { profile, width, height, chromaFormat, bitDepth, progressive: frameMbsOnly === 1, sar };
+  return { profile, width, height, chromaFormat, bitDepth, progressive: frameMbsOnly === 1, sar, fullRange, colourDescription };
 }
 
 /** H.264 Table E-1 sample aspect ratios by aspect_ratio_idc; 0 is unspecified, and 17 to 254 are reserved (read as null). */
@@ -269,5 +292,13 @@ export function parseMp4(b: Uint8Array): Mp4Parse {
   const width = u16(b, entry.body + 6 + 2 + 16);
   const height = u16(b, entry.body + 6 + 2 + 16 + 2);
   if (width !== sps.width || height !== sps.height) return { ok: false, reason: `its sample entry says ${width}x${height} and its stream ${sps.width}x${sps.height}; Chrome sizes the video by the first and the platform decoders by the second` };
-  return { ok: true, facts: { width, height, profile: sps.profile } };
+  // colr (§12.1.5) overrides the stream's own colour tags in Chrome and AVFoundation alike.
+  const untagged = kids.some((k) => k.type === 'colr')
+    ? 'its sample entry has a colour box (colr)'
+    : sps.fullRange
+      ? 'its stream is full range (video_full_range_flag)'
+      : sps.colourDescription
+        ? 'its stream names its colour primaries, transfer and matrix (colour_description_present_flag)'
+        : null;
+  return { ok: true, facts: { width, height, profile: sps.profile, untagged } };
 }

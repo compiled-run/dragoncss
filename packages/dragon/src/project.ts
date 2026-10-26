@@ -6,6 +6,7 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
+import type { CompiledVideos } from './videos/compile.ts';
 import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
 import { CanonicalText, canonicalJson, sha256Hex, sha256HexBytes } from './digest.ts';
@@ -1166,6 +1167,43 @@ function gateContainerRules(conditions: readonly ContainerCondition[], targets: 
   }
 }
 
+/**
+ * MEDIA-EL slice 2: the profile row of a video with a stream Chrome loads. Its proof is device-pixels on replaced-video-frame and its
+ * rtl copy (profile-rows.ts deriveVideoRows): the platform player shows the stream's first frame where Chrome paints it.
+ */
+export const VIDEO_STREAM_FEATURE = 'element:video[src]';
+export const VIDEO_CONTEXT = 'replaced';
+
+/**
+ * MEDIA-EL slice 2: a native target mounts a player for a video's stream only where its profile proves the row, and only for a
+ * stream like the lanes': limited range, with no colour description (Mp4Facts.untagged). Every other stream is refused there.
+ */
+function gateVideoStreams(streams: CompiledVideos['streams'], targets: readonly KnownTarget[], profiles: Required<SupportProfiles>, diagnostics: Diagnostic[]): void {
+  for (const t of NATIVE_TARGETS) {
+    if (!targets.includes(t)) continue;
+    const profile = profileFor(profiles, t);
+    const proven = provenContexts(profile, VIDEO_STREAM_FEATURE).includes(VIDEO_CONTEXT);
+    for (const s of streams) {
+      if (s.untagged !== null) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', {
+          origin: s.origin,
+          target: t,
+          message: `attribute src on ${s.address} is not supported on ${t}: ${s.untagged}; the device lanes prove limited-range streams with no colour tags only`,
+          manual: 'Encode the stream in limited range with no colour description (no colr box), or leave the video without a src for this target.',
+        }));
+      } else if (!proven) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', {
+          origin: s.origin,
+          target: t,
+          message: `attribute src on ${s.address} is not supported on ${t}: ${VIDEO_STREAM_FEATURE} has no passing device-pixels proof on ${t} in the ${VIDEO_CONTEXT} context (support profile ${profile.revision})`,
+          manual: 'For this target, leave the video without a src or give it preload="none" until a device lane proves the first frame.',
+          profile: { target: t, profileRevision: profile.revision, feature: VIDEO_STREAM_FEATURE, context: VIDEO_CONTEXT, status: 'unsupported' },
+        }));
+      }
+    }
+  }
+}
+
 /** CQ: a transition or animation in a @container rule would differ per element and band, which no target builds yet. */
 function refuseContainerAnimations(rules: readonly Rule[], diagnostics: Diagnostic[]): void {
   for (const r of rules) {
@@ -1444,11 +1482,19 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       cases = (bandCases[nativeBand] as { cases: CaseResult[] }).cases;
       // REPL-a: the images every band's resolved cases and their interaction states reference (img src, background url()), read once.
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
+      const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)])));
       const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
-      const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])));
-      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
+      const read = compileImages(roots, config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
       // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
-      const videos = compileVideos(roots, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
+      const videos = compileVideos(roots, diagnostics);
+      // The parity lanes play every stream on native to prove the first frame, lane-only until the profile has the row (as SVG-a2's
+      // values); every other compile follows the profile.
+      if (options.profiles === 'enforce' && !options.interactionLanes) gateVideoStreams(videos.streams, targets, profiles, diagnostics);
+      else if (options.profiles === 'enforce') {
+        const own: Diagnostic[] = [];
+        gateVideoStreams(videos.streams, targets, profiles, own);
+        laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || own.some((d) => d.target === t));
+      }
       images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);

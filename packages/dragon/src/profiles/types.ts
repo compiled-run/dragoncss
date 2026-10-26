@@ -7,7 +7,7 @@ import type { SupportStatus, Target } from '../types.ts';
  * dump against Chrome's frame capture through the four device checks. No other lane proves native paint in milestone 1.
  */
 export type ProofAspect = 'layout' | 'computed-value';
-export type ProofLane = 'linux-dragon-layout' | 'chrome-dual' | 'device-anim';
+export type ProofLane = 'linux-dragon-layout' | 'chrome-dual' | 'device-anim' | 'device-pixels';
 
 /** docs/api.md §6.3: a proof names its value subset, context and the parity cases that passed its lane in the same run. */
 export type Proof = {
@@ -33,6 +33,7 @@ export type ProfileRow = { readonly feature: string; readonly context: string; r
 export const PROFILE_NOTES = {
   overlayScrollbars: 'holds with overlay scrollbars only (the reference environment); classic scrollbars reserve a 15px gutter at the inline and block end (11px for scrollbar-width: thin; measured on Chrome 145), which this claim does not cover',
   measuredSafeArea: 'proven with the insets injected into the layout input; the insets a mount measures from its stage (dragonSafeArea) are not yet proven by a device lane with nonzero insets, so the row stays caveat until one runs',
+  untaggedVideoColour: 'proven with frames of neutral chroma, which every YCbCr matrix decodes alike; the matrix each player applies to an untagged stream\'s chroma (BT.601 or BT.709) is not yet compared by a lane',
   androidNoOverscrollEffect: 'Android draws no overscroll effect (Chrome stretches or glows at the edge for auto and contain); none is still read back',
 } as const;
 
