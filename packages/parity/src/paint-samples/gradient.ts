@@ -174,13 +174,31 @@ function engineGeometry(p: NativeProgram, viewport: { readonly width: number; re
   };
 }
 
+/** Write kinds that paint nothing of their own, so a body box holding only these leaves the canvas under it visible. */
+const INERT_WRITES: ReadonlySet<string> = new Set(['background-color', 'border-widths', 'border-styles', 'border-colors', 'paint-order']);
+/** Write kinds that paint outside their box, so the root's canvas raster is not sampled in their case. */
+const SPILLING_WRITES: ReadonlySet<string> = new Set(['box-shadow', 'outline', 'text-shadow', 'transform', 'text-decoration']);
+
 /**
  * Whether Chrome's pixel at (x, y) is the background of box id alone: inside the box's inner border edge (the border paints over
  * the background under it), at least one device px clear inside each of its rounded corners' arcs, outer and padding-edge (the
- * rounded clip is antialiased there), and clear of every other rounded box's arcs.
+ * rounded clip is antialiased there), and clear of every other rounded box's arcs. The root box draws the canvas layers under every
+ * other box (analysis/paint-values/canvas.ts), so its pixels must also lie SAMPLE_INSET_DEVICE_PX clear of every other box but an
+ * unpainted body, in a case without text or paint that spills outside its box.
  */
 export function backgroundOnly(program: NativeProgram, boxes: readonly SampleBox[], dpr: number): (id: string, x: number, y: number) => boolean {
   const byId = new Map(boxes.map((b) => [b.id, b] as const));
+  const root = program.nodes.find((n) => n.parent === null)?.id ?? null;
+  const nodes = new Map(program.nodes.map((n) => [n.id, n] as const));
+  const spills = program.nodes.some((n) => n.kind === 'text' || n.writes.some((w) => SPILLING_WRITES.has(w.kind)));
+  const inert = (b: SampleBox): boolean => {
+    const n = nodes.get(b.id);
+    if (n === undefined || n.parent !== root || b.border.top + b.border.right + b.border.bottom + b.border.left !== 0) return false;
+    return n.writes.every((w) => INERT_WRITES.has(w.kind) && (w.kind !== 'background-color' || (w as unknown as { color: { alpha: number } }).color.alpha === 0));
+  };
+  const covering = boxes.filter((b) => b.id !== root && !inert(b));
+  const d = SAMPLE_INSET_DEVICE_PX;
+  const underOther = (x: number, y: number): boolean => covering.some((c) => x + 1 + d > c.left && x < c.right + d && y + 1 + d > c.top && y < c.bottom + d);
   const rounded = boxes.flatMap((b) => {
     const r = boxRadii(program, b, dpr);
     if (r === null) return [];
@@ -194,6 +212,7 @@ export function backgroundOnly(program: NativeProgram, boxes: readonly SampleBox
     const b = byId.get(id);
     if (b === undefined) return false;
     if (x < b.left + b.border.left || x >= b.right - b.border.right || y < b.top + b.border.top || y >= b.bottom - b.border.bottom) return false;
+    if (id === root && (spills || underOther(x, y))) return false;
     for (const rb of rounded) for (const a of rb.arcs) if (rb.id === id ? !clearInside(a, x, y, 1) : nearArc(a, x, y, 1)) return false;
     return true;
   };

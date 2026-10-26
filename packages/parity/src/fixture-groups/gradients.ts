@@ -6,7 +6,8 @@
 // every box with padding, and the music player's gradient rules. The rejects cover what no target draws yet, naming the package
 // that lifts it; what only the native targets refuse (an angle off the grid, a corner, tiling, a translucent stack over an unknown
 // backdrop, a rounded box Chrome paints into a bleed-avoidance layer, as the music player's .record is, and a transformed subtree)
-// is proven in packages/dragon/test/paint-gradient.test.ts, as a reject fixture blocks the web output too.
+// is proven in packages/dragon/test/paint-gradient.test.ts, as a reject fixture blocks the web output too; so is a canvas gradient
+// the native targets refuse (packages/dragon/test/canvas-background.test.ts), now that the web output draws every one.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -24,9 +25,15 @@ export const GRADIENTS: readonly FixtureSpec[] = [
   layout('gradient-north-star'),
   // Percentage padding on absolutely positioned boxes resolves against the containing block's padding box (or the initial one).
   both('gradient-abspos'),
+  // The canvas background (dragon analysis/paint-values/canvas.ts): body's gradient propagated to the canvas when html has none, one
+  // no-repeat tile in html's box, over a box at min-height 100vh and over a page shorter than the viewport, whose canvas colour shows
+  // below html's box; body as an ordinary gradient box under html's own colour; and a gradient on html itself.
+  both('canvas-gradient-body'),
+  both('canvas-gradient-short'),
+  both('canvas-gradient-html'),
+  both('canvas-gradient-root'),
   reject('reject-gradient-hint', 'DRAGON_UNSUPPORTED_VALUE', '30%', 'background: "30%" is unsupported: colour hints'),
   reject('reject-gradient-fixed', 'DRAGON_UNSUPPORTED_VALUE', 'fixed', 'background: "fixed" is unsupported: background-attachment: fixed'),
-  reject('reject-gradient-root', 'DRAGON_UNSUPPORTED_VALUE', 'linear-gradient(#fff, #ccc)', 'background-image on '),
   reject('reject-gradient-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'background: "calc(10px + 5%)" is unsupported: a colour stop position as calc()'),
   reject('reject-gradient-viewport', 'DRAGON_UNSUPPORTED_VALUE', '10vw', 'background: "10vw" is unsupported: background-size in a viewport unit'),
 ];

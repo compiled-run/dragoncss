@@ -1894,6 +1894,52 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/view_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "e65a54c82bde8cc0574ec70b4ab3d6481598b03f78f04dfdd0bb3a264f1da518",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "261-445", "symbol": "ViewPainter::PaintRootElementGroup", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/canvas.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_background_paint_context.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "7e88b29cbc67bbf58466f14c1dab4461030c9557883b10f6b1f034ecc7e6ebdb",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "66-89", "symbol": "BoxBackgroundPaintContext::BoxBackgroundPaintContext", "source": "located" },
+        { "lines": "254-261", "symbol": "BoxBackgroundPaintContext::NormalPositioningArea", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/canvas.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_background_paint_context.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "ad51f6dcb5aca1f4d7858745c5e62db34aa8e823eab92fabb999b7e24095ca9b",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "66-73", "symbol": "BoxBackgroundPaintContext::EffectiveClip", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/canvas.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/scrollable_overflow_calculator.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
