@@ -60,7 +60,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let s: LayoutStyle = node.style
   // ts: packages/layout/src/float.ts:67
   if (s.position != S.s_static) {
-    try unsupported_unsupported(S.s_float, node.id, S.s301, jsConcat(S.s518, s.position, S.s37, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s310, jsConcat(S.s527, s.position, S.s38, node.id))
   }
   let marginLeft: Double = try box_resolveMarginWith(s.marginLeft, cbInline, ctx.faults).value
   let marginRight: Double = try box_resolveMarginWith(s.marginRight, cbInline, ctx.faults).value
@@ -68,7 +68,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let marginBottom: Double = try box_resolveMarginWith(s.marginBottom, cbInline, ctx.faults).value
   // ts: packages/layout/src/float.ts:72
   if ((((marginLeft < 0.0) || (marginRight < 0.0)) || (marginTop < 0.0)) || (marginBottom < 0.0)) {
-    try unsupported_unsupported(S.s_float, node.id, S.s303, jsConcat(S.s531, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s312, jsConcat(S.s540, node.id))
   }
   // ts: packages/layout/src/float.ts:73
   if (node.kind == S.s_replaced) {
@@ -76,7 +76,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   }
   // ts: packages/layout/src/float.ts:75
   if try (ratio_hasAspectRatio(s) && (s.width.kind == S.s_auto)) {
-    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s660, jsConcat(S.s582, (node as! LayoutBox).id))
+    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s669, jsConcat(S.s591, (node as! LayoutBox).id))
   }
   let width: Double = try float_floatWidth(ctx, (node as! LayoutBox), cbInline, units_add(marginLeft, marginRight))
   let r: ContentsResult = try block_layoutContents(ctx, (node as! LayoutBox), ContentsArgs(cbInline, width, nil, false, basis, true, units_ZERO))
@@ -184,7 +184,7 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<P
         if (inner != nil) {
           // ts: packages/layout/src/float.ts:145
           if (kb.style.position != S.s_static) {
-            try unsupported_unsupported(S.s_float, kb.id, S.s300, jsConcat(S.s1072, kb.style.position, S.s27, kb.id, S.s67))
+            try unsupported_unsupported(S.s_float, kb.id, S.s309, jsConcat(S.s1081, kb.style.position, S.s27, kb.id, S.s70))
           }
           try b = units_add(jsUnwrap(p).y, jsUnwrap(inner))
         }

@@ -58,7 +58,7 @@ public let marker_MARKER_PADDING_PX: Double = 7.0
 
 // ts: packages/layout/src/marker.ts:25
 public func marker_markerTextId(_ markerId: JsString) throws -> JsString {
-  return jsConcat(markerId, S.s255)
+  return jsConcat(markerId, S.s264)
 }
 
 // ts: packages/layout/src/marker.ts:30
@@ -90,9 +90,9 @@ public func marker_layoutMarker(_ ctx: Ctx, _ m: ListMarker) throws -> MarkerBox
   if (!r.ok) {
     // ts: packages/layout/src/marker.ts:51
     if ((r as! MeasureResult_okFalse).code == S.s_text_script) {
-      try unsupported_unsupported(S.s_text_script, m.id, S.s893, (r as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_script, m.id, S.s902, (r as! MeasureResult_okFalse).reason)
     }
-    try unsupported_unsupported(S.s_text_glyph, m.id, S.s651, (r as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, m.id, S.s660, (r as! MeasureResult_okFalse).reason)
   }
   let font: FontMetrics = try inline_fontMetricsOf(ctx, m.id, m.font)
   let own: MarkerText = try MarkerText(marker_markerTextId(m.id), units_sub(line.above, font.ascent), units_add(font.ascent, font.descent))
