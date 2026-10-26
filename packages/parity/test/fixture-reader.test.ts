@@ -254,9 +254,11 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
 // overflow-single-axis-hidden. BG2 draws gradients and several layers, so its background rejects moved to url() and a conic layer. TXT2-c lays out
 // white-space: pre, so reject-white-space-pre moved to a tab in preserved text.
 // GEN-a generates ::before and ::after boxes, so reject-selector-pseudo-element moved to ::first-line (GEN-d).
+// GEN-c draws the UA disc marker, so reject-ua-li-marker moved to list-style-type: hebrew, a type refused on every target.
 // COL4 paints lab() and the other colour functions, so reject-color-lab moved to a translucent lab() outside the sRGB gamut, which Chrome
 // blends before it clamps.
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
+  'reject-ua-li-marker': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\n.a { height: 10px; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<ul data-dragon-id=\"ul\"><li data-dragon-id=\"li\" class=\"a\"></li></ul>\n</body>\n</html>\n",
   'reject-color-lab': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; color: lab(50% 40 59); }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
   'reject-display-grid': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.grid { display: grid; width: 100px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="grid" class="grid"><div data-dragon-id="cell"></div></div>\n</body>\n</html>\n',
   'reject-selector-pseudo-element': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n.a { width: 10px; }\n.a::before { width: 20px; }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="a" class="a"></div>\n</body>\n</html>\n',
