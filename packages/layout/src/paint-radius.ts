@@ -18,8 +18,16 @@ export type RadiusFaults = {
 
 export const NO_RADIUS_FAULTS: RadiusFaults = { radiusUnclamped: false, innerRadiusNotReduced: false };
 
-/** One authored radius component: a zoom-1 css px length (em and rem already resolved), or a percentage of its axis. */
-export type RadiusLength = { readonly percent: boolean; readonly value: number };
+/**
+ * One authored radius component: a zoom-1 css px length (em and rem already resolved), a percentage of its axis (percent), or a
+ * calculation of both (calc: Blink's CalculationValue PixelsAndPercent, value the percentage and px the zoom-1 css px).
+ */
+export type RadiusLength = { readonly percent: boolean; readonly value: number; readonly calc: boolean; readonly px: number };
+
+/** css_primitive_value.cc kMaxValueForCssLength: ClampToCSSLengthRange's bound, as the float ClampTo<float> compares with. */
+const CSS_LENGTH_MAX = 33554429;
+/** std::numeric_limits<float>::max(), ClampTo<float>'s bound. */
+const FLOAT_MAX = 3.4028234663852886e38;
 
 /** gfx::SizeF clamps a component at most 8 float epsilons to 0. */
 const SIZEF_TRIVIAL = 9.5367431640625e-7;
@@ -52,10 +60,29 @@ function maxOf(a: number, b: number): number {
   return a > b ? a : b;
 }
 
-/** FloatValueForLength of one zoomed radius component against its axis (the border box width or height in device px). */
+/** ClampTo<float> of a float result: NaN stays (the callers zero it), and an overflow is the largest float. */
+function clampFloat(v: number): number {
+  if (v >= FLOAT_MAX) return FLOAT_MAX;
+  if (v <= -FLOAT_MAX) return -FLOAT_MAX;
+  return v;
+}
+
+/**
+ * FloatValueForLength of one zoomed radius component against its axis (the border box width or height in device px). A fixed
+ * length is ComputeLength<Length>'s ClampToCSSLengthRange of css px x zoom (so calc(infinity * 1px), computed to the range's
+ * bound, stays at it at every zoom). A calculation is CalculationValue::Evaluate (length_functions.cc kCalculated): the zoomed
+ * pixels stored as a float and clamped (ToCalcValue's ClampLength), plus percent / 100 x axis in float, clamped to the float
+ * range, a negative result of the non-negative radius range 0, and NaN 0 (NonNanCalculatedValue).
+ */
 export function radiusComponent(len: RadiusLength, axis: number, dpr: number): number {
+  if (len.calc) {
+    const pixels = clampFloat(f32(len.px * dpr));
+    const v = clampFloat(f32(pixels + f32(f32(f32(len.value) / 100) * axis)));
+    return v > 0 ? v : 0;
+  }
   if (len.percent) return f32(f32(axis * f32(len.value)) / 100);
-  return f32(len.value * dpr);
+  const zoomed = len.value * dpr;
+  return f32(zoomed >= CSS_LENGTH_MAX ? CSS_LENGTH_MAX : zoomed);
 }
 
 /**

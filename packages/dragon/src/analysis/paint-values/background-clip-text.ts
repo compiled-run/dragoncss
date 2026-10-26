@@ -4,7 +4,7 @@
 // (each glyph draws in the background colour, the coverage Chrome masks the colour with). The lowering suppresses the box's own
 // colour and repaints its texts; everything else that clips to text is refused where it applies (gradient.ts checkTextClip).
 import type { Rgba8 } from '../../css/color.ts';
-import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
+import { componentZero, cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
 import { glyphFill, usedColors } from '../../lower/paint/colors.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
 import type { ElementLayer } from './gradient.ts';
@@ -64,7 +64,7 @@ export function nativeTextClipRefusal(el: ResolvedElement, layers: readonly Elem
   if (sides.some((s) => !['none', 'hidden'].includes(keywordOf(el, `border-${s}-style`)) && pxOf(el, `border-${s}-width`) !== 0)) return 'the box has a border';
   if (RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
-    return c === null || c[0].value !== 0 || c[1].value !== 0;
+    return c === null || !componentZero(c[0]) || !componentZero(c[1]);
   })) return 'the box has a border radius';
   if (keywordOf(el, 'box-shadow') !== 'none') return 'the box has a box shadow';
   if (keywordOf(el, 'text-shadow') !== 'none') return 'the text has a text shadow';

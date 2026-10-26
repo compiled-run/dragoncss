@@ -5,17 +5,39 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { RadiusLength } from '../src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../src/paint-radius.ts';
 
-const px = (value: number) => ({ percent: false, value });
-const pct = (value: number) => ({ percent: true, value });
-const all = (l: { percent: boolean; value: number }) => [l, l, l, l, l, l, l, l];
+const px = (value: number): RadiusLength => ({ percent: false, value, calc: false, px: 0 });
+const pct = (value: number): RadiusLength => ({ percent: true, value, calc: false, px: 0 });
+const calc = (percent: number, pixels: number): RadiusLength => ({ percent: false, value: percent, calc: true, px: pixels });
+const all = (l: RadiusLength) => [l, l, l, l, l, l, l, l];
 
 describe('paint-radius: Blink 145 radius geometry', () => {
   it('zooms a fixed radius as float(css px x dpr) and resolves a percentage as float(float(axis x percent) / 100)', () => {
     expect(radiusComponent(px(0.35 * 16), 0, 2.625)).toBe(Math.fround(0.35 * 16 * 2.625));
     expect(radiusComponent(pct(33.333), 79, 1)).toBe(Math.fround(Math.fround(79 * Math.fround(33.333)) / 100));
     expect(radiusComponent(px(0), 100, 3)).toBe(0);
+  });
+  it('clamps a zoomed fixed radius to the CSS length range, so calc(infinity * 1px) stays at its bound at every zoom', () => {
+    for (const dpr of [1, 2, 2.625, 3]) expect(radiusComponent(px(33554428), 80, dpr)).toBe(33554428);
+    expect(radiusComponent(px(2e7), 80, 2)).toBe(33554428);
+    expect(radiusComponent(px(2e7), 80, 1)).toBe(2e7);
+  });
+  it('evaluates a calculation as Blink CalculationValue::Evaluate: float pixels + float(percent / 100) x axis, negative and NaN to 0', () => {
+    expect(radiusComponent(calc(50, -2), 79, 2.625)).toBe(Math.fround(Math.fround(-2 * 2.625) + Math.fround(Math.fround(0.5) * 79)));
+    // The calculation's float order differs from a plain percentage's: (33.333 / 100) x 79 against (79 x 33.333) / 100.
+    const a = radiusComponent(calc(33.333, 0), 79, 1);
+    expect(a).toBe(Math.fround(Math.fround(Math.fround(33.333) / 100) * 79));
+    expect(radiusComponent(calc(10, -40), 79, 1)).toBe(0);
+    expect(radiusComponent(calc(1e38, 1e38), 79, 3)).toBe(3.4028234663852886e38);
+    expect(radiusComponent(calc(0, 6), 0, 2)).toBe(12);
+  });
+  it('a pill: calc(infinity * 1px) on every corner is scaled by ConstrainRadii to half the short side', () => {
+    const r = roundedShape(0, 0, 160, 80, 160, 80, [0, 0, 0, 0], all(px(33554428)), 2, NO_RADIUS_FAULTS);
+    const f = Math.fround(80 / Math.fround(33554428 * 2));
+    expect(r.slice(0, 8)).toEqual(Array(8).fill(Math.fround(33554428 * f)));
+    expect(Math.abs((r[0] as number) - 40)).toBeLessThan(1e-4);
   });
   it('clamps a component of at most 8 float epsilons to 0 (gfx::SizeF)', () => {
     expect(resolveCornerRadii([px(1e-7), px(4), px(4), px(4), px(4), px(4), px(4), px(4)], 100, 50, 1)[0]).toBe(0);

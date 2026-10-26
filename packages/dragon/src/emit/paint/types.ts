@@ -43,7 +43,7 @@ export type PaintEngine = {
   readonly outlineRings: (left: number, top: number, right: number, bottom: number, radii: readonly number[], width: number, offset: number, double: boolean) => number[];
   readonly outlineWidthPx: (width: number, dpr: number) => number;
   readonly outlineOffsetPx: (offset: number, dpr: number) => number;
-  readonly roundedShape: (left: number, top: number, right: number, bottom: number, layoutWidth: number, layoutHeight: number, borders: readonly number[], lengths: readonly { readonly percent: boolean; readonly value: number }[], dpr: number, faults: { readonly radiusUnclamped: boolean; readonly innerRadiusNotReduced: boolean }) => number[];
+  readonly roundedShape: (left: number, top: number, right: number, bottom: number, layoutWidth: number, layoutHeight: number, borders: readonly number[], lengths: readonly { readonly percent: boolean; readonly value: number; readonly calc: boolean; readonly px: number }[], dpr: number, faults: { readonly radiusUnclamped: boolean; readonly innerRadiusNotReduced: boolean }) => number[];
 };
 
 export const NO_NATIVE_PAINT: NativePaint = { boxMembers: '', file: null, stages: {}, afterLayout: null, applied: null, roundedPath: null, container: null };

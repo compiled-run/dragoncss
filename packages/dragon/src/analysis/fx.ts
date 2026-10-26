@@ -17,7 +17,7 @@ import type { Rgba8 } from '../css/color.ts';
 import { SIDES } from '../css/properties.ts';
 import { opacityOf } from '../css/properties/effects.ts';
 import { blendModeOf, filterFunctionNames, hasBackdropFilter } from '../css/properties/fx.ts';
-import { cornerComponents } from '../css/properties/radius.ts';
+import { componentZero, cornerComponents } from '../css/properties/radius.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { usedColors } from '../lower/paint/colors.ts';
 import { transformedForStacking } from '../lower/paint/stacking.ts';
@@ -75,7 +75,7 @@ const rounded = (el: ResolvedElement): boolean =>
   ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'].some((p) => {
     const v = el.props.get(p as never)?.value;
     const parts = v === undefined ? null : cornerComponents(v);
-    return parts === null || (parts[0].value !== 0 && parts[1].value !== 0);
+    return parts === null || (!componentZero(parts[0]) && !componentZero(parts[1]));
   });
 
 /** Why a box outside the FX box paints something (null when it paints at most a background of the canvas colour). */

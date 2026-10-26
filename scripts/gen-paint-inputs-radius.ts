@@ -12,10 +12,12 @@ const bits = (x: number): string => {
 };
 const line = (name: string, args: readonly number[]): string => JSON.stringify([`paint:radius:${name}`, ...args.map(bits)]);
 
-type Len = readonly [0 | 1, number];
-const px = (v: number): Len => [0, v];
-const pct = (v: number): Len => [1, v];
-const flat = (ls: readonly Len[]): number[] => ls.flatMap((l) => [l[0], l[1]]);
+/** One length as the harness reads it: a flag (0 px, 1 percentage, 2 calculation), the value (px or %), and a calculation's px. */
+type Len = readonly [0 | 1 | 2, number, number];
+const px = (v: number): Len => [0, v, 0];
+const pct = (v: number): Len => [1, v, 0];
+const calc = (percent: number, pixels: number): Len => [2, percent, pixels];
+const flat = (ls: readonly Len[]): number[] => ls.flatMap((l) => [l[0], l[1], l[2]]);
 
 const DPRS = [1, 2, 3, 2.625];
 const FAULTS: readonly (readonly [number, number])[] = [[0, 0], [1, 0], [0, 1]];
@@ -30,6 +32,10 @@ const RADII: readonly (readonly Len[])[] = [
   [pct(33.333), px(12), pct(10), px(0.5), px(20), pct(25), px(7), pct(80)],
   [px(60), px(60), px(0), px(0), px(40), px(40), px(0), px(0)],
   [px(1e-7), px(4), px(4), px(4), px(4), px(4), px(4), px(4)],
+  // A pill, calc(infinity * 1px) computed to the CSS length range's bound, which ConstrainRadii scales to the short side.
+  [px(33554428), px(33554428), px(33554428), px(33554428), px(33554428), px(33554428), px(33554428), px(33554428)],
+  // Calculations: calc(50% - 2px), calc(25% + 3.5px), calc(0% + 6px), one clamped to 0, and one over the float range.
+  [calc(50, -2), calc(25, 3.5), calc(0, 6), calc(10, -40), calc(50, -2), calc(25, 3.5), calc(0, 6), calc(1e38, 1e38)],
 ];
 /** Snapped border boxes (left, top, right, bottom) and border widths (top, right, bottom, left), in device px. */
 const BOXES: readonly (readonly [number, number, number, number, readonly number[]])[] = [
@@ -69,7 +75,7 @@ for (const f of FAULTS.slice(1)) {
     out.push(line('roundedShape', [l, t, rr, b, rr - l, b - t, ...borders, ...flat(r as readonly Len[]), 2, ...f]));
   }
 }
-for (const len of [px(0), px(7.5), px(0.35 * 16), pct(50), pct(33.333), pct(0.1)]) {
+for (const len of [px(0), px(7.5), px(0.35 * 16), pct(50), pct(33.333), pct(0.1), px(33554428), px(2e7), calc(50, -2), calc(33.333, 0.35 * 16), calc(10, -40), calc(1e38, 1e38), calc(0, 0)]) {
   for (const [axis, dpr] of [[79, 2.625], [1050, 3]] as const) out.push(line('radiusComponent', [...len, axis, dpr]));
 }
 for (const radii of RAW) {
