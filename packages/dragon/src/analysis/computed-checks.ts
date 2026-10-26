@@ -547,7 +547,11 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       }
     }
     // resolve.ts collapses the white space of a context with inline boxes or <br>s across them (collapseInlineContext), which is
-    // right only for white-space-collapse: collapse (css-text-4 §4.1.1).
+    // right only for white-space-collapse: collapse (css-text-4 §4.1.1); a context holding preserved text keeps each text as
+    // authored (phaseOneContext). WS-PRE-INL: the engine lays out white-space: pre (preserve, nowrap) text in inline boxes when the
+    // whole context is pre and holds no <br> or atomic inline (inline.ts checkPreservedText).
+    const preOf = (props: ReadonlyMap<Longhand, ResolvedValue>): boolean => keywordOf(props.get('white-space-collapse') as ResolvedValue) === 'preserve' && keywordOf(props.get('text-wrap-mode') as ResolvedValue) === 'nowrap';
+    const preRun = run.some((it) => it.kind === 'text') && run.every((it) => (it.kind === 'text' ? preOf(it.text.props) : (it.kind === 'open' || it.kind === 'close') && preOf(it.el.props)));
     for (const it of run) {
       if (it.kind !== 'open' && it.kind !== 'br') continue;
       // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
@@ -571,9 +575,9 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
         refuseNative(it.el, 'stacking-context', `isolation: isolate on the inline box <${it.el.element.tag}> ${it.el.element.address} makes it a stacking context: the native runtime places an inline box's content beside its view, not in it, until INL1b, so the group would be dropped`, `Move the isolation to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`, v.declaration !== null ? authored(v.declaration.valueSpan) : v.span !== null ? authored(v.span) : undefined);
       }
       const collapse = keywordOf(it.el.props.get('white-space-collapse') as ResolvedValue);
-      if (collapse !== 'collapse') refuse(it.el, 'white-space', `white-space-collapse: ${collapse} on the inline box <${it.el.element.tag}> ${it.el.element.address} (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${it.el.element.address}, or make ${it.el.element.address} a block.`);
+      if (collapse !== 'collapse' && !preRun) refuse(it.el, 'white-space', `white-space-collapse: ${collapse} on the inline box <${it.el.element.tag}> ${it.el.element.address} (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${it.el.element.address}, or make ${it.el.element.address} a block.`);
     }
-    const preserved = run.some((it) => it.kind !== 'text') ? run.find((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse') : undefined;
+    const preserved = run.some((it) => it.kind !== 'text') && !preRun ? run.find((it) => it.kind === 'text' && keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse') : undefined;
     if (preserved !== undefined && preserved.kind === 'text') {
       refuse(el, 'white-space', `white-space-collapse: ${keywordOf(preserved.text.props.get('white-space-collapse') as ResolvedValue)} on ${preserved.text.node.address} in an inline formatting context of ${el.element.address} with inline boxes or <br>s (css-text-4 §4.1.1), which Dragon does not lay out`, `Remove the white-space declaration of ${el.element.address}.`);
     }

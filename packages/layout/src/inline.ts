@@ -639,12 +639,14 @@ function lineFeedSegments(t: TextLeaf): string[] {
 }
 
 /**
- * TXT2-c scope (notes/T149-txt2-spec.md R3): preserved text is laid out alone in its formatting context (no inline boxes, <br>s or
+ * TXT2-c scope (notes/T149-txt2-spec.md R3): preserved text is laid out alone in its formatting context (no <br>s, atomic inlines or
  * text of another white-space-collapse), left to right, with no tab (tab-size is TXT2-c3) and no control character but U+000A; and
- * break-spaces only in Ahem.
+ * break-spaces only in Ahem. WS-PRE-INL: white-space: pre text (preserve, nowrap) may sit in inline boxes, whose tags add no
+ * characters, so its only boundaries are the forced ones after each U+000A (boundariesOf), wherever the boxes open and close.
  */
 function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpaceCollapse): void {
-  if (flat.boxes.length > 0 || flat.brs.length > 0) unsupported('mixed-white-space', box.id, 'css-text-4 §4.1.1', `white-space-collapse: ${mode} text beside inline boxes or <br>s in ${box.id}`);
+  const pre = mode === 'preserve' && preservedNowrap(flat.leaves);
+  if ((flat.boxes.length > 0 && !pre) || flat.brs.length > 0 || flat.atomics.length > 0) unsupported('mixed-white-space', box.id, 'css-text-4 §4.1.1', `white-space-collapse: ${mode} text beside ${pre ? '<br>s or atomic inlines' : 'inline boxes or <br>s'} in ${box.id}`);
   for (const t of flat.leaves) {
     if (t.whiteSpaceCollapse !== mode) unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `text runs with different white-space-collapse in one formatting context of ${box.id}`);
     if (mode === 'break-spaces' && t.font.family !== AHEM_FACE_ID) unsupported('line-break', t.id, 'css-text-4 §5.1', `white-space-collapse: break-spaces in the real face of ${t.id} (TXT2-c2)`);
@@ -667,6 +669,10 @@ function checkPreservedBesideInline(box: LayoutBox, kids: readonly (InlineChild 
   for (const k of kids) if (k.kind !== 'text') inline = true;
   if (!inline) return;
   const leaves = inlineLeaves(box);
+  // WS-PRE-INL: white-space: pre text beside inline boxes is laid out; checkPreservedText refuses the <br>s and atomic inlines.
+  let pre = leaves.length > 0;
+  for (const t of leaves) if (t.whiteSpaceCollapse !== 'preserve') pre = false;
+  if (pre && preservedNowrap(leaves)) return;
   for (const t of leaves) if (t.whiteSpaceCollapse !== 'collapse') unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `white-space-collapse: ${t.whiteSpaceCollapse} text beside inline boxes, <br>s or atomic inlines in ${box.id}`);
 }
 
@@ -677,6 +683,12 @@ function checkPreservedBesideInline(box: LayoutBox, kids: readonly (InlineChild 
 function checkAtomicContext(ctx: Ctx, box: LayoutBox): void {
   if (box.style.textAlign === 'justify') unsupported('text-align', box.id, 'css-text-3 §7.3', `text-align: justify on the inline formatting context of ${box.id}, which holds an atomic inline, is not proven against Chrome`);
   if (truncates(ctx, box)) unsupported('text-overflow', box.id, 'css-overflow-4 §3.1', `text-overflow: ellipsis on the inline formatting context of ${box.id}, which holds an atomic inline, is not proven against Chrome`);
+}
+
+/** Whether every leaf's lines do not wrap (text-wrap-mode: nowrap), as white-space: pre's do. */
+function preservedNowrap(leaves: readonly TextLeaf[]): boolean {
+  for (const t of leaves) if (t.textWrapMode !== 'nowrap') return false;
+  return true;
 }
 
 /** The char items that end the run of spaces starting a paragraph (the context start, or after a preserved U+000A) and precede a non-space. */
@@ -2127,6 +2139,10 @@ function preservedFragments(ctx: Ctx, ifc: Ifc, adv: readonly LU[], line: Line, 
       i++;
       continue;
     }
+    if (it.kind === 'open' || it.kind === 'close') {
+      i++;
+      continue;
+    }
     const from = i;
     const hangs = ownHang && i >= hangFrom;
     i++;
@@ -2162,16 +2178,30 @@ function joinedFragments(ifc: Ifc, frags: readonly PreservedFragment[]): Preserv
   return out;
 }
 
-/** A line box of preserved text (left to right, no inline boxes, checkPreservedText): its fragments placed one after another. */
+/**
+ * A line box of preserved text (left to right, checkPreservedText): its fragments placed one after another. Inline boxes come only
+ * with white-space: pre (no wrapping): each on the line adds its ascent and descent around the baseline (CSS2 §10.8.1) and spans
+ * from its open tag, or the line start, to its close tag, or the end of the line's fragments; a preserved U+000A is its zero-width fragment.
+ */
 function placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], line: Line, available: LU, top: LU): PlacedLine {
   const own = preservedFragments(ctx, ifc, adv, line, available);
   let shown = ZERO;
   for (const f of own) if (!f.hangs) shown = add(shown, f.width);
   const frags = ifc.shaped ? joinedFragments(ifc, own) : own;
-  let x = alignOffset(ctx, box, sub(available, shown));
-  const above = ifc.strut.above;
+  const start = alignOffset(ctx, box, sub(available, shown));
+  let x = start;
+  const on: number[] = [];
+  for (let b = 0; b < ifc.boxes.length; b++) if (boxOnLine(ifc, b, line.start, line.end)) on.push(b);
+  let above = ifc.strut.above;
+  let below = ifc.strut.below;
+  if (!ctx.faults.lineHeightIgnoresInlineBoxes) {
+    for (const b of on) {
+      above = max(above, (ifc.boxMetrics[b] as BoxMetrics).above);
+      below = max(below, (ifc.boxMetrics[b] as BoxMetrics).below);
+    }
+  }
   const baseline = add(top, above);
-  const height = add(above, ifc.strut.below);
+  const height = add(above, below);
   const pieces: LinePiece[] = [];
   for (const f of frags) {
     const first = ifc.items[f.from] as Item;
@@ -2184,7 +2214,21 @@ function placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU
   }
   // TXT2-c with TXT2-f: Blink truncates a preserved line by its own items (control items, hanging spaces), which no Chrome case covers yet.
   if (truncates(ctx, box) && shown > add(available, fromRaw(1))) unsupported('text-overflow', box.id, 'css-overflow-4 §3.1', `the preserved white space of ${box.id} overflows a truncated line`);
-  return { top, height, baseline, pieces, boxes: [], boxRects: [], breaks: [], breakRects: [], ellipsis: null };
+  const boxRects: Rect[] = [];
+  for (const b of on) {
+    const bm = ifc.boxMetrics[b] as BoxMetrics;
+    const left = fragmentX(frags, start, ifc.openAt[b] as number);
+    const right = fragmentX(frags, start, ifc.closeAt[b] as number);
+    boxRects.push({ x: left, y: sub(baseline, bm.ascent), width: sub(right, left), height: add(bm.ascent, bm.descent) });
+  }
+  return { top, height, baseline, pieces, boxes: on, boxRects, breaks: [], breakRects: [], ellipsis: null };
+}
+
+/** The x before item i of a preserved line whose fragments start at x start: after every fragment before i (tags advance nothing). */
+function fragmentX(frags: readonly PreservedFragment[], start: LU, i: number): LU {
+  let x = start;
+  for (const f of frags) if (f.from < i) x = add(x, f.width);
+  return x;
 }
 
 /**

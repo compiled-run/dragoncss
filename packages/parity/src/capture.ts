@@ -61,15 +61,17 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed, ...svg });
     // INL1a: an inline box's fragments, one "<id>:line<j>" per client rect (one per line it is on); a <br> has none. A culled
     // box (no box fragment of its own) also lists the zero-width piece of a <br> inside it beside that line's rect, and only in
-    // the first layout (INL-P open question 1), so a zero-width <br> piece with another rect on its line is left out.
+    // the first layout (INL-P open question 1), so a zero-width <br> piece with another rect on its line is left out. WS-PRE-INL:
+    // a culled box likewise lists the zero-width piece of a preserved U+000A inside it after its line's text, which goes the same way.
     // An SVG element is never a CSS inline box: an <svg> is a replaced element (an atomic inline at most) and a shape inside it
     // is laid out by SVG, not by inline formatting, though its computed display is 'inline' (Chrome's LayoutSVGShape). RF-INL: a
     // replaced element with display: inline is an atomic inline (Chrome's LayoutReplaced), one box on its line, not an inline box.
     if (cs.display === 'inline' && el.tagName !== 'BR' && !REPLACED_TAGS.includes(el.tagName) && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
       const rects = Array.from(el.getClientRects());
       const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
+      const preservesNewlines = cs.getPropertyValue('white-space-collapse') !== 'collapse';
       const extraBrPiece = (f: DOMRect): boolean =>
-        f.width === 0 && brPieces.some((b) => b.x === f.x && b.y === f.y && b.height === f.height) && rects.some((o) => o !== f && o.y === f.y && o.height === f.height);
+        f.width === 0 && (preservesNewlines || brPieces.some((b) => b.x === f.x && b.y === f.y && b.height === f.height)) && rects.some((o) => o !== f && o.y === f.y && o.height === f.height);
       rects.filter((f) => !extraBrPiece(f)).forEach((f, j) => out.push({ id: `${id}:line${j}`, kind: 'line', hasBox: true, x: f.x, y: f.y, width: f.width, height: f.height, computed: null }));
     }
     let k = 0;

@@ -9,6 +9,9 @@ import { layout, reject } from './define.ts';
 
 export const WHITE_SPACE: readonly FixtureSpec[] = [
   layout('white-space-preserve'),
+  // WS-PRE-INL: white-space: pre text in inline boxes (line feeds inside and at the ends of boxes, empty lines, nested boxes, a
+  // larger font, no wrap); ltr only, as preserved white space in an rtl block is refused (UAX #9 L1).
+  layout('white-space-pre-inline'),
   layout('white-space-wrap'),
   layout('white-space-lato'),
   reject('reject-white-space-control', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="a" class="a">XX&#12;XX</div>', 'U+000C in '),
