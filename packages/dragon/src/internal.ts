@@ -322,11 +322,11 @@ function movingOf(record: NonNullable<ReturnType<typeof internalRecord>>): Reado
  * Both native backends' lowered programs of one case (docs/research/native-strategy.md 1.1): from the one nativeLowered tree and
  * the case's resolved paint values. Ready only when the result configures and checks both ios and android.
  */
-export function nativePrograms(compiled: object, assignment: Assignment, state: string | null = null): NativePrograms {
+export function nativePrograms(compiled: object, assignment: Assignment, state: string | null = null, need: readonly ('ios' | 'android')[] = ['ios', 'android']): NativePrograms {
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
-  for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
+  for (const t of need) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
@@ -542,7 +542,7 @@ const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 
  * The interaction level input of one app assignment for one backend: its partition, each partition state's per-case program, and
  * per element whether its control consumes a touch (input type=range, P7) and whether pointer focus on it is focus-visible (R8).
  */
-export function interactionLevelInput(compiled: object, assignment: Assignment, backend: NativeBackend): LevelInput | string {
+export function interactionLevelInput(compiled: object, assignment: Assignment, backend: NativeBackend, need: readonly ('ios' | 'android')[] = ['ios', 'android']): LevelInput | string {
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string') return c;
   if (c.partition === null || c.resolved === null) return 'the case did not resolve';
@@ -554,7 +554,7 @@ export function interactionLevelInput(compiled: object, assignment: Assignment, 
   walk(c.resolved);
   const programs: NativeProgram[] = [];
   for (const i of c.interaction) {
-    const p = nativePrograms(compiled, assignment, i.value.key);
+    const p = nativePrograms(compiled, assignment, i.value.key, need);
     if (p.kind === 'blocked') return `interaction state ${i.value.key}: ${p.reason}`;
     programs.push(p.programs[backend]);
   }
@@ -573,4 +573,107 @@ export function interactionLevelInput(compiled: object, assignment: Assignment, 
       return type === 'textarea' || (type !== null && TEXT_FIELD_TYPES.has(type));
     },
   };
+}
+
+// SELD-R2 §1: a ready native output's per-document interaction file.
+import { deriveInteractionProgram as deriveDocumentInteractionProgram } from './lower/interaction-program.ts';
+import { deriveStateProgram as deriveDocumentStateProgram, StateProgramError as DocumentStateProgramError } from './lower/state-program.ts';
+import type { InteractionProgramEmit } from './emit/runtime/interaction.ts';
+import type { GeneratedFile } from './types.ts';
+import type { ControlBox, InlineChild, LayoutBox, TextLeaf } from '@dragon/layout';
+export type { InteractionProgramEmit } from './emit/runtime/interaction.ts';
+export { emitInteractionUserFile, interactionUserMount, interactionUserName } from './emit/runtime/interaction.ts';
+import { emitInteractionUserFile, InteractionEmitError as DocumentInteractionEmitError } from './emit/runtime/interaction.ts';
+
+/**
+ * The interaction program of a compiled document for one native target, built as the lanes build theirs (packages/parity
+ * trace-lane.ts traceEmits): every reachable case in enumeration order, each with its level input and the hit facts of its none
+ * state and of each interaction state. null when no case has an interaction state. Anything missing, and a document whose native
+ * output also switches @media bands or runs transitions or animations (which the interaction machine does not), is an
+ * InteractionEmitError, so a ready output never ships a machine that leaves part of the document out.
+ */
+export function documentInteractionEmit(compiled: object, target: 'ios' | 'android'): InteractionProgramEmit | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) throw new DocumentInteractionEmitError('not a compiled result from this package');
+  if (!record.cases.some((c) => (c.partition?.states.length ?? 0) > 0)) return null;
+  const id = record.documentId ?? 'the document';
+  if (record.bands !== null && record.bands.partition.bands.length > 1) throw new DocumentInteractionEmitError(`${id}: its native output switches ${record.bands.partition.bands.length} @media bands at run time, which the interaction machine does not`);
+  if (record.animation !== null && record.animation.features.length > 0) throw new DocumentInteractionEmitError(`${id}: it has transitions or animations, which the interaction machine does not run`);
+  for (const c of record.cases) {
+    for (const tree of [c.nativeLowered, ...c.interaction.map((i) => i.nativeLowered)]) {
+      const why = tree === null ? null : unmodelledHitText(tree);
+      if (why !== null) throw new DocumentInteractionEmitError(`${id}: ${why}`);
+    }
+  }
+  const backend: NativeBackend = target === 'ios' ? 'uikit' : 'android-views';
+  const need = [target] as const;
+  const cases = record.cases.map((c) => {
+    const p = nativePrograms(compiled, c.assignment, null, need);
+    if (p.kind === 'blocked') throw new DocumentInteractionEmitError(`${id}: case ${c.key}: no native programs: ${p.reason}`);
+    const input = interactionLevelInput(compiled, c.assignment, backend, need);
+    if (typeof input === 'string') throw new DocumentInteractionEmitError(`${id}: case ${c.key}: no interaction level: ${input}`);
+    const facts = [null, ...input.partition.states.map((s) => s.key)].map((key) => {
+      const f = hitFacts(compiled, c.assignment, key);
+      if (f === null) throw new DocumentInteractionEmitError(`${id}: case ${c.key}: no hit facts for interaction state ${key ?? 'none'}`);
+      return f;
+    });
+    return { state: { assignment: c.assignment, isInitial: c.isInitial, program: p.programs[backend] }, input, facts };
+  });
+  try {
+    const sp = deriveDocumentStateProgram(backend, cases.map((c) => c.state));
+    return { id, program: deriveDocumentInteractionProgram(sp, cases.map((c) => c.input)), facts: cases.map((c) => c.facts) };
+  } catch (e) {
+    if (e instanceof DocumentStateProgramError || e instanceof ProgramError) throw new DocumentInteractionEmitError(`${id}: ${e.message}`);
+    throw e;
+  }
+}
+
+/** The face id the hit table (rt-hit.ts, text.ts AHEM_FACE_ID) models preserved text in. */
+export const HIT_PRESERVED_FACE = 'Ahem';
+
+/**
+ * Why the device hit table (layout rt-hit.ts inlineNodes and pieceFlags) would stop on some block of a lowered tree, or null. A
+ * block whose inline content holds preserved text (white-space-collapse other than collapse) is refused: in a face other than Ahem,
+ * or with inline padding that is not a plain px length, the hit table throws; in Ahem it checks each fragment against the engine's
+ * own line piece only on the device, so a mismatch there would stop the app. The machine's hit table fatalErrors on a throw.
+ */
+/** A block's text leaves in inline order, through its inline boxes: layout inline.ts inlineLeaves (the core imports layout for types only). */
+export function hitTextLeaves(box: LayoutBox): TextLeaf[] {
+  const out: TextLeaf[] = [];
+  const walk = (kids: readonly InlineChild[]): void => {
+    for (const k of kids) {
+      if (k.kind === 'text') out.push(k);
+      else if (k.kind === 'inline') walk(k.children);
+    }
+  };
+  walk(box.children.filter((k): k is InlineChild => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br'));
+  return out;
+}
+
+export function unmodelledHitText(root: LayoutBox): string | null {
+  const visit = (b: LayoutBox | ControlBox): string | null => {
+    if (b.kind === 'box') {
+      const preserved = hitTextLeaves(b).filter((l) => l.whiteSpaceCollapse !== 'collapse');
+      const face = preserved.find((l) => l.font.family !== HIT_PRESERVED_FACE);
+      if (face !== undefined) return `${face.id}: preserved white space in the face ${face.font.family}, which the device hit table models in ${HIT_PRESERVED_FACE} only`;
+      if (preserved.length > 0 && (b.style.paddingLeft.kind !== 'px' || b.style.paddingRight.kind !== 'px')) return `${b.id}: preserved white space in a box whose inline padding is not a px length, whose content width the device hit table does not resolve`;
+      if (preserved.length > 0) return `${(preserved[0] as TextLeaf).id}: preserved white space, whose line fragments the device hit table checks against the engine's line pieces only on the device`;
+    }
+    for (const k of b.children) {
+      if (k.kind !== 'box' && k.kind !== 'control') continue;
+      const why = visit(k);
+      if (why !== null) return why;
+    }
+    return null;
+  };
+  return visit(root);
+}
+
+/** The ready native output's interaction file of a compiled document (emitInteractionUserFile), or none without interaction states. */
+export function documentInteractionFiles(compiled: object, target: 'ios' | 'android'): GeneratedFile[] {
+  const e = documentInteractionEmit(compiled, target);
+  const documentId = internalRecord(compiled)?.documentId ?? null;
+  if (e === null) return [];
+  if (documentId === null) throw new DocumentInteractionEmitError('the document did not link, so it has no name');
+  return [emitInteractionUserFile(target === 'ios' ? 'uikit' : 'android-views', e, documentId)];
 }

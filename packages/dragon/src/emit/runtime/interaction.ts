@@ -11,8 +11,8 @@ import { PROGRAM_VERSIONS } from '../../lower/native-program.ts';
 import type { GeneratedFile, Scalar } from '../../types.ts';
 import type { HitFact } from './hit.ts';
 import type { Lang } from '../native-support.ts';
-import { doubleLit, environmentArgs, inputFunctions, stringLit } from '../native-support.ts';
-import { commentText, deltaLit, nodeLit, valueKey } from './state.ts';
+import { doubleLit, emitNativeSupport, inputFunctions, liveEnvironmentArgs, stringLit } from '../native-support.ts';
+import { commentText, deltaLit, nodeLit, StateEmitError, valueKey } from './state.ts';
 
 export const INTERACTION_RUNTIME_VERSION = 'dragon.runtime-interaction/1';
 
@@ -865,12 +865,19 @@ function stepLit(lang: Lang, ip: InteractionProgram, id: string, i: number, s: I
   }
 }
 
-function programSource(lang: Lang, e: InteractionEmit, k: number, faults: InteractionFaults | null): string {
+/** What the lane and the user emit share (programDecls): one document's interaction program and the hit facts of every (app, state). */
+export type InteractionProgramEmit = Pick<InteractionEmit, 'id' | 'program' | 'facts'>;
+
+/**
+ * The private declarations of one interaction program, named from prefix p, and the DragonInteractionMachine constructor arguments
+ * over them (variants: a list of (Double) -> LayoutInput expressions over vw and vh). The lane emit (emitInteractionPrograms) and the
+ * user emit (emitInteractionUserFile) both write exactly these lines, so the tables a user app ships are the ones the lanes prove.
+ */
+function programDecls(lang: Lang, e: InteractionProgramEmit, p: string): { readonly lines: readonly string[]; readonly args: (variants: string) => string; readonly variants: (vw: string, vh: string) => string } {
   const q = (s: string): string => stringLit(lang, s);
   const ip = e.program;
   const sp = ip.program;
   const sw = lang === 'swift';
-  const p = `dragonInteractions${k}`;
   if (ip.levels.length !== sp.assignments.length) throw new InteractionEmitError(`${e.id}: ${ip.levels.length} levels for ${sp.assignments.length} app assignments`);
   if (e.facts.length !== ip.levels.length) throw new InteractionEmitError(`${e.id}: hit facts for ${e.facts.length} of ${ip.levels.length} app assignments`);
   const out: string[] = [`// interaction program ${commentText(e.id)} (${sp.assignments.length} app assignments, ${ip.levels.reduce((n, l) => n + l.deltas.length, 0)} interaction states, ${ip.variants.length} layout variants)`];
@@ -884,10 +891,11 @@ function programSource(lang: Lang, e: InteractionEmit, k: number, faults: Intera
     const input = inputFunctions(lang, variant.root, `${p}V${j}`);
     out.push(...input.decls);
     const fn = `${p}Input${j}`;
-    variantFns.push(sw ? fn : `::${fn}`);
+    variantFns.push(fn);
+    // The viewport is the caller's (the lane's fixture viewport, a user app's stage size), not a literal, as in the state emit.
     out.push(sw
-      ? `private func ${fn}(_ dpr: Double) -> LayoutInput {\n  return LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})\n}`
-      : `private fun ${fn}(dpr: Double): LayoutInput = LayoutInput(Viewport(${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}), dpr, ${environmentArgs(e.viewport, variant.rootFontSize)}, ${input.root})`);
+      ? `private func ${fn}(_ dpr: Double, _ vw: Double, _ vh: Double) -> LayoutInput {\n  return LayoutInput(Viewport(vw, vh), dpr, ${liveEnvironmentArgs('vw', 'vh', variant.rootFontSize)}, ${input.root})\n}`
+      : `private fun ${fn}(dpr: Double, vw: Double, vh: Double): LayoutInput = LayoutInput(Viewport(vw, vh), dpr, ${liveEnvironmentArgs('vw', 'vh', variant.rootFontSize)}, ${input.root})`);
   });
   const states = decl(`${p}States`, sw ? '[String]' : 'List<String>', list(lang, sp.states.map((s) => q(s.key))));
   const domains = decl(`${p}Domains`, sw ? '[[String]]' : 'List<List<String>>', list(lang, sp.states.map((s) => list(lang, s.domain.map((v) => q(valueKey(v)))))));
@@ -926,17 +934,39 @@ function programSource(lang: Lang, e: InteractionEmit, k: number, faults: Intera
     return decl(`${p}Level${a}`, 'DragonInteractionLevel', `DragonInteractionLevel(${tables}, ${list(lang, l.addresses.map(q))}, ${ints(levelDeltas[a] as number[])}, ${ints(levelFacts[a] as number[])})`);
   });
   const levels = decl(`${p}Levels`, sw ? '[DragonInteractionLevel]' : 'List<DragonInteractionLevel>', list(lang, levelRefs));
-  const faultsRef = decl(`${p}Faults`, 'InteractionFaults', interactionFaultsLit(faults));
+  return {
+    lines: out,
+    variants: (vw, vh) => (sw
+      ? `[${variantFns.map((fn) => `{ ${fn}($0, ${vw}, ${vh}) }`).join(', ')}]`
+      : `listOf<(Double) -> LayoutInput>(${variantFns.map((fn) => `{ dpr: Double -> ${fn}(dpr, ${vw}, ${vh}) }`).join(', ')})`),
+    args: (variants) => (sw
+      ? `states: ${states}, domains: ${domains}, base: ${base}, deltas: ${deltas}, levels: ${levels}, next: ${next}, initial: ${sp.initial}, variants: ${variants}, facts: ${facts}`
+      : `${states}, ${domains}, ${base}, ${deltas}, ${levels}, ${next}, ${sp.initial}, ${variants}, ${facts}`),
+  };
+}
+
+function programSource(lang: Lang, e: InteractionEmit, k: number, faults: InteractionFaults | null): string {
+  const q = (s: string): string => stringLit(lang, s);
+  const ip = e.program;
+  const sw = lang === 'swift';
+  const p = `dragonInteractions${k}`;
+  const d = programDecls(lang, e, p);
+  const out = [...d.lines];
+  const faultsRef = sw ? `${p}Faults` : `${p}Faults()`;
+  out.push(sw ? `private let ${p}Faults: InteractionFaults = ${interactionFaultsLit(faults)}` : `private fun ${p}Faults(): InteractionFaults = ${interactionFaultsLit(faults)}`);
+  const variants = d.variants(doubleLit(e.viewport.width), doubleLit(e.viewport.height));
   if (sw) {
     out.push(`/// A fresh interaction runtime of ${commentText(e.id)} at its initial app assignment.`);
-    out.push(`public func ${p}Machine() -> DragonInteractionMachine {\n  return DragonInteractionMachine(states: ${states}, domains: ${domains}, base: ${base}, deltas: ${deltas}, levels: ${levels}, next: ${next}, initial: ${sp.initial}, variants: ${list(lang, variantFns)}, facts: ${facts}, faults: ${faultsRef})\n}`);
+    out.push(`public func ${p}Machine() -> DragonInteractionMachine {\n  return DragonInteractionMachine(${d.args(variants)}, faults: ${faultsRef})\n}`);
   } else {
     out.push(`/** A fresh interaction runtime of ${commentText(e.id)} at its initial app assignment. */`);
-    out.push(`fun ${p}Machine(): DragonInteractionMachine =\n  DragonInteractionMachine(${states}, ${domains}, ${base}, ${deltas}, ${levels}, ${next}, ${sp.initial}, ${list(lang, variantFns)}, ${facts}, ${faultsRef})`);
+    out.push(`fun ${p}Machine(): DragonInteractionMachine =\n  DragonInteractionMachine(${d.args(variants)}, ${faultsRef})`);
   }
   e.scripts.forEach((sc, j) => {
     if (!/^[A-Za-z0-9._~-]+$/.test(sc.id)) throw new InteractionEmitError(`${sc.id}: a script id names a record file, so it holds only letters, digits and . _ ~ -`);
-    const steps = decl(`${p}Steps${j}`, sw ? '[DragonInteractionStep]' : 'List<DragonInteractionStep>', list(lang, sc.steps.map((st, i) => stepLit(lang, ip, sc.id, i, st))));
+    const stepsLit = list(lang, sc.steps.map((st, i) => stepLit(lang, ip, sc.id, i, st)));
+    const steps = sw ? `${p}Steps${j}` : `${p}Steps${j}()`;
+    out.push(sw ? `private let ${p}Steps${j}: [DragonInteractionStep] = ${stepsLit}` : `private fun ${p}Steps${j}(): List<DragonInteractionStep> = ${stepsLit}`);
     out.push(sw
       ? `let ${p}Script${j} = DragonInteractionScript(id: ${q(sc.id)}, fixture: ${q(e.fixture)}, direction: ${q(e.direction)}, viewport: (width: ${doubleLit(e.viewport.width)}, height: ${doubleLit(e.viewport.height)}), make: ${p}Machine, steps: ${steps})`
       : `val ${p}Script${j}: DragonInteractionScript by lazy { DragonInteractionScript(${q(sc.id)}, ${q(e.fixture)}, ${q(e.direction)}, ${doubleLit(e.viewport.width)}, ${doubleLit(e.viewport.height)}, ::${p}Machine, ${steps}) }`);
@@ -962,4 +992,96 @@ export function emitInteractionPrograms(backend: NativeBackend, emits: readonly 
     ? { path: 'Cases/DragonInteractionCaseTable.swift', text: `${header}/// Every device-traces script, in interaction program order.\npublic let dragonInteractionCaseList: [DragonInteractionScript] = [${scripts.join(', ')}]\n\npublic let dragonInteractionCaseTable: [String: DragonInteractionScript] = Dictionary(uniqueKeysWithValues: dragonInteractionCaseList.map { ($0.id, $0) })\n` }
     : { path: 'kotlin/dev/dragon/cases/DragonInteractionCaseTable.kt', text: `${header}/** Every device-traces script, in interaction program order. */\nval dragonInteractionCaseList: List<DragonInteractionScript> by lazy { listOf(${scripts.join(', ')}) }\n\nval dragonInteractionCaseTable: Map<String, DragonInteractionScript> by lazy { dragonInteractionCaseList.associateBy { it.id } }\n` });
   return files;
+}
+
+/**
+ * SELD-R2 §1: the name a document's user file and factory take, Dragon<Name>: the document id's runs of ASCII letters and digits,
+ * each with its first letter upper-cased ("music-player" is MusicPlayer). An id with no such run, or whose name starts with a digit,
+ * has no name, which is an InteractionEmitError.
+ */
+export function interactionUserName(documentId: string): string {
+  const name = (documentId.match(/[A-Za-z0-9]+/g) ?? []).map((w) => (w[0] as string).toUpperCase() + w.slice(1)).join('');
+  if (name === '' || /^[0-9]/.test(name)) throw new InteractionEmitError(`the document id ${JSON.stringify(documentId)} gives no Swift or Kotlin type name (Dragon<Name> needs ASCII letters or digits, not starting with a digit)`);
+  return name;
+}
+
+/**
+ * The mount a user file's header documents, as statements over a stage (a UIView, or a ViewGroup with its context and resources in
+ * scope) that leave the mount in mount. The parity host app compiles them (packages/parity trace-lane.ts hostUserInteractionSources).
+ */
+export function interactionUserMount(backend: NativeBackend, name: string): readonly string[] {
+  return backend === 'uikit'
+    ? ['let bridge = DragonBridge.shared', `let mount = DragonInteractionMount(machine: Dragon${name}.makeMachine(width: Double(stage.bounds.width), height: Double(stage.bounds.height)), stage: stage, measurer: bridge.measurer, scale: Double(stage.traitCollection.displayScale), bridge: bridge)`]
+    : ['val bridge = DragonBridge.shared(context)', 'val density = resources.displayMetrics.density.toDouble()', `val mount = DragonInteractionMount(Dragon${name}.makeMachine(stage.width / density, stage.height / density), stage, bridge.measurer, density, bridge)`];
+}
+
+let supportNames: { readonly words: ReadonlySet<string>; readonly stems: ReadonlySet<string> } | null = null;
+
+/**
+ * Every identifier the support files of both backends write, and their file names without extension, lower-cased (a user file's
+ * names must not reuse one; both backends are read, so one document id gets one verdict on both).
+ */
+function supportNamesOfBoth(): { readonly words: ReadonlySet<string>; readonly stems: ReadonlySet<string> } {
+  if (supportNames === null) {
+    const files = (['uikit', 'android-views'] as const).flatMap((b) => emitNativeSupport(b));
+    supportNames = {
+      words: new Set(files.flatMap((f) => f.text.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? [])),
+      stems: new Set(files.map((f) => (f.path.split('/').pop() as string).replace(/\.[^.]*$/, '').toLowerCase())),
+    };
+  }
+  return supportNames;
+}
+
+/**
+ * SELD-R2 §1: the one file a ready native output adds for a document with interaction states: Dragon/<Name>Interaction.swift
+ * (public enum Dragon<Name>) or kotlin/dev/dragon/app/<Name>Interaction.kt (object Dragon<Name>), each with makeMachine(width,
+ * height), a fresh DragonInteractionMachine over the program's tables for a stage of that CSS size. The tables are programDecls', as
+ * the lane emit writes them; there are no scripts, no case table and no planted faults. A name or file name that a support file of
+ * either backend already uses, and a write the state runtime cannot rebuild (StateEmitError), is an InteractionEmitError.
+ */
+export function emitInteractionUserFile(backend: NativeBackend, e: InteractionProgramEmit, documentId: string): GeneratedFile {
+  const lang: Lang = backend === 'uikit' ? 'swift' : 'kotlin';
+  const name = interactionUserName(documentId);
+  const type = `Dragon${name}`;
+  const p = `dragon${name}`;
+  const support = supportNamesOfBoth();
+  const taken = [...support.words].filter((w) => w === type || w.startsWith(p)).sort();
+  if (taken.length > 0) throw new InteractionEmitError(`the document id ${JSON.stringify(documentId)} names ${type}, but the support files already use ${taken.slice(0, 5).join(', ')}`);
+  // Compared without case: a case-insensitive file system holds DragonInteraction.swift and draGonInteraction.swift as one file.
+  if (support.stems.has(`${name}Interaction`.toLowerCase())) throw new InteractionEmitError(`the document id ${JSON.stringify(documentId)} names the file ${name}Interaction, but a support file already has that name`);
+  let d: ReturnType<typeof programDecls>;
+  try {
+    d = programDecls(lang, e, p);
+  } catch (err) {
+    // A paint write the state runtime cannot rebuild yet (nodeLit, deltaLit) leaves the output analysis-only, never a crash.
+    if (err instanceof StateEmitError) throw new InteractionEmitError(err.message);
+    throw err;
+  }
+  const off = interactionFaultsLit(null);
+  const mount = interactionUserMount(backend, name);
+  const generated = `// GENERATED by dragon emit/runtime/interaction.ts (${INTERACTION_RUNTIME_VERSION}; program ${PROGRAM_VERSIONS[backend]}). Do not edit.\n`;
+  const id = commentText(documentId);
+  if (lang === 'swift') {
+    const header = `${generated}// The interaction program of document ${id}. Mount it with the support files' DragonInteractionMount, which owns the root view and
+// its event glue, on a stage view whose size in points is the CSS viewport:
+${mount.map((l) => `//   ${l}`).join('\n')}
+// App state reaches it through mount.machine.set(state:value:).
+import UIKit
+
+`;
+    const factory = `/// The interaction runtime of document ${id}.\npublic enum ${type} {\n  /// A fresh interaction runtime at the initial app assignment, laid out in a width x height CSS px viewport.\n  public static func makeMachine(width: Double, height: Double) -> DragonInteractionMachine {\n    return DragonInteractionMachine(${d.args(d.variants('width', 'height'))}, faults: ${off})\n  }\n}`;
+    return { path: `Dragon/${name}Interaction.swift`, text: `${header}${[...d.lines, factory].join('\n')}\n` };
+  }
+  const header = `${generated}// The interaction program of document ${id}. Mount it with the support files' DragonInteractionMount, which owns the root view and
+// its event glue, on a stage whose size in dp is the CSS viewport:
+${mount.map((l) => `//   ${l}`).join('\n')}
+// App state reaches it through mount.machine.set(state, value).
+package dev.dragon.app
+
+import dev.dragon.layout.*
+import dev.dragon.views.*
+
+`;
+  const factory = `/** The interaction runtime of document ${id}. */\nobject ${type} {\n  /** A fresh interaction runtime at the initial app assignment, laid out in a width x height CSS px viewport. */\n  fun makeMachine(width: Double, height: Double): DragonInteractionMachine =\n    DragonInteractionMachine(${d.args(d.variants('width', 'height'))}, ${off})\n}`;
+  return { path: `kotlin/dev/dragon/app/${name}Interaction.kt`, text: `${header}${[...d.lines, factory].join('\n')}\n` };
 }

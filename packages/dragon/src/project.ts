@@ -99,6 +99,9 @@ import { nativeOutlinePending, provenContexts, statusOf, supportedValuesFor, sup
 import { webProfile } from './profiles/web.ts';
 import type { UaDataset } from './ua/datasets.ts';
 import { REFERENCE_PLATFORM, ReferencePlatformUnavailable, uaDatasetFor } from './ua/datasets.ts';
+import { InteractionEmitError } from './emit/runtime/interaction.ts';
+// SELD-R2 §1: the document's interaction file reads the compiled record through the internal accessors (an import cycle that only runs in functions).
+import { documentInteractionFiles } from './internal.ts';
 import type {
   ArtifactState,
   Assignment,
@@ -112,6 +115,7 @@ import type {
   ExplainQuery,
   ExplainResult,
   FrontEndResult,
+  GeneratedFile,
   Origin,
   Project,
   ProjectConfig,
@@ -1239,13 +1243,23 @@ export function nativeDigest(digest: string, t: 'ios' | 'android'): string {
 /**
  * A checked native target's output (P6a): ready only when the committed lanes verdict (profiles/native-lanes.ts, written by
  * pnpm run profile:rows from packages/parity/out/lanes.json) has every lane of that target passing and none stale; otherwise
- * analysis-only, naming why. A ready native output carries the backend's native support files.
+ * analysis-only, naming why. A ready native output carries the backend's native support files and, SELD-R2 §1, the document's
+ * interaction file (interactionFiles, read only when ready); when that cannot be emitted the output is analysis-only, naming why.
  */
-export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict | null): ArtifactState {
+export function nativeOutputState(t: 'ios' | 'android', digest: string, verdict: NativeLanesVerdict | null, interactionFiles: () => readonly GeneratedFile[] = () => []): ArtifactState {
   const o = NATIVE_OUTPUT[t];
   const d = nativeDigest(digest, t);
   if (verdict === null) return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: no committed lanes verdict was given to this compilation, so the generated ${o.language} stays internal to the native lanes.` };
-  if (verdict.recorded && verdict.stale.length === 0 && verdict.notPassing.length === 0) return { kind: 'ready', digest: d, files: emitNativeSupport(o.backend), assets: [] };
+  if (verdict.recorded && verdict.stale.length === 0 && verdict.notPassing.length === 0) {
+    let extra: readonly GeneratedFile[];
+    try {
+      extra = interactionFiles();
+    } catch (e) {
+      if (!(e instanceof InteractionEmitError)) throw e;
+      return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: its interaction program could not be emitted for a user app: ${e.message}.` };
+    }
+    return { kind: 'ready', digest: d, files: [...emitNativeSupport(o.backend), ...extra], assets: [] };
+  }
   const why = !verdict.recorded ? 'no committed lanes record proves it' : verdict.stale.length > 0 ? `its committed lanes are stale (${verdict.stale.join('; ')})` : `these lanes do not pass: ${verdict.notPassing.join('; ')}`;
   return { kind: 'analysis-only', digest: d, reason: `The ${o.name} output is analysis-only: its layout projection feeds the internal lanes, and the generated ${o.language} stays internal to the native lanes until every ${t} lane passes in a current committed lanes record; ${why}.` };
 }
@@ -1887,12 +1901,18 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
   return deepFreeze({
     compile(input: FrontEndResult): Compiled<K> {
       const a = analyze<K>(snapshotConfig, configDiagnostics, resolved, input);
+      const outputs = { ...a.outputs };
       const compiled: Compiled<K> = {
         ...a.report,
-        outputs: a.outputs,
+        outputs,
         explain: (q: ExplainQuery<K>) => deepFreeze(explainIn<K>(a, q, resolved.ua.chromeVersion)),
       };
       records.set(compiled, a.record);
+      // SELD-R2 §1: a checked native output is judged again with the document's interaction file, which reads the record.
+      for (const t of NATIVE_TARGETS) {
+        const key = t as unknown as K;
+        if (a.report.targets[key] === 'checked') outputs[key] = nativeOutputState(t, a.report.digest, resolved.nativeLanes === null ? null : resolved.nativeLanes[t], () => documentInteractionFiles(compiled, t));
+      }
       return deepFreeze(compiled);
     },
     check(input: FrontEndResult): CheckReport<K> {
