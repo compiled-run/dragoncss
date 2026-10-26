@@ -8,4 +8,5 @@ export const APP_LAYOUT: readonly FixtureSpec[] = [
   both('app-flex-text'),
   both('app-boxes'),
   layout('app-row-ellipsis'),
+  both('app-abspos-beside-text'),
 ];

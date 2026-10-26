@@ -38,7 +38,7 @@ export function isAbsolutelyPositioned(box: LayoutNode): boolean {
 
 /**
  * The in-flow children of a box. An absolutely positioned box beside text would sit in the text's inline formatting context
- * (CSS2 §9.2.1.1: it does not end the run), which Dragon does not lay out, so a box holding both is refused.
+ * (CSS2 §9.2.1.1: it does not end the run), which Dragon does not lay out, so a block container holding both is refused.
  */
 export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
   const oof = box.children.find((k): k is LayoutBox => k.kind === 'box' && isOutOfFlow(ctx, k));
@@ -47,6 +47,8 @@ export function checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): void {
     if (k.kind === 'control' && isOutOfFlow(ctx, k)) unsupported('control-out-of-flow', k.id, 'CSS2 §10.3.7, §10.6.4', `absolutely positioned form control ${k.id} is not supported`);
   }
   if (oof === undefined) return;
+  // css-flexbox-1 §4 and §4.1: in a flex container text is an anonymous flex item and the box's static position ignores it.
+  if (box.style.display === 'flex') return;
   if (box.children.some((k) => (k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced') || (k.kind === 'box' && k.boxType === 'anonymous'))) {
     unsupported('abspos-in-inline', oof.id, 'CSS2 §9.2.1.1, §10.3.7', `absolutely positioned ${oof.id} beside text in ${box.id} would take a static position in its inline formatting context`);
   }

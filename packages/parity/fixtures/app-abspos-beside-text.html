@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* POSX-IFC-f: absolutely positioned children beside text in flex containers, as the feed's unread tab badge (examples/real-pages):
+   with insets, at their static position (the container's sole flex item, css-flexbox-1 §4.1) in rows and columns under each
+   alignment, before and after the text, and as ::before and ::after. */
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.tabs { display: flex; justify-content: space-around; padding-top: 6px; }
+.tab { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.icon { width: 20px; height: 20px; background-color: #888; }
+.unread::after { content: "N"; position: absolute; top: -4px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px; line-height: 16px; background-color: #c33; color: #fff; }
+.r { position: relative; display: flex; width: 120px; height: 30px; margin-top: 4px; background-color: #eee; }
+.c { position: relative; display: flex; flex-direction: column; width: 120px; height: 40px; margin-top: 4px; background-color: #eef; }
+.center { justify-content: center; align-items: center; }
+.end { justify-content: flex-end; align-items: flex-end; }
+.rev { flex-direction: row-reverse; }
+.a { position: absolute; width: 8px; height: 6px; background-color: #36c; }
+.ins { top: 2px; left: 3px; }
+.ins2 { right: 4px; bottom: 1px; }
+.sep::before { content: ""; position: absolute; top: 0; left: 10px; right: 0; height: 1px; background-color: #999; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="tabs" class="tabs"><div data-dragon-id="t1" class="tab"><div data-dragon-id="i1" class="icon"></div>Home</div><div data-dragon-id="t2" class="tab unread"><div data-dragon-id="i2" class="icon"></div>Inbox</div></div>
+<div data-dragon-id="r1" class="r">AB<div data-dragon-id="a1" class="a"></div></div>
+<div data-dragon-id="r2" class="r center"><div data-dragon-id="a2" class="a"></div>AB</div>
+<div data-dragon-id="r3" class="r end">AB<div data-dragon-id="a3" class="a ins"></div><div data-dragon-id="a4" class="a ins2"></div></div>
+<div data-dragon-id="r4" class="r rev center">AB<div data-dragon-id="a5" class="a"></div></div>
+<div data-dragon-id="c1" class="c center">AB<div data-dragon-id="a6" class="a"></div></div>
+<div data-dragon-id="c2" class="c end sep">AB CD<div data-dragon-id="a7" class="a ins"></div></div>
+</body>
+</html>

@@ -807,13 +807,14 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
   if (isRoot && (own === 'absolute' || own === 'fixed')) refuse(el, `position: ${own} on the root element ${el.element.address} is not supported in milestone 1`);
   // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
   if (!el.children.some((c) => c.kind === 'text' || displayKeyword(c) === 'inline' || isAtomic(c))) return;
+  // POSX-IFC-f: in a flex container the text is an anonymous flex item and the box takes its static position as the container's
+  // sole flex item (css-flexbox-1 §4.1), so the text never moves it (fixture-groups/app-layout.ts).
+  if (keywordOf(el.props.get('display') as ResolvedValue) === 'flex') return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     const pos = keywordOf(c.props.get('position') as ResolvedValue);
     if (pos !== 'absolute' && pos !== 'fixed') continue;
-    refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
-      ? `position: ${pos} on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)`
-      : `position: ${pos} on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
+    refuse(c, `position: ${pos} on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
   }
 }
 
