@@ -1374,8 +1374,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       linked = preLinked;
       diagnostics.push(...preLinkDiagnostics);
     }
-    focusable = focusReachable(interactionRules, linked?.cases ?? null);
-    const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
+    const focusDocument = { rules: interactionRules, cases: linked?.cases ?? null, keyframes: keyframesRules, ua: options.ua, faults: options.faults };
+    focusable = focusReachable(focusDocument);
+    const nativeRefusals = gateInteractionFeatures(focusDocument, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else {
       diagnostics.splice(interactionAt, 0, ...nativeRefusals);

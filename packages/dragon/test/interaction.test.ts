@@ -17,6 +17,7 @@ import type { LinkedElement } from '../src/analysis/link.ts';
 import { comboIndex, COMMITTED_PROFILES, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
+import type { Rule } from '../src/css/stylesheet.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { internalRecord } from '../src/project.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
@@ -334,13 +335,98 @@ describe('interaction states: the native profile gate (SELD-R2 PR 5, gateInterac
     for (const css of ['.s { overflow: visible; height: 20px; }', '.s { overflow: clip; height: 20px; }']) {
       expect(gateErrors(gated(scroller(`${tall}${css} .s:focus { width: 80px; }`), withRows(FOCUS_ROWS)).diagnostics), css).toEqual([]);
     }
-    const rulesOf = (css: string) => {
+  });
+
+  // packages/parity/test/focus-scroller.test.ts proves every accepted verdict here against Chrome 145's Tab and click focus.
+  describe('which overflow makes a focusable scroller (rulesMayScroll)', () => {
+    const tall = '.tall { height: 100px; } ';
+    /** focusReachable of a document with a box s around a tall child, or the given tree, under the focus rule .s:focus. */
+    const reachable = (css: string, body?: Parameters<typeof inputFor>[1], faults: Partial<CompilerFaults> = {}): boolean | undefined => {
+      const tree = body ?? ((r) => [div(r, 's', ['s'], [div(r, 'tall', ['tall'])])]);
+      return internalRecord(gated(inputFor(`${BODY}${tall}${css} .s:focus { width: 80px; }`, tree), withRows(FOCUS_ROWS), { faults }))?.focusReachable;
+    };
+    const ACCEPTED = [
+      '.s { overflow: hidden; height: 20px; }',
+      '.s { overflow-x: hidden; overflow-y: hidden; height: 20px; }',
+      '.s { overflow-x: hidden; overflow-y: clip; height: 20px; }',
+      '.s { overflow: clip hidden; height: 20px; }',
+      '.s { overflow: hidden !important; height: 20px; }',
+      '.s { overflow: hidden; height: 20px; } .s.s { overflow: visible; }',
+      '.s { overflow: hidden; height: 20px; } .s.s { overflow-y: clip; }',
+      'html { overflow: auto; } .s { height: 20px; }',
+      ':root { overflow-x: scroll; } .s { height: 20px; }',
+      'html { overflow-x: hidden; } .s { height: 20px; }',
+      'body { overflow: auto; } .s { height: 20px; }',
+      'body { overflow-y: scroll; } html { overflow: visible; } .s { height: 20px; }',
+      'html { overflow: hidden; } .s { overflow: hidden; height: 20px; }',
+    ];
+    const REFUSED = [
+      // hidden beside visible computes visible to auto.
+      '.s { overflow-x: hidden; height: 20px; }',
+      '.s { overflow: hidden visible; height: 20px; }',
+      // An axis may come from another rule: hidden or visible on one axis alone, or with two importances.
+      '.s { overflow: hidden; height: 20px; } .s.s { overflow-y: visible; }',
+      '.s { overflow: hidden; height: 20px; } .s.s { overflow-y: initial; }',
+      '.s { overflow-x: hidden; height: 20px; } .s { overflow-y: hidden; }',
+      '.s { overflow-x: hidden !important; overflow-y: hidden; height: 20px; } .s.s { overflow: visible; }',
+      // revert and revert-layer may roll back to hidden, and a discrete transition may hold one axis.
+      '.s { overflow: hidden; height: 20px; } .s.s { overflow: revert; }',
+      // Body is its own scroller where html is not visible, or where html or body has containment.
+      'html { overflow: hidden; } body { overflow: auto; height: 50px; } .s { height: 20px; }',
+      'html { overflow: clip; } body { overflow: auto; height: 50px; } .s { height: 20px; }',
+      'html { overflow-y: clip; } body { overflow: auto; height: 50px; } .s { height: 20px; }',
+      'body { overflow: auto; height: 50px; contain: paint; } .s { height: 20px; }',
+      'html { container-type: size; } body { overflow: auto; height: 50px; } .s { height: 20px; }',
+      'body { overflow: auto; height: 50px; content-visibility: auto; } .s { height: 20px; }',
+      // A rule that may match html or body, but not only them, is a box's rule.
+      '* { overflow: auto; } .s { height: 20px; }',
+      'html, .s { overflow: auto; height: 20px; }',
+      'body::before { content: "X"; display: block; overflow: auto; } .s { height: 20px; }',
+      // An animation of overflow may make any box a scroller.
+      '@keyframes k { to { overflow-y: auto; } } .s { height: 20px; animation: k 1s; }',
+    ];
+    it('accepts a box hidden on both axes and overflow that propagates to the viewport, which Chrome 145 never focuses', () => {
+      for (const css of ACCEPTED) expect(reachable(css), css).toBe(false);
+    });
+    it('refuses every overflow that may compute auto or scroll on a box, failing closed', () => {
+      for (const css of REFUSED) expect(reachable(css), css).toBe(true);
+    });
+    it('counts a discrete transition beside hidden, which may hold one axis while the other moves', () => {
+      const c = gated(inputFor(`${BODY}${tall}.s { overflow: hidden; height: 20px; } .s:focus { width: 80px; }`, (r) => [div(r, 's', ['s'], [div(r, 'tall', ['tall'])])]), withRows(FOCUS_ROWS));
+      const record = internalRecord(c);
+      if (record === undefined || record.linked === null) throw new Error('no linked cases');
+      const css = '.s { overflow: hidden; }';
       const src = input(css, tree).snapshot.sources[0];
       if (src === undefined) throw new Error('no source');
-      return parseStylesheet(css, { source: src.ref, start: 0, end: css.length }, { id: 's', owner: DOC, scope: 'document' }, 0, []);
-    };
-    expect(rulesMayScroll(rulesOf('.s { width: 1px; overflow: visible; }'))).toBe(false);
-    expect(rulesMayScroll(rulesOf('.s { overflow: hidden; }'))).toBe(true);
+      const rules = parseStylesheet(css, { source: src.ref, start: 0, end: css.length }, { id: 's', owner: DOC, scope: 'document' }, 0, []);
+      const doc = { rules, cases: record.linked.cases, keyframes: [], ua: referenceDataset(), faults: NO_FAULTS };
+      expect(rulesMayScroll(doc)).toBe(false);
+      // Today allow-discrete is refused before the gate (ANIM-d), so the declaration is built by hand.
+      const first = rules[0];
+      if (first === undefined) throw new Error('no rule');
+      const behavior = (value: string) => ({ ...first, declarations: [...first.declarations, { ...(first.declarations[0] as Rule['declarations'][number]), longhands: [], animation: { longhands: new Map([['transition-behavior', { kind: 'list', items: [{ kind: 'keyword', value }] }]]) } } as Rule['declarations'][number]] });
+      expect(rulesMayScroll({ ...doc, rules: [behavior('allow-discrete')] })).toBe(true);
+      expect(rulesMayScroll({ ...doc, rules: [behavior('normal')] })).toBe(false);
+      // allow-discrete is refused on every target, so the document does not compile either way.
+      expect(errors(gated(inputFor(`${BODY}.s { overflow: hidden; transition: overflow-y 1s allow-discrete; }`, (r) => [div(r, 's', ['s'])]), withRows(FOCUS_ROWS)).diagnostics).some((m) => m.includes('allow-discrete'))).toBe(true);
+    });
+    it('counts the UA hidden of hr beside an authored visible, and skips the UA hidden of a replaced element', () => {
+      const hr = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [{ ...div(r, 'h', ['h']), tag: 'hr' } as ElementNode, div(r, 's', ['s'])];
+      expect(reachable('.s { height: 20px; }', hr)).toBe(false);
+      expect(reachable('.s { height: 20px; } .h { overflow-y: visible; }', hr)).toBe(true);
+      expect(reachable('.s { height: 20px; } .h { overflow: visible; }', hr)).toBe(false);
+      const svg = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [{ ...div(r, 'g', ['g']), tag: 'svg' } as ElementNode, div(r, 's', ['s'])];
+      expect(reachable('.s { height: 20px; } .g { overflow-y: visible; }', svg)).toBe(false);
+    });
+    it('reads the gate verdict from the same analysis: a hidden box keeps forced-only focus, hidden beside visible needs every input', () => {
+      expect(gateErrors(gated(inputFor(`${BODY}${tall}.s { overflow: hidden; height: 20px; } .s:focus { width: 80px; }`, (r) => [div(r, 's', ['s'], [div(r, 'tall', ['tall'])])]), withRows(FOCUS_ROWS)).diagnostics)).toEqual([]);
+    });
+    it('catches the plants hiddenAxisUnpaired and bodyPropagationAssumed', () => {
+      expect(reachable('.s { overflow-x: hidden; height: 20px; }', undefined, { hiddenAxisUnpaired: true })).toBe(false);
+      expect(reachable('html { overflow: hidden; } body { overflow: auto; height: 50px; } .s { height: 20px; }', undefined, { bodyPropagationAssumed: true })).toBe(false);
+      // Neither plant changes a verdict on its own ground the other way.
+      expect(reachable('.s { overflow: auto; height: 20px; }', undefined, { hiddenAxisUnpaired: true, bodyPropagationAssumed: true })).toBe(true);
+    });
   });
 
   it('requires the keyboard row for :focus with a focusable element, which no device lane proves yet', () => {
