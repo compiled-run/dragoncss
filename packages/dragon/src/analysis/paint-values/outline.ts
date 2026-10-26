@@ -11,7 +11,7 @@ import { blendModeOf } from '../../css/properties/fx.ts';
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from '../../lower/paint/colors.ts';
-import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
+import { componentMayRound, cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -66,7 +66,7 @@ const NATIVE_OUTLINES = 'solid and double outlines, and dotted, dashed, groove, 
 export const rounds = (el: ResolvedElement): boolean =>
   RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
-    return c !== null && (c[0].value > 0 || c[1].value > 0);
+    return c !== null && (componentMayRound(c[0]) || componentMayRound(c[1]));
   });
 
 /**

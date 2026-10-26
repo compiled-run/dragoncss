@@ -1,9 +1,11 @@
 // Computed border radii (css-backgrounds-3 §5.1, css-values-4 §6): each component of a two-component corner computes to px (em
 // against the element's font size, rem against the root's) or stays a percentage, and a corner whose two computed components are
-// equal is one value, as Chrome 145 serializes it. One-component corners are lengths computeLengths has already made px.
+// equal is one value, as Chrome 145 serializes it. One-component corners are lengths computeLengths has already made px. A
+// calculation computes as CSSPrimitiveValue::ConvertToLength makes it (css_primitive_value.cc, css/math.ts nonNegativeLengthMath).
+import { nonNegativeLengthMath, parseMath } from '../../css/math.ts';
 import type { Longhand } from '../../css/properties.ts';
 import type { RadiusComponent } from '../../css/properties/radius.ts';
-import { cornerComponents, cornerValue, RADIUS_LONGHANDS, RADIUS_PAIR } from '../../css/properties/radius.ts';
+import { componentMayRound, cornerComponents, cornerValue, exactNumberText, RADIUS_LONGHANDS, RADIUS_MATH } from '../../css/properties/radius.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx } from '../../css/units.ts';
 import { serializeColor } from '../../css/color.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
@@ -17,7 +19,30 @@ import type { Diagnostic } from '../../types.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
-function computeComponent(c: RadiusComponent, ctx: PaintValueContext): RadiusComponent | null {
+/** A component that does not compute at this element's font sizes, with why (a mix whose em leaves the float range). */
+type Uncomputed = { readonly refused: string };
+
+/**
+ * The longhand values compute kept as specified because a calculation in them does not compute at the element's font sizes, with why;
+ * checkUncomputed refuses them on every target.
+ */
+const UNCOMPUTED = new WeakMap<ResolvedValue, string>();
+
+/** A calculation's computed component: px, a percentage, or calc(<percentage> + <px>) written with its numbers in full. */
+function computeCalc(text: string, ctx: PaintValueContext): RadiusComponent | Uncomputed | null {
+  if (ctx.em === null || ctx.rem === null) return null;
+  const parsed = parseMath(text, RADIUS_MATH);
+  // css/properties/radius.ts mathToken parsed and checked it, and only its float-range refusal depends on the font sizes.
+  if (!parsed.ok) throw new Error(`radius calculation ${text} no longer parses: ${parsed.reason}`);
+  const r = nonNegativeLengthMath(parsed.node, { em: ctx.em, rem: ctx.rem }, exactNumberText);
+  if (r.kind === 'refused') return { refused: `${text} does not compute at this element's font size: ${r.reason}` };
+  if (r.kind === 'px') return { kind: 'length', value: r.px, unit: CANONICAL_LENGTH_UNIT };
+  if (r.kind === 'percent') return { kind: 'percentage', value: r.percent };
+  return { kind: 'calc', text: r.text };
+}
+
+function computeComponent(c: RadiusComponent, ctx: PaintValueContext): RadiusComponent | Uncomputed | null {
+  if (c.kind === 'calc') return computeCalc(c.text, ctx);
   if (c.kind === 'percentage' || c.unit === CANONICAL_LENGTH_UNIT) return c;
   const needs = c.unit === 'em' ? ctx.em : c.unit === 'rem' ? ctx.rem : 0;
   if (needs === null) return null;
@@ -101,7 +126,7 @@ function fourUniformDoubles(el: ResolvedElement): boolean {
 
 /** Whether any corner of the element has both radius components above 0. */
 function roundsCorners(el: ResolvedElement): boolean {
-  return RADIUS_LONGHANDS.map((p) => cornerComponents((el.props.get(p) as ResolvedValue).value)).some((c) => c !== null && c[0].value > 0 && c[1].value > 0);
+  return RADIUS_LONGHANDS.map((p) => cornerComponents((el.props.get(p) as ResolvedValue).value)).some((c) => c !== null && componentMayRound(c[0]) && componentMayRound(c[1]));
 }
 
 /** Why a rounded element is refused on a native target, with its fix, or null: what PNT1 does not draw round. */
@@ -150,18 +175,44 @@ const checkRoundedElement: PaintCheck = (el, targets, diagnostics, reported) => 
   }
 };
 
+/** A radius calculation that does not compute at the element's font sizes is refused at its declaration on every target. */
+function checkUncomputed(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): boolean {
+  const v = RADIUS_LONGHANDS.map((p) => el.props.get(p) as ResolvedValue).find((r) => UNCOMPUTED.has(r));
+  if (v === undefined) return false;
+  const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  for (const t of targets) {
+    const id = `${t}|radius-uncomputed|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    const message = `${el.element.address} has a border radius ${UNCOMPUTED.get(v) as string}, which Dragon does not compute`;
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Write the radius so each length in it stays within the CSS length range at this font size.', basis: 'computed-value' }));
+  }
+  return true;
+}
+
+const checkRadius: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
+  if (checkUncomputed(el, targets, diagnostics, reported)) return;
+  checkRoundedElement(el, targets, diagnostics, reported, propagated);
+};
+
 export const RADIUS_VALUES: PaintValues = {
   name: 'radius',
-  check: checkRoundedElement,
+  check: checkRadius,
   compute: (props, ctx) => {
     for (const p of RADIUS_LONGHANDS as readonly Longhand[]) {
       const v = props.get(p);
-      if (v === undefined || v.value.kind !== 'other' || v.value.type !== RADIUS_PAIR) continue;
+      if (v === undefined || v.value.kind !== 'other') continue;
       const parts = cornerComponents(v.value);
       if (parts === null) continue;
       const h = computeComponent(parts[0], ctx);
       const w = computeComponent(parts[1], ctx);
       if (h === null || w === null) continue;
+      if ('refused' in h || 'refused' in w) {
+        const kept: ResolvedValue = { ...v };
+        props.set(p, kept);
+        UNCOMPUTED.set(kept, 'refused' in h ? h.refused : (w as Uncomputed).refused);
+        continue;
+      }
       const computed: ResolvedValue = { ...v, value: cornerValue(h, w) };
       props.set(p, computed);
     }

@@ -4,13 +4,16 @@
 // overflow clip all use that one rounded shape. A box with square corners has no write, so its paint is unchanged.
 import type { Longhand } from '../../css/properties.ts';
 import type { RadiusComponent } from '../../css/properties/radius.ts';
-import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
+import { calcParts, cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
 import type { ResolvedValue } from '../../analysis/resolve.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
-/** One authored radius component: css px at zoom 1, or a percentage of the border box axis (paint-radius.ts RadiusLength). */
-export type RadiusLengthValue = { readonly percent: boolean; readonly value: number };
+/**
+ * One authored radius component (paint-radius.ts RadiusLength): css px at zoom 1, a percentage of the border box axis (percent),
+ * or a calculation of both (calc: value the percentage, px the css px at zoom 1).
+ */
+export type RadiusLengthValue = { readonly percent: boolean; readonly value: number; readonly calc: boolean; readonly px: number };
 
 /** The radius facts of a node (rt-hit.ts reads them): the eight components, horizontal then vertical, top-left first. */
 export type RadiusFacts = { readonly lengths: readonly RadiusLengthValue[] };
@@ -20,10 +23,18 @@ export type RadiusWrite = { readonly kind: 'border-radius'; readonly lengths: re
 const RADIUS_PAINT = 'Dragon resolves the eight radii at the device scale with the translated paint-radius.ts (percentages against the snapped border box, the css-backgrounds-3 §5.5 clamp, the padding-edge radii) and draws the background and solid borders in that rounded shape; an overflow: hidden box clips its children to the padding-edge curve';
 
 function component(c: RadiusComponent, address: string, p: Longhand): RadiusLengthValue {
-  if (c.kind === 'percentage') return { percent: true, value: c.value };
+  if (c.kind === 'calc') {
+    const parts = calcParts(c);
+    if (parts === null) throw new ProgramError(`${address}: ${p} did not compute to a percentage and px (${c.text})`);
+    return { percent: false, value: parts.percent, calc: true, px: parts.pixels };
+  }
+  if (c.kind === 'percentage') return { percent: true, value: c.value, calc: false, px: 0 };
   if (c.unit !== 'px') throw new ProgramError(`${address}: ${p} did not compute to px (${c.value}${c.unit})`);
-  return { percent: false, value: c.value };
+  return { percent: false, value: c.value, calc: false, px: 0 };
 }
+
+/** Whether a component may resolve above 0: a positive length or percentage, or a calculation with a positive part. */
+export const mayRound = (l: RadiusLengthValue): boolean => l.value > 0 || (l.calc && l.px > 0);
 
 /** The eight components of an element's computed radii (horizontal then vertical, top-left first). */
 export function radiusLengths(props: ReadonlyMap<Longhand, ResolvedValue>, address: string): RadiusLengthValue[] {
@@ -42,7 +53,7 @@ export function radiusLengths(props: ReadonlyMap<Longhand, ResolvedValue>, addre
 
 /** Whether any corner has both components non-zero (a corner with a zero component is square, css-backgrounds-3 §5.1). */
 export function roundsAnyCorner(lengths: readonly RadiusLengthValue[]): boolean {
-  for (let k = 0; k < 4; k++) if ((lengths[k] as RadiusLengthValue).value > 0 && (lengths[k + 4] as RadiusLengthValue).value > 0) return true;
+  for (let k = 0; k < 4; k++) if (mayRound(lengths[k] as RadiusLengthValue) && mayRound(lengths[k + 4] as RadiusLengthValue)) return true;
   return false;
 }
 

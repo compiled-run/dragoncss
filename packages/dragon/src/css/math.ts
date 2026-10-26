@@ -433,14 +433,20 @@ function tokenize(text: string, validity = false): Token[] | null {
   return out;
 }
 
+/** css-values-4 §10.7.1: the numeric constants a calculation with constants reads, number literals as Blink ParseValue makes them. */
+const CONSTANT_VALUES: ReadonlyMap<string, number> = new Map([['e', Math.E], ['pi', Math.PI], ['infinity', Infinity], ['-infinity', -Infinity]]);
+
 class Parser {
   private i = 0;
   private readonly toks: Token[];
   /** The refusal a percentage meets, or null where the property takes one. */
   private readonly percentRefusal: PercentRefusal | null;
-  constructor(toks: Token[], percentRefusal: PercentRefusal | null) {
+  /** Whether e, pi, infinity and -infinity are numbers here (css-values-4 §10.7.1); nan stays refused. */
+  private readonly constants: boolean;
+  constructor(toks: Token[], percentRefusal: PercentRefusal | null, constants = false) {
     this.toks = toks;
     this.percentRefusal = percentRefusal;
+    this.constants = constants;
   }
   private peek(): Token | undefined {
     return this.toks[this.i];
@@ -532,6 +538,7 @@ class Parser {
       node.nested = true;
     } else if (t.k === 'func') node = this.function(t.name, depth + 1);
     else if (t.k === 'num') node = this.value(t.value, t.unit);
+    else if (t.k === 'ident' && this.constants && CONSTANT_VALUES.has(t.name)) node = lit(CONSTANT_VALUES.get(t.name) as number, '');
     else if (t.k === 'ident') {
       return refuse(['e', 'pi', 'infinity', '-infinity', 'nan'].includes(t.name) ? `the calculation constant ${t.name} is not supported in V1 of the value model` : `${t.name} is not a value in a calculation`);
     } else return this.invalid();
@@ -587,7 +594,7 @@ class Parser {
 export type PercentRefusal = { readonly reason: string; readonly fix: string };
 
 /** What a property takes: a length (with a percentage, or with the refusal a percentage meets) or a number (css-values-4 §10.9 type checking). */
-export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal } | { readonly type: 'number' };
+export type MathContext = { readonly type: 'length'; readonly percent: true | PercentRefusal; readonly constants?: true } | { readonly type: 'number' };
 
 const NUMBER_PROPERTIES: ReadonlySet<string> = new Set(['flex-grow', 'flex-shrink', 'order', 'font-weight', 'stroke-miterlimit']);
 const TEXT_PROPERTIES: ReadonlySet<string> = new Set(['font']);
@@ -639,13 +646,15 @@ export function parseMath(text: string, context: MathContext): ParsedMath {
     const toks = tokenize(text.trim());
     const head = toks[0];
     if (head === undefined || head.k !== 'func') return refuse('it does not parse as a css-values-4 calculation');
-    const p = new Parser(toks.slice(1), context.type === 'number' ? NUMBER_PERCENT : context.percent === true ? null : context.percent);
+    const constants = context.type === 'length' && context.constants === true;
+    const p = new Parser(toks.slice(1), context.type === 'number' ? NUMBER_PERCENT : context.percent === true ? null : context.percent, constants);
     const node = p.function(head.name, 0);
     if (!p.atEnd()) return refuse('it does not parse as a css-values-4 calculation');
     const c = category(node);
     if (context.type === 'number' && c !== 'number') return refuse(`it resolves to a ${c}, not a number`);
     if (context.type === 'length' && c === 'number') return refuse('it resolves to a number, not a length', 'Give the calculation a length unit, for example calc(2 * 10px).');
-    if (!finite(node)) return refuse('it divides by zero or produces an infinite or NaN value', 'Write a finite calculation.');
+    // A context that takes the constants judges an infinite or NaN result itself, as Blink clamps it per property.
+    if (!constants && !finite(node)) return refuse('it divides by zero or produces an infinite or NaN value', 'Write a finite calculation.');
     return { ok: true, node };
   } catch (e) {
     if (e instanceof MathRefusal) return { ok: false, reason: e.reason, fix: e.fix };
@@ -1544,4 +1553,44 @@ export function computedLengthMathText(text: string, fonts: MathFonts, fmt: Numb
     return px === null ? null : `${fmt(range === 'non-negative' ? Math.max(0, px) : px)}px`;
   }
   return serializeMath(computedMathNode(leaves), fmt);
+}
+
+/** A <length-percentage [0,∞]> calculation's computed value at zoom 1, or why Dragon does not compute it. */
+export type NonNegativeLengthMath =
+  | { readonly kind: 'px'; readonly px: number }
+  | { readonly kind: 'percent'; readonly percent: number }
+  | { readonly kind: 'pixels-and-percent'; readonly pixels: number; readonly percent: number; readonly text: string }
+  | { readonly kind: 'refused'; readonly reason: string };
+
+/** css_primitive_value.cc kMaxValueForCssLength, and the float ClampTo<float> gives at it (ClampToCSSLengthRange). */
+const CSS_LENGTH_MAX = 33554429;
+const CSS_LENGTH_MAX_FLOAT = f32(CSS_LENGTH_MAX);
+
+/**
+ * CSSPrimitiveValue::ConvertToLength at zoom 1 of a calculation in a non-negative <length-percentage> (a border radius): a length
+ * computes in double (ComputeLengthPx), its negative 0 (ClampToPermittedRange), then ClampToCSSLengthRange, so calc(infinity * 1px)
+ * is the range's bound and a NaN 0; a percentage alone computes to that percentage, at least 0 (ComputePercentage); a mix is the
+ * CalculationValue's PixelsAndPercent (ToCalcValue), serialized percentage first. A mix that stays an expression (min(), max() or
+ * clamp() of a percentage and a length), and an infinite or NaN percentage or mix, are refused.
+ */
+export function nonNegativeLengthMath(n: MathNode, fonts: MathFonts, fmt: NumberFormat): NonNegativeLengthMath {
+  const c = category(n);
+  if (c === 'percent') {
+    const percent = foldScaled(n, () => 1);
+    if (!Number.isFinite(percent)) return { kind: 'refused', reason: 'it computes to an infinite or NaN percentage' };
+    return { kind: 'percent', percent: percent < 0 ? 0 : percent };
+  }
+  const expr = lowerMathNode(n, fonts);
+  if (c === 'length') {
+    const px = lengthDoubleOf(expr);
+    if (px === null) return { kind: 'refused', reason: 'it reads a length with no build-time px value' };
+    // std::max(NaN, 0.0) keeps NaN, which ClampToCSSLengthRange makes 0.
+    return { kind: 'px', px: Number.isNaN(px) || px < 0 ? 0 : px >= CSS_LENGTH_MAX ? CSS_LENGTH_MAX_FLOAT : px };
+  }
+  // Judged on the parsed tree, so a refusal does not depend on the font sizes em and rem read.
+  if (!finite(n)) return { kind: 'refused', reason: 'it mixes a percentage with an infinite or NaN value' };
+  const leaves = computedCalc(expr);
+  if (leaves === null || leaves.kind !== 'pixels-and-percent') return { kind: 'refused', reason: 'min(), max() or clamp() of a percentage and a length stays an expression that Chrome evaluates when it paints, which Dragon does not port' };
+  if (!Number.isFinite(leaves.pixels) || !Number.isFinite(leaves.percent)) return { kind: 'refused', reason: 'it mixes a percentage with a length outside the float range' };
+  return { kind: 'pixels-and-percent', pixels: leaves.pixels, percent: leaves.percent, text: serializeMath(computedMathNode(leaves), fmt) };
 }

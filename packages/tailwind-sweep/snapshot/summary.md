@@ -4,11 +4,11 @@
 
 | target | supported | refused | invalid | mismatch | not applicable on native |
 |---|---:|---:|---:|---:|---:|
-| web | 6465 (27.8%) | 16816 (72.2%) | 4 | 1 | 0 |
-| ios | 6465 (27.8%) | 16194 (69.5%) | 4 | 1 | 622 |
-| android | 6465 (27.8%) | 16194 (69.5%) | 4 | 1 | 622 |
+| web | 6442 (27.7%) | 16839 (72.3%) | 4 | 1 | 0 |
+| ios | 6442 (27.7%) | 16217 (69.6%) | 4 | 1 | 622 |
+| android | 6442 (27.7%) | 16217 (69.6%) | 4 | 1 | 622 |
 
-As published (before the shell pre-pass), the sheet compiles for web 5978, ios 6018 and android 6018 of 23286 utilities.
+As published (before the shell pre-pass), the sheet compiles for web 5958, ios 5998 and android 5998 of 23286 utilities.
 
 ## By category (supported / refused / invalid / mismatch / not applicable on native)
 
@@ -17,17 +17,17 @@ As published (before the shell pre-pass), the sheet compiles for web 5978, ios 6
 | layout | 1551 | 1490 / 59 / 2 / 0 / 0 | 1490 / 59 / 2 / 0 / 0 | 1490 / 59 / 2 / 0 / 0 |
 | flexbox-grid | 513 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 | 366 / 146 / 1 / 0 / 0 |
 | spacing | 1308 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 | 1308 / 0 / 0 / 0 / 0 |
-| sizing | 1015 | 926 / 89 / 0 / 0 / 0 | 926 / 89 / 0 / 0 / 0 | 926 / 89 / 0 / 0 / 0 |
-| typography | 261 | 235 / 26 / 0 / 0 / 0 | 235 / 26 / 0 / 0 / 0 | 235 / 26 / 0 / 0 / 0 |
-| colours | 14842 | 1261 / 13581 / 0 / 0 / 0 | 1261 / 12999 / 0 / 0 / 582 | 1261 / 12999 / 0 / 0 / 582 |
-| backgrounds | 151 | 51 / 100 / 0 / 0 / 0 | 51 / 100 / 0 / 0 / 0 | 51 / 100 / 0 / 0 / 0 |
-| borders | 250 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 | 226 / 24 / 0 / 0 / 0 |
+| sizing | 1015 | 925 / 90 / 0 / 0 / 0 | 925 / 90 / 0 / 0 / 0 | 925 / 90 / 0 / 0 / 0 |
+| typography | 261 | 232 / 29 / 0 / 0 / 0 | 232 / 29 / 0 / 0 / 0 | 232 / 29 / 0 / 0 / 0 |
+| colours | 14842 | 1260 / 13582 / 0 / 0 / 0 | 1260 / 13000 / 0 / 0 / 582 | 1260 / 13000 / 0 / 0 / 582 |
+| backgrounds | 151 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 | 25 / 126 / 0 / 0 / 0 |
+| borders | 250 | 241 / 9 / 0 / 0 / 0 | 241 / 9 / 0 / 0 / 0 | 241 / 9 / 0 / 0 / 0 |
 | effects | 1178 | 68 / 1109 / 1 / 0 / 0 | 68 / 1109 / 1 / 0 / 0 | 68 / 1109 / 1 / 0 / 0 |
-| filters | 134 | 41 / 93 / 0 / 0 / 0 | 41 / 93 / 0 / 0 / 0 | 41 / 93 / 0 / 0 / 0 |
+| filters | 134 | 39 / 95 / 0 / 0 / 0 | 39 / 95 / 0 / 0 / 0 | 39 / 95 / 0 / 0 / 0 |
 | tables | 111 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 | 45 / 66 / 0 / 0 / 0 |
 | transitions-animation | 36 | 31 / 4 / 0 / 1 / 0 | 31 / 4 / 0 / 1 / 0 | 31 / 4 / 0 / 1 / 0 |
-| transforms | 680 | 102 / 578 / 0 / 0 / 0 | 102 / 578 / 0 / 0 / 0 | 102 / 578 / 0 / 0 / 0 |
-| interactivity | 1246 | 307 / 939 / 0 / 0 / 0 | 307 / 901 / 0 / 0 / 38 | 307 / 901 / 0 / 0 / 38 |
+| transforms | 680 | 100 / 580 / 0 / 0 / 0 | 100 / 580 / 0 / 0 / 0 | 100 / 580 / 0 / 0 / 0 |
+| interactivity | 1246 | 304 / 942 / 0 / 0 / 0 | 304 / 904 / 0 / 0 / 38 | 304 / 904 / 0 / 0 / 38 |
 | svg | 6 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 | 6 / 0 / 0 / 0 / 0 |
 | accessibility | 4 | 2 / 2 / 0 / 0 / 0 | 2 / 0 / 0 / 0 / 2 | 2 / 0 / 0 / 0 / 2 |
 
@@ -63,6 +63,7 @@ As published (before the shell pre-pass), the sheet compiles for web 5978, ios 6
 | `profile scroll-padding-bottom:<calc()>` | 64 | 64 | 64 | 2 |
 | `property cursor` | 36 | 0 | 0 | 36 |
 | `at-rule @supports` | 32 | 32 | 32 | 2 |
+| `profile background-image:unset` | 26 | 26 | 26 | 3 |
 | `profile column-width:<non-initial-value>` | 13 | 13 | 13 | 1 |
 | `unproven context grid-column-start:<span-integer>` | 12 | 12 | 12 | 1 |
 | `unproven context grid-row-end:<span-integer>` | 12 | 12 | 12 | 1 |
@@ -74,4 +75,3 @@ As published (before the shell pre-pass), the sheet compiles for web 5978, ios 6
 | `profile height:fit-content` | 3 | 3 | 3 | 3 |
 | `profile height:max-content` | 3 | 3 | 3 | 3 |
 | `profile height:min-content` | 3 | 3 | 3 | 3 |
-| `profile scroll-padding-right:<length-rem>` | 3 | 3 | 3 | 3 |

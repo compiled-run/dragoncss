@@ -16,7 +16,7 @@ import { OUTLINE_LONGHANDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from './colors.ts';
 import type { RadiusLengthValue } from './radius.ts';
-import { radiusLengths, roundsAnyCorner } from './radius.ts';
+import { mayRound, radiusLengths, roundsAnyCorner } from './radius.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -77,7 +77,7 @@ export const OUTLINE_LOWERING: PaintLowering<OutlineWrite> = {
     const radii = roundsAnyCorner(lengths) ? lengths : null;
     // The side painter styles: a corner with either component positive is rounded for Blink (Radii::IsZero is both zero), and
     // analysis/paint-values/outline.ts refuses it.
-    if (style.value !== 'solid' && style.value !== 'double' && lengths.some((l) => l.value > 0)) throw new ProgramError(`${address}: a rounded ${style.value} outline has no native paint technique`);
+    if (style.value !== 'solid' && style.value !== 'double' && lengths.some(mayRound)) throw new ProgramError(`${address}: a rounded ${style.value} outline has no native paint technique`);
     return [{ kind: 'outline', style: style.value as OutlineStyle, width, offset, color, tones: THREE_D.includes(style.value) ? insetOutsetTones(color) : null, radii }];
   },
 };

@@ -1625,17 +1625,17 @@ function numList(xs: readonly number[]): string {
   return `${out}]]`;
 }
 
-/** One radius length from arguments i (percent flag, 0 or 1) and i + 1 (value). */
+/** One radius length from arguments i (flag: 0 px, 1 percentage, 2 calculation), i + 1 (value) and i + 2 (a calculation's px). */
 function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
   const flag = arg(a, i);
-  if (flag !== 0 && flag !== 1) return fail(`radius length flag ${flag} is not 0 or 1`);
-  return { percent: flag === 1, value: arg(a, i + 1) };
+  if (flag !== 0 && flag !== 1 && flag !== 2) return fail(`radius length flag ${flag} is not 0, 1 or 2`);
+  return { percent: flag === 1, value: arg(a, i + 1), calc: flag === 2, px: arg(a, i + 2) };
 }
 
 /** Eight radius lengths from argument i on. */
 function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
   const out: RadiusLength[] = [];
-  for (let k = 0; k < 8; k++) out.push(radiusLength(a, i + 2 * k));
+  for (let k = 0; k < 8; k++) out.push(radiusLength(a, i + 3 * k));
   return out;
 }
 
@@ -1745,12 +1745,12 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   }
   // GEN-c: paint-marker.ts, a disc's or square's coverage over its device-px rect.
   if (name === 'paint:marker:symbolCoverage') return numList(symbolCoverage(str(item(a, 1, '$'), '$[1]'), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)));
-  if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 3), arg(a, 4)))}]`;
-  if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 17), arg(a, 18), arg(a, 19)));
+  if (name === 'paint:radius:radiusComponent') return `["ok",${h(radiusComponent(radiusLength(a, 1), arg(a, 4), arg(a, 5)))}]`;
+  if (name === 'paint:radius:resolveCornerRadii') return numList(resolveCornerRadii(radiusLengths(a, 1), arg(a, 25), arg(a, 26), arg(a, 27)));
   if (name === 'paint:radius:constrainCornerRadii') return numList(constrainCornerRadii(argList(a, 1, 8), arg(a, 9), arg(a, 10), radiusFaults(a, 11)));
   if (name === 'paint:radius:radiiRenderable') return `["ok",${radiiRenderable(argList(a, 1, 8), arg(a, 9), arg(a, 10)) ? 'true' : 'false'}]`;
   if (name === 'paint:radius:innerCornerRadii') return numList(innerCornerRadii(argList(a, 1, 8), argList(a, 9, 4), arg(a, 13), arg(a, 14), radiusFaults(a, 15)));
-  if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 27), radiusFaults(a, 28)));
+  if (name === 'paint:radius:roundedShape') return numList(roundedShape(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), argList(a, 7, 4), radiusLengths(a, 11), arg(a, 35), radiusFaults(a, 36)));
   if (name === 'paint:radius:outlineWidthPx') return `["ok",${h(outlineWidthPx(arg(a, 1), arg(a, 2)))}]`;
   if (name === 'paint:radius:outlineOffsetPx') return `["ok",${h(outlineOffsetPx(arg(a, 1), arg(a, 2)))}]`;
   if (name === 'paint:radius:outlineRings') return numList(outlineRings(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13), arg(a, 14), arg(a, 15) !== 0));

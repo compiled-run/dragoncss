@@ -7,7 +7,10 @@
 // double borders (four double sides of one width and opaque colour: Blink's two rings, a 1px double solid below 3 device px), in
 // both environment directions. radius-double-web holds a translucent rounded double border: native refuses it (its platform blend
 // is not Skia's), so the lanes compile it on native as a lane-only case (project.ts), it proves web rows only, and the device pixel
-// lanes skip that box (pixel-reference.ts devicePoints). A calculation and a viewport unit in a radius are refused. A rounded
+// lanes skip that box (pixel-reference.ts devicePoints). radius-calc holds calculations (calc(infinity * 1px) pills, px and % mixes,
+// em and rem, min(), max() and clamp() of lengths, var(), negative, infinite and NaN results clamped, mixes never above 0, which
+// draw square, a rounded clip and inherit).
+// A calculation with a viewport unit, and a viewport unit in a radius, are refused. A rounded
 // dashed, dotted or 3D border, a translucent rounded double border and any other rounded double border (PNT1b), a rounded html,
 // body or iframe, and a rounded img with padding or with an overflow other than clip or hidden are refused on the native targets
 // only, so packages/dragon/test/paint-radius.test.ts proves those refusals (a reject fixture blocks the web output too).
@@ -25,6 +28,7 @@ export const RADIUS: readonly FixtureSpec[] = [
   both('radius-replaced'),
   both('radius-double'),
   both('radius-double-web'),
-  reject('reject-radius-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5%)', 'border-radius: calc(10px + 5%) is unsupported: a calculation in a border radius is not supported'),
+  both('radius-calc'),
+  reject('reject-radius-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 2vw)', 'border-radius: calc(10px + 2vw) is unsupported: a calculation in a border radius takes px, %, em, rem and absolute lengths'),
   reject('reject-radius-viewport', 'DRAGON_UNSUPPORTED_VALUE', '2vw', 'border-top-left-radius: 2vw is unsupported: a border radius in a viewport unit'),
 ];

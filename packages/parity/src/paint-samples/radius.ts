@@ -8,6 +8,7 @@
 // tangentially, unless they come near another box's arc, whose antialiasing then decides their colours (the whole scanline is
 // dropped).
 import { borderDoubleRings, hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from '@dragon/layout';
+import type { RadiusLength } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import type { SampleBox, SamplePoint } from '../samples.ts';
 import { ruleKind, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
@@ -22,7 +23,7 @@ const CORNERS = ['top-left', 'top-right', 'bottom-right', 'bottom-left'] as cons
 /** One corner's elliptical arc: the ellipse centre, its radii, the corner of the rect it rounds, and the rect's other corner direction. */
 export type Arc = { readonly cx: number; readonly cy: number; readonly rx: number; readonly ry: number; readonly sx: -1 | 1; readonly sy: -1 | 1; readonly corner: (typeof CORNERS)[number] };
 
-type RadiusFactsShape = { readonly lengths: readonly { readonly percent: boolean; readonly value: number }[] };
+type RadiusFactsShape = { readonly lengths: readonly RadiusLength[] };
 
 /** The radius facts of a node (lower/paint/radius.ts RadiusFacts), or null for square corners. */
 export function radiusFacts(program: NativeProgram, id: string): RadiusFactsShape | null {

@@ -4,7 +4,7 @@
 // Skia's 8-bit source-over. It predicts the colour of a sample pixel from the program and the TS paint-radius.ts geometry, for
 // comparison with the committed Chrome PNGs.
 import { inflateSync } from 'node:zlib';
-import type { ReplacedPaint } from '@dragon/layout';
+import type { RadiusLength, ReplacedPaint } from '@dragon/layout';
 import { borderDoubleRings, hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, roundedShape, snapEdges } from '@dragon/layout';
 import type { NativeProgram, ProgramNode } from 'dragon';
 import { borderDevicePx, programInput, replacedGeometries } from 'dragon';
@@ -68,7 +68,7 @@ export function boxes(p: NativeProgram, viewport: { width: number; height: numbe
     if (n === undefined || n.kind === 'text') return;
     const s = snapped[i] as { left: number; top: number; right: number; bottom: number };
     const border = borders.get(r.id) ?? [0, 0, 0, 0];
-    const facts = n.facts['radius'] as { lengths: { percent: boolean; value: number }[] } | undefined;
+    const facts = n.facts['radius'] as { lengths: RadiusLength[] } | undefined;
     const shape = facts === undefined ? null : roundedShape(s.left, s.top, s.right, s.bottom, r.width / LU_PER_PX, r.height / LU_PER_PX, border, facts.lengths, dpr, NO_RADIUS_FAULTS);
     const w = n.writes.find((x) => x.kind === 'replaced-image');
     const paint = paints.get(r.id);

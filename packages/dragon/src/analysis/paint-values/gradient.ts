@@ -22,7 +22,7 @@ import { elementWillChange } from './transform.ts';
 import { colourClipsToText, nativeTextClipRefusal, textClipFill, textClipRefusal } from './background-clip-text.ts';
 import { linearSlope } from '../../paint-data/libm.ts';
 import type { Diagnostic } from '../../types.ts';
-import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
+import { componentMayRound, componentZero, cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
 import type { AnimationAnalysis } from '../animations.ts';
 import type { ResolvedElement, ResolvedValue } from '../resolve.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
@@ -678,7 +678,7 @@ export type BleedAvoidance = 'none' | 'shrink' | 'layer';
 export function bleedAvoidanceOf(el: ResolvedElement): BleedAvoidance {
   const radius = RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
-    return c !== null && (c[0].value !== 0 || c[1].value !== 0);
+    return c !== null && (!componentZero(c[0]) || !componentZero(c[1]));
   });
   if (!radius) return 'none';
   const colors = usedColors(el);
@@ -878,7 +878,7 @@ const checkBackgroundLayers: PaintCheck = (el, targets, diagnostics, reported, p
 function roundedBox(el: ResolvedElement): boolean {
   return RADIUS_LONGHANDS.some((p) => {
     const c = cornerComponents((el.props.get(p) as ResolvedValue).value);
-    return c !== null && c[0].value > 0 && c[1].value > 0;
+    return c !== null && componentMayRound(c[0]) && componentMayRound(c[1]);
   });
 }
 

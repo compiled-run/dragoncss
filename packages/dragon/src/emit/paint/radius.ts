@@ -7,10 +7,16 @@ import type { RadiusLengthValue } from '../../lower/paint/radius.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 
+const numberLit = (n: number): string => {
+  const t = String(n);
+  return /[.eE]/.test(t) ? t : `${t}.0`;
+};
+
 const lengthLit = (backend: 'swift' | 'kotlin', l: RadiusLengthValue): string => {
-  if (!Number.isFinite(l.value) || l.value < 0) throw new Error(`radius component ${l.value} is not a finite non-negative number`);
-  const n = String(l.value);
-  return `RadiusLength(${l.percent ? 'true' : 'false'}, ${/[.eE]/.test(n) ? n : `${n}.0`})`;
+  // A calculation's percentage and px may be negative (calc(50% - 2px)); the device clamps the result to 0.
+  if (!Number.isFinite(l.value) || (!l.calc && l.value < 0)) throw new Error(`radius component ${l.value} is not a finite non-negative number`);
+  if (!Number.isFinite(l.px) || (!l.calc && l.px !== 0)) throw new Error(`radius component px ${l.px} is not 0 or a calculation's finite px`);
+  return `RadiusLength(${l.percent ? 'true' : 'false'}, ${numberLit(l.value)}, ${l.calc ? 'true' : 'false'}, ${numberLit(l.px)})`;
 };
 
 const SWIFT_MEMBERS = String.raw`  /// The eight authored radius components (horizontal then vertical, top-left first); empty for square corners.
