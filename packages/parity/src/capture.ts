@@ -69,9 +69,19 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     if (cs.display === 'inline' && el.tagName !== 'BR' && !REPLACED_TAGS.includes(el.tagName) && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
       const rects = Array.from(el.getClientRects());
       const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
-      const preservesNewlines = cs.getPropertyValue('white-space-collapse') !== 'collapse';
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t !== null; t = walker.nextNode()) {
+        const data = t.nodeValue ?? '';
+        if (getComputedStyle(t.parentElement as Element).getPropertyValue('white-space-collapse') === 'collapse') continue;
+        for (let i = data.indexOf('\n'); i >= 0; i = data.indexOf('\n', i + 1)) {
+          const range = document.createRange();
+          range.setStart(t, i);
+          range.setEnd(t, i + 1);
+          brPieces.push(...Array.from(range.getClientRects()));
+        }
+      }
       const extraBrPiece = (f: DOMRect): boolean =>
-        f.width === 0 && (preservesNewlines || brPieces.some((b) => b.x === f.x && b.y === f.y && b.height === f.height)) && rects.some((o) => o !== f && o.y === f.y && o.height === f.height);
+        f.width === 0 && brPieces.some((b) => b.x === f.x && b.y === f.y && b.height === f.height) && rects.some((o) => o !== f && o.y === f.y && o.height === f.height);
       rects.filter((f) => !extraBrPiece(f)).forEach((f, j) => out.push({ id: `${id}:line${j}`, kind: 'line', hasBox: true, x: f.x, y: f.y, width: f.width, height: f.height, computed: null }));
     }
     let k = 0;

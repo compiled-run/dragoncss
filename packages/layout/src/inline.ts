@@ -464,17 +464,20 @@ function within(boxParent: readonly number[], inner: number, b: number): boolean
   return false;
 }
 
-/** Whether an item is content that shows or ends a line: a character that does not hang, or a <br>. */
-function isContent(it: Item): boolean {
-  return it.kind === 'br' || it.kind === 'nl' || it.kind === 'atomic' || (it.kind === 'char' && !isHangingSpace(it.cp));
+/**
+ * Whether an item is content that shows or ends a line: a character that does not hang, or a <br>. With spacesShow (preserved
+ * white space, which in a context with inline boxes is white-space: pre), a space shows too (WS-PRE-INL).
+ */
+function isContent(it: Item, spacesShow: boolean): boolean {
+  return it.kind === 'br' || it.kind === 'nl' || it.kind === 'atomic' || (it.kind === 'char' && (spacesShow || !isHangingSpace(it.cp)));
 }
 
 /** The first (or, with last, the last) index of an item that is content of box b, or -1. */
-function contentIndex(items: readonly Item[], boxParent: readonly number[], b: number, last: boolean): number {
+function contentIndex(items: readonly Item[], boxParent: readonly number[], b: number, last: boolean, spacesShow: boolean): number {
   let found = -1;
   for (let i = 0; i < items.length; i++) {
     const it = items[i] as Item;
-    if (!isContent(it) || !within(boxParent, it.box, b)) continue;
+    if (!isContent(it, spacesShow) || !within(boxParent, it.box, b)) continue;
     if (!last) return i;
     found = i;
   }
@@ -568,8 +571,8 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     boundaries,
     strut: metricsOf(ctx, box.id, strut.font, strut.lineHeight, false),
     boxMetrics: flat.boxes.map((b) => metricsOf(ctx, b.id, b.font, b.lineHeight, true)),
-    firstContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, false)),
-    lastContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, true)),
+    firstContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, false, mode !== 'collapse')),
+    lastContent: flat.boxes.map((_, b) => contentIndex(items, flat.boxParent, b, true, mode !== 'collapse')),
     openAt: flat.boxes.map((_, b) => tagIndex(items, b, 'open')),
     closeAt: flat.boxes.map((_, b) => tagIndex(items, b, 'close')),
     shaped,
