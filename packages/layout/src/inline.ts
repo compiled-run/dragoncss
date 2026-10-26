@@ -644,11 +644,11 @@ function lineFeedSegments(t: TextLeaf): string[] {
 /**
  * TXT2-c scope (notes/T149-txt2-spec.md R3): preserved text is laid out alone in its formatting context (no <br>s, atomic inlines or
  * text of another white-space-collapse), left to right, with no tab (tab-size is TXT2-c3) and no control character but U+000A; and
- * break-spaces only in Ahem. WS-PRE-INL: white-space: pre text (preserve, nowrap) may sit in inline boxes, whose tags add no
- * characters, so its only boundaries are the forced ones after each U+000A (boundariesOf), wherever the boxes open and close.
+ * break-spaces only in Ahem. WS-PRE-INL: white-space-collapse: preserve text (pre, pre-wrap) that wraps alike may sit in inline
+ * boxes, whose tags add no characters.
  */
 function checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: WhiteSpaceCollapse): void {
-  const pre = mode === 'preserve' && preservedNowrap(flat.leaves);
+  const pre = mode === 'preserve' && sameWrap(flat.leaves);
   if ((flat.boxes.length > 0 && !pre) || flat.brs.length > 0 || flat.atomics.length > 0) unsupported('mixed-white-space', box.id, 'css-text-4 §4.1.1', `white-space-collapse: ${mode} text beside ${pre ? '<br>s or atomic inlines' : 'inline boxes or <br>s'} in ${box.id}`);
   for (const t of flat.leaves) {
     if (t.whiteSpaceCollapse !== mode) unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `text runs with different white-space-collapse in one formatting context of ${box.id}`);
@@ -672,10 +672,10 @@ function checkPreservedBesideInline(box: LayoutBox, kids: readonly (InlineChild 
   for (const k of kids) if (k.kind !== 'text') inline = true;
   if (!inline) return;
   const leaves = inlineLeaves(box);
-  // WS-PRE-INL: white-space: pre text beside inline boxes is laid out; checkPreservedText refuses the <br>s and atomic inlines.
+  // WS-PRE-INL: preserve text (pre, pre-wrap) beside inline boxes is laid out; checkPreservedText refuses the <br>s and atomic inlines.
   let pre = leaves.length > 0;
   for (const t of leaves) if (t.whiteSpaceCollapse !== 'preserve') pre = false;
-  if (pre && preservedNowrap(leaves)) return;
+  if (pre && sameWrap(leaves)) return;
   for (const t of leaves) if (t.whiteSpaceCollapse !== 'collapse') unsupported('mixed-white-space', t.id, 'css-text-4 §4.1.1', `white-space-collapse: ${t.whiteSpaceCollapse} text beside inline boxes, <br>s or atomic inlines in ${box.id}`);
 }
 
@@ -688,20 +688,29 @@ function checkAtomicContext(ctx: Ctx, box: LayoutBox): void {
   if (truncates(ctx, box)) unsupported('text-overflow', box.id, 'css-overflow-4 §3.1', `text-overflow: ellipsis on the inline formatting context of ${box.id}, which holds an atomic inline, is not proven against Chrome`);
 }
 
-/** Whether every leaf's lines do not wrap (text-wrap-mode: nowrap), as white-space: pre's do. */
-function preservedNowrap(leaves: readonly TextLeaf[]): boolean {
-  for (const t of leaves) if (t.textWrapMode !== 'nowrap') return false;
+/** Whether every leaf wraps alike (text-wrap-mode), as one white-space value gives them. */
+function sameWrap(leaves: readonly TextLeaf[]): boolean {
+  for (const t of leaves) if (t.textWrapMode !== (leaves[0] as TextLeaf).textWrapMode) return false;
   return true;
 }
 
 /** The char items that end the run of spaces starting a paragraph (the context start, or after a preserved U+000A) and precede a non-space. */
+function isTag(it: Item): boolean {
+  return it.kind === 'open' || it.kind === 'close';
+}
+
 function leadingSpaceEnds(items: readonly Item[]): number[] {
   const out: number[] = [];
   let i = 0;
   while (i < items.length) {
+    // An inline box's tags add no characters (WS-PRE-INL): the run of spaces reads through them.
     let j = i;
-    while (j < items.length && (items[j] as Item).kind === 'char' && (items[j] as Item).cp === SPACE) j++;
-    if (j > i && j < items.length && (items[j] as Item).kind === 'char') out.push(j);
+    let spaces = false;
+    while (j < items.length && (isTag(items[j] as Item) || ((items[j] as Item).kind === 'char' && (items[j] as Item).cp === SPACE))) {
+      if ((items[j] as Item).kind === 'char') spaces = true;
+      j++;
+    }
+    if (spaces && j < items.length && (items[j] as Item).kind === 'char') out.push(j);
     while (j < items.length && (items[j] as Item).kind !== 'nl') j++;
     i = j + 1;
   }
@@ -2183,7 +2192,7 @@ function joinedFragments(ifc: Ifc, frags: readonly PreservedFragment[]): Preserv
 
 /**
  * A line box of preserved text (left to right, checkPreservedText): its fragments placed one after another. Inline boxes come only
- * with white-space: pre (no wrapping): each on the line adds its ascent and descent around the baseline (CSS2 §10.8.1) and spans
+ * with white-space-collapse: preserve (pre, pre-wrap): each on the line adds its ascent and descent around the baseline (CSS2 §10.8.1) and spans
  * from its open tag, or the line start, to its close tag, or the end of the line's fragments; a preserved U+000A is its zero-width fragment.
  */
 function placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], line: Line, available: LU, top: LU): PlacedLine {
@@ -2227,7 +2236,7 @@ function placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU
   return { top, height, baseline, pieces, boxes: on, boxRects, breaks: [], breakRects: [], ellipsis: null };
 }
 
-/** The x before item i of a preserved line whose fragments start at x start: after every fragment before i (tags advance nothing). */
+/** The x before item i of a preserved line whose fragments start at x start: after every fragment before i, hanging ones too (tags advance nothing). */
 function fragmentX(frags: readonly PreservedFragment[], start: LU, i: number): LU {
   let x = start;
   for (const f of frags) if (f.from < i) x = add(x, f.width);

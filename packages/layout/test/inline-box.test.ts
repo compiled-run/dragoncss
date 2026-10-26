@@ -146,10 +146,10 @@ const rectLu = (r: ProbeRect, dpr: number): number[] => r.map((v) => lu(v, dpr))
 const ours = (r: LayoutRect, origin: LayoutRect): number[] => [r.x - origin.x, r.y - origin.y, r.width, r.height];
 
 /**
- * The cases INL1a refuses, with the code: a nowrap span in a wrapping context (mixed-text-wrap-mode, from the engine), and pre-wrap
- * text beside an inline box (mixed-white-space, from the engine: TXT2-c lays out preserved text alone in its formatting context).
+ * The cases INL1a refuses, with the code: a nowrap span in a wrapping context (mixed-text-wrap-mode, from the engine), and a
+ * bordered inline box (inline-box-decoration, INL1b; WS-PRE-INL lays out its pre-wrap text beside inline boxes).
  */
-const REFUSED: Record<string, string> = { 'f3-nowrap-span': 'mixed-text-wrap-mode', 'f3-trailing-spaces-close': 'mixed-white-space' };
+const REFUSED: Record<string, string> = { 'f3-nowrap-span': 'mixed-text-wrap-mode', 'f3-trailing-spaces-close': 'inline-box-decoration' };
 
 function compare(id: string, c: ProbeCase, faults: EngineFaults): string[] {
   const problems: string[] = [];

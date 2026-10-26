@@ -69,6 +69,7 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     if (cs.display === 'inline' && el.tagName !== 'BR' && !REPLACED_TAGS.includes(el.tagName) && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
       const rects = Array.from(el.getClientRects());
       const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
+      const preservesSpaces = cs.getPropertyValue('white-space-collapse') !== 'collapse';
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let t = walker.nextNode(); t !== null; t = walker.nextNode()) {
         const data = t.nodeValue ?? '';
@@ -82,7 +83,16 @@ const collectNodes = (props: string[]): CapturedNode[] => {
       }
       const extraBrPiece = (f: DOMRect): boolean =>
         f.width === 0 && brPieces.some((b) => b.x === f.x && b.y === f.y && b.height === f.height) && rects.some((o) => o !== f && o.y === f.y && o.height === f.height);
-      rects.filter((f) => !extraBrPiece(f)).forEach((f, j) => out.push({ id: `${id}:line${j}`, kind: 'line', hasBox: true, x: f.x, y: f.y, width: f.width, height: f.height, computed: null }));
+      const kept = rects.filter((f) => !extraBrPiece(f));
+      // WS-PRE-INL: a culled box in preserved text lists each of its text fragments (a paragraph's leading spaces, its hanging
+      // spaces) as a rect of its own; one that starts where the one before it on its line ends is joined to it.
+      const joined: DOMRect[] = [];
+      for (const f of kept) {
+        const last = joined[joined.length - 1];
+        if (preservesSpaces && last !== undefined && last.y === f.y && last.height === f.height && last.x + last.width === f.x) joined[joined.length - 1] = new DOMRect(last.x, last.y, last.width + f.width, last.height);
+        else joined.push(f);
+      }
+      joined.forEach((f, j) => out.push({ id: `${id}:line${j}`, kind: 'line', hasBox: true, x: f.x, y: f.y, width: f.width, height: f.height, computed: null }));
     }
     let k = 0;
     let spaces = 0;

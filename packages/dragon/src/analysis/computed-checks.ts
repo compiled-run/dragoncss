@@ -548,9 +548,12 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     }
     // resolve.ts collapses the white space of a context with inline boxes or <br>s across them (collapseInlineContext), which is
     // right only for white-space-collapse: collapse (css-text-4 §4.1.1); a context holding preserved text keeps each text as
-    // authored (phaseOneContext). WS-PRE-INL: the engine lays out white-space: pre (preserve, nowrap) text in inline boxes when the
-    // whole context is pre and holds no <br> or atomic inline (inline.ts checkPreservedText).
-    const preOf = (props: ReadonlyMap<Longhand, ResolvedValue>): boolean => keywordOf(props.get('white-space-collapse') as ResolvedValue) === 'preserve' && keywordOf(props.get('text-wrap-mode') as ResolvedValue) === 'nowrap';
+    // authored (phaseOneContext). WS-PRE-INL: the engine lays out preserved text (pre, pre-wrap) in inline boxes when the whole
+    // context preserves its spaces, wraps alike and holds no <br> or atomic inline (inline.ts checkPreservedText).
+    const wrapModeOf = (props: ReadonlyMap<Longhand, ResolvedValue>): string => keywordOf(props.get('text-wrap-mode') as ResolvedValue);
+    const firstText = run.find((it) => it.kind === 'text');
+    const wrap = firstText !== undefined && firstText.kind === 'text' ? wrapModeOf(firstText.text.props) : '';
+    const preOf = (props: ReadonlyMap<Longhand, ResolvedValue>): boolean => keywordOf(props.get('white-space-collapse') as ResolvedValue) === 'preserve' && wrapModeOf(props) === wrap;
     const preRun = run.some((it) => it.kind === 'text') && run.every((it) => (it.kind === 'text' ? preOf(it.text.props) : (it.kind === 'open' || it.kind === 'close') && preOf(it.el.props)));
     for (const it of run) {
       if (it.kind !== 'open' && it.kind !== 'br') continue;
