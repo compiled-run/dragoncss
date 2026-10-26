@@ -12,7 +12,7 @@ import { GENERATED_PSEUDOS } from '../css/selectors.ts';
 import type { CompilerFaults } from '../faults.ts';
 import { STRING_VALUE_TYPE } from '../css/properties/lists.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
-import { uaRows } from '../ua/datasets.ts';
+import { textFontsOf, uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
@@ -32,7 +32,7 @@ import type { LinkedElement, LinkedText } from './link.ts';
 import type { TransformItem } from './text-transform.ts';
 import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
-import { NO_INTERACTION, partSelectorMatches, pseudoSelectorMatches, selectorMatches } from './match.ts';
+import { isAnyLink, NO_INTERACTION, partSelectorMatches, pseudoSelectorMatches, selectorMatches } from './match.ts';
 import type { Direction, DirectionContext } from './logical.ts';
 import type { CustomProperties } from './variables.ts';
 import { computeResize } from '../css/properties/resize.ts';
@@ -344,6 +344,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     // Longhands whose author winner is revert or revert-layer: they keep that declaration while taking the rolled-back value.
     const revertedProps = new Set<Longhand>();
     const hints = part === null ? presentationalHints(el.tag, el.attributes) : new Map();
+    // The UA values applied after the cascade to longhands no author declaration set: computeFontStyleLonghands, applyAnyLink and
+    // applyShadowUserAgent below.
+    const shadowRules: readonly { readonly declarations: readonly (readonly [string, ...unknown[]])[] }[] = part === null ? [] : isTextFieldPart(part) ? (textAreaParts.has(el) ? TEXT_AREA_UA_SHADOW : TEXT_FIELD_UA_SHADOW)[part] : RANGE_UA_SHADOW[part];
+    const shadowSet = new Set(shadowRules.flatMap((r) => r.declarations.map(([name]) => (name === 'min-inline-size' ? 'min-width' : name))));
+    const laterUserAgent = (p: Longhand): boolean =>
+      ((p === 'font-weight' || p === 'font-style') && textFontsOf(environment.ua, el.tag)[p] !== undefined) || ((p === 'color' || p === 'text-decoration-line') && isAnyLink(el)) || shadowSet.has(p);
     for (const p of LONGHANDS) {
       const raw = winners.get(p);
       const w = raw === undefined ? undefined : substituteVariables(raw, p, el, scope);
@@ -368,8 +374,12 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       } else if (w !== undefined && !reverted && w.value.kind === 'keyword') {
         const kw = w.value.value;
         const useInherit = kw === 'inherit' || currentColorOnColor || ((kw === 'unset' || kw === 'revert' || kw === 'revert-layer') && inherited);
-        const r = useInherit ? fromParent(p) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
-        props.set(p, { ...r, span: w.declaration.span, ...author });
+        const r = useInherit ? inheritComputed(p, fromParent) : { value: initialValue(p, environment.ua), origin: 'initial' as const, span: null };
+        // CASC: the keyword changes nothing where the element takes the same value with no author declaration of p: no hint, no UA
+        // rule, and (below the root, whose inherited values come from the environment) the inherited or initial value.
+        const bare = parent === null || hints.has(p) || userAgentValue(tag, p, environment.ua) !== null || laterUserAgent(p) ? null : inherited ? fromParent(p).value : initialValue(p, environment.ua);
+        const unchanged = bare !== null && JSON.stringify(bare) === JSON.stringify(r.value);
+        props.set(p, { ...r, span: w.declaration.span, ...author, ...(unchanged ? { unchanged: true as const } : {}) });
       } else if ((w === undefined || toHint) && hints.has(p)) {
         // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
         // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
@@ -390,7 +400,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         defaulted.add(p);
       }
       if (reverted && w !== undefined && !toHint) {
-        props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author });
+        // CASC: with no hint to roll back, revert takes the value the element has with no author declaration of p: it changes nothing.
+        props.set(p, { ...(props.get(p) as ResolvedValue), span: w.declaration.span, ...author, ...(hints.has(p) ? {} : { unchanged: true as const }) });
         revertedProps.add(p);
       }
     }
@@ -717,6 +728,20 @@ function applyTextFieldShadow(shadow: typeof TEXT_FIELD_UA_SHADOW, part: TextFie
     }
   }
 }
+// css-backgrounds-3 §4.3, css-ui-4 §3.2: a width computes to 0 where its style is none (or hidden), so an explicit inherit takes 0
+// from such a parent, though the parent's resolved width is still the declared one (Chrome 145). column-rule-width stays medium:
+// Dragon accepts only column-rule-style none, so no rule draws (css/properties/multicol.ts).
+const STYLE_OF_WIDTH: ReadonlyMap<Longhand, Longhand> = new Map<Longhand, Longhand>([
+  ...(['top', 'right', 'bottom', 'left'] as const).map((s): [Longhand, Longhand] => [`border-${s}-width` as Longhand, `border-${s}-style` as Longhand]),
+  ['outline-width' as Longhand, 'outline-style' as Longhand],
+]);
+function inheritComputed(p: Longhand, fromParent: (p: Longhand) => ResolvedValue): ResolvedValue {
+  const r = fromParent(p);
+  const style = STYLE_OF_WIDTH.get(p);
+  if (style === undefined || r.origin !== 'inherited') return r;
+  const s = fromParent(style).value;
+  return s.kind === 'keyword' && (s.value === 'none' || s.value === 'hidden') ? { ...r, value: { kind: 'length', value: 0, unit: 'px' } } : r;
+}
 
 /** A range input (part null) or one of its shadow parts, with the input element. */
 export type ControlPartInfo = { readonly part: RangeShadowPart | null; readonly host: LinkedElement };
@@ -776,7 +801,7 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
     const value = declaredUserAgentValue(tag, p, ua, direction, ownFontSize, parentFontSize);
     const was = props.get(p) as ResolvedValue;
     // A reverted longhand keeps its author declaration (its profile row and losing list); only the value is the UA's.
-    const none = reverted.has(p) ? { span: was.span, declaration: was.declaration, declared: was.declared, losing: was.losing, ...(was.substitution === undefined ? {} : { substitution: was.substitution }) } : unset;
+    const none = reverted.has(p) ? { span: was.span, declaration: was.declaration, declared: was.declared, losing: was.losing, ...(was.substitution === undefined ? {} : { substitution: was.substitution }), ...(was.unchanged === true ? { unchanged: true as const } : {}) } : unset;
     if (value !== null) props.set(p, { value, origin: 'user-agent', ...none });
     // The capture derives no declared values for the root (its UA values, as :root { view-transition-name: root }, are captured
     // computed), so the root keeps a captured UA value.

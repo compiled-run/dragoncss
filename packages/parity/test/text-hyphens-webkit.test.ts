@@ -2,7 +2,8 @@
 // text-hyphens-webkit-ahem (fixture-groups/text-hyphens.ts) sets it alone (none, auto, manual, an invalid value, inherit), in
 // Tailwind's hyphens-* pairs, after a contrary hyphens and on a flex row, each beside a twin without the declaration. Against a live
 // Chrome 145 capture, so the proof needs no regen: the fixture passes chrome-dual and linux-dragon-layout in both directions, and in
-// Chrome each box lays out and computes as its twin, and CSS.supports('-webkit-hyphens', ...) is false.
+// Chrome each box lays out and computes as its twin, and CSS.supports('-webkit-hyphens', ...) is false. The web output repeats each
+// hyphens under -webkit-hyphens for Safari (emit/web-css.ts), which the passing chrome-dual lane shows Chrome drops.
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -35,14 +36,21 @@ const spec = () => {
 };
 const lanes = (out: FixtureOutcome) => out.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']]);
 
-describe('TXT2-i: -webkit-hyphens is dropped, as in Chrome 145', () => {
-  it('Dragon compiles the fixture with one DRAGON_PROPERTY_DROPPED warning per declaration, and the web output leaves it out', () => {
+describe('TXT2-i: -webkit-hyphens is dropped, as in Chrome 145, and written for Safari on web', () => {
+  it('Dragon compiles the fixture with one DRAGON_PROPERTY_DROPPED warning per declaration, and the web output repeats each hyphens under -webkit-hyphens', () => {
     const { compiled } = compileFixture(spec());
     expect(compiled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(compiled.diagnostics.filter((d) => d.code === 'DRAGON_PROPERTY_DROPPED').map((d) => d.severity)).toEqual(Array(9).fill('warning'));
     const css = webCssOf(compiled);
     expect(css).not.toBeNull();
-    expect(css).not.toContain('-webkit-hyphens');
+    // The fixture hyphenates (hyphens none and auto), so every hyphens line is followed by -webkit-hyphens with its value, for Safari;
+    // the passing chrome-dual lane below shows Chrome drops it from the compiled page too.
+    const lines = (css as string).split('\n').map((l) => l.trim());
+    const prefixed = lines.flatMap((l, k) => (l.startsWith('-webkit-hyphens:') ? [[lines[k - 1], l]] : []));
+    expect(prefixed.length).toBeGreaterThan(0);
+    for (const [before, line] of prefixed) expect(before?.replace(/^hyphens:/, '-webkit-hyphens:'), line).toBe(line);
+    expect(lines.filter((l) => l.startsWith('hyphens:')).length).toBe(prefixed.length);
+    expect(new Set(prefixed.map(([, l]) => l))).toEqual(new Set(['-webkit-hyphens: manual;', '-webkit-hyphens: none;', '-webkit-hyphens: auto;']));
   });
 
   it(`${ID} passes chrome-dual and linux-dragon-layout in ltr and rtl`, async () => {

@@ -12,7 +12,14 @@
 // caret-color and accent-color, written on every element of a case where any element's is not auto (FORM-b). -webkit-user-modify is
 // never written: Dragon accepts only its initial read-only, which no Chrome UA rule on a supported tag changes (TOUCH),
 // and neither is font-size-adjust: Dragon accepts only its initial none, which no Chrome UA rule sets (TXT-FSA).
+// contain-intrinsic-inline-size (-block-size) is not written on an element where any resolution's contain-intrinsic-width
+// (-height) is not none: Dragon accepts only its initial none, and Chrome resolves it with its physical counterpart as one logical
+// property group, so a written none after the width would override it (analysis/contain-intrinsic.ts refuses an author's
+// flow-relative declaration beside a physical size it could override).
 // speak, like caret-color, is written on every element of a case where any element's is not normal (NA-NATIVE-2).
+// hyphens is written with its value repeated under -webkit-hyphens, on every element of a case where any element's is not manual:
+// Chrome 145 drops -webkit-hyphens (css/chrome-dropped.ts), so the line changes nothing there, while Safari hyphenates from it
+// (TXT2-i, Tailwind's hyphens-* pairs). Inherited like hyphens, it is written everywhere or nowhere in a case.
 // break-before, break-after and break-inside are written only where one is not auto, and orphans and widows, inherited, on every
 // element of a case where any element's is not 2: their initial values, which no Chrome UA rule sets (css-break-3).
 // A colour from the UA origin (a hyperlink's, TDEC-a analysis/text-decoration.ts applyAnyLink) is written `color: revert`, and every
@@ -72,6 +79,12 @@ function writesInsets(el: ResolvedElement): boolean {
   });
 }
 
+/** Whether an element's value of a longhand is none. */
+function isNoneValue(el: ResolvedElement, p: 'contain-intrinsic-width' | 'contain-intrinsic-height'): boolean {
+  const v = (el.props.get(p) as ResolvedValue).value;
+  return v.kind === 'keyword' && v.value === 'none';
+}
+
 /** Whether an element's clip is not auto, its initial value. */
 function writesClip(el: ResolvedElement): boolean {
   const v = (el.props.get('clip') as ResolvedValue).value;
@@ -93,6 +106,12 @@ function writesClipPath(el: ResolvedElement): boolean {
 function writesSpeak(el: ResolvedElement): boolean {
   const v = (el.props.get('speak') as ResolvedValue).value;
   return !(v.kind === 'keyword' && v.value === 'normal');
+}
+
+/** Whether an element's hyphens is not manual, its initial value. */
+function writesHyphens(el: ResolvedElement): boolean {
+  const v = (el.props.get('hyphens') as ResolvedValue).value;
+  return !(v.kind === 'keyword' && v.value === 'manual');
 }
 
 /** Whether an element's caret-color or accent-color is not auto, their initial value. */
@@ -294,6 +313,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     for (const r of rewritten.resolutions) if (r.kind === 'pinned') usedPinned.add(r.family);
     return fonts.rewrite ? rewritten.value : valueText(v);
   };
+  // Set per case: whether hyphens is repeated under -webkit-hyphens there.
+  let prefixHyphens = false;
   const declLine = (el: ResolvedElement, p: (typeof LONGHANDS)[number], underSource = false): string => {
     const r = el.props.get(p) as ResolvedValue;
     // T065 R9: under an element that may animate its colour, an inherited colour stays inherited, so it follows each frame (the
@@ -310,6 +331,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     // MASK-CLIP: mask-composite's source-over is written under -webkit-mask-composite, the one name that parses it.
     if (p === 'mask-composite') return `  ${maskDeclarationName(p, v)}: ${valueText(v)};`;
     if (p === 'background-image') return `  ${p}: ${backgroundImageText(v, imageUrls)};`;
+    // TXT2-i: the hyphens line repeated under -webkit-hyphens for Safari, in a case that hyphenates (writesHyphens).
+    if (p === 'hyphens' && prefixHyphens) return `  ${p}: ${valueText(v)};\n  -webkit-hyphens: ${valueText(v)};`;
     return `  ${p}: ${p === 'font-family' ? familyText(v) : valueText(v)};`;
   };
   const classOf = new Map<string, Map<string, string>>();
@@ -338,6 +361,8 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
     const uiColors = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesUiColors));
     // NA-NATIVE-2: speak is inherited too, so it is written on every element of the case or none.
     const speak = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesSpeak));
+    // TXT2-i: -webkit-hyphens, as hyphens is inherited, is written on every element of the case or none.
+    prefixHyphens = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesHyphens));
     // css-break-3: orphans and widows are inherited too, so they are written on every element of the case or none.
     const orphansWidows = [...bandBase, ...states.flat().map((st) => st.at)].some((m) => [...m.values()].some(writesOrphansWidows));
     // One part: an element, or one of its ::before and ::after boxes (GEN-a R7), whose rule is the element's class with the
@@ -361,7 +386,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
       const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || textFieldPartOf(el)?.part === null || resolutions.some(writesAppearance);
       const breaks = resolutions.some(writesBreaks);
-      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && p !== 'font-size-adjust' && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p)) && (speak || p !== 'speak')).map((p) => declLine(el, p, under));
+      const intrinsicInline = resolutions.every((r) => isNoneValue(r, 'contain-intrinsic-width'));
+      const intrinsicBlock = resolutions.every((r) => isNoneValue(r, 'contain-intrinsic-height'));
+      const decls = LONGHANDS.filter((p) => (insets || !INSET_LONGHANDS.includes(p)) && (outline || !(OUTLINE_LONGHANDS as readonly string[]).includes(p)) && (clamp || !(LINE_CLAMP_LONGHANDS as readonly string[]).includes(p)) && (clip || p !== 'clip') && (clipPath || p !== 'clip-path') && (mask || !(MASK_LONGHANDS as readonly string[]).includes(p)) && (borderImage || !(BORDER_IMAGE_LONGHANDS as readonly string[]).includes(p)) && (appearance || p !== 'appearance') && (uiColors || (p !== 'caret-color' && p !== 'accent-color')) && p !== '-webkit-user-modify' && p !== 'font-size-adjust' && (intrinsicInline || p !== 'contain-intrinsic-inline-size') && (intrinsicBlock || p !== 'contain-intrinsic-block-size') && (breaks || (p !== 'break-before' && p !== 'break-after' && p !== 'break-inside')) && (orphansWidows || (p !== 'orphans' && p !== 'widows')) && (fx || !(FX_LONGHANDS as readonly string[]).includes(p)) && (speak || p !== 'speak')).map((p) => declLine(el, p, under));
       // T065 R15: an element's transition and animation lists, resolved per element and state.
       if (animations !== null && withAnimations) decls.push(...animations.lines(c.key, el.element.address));
       // Every longhand whose value in the band differs from the first band's (an inset left out there is auto, its value).

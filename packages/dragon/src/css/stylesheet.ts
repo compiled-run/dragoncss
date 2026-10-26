@@ -24,8 +24,9 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList, testsVisitState } from './selectors.ts';
-import { markNotApplicable } from './not-applicable.ts';
+import { markBrowserOnly, markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
+import { browserOnlyEntry } from '../profiles/browser-only-native.ts';
 import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { pairedLonghands } from './properties/overscroll.ts';
@@ -37,7 +38,7 @@ import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { relativeColorGrammarText } from './color.ts';
 import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
-import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
+import { mathFunctionRefusal, normalizeUnit, unitRefusalIn } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
 import type { AnimationDeclValue } from './properties/animation.ts';
@@ -578,6 +579,9 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
       return;
     }
     const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : layerRefusal ?? refuseAtRule(context).diagnostic;
+    // BROWSER-ONLY: a listed at-rule is refused on web as before and is a browser-only error on native (css/not-applicable.ts).
+    const browserOnly = browserOnlyEntry(`@${asciiLower(String(node['name']))}`);
+    if (browserOnly !== null) markBrowserOnly(refusal, browserOnly);
     diagnostics.push(refusal);
     if (block === null || block === undefined) return;
     // T005 rec 3: the enclosed rules are parsed with the block unwrapped, for analysis only.
@@ -766,7 +770,7 @@ function parseAll(valueNode: CssNode, span: Span, valueSpan: Span, text: string,
   }
   const value: CssValue = { kind: 'keyword', value: keyword };
   // Chrome's all skips direction, unicode-bidi and -webkit-user-modify (Chrome 145, landing review of #480).
-  const longhands = LONGHANDS.filter((p) => p !== 'direction' && p !== '-webkit-user-modify').map((p) => ({ property: p, value, explicit: true }));
+  const longhands = LONGHANDS.filter((p) => p !== 'direction' && p !== 'unicode-bidi' && p !== '-webkit-user-modify').map((p) => ({ property: p, value, explicit: true }));
   const animation: AnimationDeclValue = { longhands: new Map((Object.keys(ANIM_INITIAL) as AnimLonghand[]).map((p): [AnimLonghand, AnimList] => [p, { kind: 'wide', keyword }])) };
   return { property: 'all', text, span, valueSpan, longhands, order, ...important, animation };
 }
@@ -997,8 +1001,9 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     return { kind: 'invalid', reason: 'Chrome takes only baseline or first baseline here (css_parsing_utils.cc ConsumeFirstBaseline)' };
   }
   const values: CssValue[] = pair === null ? [] : [pair];
+  const declared: readonly string[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
   for (const t of pair === null ? tokens : []) {
-    const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
+    const unitRefused = t.type === 'Dimension' ? unitRefusalIn(normalizeUnit(String(t['unit'])), declared) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
     if (unitRefused !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }) };
     }

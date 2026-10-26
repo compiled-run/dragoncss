@@ -224,6 +224,11 @@ export function roundFontMetricHalfUpToWholePx(px: number): LU {
   return fromWholePx(Math.floor(Math.fround(px) + 0.5));
 }
 
+/** Blink FontDescription::ComputedPixelSize: the computed font size as an int, int(size + 0.5f). */
+export function computedPixelSize(fontSizePx: number): number {
+  return Math.trunc(Math.fround(Math.fround(fontSizePx) + 0.5));
+}
+
 /**
  * The size the font instance is created at: Blink keys and creates font platform data at the font size times 100, truncated
  * (FontCacheKey precision multiplier), so 10.625px shapes and measures as 10.62px. Measured on the Chrome 145 oracle

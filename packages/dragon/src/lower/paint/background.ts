@@ -13,7 +13,8 @@ import { usedColors } from './colors.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
-export type BackgroundWrite = { readonly kind: 'background-color'; readonly color: Rgba8; readonly folded?: true };
+/** folded: the fill is drawn as Chrome's opaque bytes over its backdrop while no rival's border box (by address) meets its own. */
+export type BackgroundWrite = { readonly kind: 'background-color'; readonly color: Rgba8; readonly folded?: true; readonly rivals?: readonly string[] };
 
 export const BACKGROUND_LOWERING: PaintLowering<BackgroundWrite> = {
   name: 'background',
@@ -36,13 +37,16 @@ export function foldedOpacity(el: ResolvedElement): number | null {
   return o > 0 && o < 1 && opacityFolds(el) && groupPlanAt(el)?.kind !== 'nested' ? o : null;
 }
 
-function foldedBackground(el: ResolvedElement, foldBackdrops: ReadonlySet<string>): BackgroundWrite {
+function foldedBackground(el: ResolvedElement, foldBackdrops: ReadonlyMap<string, readonly string[]>): BackgroundWrite {
   const c = usedColors(el)['background-color'];
   const o = foldedOpacity(el);
   if (o === null || c.alpha === 0) return { kind: 'background-color', color: c };
   const color = { ...c, alpha: opacityAlpha8(o) };
   // Alpha 0 paints nothing and 255 is the colour itself, which the platform draws exactly. The folded bytes are modelled over the
-  // ancestors' background colours alone, so a box whose backdrop may hold other paint (fold-backdrop.ts) keeps the platform blend.
-  return color.alpha === 0 || color.alpha === 255 || !foldBackdrops.has(el.element.address) ? { kind: 'background-color', color } : { kind: 'background-color', color, folded: true };
+  // ancestors' background colours alone, so a box whose backdrop may hold other paint (fold-backdrop.ts) keeps the platform blend,
+  // and one with rivals keeps it while a rival's border box meets its own.
+  const rivals = foldBackdrops.get(el.element.address);
+  if (color.alpha === 0 || color.alpha === 255 || rivals === undefined) return { kind: 'background-color', color };
+  return rivals.length === 0 ? { kind: 'background-color', color, folded: true } : { kind: 'background-color', color, folded: true, rivals };
 }
 
