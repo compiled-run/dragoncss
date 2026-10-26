@@ -20,6 +20,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
+  layout('controls-textarea'),
   reject('reject-controls-range-theme', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input type=range> r is painted by the platform theme'),
   reject('reject-controls-range-inline', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', 'display: inline-block on <input> r makes it an inline-level control'),
   reject('reject-controls-input-password', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="r" type="password" value="XX">', '<input type=password> r is not supported'),

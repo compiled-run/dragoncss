@@ -3254,7 +3254,8 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   const marker = (m: import('@dragon/layout').ListMarker | null): string =>
     m === null ? none : `ListMarker(${str(m.id)}, ${str(m.kind)}, ${m.symbol === null ? none : str(m.symbol)}, ${m.text === null ? none : str(m.text)}, ${fontSpecValue(lang, m.font)}, ${lineHeightValue(lang, m.lineHeight)})`;
   // A control box's facts (input.ts ControlKind): ControlKind_range, ControlKind_sliderThumb, ControlKind_buttonBlock or a text
-  // field's ControlKind_textField, ControlKind_textEditor and ControlKind_textPlaceholder (FORM-b).
+  // field's ControlKind_textField, a textarea's ControlKind_textArea, and their ControlKind_textEditor and
+  // ControlKind_textPlaceholder (FORM-b).
   const controlKind = (c: import('@dragon/layout').ControlKind): string =>
     c.kind === 'range'
       ? `ControlKind_range(${str('range')}, ${doubleLit(c.defaultInlineSize)})`
@@ -3262,6 +3263,8 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
         ? `ControlKind_sliderThumb(${str('slider-thumb')}, ${doubleLit(c.ratio)})`
         : c.kind === 'text-field'
           ? `ControlKind_textField(${str('text-field')}, ${doubleLit(c.size)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+          : c.kind === 'text-area'
+          ? `ControlKind_textArea(${str('text-area')}, ${doubleLit(c.cols)}, ${doubleLit(c.rows)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
           : c.kind === 'text-editor'
             ? `ControlKind_textEditor(${str('text-editor')})`
             : c.kind === 'text-placeholder'

@@ -537,8 +537,11 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (first !== undefined && (t.overflowWrap !== first.overflowWrap || t.wordBreak !== first.wordBreak)) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-3 §5.2, §5.5', `text runs with different overflow-wrap or word-break in one formatting context of ${box.id}`);
     }
-    // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet.
-    if ((t.overflowWrap !== 'normal' || t.wordBreak !== 'normal') && t.whiteSpaceCollapse !== 'collapse') {
+    // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet, but for
+    // overflow-wrap: break-word over white-space-collapse: preserve, a textarea's (FORM-b, the controls-textarea fixture: long
+    // words, runs of preserved spaces at and across a break, leading and trailing spaces).
+    const preservedBreakWord = t.overflowWrap === 'break-word' && t.wordBreak === 'normal' && t.whiteSpaceCollapse === 'preserve';
+    if ((t.overflowWrap !== 'normal' || t.wordBreak !== 'normal') && t.whiteSpaceCollapse !== 'collapse' && !preservedBreakWord) {
       unsupported('word-break', t.id, 'css-text-3 §5.5', `overflow-wrap: ${t.overflowWrap} and word-break: ${t.wordBreak} on ${t.id}, whose white-space-collapse is ${t.whiteSpaceCollapse}`);
     }
   }
