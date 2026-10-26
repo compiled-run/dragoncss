@@ -1,0 +1,59 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 31488
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 2304,
+   "y": 2304,
+   "width": 72192,
+   "height": 26880
+  },
+  {
+   "id": "spacer",
+   "parent": "body",
+   "x": 1920,
+   "y": 1920,
+   "width": 68352,
+   "height": 7680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 492,
+   "width": 1200,
+   "height": 492
+  },
+  {
+   "id": "body",
+   "left": 36,
+   "top": 36,
+   "right": 1164,
+   "bottom": 456,
+   "width": 1128,
+   "height": 420
+  },
+  {
+   "id": "spacer",
+   "left": 66,
+   "top": 66,
+   "right": 1134,
+   "bottom": 186,
+   "width": 1068,
+   "height": 120
+  }
+ ]
+}

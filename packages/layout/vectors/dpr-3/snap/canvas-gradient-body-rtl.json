@@ -1,0 +1,93 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 57600
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 57600
+  },
+  {
+   "id": "card",
+   "parent": "body",
+   "x": 4608,
+   "y": 4608,
+   "width": 67584,
+   "height": 11520
+  },
+  {
+   "id": "gap",
+   "parent": "body",
+   "x": 4608,
+   "y": 16128,
+   "width": 67584,
+   "height": 7680
+  },
+  {
+   "id": "chip",
+   "parent": "body",
+   "x": 38400,
+   "y": 23808,
+   "width": 33792,
+   "height": 5760
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 900,
+   "width": 1200,
+   "height": 900
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 900,
+   "width": 1200,
+   "height": 900
+  },
+  {
+   "id": "card",
+   "left": 72,
+   "top": 72,
+   "right": 1128,
+   "bottom": 252,
+   "width": 1056,
+   "height": 180
+  },
+  {
+   "id": "gap",
+   "left": 72,
+   "top": 252,
+   "right": 1128,
+   "bottom": 372,
+   "width": 1056,
+   "height": 120
+  },
+  {
+   "id": "chip",
+   "left": 600,
+   "top": 372,
+   "right": 1128,
+   "bottom": 462,
+   "width": 528,
+   "height": 90
+  }
+ ]
+}
