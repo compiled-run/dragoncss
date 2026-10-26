@@ -239,8 +239,8 @@ describe('T005 rec 5: formatDiagnostics groups diagnostics that differ only in t
 describe('T005 rec 6: unsupported-value and unproven-context messages list the supported alternatives in context, from the profile rows', () => {
   it('display: inline-table in block flow lists block, contents, flex, grid, list-item, none and the CSS-wide keywords proven there (GEN-b, CASC, casc-all inherit)', () => {
     const c = both().compile(inputFor('.g { display: inline-table; }', (r) => [div(r, 'g', ['g'])]));
-    // display: inline is proven in block flow on both (an inline-level child of a block); inherit there on native only.
-    for (const d of c.diagnostics) expect(d.message).toBe(`display: inline-table is unsupported (support profile m1-s5); in block/ltr use block, contents, flex, grid, ${d.target === 'web' ? '' : 'inherit, '}inline, list-item, none, revert or revert-layer`);
+    // display: inline is proven in block flow on both (an inline-level child of a block), and so is inherit.
+    for (const d of c.diagnostics) expect(d.message).toBe('display: inline-table is unsupported (support profile m1-s5); in block/ltr use block, contents, flex, grid, inherit, inline, list-item, none, revert or revert-layer');
   });
   it('margin-right: 6mm in block flow lists the margin-right values proven there', () => {
     const c = both().compile(inputFor(`${FONT} .a { margin-right: 6mm; }`, (r) => [div(r, 'a', ['a'])]));
