@@ -71,6 +71,7 @@ describe('UA versus initial origin, per tag and longhand', () => {
       dl: ['display', 'margin-bottom', 'margin-top', 'unicode-bidi'],
       dt: ['display', 'unicode-bidi'],
       dd: ['display', 'margin-left', 'unicode-bidi'],
+      form: ['display', 'unicode-bidi'],
       'dragon-unstyled': [],
     });
   });

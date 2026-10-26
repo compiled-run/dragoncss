@@ -66,7 +66,7 @@ describe('refused attributes name the package that owns their effect', () => {
     ['div', 'type', 'FORM-a'], ['div', 'min', 'FORM-a'], ['div', 'max', 'FORM-a'], ['div', 'value', 'FORM-a'],
     ['div', 'src', 'REPL'], ['div', 'alt', 'REPL'], ['div', 'width', 'REPL'], ['div', 'height', 'REPL'], ['iframe', 'alt', 'REPL'],
     ['div', 'href', 'INL1'], ['a', 'rel', 'LINK-RT'], ['a', 'target', 'LINK-RT'], ['html', 'lang', 'TXT1-C'], ['div', 'dir', 'bidi'],
-    ['div', 'hidden', 'display'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
+    ['div', 'hidden', 'display'], ['label', 'for', 'FORM-b'], ['div', 'style', 'SOV'], ['div', 'tabindex', 'not proven neutral'],
     ['div', 'constructor', 'not proven neutral'], ['div', 'toString', 'not proven neutral'],
   ])('<%s %s> names %s', (tag, name, owner) => {
     expect(attributeRefusal(tag, name)).toContain(owner);
