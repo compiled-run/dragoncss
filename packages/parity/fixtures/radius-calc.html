@@ -19,6 +19,7 @@ body { margin: 0; }
 .cmp3 { font-size: 10px; border-radius: clamp(3px, 2em, 18px) max(11px, 1em) min(2rem, 14px) clamp(1px, 2.5em, 1rem); background-color: #2f6f9f; }
 .neg { border-radius: calc(30% - 20px) calc(-5px) calc(10% - 1px) calc(infinity * -1px); background-color: #50607a; }
 .nan { border-top-left-radius: calc(infinity * 0px); border-bottom-right-radius: calc(20px - 50% + 50%); background-color: #8a6a3a; }
+.zero { border: 3px solid #f2c94c; border-radius: calc(0% + 0px) calc(0% - 5px) calc(-10% * 2) calc(0% + 0px) / 6px; background-color: #5a3a8a; }
 .logical { border-start-end-radius: calc(20% + 2px) calc(40% - 4px); border-end-start-radius: calc(infinity * 1px) 6px; background-color: #a0305a; }
 .clip { width: 60px; height: 40px; border: 4px solid #1a1a2e; border-radius: calc(50% - 4px); overflow: hidden; background-color: #e8d36a; }
 .kid { width: 70px; height: 50px; background-color: #2f3f9f; }
@@ -41,6 +42,7 @@ body { margin: 0; }
 <div data-dragon-id="cmp3" class="sw cmp3"></div>
 <div data-dragon-id="neg" class="sw neg"></div>
 <div data-dragon-id="nan" class="sw nan"></div>
+<div data-dragon-id="zero" class="sw zero"></div>
 <div data-dragon-id="logical" class="sw logical"></div>
 <div data-dragon-id="clip" class="clip"><div data-dragon-id="kid" class="kid"></div></div>
 <div data-dragon-id="inherit" class="inherit"><div data-dragon-id="in" class="in"></div></div>

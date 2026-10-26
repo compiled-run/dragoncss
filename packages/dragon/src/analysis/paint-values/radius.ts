@@ -19,20 +19,29 @@ import type { Diagnostic } from '../../types.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
+/** A component that does not compute at this element's font sizes, with why (a mix whose em leaves the float range). */
+type Uncomputed = { readonly refused: string };
+
+/**
+ * The longhand values compute kept as specified because a calculation in them does not compute at the element's font sizes, with why;
+ * checkUncomputed refuses them on every target.
+ */
+const UNCOMPUTED = new WeakMap<ResolvedValue, string>();
+
 /** A calculation's computed component: px, a percentage, or calc(<percentage> + <px>) written with its numbers in full. */
-function computeCalc(text: string, ctx: PaintValueContext): RadiusComponent | null {
+function computeCalc(text: string, ctx: PaintValueContext): RadiusComponent | Uncomputed | null {
   if (ctx.em === null || ctx.rem === null) return null;
   const parsed = parseMath(text, RADIUS_MATH);
-  // css/properties/radius.ts mathToken parsed and checked it, and its refusals do not depend on the font sizes.
+  // css/properties/radius.ts mathToken parsed and checked it, and only its float-range refusal depends on the font sizes.
   if (!parsed.ok) throw new Error(`radius calculation ${text} no longer parses: ${parsed.reason}`);
   const r = nonNegativeLengthMath(parsed.node, { em: ctx.em, rem: ctx.rem }, exactNumberText);
-  if (r.kind === 'refused') throw new Error(`radius calculation ${text} was accepted but is refused: ${r.reason}`);
+  if (r.kind === 'refused') return { refused: `${text} does not compute at this element's font size: ${r.reason}` };
   if (r.kind === 'px') return { kind: 'length', value: r.px, unit: CANONICAL_LENGTH_UNIT };
   if (r.kind === 'percent') return { kind: 'percentage', value: r.percent };
   return { kind: 'calc', text: r.text };
 }
 
-function computeComponent(c: RadiusComponent, ctx: PaintValueContext): RadiusComponent | null {
+function computeComponent(c: RadiusComponent, ctx: PaintValueContext): RadiusComponent | Uncomputed | null {
   if (c.kind === 'calc') return computeCalc(c.text, ctx);
   if (c.kind === 'percentage' || c.unit === CANONICAL_LENGTH_UNIT) return c;
   const needs = c.unit === 'em' ? ctx.em : c.unit === 'rem' ? ctx.rem : 0;
@@ -166,9 +175,29 @@ const checkRoundedElement: PaintCheck = (el, targets, diagnostics, reported) => 
   }
 };
 
+/** A radius calculation that does not compute at the element's font sizes is refused at its declaration on every target. */
+function checkUncomputed(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): boolean {
+  const v = RADIUS_LONGHANDS.map((p) => el.props.get(p) as ResolvedValue).find((r) => UNCOMPUTED.has(r));
+  if (v === undefined) return false;
+  const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+  for (const t of targets) {
+    const id = `${t}|radius-uncomputed|${el.element.address}`;
+    if (reported.has(id)) continue;
+    reported.add(id);
+    const message = `${el.element.address} has a border radius ${UNCOMPUTED.get(v) as string}, which Dragon does not compute`;
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Write the radius so each length in it stays within the CSS length range at this font size.', basis: 'computed-value' }));
+  }
+  return true;
+}
+
+const checkRadius: PaintCheck = (el, targets, diagnostics, reported, propagated) => {
+  if (checkUncomputed(el, targets, diagnostics, reported)) return;
+  checkRoundedElement(el, targets, diagnostics, reported, propagated);
+};
+
 export const RADIUS_VALUES: PaintValues = {
   name: 'radius',
-  check: checkRoundedElement,
+  check: checkRadius,
   compute: (props, ctx) => {
     for (const p of RADIUS_LONGHANDS as readonly Longhand[]) {
       const v = props.get(p);
@@ -178,6 +207,12 @@ export const RADIUS_VALUES: PaintValues = {
       const h = computeComponent(parts[0], ctx);
       const w = computeComponent(parts[1], ctx);
       if (h === null || w === null) continue;
+      if ('refused' in h || 'refused' in w) {
+        const kept: ResolvedValue = { ...v };
+        props.set(p, kept);
+        UNCOMPUTED.set(kept, 'refused' in h ? h.refused : (w as Uncomputed).refused);
+        continue;
+      }
       const computed: ResolvedValue = { ...v, value: cornerValue(h, w) };
       props.set(p, computed);
     }

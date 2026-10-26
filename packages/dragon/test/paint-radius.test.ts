@@ -189,6 +189,28 @@ describe('border-radius: calculations computed as Chrome 145 CSSPrimitiveValue::
     expect(applied).toEqual(raw.map((r) => Math.fround(r * f)));
   });
 
+  it('refuses, at the declaration on every target, a mix whose em or rem leaves the float range at the element\'s font size', () => {
+    const css = '.a { font-size: 64px; width: 40px; height: 20px; border-radius: calc(50% + 1e37em); }';
+    const { c } = compile(css, { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+    const refused = c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
+    expect(refused.map((d) => d.target).sort()).toEqual(['android', 'ios', 'web']);
+    for (const d of refused) {
+      expect(d.message).toContain("calc(50% + 1e37em) does not compute at this element's font size");
+      expect(d.message).toContain('a percentage with a length outside the float range');
+    }
+    expectCatalogued(refused);
+  });
+
+  it('a mix that is never above 0 stays a calculation in the computed value but draws square, as Chrome resolves it to 0 (radius-calc .zero)', () => {
+    const { c } = compile('.a { width: 40px; height: 20px; border-radius: calc(0% + 0px) calc(0% - 5px) calc(-10% * 2) calc(0% + 0px) / 6px; }', { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+    expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(CORNERS.map((p) => explainOne(c, 'ios', 'a', p).value)).toEqual(['calc(0% + 0px) 6px', 'calc(0% - 5px) 6px', '0% 6px', 'calc(0% + 0px) 6px']);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const a = p.programs.uikit.nodes.find((n) => n.id === 'a');
+    expect(a?.writes.some((w) => w.kind === 'border-radius')).toBe(false);
+  });
+
   it('a calculation rounds a corner for the native refusals, as Blink\'s style keeps it calculated', () => {
     const { c } = compile('.a { width: 40px; height: 20px; border: 2px dashed blue; border-radius: calc(10% - 20px); }', { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
     expect(c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE').map((d) => d.target).sort()).toEqual(['android', 'ios']);
