@@ -7789,7 +7789,7 @@ export const computed: { readonly [T in CapturedTag]: { readonly [property: stri
     "float": "none",
     "flood-color": "rgb(0, 0, 0)",
     "flood-opacity": "1",
-    "font-family": "\"Times New Roman\"",
+    "font-family": "Times",
     "font-feature-settings": "normal",
     "font-kerning": "auto",
     "font-language-override": "normal",
