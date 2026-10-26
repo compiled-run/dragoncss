@@ -20,7 +20,7 @@ import { breakItemLines, justifiedViewWidth, subView } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
-import type { AtomicLayout } from './inline-box.ts';
+import type { AtomicBox, AtomicLayout } from './inline-box.ts';
 import { atomicContribution, isAtomicInline, layoutAtomic } from './inline-box.ts';
 import type { TruncSource } from './truncate.ts';
 import { truncateLine } from './truncate.ts';
@@ -59,7 +59,7 @@ export type Ifc = {
   readonly boxParent: readonly number[];
   readonly brs: readonly LineBreak[];
   /** The atomic inlines (inline-block, inline-flex and inline-grid boxes, and inline-level replaced leaves), in tree order. */
-  readonly atomics: readonly (LayoutBox | ReplacedLeaf)[];
+  readonly atomics: readonly (AtomicBox | ReplacedLeaf)[];
   readonly items: readonly Item[];
   readonly boundaries: readonly Boundary[];
   readonly strut: BoxMetrics;
@@ -324,7 +324,7 @@ function inlineContent(box: LayoutBox): InlineChild[] {
 function inlineChildren(box: LayoutBox): (InlineChild | LayoutNode)[] {
   const out: (InlineChild | LayoutNode)[] = [];
   for (const c of box.children) {
-    if (((c.kind === 'box' || c.kind === 'replaced') && !isAtomicInline(c)) || c.kind === 'control') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
+    if (c.kind !== 'text' && c.kind !== 'inline' && c.kind !== 'br' && !isAtomicInline(c)) throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
     out.push(c);
   }
   return out;
@@ -400,7 +400,7 @@ function checkInlineBox(ctx: Ctx, b: InlineBox): void {
 }
 
 /** Collects the formatting context's leaves, boxes (with their parents), <br>s and items in tree order. */
-type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly atomics: (LayoutBox | ReplacedLeaf)[]; readonly items: Item[] };
+type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly atomics: (AtomicBox | ReplacedLeaf)[]; readonly items: Item[] };
 
 // INL2a scope: an atomic inline's line is laid out without its block container's height (the native runtime places lines the same
 // way), so a percentage block size, which would resolve against a definite one (CSS2 §10.5), is refused; and so is a relatively
@@ -417,8 +417,8 @@ function checkAtomic(a: LayoutNode): void {
 /** The block container's children: atomic inlines become U+FFFC items, and inline content is flattened (flatten). */
 function flattenTop(ctx: Ctx, kids: readonly (InlineChild | LayoutNode)[], out: Flat): void {
   for (const k of kids) {
-    if (k.kind === 'control') throw new Error(`${k.id}: a control among inline content; validateLayoutInput rejects it`);
-    if (k.kind === 'box' || k.kind === 'replaced') {
+    if (k.kind === 'control' && !isAtomicInline(k)) throw new Error(`${k.id}: a control among inline content; validateLayoutInput rejects it`);
+    if (k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') {
       checkAtomic(k);
       const atom = out.atomics.length;
       out.atomics.push(k);
@@ -2325,8 +2325,8 @@ function placeFragments(kids: readonly InlineChild[], fragments: Fragments, out:
 /** placeFragments over a block container's children, atomic inlines included. */
 function placeTopFragments(kids: readonly (InlineChild | LayoutNode)[], fragments: Fragments, out: Placed[]): void {
   for (const k of kids) {
-    if (k.kind === 'control') throw new Error(`${k.id}: a control among inline content; validateLayoutInput rejects it`);
-    if (k.kind === 'box' || k.kind === 'replaced') {
+    if (k.kind === 'control' && !isAtomicInline(k)) throw new Error(`${k.id}: a control among inline content; validateLayoutInput rejects it`);
+    if (k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') {
       const p = fragments.placed.get(k.id);
       if (p !== undefined) out.push(p);
     } else placeFragments([k], fragments, out);

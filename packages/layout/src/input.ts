@@ -493,7 +493,8 @@ export type ReplacedLeaf = {
  *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
  * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
  *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
- * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent).
+ * - button-block: a button laid out as a block container, whose in-flow contents are centred safely in the block axis
+ *   (AlignBlockContent): a block-level one (display block), or an inline-block one, an atomic inline among inline content (RF-INL).
  */
 export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }

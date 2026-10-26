@@ -677,16 +677,16 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
 }
 
 /**
- * A block container's inline-level child: an atomic inline is a box (INL2a) or a replaced leaf (RF-INL) among its inline content,
- * the rest lowerInline.
+ * A block container's inline-level child: an atomic inline is a box (INL2a), a replaced leaf or an inline-block button (RF-INL)
+ * among its inline content, the rest lowerInline.
  */
-function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ReplacedLeaf | InlineChild {
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
   const el = c as ResolvedElement;
   if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l.faults, l.ua, l.rootFontSize, l.images, null, l.zoom);
   const box = lowerBox(el, l, null);
-  // An inline-level control waits for RF-INL (analysis/computed-checks.ts checkButton refuses it).
-  if (box.kind !== 'box') throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out (RF-INL)`);
+  // Of the controls, only an inline-block button is laid out inline (RF-INL); analysis/computed-checks.ts refuses the others.
+  if (box.kind === 'control' && !(box.control.kind === 'button-block' && box.style.display === 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out (RF-INL)`);
   return box;
 }
 
@@ -846,10 +846,11 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   flush();
   // A line strut only when the box holds inline content: a block-level replaced leaf is a box of its own, not a line (REPL-a with
   // INL1a); an atomic inline is on a line (INL2a, RF-INL).
-  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || ((c.kind === 'box' || c.kind === 'control') && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
   const strut = strutOf(el, inlineContent, l.mode, zoom);
-  // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
-  if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  // FORM-a: a block button centres its contents (Blink AlignBlockContent), and so does an inline-block one (RF-INL), which Blink
+  // lays out with the same BlockLayoutAlgorithm; a flex button is the plain flex container it is.
+  if (el.element.tag === 'button' && (style.display === 'block' || style.display === 'inline-block')) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
   const range = rangePartOf(el);
   if (range !== undefined && range.part === null) {
     // A range is a flex container whatever its display (range_input_type.cc CreateLayoutObject); its default track length is
