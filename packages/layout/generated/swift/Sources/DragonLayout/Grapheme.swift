@@ -70,12 +70,12 @@ public func grapheme_pictographicZwjBefore(_ cps: JsArray<Double>, _ i: Double) 
   // ts: packages/layout/src/grapheme.ts:54
   do {
     var j: Double = (i - 2.0)
-    loop52: while (j >= 0.0) {
-      loop52_body: do {
+    loop54: while (j >= 0.0) {
+      loop54_body: do {
         let cp: Double = try jsUnwrap(jsAt(cps, j))
         // ts: packages/layout/src/grapheme.ts:56
         if try (grapheme_graphemeBreakProperty(cp) == graphemeData_GCB_EXTEND) {
-          break loop52_body
+          break loop54_body
         }
         return try grapheme_isPictographic(cp)
       }

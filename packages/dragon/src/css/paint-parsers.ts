@@ -35,6 +35,7 @@ import { OVERSCROLL_VALUE_PARSERS } from './properties/overscroll.ts';
 import { SCROLL_SNAP_VALUE_PARSERS } from './properties/scroll-snap.ts';
 import { COUNTERS_VALUE_PARSERS } from './properties/counters.ts';
 import { MULTICOL_VALUE_PARSERS } from './properties/multicol.ts';
+import { MOTION_VALUE_PARSERS } from './properties/motion.ts';
 import { OUTLINE_VALUE_PARSERS } from './properties/outline.ts';
 import { LOGICAL_RADIUS_VALUE_PARSERS, RADIUS_VALUE_PARSERS } from './properties/radius.ts';
 import { RESIZE_VALUE_PARSERS } from './properties/resize.ts';
@@ -48,6 +49,7 @@ import { TAB_SIZE_VALUE_PARSERS } from './properties/tab-size.ts';
 import { TEXT_SHADOW_VALUE_PARSERS } from './properties/text-shadow.ts';
 import { TEXT_TRANSFORM_VALUE_PARSERS } from './properties/text-transform.ts';
 import { TEXT_WRAP_VALUE_PARSERS } from './properties/text-wrap.ts';
+import { TEXT_BOX_VALUE_PARSERS } from './properties/text-box.ts';
 import { TOUCH_ACTION_VALUE_PARSERS } from './properties/touch-action.ts';
 import { VISIBILITY_VALUE_PARSERS } from './properties/visibility.ts';
 import { ZOOM_VALUE_PARSERS } from './properties/zoom.ts';
@@ -81,6 +83,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(LINE_CLAMP_VALUE_PARSERS),
   ...Object.entries(LINE_BREAK_VALUE_PARSERS),
   ...Object.entries(TEXT_WRAP_VALUE_PARSERS),
+  ...Object.entries(TEXT_BOX_VALUE_PARSERS),
   ...Object.entries(TAB_SIZE_VALUE_PARSERS),
   ...Object.entries(FONT_VARIANT_VALUE_PARSERS),
   ...Object.entries(FONT_TUNING_VALUE_PARSERS),
@@ -111,6 +114,7 @@ export const PAINT_VALUE_PARSERS: ReadonlyMap<string, PaintValueParser> = new Ma
   ...Object.entries(ANIMATION_EXTRA_VALUE_PARSERS),
   ...Object.entries(COUNTERS_VALUE_PARSERS),
   ...Object.entries(MULTICOL_VALUE_PARSERS),
+  ...Object.entries(MOTION_VALUE_PARSERS),
   ...Object.entries(COLOR_SCHEME_VALUE_PARSERS),
   ...Object.entries(BACKGROUND_BLEND_VALUE_PARSERS),
   ...Object.entries(FRAGMENTATION_VALUE_PARSERS),

@@ -70,4 +70,23 @@ describe('hyphens (css-text-3 §6.1)', () => {
   it('plant noneSoftHyphenAccepted: none with a soft hyphen compiles', () => {
     expect(errorsAt('hyphens: none', SHY, { ...NO_FAULTS, noneSoftHyphenAccepted: true })).toEqual([]);
   });
+
+  it('repeats hyphens under -webkit-hyphens in the web output on every element of a case that hyphenates, and nowhere otherwise', () => {
+    const webCss = (css: string): string => {
+      const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } ${css}`, (r) => [el(r, 'a', 'div', ['h'], [text(r, 't', 'XX XX')]), el(r, 'b', 'div', [], [text(r, 'u', 'XX')])]));
+      const out = c.outputs.web;
+      if (out.kind !== 'ready') throw new Error(out.kind);
+      return (out.files[0] as { text: string }).text;
+    };
+    const pairs = (css: string): string[] => css.split('\n').map((l) => l.trim()).filter((l, k, all) => l.startsWith('-webkit-hyphens:') || all[k + 1]?.startsWith('-webkit-hyphens:'));
+    for (const v of ['none', 'auto']) {
+      const css = webCss(`.h { -webkit-hyphens: ${v}; hyphens: ${v}; }`);
+      const lines = pairs(css);
+      // html, body, a and b each write hyphens then -webkit-hyphens with the same value.
+      expect(lines.length, v).toBe(8);
+      for (let k = 0; k < lines.length; k += 2) expect(lines[k + 1], v).toBe((lines[k] as string).replace(/^hyphens:/, '-webkit-hyphens:'));
+      expect(lines.filter((l) => l === `-webkit-hyphens: ${v};`).length, v).toBe(1);
+    }
+    for (const decl of ['-webkit-hyphens: auto', 'hyphens: manual', '']) expect(webCss(`.h { ${decl}; }`), decl).not.toContain('-webkit-hyphens');
+  });
 });
