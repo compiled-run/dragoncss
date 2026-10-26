@@ -432,11 +432,11 @@ fun paintDash_opacityGroups(p: DashPainter): JsArray<DashOpacityGroup> {
   var current: Double = 0.0
   // ts: packages/layout/src/paint-dash.ts:273
   run {
-    val _a194 = sorted
-    var _i194 = 0
-    while (_i194 < _a194.size) {
-      val side: Double = _a194[_i194]
-      _i194++
+    val _a202 = sorted
+    var _i202 = 0
+    while (_i202 < _a202.size) {
+      val side: Double = _a202[_i202]
+      _i202++
       val a: Double = paintDash_alphaOf(paintDash_edgeAt(p.edges, side))
       // ts: packages/layout/src/paint-dash.ts:275
       if ((a != current)) {
@@ -479,11 +479,11 @@ fun paintDash_includesAdjacentEdges(sides: JsArray<Double>): Boolean {
   var vertical: Boolean = false
   // ts: packages/layout/src/paint-dash.ts:301
   run {
-    val _a195 = sides
-    var _i195 = 0
-    while (_i195 < _a195.size) {
-      val s: Double = _a195[_i195]
-      _i195++
+    val _a203 = sides
+    var _i203 = 0
+    while (_i203 < _a203.size) {
+      val s: Double = _a203[_i203]
+      _i203++
       // ts: packages/layout/src/paint-dash.ts:302
       if (((s == paintDash_TOP) || (s == paintDash_BOTTOM))) {
         horizontal = true
@@ -537,11 +537,11 @@ fun paintDash_paintOpacityGroup(p: DashPainter, groups: JsArray<DashOpacityGroup
   val completed: JsArray<DashDone> = paintDash_paintOpacityGroup(p, groups, (index + 1.0), opacity)
   // ts: packages/layout/src/paint-dash.ts:335
   run {
-    val _a196 = jsUnwrap(group).sides
-    var _i196 = 0
-    while (_i196 < _a196.size) {
-      val side: Double = _a196[_i196]
-      _i196++
+    val _a204 = jsUnwrap(group).sides
+    var _i204 = 0
+    while (_i204 < _a204.size) {
+      val side: Double = _a204[_i204]
+      _i204++
       paintDash_paintSide(p, side, paintAlpha, completed)
       val d: DashDone? = jsAt(completed, side)
       // ts: packages/layout/src/paint-dash.ts:338

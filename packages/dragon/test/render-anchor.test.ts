@@ -52,6 +52,9 @@ function errorsAt(decl: string, faults: CompilerFaults = NO_FAULTS, child = ''):
 }
 
 const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
+// BROWSER-ONLY: a view-transition value is a browser-only error on native (profiles/browser-only-native.ts).
+const BROWSER_ONLY = ['android DRAGON_BROWSER_ONLY_NATIVE', 'ios DRAGON_BROWSER_ONLY_NATIVE', 'web DRAGON_UNSUPPORTED_VALUE'];
+const refusedFor = (d: string): string[] => (d.startsWith('view-transition-') ? BROWSER_ONLY : REFUSED);
 const INITIAL_DECLS = [
   'image-rendering: auto',
   'image-rendering: AUTO; anchor-name: none; anchor-scope: None; position-anchor: none; position-area: none',
@@ -127,7 +130,7 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
       'color-interpolation-filters: sRGB', 'color-rendering: optimizeSpeed', 'buffered-rendering: static', 'view-transition-name: card', 'view-transition-class: a b', 'view-transition-group: contain',
     ]) {
       // An inherited one is refused on the child as well.
-      expect(errorsAt(d), d).toEqual(INHERITED.has(d.split(':')[0] as never) ? [...REFUSED, ...REFUSED].sort() : REFUSED);
+      expect(errorsAt(d), d).toEqual(INHERITED.has(d.split(':')[0] as never) ? [...refusedFor(d), ...refusedFor(d)].sort() : refusedFor(d));
     }
     expect(errorsAt('anchor-scope: all; position-area: top')).toEqual(REFUSED);
     const at = (decl: string): string[] => {
@@ -136,7 +139,7 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     };
     expect(at('position-try: flip-block')).toEqual(['position-try-fallbacks: flip-block on <div> a']);
     expect(at('position-try: most-width --a')).toEqual(['position-try-order: most-width on <div> a']);
-    expect(errorsAt('position-area: top; shape-rendering: crispEdges; view-transition-name: card')).toEqual(Array(4).fill(REFUSED).flat().sort());
+    expect(errorsAt('position-area: top; shape-rendering: crispEdges; view-transition-name: card')).toEqual([...Array(3).fill(REFUSED).flat(), ...BROWSER_ONLY].sort());
     expect(errorsAt('--r: auto; position-anchor: var(--r)')).toEqual(REFUSED);
     const css = 'body { font-family: Ahem; font-size: 10px; } .s { position-area: top; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
@@ -177,8 +180,8 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     const errors = (decl: string) => doc(decl).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
     expect(errors('')).toEqual([]);
     expect(errors('html { view-transition-name: none; }')).toEqual([]);
-    expect(errors('html { view-transition-name: root; }')).toEqual(REFUSED);
-    expect(errors('.s { view-transition-name: root; }')).toEqual(REFUSED);
+    expect(errors('html { view-transition-name: root; }')).toEqual(BROWSER_ONLY);
+    expect(errors('.s { view-transition-name: root; }')).toEqual(BROWSER_ONLY);
   });
 
   it('refuse an inherited value on the child too, and a non-inherited one only where it is set', () => {

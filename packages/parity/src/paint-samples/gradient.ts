@@ -14,6 +14,7 @@ import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssP
 import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
 import { REFERENCE_PLATFORM } from '../platform.ts';
+import { referenceMeasurer } from '../native-host.ts';
 import { glyphLines } from '../pixel-reference.ts';
 import type { GlyphBox, SampleBox, SamplePoint } from '../samples.ts';
 import { glyphSpanAt, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
@@ -188,9 +189,8 @@ const meets = (r: Cover, x: number, y: number, margin: number): boolean => x + 1
  */
 export function backgroundOnly(program: NativeProgram, viewport: { readonly width: number; readonly height: number }, boxes: readonly SampleBox[], dpr: number): (id: string, x: number, y: number) => boolean {
   const byId = new Map(boxes.map((b) => [b.id, b] as const));
-  const m = measurerFor(REFERENCE_PLATFORM);
-  if (m.kind !== 'ok') throw new Error(`${m.code}: ${m.detail}`);
-  const out = layout(programInput(program, viewport, dpr), m.measurer);
+  // The reference measurer, which measures a case's real faces too (caseBoxes): the Ahem measurer refuses a shaped case's text.
+  const out = layout(programInput(program, viewport, dpr), referenceMeasurer());
   if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
   const snapped = snapEdges(out.boxes);
   const at = new Map(out.boxes.map((r, i) => [r.id, i] as const));

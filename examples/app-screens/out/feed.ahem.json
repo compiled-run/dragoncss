@@ -1,0 +1,1814 @@
+{
+ "id": "feed",
+ "mode": "ahem",
+ "rounds": 1,
+ "residualTargetless": 0,
+ "firstTargets": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "firstOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "lastOutputs": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
+ "found": [
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "ios",
+   "where": "background: var(--bg)",
+   "line": 76,
+   "message": ":active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_SELECTOR",
+   "severity": "error",
+   "target": "android",
+   "where": "background: var(--bg)",
+   "line": 76,
+   "message": ":active is not supported on android: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"chip selected\" data-dragon-id=\"chip\">For you</button>",
+   "line": null,
+   "message": "<button> chip needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"chip selected\" data-dragon-id=\"chip\">For you</button>",
+   "line": null,
+   "message": "<button> chip needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-2\">Following</button>",
+   "line": null,
+   "message": "<button> chip-2 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-2\">Following</button>",
+   "line": null,
+   "message": "<button> chip-2 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-3\">Travel</button>",
+   "line": null,
+   "message": "<button> chip-3 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-3\">Travel</button>",
+   "line": null,
+   "message": "<button> chip-3 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-4\">Food</button>",
+   "line": null,
+   "message": "<button> chip-4 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-4\">Food</button>",
+   "line": null,
+   "message": "<button> chip-4 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-5\">Design</button>",
+   "line": null,
+   "message": "<button> chip-5 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-5\">Design</button>",
+   "line": null,
+   "message": "<button> chip-5 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-6\">Music</button>",
+   "line": null,
+   "message": "<button> chip-6 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"chip\" data-dragon-id=\"chip-6\">Music</button>",
+   "line": null,
+   "message": "<button> chip-6 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"action liked\" data-dragon-id=\"action\">&#9829; 128</button>",
+   "line": null,
+   "message": "<button> action needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"action liked\" data-dragon-id=\"action\">&#9829; 128</button>",
+   "line": null,
+   "message": "<button> action needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-2\">Comment</button>",
+   "line": null,
+   "message": "<button> action-2 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-2\">Comment</button>",
+   "line": null,
+   "message": "<button> action-2 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-3\">Share</button>",
+   "line": null,
+   "message": "<button> action-3 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-3\">Share</button>",
+   "line": null,
+   "message": "<button> action-3 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-4\">&#9825; 42</button>",
+   "line": null,
+   "message": "<button> action-4 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-4\">&#9825; 42</button>",
+   "line": null,
+   "message": "<button> action-4 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "android",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-5\">Comment</button>",
+   "line": null,
+   "message": "<button> action-5 needs the app to handle its activation, and screen readers read its label as static text on android: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_CONTROL_STATIC_NATIVE",
+   "severity": "warning",
+   "target": "ios",
+   "where": "<button type=\"button\" class=\"action\" data-dragon-id=\"action-5\">Comment</button>",
+   "line": null,
+   "message": "<button> action-5 needs the app to handle its activation, and screen readers read its label as static text on ios: Dragon emits no control behaviour or accessibility role yet",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "absolute",
+   "line": 99,
+   "message": "position: absolute on tab-3::after beside text in the flex container tab-3: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "absolute",
+   "line": 99,
+   "message": "position: absolute on tab-3::after beside text in the flex container tab-3: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "web",
+   "where": "absolute",
+   "line": 99,
+   "message": "position: absolute on tab-3::after beside text in the flex container tab-3: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "x mandatory",
+   "line": 33,
+   "message": "scroll snapping in chips (scroll-snap-type: x mandatory, with chip aligned start) is not implemented on android yet (SCROLL-SNAP): Chrome snaps the scroll position even at rest",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "x mandatory",
+   "line": 33,
+   "message": "scroll snapping in chips (scroll-snap-type: x mandatory, with chip aligned start) is not implemented on ios yet (SCROLL-SNAP): Chrome snaps the scroll position even at rest",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon has opacity 0.85; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon has opacity 0.85; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon-2 has opacity 0.85; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon-2 has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon-2 has opacity 0.85; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon-2 has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon-3 has opacity 0.85; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon-3 has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon-3 has opacity 0.85; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon-3 has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "ios",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon-4 has opacity 0.85; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon-4 has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNSUPPORTED_VALUE",
+   "severity": "error",
+   "target": "android",
+   "where": "0.85",
+   "line": 95,
+   "message": "tab-icon-4 has opacity 0.85; android composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites (PNT1-opacity-b), and this one is not: tab-icon-4 has a border radius",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "border-box",
+   "line": 19,
+   "message": "box-sizing:border-box on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "border-box",
+   "line": 19,
+   "message": "box-sizing:border-box on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "border-box",
+   "line": 19,
+   "message": "box-sizing:border-box on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-top:<env()> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); no padding-top value is proven in sticky-in-block/ltr; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-right:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-right value is proven in sticky-in-block/ltr; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-bottom:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-bottom value is proven in sticky-in-block/ltr; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "calc(env(safe-area-inset-top) + 8px) 16px 8px",
+   "line": 27,
+   "message": "padding-left:<length-px> (set by padding: calc(env(safe-area-inset-top) + 8px) 16px 8px) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no padding-left value is proven in sticky-in-block/ltr; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1px solid var(--border)",
+   "line": 29,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 1px solid var(--border)) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1px solid var(--border)",
+   "line": 29,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 1px solid var(--border)) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1px solid var(--border)",
+   "line": 29,
+   "message": "border-bottom-width:<length-px> (set by border-bottom: 1px solid var(--border)) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-width value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-width, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1px solid var(--border)",
+   "line": 29,
+   "message": "border-bottom-style:solid (set by border-bottom: 1px solid var(--border)) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1px solid var(--border)",
+   "line": 29,
+   "message": "border-bottom-style:solid (set by border-bottom: 1px solid var(--border)) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1px solid var(--border)",
+   "line": 29,
+   "message": "border-bottom-style:solid (set by border-bottom: 1px solid var(--border)) on header is used in the sticky-in-block/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-bottom-style value is proven in sticky-in-block/ltr; border-bottom sets border-bottom-style, which is unproven here, and none of the other longhands it sets is proven in sticky-in-block/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-weight:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-weight values proven in text-in-flex-item/row/ltr: <number>, bold, bolder or normal; font sets font-weight, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-weight:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-weight values proven in text-in-flex-item/row/ltr: <number>, bold, bolder or normal; font sets font-weight, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-weight:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-weight values proven in text-in-flex-item/row/ltr: <number>, bold, bolder or normal; font sets font-weight, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-style:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-in-flex-item/row/ltr: italic or normal; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-style:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-in-flex-item/row/ltr: italic or normal; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-style:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-in-flex-item/row/ltr: italic or normal; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "line-height:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-in-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "line-height:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-in-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "line-height:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-in-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-ligatures values proven in text-in-flex-item/row/ltr: no-contextual or none; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-ligatures values proven in text-in-flex-item/row/ltr: no-contextual or none; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-ligatures values proven in text-in-flex-item/row/ltr: no-contextual or none; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-caps:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-in-flex-item/row/ltr: normal or small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-caps:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-in-flex-item/row/ltr: normal or small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-caps:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-in-flex-item/row/ltr: normal or small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-alternates values proven in text-in-flex-item/row/ltr: historical-forms; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-alternates values proven in text-in-flex-item/row/ltr: historical-forms; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-alternates values proven in text-in-flex-item/row/ltr: historical-forms; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-numeric values proven in text-in-flex-item/row/ltr: oldstyle-nums; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-numeric values proven in text-in-flex-item/row/ltr: oldstyle-nums; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-numeric values proven in text-in-flex-item/row/ltr: oldstyle-nums; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-east-asian values proven in text-in-flex-item/row/ltr: proportional-width; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-east-asian values proven in text-in-flex-item/row/ltr: proportional-width; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-east-asian values proven in text-in-flex-item/row/ltr: proportional-width; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-position:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-position values proven in text-in-flex-item/row/ltr: normal; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-position:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-position values proven in text-in-flex-item/row/ltr: normal; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-position:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-position values proven in text-in-flex-item/row/ltr: normal; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-emoji values proven in text-in-flex-item/row/ltr: normal; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-emoji values proven in text-in-flex-item/row/ltr: normal; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-emoji values proven in text-in-flex-item/row/ltr: normal; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-kerning:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-in-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-kerning:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-in-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-kerning:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-in-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-in-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-in-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-in-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-language-override:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-in-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-language-override:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-in-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-language-override:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-in-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-stretch:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-stretch values proven in text-in-flex-item/row/ltr: expanded; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-stretch:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-stretch values proven in text-in-flex-item/row/ltr: expanded; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-stretch:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-stretch values proven in text-in-flex-item/row/ltr: expanded; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-feature-settings:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-feature-settings values proven in text-in-flex-item/row/ltr: <feature-settings>; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-feature-settings:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-feature-settings values proven in text-in-flex-item/row/ltr: <feature-settings>; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-feature-settings:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-feature-settings values proven in text-in-flex-item/row/ltr: <feature-settings>; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variation-settings:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-in-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variation-settings:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-in-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-variation-settings:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-in-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-size-adjust:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-size-adjust values proven in text-in-flex-item/row/ltr: none; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-size-adjust:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-size-adjust values proven in text-in-flex-item/row/ltr: none; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 42,
+   "message": "font-size-adjust:inherit (set by font: inherit) on chip:text0 is used in the text-in-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-size-adjust values proven in text-in-flex-item/row/ltr: none; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-style:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-as-anonymous-flex-item/row/ltr: oblique; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-style:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-as-anonymous-flex-item/row/ltr: oblique; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-style:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-style values proven in text-as-anonymous-flex-item/row/ltr: oblique; font sets font-style, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "line-height:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-as-anonymous-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "line-height:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-as-anonymous-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "line-height:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); line-height values proven in text-as-anonymous-flex-item/row/ltr: <length-px>, <number> or normal; font sets line-height, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-ligatures value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-ligatures value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-ligatures:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-ligatures value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-ligatures, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-caps:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-as-anonymous-flex-item/row/ltr: small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-caps:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-as-anonymous-flex-item/row/ltr: small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-caps:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-variant-caps values proven in text-as-anonymous-flex-item/row/ltr: small-caps; font sets font-variant-caps, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-alternates value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-alternates value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-alternates:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-alternates value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-alternates, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-numeric value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-numeric value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-numeric:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-numeric value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-numeric, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-east-asian value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-east-asian value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-east-asian:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-east-asian value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-east-asian, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-position:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-position value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-position:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-position value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-position:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-position value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-position, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-emoji value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-emoji value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variant-emoji:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variant-emoji value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variant-emoji, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-kerning:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-kerning:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-kerning:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-kerning value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-kerning, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-optical-sizing:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-optical-sizing value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-optical-sizing, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-language-override:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-language-override:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-language-override:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-language-override value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-language-override, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-stretch:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-stretch value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-stretch:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-stretch value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-stretch:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-stretch value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-stretch, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-feature-settings:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-feature-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-feature-settings:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-feature-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-feature-settings:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-feature-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-feature-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variation-settings:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variation-settings:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-variation-settings:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-variation-settings value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-variation-settings, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-size-adjust:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-size-adjust value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-size-adjust:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-size-adjust value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-size-adjust:inherit (set by font: inherit) on action:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); no font-size-adjust value is proven in text-as-anonymous-flex-item/row/ltr; font sets font-size-adjust, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-weight:inherit (set by font: inherit) on action-2:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-weight values proven in text-as-anonymous-flex-item/row/ltr: <number>; font sets font-weight, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-weight:inherit (set by font: inherit) on action-2:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-weight values proven in text-as-anonymous-flex-item/row/ltr: <number>; font sets font-weight, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "inherit",
+   "line": 73,
+   "message": "font-weight:inherit (set by font: inherit) on action-2:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl); font-weight values proven in text-as-anonymous-flex-item/row/ltr: <number> or bold; font sets font-weight, which is unproven here, so write font-size: inherit; font-family: inherit instead of font",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1",
+   "line": 80,
+   "message": "aspect-ratio:<ratio> on img is used in the grid/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl); no aspect-ratio value is proven in grid/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1",
+   "line": 80,
+   "message": "aspect-ratio:<ratio> on img is used in the grid/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl); no aspect-ratio value is proven in grid/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1",
+   "line": 80,
+   "message": "aspect-ratio:<ratio> on img is used in the grid/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl); no aspect-ratio value is proven in grid/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "flex",
+   "line": 87,
+   "message": "display:flex on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no display value is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "flex",
+   "line": 87,
+   "message": "display:flex on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no display value is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "flex",
+   "line": 87,
+   "message": "display:flex on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); no display value is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "border-box",
+   "line": 19,
+   "message": "box-sizing:border-box on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "border-box",
+   "line": 19,
+   "message": "box-sizing:border-box on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "border-box",
+   "line": 19,
+   "message": "box-sizing:border-box on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no box-sizing value is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "8px 0 calc(env(safe-area-inset-bottom) + 8px)",
+   "line": 89,
+   "message": "padding-bottom:<env()> (set by padding: 8px 0 calc(env(safe-area-inset-bottom) + 8px)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); padding-bottom values proven in fixed-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, so write padding-top: 8px; padding-right: 0px; padding-left: 0px instead of padding",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "8px 0 calc(env(safe-area-inset-bottom) + 8px)",
+   "line": 89,
+   "message": "padding-bottom:<env()> (set by padding: 8px 0 calc(env(safe-area-inset-bottom) + 8px)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); padding-bottom values proven in fixed-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, so write padding-top: 8px; padding-right: 0px; padding-left: 0px instead of padding",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "8px 0 calc(env(safe-area-inset-bottom) + 8px)",
+   "line": 89,
+   "message": "padding-bottom:<env()> (set by padding: 8px 0 calc(env(safe-area-inset-bottom) + 8px)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: block/ltr, block/rtl, relative-in-block/ltr, relative-in-block/rtl); padding-bottom values proven in fixed-in-block/ltr/cb-ltr: <length-px>; padding sets padding-bottom, which is unproven here, so write padding-top: 8px; padding-right: 0px; padding-left: 0px instead of padding",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1px solid var(--border)",
+   "line": 91,
+   "message": "border-top-width:<length-px> (set by border-top: 1px solid var(--border)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-top-width value is proven in fixed-in-block/ltr/cb-ltr; border-top sets border-top-width, which is unproven here, and none of the other longhands it sets is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1px solid var(--border)",
+   "line": 91,
+   "message": "border-top-width:<length-px> (set by border-top: 1px solid var(--border)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-top-width value is proven in fixed-in-block/ltr/cb-ltr; border-top sets border-top-width, which is unproven here, and none of the other longhands it sets is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1px solid var(--border)",
+   "line": 91,
+   "message": "border-top-width:<length-px> (set by border-top: 1px solid var(--border)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-top-width value is proven in fixed-in-block/ltr/cb-ltr; border-top sets border-top-width, which is unproven here, and none of the other longhands it sets is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1px solid var(--border)",
+   "line": 91,
+   "message": "border-top-style:solid (set by border-top: 1px solid var(--border)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-top-style value is proven in fixed-in-block/ltr/cb-ltr; border-top sets border-top-style, which is unproven here, and none of the other longhands it sets is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1px solid var(--border)",
+   "line": 91,
+   "message": "border-top-style:solid (set by border-top: 1px solid var(--border)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-top-style value is proven in fixed-in-block/ltr/cb-ltr; border-top sets border-top-style, which is unproven here, and none of the other longhands it sets is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1px solid var(--border)",
+   "line": 91,
+   "message": "border-top-style:solid (set by border-top: 1px solid var(--border)) on tab-bar is used in the fixed-in-block/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/ltr/cb-rtl, absolute-in-block/rtl/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-column/ltr/cb-ltr, absolute-in-flex-column/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, inline/ltr, inline/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); no border-top-style value is proven in fixed-in-block/ltr/cb-ltr; border-top sets border-top-style, which is unproven here, and none of the other longhands it sets is proven in fixed-in-block/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "1.4",
+   "line": 21,
+   "message": "line-height:<number> on tab:text0 is used in the text-as-anonymous-flex-item/column/ltr context, which is not proven (proven: text-as-anonymous-flex-item/row/ltr, text-as-anonymous-flex-item/row/rtl, text-beside-atomic/ltr, text-beside-atomic/rtl, text-beside-inline/ltr, text-beside-inline/rtl, text-in-anonymous-block/ltr, text-in-anonymous-block/rtl, text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/column/rtl, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl, text-in-grid-item/ltr, text-in-grid-item/rtl, text-in-inline/ltr, text-in-inline/rtl); line-height values proven in text-as-anonymous-flex-item/column/ltr: normal",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "1.4",
+   "line": 21,
+   "message": "line-height:<number> on tab:text0 is used in the text-as-anonymous-flex-item/column/ltr context, which is not proven (proven: text-as-anonymous-flex-item/row/ltr, text-as-anonymous-flex-item/row/rtl, text-beside-atomic/ltr, text-beside-atomic/rtl, text-beside-inline/ltr, text-beside-inline/rtl, text-in-anonymous-block/ltr, text-in-anonymous-block/rtl, text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/column/rtl, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl, text-in-grid-item/ltr, text-in-grid-item/rtl, text-in-inline/ltr, text-in-inline/rtl); line-height values proven in text-as-anonymous-flex-item/column/ltr: normal",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "1.4",
+   "line": 21,
+   "message": "line-height:<number> on tab:text0 is used in the text-as-anonymous-flex-item/column/ltr context, which is not proven (proven: text-as-anonymous-flex-item/row/ltr, text-as-anonymous-flex-item/row/rtl, text-beside-atomic/ltr, text-beside-atomic/rtl, text-beside-inline/ltr, text-beside-inline/rtl, text-in-anonymous-block/ltr, text-in-anonymous-block/rtl, text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/column/rtl, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl, text-in-grid-item/ltr, text-in-grid-item/rtl, text-in-inline/ltr, text-in-inline/rtl); line-height values proven in text-as-anonymous-flex-item/column/ltr: normal",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "16px",
+   "line": 102,
+   "message": "min-width:<length-px> on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); min-width values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "16px",
+   "line": 102,
+   "message": "min-width:<length-px> on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); min-width values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "16px",
+   "line": 102,
+   "message": "min-width:<length-px> on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl); min-width values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-top:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-top values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-top:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-top values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-top:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-top values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-top, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-right:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-right values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-right:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-right values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-right:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-right values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-right, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-bottom:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-bottom values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-bottom:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-bottom values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-bottom:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-bottom values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-bottom, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-left:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-left values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-left:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-left values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "0 4px",
+   "line": 104,
+   "message": "padding-left:<length-px> (set by padding: 0 4px) on tab-3::after is used in the absolute-in-flex-column/ltr/cb-ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, atomic-inline/ltr, atomic-inline/rtl, block/ltr, block/rtl, display-none/ltr, display-none/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, float/ltr, float/rtl, grid/ltr, grid/rtl, relative-in-block/ltr, relative-in-block/rtl, relative-in-flex-column/ltr, relative-in-flex-column/rtl, relative-in-flex-row/ltr, relative-in-flex-row/rtl, root/ltr, root/rtl); padding-left values proven in absolute-in-flex-column/ltr/cb-ltr: <calc()>, <clamp()>, <max()> or <min()>; padding sets padding-left, which is unproven here, and none of the other longhands it sets is proven in absolute-in-flex-column/ltr/cb-ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "android",
+   "where": "\"3\"",
+   "line": 98,
+   "message": "content:<string> on tab-3::after is used in the pseudo-abspos-in-flex/ltr context, which is not proven (proven: block/ltr, block/rtl, pseudo-abspos-in-block/ltr, pseudo-abspos-in-block/rtl, pseudo-block/ltr, pseudo-block/rtl, pseudo-empty-inline-in-block/ltr, pseudo-flex-item/column/ltr, pseudo-flex-item/column/rtl, pseudo-flex-item/row/ltr, pseudo-flex-item/row/rtl, pseudo-inline-in-block/ltr, pseudo-inline-in-block/rtl); no content value is proven in pseudo-abspos-in-flex/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "ios",
+   "where": "\"3\"",
+   "line": 98,
+   "message": "content:<string> on tab-3::after is used in the pseudo-abspos-in-flex/ltr context, which is not proven (proven: block/ltr, block/rtl, pseudo-abspos-in-block/ltr, pseudo-abspos-in-block/rtl, pseudo-block/ltr, pseudo-block/rtl, pseudo-empty-inline-in-block/ltr, pseudo-flex-item/column/ltr, pseudo-flex-item/column/rtl, pseudo-flex-item/row/ltr, pseudo-flex-item/row/rtl, pseudo-inline-in-block/ltr, pseudo-inline-in-block/rtl); no content value is proven in pseudo-abspos-in-flex/ltr",
+   "round": 1
+  },
+  {
+   "code": "DRAGON_UNPROVEN_CONTEXT",
+   "severity": "error",
+   "target": "web",
+   "where": "\"3\"",
+   "line": 98,
+   "message": "content:<string> on tab-3::after is used in the pseudo-abspos-in-flex/ltr context, which is not proven (proven: block/ltr, block/rtl, pseudo-abspos-in-block/ltr, pseudo-abspos-in-block/rtl, pseudo-block/ltr, pseudo-block/rtl, pseudo-empty-inline-in-block/ltr, pseudo-flex-item/column/ltr, pseudo-flex-item/column/rtl, pseudo-flex-item/row/ltr, pseudo-flex-item/row/rtl, pseudo-inline-in-block/ltr, pseudo-inline-in-block/rtl); no content value is proven in pseudo-abspos-in-flex/ltr",
+   "round": 1
+  }
+ ]
+}

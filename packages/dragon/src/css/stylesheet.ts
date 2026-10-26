@@ -24,8 +24,9 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList, testsVisitState } from './selectors.ts';
-import { markNotApplicable } from './not-applicable.ts';
+import { markBrowserOnly, markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
+import { browserOnlyEntry } from '../profiles/browser-only-native.ts';
 import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { pairedLonghands } from './properties/overscroll.ts';
@@ -578,6 +579,9 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
       return;
     }
     const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : layerRefusal ?? refuseAtRule(context).diagnostic;
+    // BROWSER-ONLY: a listed at-rule is refused on web as before and is a browser-only error on native (css/not-applicable.ts).
+    const browserOnly = browserOnlyEntry(`@${asciiLower(String(node['name']))}`);
+    if (browserOnly !== null) markBrowserOnly(refusal, browserOnly);
     diagnostics.push(refusal);
     if (block === null || block === undefined) return;
     // T005 rec 3: the enclosed rules are parsed with the block unwrapped, for analysis only.
