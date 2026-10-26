@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 31488
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 31488
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 78336,
+   "height": 31488
+  },
+  {
+   "id": "rep",
+   "parent": "row",
+   "x": 768,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "phase",
+   "parent": "row",
+   "x": 14208,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "round",
+   "parent": "row",
+   "x": 27648,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "space",
+   "parent": "row",
+   "x": 41088,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "nospace",
+   "parent": "row",
+   "x": 54528,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "big",
+   "parent": "row",
+   "x": 768,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "mixed",
+   "parent": "row",
+   "x": 14208,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "numround",
+   "parent": "row",
+   "x": 27648,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "num",
+   "parent": "row",
+   "x": 41088,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "angle",
+   "parent": "row",
+   "x": 54528,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "longhands",
+   "parent": "row",
+   "x": 768,
+   "y": 21504,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "bb",
+   "parent": "row",
+   "x": 14208,
+   "y": 21504,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "styleless",
+   "parent": "row",
+   "x": 27648,
+   "y": 21504,
+   "width": 9216,
+   "height": 6144
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 492,
+   "width": 1200,
+   "height": 492
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 492,
+   "width": 1200,
+   "height": 492
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 1224,
+   "bottom": 492,
+   "width": 1224,
+   "height": 492
+  },
+  {
+   "id": "rep",
+   "left": 12,
+   "top": 12,
+   "right": 204,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "phase",
+   "left": 222,
+   "top": 12,
+   "right": 414,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "round",
+   "left": 432,
+   "top": 12,
+   "right": 624,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "space",
+   "left": 642,
+   "top": 12,
+   "right": 834,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "nospace",
+   "left": 852,
+   "top": 12,
+   "right": 1044,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "big",
+   "left": 12,
+   "top": 174,
+   "right": 204,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "mixed",
+   "left": 222,
+   "top": 174,
+   "right": 414,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "numround",
+   "left": 432,
+   "top": 174,
+   "right": 624,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "num",
+   "left": 642,
+   "top": 174,
+   "right": 834,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "angle",
+   "left": 852,
+   "top": 174,
+   "right": 1044,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "longhands",
+   "left": 12,
+   "top": 336,
+   "right": 204,
+   "bottom": 480,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "bb",
+   "left": 222,
+   "top": 336,
+   "right": 414,
+   "bottom": 480,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "styleless",
+   "left": 432,
+   "top": 336,
+   "right": 576,
+   "bottom": 432,
+   "width": 144,
+   "height": 96
+  }
+ ]
+}

@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 31488
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 31488
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": -1536,
+   "y": 0,
+   "width": 78336,
+   "height": 31488
+  },
+  {
+   "id": "rep",
+   "parent": "row",
+   "x": 65280,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "phase",
+   "parent": "row",
+   "x": 51840,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "round",
+   "parent": "row",
+   "x": 38400,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "space",
+   "parent": "row",
+   "x": 24960,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "nospace",
+   "parent": "row",
+   "x": 11520,
+   "y": 768,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "big",
+   "parent": "row",
+   "x": 65280,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "mixed",
+   "parent": "row",
+   "x": 51840,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "numround",
+   "parent": "row",
+   "x": 38400,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "num",
+   "parent": "row",
+   "x": 24960,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "angle",
+   "parent": "row",
+   "x": 11520,
+   "y": 11136,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "longhands",
+   "parent": "row",
+   "x": 65280,
+   "y": 21504,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "bb",
+   "parent": "row",
+   "x": 51840,
+   "y": 21504,
+   "width": 12288,
+   "height": 9216
+  },
+  {
+   "id": "styleless",
+   "parent": "row",
+   "x": 41472,
+   "y": 21504,
+   "width": 9216,
+   "height": 6144
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 492,
+   "width": 1200,
+   "height": 492
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 492,
+   "width": 1200,
+   "height": 492
+  },
+  {
+   "id": "row",
+   "left": -24,
+   "top": 0,
+   "right": 1200,
+   "bottom": 492,
+   "width": 1224,
+   "height": 492
+  },
+  {
+   "id": "rep",
+   "left": 996,
+   "top": 12,
+   "right": 1188,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "phase",
+   "left": 786,
+   "top": 12,
+   "right": 978,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "round",
+   "left": 576,
+   "top": 12,
+   "right": 768,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "space",
+   "left": 366,
+   "top": 12,
+   "right": 558,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "nospace",
+   "left": 156,
+   "top": 12,
+   "right": 348,
+   "bottom": 156,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "big",
+   "left": 996,
+   "top": 174,
+   "right": 1188,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "mixed",
+   "left": 786,
+   "top": 174,
+   "right": 978,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "numround",
+   "left": 576,
+   "top": 174,
+   "right": 768,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "num",
+   "left": 366,
+   "top": 174,
+   "right": 558,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "angle",
+   "left": 156,
+   "top": 174,
+   "right": 348,
+   "bottom": 318,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "longhands",
+   "left": 996,
+   "top": 336,
+   "right": 1188,
+   "bottom": 480,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "bb",
+   "left": 786,
+   "top": 336,
+   "right": 978,
+   "bottom": 480,
+   "width": 192,
+   "height": 144
+  },
+  {
+   "id": "styleless",
+   "left": 624,
+   "top": 336,
+   "right": 768,
+   "bottom": 432,
+   "width": 144,
+   "height": 96
+  }
+ ]
+}

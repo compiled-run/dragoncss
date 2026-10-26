@@ -79,7 +79,7 @@
         {"kind":"mouse-up","context":"mouse","hoverMedia":true,"hover":["html","body","g"],"active":[],"focus":[],"focusVisible":[],"style":null},
         {"kind":"exit","context":"mouse","hoverMedia":true,"hover":[],"active":[],"focus":[],"focusVisible":[],"style":null},
         {"kind":"touch-down","context":"touch","hoverMedia":false,"hover":[],"active":[],"focus":[],"focusVisible":[],"style":[]},
-        {"kind":"touch-up","context":"touch","hoverMedia":false,"hover":["html","body","g"],"active":[],"focus":[],"focusVisible":[],"style":[]},
+        {"kind":"touch-up","context":"touch","hoverMedia":false,"hover":["html","body","g"],"active":["html","body","g"],"focus":[],"focusVisible":[],"style":[]},
         {"kind":"touch-down","context":"touch","hoverMedia":false,"hover":["html","body","g"],"active":[],"focus":[],"focusVisible":[],"style":[]},
         {"kind":"touch-cancel","context":"touch","hoverMedia":false,"hover":["html","body","g"],"active":[],"focus":[],"focusVisible":[],"style":[]},
         {"kind":"force","context":"mouse","hoverMedia":true,"hover":["wrap"],"active":[],"focus":[],"focusVisible":[],"style":null},

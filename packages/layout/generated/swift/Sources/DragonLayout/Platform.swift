@@ -71,7 +71,7 @@ public func platform_shapedMeasurerFor(_ platform: JsString, _ faces: JsStringMa
   if ((!platform_MEASURERS.has(platform)) || (rules == nil)) {
     return MeasurerChoice_refused(S.s_refused, S.s_no_platform_rules, platform, jsConcat(S.s880, platform, S.s257))
   }
-  return try MeasurerChoice_ok(S.s_ok, platform, jsConcat(S.s1006, platform), shaping_latinScopedMeasurer(shaping_shapedMeasurer(faces, shaper, platform_shapingFaultsOf(faults), language), faults.latinCheckSkipped), jsUnwrap(rules))
+  return try MeasurerChoice_ok(S.s_ok, platform, jsConcat(S.s1007, platform), shaping_latinScopedMeasurer(shaping_shapedMeasurer(faces, shaper, platform_shapingFaultsOf(faults), language), faults.latinCheckSkipped), jsUnwrap(rules))
 }
 
 // ts: packages/layout/src/platform.ts:76

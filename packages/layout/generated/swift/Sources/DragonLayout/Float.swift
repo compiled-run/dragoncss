@@ -184,7 +184,7 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<P
         if (inner != nil) {
           // ts: packages/layout/src/float.ts:145
           if (kb.style.position != S.s_static) {
-            try unsupported_unsupported(S.s_float, kb.id, S.s300, jsConcat(S.s1072, kb.style.position, S.s27, kb.id, S.s67))
+            try unsupported_unsupported(S.s_float, kb.id, S.s300, jsConcat(S.s1074, kb.style.position, S.s27, kb.id, S.s67))
           }
           try b = units_add(jsUnwrap(p).y, jsUnwrap(inner))
         }

@@ -1,0 +1,246 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 18480
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 18480
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 68544,
+   "height": 18480
+  },
+  {
+   "id": "sets",
+   "parent": "row",
+   "x": 672,
+   "y": 672,
+   "width": 10752,
+   "height": 8064
+  },
+  {
+   "id": "declared",
+   "parent": "row",
+   "x": 12432,
+   "y": 672,
+   "width": 8704,
+   "height": 6016
+  },
+  {
+   "id": "later",
+   "parent": "row",
+   "x": 22144,
+   "y": 672,
+   "width": 10752,
+   "height": 7360
+  },
+  {
+   "id": "loses",
+   "parent": "row",
+   "x": 33904,
+   "y": 672,
+   "width": 10752,
+   "height": 8064
+  },
+  {
+   "id": "medium",
+   "parent": "row",
+   "x": 45664,
+   "y": 672,
+   "width": 8448,
+   "height": 5760
+  },
+  {
+   "id": "nofill",
+   "parent": "row",
+   "x": 55120,
+   "y": 672,
+   "width": 10752,
+   "height": 8064
+  },
+  {
+   "id": "sides",
+   "parent": "row",
+   "x": 672,
+   "y": 9744,
+   "width": 9344,
+   "height": 8064
+  },
+  {
+   "id": "mixedw",
+   "parent": "row",
+   "x": 11024,
+   "y": 9744,
+   "width": 8896,
+   "height": 6912
+  },
+  {
+   "id": "round",
+   "parent": "row",
+   "x": 20928,
+   "y": 9744,
+   "width": 10752,
+   "height": 8064
+  },
+  {
+   "id": "over",
+   "parent": "row",
+   "x": 32688,
+   "y": 9744,
+   "width": 10752,
+   "height": 8064
+  },
+  {
+   "id": "styleless",
+   "parent": "row",
+   "x": 44448,
+   "y": 9744,
+   "width": 8064,
+   "height": 5376
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 289,
+   "width": 1050,
+   "height": 289
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 289,
+   "width": 1050,
+   "height": 289
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 1071,
+   "bottom": 289,
+   "width": 1071,
+   "height": 289
+  },
+  {
+   "id": "sets",
+   "left": 11,
+   "top": 11,
+   "right": 179,
+   "bottom": 137,
+   "width": 168,
+   "height": 126
+  },
+  {
+   "id": "declared",
+   "left": 194,
+   "top": 11,
+   "right": 330,
+   "bottom": 105,
+   "width": 136,
+   "height": 94
+  },
+  {
+   "id": "later",
+   "left": 346,
+   "top": 11,
+   "right": 514,
+   "bottom": 126,
+   "width": 168,
+   "height": 115
+  },
+  {
+   "id": "loses",
+   "left": 530,
+   "top": 11,
+   "right": 698,
+   "bottom": 137,
+   "width": 168,
+   "height": 126
+  },
+  {
+   "id": "medium",
+   "left": 714,
+   "top": 11,
+   "right": 846,
+   "bottom": 101,
+   "width": 132,
+   "height": 90
+  },
+  {
+   "id": "nofill",
+   "left": 861,
+   "top": 11,
+   "right": 1029,
+   "bottom": 137,
+   "width": 168,
+   "height": 126
+  },
+  {
+   "id": "sides",
+   "left": 11,
+   "top": 152,
+   "right": 157,
+   "bottom": 278,
+   "width": 146,
+   "height": 126
+  },
+  {
+   "id": "mixedw",
+   "left": 172,
+   "top": 152,
+   "right": 311,
+   "bottom": 260,
+   "width": 139,
+   "height": 108
+  },
+  {
+   "id": "round",
+   "left": 327,
+   "top": 152,
+   "right": 495,
+   "bottom": 278,
+   "width": 168,
+   "height": 126
+  },
+  {
+   "id": "over",
+   "left": 511,
+   "top": 152,
+   "right": 679,
+   "bottom": 278,
+   "width": 168,
+   "height": 126
+  },
+  {
+   "id": "styleless",
+   "left": 695,
+   "top": 152,
+   "right": 821,
+   "bottom": 236,
+   "width": 126,
+   "height": 84
+  }
+ ]
+}

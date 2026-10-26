@@ -423,7 +423,7 @@ public func block_layoutOwnContents(_ ctx: Ctx, _ node: any U_ControlBox_LayoutB
   let s: LayoutStyle = box.style
   // ts: packages/layout/src/block.ts:404
   if ((s.containSize == S.s_size) && ((s.display != S.s_block) || (!s.containLayout))) {
-    try unsupported_unsupported(S.s_size_containment, box.id, S.s645, jsConcat(S.s1012, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s211), S.s190))
+    try unsupported_unsupported(S.s_size_containment, box.id, S.s645, jsConcat(S.s1013, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s211), S.s190))
   }
   try position_checkOutOfFlowSiblings(ctx, box)
   // ts: packages/layout/src/block.ts:408
