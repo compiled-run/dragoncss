@@ -13,9 +13,10 @@ export const INLINE_OUT: readonly string[] = [
   'text-spacing-ahem', 'text-spacing-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl',
   // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
   'vertical-align-inert', 'vertical-align-inert-rtl',
-  // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
-  // inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's text-break-ahem hold an inline box.
-  'text-overflow-lines', 'text-overflow-fonts', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
+  // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>, text-overflow-rtl both; TXT2-e's
+  // text-transform-keywords holds an inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's
+  // text-break-ahem hold an inline box.
+  'text-overflow-lines', 'text-overflow-fonts', 'text-overflow-rtl', 'text-transform-keywords', 'text-transform-keywords-rtl', 'text-transform-text',
   'text-justify-ahem', 'text-justify-ahem-rtl', 'text-break-ahem', 'text-break-ahem-rtl',
   // TXT-FX's text-stroke-ahem holds inline boxes (cur, sp).
   'text-stroke-ahem', 'text-stroke-ahem-rtl',

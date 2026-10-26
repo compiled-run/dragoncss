@@ -61,11 +61,12 @@ describe('the emitted bridge', () => {
       const cmap = text.indexOf('bridge.glyph(', branch);
       expect(call).toBeGreaterThan(branch);
       expect(cmap).toBeGreaterThan(call);
-      // The shaped call covers glyphRun's [from, to), which each line piece gives as [piece.start, paintEnd): piece.paintEnd
-      // (visibleEnd unless text-overflow truncates the line) on the fragment it paints.
+      // The shaped call covers glyphRun's [from, to), which each line piece gives as [paintStart, paintEnd): piece.paintStart and
+      // piece.paintEnd ([start, visibleEnd) unless text-overflow truncates the line) on the fragment it paints.
       expect(text.slice(call, call + 200)).toContain('text, font, from, to)');
+      expect(text).toMatch(/(let|val) paintStart = (if \(painted\) |painted \? )piece\.paintStart( else | : )piece\.start\n/);
       expect(text).toMatch(/(let|val) paintEnd = (if \(painted\) |painted \? )piece\.paintEnd( else | : )piece\.start\n/);
-      expect(text).toMatch(/glyphRun\((leaves\[li\]\.text|leafText), leafFont, piece\.start, paintEnd, /);
+      expect(text).toMatch(/glyphRun\((leaves\[li\]\.text|leafText), leafFont, paintStart, paintEnd, /);
       expect(text.slice(branch, cmap)).toMatch(/g\.xs/);
     });
   }
