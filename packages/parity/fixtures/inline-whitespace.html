@@ -11,6 +11,8 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 .grid { display: grid; grid-template-columns: 20px 20px; width: 100px; }
 .it { width: 10px; height: 10px; background-color: #0c0; }
 b { font-weight: normal; }
+.contents { display: contents; }
+.cgrid { display: grid; grid-template-columns: 60px 20px; width: 100px; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -33,5 +35,9 @@ b { font-weight: normal; }
   <div data-dragon-id="m1" class="it"></div>
   <div data-dragon-id="m2" class="it"></div>
 </div>
+<div data-dragon-id="n" class="row"><span data-dragon-id="n1" class="contents">XX</span> <span data-dragon-id="n2" class="contents">YY</span><div data-dragon-id="n3" class="it"></div></div>
+<div data-dragon-id="o" class="row">XX<span data-dragon-id="o1" class="contents"> </span>YY<div data-dragon-id="o2" class="it"></div></div>
+<div data-dragon-id="p" class="cgrid"><span data-dragon-id="p1" class="contents">XX</span> <span data-dragon-id="p2" class="contents">YY</span><div data-dragon-id="p3" class="it"></div></div>
+<div data-dragon-id="q" class="row"><div data-dragon-id="q1" class="it"></div> <span data-dragon-id="q2" class="contents">XX </span> <div data-dragon-id="q3" class="it"></div></div>
 </body>
 </html>

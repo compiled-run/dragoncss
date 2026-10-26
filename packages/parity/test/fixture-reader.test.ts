@@ -332,6 +332,14 @@ describe('whitespace-only text', () => {
     const div = root.children?.find((c) => c.id === 'body')?.children?.find((c) => c.id === 'd');
     expect((div?.children ?? []).map((c) => (c.kind === 'text' ? `${c.id}=${JSON.stringify(c.text)}` : c.id))).toEqual(['s', 'd-space0=" "', 'b', 'd-space1="\\n\\t"', 'i', 'd-text0=" tail"']);
   });
+  it('is dropped from <html> and, after </body>, moved to the end of <body>, as the HTML parser does', () => {
+    const html = '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head><style>.a{}</style></head>\n<body data-dragon-id="body"><div data-dragon-id="d">a</div> </body>\n</html>\n';
+    type N = { readonly kind: string; readonly id: string; readonly text?: string; readonly children?: readonly N[] };
+    const root = fixtureToInput('blank', html).tree?.components[0]?.root[0] as unknown as N;
+    const ids = (n: N | undefined) => (n?.children ?? []).map((c) => (c.kind === 'text' ? `${c.id}=${JSON.stringify(c.text)}` : c.id));
+    expect(ids(root)).toEqual(['body']);
+    expect(ids(root.children?.find((c) => c.id === 'body'))).toEqual(['d', 'body-space0=" "', 'body-space1="\\n"']);
+  });
 });
 
 describe('HTML void elements', () => {

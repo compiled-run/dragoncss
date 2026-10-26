@@ -263,7 +263,10 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
   const fontResolutions = fontUrls.map((u) => ({ from: sheet.source, specifier: u.specifier, kind: 'asset' as const, to: u.id }));
   if (root.tag !== 'html') throw new Error('root must be <html>');
   const always = { kind: 'true' } as const;
-  const convert = (el: RawElement): ElementNode => {
+  // The HTML parser drops white space before <head> and keeps what sits between </head> and <body> in <html>, where it has no
+  // box (a block container's leading white space between blocks); white space after </body> (or </html>) goes to the end of
+  // <body> ("after body" insertion mode). So <html> keeps no white space, and <body> takes what follows it.
+  const convert = (el: RawElement, tail: readonly (RawElement | RawText)[] = []): ElementNode => {
     const id = el.attrs.get('data-dragon-id');
     if (id === undefined) throw new Error(`<${el.tag}> at ${el.start} needs data-dragon-id`);
     const classAttr = el.attrs.get('class');
@@ -273,10 +276,15 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
     const children: TreeNode[] = [];
     let k = 0;
     let blank = 0;
-    for (const c of el.children) {
+    const kids = [...el.children, ...tail];
+    for (let n = 0; n < kids.length; n++) {
+      const c = kids[n] as RawElement | RawText;
       if ('tag' in c) {
         if (c.tag === 'head') continue;
-        children.push(convert(c));
+        const after = el.tag === 'html' && c.tag === 'body' ? kids.slice(n + 1).filter((x) => !('tag' in x) && isBlankText(x.text)) : [];
+        children.push(convert(c, after));
+      } else if (el.tag === 'html' && isBlankText(c.text)) {
+        continue;
       } else if (!isBlankText(c.text)) {
         children.push({ kind: 'text', id: `${id}-text${k++}`, text: c.text, origin: origin(c.start, c.end) });
       } else if (c.text !== '') {

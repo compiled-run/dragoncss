@@ -72,6 +72,8 @@ export type ResolvedText = {
 const WHITE_SPACE = /[ \t\n\r\f]/;
 /** Whitespace-only text (HTML ASCII whitespace). */
 const BLANK_TEXT = /^[ \t\n\r\f]*$/;
+/** Blink EndsWithWhitespace (IsASCIISpace): a text whose last code unit is ASCII white space. */
+const ENDS_IN_SPACE = /[ \t\n\v\f\r]$/;
 const ZWSP = '\u200b';
 
 /**
@@ -241,6 +243,12 @@ const outOfFlow = (k: ResolvedElement): boolean => {
   const position = (k.props.get('position') as ResolvedValue).value;
   const float = (k.props.get('float') as ResolvedValue).value;
   return (position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed')) || (float.kind === 'keyword' && float.value !== 'none');
+};
+
+/** Whether an element is absolutely positioned, which a flex or grid container's previous in-flow item skips (floats are items there). */
+const outOfFlowPositioned = (k: ResolvedElement): boolean => {
+  const position = (k.props.get('position') as ResolvedValue).value;
+  return position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed');
 };
 
 /** Whether an inline box holds anything a line box is made for: text that is not white space, a <br>, or an atomic inline. */
@@ -517,15 +525,26 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       modes = [];
       transforms = [];
     };
-    // Blink Text::TextLayoutObjectIsNeeded (CanHaveWhitespaceChildren): whitespace-only text placed directly in a flex or grid
-    // container generates no box in any white-space mode, except in a <button>.
+    // Blink Text::TextLayoutObjectIsNeeded (CanHaveWhitespaceChildren): whitespace-only text whose layout parent is a flex or grid
+    // container (placed in it directly or through display: contents) generates no box, except in a <button>, unless the previous
+    // in-flow layout object under that container is a text and the white space preserves breaks or that text does not end in white
+    // space. previous is that object: a text with its DOM string, 'box' for an element, null for none yet.
     const selfDisplay = displayOf(self);
     const dropsBlank = self.element.tag !== 'button' && ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(selfDisplay);
+    let previous: { readonly text: string } | 'box' | null = null;
     const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>, direct: boolean): void => {
       for (const kid of items) {
         if (kid.kind === 'text' && direct && dropsBlank && BLANK_TEXT.test(kid.text)) {
-          collapsed.set(kid, '');
-          continue;
+          const breaks = !['collapse', 'preserve-spaces'].includes(collapseModeOf(owner));
+          const kept = previous !== null && previous !== 'box' && (breaks || !ENDS_IN_SPACE.test(previous.text));
+          if (!kept) {
+            collapsed.set(kid, '');
+            continue;
+          }
+        }
+        if (direct && dropsBlank) {
+          if (kid.kind === 'text') previous = { text: kid.text };
+          else if (displayOf(kid) !== 'none' && displayOf(kid) !== 'contents' && !outOfFlowPositioned(kid)) previous = 'box';
         }
         if (kid.kind === 'text') {
           run.push(kid);

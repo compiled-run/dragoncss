@@ -89,6 +89,26 @@ describe('MF4: whitespace-only text never has an empty address', () => {
       expect(summary(find(lowered(input), 'c')), display).toBe('c(element)[i j]');
     }
   });
+  it('keeps whitespace-only text in a flex or grid container after a text, through display: contents (Blink previous_in_flow)', () => {
+    // Preserved, a kept one is the whitespace-only text Dragon refuses in a block container too: a typed refusal, not a wrong layout.
+    const refusal = (at: string): string => `${at} is only white space kept by white-space-collapse: preserve (css-text-4 §4.1.1), which Dragon does not lay out yet`;
+    for (const display of ['flex', 'grid']) {
+      for (const ws of ['normal', 'pre']) {
+        const css = `${FONT} .g { display: ${display}; white-space: ${ws}; } .c { display: contents; } .i { width: 10px; height: 10px; }`;
+        const check = (input: ReturnType<typeof inputFor>, kept: string, anon: string): void => {
+          const messages = derive().compile(input).diagnostics.map((d) => d.message);
+          if (ws === 'pre') expect(messages, `${display} ${ws}`).toEqual([refusal(kept)]);
+          else expect([messages, summary(find(lowered(input), 'g:anon0'))], `${display} ${ws}`).toEqual([[], anon]);
+        };
+        // <div class=g><span class=c>XX</span> <span class=c>YY</span><div class=i></div></div>: the space follows the text XX.
+        check(inputFor(css, (r) => [div(r, 'g', ['g'], [div(r, 'a', ['c'], [text(r, 't0', 'XX')]), text(r, 's0', ' '), div(r, 'b', ['c'], [text(r, 't1', 'YY')]), div(r, 'i', ['i'])])]), 'g:space0', 'g:anon0(anonymous)[a:text0="XX" g:space0=" " b:text0="YY"]');
+        // XX<span class=c> </span>YY: the space inside the contents element follows the text XX too.
+        check(inputFor(css, (r) => [div(r, 'g', ['g'], [text(r, 't0', 'XX'), div(r, 'a', ['c'], [text(r, 's0', ' ')]), text(r, 't1', 'YY'), div(r, 'i', ['i'])])]), 'a:space0', 'g:anon0(anonymous)[g:text0="XX" a:space0=" " g:text1="YY"]');
+        // After an element it is dropped; after a text ending in white space, only where breaks are not preserved.
+        check(inputFor(css, (r) => [div(r, 'g', ['g'], [div(r, 'i', ['i']), text(r, 's0', ' '), text(r, 't0', 'XX '), text(r, 's1', ' '), div(r, 'j', ['i'])])]), 'g:space1', 'g:anon0(anonymous)[g:text0="XX"]');
+      }
+    }
+  });
   it('preserved whitespace-only text in a block container is still refused', () => {
     const input = inputFor(`${FONT} .c { white-space: pre; }`, (r) => [div(r, 'c', ['c'], [div(r, 'i', []), text(r, 's0', '\n  '), div(r, 'j', [])])]);
     expect(derive().compile(input).diagnostics.map((d) => d.message)).toEqual(['c:space0 is only white space kept by white-space-collapse: preserve (css-text-4 §4.1.1), which Dragon does not lay out yet']);
