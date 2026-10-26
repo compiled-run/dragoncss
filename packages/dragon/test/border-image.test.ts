@@ -220,6 +220,24 @@ describe('border-image', () => {
     expect(shown('border-image: url(b.png) 1;').map((m) => m.startsWith('border-image-source: url(b.png) on <div> a is unsupported: '))).toEqual([true, true, true]);
   });
 
+  it('refuses a drawn border image natively under an effective zoom other than 1, and web keeps it', () => {
+    // Chrome scales the slices and the gradient by the effective zoom times the device scale; the native writes pass the device scale.
+    const at = (outer: string, inner = ''): { errors: string[]; web: string } => {
+      const css = `body { font-family: Ahem; font-size: 10px; } .o { ${outer} } .s { border: 4px solid #102030; border-image: linear-gradient(red, blue) 2; ${inner} }`;
+      const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'o', 'div', ['o'], [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])])]));
+      return { errors: c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code} ${d.message}`).sort(), web: c.outputs.web.kind };
+    };
+    expect(at('').errors).toEqual([]);
+    for (const [outer, inner, z] of [['zoom: 2', '', '2'], ['', 'zoom: 0.5', '0.5'], ['zoom: 1.5', 'zoom: 2', '3']] as const) {
+      const r = at(outer, inner);
+      expect(r.errors, `${outer}|${inner}`).toEqual(['android', 'ios'].map((t) => `${t} DRAGON_UNSUPPORTED_VALUE border-image-source on <div> a is unsupported: its effective zoom is ${z}, and native draws a border image at zoom 1 only (MISC-PAINT)`));
+      expect(r.web).toBe('ready');
+    }
+    // Zooms that multiply to 1, and a zoomed box with no border image source, compile.
+    expect(at('zoom: 2', 'zoom: 0.5').errors).toEqual([]);
+    expect(at('zoom: 2', 'border-image-source: none').errors).toEqual([]);
+  });
+
   it('refuses a drawn border image on the native targets inside a transformed or composited subtree, and web keeps it', () => {
     const at = (outer: string, inner = ''): string[] => {
       const css = `body { font-family: Ahem; font-size: 10px; } .o { ${outer} } .s { border: 4px solid #102030; border-image: linear-gradient(red, blue) 2; ${inner} }`;

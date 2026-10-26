@@ -237,9 +237,9 @@ export function tilingProblem(b: ExactBox, t: TilingInputs, dpr: number): string
 }
 
 /**
- * Refuses, on ios and android, every drawn gradient border image under an effective zoom other than 1, and every one with a repeat
- * other than stretch whose box Dragon cannot prove exactly, or whose plan is unmodelled at a device scale of the target; planted
- * fault borderImageTilingUnchecked accepts the tiled ones.
+ * Refuses, on ios and android, every drawn gradient border image at zoom 1 with a repeat other than stretch whose box Dragon
+ * cannot prove exactly, or whose plan is unmodelled at a device scale of the target; planted fault borderImageTilingUnchecked
+ * accepts them.
  */
 export function checkBorderImageTiling(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: BorderImageFaults): void {
   const native = targets.filter((t): t is 'ios' | 'android' => t === 'ios' || t === 'android');
@@ -255,24 +255,8 @@ export function checkBorderImageTiling(root: ResolvedElement, targets: readonly 
     const parts = borderImageOf(el);
     // Only a border image the other checks draw: a refused one is reported by them, and none draws nothing.
     if (parts === null || borderImageRefusal(el) !== null) return;
-    // ZOOM: Chrome scales the slices and the gradient by the effective zoom times the device scale, and the native writes pass
-    // the device scale alone (emit/paint/border-image.ts), so a border image under a zoom other than 1 is not drawn natively.
-    if (zoom !== 1) {
-      const v = el.props.get('border-image-source' as Longhand) as ResolvedValue;
-      for (const t of native) {
-        const id = `${t}|border-image-zoom|${el.element.address}`;
-        if (reported.has(id)) continue;
-        reported.add(id);
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
-          origin: v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan),
-          target: t,
-          message: `border-image-source on <${el.element.tag}> ${el.element.address} is unsupported: its effective zoom is ${zoom}, and native draws a border image at zoom 1 only (MISC-PAINT)`,
-          manual: 'Remove zoom from the box and its ancestors, or remove the border image.',
-          basis: 'computed-value',
-        }));
-      }
-      return;
-    }
+    // ZOOM: border-image-zoom.ts refuses a border image under an effective zoom other than 1 natively.
+    if (zoom !== 1) return;
     if ((parts.repeat[0] === 'stretch' && parts.repeat[1] === 'stretch') || faults.borderImageTilingUnchecked) return;
     const box = exactBox(el, ancestors, kw);
     let why: string | null = typeof box === 'string' ? `Dragon cannot prove its border box exactly: ${box}` : null;
