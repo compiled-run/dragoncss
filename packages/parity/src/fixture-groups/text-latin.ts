@@ -37,7 +37,7 @@ export const TEXT_LATIN_FACES: ReadonlyMap<string, { readonly [id: string]: stri
   ['text-latin-words', { a: LATO, b: LATO, c: INTER, d: LATO, e: LATO }],
   ['text-latin-metrics', { r1: LATO, r2: LATO, r3: INTER, r4: INTER }],
   ['text-latin-declared', { regular: 'Roboto-Regular', wide: 'Roboto-Regular', bold: 'Inter-Bold' }],
-  ['text-latin-atomic', { d: LATO, e: LATO, f: LATO, t: LATO, g: LATO, i: LATO, k: LATO, l: LATO, o: LATO, p: LATO }],
+  ['text-latin-atomic', { d: LATO, e: LATO, f: LATO, t: LATO, g: LATO, i: LATO, k: LATO, l: LATO, o: LATO, p: LATO, r: LATO, s: LATO, u: LATO }],
 ]);
 
 /**
