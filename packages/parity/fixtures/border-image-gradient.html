@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { display: flex; flex-wrap: wrap; width: 400px; column-gap: 6px; row-gap: 6px; padding: 4px; }
+.b { width: 44px; height: 30px; border: 8px solid #102030; background: #f0e8d8; }
+.probe { border-image: linear-gradient(to right, red, blue) 1; }
+.slice { border-image: linear-gradient(#2f4f66, #a57c5b) 30%; }
+.fill { border-image: linear-gradient(90deg, #336699, #996633) 10 fill; }
+.widths { border-image: linear-gradient(to bottom, rgb(40, 80, 160), rgb(200, 120, 30) 40%, rgb(20, 200, 90)) 12 / 4px 12px; }
+.auto { border-image: linear-gradient(110deg, #2f4f66, #a57c5b) 6 10 / auto; }
+.numbers { border-image: linear-gradient(to left, #123456, #abcdef) 20% / 0.5 2; }
+.overlap { border-image: linear-gradient(30deg, #2f4f66, #a57c5b 60%, #102030) 25% / 3; }
+.big { border-image: linear-gradient(-30deg, #343b47, #0b0d12 30% 60%, #405060) 100 fill; }
+.styleless { border-style: none; border-image: linear-gradient(red, blue) 10 fill; }
+.dashed { border: 6px dashed #333; border-image: linear-gradient(0.3turn, #2f4f66, #a57c5b) 2; }
+.uneven { border-width: 3px 10px 14px 5px; border-image: linear-gradient(150grad, #2f4f66, #a57c5b) 4 9 13 6 fill / 1 1 1 1; }
+.frac { width: 40.3px; height: 29.7px; border-width: 5.5px 7.25px; border-image: linear-gradient(to right, red, blue) 1; }
+.longhands { border-image-source: linear-gradient(to top, #0a8, #fff); border-image-slice: 15 fill; border-image-width: 6px; border-image-repeat: stretch stretch; border-image-outset: 0px; }
+.unset { border-image: none 10 / 3 / 2 round; }
+.parent { border-image: linear-gradient(red, blue) 20%; }
+.parent > .kid { width: 20px; height: 10px; border: 4px solid #555; border-image: inherit; }
+.wide { width: 380px; height: 20px; border: 6px solid #000; border-image: linear-gradient(to right, #2f4f66, #a57c5b, #102030) 40% 10%; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">
+<div data-dragon-id="probe" class="b probe"></div>
+<div data-dragon-id="slice" class="b slice"></div>
+<div data-dragon-id="fill" class="b fill"></div>
+<div data-dragon-id="widths" class="b widths"></div>
+<div data-dragon-id="auto" class="b auto"></div>
+<div data-dragon-id="numbers" class="b numbers"></div>
+<div data-dragon-id="overlap" class="b overlap"></div>
+<div data-dragon-id="big" class="b big"></div>
+<div data-dragon-id="styleless" class="b styleless"></div>
+<div data-dragon-id="dashed" class="b dashed"></div>
+<div data-dragon-id="uneven" class="b uneven"></div>
+<div data-dragon-id="frac" class="b frac"></div>
+<div data-dragon-id="longhands" class="b longhands"></div>
+<div data-dragon-id="unset" class="b unset"></div>
+<div data-dragon-id="parent" class="b parent"><div data-dragon-id="kid" class="kid"></div></div>
+<div data-dragon-id="wide" class="wide"></div>
+</div>
+</body>
+</html>

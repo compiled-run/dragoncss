@@ -22,6 +22,7 @@ import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
 import { checkTranslucent, refuseAnimatedGroups } from './analysis/paint-values/effects.ts';
 import { checkGradientPhase } from './analysis/paint-values/gradient-phase.ts';
+import { checkBorderImageZoom } from './analysis/paint-values/border-image-zoom.ts';
 import { checkSelectable } from './analysis/selection.ts';
 import { checkBidi } from './analysis/bidi.ts';
 import { checkStackingClips } from './analysis/paint-values/stacking.ts';
@@ -912,6 +913,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
     // BG2-t: a no-repeat gradient layer away from the start edge, refused natively unless its tile provably starts inside the box.
     checkGradientPhase(resolved, targets, diagnostics, refused, options.faults);
+    checkBorderImageZoom(resolved, targets, diagnostics, refused);
     // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));

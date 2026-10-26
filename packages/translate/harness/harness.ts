@@ -159,8 +159,8 @@ import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTab
 import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
 import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
-import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
-import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, sqrtF64 } from '../../layout/src/paint-gradient.ts';
+import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, BorderImageLength, BorderImagePaint, BorderImageSlice, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
+import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackground, planBorderImage, sqrtF64 } from '../../layout/src/paint-gradient.ts';
 import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature, BandKeyword, BandOp, BandTable } from '../../layout/src/rt-band.ts';
 import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
@@ -1969,6 +1969,47 @@ function gradPaint(v: JsonValue, path: string): BackgroundPaint {
   };
 }
 
+/** A border image paint (paint-gradient.ts BorderImagePaint) from its JSON form. */
+function gradBorderImage(v: JsonValue, path: string): BorderImagePaint {
+  const o = obj(v, ['box', 'image', 'slices', 'fill', 'widths', 'zoom', 'tileSize', 'layerX', 'layerY'], path);
+  const b = obj(field(o, 'box', path), ['x', 'y', 'width', 'height', 'borders'], `${path}.box`);
+  const slices: BorderImageSlice[] = [];
+  arr(field(o, 'slices', path), `${path}.slices`).forEach((x, i) => {
+    const so = obj(x, ['unit', 'value'], `${path}.slices[${i}]`);
+    slices.push({ unit: lit(field(so, 'unit', path), ['number', 'percent'], `${path}.slices[${i}].unit`) as BorderImageSlice['unit'], value: numField(so, 'value', path) });
+  });
+  const widths: BorderImageLength[] = [];
+  arr(field(o, 'widths', path), `${path}.widths`).forEach((x, i) => {
+    const lo = obj(x, ['unit', 'value'], `${path}.widths[${i}]`);
+    widths.push({ unit: lit(field(lo, 'unit', path), ['number', 'px', 'auto'], `${path}.widths[${i}].unit`) as BorderImageLength['unit'], value: numField(lo, 'value', path) });
+  });
+  if (widths.length !== 4) fail(`${path}.widths: expected 4 sides`);
+  if (slices.length !== 4) fail(`${path}.slices: expected 4 sides`);
+  return {
+    box: { x: numField(b, 'x', path), y: numField(b, 'y', path), width: numField(b, 'width', path), height: numField(b, 'height', path), borders: gradNumbers(field(b, 'borders', path), 4, `${path}.box.borders`), padding: [0, 0, 0, 0], obscures: [false, false, false, false] },
+    image: gradImage(field(o, 'image', path), `${path}.image`),
+    slices,
+    fill: bool(field(o, 'fill', path), `${path}.fill`),
+    widths,
+    zoom: numField(o, 'zoom', path),
+    tileSize: numField(o, 'tileSize', path),
+    layerX: numField(o, 'layerX', path),
+    layerY: numField(o, 'layerY', path),
+  };
+}
+
+/** A plan's row at py as ["ok", modelled, left, right, layer count, length, bytes], every value as two hex digits. */
+function planRow(plan: BackgroundPlan, py: number): string {
+  const row = backgroundRow(plan, py, gradientFaults('none'));
+  let bytes = '';
+  for (let i = 0; i < row.length; i++) {
+    const x = row[i] as number;
+    if (!(x >= 0 && x <= 255 && Math.floor(x) === x)) return fail(`row value ${i} is not a byte`);
+    bytes += `${x < 16 ? '0' : ''}${x.toString(16)}`;
+  }
+  return `["ok",${plan.modelled ? 'true' : 'false'},${h(plan.left)},${h(plan.right)},${h(plan.layers.length)},${h(row.length)},${q(bytes)}]`;
+}
+
 /** The gradient suite: the exact arithmetic, Blink's gradient descriptor, and whole background rows; null for other names. */
 function gradientResult(name: string, a: readonly JsonValue[]): string | null {
   switch (name) {
@@ -2000,6 +2041,9 @@ function gradientResult(name: string, a: readonly JsonValue[]): string | null {
       }
       return `["ok",${plan.modelled ? 'true' : 'false'},${h(plan.left)},${h(plan.right)},${h(row.length)},${q(bytes)}]`;
     }
+    case 'paint:gradient:borderImageRow':
+      // MISC-PAINT: a border image's nine pieces planned and one row rasterised, byte for byte.
+      return planRow(planBorderImage(gradBorderImage(item(a, 1, '$'), '$[1]'), gradientFaults('none')), arg(a, 2));
     default:
       return null;
   }

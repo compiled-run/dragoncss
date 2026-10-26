@@ -4,8 +4,8 @@
 // composited layer origin (R4). Nothing here compares pixels with Chrome: the rows are TS-internal pins, and the TS = Swift = Kotlin
 // check is paint-roots.test.ts on the backgroundRow vectors.
 import { describe, expect, it } from 'vitest';
-import { backgroundRow, fma64, fmodF32, gradientDesc, gradientFaults, hypotF32, IDENTITY, layerPlacement, matConcat, matInvert, matType, NO_GRADIENT_FAULTS, planBackground, sqrtF32, sqrtF64 } from '../src/paint-gradient.ts';
-import type { BackgroundBox, BackgroundPaint, GradientImage, LayerGeometry } from '../src/paint-gradient.ts';
+import { backgroundRow, borderImageStopsModelled, fma64, fmodF32, gradientDesc, gradientFaults, hypotF32, IDENTITY, layerPlacement, matConcat, matInvert, matType, NO_GRADIENT_FAULTS, planBackground, planBorderImage, sqrtF32, sqrtF64 } from '../src/paint-gradient.ts';
+import type { BackgroundBox, BackgroundPaint, BorderImagePaint, GradientImage, LayerGeometry } from '../src/paint-gradient.ts';
 
 function lcg(seed: number): () => number {
   let s = seed;
@@ -221,5 +221,39 @@ describe('edge offsets (notes/T074-bg2-spec.md R7)', () => {
         }
       }
     }
+  });
+});
+
+describe('border image slices and stops (MISC-PAINT)', () => {
+  // A 60 x 46 CSS px border box with 8px borders at DPR 2, on whole device px.
+  const paint = (o: Partial<BorderImagePaint>): BorderImagePaint => ({ box: { x: 0, y: 0, width: 120 * 64, height: 92 * 64, borders: [16, 16, 16, 16].map((v) => v * 64), padding: [0, 0, 0, 0], obscures: [false, false, false, false] }, image: linear({}), slices: [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: 1 })), fill: false, widths: [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: 1 })), zoom: 2, tileSize: 512, layerX: 0, layerY: 0, ...o });
+  const n = (v: number) => [0, 1, 2, 3].map(() => ({ unit: 'number' as const, value: v }));
+  it('rounds a number slice as ConvertBorderImageSliceSide does: 0.4 draws no piece, 0.4 fill only the middle', () => {
+    const none = planBorderImage(paint({ slices: n(0.4) }), NO_GRADIENT_FAULTS);
+    expect(none.modelled).toBe(true);
+    expect(none.layers).toEqual([]);
+    expect(planBorderImage(paint({ slices: n(0.4), fill: true }), NO_GRADIENT_FAULTS).layers.length).toBe(1);
+    expect(planBorderImage(paint({ slices: n(0.6) }), NO_GRADIENT_FAULTS).layers.length).toBe(8);
+  });
+  it('takes auto widths from the rounded slice: 2.6 / auto is 3 CSS px, 6 device px at DPR 2; 2.5 rounds up', () => {
+    const heights = (v: number): number[] => planBorderImage(paint({ slices: n(v), widths: [0, 1, 2, 3].map(() => ({ unit: 'auto' as const, value: 0 })) }), NO_GRADIENT_FAULTS).layers.map((l) => l.placement.destHeight / 64);
+    expect(heights(2.6)[0]).toBe(6);
+    expect(heights(2.5)[0]).toBe(6);
+    expect(heights(2.4)[0]).toBe(4);
+    expect(heights(3)).toEqual(heights(2.6));
+  });
+  it('keeps a percentage slice as written', () => {
+    const pct = (v: number) => planBorderImage(paint({ slices: [0, 1, 2, 3].map(() => ({ unit: 'percent' as const, value: v })), widths: [0, 1, 2, 3].map(() => ({ unit: 'auto' as const, value: 0 })) }), NO_GRADIENT_FAULTS).layers.map((l) => l.placement.destHeight);
+    // 10.5% of the 46px image is 9.66 device px (9 drawn); rounded to 11% it would be 10.12 (10 drawn).
+    expect(pct(10.5)).not.toEqual(pct(11));
+  });
+  it('models the stops the native raster resolves apart, and no stops that meet once resolved', () => {
+    const at = (a: number, b: number) => borderImageStopsModelled(linear({ stops: [{ color: { r: 255, g: 0, b: 0, alpha: 255 }, unit: 'percent', value: a }, { color: { r: 0, g: 0, b: 255, alpha: 255 }, unit: 'percent', value: b }] }));
+    expect(at(0, 100)).toBe(true);
+    expect(at(20, 60)).toBe(true);
+    expect(at(50, 50)).toBe(false);
+    expect(at(50, 50.000001)).toBe(false);
+    expect(at(150, 150.000001)).toBe(false);
+    expect(at(60, 20)).toBe(false);
   });
 });

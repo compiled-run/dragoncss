@@ -5,6 +5,7 @@ import { SIDES } from '../properties.ts';
 import type { LonghandValue } from '../stylesheet.ts';
 import type { CssValue } from '../values.ts';
 import { isMathValue, kw, LINE_STYLES, LINE_WIDTH_KEYWORDS } from '../values.ts';
+import { BORDER_IMAGE_INITIAL, BORDER_IMAGE_LONGHANDS } from '../properties/border-image.ts';
 import type { ShorthandHandler } from './shared.ts';
 import { explicit, fourSides, implicit } from './shared.ts';
 
@@ -15,10 +16,16 @@ function borderLonghands(sides: readonly (typeof SIDES)[number][]): Longhand[] {
   return out;
 }
 
+/**
+ * border and border-<side>. border also resets the border image longhands to their initial values, as Chrome 145 registers it
+ * (css_properties.json5: border's longhands end with border-image-outset through border-image-width; css-backgrounds-3 §3.6), so a
+ * border image an earlier declaration sets is not drawn under a later border.
+ */
 function border(sides: readonly (typeof SIDES)[number][]): ShorthandHandler {
   const names = borderLonghands(sides);
+  const resetsImage = sides.length === SIDES.length;
   return {
-    longhands: names,
+    longhands: resetsImage ? [...names, ...BORDER_IMAGE_LONGHANDS] : names,
     expand: (values) => {
       let width: CssValue | null = null;
       let style: CssValue | null = null;
@@ -34,6 +41,7 @@ function border(sides: readonly (typeof SIDES)[number][]): ShorthandHandler {
         out.push(style === null ? implicit(names[i + 1] as Longhand, kw('none')) : explicit(names[i + 1] as Longhand, style));
         out.push(color === null ? implicit(names[i + 2] as Longhand, kw('currentcolor')) : explicit(names[i + 2] as Longhand, color));
       }
+      if (resetsImage) for (const p of BORDER_IMAGE_LONGHANDS) out.push(implicit(p, BORDER_IMAGE_INITIAL[p]));
       return out;
     },
   };

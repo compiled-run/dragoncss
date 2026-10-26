@@ -42,12 +42,9 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/block_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/box_fragment_builder.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/core/layout/column_layout_algorithm.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/exclusions/exclusion_space.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
-- `third_party/blink/renderer/core/layout/fragmentation_utils.cc`: Copyright 2017 The Chromium Authors
-- `third_party/blink/renderer/core/layout/geometry/layout_unit_diffuser.h`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_baseline_accumulator.h`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_item.cc`: Copyright 2021 The Chromium Authors
@@ -63,15 +60,10 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/inline_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/justification_utils.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/core/layout/inline/line_break_candidate.cc`: Copyright 2023 The Chromium Authors
-- `third_party/blink/renderer/core/layout/inline/line_break_candidate.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_truncator.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/logical_line_builder.cc`: Copyright 2016 The Chromium Authors
-- `third_party/blink/renderer/core/layout/inline/paragraph_line_breaker.cc`: Copyright 2023 The Chromium Authors
-- `third_party/blink/renderer/core/layout/inline/score_line_break_context.h`: Copyright 2023 The Chromium Authors
-- `third_party/blink/renderer/core/layout/inline/score_line_breaker.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_block_flow_hot.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
@@ -91,6 +83,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/box_painter_base.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/decoration_line_painter.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/paint/nine_piece_image_grid.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/nine_piece_image_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/outline_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/paint_property_tree_builder.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/svg_object_painter.cc`: Copyright 2018 The Chromium Authors

@@ -225,11 +225,11 @@ fun rtAnimator_findStyle(b: U_ControlBox_LayoutBox, id: String): LayoutStyle? {
   }
   // ts: packages/layout/src/rt-animator.ts:211
   run {
-    val _a239 = b.children
-    var _i239 = 0
-    while (_i239 < _a239.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a239[_i239]
-      _i239++
+    val _a232 = b.children
+    var _i232 = 0
+    while (_i232 < _a232.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a232[_i232]
+      _i232++
       // ts: packages/layout/src/rt-animator.ts:212
       if ((jsStrEq(c.kind, "replaced") && jsStrEq((c as ReplacedLeaf).id, id))) {
         return (c as ReplacedLeaf).style
@@ -368,11 +368,11 @@ fun rtAnimator_lengthBase(resolved: LayoutInput, node: String, property: String)
 fun rtAnimator_rendered(t: AnimTables, node: String, i: Double): Boolean {
   // ts: packages/layout/src/rt-animator.ts:267
   run {
-    val _a240 = t.rendered
-    var _i240 = 0
-    while (_i240 < _a240.size) {
-      val r: RenderedTable = _a240[_i240]
-      _i240++
+    val _a233 = t.rendered
+    var _i233 = 0
+    while (_i233 < _a233.size) {
+      val r: RenderedTable = _a233[_i233]
+      _i233++
       // ts: packages/layout/src/rt-animator.ts:268
       if (!jsStrEq(r.node, node)) {
         continue
@@ -429,20 +429,20 @@ fun rtAnimator_rulesFor(t: AnimTables, property: String): JsArray<KeyframesRule>
     val keyframes: JsArray<RuleKeyframe> = jsArrayOf<RuleKeyframe>()
     // ts: packages/layout/src/rt-animator.ts:300
     run {
-      val _a241 = r.blocks
-      var _i241 = 0
-      while (_i241 < _a241.size) {
-        val bl: KeyframeBlock = _a241[_i241]
-        _i241++
+      val _a234 = r.blocks
+      var _i234 = 0
+      while (_i234 < _a234.size) {
+        val bl: KeyframeBlock = _a234[_i234]
+        _i234++
         var sets: Boolean = false
         var value: AnimatedValue = rtAnimator_EMPTY
         // ts: packages/layout/src/rt-animator.ts:303
         run {
-          val _a242 = bl.values
-          var _i242 = 0
-          while (_i242 < _a242.size) {
-            val v: KeyframeValue = _a242[_i242]
-            _i242++
+          val _a235 = bl.values
+          var _i235 = 0
+          while (_i235 < _a235.size) {
+            val v: KeyframeValue = _a235[_i235]
+            _i235++
             // ts: packages/layout/src/rt-animator.ts:304
             if (!jsStrEq(v.property, property)) {
               continue
@@ -454,11 +454,11 @@ fun rtAnimator_rulesFor(t: AnimTables, property: String): JsArray<KeyframesRule>
         }
         // ts: packages/layout/src/rt-animator.ts:309
         run {
-          val _a243 = bl.offsets
-          var _i243 = 0
-          while (_i243 < _a243.size) {
-            val offset: Double = _a243[_i243]
-            _i243++
+          val _a236 = bl.offsets
+          var _i236 = 0
+          while (_i236 < _a236.size) {
+            val offset: Double = _a236[_i236]
+            _i236++
             jsPush(keyframes, RuleKeyframe(offset, bl.hasEasing, (if (bl.hasEasing) rtAnimator_easingOf(bl.easing) else rtEasing_LINEAR), sets, value))
           }
         }
@@ -472,22 +472,22 @@ fun rtAnimator_rulesFor(t: AnimTables, property: String): JsArray<KeyframesRule>
 fun rtAnimator_ruleSetsByName(rules: JsArray<KeyframesRule>, name: String): Boolean {
   // ts: packages/layout/src/rt-animator.ts:317
   run {
-    val _a244 = rules
-    var _i244 = 0
-    while (_i244 < _a244.size) {
-      val r: KeyframesRule = _a244[_i244]
-      _i244++
+    val _a237 = rules
+    var _i237 = 0
+    while (_i237 < _a237.size) {
+      val r: KeyframesRule = _a237[_i237]
+      _i237++
       // ts: packages/layout/src/rt-animator.ts:318
       if (!jsStrEq(r.name, name)) {
         continue
       }
       // ts: packages/layout/src/rt-animator.ts:319
       run {
-        val _a245 = r.keyframes
-        var _i245 = 0
-        while (_i245 < _a245.size) {
-          val k: RuleKeyframe = _a245[_i245]
-          _i245++
+        val _a238 = r.keyframes
+        var _i238 = 0
+        while (_i238 < _a238.size) {
+          val k: RuleKeyframe = _a238[_i238]
+          _i238++
           // ts: packages/layout/src/rt-animator.ts:319
           if (k.sets) {
             return true
@@ -504,11 +504,11 @@ fun rtAnimator_sampleKeys(list: JsArray<RunningAnimation>, faults: RtFaults): Js
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/rt-animator.ts:329
   run {
-    val _a246 = list
-    var _i246 = 0
-    while (_i246 < _a246.size) {
-      val a: RunningAnimation = _a246[_i246]
-      _i246++
+    val _a239 = list
+    var _i239 = 0
+    while (_i239 < _a239.size) {
+      val a: RunningAnimation = _a239[_i239]
+      _i239++
       val c: ComputedTiming = rtTiming_computeSecondsTiming(a.timing, a.held.seconds, faults)
       jsPush(out, (if ((c.currentIteration == null)) (0.0 / 0.0) else jsUnwrap(c.currentIteration)))
       jsPush(out, (if ((c.progress == null)) (0.0 / 0.0) else jsUnwrap(c.progress)))
@@ -694,11 +694,11 @@ fun rtAnimator_animatorAdvance(s: AnimatorState, t: AnimTables, inputs: JsArray<
 fun rtAnimator_animatorBusy(s: AnimatorState): Boolean {
   // ts: packages/layout/src/rt-animator.ts:446
   run {
-    val _a247 = s.transitions
-    var _i247 = 0
-    while (_i247 < _a247.size) {
-      val r: RunningTransition? = _a247[_i247]
-      _i247++
+    val _a240 = s.transitions
+    var _i240 = 0
+    while (_i240 < _a240.size) {
+      val r: RunningTransition? = _a240[_i240]
+      _i240++
       // ts: packages/layout/src/rt-animator.ts:446
       if (((r != null) && (!rtTransition_transitionFinished(jsUnwrap(r))))) {
         return true
@@ -707,18 +707,18 @@ fun rtAnimator_animatorBusy(s: AnimatorState): Boolean {
   }
   // ts: packages/layout/src/rt-animator.ts:447
   run {
-    val _a248 = s.lists
-    var _i248 = 0
-    while (_i248 < _a248.size) {
-      val l: JsArray<RunningAnimation> = _a248[_i248]
-      _i248++
+    val _a241 = s.lists
+    var _i241 = 0
+    while (_i241 < _a241.size) {
+      val l: JsArray<RunningAnimation> = _a241[_i241]
+      _i241++
       // ts: packages/layout/src/rt-animator.ts:447
       run {
-        val _a249 = l
-        var _i249 = 0
-        while (_i249 < _a249.size) {
-          val a: RunningAnimation = _a249[_i249]
-          _i249++
+        val _a242 = l
+        var _i242 = 0
+        while (_i242 < _a242.size) {
+          val a: RunningAnimation = _a242[_i242]
+          _i242++
           // ts: packages/layout/src/rt-animator.ts:447
           if (((!a.paused) && (!rtAnimations_animationFinished(a)))) {
             return true
@@ -765,11 +765,11 @@ fun rtAnimator_animatorFrame(s: AnimatorState, t: AnimTables, faults: RtFaults):
   var k: Double = 0.0
   // ts: packages/layout/src/rt-animator.ts:470
   run {
-    val _a250 = s.transitions
-    var _i250 = 0
-    while (_i250 < _a250.size) {
-      val r: RunningTransition? = _a250[_i250]
-      _i250++
+    val _a243 = s.transitions
+    var _i243 = 0
+    while (_i243 < _a243.size) {
+      val r: RunningTransition? = _a243[_i243]
+      _i243++
       val sl: SlotTable? = jsAt(t.slots, k)
       k += 1.0
       // ts: packages/layout/src/rt-animator.ts:473
@@ -811,11 +811,11 @@ fun rtAnimator_closureFrame(frame: JsArray<FrameEntry>, t: AnimTables, anim: Ani
   }
   // ts: packages/layout/src/rt-animator.ts:493
   run {
-    val _a251 = t.closure
-    var _i251 = 0
-    while (_i251 < _a251.size) {
-      val c: ClosureTable = _a251[_i251]
-      _i251++
+    val _a244 = t.closure
+    var _i244 = 0
+    while (_i244 < _a244.size) {
+      val c: ClosureTable = _a244[_i244]
+      _i244++
       val i: Double = rtAnimator_indexOfEntry(frame, c.source.node, c.source.property)
       val src: FrameEntry? = jsAt(frame, i)
       // ts: packages/layout/src/rt-animator.ts:496
@@ -824,11 +824,11 @@ fun rtAnimator_closureFrame(frame: JsArray<FrameEntry>, t: AnimTables, anim: Ani
       }
       // ts: packages/layout/src/rt-animator.ts:497
       run {
-        val _a252 = c.writes
-        var _i252 = 0
-        while (_i252 < _a252.size) {
-          val w: TrackRef = _a252[_i252]
-          _i252++
+        val _a245 = c.writes
+        var _i245 = 0
+        while (_i245 < _a245.size) {
+          val w: TrackRef = _a245[_i245]
+          _i245++
           // ts: packages/layout/src/rt-animator.ts:497
           if ((rtAnimator_indexOfEntry(out, w.node, w.property) < 0.0)) {
             out = jsConcatArrays(listOf(out, jsArrayOf<FrameEntry>(FrameEntry(w.node, w.property, jsUnwrap(src).value))))
@@ -845,11 +845,11 @@ fun rtAnimator_frameColors(frame: JsArray<FrameEntry>, t: AnimTables, anim: Anim
   val out: JsArray<ColorWrite> = jsArrayOf<ColorWrite>()
   // ts: packages/layout/src/rt-animator.ts:505
   run {
-    val _a253 = rtAnimator_closureFrame(frame, t, anim)
-    var _i253 = 0
-    while (_i253 < _a253.size) {
-      val e: FrameEntry = _a253[_i253]
-      _i253++
+    val _a246 = rtAnimator_closureFrame(frame, t, anim)
+    var _i246 = 0
+    while (_i246 < _a246.size) {
+      val e: FrameEntry = _a246[_i246]
+      _i246++
       // ts: packages/layout/src/rt-animator.ts:505
       if (jsStrEq(e.value.kind, "color")) {
         jsPush(out, ColorWrite(e.node, e.property, rtInterpolate_colorRgba8(e.value.color)))
@@ -863,11 +863,11 @@ fun rtAnimator_frameColors(frame: JsArray<FrameEntry>, t: AnimTables, anim: Anim
 fun rtAnimator_tableValue(t: AnimTables, node: String, property: String, i: Double): AnimatedValue? {
   // ts: packages/layout/src/rt-animator.ts:511
   run {
-    val _a254 = t.slots
-    var _i254 = 0
-    while (_i254 < _a254.size) {
-      val sl: SlotTable = _a254[_i254]
-      _i254++
+    val _a247 = t.slots
+    var _i247 = 0
+    while (_i247 < _a247.size) {
+      val sl: SlotTable = _a247[_i247]
+      _i247++
       // ts: packages/layout/src/rt-animator.ts:512
       if ((!jsStrEq(sl.node, node) || !jsStrEq(sl.property, property))) {
         continue
@@ -878,11 +878,11 @@ fun rtAnimator_tableValue(t: AnimTables, node: String, property: String, i: Doub
   }
   // ts: packages/layout/src/rt-animator.ts:516
   run {
-    val _a255 = t.bases
-    var _i255 = 0
-    while (_i255 < _a255.size) {
-      val b: BaseTable = _a255[_i255]
-      _i255++
+    val _a248 = t.bases
+    var _i248 = 0
+    while (_i248 < _a248.size) {
+      val b: BaseTable = _a248[_i248]
+      _i248++
       // ts: packages/layout/src/rt-animator.ts:517
       if ((!jsStrEq(b.node, node) || !jsStrEq(b.property, property))) {
         continue
@@ -899,11 +899,11 @@ fun rtAnimator_frameTransforms(s: AnimatorState, t: AnimTables, frame: JsArray<F
   val out: JsArray<TransformWrite> = jsArrayOf<TransformWrite>()
   // ts: packages/layout/src/rt-animator.ts:531
   run {
-    val _a256 = t.origins
-    var _i256 = 0
-    while (_i256 < _a256.size) {
-      val o: OriginTable = _a256[_i256]
-      _i256++
+    val _a249 = t.origins
+    var _i249 = 0
+    while (_i249 < _a249.size) {
+      val o: OriginTable = _a249[_i249]
+      _i249++
       val origin: TransformOrigin? = jsAt(o.values, s.current)
       // ts: packages/layout/src/rt-animator.ts:533
       if ((origin == null)) {
@@ -945,83 +945,83 @@ fun rtAnimator_withLength(s: LayoutStyle, property: String, l: LengthValue, rang
   val v: U_LengthCalc_Percent_Px = rtAnimator_fieldOf(l, range)
   // ts: packages/layout/src/rt-animator.ts:554
   if (jsStrEq(property, "top")) {
-    return LayoutStyle(s.display, s.position, s.float, (v as U_Auto_LengthCalc_Percent_Px), s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, (v as U_Auto_LengthCalc_Percent_Px), s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:555
   if (jsStrEq(property, "right")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, (v as U_Auto_LengthCalc_Percent_Px), s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, (v as U_Auto_LengthCalc_Percent_Px), s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:556
   if (jsStrEq(property, "bottom")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, (v as U_Auto_LengthCalc_Percent_Px), s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, (v as U_Auto_LengthCalc_Percent_Px), s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:557
   if (jsStrEq(property, "left")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, (v as U_Auto_LengthCalc_Percent_Px), s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, (v as U_Auto_LengthCalc_Percent_Px), s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:558
   if (jsStrEq(property, "width")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, (v as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch), s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, (v as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch), s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:559
   if (jsStrEq(property, "height")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, (v as U_Auto_LengthCalc_Percent_Px_Stretch), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, (v as U_Auto_LengthCalc_Percent_Px), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:560
   if (jsStrEq(property, "min-width")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, (v as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch), s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, (v as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch), s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:561
   if (jsStrEq(property, "min-height")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, (v as U_Auto_LengthCalc_Percent_Px_Stretch), s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, (v as U_Auto_LengthCalc_Percent_Px), s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:562
   if (jsStrEq(property, "max-width")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, (v as U_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch), s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, (v as U_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch), s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:563
   if (jsStrEq(property, "max-height")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, (v as U_LengthCalc_NoneValue_Percent_Px_Stretch), s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, (v as U_LengthCalc_NoneValue_Percent_Px), s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:564
   if (jsStrEq(property, "margin-top")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, (v as U_Auto_LengthCalc_Percent_Px), s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, (v as U_Auto_LengthCalc_Percent_Px), s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:565
   if (jsStrEq(property, "margin-right")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, (v as U_Auto_LengthCalc_Percent_Px), s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, (v as U_Auto_LengthCalc_Percent_Px), s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:566
   if (jsStrEq(property, "margin-bottom")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, (v as U_Auto_LengthCalc_Percent_Px), s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, (v as U_Auto_LengthCalc_Percent_Px), s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:567
   if (jsStrEq(property, "margin-left")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, (v as U_Auto_LengthCalc_Percent_Px), s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, (v as U_Auto_LengthCalc_Percent_Px), s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:568
   if (jsStrEq(property, "padding-top")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, v, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, v, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:569
   if (jsStrEq(property, "padding-right")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, v, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, v, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:570
   if (jsStrEq(property, "padding-bottom")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, v, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, v, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:571
   if (jsStrEq(property, "padding-left")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, v, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, v, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:572
   if (jsStrEq(property, "row-gap")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, (v as U_LengthCalc_NormalValue_Percent_Px), s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, (v as U_LengthCalc_NormalValue_Percent_Px), s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   // ts: packages/layout/src/rt-animator.ts:573
   if (jsStrEq(property, "column-gap")) {
-    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, (v as U_LengthCalc_NormalValue_Percent_Px), s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom)
+    return LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, s.height, s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, (v as U_LengthCalc_NormalValue_Percent_Px), s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.grid, s.gridItem, s.zoom)
   }
   throw AnimatorError(("the engine input has no length field for " + property))
 }
@@ -1030,11 +1030,11 @@ fun rtAnimator_withLength(s: LayoutStyle, property: String, l: LengthValue, rang
 fun rtAnimator_rangeOf(t: AnimTables, node: String, property: String): String {
   // ts: packages/layout/src/rt-animator.ts:578
   run {
-    val _a257 = t.slots
-    var _i257 = 0
-    while (_i257 < _a257.size) {
-      val sl: SlotTable = _a257[_i257]
-      _i257++
+    val _a250 = t.slots
+    var _i250 = 0
+    while (_i250 < _a250.size) {
+      val sl: SlotTable = _a250[_i250]
+      _i250++
       // ts: packages/layout/src/rt-animator.ts:578
       if ((jsStrEq(sl.node, node) && jsStrEq(sl.property, property))) {
         return sl.range
@@ -1043,11 +1043,11 @@ fun rtAnimator_rangeOf(t: AnimTables, node: String, property: String): String {
   }
   // ts: packages/layout/src/rt-animator.ts:579
   run {
-    val _a258 = t.bases
-    var _i258 = 0
-    while (_i258 < _a258.size) {
-      val b: BaseTable = _a258[_i258]
-      _i258++
+    val _a251 = t.bases
+    var _i251 = 0
+    while (_i251 < _a251.size) {
+      val b: BaseTable = _a251[_i251]
+      _i251++
       // ts: packages/layout/src/rt-animator.ts:579
       if ((jsStrEq(b.node, node) && jsStrEq(b.property, property))) {
         return b.range
@@ -1062,11 +1062,11 @@ fun rtAnimator_patchStyle(id: String, s: LayoutStyle, frame: JsArray<FrameEntry>
   var style: LayoutStyle = s
   // ts: packages/layout/src/rt-animator.ts:585
   run {
-    val _a259 = frame
-    var _i259 = 0
-    while (_i259 < _a259.size) {
-      val e: FrameEntry = _a259[_i259]
-      _i259++
+    val _a252 = frame
+    var _i252 = 0
+    while (_i252 < _a252.size) {
+      val e: FrameEntry = _a252[_i252]
+      _i252++
       // ts: packages/layout/src/rt-animator.ts:585
       if ((jsStrEq(e.node, id) && jsStrEq(e.value.kind, "length"))) {
         style = rtAnimator_withLength(style, e.property, e.value.length, rtAnimator_rangeOf(t, e.node, e.property))
@@ -1119,11 +1119,11 @@ fun rtAnimator_patchInput(input: LayoutInput, frame: JsArray<FrameEntry>, t: Ani
   var any: Boolean = false
   // ts: packages/layout/src/rt-animator.ts:615
   run {
-    val _a260 = frame
-    var _i260 = 0
-    while (_i260 < _a260.size) {
-      val e: FrameEntry = _a260[_i260]
-      _i260++
+    val _a253 = frame
+    var _i253 = 0
+    while (_i253 < _a253.size) {
+      val e: FrameEntry = _a253[_i253]
+      _i253++
       // ts: packages/layout/src/rt-animator.ts:615
       if (jsStrEq(e.value.kind, "length")) {
         any = true

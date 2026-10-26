@@ -714,6 +714,7 @@
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/color.ts", "symbol": "colorMix", "use": "port" },
         { "file": "packages/dragon/src/css/properties/text-box.ts", "symbol": "consumeTextBoxEdge", "use": "port" }
       ]
@@ -746,9 +747,10 @@
       "licence": "lgpl",
       "ruling": {
         "class": "A",
-        "basis": "css-backgrounds-3 background-position (an edge keyword with an offset measures from that edge) and Chrome observation; the LayoutUnit arithmetic is BSD background_image_geometry.cc ResolveXPosition",
+        "basis": "css-backgrounds-3 background-position (an edge keyword with an offset measures from that edge) and Chrome observation; the LayoutUnit arithmetic is BSD background_image_geometry.cc ResolveXPosition. A border-image-slice number is rounded to a whole image px (Chrome observation: the border-image-fractional fixture against Chrome 145, border-image-reference.test.ts); the slice arithmetic is BSD nine_piece_image_grid.cc ComputeEdgeSlice",
         "proof": [
-          "packages/layout/test/paint-gradient.test.ts#ResolveXPosition"
+          "packages/layout/test/paint-gradient.test.ts#ResolveXPosition",
+          "packages/layout/test/paint-gradient.test.ts#ConvertBorderImageSliceSide"
         ]
       },
       "licencePhrase": "GNU Library General Public License",
@@ -758,10 +760,12 @@
       "ranges": [
         { "lines": "195-213", "symbol": "CSSToStyleMap::MapFillPositionX", "source": "located" },
         { "lines": "215-233", "symbol": "CSSToStyleMap::MapFillPositionY", "source": "located" },
-        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" }
+        { "lines": "527-605", "symbol": "CSSToStyleMap::MapNinePieceImage", "source": "located" },
+        { "lines": "607-614", "symbol": "ConvertBorderImageSliceSide", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/paint-gradient.ts", "symbol": "luPosition", "use": "reference" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeSlice", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/border-image.ts", "symbol": null, "use": "reference" }
       ]
     },
@@ -2055,6 +2059,52 @@
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
         { "file": "packages/layout/src/paint-radius.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/nine_piece_image_grid.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "a4ba8c27b80ceec03d96a83abc78bc77d12a2aae1d967a815b58fe6d62fb0fe8",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "15-24", "symbol": "ComputeEdgeWidth", "source": "located" },
+        { "lines": "26-39", "symbol": "ComputeEdgeSlice", "source": "located" },
+        { "lines": "50-75", "symbol": "SnapEdgeWidths", "source": "located" },
+        { "lines": "79-157", "symbol": "NinePieceImageGrid::NinePieceImageGrid", "source": "located" },
+        { "lines": "161-191", "symbol": "Subrect", "source": "located" },
+        { "lines": "193-366", "symbol": "NinePieceImageGrid::SetDrawInfoCorner", "source": "located" },
+        { "lines": "368-383", "symbol": "NinePieceImageGrid::GetNinePieceDrawInfo", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/nine-piece.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeWidthLu", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "edgeSlice", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "snapEdgePair", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "subrectF", "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBorderImage", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/nine_piece_image_painter.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2015 The Chromium Authors",
+      "fileSha256": "b8c2a67569424d6eb981a5c169bc60fad6d133ecf14d98b1b4afaa79111709df",
+      "headerSha256": "e1fc3349980915ac997ad1ff9d2ee990743b920b61c8304813c32a55c89f2064",
+      "ranges": [
+        { "lines": "75-85", "symbol": "ShouldTile", "source": "located" },
+        { "lines": "87-177", "symbol": "PaintPieces", "source": "located" },
+        { "lines": "181-240", "symbol": "NinePieceImagePainter::Paint", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/nine-piece.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/paint-gradient.ts", "symbol": "planBorderImage", "use": "port" }
       ]
     },
     {
