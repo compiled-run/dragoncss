@@ -5,12 +5,18 @@
 //   child), whose inline offset is moved by the value (block_layout_algorithm.cc:2652-2654 and 3936-3945
 //   AdjustSliderThumbInlineOffset); its default content inline size is 129 CSS px times the zoom, a Chrome observation pinned by
 //   FORM-0's boxes (Blink computes it in layout_box.cc, which is LGPL: a reference only, nothing here follows its code).
+// - a single-line text field (text-field, FORM-b): a block container of its placeholder and inner editor. Its default content inline
+//   size is size x the advance of 0, rounded up to a whole px (Chrome 145 under Ahem: size 3 at 10px is 30px, at 13.3333px on
+//   Linux, whose hinted advance of 0 is 13.1px, 40px), a Chrome observation. Its auto content height is the editor's; the editor
+//   is centred in the content box unsafely (a 41px field puts a 10px editor 15.5px down, a 4px one 3px up), and the placeholder
+//   is placed with its baseline on the editor's, or at the editor's top when either has no baseline (Chrome 145 probes).
 // - a block button (button-block): its in-flow contents are centred in the block axis, safely (html.css
 //   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
 //   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
 import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
+import type { TextMeasurer } from './text.ts';
 import type { LU } from './units.ts';
-import { clampNegativeToZero, divInt, doubleMul, float32, floatMul, fromCssPx, fromDouble, sub, toPx, ZERO } from './units.ts';
+import { ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatMul, fromCssPx, fromDouble, sub, toPx, ZERO } from './units.ts';
 
 /** A range's default track length in CSS px: Chrome 145 lays out an auto-width range with a 129 px content box (FORM-0 boxes). */
 export const SLIDER_DEFAULT_TRACK_LENGTH = 129;
@@ -64,4 +70,15 @@ export function sliderThumbShift(ratio: number, trackContentWidth: LU, thumbWidt
  */
 export function buttonContentShift(contentBoxBlockSize: LU, contentsBlockSize: LU): LU {
   return divInt(clampNegativeToZero(sub(contentBoxBlockSize, contentsBlockSize)), 2);
+}
+
+/** FORM-b: a text field's default content inline size, size x the float advance of 0, rounded up to a whole px. */
+export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-field' }>): LU {
+  const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
+  return ceilFloatToWholePx(floatMul(zero, float32(c.size)));
+}
+
+/** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */
+export function textEditorShift(contentBoxBlockSize: LU, editorBlockSize: LU): LU {
+  return divInt(sub(contentBoxBlockSize, editorBlockSize), 2);
 }

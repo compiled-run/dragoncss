@@ -7,7 +7,7 @@ import { ENV_VALUE_TYPE } from '../css/values.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS, TEXT_LONGHANDS } from '../css/properties.ts';
 import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
-import type { GeneratedPseudo, RangePart } from '../css/selectors.ts';
+import type { GeneratedPseudo, ControlPart } from '../css/selectors.ts';
 import { GENERATED_PSEUDOS } from '../css/selectors.ts';
 import type { CompilerFaults } from '../faults.ts';
 import { STRING_VALUE_TYPE } from '../css/properties/lists.ts';
@@ -23,7 +23,8 @@ import { generatedElement, generatedText, generatedTextNode, hostRefusal } from 
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
-import { isRangeType } from './elements/controls.ts';
+import { inputTypeState, isRangeType, isTextFieldType } from './elements/controls.ts';
+import { sanitizedTextValue, shownPlaceholder, TEXT_FIELD_UA_SHADOW } from '../forms/text-field.ts';
 import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
 import type { BlockInInlineChild } from './block-in-inline.ts';
 import { blockInInlineBlocker, isBlockInInline, markBlockInInline } from './block-in-inline.ts';
@@ -315,8 +316,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // markerElement) and chain ends with the host; the box cascades its pseudo-element's rules on the host's chain and inherits from
   // parent, the host.
   // FORM-a A4: part is set for a part of a range input's UA shadow tree, which likewise cascades its pseudo-element's rules on
-  // the input's chain (chain ends with the input); it has no chain of its own.
-  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | 'marker' | null = null, part: RangeShadowPart | null = null): ResolvedElement => {
+  // the input's chain (chain ends with the input); it has no chain of its own. FORM-b: so is a part of a text field's (placeholder,
+  // editor).
+  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | 'marker' | null = null, part: ShadowPart | null = null): ResolvedElement => {
     const here = pseudo === null && part === null ? [...chain, el] : chain;
     const partName = part === null ? null : PART_PSEUDO[part];
     const selects = (r: Rule): boolean => r.selectors.some((sel) => (pseudo !== null ? pseudoSelectorMatches(r, sel, here, pseudo, faults, interaction) : part !== null ? partName !== null && partSelectorMatches(r, sel, here, partName, faults, interaction) : selectorMatches(r, sel, here, here.length - 1, 0, faults, interaction)));
@@ -401,7 +403,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
-    if (part !== null) applyShadowUserAgent(part, props, defaulted, fromParent);
+    if (part !== null) (isTextFieldPart(part) ? applyTextFieldShadow : applyShadowUserAgent)(part as never, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
     for (const p of LONGHANDS) {
@@ -473,9 +475,24 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else kids.push(box);
       }
     }
-    if (pseudo === null) {
+    if (pseudo === null && part !== null && isTextFieldPart(part)) textFieldParts.set(self, { part, host: chain[chain.length - 1] as LinkedElement });
+    if (pseudo === null && part === null && el.tag === 'input' && isTextFieldType(el.attributes.get('type'))) {
+      // FORM-b: a single-line text field holds Chrome's UA shadow tree: the placeholder div while the value is empty and the input
+      // has a placeholder attribute (with no text for an empty one), then the inner editor div holding the value.
+      textFieldParts.set(self, { part: null, host: el });
+      const value = sanitizedTextValue(inputTypeState(el.attributes.get('type')), el.attributes.get('value'));
+      if (el.attributes.has('placeholder')) {
+        // While the value is not empty Chrome hides the placeholder, which the web output still styles (::placeholder), so it is
+        // resolved beside the tree (hiddenPlaceholderOf) for the user who clears the field.
+        const placeholder = visit(textPartElement(el, 'placeholder', shownPlaceholder('', el.attributes.get('placeholder')) ?? ''), here, self, null, 'placeholder');
+        if (value === '') kids.push(placeholder);
+        else hiddenPlaceholders.set(self, placeholder);
+      }
+      kids.push(visit(textPartElement(el, 'editor', value), here, self, null, 'editor'));
+    }
+    if (pseudo === null && (part === null || !isTextFieldPart(part))) {
       // FORM-a A4: input[type=range] holds Chrome's UA shadow tree, container > track > thumb, each a div (forms/ua-shadow.generated.ts).
-      const host = part === null ? (el.tag === 'input' && isRangeType(el.attributes.get('type')) ? el : null) : (rangeParts.get(parent as ResolvedElement) as RangePartInfo).host;
+      const host = part === null ? (el.tag === 'input' && isRangeType(el.attributes.get('type')) ? el : null) : (rangeParts.get(parent as ResolvedElement) as ControlPartInfo).host;
       const next: RangeShadowPart | null = part === null ? (host === null ? null : 'container') : part === 'container' ? 'track' : part === 'track' ? 'thumb' : null;
       if (part !== null) rangeParts.set(self, { part, host: host as LinkedElement });
       else if (host !== null) rangeParts.set(self, { part: null, host });
@@ -623,14 +640,67 @@ function computePseudoContent(props: Map<Longhand, ResolvedValue>, faults: Compi
 
 /** The parts of the UA shadow tree of input[type=range] (FORM-a A4). */
 export type RangeShadowPart = 'container' | 'track' | 'thumb';
-const PART_PSEUDO: Readonly<Record<RangeShadowPart, RangePart | null>> = { container: null, track: 'track', thumb: 'thumb' };
+/** The parts of a single-line text field's UA shadow tree (FORM-b): the placeholder and the inner editor. */
+export type TextFieldPart = 'placeholder' | 'editor';
+type ShadowPart = RangeShadowPart | TextFieldPart;
+const isTextFieldPart = (p: ShadowPart): p is TextFieldPart => p === 'placeholder' || p === 'editor';
+// No author selector reaches the inner editor in Chrome 145 (::-webkit-inner-editor is not exposed to author style).
+const PART_PSEUDO: Readonly<Record<ShadowPart, ControlPart | null>> = { container: null, track: 'track', thumb: 'thumb', placeholder: 'placeholder', editor: null };
+
+/** A text field (part null) or one of its shadow parts, with the input element. */
+export type TextFieldPartInfo = { readonly part: TextFieldPart | null; readonly host: LinkedElement };
+const textFieldParts = new WeakMap<ResolvedElement, TextFieldPartInfo>();
+
+/** A text field's placeholder part while its value is not empty: out of the tree, styled by the web output only. */
+const hiddenPlaceholders = new WeakMap<ResolvedElement, ResolvedElement>();
+
+/** The placeholder part a text field holds hidden behind its value, or undefined. */
+export function hiddenPlaceholderOf(el: ResolvedElement): ResolvedElement | undefined {
+  return hiddenPlaceholders.get(el);
+}
+
+/** The text field or text field part a resolved element is, or undefined for every other element. */
+export function textFieldPartOf(el: ResolvedElement): TextFieldPartInfo | undefined {
+  return textFieldParts.get(el);
+}
+
+/**
+ * A text field part as an element: a div at "<input address>::<part>" with one text child "<input address>::<part>:text0" (none
+ * for an empty value or placeholder), located at the input.
+ */
+function textPartElement(host: LinkedElement, part: TextFieldPart, text: string): LinkedElement {
+  const address = `${host.address}::${part}`;
+  const children: LinkedText[] = text === '' ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::${part}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  return { kind: 'element', address, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children };
+}
+
+/** The text field shadow rules' properties that no longhand models, and why each changes nothing Dragon lays out or paints. */
+// -webkit-text-security: none (no masking; a password field is refused). writing-mode and text-orientation: inherit (Dragon lays
+// out horizontal-tb only, and the input's is refused otherwise).
+const UNMODELLED_TEXT_FIELD = new Set(['-webkit-text-security', 'writing-mode', 'text-orientation']);
+
+/**
+ * A text field part's UA declarations (TEXT_FIELD_UA_SHADOW, user-agent origin, in cascade order): a normal one applies to a
+ * longhand no author declaration set, an important one wins over the author's; inherit takes the input's value.
+ */
+function applyTextFieldShadow(part: TextFieldPart, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, fromParent: (p: Longhand) => ResolvedValue): void {
+  for (const rule of TEXT_FIELD_UA_SHADOW[part]) {
+    for (const [name, text, important] of rule.declarations) {
+      if (UNMODELLED_TEXT_FIELD.has(name)) continue;
+      const p = name as Longhand;
+      if (!(LONGHANDS as readonly string[]).includes(p)) throw new Error(`the text field ${part}'s UA rule sets ${name}: ${text}, which Dragon does not model`);
+      if (!important && !defaulted.has(p)) continue;
+      props.set(p, text === 'inherit' ? { ...fromParent(p), origin: 'user-agent' } : { value: parseValueText(p, text), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
+    }
+  }
+}
 
 /** A range input (part null) or one of its shadow parts, with the input element. */
-export type RangePartInfo = { readonly part: RangeShadowPart | null; readonly host: LinkedElement };
-const rangeParts = new WeakMap<ResolvedElement, RangePartInfo>();
+export type ControlPartInfo = { readonly part: RangeShadowPart | null; readonly host: LinkedElement };
+const rangeParts = new WeakMap<ResolvedElement, ControlPartInfo>();
 
 /** The range input or shadow part a resolved element is, or undefined for every other element. */
-export function rangePartOf(el: ResolvedElement): RangePartInfo | undefined {
+export function rangePartOf(el: ResolvedElement): ControlPartInfo | undefined {
   return rangeParts.get(el);
 }
 

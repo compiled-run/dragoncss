@@ -22,11 +22,11 @@ import {
   specifiedBlockSizeWith,
   sumEdges,
 } from './box.ts';
-import { buttonContentShift, controlOf, plainBox, sliderThumbShift } from './controls.ts';
+import { buttonContentShift, controlOf, plainBox, sliderThumbShift, textEditorShift } from './controls.ts';
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
-import { layoutInline } from './inline.ts';
+import { layoutInline, metricsOf } from './inline.ts';
 import type { MarkerAlignment, MarkerBox } from './marker.ts';
 import { alignMarker, layoutMarker, markerX } from './marker.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
@@ -482,13 +482,16 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const floatEnd = a.formattingContextRoot ? floatsBottom(ctx, box, r.placed, contentWidth) : null;
   const withFloats = floatEnd === null ? flowEnd : max(flowEnd, sub(floatEnd, add(bor.top, pad.top)));
   // css-contain-2 §3.1: under size containment the content height is contain-intrinsic-height (none is 0), whatever the contents.
-  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : withFloats;
+  // FORM-b: an empty inner editor holds one empty line, its strut's (Blink gives an editable block a line when empty, for its caret).
+  const empty = control !== null && control.kind === 'text-editor' && box.children.length === 0 && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
+  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : empty !== null ? add(empty.above, empty.below) : withFloats;
   // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
   const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;
   // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
   const height = fromRatio !== null
     ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
     : fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
+  if (control !== null && control.kind === 'text-field') return layoutTextField(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
   if (control !== null && control.kind === 'button-block') {
     // block_layout_algorithm.cc:1442 AlignBlockContent: the in-flow contents, their baseline and the static positions move down.
     const shift = buttonContentShift(contentBox(height, vbp), intrinsic);
@@ -498,7 +501,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
     const shifted = (b: LU | null): LU | null => (b === null ? null : add(b, shift));
     return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline: moved, children: placed, outOfFlow, inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: shifted(r.lastBaseline), lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: shifted(r.defaultLastBaseline), defaultLastBaselineFlex: r.defaultLastBaselineFlex };
   }
-  const baseline = clampScrollBaseline(box, r.baseline, height);
+  const baseline = clampScrollBaseline(box, empty === null ? r.baseline : add(add(bor.top, pad.top), empty.above), height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
     return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
@@ -506,6 +509,25 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
   return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
+}
+
+/**
+ * FORM-b: a text field's contents after its block flow laid out its placeholder (if any) and editor, each from the content box
+ * top. Its auto content height is the editor's; the editor is centred in the content box unsafely (controls.ts), and the
+ * placeholder is moved so that its baseline meets the editor's. The field's baseline is the editor's line's, moved with it.
+ */
+function layoutTextField(box: LayoutBox, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
+  let editorId = '';
+  for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
+  const editor = flow.find((p) => p.frag.id === editorId);
+  if (editor === undefined) throw new Error(`${box.id} is a text field without an inner editor; validateLayoutInput rejects this input`);
+  const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(editor.frag.height, vbp), minMax);
+  const editorY = add(contentTop, textEditorShift(contentBox(height, vbp), editor.frag.height));
+  // The placeholder's baseline meets the editor's (Chrome 145: a 4px Ahem placeholder in a 10px editor sits 5px down, one clipped
+  // to 2px 6px down, since its clipped baseline is 2px); with no baseline on either it starts at the editor's top.
+  const placed = flow.map((p): Placed => (p === editor ? { frag: p.frag, x: p.x, y: editorY } : { frag: p.frag, x: editor.x, y: editor.frag.baseline === null || p.frag.baseline === null ? editorY : add(editorY, sub(editor.frag.baseline, p.frag.baseline)) }));
+  const baseline = editor.frag.baseline === null ? null : add(editorY, editor.frag.baseline);
+  return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
 }
 
 export type BlockLevelResult = {
@@ -576,7 +598,7 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
   // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
   // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
-  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range');
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'text-field');
   const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
   const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);

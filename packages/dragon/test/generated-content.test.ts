@@ -91,10 +91,10 @@ describe('selectors (R5)', () => {
     const { diagnostics } = parseSelectors(':is(.a::before) { width: 1px; } :not(.a:after) { width: 1px; }');
     expect(diagnostics.map((d) => d.code)).toEqual(['DRAGON_UNSUPPORTED_SELECTOR', 'DRAGON_SELECTOR_DROPPED']);
   });
-  it('the statically empty pseudo-elements parse as rules that match nothing', () => {
+  it('the statically empty pseudo-elements parse as rules that match nothing; ::placeholder styles a text field part (FORM-c)', () => {
     const { selectors, diagnostics } = parseSelectors('*, ::before, ::after, ::backdrop, ::file-selector-button { border: 0 solid; } ::placeholder, ::-webkit-datetime-edit-fields-wrapper { color: red; }');
     expect(diagnostics).toEqual([]);
-    expect(selectors.map((s) => s.pseudoElement?.kind ?? null)).toEqual([null, 'generated', 'generated', 'static-empty', 'static-empty', 'static-empty', 'static-empty']);
+    expect(selectors.map((s) => s.pseudoElement?.kind ?? null)).toEqual([null, 'generated', 'generated', 'static-empty', 'static-empty', 'part', 'static-empty']);
   });
 });
 
@@ -186,14 +186,14 @@ describe('statically empty pseudo-elements (R5)', () => {
     expect(messages(c)).toEqual([]);
     expect(addresses(c).filter((a) => a.includes('::'))).toEqual([]);
   });
-  it('a host is refused at the pseudo-element: a [popover] for ::backdrop, an input with a placeholder for ::placeholder', () => {
+  it('a host is refused at the pseudo-element: a [popover] for ::backdrop, a number input for ::-webkit-inner-spin-button', () => {
     const popover = compile(PREFLIGHT, (r) => [el(r, 'd', 'div', [], [], [attr(r, 'popover')])]);
     expect(messages(popover).filter((m) => m.startsWith('DRAGON_UNSUPPORTED_SELECTOR'))).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR null ::backdrop is accepted only when no element can host it, but d may: a \[popover\]/), expect.stringMatching(/::file-selector-button .*FORM\)$/)]);
-    const input = (css: string) => inputFor(`${FONT} ${css}`, (r) => [el(r, 'f', 'input', [], [], [attr(r, 'placeholder', 'name')])]);
-    const i = input('::placeholder { color: red; }');
+    const input = (css: string) => inputFor(`${FONT} ${css}`, (r) => [el(r, 'f', 'input', [], [], [attr(r, 'type', 'number')])]);
+    const i = input('::-webkit-inner-spin-button { color: red; }');
     const c = project().compile(i);
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_SELECTOR') as Diagnostic;
-    expect(spanTextOf(i, d)).toBe('::placeholder');
+    expect(spanTextOf(i, d)).toBe('::-webkit-inner-spin-button');
     // The planted fault staticEmptyIgnoresHost accepts it.
     expect(project({ ...NO_FAULTS, staticEmptyIgnoresHost: true }).compile(i).diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_SELECTOR')).toEqual([]);
   });

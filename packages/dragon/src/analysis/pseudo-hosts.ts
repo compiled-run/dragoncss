@@ -1,5 +1,5 @@
-// GEN-a (notes/T151-gen-spec.md R5): the statically empty pseudo-elements (::backdrop, ::file-selector-button, ::placeholder and
-// the input parts) are accepted as rules that match no box only when no element of the compiled tree can host one. This walks
+// GEN-a (notes/T151-gen-spec.md R5): the statically empty pseudo-elements (::backdrop, ::file-selector-button and the input
+// parts; ::placeholder styles a text field's placeholder part since FORM-c) are accepted as rules that match no box only when no element of the compiled tree can host one. This walks
 // every template node, both arms of every branch and every slot, and refuses each such selector when a host may exist.
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { SelectorPseudoElement } from '../css/selectors.ts';
@@ -7,7 +7,7 @@ import type { Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { AttributeBinding, Diagnostic, TreeNode } from '../types.ts';
 
-/** Input types whose UA shadow tree holds a part a statically empty pseudo-element selects (or a placeholder). */
+/** Input types whose UA shadow tree holds a part a statically empty pseudo-element selects. */
 const HOST_INPUT_TYPES: ReadonlySet<string> = new Set(['file', 'date', 'time', 'datetime-local', 'month', 'week', 'search', 'number']);
 
 /** The values an attribute may take in some reachable state; null: absent in some state. */
@@ -22,7 +22,6 @@ function hostReason(tag: string, attributes: readonly AttributeBinding[]): strin
     return a !== undefined && valuesOf(a).some((v) => v !== null);
   };
   if (present('popover')) return 'a [popover] element renders in the top layer with a ::backdrop';
-  if ((tag === 'input' || tag === 'textarea') && present('placeholder')) return `<${tag}> with a placeholder attribute has a ::placeholder`;
   if (tag === 'input') {
     const type = attr('type');
     const types = type === undefined ? [] : valuesOf(type).filter((v): v is string => v !== null).map((v) => v.toLowerCase());
