@@ -16,7 +16,7 @@
 import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
 import type { TextMeasurer } from './text.ts';
 import type { LU } from './units.ts';
-import { clampNegativeToZero, divInt, doubleMul, float32, floatMul, fromCssPx, fromDouble, sub, toPx, ZERO } from './units.ts';
+import { ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatMul, fromCssPx, fromDouble, sub, toPx, ZERO } from './units.ts';
 
 /** A range's default track length in CSS px: Chrome 145 lays out an auto-width range with a 129 px content box (FORM-0 boxes). */
 export const SLIDER_DEFAULT_TRACK_LENGTH = 129;
@@ -75,7 +75,7 @@ export function buttonContentShift(contentBoxBlockSize: LU, contentsBlockSize: L
 /** FORM-b: a text field's default content inline size, size x the float advance of 0, rounded up to a whole px. */
 export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-field' }>): LU {
   const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
-  return fromCssPx(Math.ceil(floatMul(zero, float32(c.size))));
+  return ceilFloatToWholePx(floatMul(zero, float32(c.size)));
 }
 
 /** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */
