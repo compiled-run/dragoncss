@@ -481,7 +481,13 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       // has a placeholder attribute (with no text for an empty one), then the inner editor div holding the value.
       textFieldParts.set(self, { part: null, host: el });
       const value = sanitizedTextValue(inputTypeState(el.attributes.get('type')), el.attributes.get('value'));
-      if (value === '' && el.attributes.has('placeholder')) kids.push(visit(textPartElement(el, 'placeholder', shownPlaceholder(value, el.attributes.get('placeholder')) ?? ''), here, self, null, 'placeholder'));
+      if (el.attributes.has('placeholder')) {
+        // While the value is not empty Chrome hides the placeholder, which the web output still styles (::placeholder), so it is
+        // resolved beside the tree (hiddenPlaceholderOf) for the user who clears the field.
+        const placeholder = visit(textPartElement(el, 'placeholder', shownPlaceholder('', el.attributes.get('placeholder')) ?? ''), here, self, null, 'placeholder');
+        if (value === '') kids.push(placeholder);
+        else hiddenPlaceholders.set(self, placeholder);
+      }
       kids.push(visit(textPartElement(el, 'editor', value), here, self, null, 'editor'));
     }
     if (pseudo === null && (part === null || !isTextFieldPart(part))) {
@@ -644,6 +650,14 @@ const PART_PSEUDO: Readonly<Record<ShadowPart, ControlPart | null>> = { containe
 /** A text field (part null) or one of its shadow parts, with the input element. */
 export type TextFieldPartInfo = { readonly part: TextFieldPart | null; readonly host: LinkedElement };
 const textFieldParts = new WeakMap<ResolvedElement, TextFieldPartInfo>();
+
+/** A text field's placeholder part while its value is not empty: out of the tree, styled by the web output only. */
+const hiddenPlaceholders = new WeakMap<ResolvedElement, ResolvedElement>();
+
+/** The placeholder part a text field holds hidden behind its value, or undefined. */
+export function hiddenPlaceholderOf(el: ResolvedElement): ResolvedElement | undefined {
+  return hiddenPlaceholders.get(el);
+}
 
 /** The text field or text field part a resolved element is, or undefined for every other element. */
 export function textFieldPartOf(el: ResolvedElement): TextFieldPartInfo | undefined {

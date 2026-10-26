@@ -1638,16 +1638,21 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
     refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
   }
   refuseGridItem(el, parentDisplay, refuse);
+  const float = el.props.get('float') as ResolvedValue;
+  if (keywordOf(float) !== 'none') {
+    refuse(float, 'float', `float: ${valueToString(float.value)} on <input> ${address} is not supported on a text field: the engine lays out only an in-flow field`, `Float a wrapper element and keep <input> ${address} in its flow.`);
+  }
   const family = el.props.get('font-family') as ResolvedValue;
   if (family.origin === 'user-agent') {
     refuse(family, 'font', `<input> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <input> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
-  // Chrome sizes an auto-width field by the primary face's OS/2 average character width unless that is invalid for the face
-  // (Blink's HasValidAvgCharWidth, in an LGPL file), and by the advance of 0 otherwise. The engine uses the advance of 0, which is
-  // proven only for Ahem, where both are 1em.
-  const width = el.props.get('width') as ResolvedValue;
-  if (keywordOf(width) === 'auto' && valueToString(family.value).split(',')[0]?.trim().replace(/^["']|["']$/g, '') !== 'Ahem') {
-    refuse(family, 'width-font', `<input> ${address} has an auto width in font-family: ${valueToString(family.value)}: Chrome sizes it by the face's average character width, which Dragon proves only for Ahem`, `Set a width on <input> ${address}, or draw it in Ahem.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
+  // Chrome sizes a field's intrinsic inline size by the primary face's OS/2 average character width unless that is invalid for
+  // the face (Blink's HasValidAvgCharWidth, in an LGPL file), and by the advance of 0 otherwise. The engine uses the advance of 0,
+  // proven only for Ahem, where both are 1em; any width, min-width, flex or shrink-to-fit sizing may read it, so a field in
+  // another face is refused natively whatever its width.
+  const first = valueToString(family.value).split(',')[0]?.trim().replace(/^["']|["']$/g, '').toLowerCase();
+  if (family.origin !== 'user-agent' && first !== 'ahem') {
+    refuse(family, 'width-font', `<input> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text field by the face's average character width, which Dragon proves only for Ahem`, `Draw <input> ${address} in Ahem, or target web only, until real faces are measured for text fields.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (!el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<input> ${address} is an editable text field: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <input> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
