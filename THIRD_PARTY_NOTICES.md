@@ -34,6 +34,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/css/properties/longhands/longhands_custom.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/properties/shorthands/shorthands_custom.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/property_registration.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/css/resolver/style_cascade.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/ua_counter_style_map.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/html/list_item_ordinal.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/absolute_utils.cc`: Copyright 2016 The Chromium Authors
@@ -83,6 +84,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/box_painter_base.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/paint/decoration_line_painter.cc`: Copyright 2014 The Chromium Authors
+- `third_party/blink/renderer/core/paint/nine_piece_image_grid.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/nine_piece_image_painter.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/outline_painter.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/paint_property_tree_builder.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/core/paint/svg_object_painter.cc`: Copyright 2018 The Chromium Authors
@@ -199,6 +202,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/ports/SkScalerContext_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/ports/SkTypeface_mac_ct.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/shaders/gradients/SkGradientBaseShader.cpp`: Copyright 2022 Google LLC
+- `third_party/skia/src/shaders/SkPictureShader.cpp`: Copyright 2014 Google Inc.
 - `third_party/skia/src/utils/SkDashPath.cpp`: Copyright 2014 Google Inc.
 
 ```
@@ -249,6 +253,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/platform/fonts/shaping/harfbuzz_shaper.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/geometry/layout_unit.h`: Copyright (c) 2012, Google Inc. All rights reserved.
+- `third_party/blink/renderer/platform/graphics/generated_image.cc`: Copyright (C) 2012 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/styled_stroke_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/text/character.h`: Copyright (C) 2014 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/wtf/decimal.cc`: Copyright (C) 2012 Google Inc. All rights reserved.

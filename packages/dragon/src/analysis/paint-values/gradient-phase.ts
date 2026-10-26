@@ -51,7 +51,7 @@ const px = (el: ResolvedElement, p: string): number | null => {
 const borderUpper = (b: number): number => (b > 0 ? Math.max(b, 1) : 0);
 
 /** The UA's thin, medium and thick border widths, as CSS px text (UaDataset.borderWidthKeywords). */
-type WidthKeywords = { readonly [keyword: string]: string };
+export type WidthKeywords = { readonly [keyword: string]: string };
 
 /**
  * A border side's written width in CSS px (0 when its style is none or hidden; thin, medium and thick from the UA's table), or null
@@ -132,7 +132,7 @@ function contentLower(el: ResolvedElement, axis: Axis, ancestors: readonly Resol
  * item's flex-shrink is 0, when a wrapping container's line fits the item alone, or when every item of a single-line container
  * fits together; any other case is unknown.
  */
-function usedLower(el: ResolvedElement, axis: Axis, ancestors: readonly ResolvedElement[], kw: WidthKeywords): number | null {
+export function usedLower(el: ResolvedElement, axis: Axis, ancestors: readonly ResolvedElement[], kw: WidthKeywords): number | null {
   const display = keyword(el, 'display') ?? '';
   if (!SIZED_DISPLAYS.has(display) || !horizontal(el)) return null;
   const spec = specified(el, axis);

@@ -164,7 +164,7 @@ public func layout_layoutWithInflow(_ given: LayoutInput, _ measurer: TextMeasur
     let offset: RelativeOffset = try position_relativeOffsetWith(root, icbWidth, HeightBasis_definite(S.s_definite, icbHeight), icbDirection, ctx.faults)
     // ts: packages/layout/src/layout.ts:93
     if (root.style.position == S.s_sticky) {
-      try unsupported_unsupported(S.s_sticky, root.id, S.s657, jsConcat(S.s1091, root.id, S.s49))
+      try unsupported_unsupported(S.s_sticky, root.id, S.s657, jsConcat(S.s1093, root.id, S.s49))
     }
     let sticky: JsStringMap<Sticky> = JsStringMap<Sticky>()
     try layout_collectSticky(root, nil, nil, sticky)
@@ -241,15 +241,15 @@ public func layout_collectSticky(_ b: LayoutBox, _ scroller: JsString?, _ within
         let spec: JsString = S.s657
         // ts: packages/layout/src/layout.ts:135
         if (scroller != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1092, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s76, jsUnwrap(scroller), S.s176))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1094, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s76, jsUnwrap(scroller), S.s176))
         }
         // ts: packages/layout/src/layout.ts:136
         if (within != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1092, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s77, jsUnwrap(within)))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1094, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s77, jsUnwrap(within)))
         }
         // ts: packages/layout/src/layout.ts:137
         if ((((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_block) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_flex)) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_grid)) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1092, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s72, b.id))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1094, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s72, b.id))
         }
         let s: LayoutStyle = b.style
         // ts: packages/layout/src/layout.ts:139

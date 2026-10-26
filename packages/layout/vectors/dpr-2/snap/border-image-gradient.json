@@ -1,0 +1,348 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 25216
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 25216
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 52224,
+   "height": 25216
+  },
+  {
+   "id": "probe",
+   "parent": "row",
+   "x": 512,
+   "y": 512,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "slice",
+   "parent": "row",
+   "x": 8960,
+   "y": 512,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "fill",
+   "parent": "row",
+   "x": 17408,
+   "y": 512,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "widths",
+   "parent": "row",
+   "x": 25856,
+   "y": 512,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "auto",
+   "parent": "row",
+   "x": 34304,
+   "y": 512,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "numbers",
+   "parent": "row",
+   "x": 42752,
+   "y": 512,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "overlap",
+   "parent": "row",
+   "x": 512,
+   "y": 7168,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "big",
+   "parent": "row",
+   "x": 8960,
+   "y": 7168,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "styleless",
+   "parent": "row",
+   "x": 17408,
+   "y": 7168,
+   "width": 5632,
+   "height": 3840
+  },
+  {
+   "id": "dashed",
+   "parent": "row",
+   "x": 23808,
+   "y": 7168,
+   "width": 7168,
+   "height": 5376
+  },
+  {
+   "id": "uneven",
+   "parent": "row",
+   "x": 31744,
+   "y": 7168,
+   "width": 7552,
+   "height": 6016
+  },
+  {
+   "id": "frac",
+   "parent": "row",
+   "x": 40064,
+   "y": 7168,
+   "width": 6950,
+   "height": 5209
+  },
+  {
+   "id": "longhands",
+   "parent": "row",
+   "x": 512,
+   "y": 13952,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "unset",
+   "parent": "row",
+   "x": 8960,
+   "y": 13952,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "parent",
+   "parent": "row",
+   "x": 17408,
+   "y": 13952,
+   "width": 7680,
+   "height": 5888
+  },
+  {
+   "id": "kid",
+   "parent": "parent",
+   "x": 1024,
+   "y": 1024,
+   "width": 3584,
+   "height": 2304
+  },
+  {
+   "id": "wide",
+   "parent": "row",
+   "x": 512,
+   "y": 20608,
+   "width": 50176,
+   "height": 4096
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 394,
+   "width": 800,
+   "height": 394
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 394,
+   "width": 800,
+   "height": 394
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 816,
+   "bottom": 394,
+   "width": 816,
+   "height": 394
+  },
+  {
+   "id": "probe",
+   "left": 8,
+   "top": 8,
+   "right": 128,
+   "bottom": 100,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "slice",
+   "left": 140,
+   "top": 8,
+   "right": 260,
+   "bottom": 100,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "fill",
+   "left": 272,
+   "top": 8,
+   "right": 392,
+   "bottom": 100,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "widths",
+   "left": 404,
+   "top": 8,
+   "right": 524,
+   "bottom": 100,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "auto",
+   "left": 536,
+   "top": 8,
+   "right": 656,
+   "bottom": 100,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "numbers",
+   "left": 668,
+   "top": 8,
+   "right": 788,
+   "bottom": 100,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "overlap",
+   "left": 8,
+   "top": 112,
+   "right": 128,
+   "bottom": 204,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "big",
+   "left": 140,
+   "top": 112,
+   "right": 260,
+   "bottom": 204,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "styleless",
+   "left": 272,
+   "top": 112,
+   "right": 360,
+   "bottom": 172,
+   "width": 88,
+   "height": 60
+  },
+  {
+   "id": "dashed",
+   "left": 372,
+   "top": 112,
+   "right": 484,
+   "bottom": 196,
+   "width": 112,
+   "height": 84
+  },
+  {
+   "id": "uneven",
+   "left": 496,
+   "top": 112,
+   "right": 614,
+   "bottom": 206,
+   "width": 118,
+   "height": 94
+  },
+  {
+   "id": "frac",
+   "left": 626,
+   "top": 112,
+   "right": 735,
+   "bottom": 193,
+   "width": 109,
+   "height": 81
+  },
+  {
+   "id": "longhands",
+   "left": 8,
+   "top": 218,
+   "right": 128,
+   "bottom": 310,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "unset",
+   "left": 140,
+   "top": 218,
+   "right": 260,
+   "bottom": 310,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "parent",
+   "left": 272,
+   "top": 218,
+   "right": 392,
+   "bottom": 310,
+   "width": 120,
+   "height": 92
+  },
+  {
+   "id": "kid",
+   "left": 288,
+   "top": 234,
+   "right": 344,
+   "bottom": 270,
+   "width": 56,
+   "height": 36
+  },
+  {
+   "id": "wide",
+   "left": 8,
+   "top": 322,
+   "right": 792,
+   "bottom": 386,
+   "width": 784,
+   "height": 64
+  }
+ ]
+}

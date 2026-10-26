@@ -3178,7 +3178,7 @@ public func grid_itemBaseline(_ ctx: Ctx, _ box: LayoutBox, _ frag: Frag) throws
 public func grid_lastBaselineOf(_ item: GridItemData, _ r: GridItemLayout) throws -> Double? {
   // ts: packages/layout/src/grid.ts:1939
   if (r.lastBaselineFlex != S.s0) {
-    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s643, jsConcat(S.s1083, r.lastBaselineFlex, S.s178, item.box.id, S.s8))
+    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s643, jsConcat(S.s1085, r.lastBaselineFlex, S.s178, item.box.id, S.s8))
   }
   let b: Double? = r.lastBaseline
   // ts: packages/layout/src/grid.ts:1941

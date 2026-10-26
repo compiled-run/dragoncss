@@ -125,7 +125,7 @@ public func units_fromFloatRound(_ px: Double) throws -> Double {
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:85
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s1123, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1125, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -170,11 +170,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:127
   do {
-    let _a364 = values
-    var _i364 = 0
-    while _i364 < _a364.items.count {
-      let v: Double = _a364.items[_i364]
-      _i364 += 1
+    let _a365 = values
+    var _i365 = 0
+    while _i365 < _a365.items.count {
+      let v: Double = _a365.items[_i365]
+      _i365 += 1
       try total = units_add(total, v)
     }
   }
@@ -754,11 +754,11 @@ public func units_effectiveZoom(_ deviceZoom: Double, _ zooms: JsArray<Double>) 
   var z: Double = deviceZoom
   // ts: packages/layout/src/units.ts:677
   do {
-    let _a365 = zooms
-    var _i365 = 0
-    while _i365 < _a365.items.count {
-      let own: Double = _a365.items[_i365]
-      _i365 += 1
+    let _a366 = zooms
+    var _i366 = 0
+    while _i366 < _a366.items.count {
+      let own: Double = _a366.items[_i366]
+      _i366 += 1
       let zoomed: Double = jsFround((z * jsFround(own)))
       z = ((zoomed < 0.000001) ? 0.000001 : ((zoomed > 1000000.0) ? 1000000.0 : zoomed))
     }

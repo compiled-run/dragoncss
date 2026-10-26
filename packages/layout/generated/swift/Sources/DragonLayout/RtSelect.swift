@@ -4,7 +4,7 @@ public final class SelectError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s1003, detail))
+    super.init(message: jsConcat(S.s1004, detail))
   }
 }
 
@@ -228,7 +228,7 @@ public func rtSelect_rectOf(_ s: SelectState, _ id: JsString) throws -> LayoutRe
   let r: LayoutRect? = s.abs.get(id)
   // ts: packages/layout/src/rt-select.ts:155
   if (r == nil) {
-    throw try SelectError(jsConcat(S.s1077, id))
+    throw try SelectError(jsConcat(S.s1079, id))
   }
   return try jsUnwrap(r)
 }
@@ -248,11 +248,11 @@ public func rtSelect_indexZoomed(_ m: JsStringMap<LayoutBox>, _ b: LayoutBox) th
   _ = m.set(b.id, b)
   // ts: packages/layout/src/rt-select.ts:167
   do {
-    let _a299 = b.children
-    var _i299 = 0
-    while _i299 < _a299.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a299.items[_i299]
-      _i299 += 1
+    let _a300 = b.children
+    var _i300 = 0
+    while _i300 < _a300.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a300.items[_i300]
+      _i300 += 1
       // ts: packages/layout/src/rt-select.ts:167
       if (c.kind == S.s_box) {
         try rtSelect_indexZoomed(m, (c as! LayoutBox))
@@ -265,11 +265,11 @@ public func rtSelect_indexZoomed(_ m: JsStringMap<LayoutBox>, _ b: LayoutBox) th
 public func rtSelect_listed(_ ids: JsArray<JsString>, _ id: JsString) throws -> Bool {
   // ts: packages/layout/src/rt-select.ts:171
   do {
-    let _a300 = ids
-    var _i300 = 0
-    while _i300 < _a300.items.count {
-      let p: JsString = _a300.items[_i300]
-      _i300 += 1
+    let _a301 = ids
+    var _i301 = 0
+    while _i301 < _a301.items.count {
+      let p: JsString = _a301.items[_i301]
+      _i301 += 1
       // ts: packages/layout/src/rt-select.ts:171
       if (p == id) {
         return true
@@ -327,11 +327,11 @@ public func rtSelect_lineBlock(_ s: SelectState, _ b: LayoutBox, _ parent: Doubl
   let first: Double = jsLength(s.nodes)
   // ts: packages/layout/src/rt-select.ts:207
   do {
-    let _a301 = zb.children
-    var _i301 = 0
-    while _i301 < _a301.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a301.items[_i301]
-      _i301 += 1
+    let _a302 = zb.children
+    var _i302 = 0
+    while _i302 < _a302.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a302.items[_i302]
+      _i302 += 1
       // ts: packages/layout/src/rt-select.ts:208
       if (c.kind != S.s_text) {
         continue
@@ -342,19 +342,19 @@ public func rtSelect_lineBlock(_ s: SelectState, _ b: LayoutBox, _ parent: Doubl
   }
   // ts: packages/layout/src/rt-select.ts:212
   do {
-    let _a302 = try inline_placeLines(s.ctx, zb, width)
-    var _i302 = 0
-    while _i302 < _a302.items.count {
-      let line: PlacedLine = _a302.items[_i302]
-      _i302 += 1
+    let _a303 = try inline_placeLines(s.ctx, zb, width)
+    var _i303 = 0
+    while _i303 < _a303.items.count {
+      let line: PlacedLine = _a303.items[_i303]
+      _i303 += 1
       let pieces: JsArray<SelectPiece> = JsArray<SelectPiece>([])
       // ts: packages/layout/src/rt-select.ts:214
       do {
-        let _a303 = line.pieces
-        var _i303 = 0
-        while _i303 < _a303.items.count {
-          let p: LinePiece = _a303.items[_i303]
-          _i303 += 1
+        let _a304 = line.pieces
+        var _i304 = 0
+        while _i304 < _a304.items.count {
+          let p: LinePiece = _a304.items[_i304]
+          _i304 += 1
           let leaf: TextLeaf? = jsAt(zLeaves, p.leaf)
           // ts: packages/layout/src/rt-select.ts:216
           if (leaf == nil) {
@@ -422,11 +422,11 @@ public func rtSelect_blockOf(_ s: SelectState, _ b: LayoutBox, _ parent: Double)
   var leaves: Bool = false
   // ts: packages/layout/src/rt-select.ts:250
   do {
-    let _a304 = b.children
-    var _i304 = 0
-    while _i304 < _a304.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a304.items[_i304]
-      _i304 += 1
+    let _a305 = b.children
+    var _i305 = 0
+    while _i305 < _a305.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a305.items[_i305]
+      _i305 += 1
       // ts: packages/layout/src/rt-select.ts:250
       if (c.kind == S.s_text) {
         leaves = true
@@ -441,11 +441,11 @@ public func rtSelect_blockOf(_ s: SelectState, _ b: LayoutBox, _ parent: Double)
   } else {
     // ts: packages/layout/src/rt-select.ts:256
     do {
-      let _a305 = b.children
-      var _i305 = 0
-      while _i305 < _a305.items.count {
-        let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a305.items[_i305]
-        _i305 += 1
+      let _a306 = b.children
+      var _i306 = 0
+      while _i306 < _a306.items.count {
+        let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a306.items[_i306]
+        _i306 += 1
         // ts: packages/layout/src/rt-select.ts:256
         if (c.kind == S.s_box) {
           _ = try jsPush(blk.children, rtSelect_blockOf(s, (c as! LayoutBox), within))
@@ -496,11 +496,11 @@ public func rtSelect_boxRefusal(_ b: LayoutBox) throws -> JsString? {
   }
   // ts: packages/layout/src/rt-select.ts:274
   do {
-    let _a306 = b.children
-    var _i306 = 0
-    while _i306 < _a306.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a306.items[_i306]
-      _i306 += 1
+    let _a307 = b.children
+    var _i307 = 0
+    while _i307 < _a307.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a307.items[_i307]
+      _i307 += 1
       // ts: packages/layout/src/rt-select.ts:275
       if (c.kind == S.s_replaced) {
         return jsConcat((c as! ReplacedLeaf).id, S.s87)
@@ -549,7 +549,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   let out: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layout(input, measurer)
   // ts: packages/layout/src/rt-select.ts:300
   if (out.kind != S.s_ok) {
-    throw try SelectError(jsConcat(S.s1078, (out as! LayoutResult_unsupported).unsupported.code, S.s20, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s185))
+    throw try SelectError(jsConcat(S.s1080, (out as! LayoutResult_unsupported).unsupported.code, S.s20, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s185))
   }
   var zoomed: LayoutInput
   // ts: packages/layout/src/rt-select.ts:302
@@ -558,7 +558,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   } catch let e {
     // ts: packages/layout/src/rt-select.ts:305
     if (e is UnsupportedSignal) {
-      throw try SelectError(jsConcat(S.s1078, (e as! UnsupportedSignal).unsupported.code, S.s20, (e as! UnsupportedSignal).unsupported.nodeId, S.s185))
+      throw try SelectError(jsConcat(S.s1080, (e as! UnsupportedSignal).unsupported.code, S.s20, (e as! UnsupportedSignal).unsupported.nodeId, S.s185))
     }
     throw e
   }
@@ -569,22 +569,22 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   let nodes: JsArray<SelectNode> = JsArray<SelectNode>([])
   // ts: packages/layout/src/rt-select.ts:313
   do {
-    let _a307 = s.nodes
-    var _i307 = 0
-    while _i307 < _a307.items.count {
-      let n: NodeDraft = _a307.items[_i307]
-      _i307 += 1
+    let _a308 = s.nodes
+    var _i308 = 0
+    while _i308 < _a308.items.count {
+      let n: NodeDraft = _a308.items[_i308]
+      _i308 += 1
       _ = jsPush(nodes, SelectNode(n.kind, n.id, n.parent, n.end, n.block, n.paragraph, n.selectable, n.text, n.from, n.to))
     }
   }
   let blocks: JsArray<SelectBlock> = JsArray<SelectBlock>([])
   // ts: packages/layout/src/rt-select.ts:315
   do {
-    let _a308 = s.blocks
-    var _i308 = 0
-    while _i308 < _a308.items.count {
-      let b: BlockDraft = _a308.items[_i308]
-      _i308 += 1
+    let _a309 = s.blocks
+    var _i309 = 0
+    while _i309 < _a309.items.count {
+      let b: BlockDraft = _a309.items[_i309]
+      _i309 += 1
       _ = jsPush(blocks, SelectBlock(b.node, b.left, b.right, b.top, b.bottom, b.children, b.firstLine, b.lastLine))
     }
   }
@@ -615,11 +615,11 @@ public func rtSelect_lineEnd(_ line: SelectLine) throws -> Caret {
 public func rtSelect_caretOnLine(_ line: SelectLine, _ x: Double) throws -> Caret {
   // ts: packages/layout/src/rt-select.ts:336
   do {
-    let _a309 = line.pieces
-    var _i309 = 0
-    while _i309 < _a309.items.count {
-      let p: SelectPiece = _a309.items[_i309]
-      _i309 += 1
+    let _a310 = line.pieces
+    var _i310 = 0
+    while _i310 < _a310.items.count {
+      let p: SelectPiece = _a310.items[_i310]
+      _i310 += 1
       // ts: packages/layout/src/rt-select.ts:337
       do {
         var k: Double = 0.0
@@ -677,11 +677,11 @@ public func rtSelect_caretAt(_ t: SelectTable, _ x: Double, _ y: Double) throws 
       var next: Double = try jsUnwrap(jsAt(blk.children, (jsLength(blk.children) - 1.0)))
       // ts: packages/layout/src/rt-select.ts:363
       do {
-        let _a310 = blk.children
-        var _i310 = 0
-        while _i310 < _a310.items.count {
-          let c: Double = _a310.items[_i310]
-          _i310 += 1
+        let _a311 = blk.children
+        var _i311 = 0
+        while _i311 < _a311.items.count {
+          let c: Double = _a311.items[_i311]
+          _i311 += 1
           // ts: packages/layout/src/rt-select.ts:364
           if try (y < jsUnwrap(jsAt(t.blocks, c)).bottom) {
             next = c
@@ -758,11 +758,11 @@ public func rtSelect_hitElement(_ t: SelectTable, _ x: Double, _ y: Double) thro
       var next: Double = -1.0
       // ts: packages/layout/src/rt-select.ts:401
       do {
-        let _a311 = try jsUnwrap(jsAt(t.blocks, b)).children
-        var _i311 = 0
-        while _i311 < _a311.items.count {
-          let c: Double = _a311.items[_i311]
-          _i311 += 1
+        let _a312 = try jsUnwrap(jsAt(t.blocks, b)).children
+        var _i312 = 0
+        while _i312 < _a312.items.count {
+          let c: Double = _a312.items[_i312]
+          _i312 += 1
           let k: SelectBlock = try jsUnwrap(jsAt(t.blocks, c))
           // ts: packages/layout/src/rt-select.ts:403
           if ((((x >= k.left) && (x < k.right)) && (y >= k.top)) && (y < k.bottom)) {
@@ -829,18 +829,18 @@ public func rtSelect_pxToLu(_ v: Double) throws -> Double {
 public func rtSelect_caretRect(_ t: SelectTable, _ c: Caret) throws -> CaretRect {
   // ts: packages/layout/src/rt-select.ts:448
   do {
-    let _a312 = t.lines
-    var _i312 = 0
-    while _i312 < _a312.items.count {
-      let line: SelectLine = _a312.items[_i312]
-      _i312 += 1
+    let _a313 = t.lines
+    var _i313 = 0
+    while _i313 < _a313.items.count {
+      let line: SelectLine = _a313.items[_i313]
+      _i313 += 1
       // ts: packages/layout/src/rt-select.ts:449
       do {
-        let _a313 = line.pieces
-        var _i313 = 0
-        while _i313 < _a313.items.count {
-          let p: SelectPiece = _a313.items[_i313]
-          _i313 += 1
+        let _a314 = line.pieces
+        var _i314 = 0
+        while _i314 < _a314.items.count {
+          let p: SelectPiece = _a314.items[_i314]
+          _i314 += 1
           // ts: packages/layout/src/rt-select.ts:450
           if (((p.node == c.node) && (c.offset >= p.start)) && (c.offset <= p.end)) {
             return try CaretRect(jsUnwrap(jsAt(p.carets, (c.offset - p.start))), p.textTop, p.textHeight)
@@ -863,11 +863,11 @@ public func rtSelect_codePoints(_ text: JsString, _ from: Double, _ to: Double) 
   var k: Double = 0.0
   // ts: packages/layout/src/rt-select.ts:464
   do {
-    let _a314 = jsCodePoints(text)
-    var _i314 = 0
-    while _i314 < _a314.items.count {
-      let ch: JsString = _a314.items[_i314]
-      _i314 += 1
+    let _a315 = jsCodePoints(text)
+    var _i315 = 0
+    while _i315 < _a315.items.count {
+      let ch: JsString = _a315.items[_i315]
+      _i315 += 1
       // ts: packages/layout/src/rt-select.ts:465
       if ((k >= from) && (k < to)) {
         out += ch
@@ -993,11 +993,11 @@ public func rtSelect_codePointCount(_ text: JsString) throws -> Double {
   var n: Double = 0.0
   // ts: packages/layout/src/rt-select.ts:553
   do {
-    let _a315 = jsCodePoints(text)
-    var _i315 = 0
-    while _i315 < _a315.items.count {
-      let ch: JsString = _a315.items[_i315]
-      _i315 += 1
+    let _a316 = jsCodePoints(text)
+    var _i316 = 0
+    while _i316 < _a316.items.count {
+      let ch: JsString = _a316.items[_i316]
+      _i316 += 1
       // ts: packages/layout/src/rt-select.ts:553
       if try (jsUnwrap(jsCodePointAt0(ch)) >= 0.0) {
         n += 1.0
