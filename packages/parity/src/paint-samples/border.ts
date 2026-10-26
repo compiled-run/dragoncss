@@ -37,7 +37,7 @@ export function borderImageIds(p: NativeProgram): Set<string> {
  * box's unsnapped border box, device-px borders (as box.ts resolves them) and the write give BorderImagePaint, as
  * dragonAfterLayoutBorderImage does on the device (layer origin moved to the root scroll origin, gradient.ts rootScrollX).
  */
-export function borderImagePlans(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, borders: ReadonlyMap<string, readonly [number, number, number, number]>, faults: GradientFaults = NO_GRADIENT_FAULTS): { readonly id: string; readonly plan: BackgroundPlan }[] {
+export function borderImagePlans(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, borders: ReadonlyMap<string, readonly [number, number, number, number]>, faults: GradientFaults = NO_GRADIENT_FAULTS, planted = false): { readonly id: string; readonly plan: BackgroundPlan }[] {
   const writes = p.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'border-image').map((w) => ({ id: n.id, w: w as unknown as BorderImageWrite })));
   if (writes.length === 0) return [];
   const m = measurerFor(REFERENCE_PLATFORM);
@@ -65,8 +65,8 @@ export function borderImagePlans(p: NativeProgram, viewport: { readonly width: n
     };
     const plan = planBorderImage(paint, faults);
     // The checks refuse every border image the plan does not model, so one here is a compiler fault (a planted fault may leave
-    // the plan unmodelled on purpose).
-    if (!plan.modelled && !Object.values(faults).some((v) => v === true)) throw new Error(`${id}: the border image plan at ${dpr}x is not modelled`);
+    // the plan unmodelled on purpose, and so may a planted reading of the writes, planted).
+    if (!plan.modelled && !planted && !Object.values(faults).some((v) => v === true)) throw new Error(`${id}: the border image plan at ${dpr}x is not modelled`);
     return { id, plan };
   });
 }

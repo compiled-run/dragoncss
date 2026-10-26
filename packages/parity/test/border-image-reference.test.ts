@@ -60,8 +60,14 @@ function compareAll(faults: GradientFaults, reading: Reading = 'none'): { tally:
       // The judged pixels are the unplanted reference's own (the samples' rule): a planted reading is judged where Chrome shows the image.
       const exact = new Map(borderImagePlans(base, viewport, dpr, borderDevicePx(engine, programInput(base, viewport, dpr))).map((x) => [x.id, x.plan] as const));
       const sample = caseBoxes(base, viewport, dpr);
-      for (const { id, plan } of borderImagePlans(program, viewport, dpr, borderDevicePx(engine, programInput(program, viewport, dpr)), faults)) {
+      for (const { id, plan } of borderImagePlans(program, viewport, dpr, borderDevicePx(engine, programInput(program, viewport, dpr)), faults, reading !== 'none')) {
         boxes++;
+        // A planted reading whose plan is unmodelled throws on the device (paint-gradient.ts planBorderImage): that box is caught.
+        if (reading !== 'none' && !plan.modelled) {
+          tally.differing++;
+          if (tally.first === null) tally.first = `${n.case.id}@${dpr} ${id}: the planted plan is unmodelled (the device throws)`;
+          continue;
+        }
         const own = exact.get(id);
         const box = sample.find((b) => b.id === id);
         if (own === undefined || box === undefined) throw new Error(`${n.case.id}: ${id} has no unplanted plan or sample box`);
