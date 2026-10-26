@@ -1,0 +1,20 @@
+{
+  "case": "app-row-ellipsis",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 217,
+  "gridSha256": "490d3e155c3650d742cfacae2c2d2b34ebba9809c42ebe20d576b79738023fb6",
+  "ids": [
+    "body",
+    "html",
+    "label",
+    "row",
+    "value"
+  ],
+  "runs": [[2,11],[3,5],[4,6],[0,9],[2,11],[3,5],[4,6],[0,9],[2,11],[3,5],[4,6],[0,9],[2,11],[3,5],[4,6],[0,9],[1,93]]
+}

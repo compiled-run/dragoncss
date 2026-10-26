@@ -1,0 +1,16 @@
+{
+  "case": "app-abspos-beside-text",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","data":"Home","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"Inbox","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r1:text0","data":"AB","lines":1,"units":[0,0],"blank":[]},
+    {"id":"r2:text0","data":"AB","lines":1,"units":[0,0],"blank":[]},
+    {"id":"r3:text0","data":"AB","lines":1,"units":[0,0],"blank":[]},
+    {"id":"r4:text0","data":"AB","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c1:text0","data":"AB","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c2:text0","data":"AB CD","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"t2::after:text0","data":"N","lines":1,"units":[0],"blank":[]}
+  ]
+}

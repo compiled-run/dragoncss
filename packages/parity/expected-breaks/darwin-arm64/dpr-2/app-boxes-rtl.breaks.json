@@ -1,0 +1,15 @@
+{
+  "case": "app-boxes-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"row:text0","data":"Hi","lines":1,"units":[0,0],"blank":[]},
+    {"id":"l1:text0","data":"Hi","lines":1,"units":[0,0],"blank":[]},
+    {"id":"l2:text0","data":"Hi","lines":1,"units":[0,0],"blank":[]},
+    {"id":"foot:text0","data":"Have one ","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"foot:text1","data":" or ","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"link:text0","data":"Sign in","lines":1,"units":[0,0,0,0,0,0,0],"blank":[]},
+    {"id":"b:text0","data":"now","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"t3::after:text0","data":"N","lines":1,"units":[0],"blank":[]}
+  ]
+}
