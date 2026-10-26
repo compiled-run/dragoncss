@@ -6,6 +6,8 @@ import type { Compiled, Diagnostic } from 'dragon';
 import * as dragon from 'dragon';
 import { ahemMeasurer, layout as engineLayout } from '@dragon/layout';
 import { fixtureToInput } from '../src/fixture-reader.ts';
+import { withFontMapAssets } from '../src/fixture-groups/fonts.ts';
+import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
 
 const page = (css: string, body: string, base: string): string => `<!DOCTYPE html>
@@ -26,9 +28,10 @@ ${body}
 /** Every field here devolves to CSS by its author border, except where a test passes its own base rule. */
 const BASE = 'input { display: block; font: inherit; appearance: none; margin: 0; border: 2px solid #036; padding: 1px 2px; }';
 
-function compile(id: string, css: string, body: string, base = BASE): Compiled<'ios' | 'android' | 'web'> {
-  const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem' });
-  return project.compile(fixtureToInput(id, page(css, body, base)));
+function compile(id: string, css: string, body: string, base = BASE, fonts = false): Compiled<'ios' | 'android' | 'web'> {
+  const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, ...(fonts ? { fonts: FONT_REFERENCE_MAP } : {}) }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem' });
+  const input = fixtureToInput(id, page(css, body, base));
+  return project.compile(fonts ? withFontMapAssets(input, FONT_REFERENCE_MAP) : input);
 }
 
 const errors = (c: Compiled<string>): string[] => c.diagnostics.filter((d: Diagnostic) => d.severity === 'error').map((d) => `${d.target ?? 'all'} ${d.code} ${d.message}`);
@@ -77,5 +80,7 @@ describe('FORM-b text fields', () => {
     expect(errors(compile('tf-theme', '', '<input data-dragon-id="t" readonly="">', 'input { display: block; font: inherit; margin: 0; }'))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <input> t with appearance: auto and no author background or border/));
     expect(errors(compile('tf-password', '', '<input data-dragon-id="t" readonly="" type="password" value="XX">'))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <input type=password> t is not supported/)]);
     expect(errors(compile('tf-inline', 'input { display: inline-block; }', '<div data-dragon-id="d"><input data-dragon-id="t" readonly=""></div>'))).toContainEqual(expect.stringMatching(/display: inline-block on <input> t makes it an inline-level control/));
+    expect(errors(compile('tf-font', 'input { font-family: Lato; }', '<input data-dragon-id="t" readonly="">', BASE, true))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input> t has an auto width in font-family: Lato:/));
+    expect(errors(compile('tf-font-width', 'input { font-family: Lato; width: 40px; }', '<input data-dragon-id="t" readonly="">', BASE, true)).filter((e) => e.includes('auto width'))).toEqual([]);
   });
 });

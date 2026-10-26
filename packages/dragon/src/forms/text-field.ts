@@ -34,7 +34,7 @@ export const TEXT_FIELD_UA_SHADOW: { readonly placeholder: readonly ShadowRule[]
   editor: [
     { selectors: ['div'], declarations: [['display', 'block', false]] },
     {
-      selectors: ['(CreateInnerEditorStyle)'],
+      selectors: ['(CustomStyleForLayoutObject)'],
       declarations: [
         ['unicode-bidi', 'inherit', true],
         ['user-select', 'text', true],
