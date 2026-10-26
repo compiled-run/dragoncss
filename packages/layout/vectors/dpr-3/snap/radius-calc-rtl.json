@@ -1,0 +1,365 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 34176
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 34176
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 34176
+  },
+  {
+   "id": "pill",
+   "parent": "row",
+   "x": 59136,
+   "y": 768,
+   "width": 16896,
+   "height": 7680
+  },
+  {
+   "id": "pill-tall",
+   "parent": "row",
+   "x": 52224,
+   "y": 768,
+   "width": 5760,
+   "height": 13440
+  },
+  {
+   "id": "pill-border",
+   "parent": "row",
+   "x": 32640,
+   "y": 768,
+   "width": 18432,
+   "height": 8832
+  },
+  {
+   "id": "half",
+   "parent": "row",
+   "x": 19968,
+   "y": 768,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "third",
+   "parent": "row",
+   "x": 7776,
+   "y": 768,
+   "width": 11040,
+   "height": 6393
+  },
+  {
+   "id": "var",
+   "parent": "row",
+   "x": 64512,
+   "y": 15360,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "slash",
+   "parent": "row",
+   "x": 51840,
+   "y": 15360,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "em",
+   "parent": "row",
+   "x": 39168,
+   "y": 15360,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "cmp",
+   "parent": "row",
+   "x": 26496,
+   "y": 15360,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "cmp2",
+   "parent": "row",
+   "x": 13824,
+   "y": 15360,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "cmp3",
+   "parent": "row",
+   "x": 1152,
+   "y": 15360,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "neg",
+   "parent": "row",
+   "x": 64512,
+   "y": 24192,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "nan",
+   "parent": "row",
+   "x": 51840,
+   "y": 24192,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "logical",
+   "parent": "row",
+   "x": 39168,
+   "y": 24192,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "clip",
+   "parent": "row",
+   "x": 24960,
+   "y": 24192,
+   "width": 13056,
+   "height": 9216
+  },
+  {
+   "id": "kid",
+   "parent": "clip",
+   "x": -1152,
+   "y": 768,
+   "width": 13440,
+   "height": 9600
+  },
+  {
+   "id": "inherit",
+   "parent": "row",
+   "x": 12288,
+   "y": 24192,
+   "width": 11520,
+   "height": 7680
+  },
+  {
+   "id": "in",
+   "parent": "inherit",
+   "x": 3072,
+   "y": 768,
+   "width": 7680,
+   "height": 4608
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 534,
+   "width": 1200,
+   "height": 534
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 534,
+   "width": 1200,
+   "height": 534
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 534,
+   "width": 1200,
+   "height": 534
+  },
+  {
+   "id": "pill",
+   "left": 924,
+   "top": 12,
+   "right": 1188,
+   "bottom": 132,
+   "width": 264,
+   "height": 120
+  },
+  {
+   "id": "pill-tall",
+   "left": 816,
+   "top": 12,
+   "right": 906,
+   "bottom": 222,
+   "width": 90,
+   "height": 210
+  },
+  {
+   "id": "pill-border",
+   "left": 510,
+   "top": 12,
+   "right": 798,
+   "bottom": 150,
+   "width": 288,
+   "height": 138
+  },
+  {
+   "id": "half",
+   "left": 312,
+   "top": 12,
+   "right": 492,
+   "bottom": 132,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "third",
+   "left": 122,
+   "top": 12,
+   "right": 294,
+   "bottom": 112,
+   "width": 172,
+   "height": 100
+  },
+  {
+   "id": "var",
+   "left": 1008,
+   "top": 240,
+   "right": 1188,
+   "bottom": 360,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "slash",
+   "left": 810,
+   "top": 240,
+   "right": 990,
+   "bottom": 360,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "em",
+   "left": 612,
+   "top": 240,
+   "right": 792,
+   "bottom": 360,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "cmp",
+   "left": 414,
+   "top": 240,
+   "right": 594,
+   "bottom": 360,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "cmp2",
+   "left": 216,
+   "top": 240,
+   "right": 396,
+   "bottom": 360,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "cmp3",
+   "left": 18,
+   "top": 240,
+   "right": 198,
+   "bottom": 360,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "neg",
+   "left": 1008,
+   "top": 378,
+   "right": 1188,
+   "bottom": 498,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "nan",
+   "left": 810,
+   "top": 378,
+   "right": 990,
+   "bottom": 498,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "logical",
+   "left": 612,
+   "top": 378,
+   "right": 792,
+   "bottom": 498,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "clip",
+   "left": 390,
+   "top": 378,
+   "right": 594,
+   "bottom": 522,
+   "width": 204,
+   "height": 144
+  },
+  {
+   "id": "kid",
+   "left": 372,
+   "top": 390,
+   "right": 582,
+   "bottom": 540,
+   "width": 210,
+   "height": 150
+  },
+  {
+   "id": "inherit",
+   "left": 192,
+   "top": 378,
+   "right": 372,
+   "bottom": 498,
+   "width": 180,
+   "height": 120
+  },
+  {
+   "id": "in",
+   "left": 240,
+   "top": 390,
+   "right": 360,
+   "bottom": 462,
+   "width": 120,
+   "height": 72
+  }
+ ]
+}

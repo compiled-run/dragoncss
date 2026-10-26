@@ -1055,6 +1055,8 @@
     "radius-double-rtl": "border-radius on base, wide, thin, three, circle, ellipse, corners, clip: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-double-web": "border-radius on alpha: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-double-web-rtl": "border-radius on alpha: hit testing through rounded corners is not modelled yet (PNT1)",
+    "radius-calc": "border-radius on pill, pill-tall, pill-border, half, third, var, slash, em, cmp, cmp2, cmp3, neg, nan, logical, clip, inherit, in: hit testing through rounded corners is not modelled yet (PNT1)",
+    "radius-calc-rtl": "border-radius on pill, pill-tall, pill-border, half, third, var, slash, em, cmp, cmp2, cmp3, neg, nan, logical, clip, inherit, in: hit testing through rounded corners is not modelled yet (PNT1)",
     "replaced-pixelated": "border-radius on i5: hit testing through rounded corners is not modelled yet (PNT1)",
     "replaced-pixelated-rtl": "border-radius on i5: hit testing through rounded corners is not modelled yet (PNT1)",
     "resize-values": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
