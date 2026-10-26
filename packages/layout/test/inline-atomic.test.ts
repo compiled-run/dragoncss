@@ -325,6 +325,21 @@ describe('INL2a refusals and validation', () => {
     const wrapped = at(Math.ceil(lead.measure.width / 64) + 2);
     expect(wrapped.x).toBe(0);
     expect(wrapped.y).toBeGreaterThan(0);
+    // HandleAtomicInline: an atomic after an overflowing one starts a line (RemoveLastItem), unless a negative margin brings the
+    // position back under the width.
+    const rects = (kids: (InlineChild | LayoutBox)[], width: number): Map<string, LayoutRect> => {
+      const r = layoutWithFaults(env(box('root', {}, [box('c', { width: px(width) }, kids, { font: lato, lineHeight: { kind: 'normal' } })])), m, NO_ENGINE_FAULTS);
+      if (r.kind !== 'ok') throw new Error(`${r.unsupported.code}: ${r.unsupported.detail}`);
+      return absoluteRects(r.boxes);
+    };
+    const own = rects([ib('a', { width: px(20) }), ib('b'), ib('d'), text('u', ' x', { font: lato })], 10);
+    expect(['a', 'b', 'd'].map((id) => (own.get(id) as LayoutRect).x)).toEqual([0, 0, 0]);
+    expect(new Set(['a', 'b', 'd'].map((id) => (own.get(id) as LayoutRect).y)).size).toBe(3);
+    const pulled = rects([ib('w', { width: px(150) }), ib('b', { marginLeft: px(-200) }), text('u', ' x', { font: lato })], 100);
+    expect((pulled.get('b') as LayoutRect).y).toBe((pulled.get('w') as LayoutRect).y);
+    // " x" stays on that line too: the box is as tall as without the pulled-back atomic.
+    const alone = rects([ib('w', { width: px(150) }), text('u', ' x', { font: lato })], 1000);
+    expect((pulled.get('c') as LayoutRect).height).toBe((alone.get('c') as LayoutRect).height);
   });
   it('in rtl refuses an atomic inline without a letter on both sides in its paragraph, and lays out one between letters or alone', () => {
     const rtl = (kids: (InlineChild | LayoutBox)[]): string => codeOf(box('root', { direction: 'rtl' }, [box('c', { direction: 'rtl' }, kids, { font: ahemFont(10), lineHeight: { kind: 'normal' } })]));

@@ -1207,7 +1207,7 @@ export type BreakItem =
   | { readonly kind: 'open'; readonly offset: number }
   | { readonly kind: 'close'; readonly offset: number; readonly spaceBefore: boolean; readonly spaceAfter: boolean }
   | { readonly kind: 'br'; readonly offset: number }
-  | { readonly kind: 'atomic'; readonly offset: number; readonly width: LU };
+  | { readonly kind: 'atomic'; readonly offset: number; readonly width: LU; readonly margins: LU };
 
 /** One InlineItemResult: the item, its offsets, its inline size (with the hyphen), its view and whether a line may break after it. */
 export type BreakResult = {
@@ -1538,8 +1538,8 @@ function handleOverflow(b: LineBuild): void {
 
 /**
  * LineBreaker::HandleAtomicInline: an item that is not trailable ends a trailing line that may break after its last result; one that
- * starts past the end lets HandleOverflow find the break first; then its margin box is a result, breakable after
- * (line_breaker.cc:2997-3118).
+ * starts past the end lets HandleOverflow find the break first, and when the line still overflows before it, the line breaks before it
+ * unless its negative margins bring the position back; then its margin box is a result, breakable after (line_breaker.cc:2997-3118).
  */
 function handleAtomic(b: LineBuild): void {
   const it = b.items[b.curItem] as BreakItem;
@@ -1549,11 +1549,22 @@ function handleAtomic(b: LineBuild): void {
     b.state = 'done';
     return;
   }
-  if (b.state === 'continue' && b.position > b.toFit) {
+  // width is the margin box's; margins its inline margins (ComputeLineMarginsForVisualContainer's InlineSum).
+  let ignoreOverflowIfNegativeMargin = false;
+  const remaining = b.toFit - b.position;
+  if (b.state === 'continue' && remaining < 0) {
     const index = b.curItem;
     b.overflowed = false;
     handleOverflow(b);
     if (!b.overflowed || b.curItem !== index) return;
+    ignoreOverflowIfNegativeMargin = true;
+  }
+  if (ignoreOverflowIfNegativeMargin) {
+    // The margins do not put the position back (RemoveLastItem): the line breaks before this item.
+    if (it.margins >= remaining) return;
+    // A negative margin puts the position back on this once overflowing line.
+    b.state = 'continue';
+    b.overflowed = false;
   }
   removeHyphen(b);
   // CanBreakAfterAtomicInline: always where the line wraps (an image only outside the sticky-images quirk, which standards mode lacks).

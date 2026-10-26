@@ -1516,7 +1516,7 @@ function graphemeAt(ifc: Ifc, i: number): boolean {
   return false;
 }
 
-function shapedItemsOf(ctx: Ctx, ifc: Ifc, adv: readonly LU[]): ShapedItems {
+function shapedItemsOf(ctx: Ctx, ifc: Ifc, adv: readonly LU[], margins: readonly LU[]): ShapedItems {
   const items: BreakItem[] = [];
   const firstItem: number[] = [];
   // TXT2-a: each item's break-character opportunities (grapheme cluster starts inside it, and whether one follows its end).
@@ -1558,7 +1558,7 @@ function shapedItemsOf(ctx: Ctx, ifc: Ifc, adv: readonly LU[]): ShapedItems {
     }
     if (it.kind === 'open') items.push({ kind: 'open', offset });
     else if (it.kind === 'atomic') {
-      items.push({ kind: 'atomic', offset, width: adv[it.atom] as LU });
+      items.push({ kind: 'atomic', offset, width: adv[it.atom] as LU, margins: margins[it.atom] as LU });
       offset++;
     } else if (it.kind === 'close') {
       const before = prevCharBefore(ifc, i);
@@ -1585,14 +1585,15 @@ function itemIndexOf(ifc: Ifc, s: ShapedItems, index: number, offset: number): n
 // css-text-3 §5 for real-font text: Blink's LineBreaker over the shaped leaves (shaping.ts breakItemLines), with its fit test
 // (one LayoutUnit of epsilon; planted fault fitWithoutEpsilon drops it) and ShapeLine's reshaping at line edges. A line's text
 // results keep their inline sizes, which place the pieces.
-function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, indent: LU): Line[] {
+/** adv is each atomic inline's margin-box advance, margins its inline margins' sum. */
+function breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], margins: readonly LU[], available: LU, indent: LU): Line[] {
   const firstLeaf = ifc.leaves[0];
   let slack = ZERO;
   if (ctx.faults.breakOffByOne && firstLeaf !== undefined) {
     const glyph = ctx.measurer.measure('X', fontOf(firstLeaf.font));
     if (glyph.ok) slack = glyph.measure.width;
   }
-  const s = shapedItemsOf(ctx, ifc, adv);
+  const s = shapedItemsOf(ctx, ifc, adv, margins);
   const wrap = firstLeaf === undefined || firstLeaf.textWrapMode === 'wrap';
   const anywhere: AnywhereBreak = { anywhere: ifc.anywhere, always: ifc.anywhere && ctx.faults.breakAnywhereAlways, graphemes: s.graphemes, graphemeAtEnd: s.graphemeAtEnd };
   const r = breakItemLines(s.items, add(available, slack), wrap, needsAccurateEnd(ctx, box), !ctx.faults.fitWithoutEpsilon, ifc.mode === 'preserve', indent, ctx.faults.indentEveryLine, ctx.faults.indentAfterBr, anywhere);
@@ -1911,7 +1912,7 @@ function layoutAtomics(ctx: Ctx, ifc: Ifc, available: LU): AtomicLayout[] {
 function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly AtomicLayout[], available: LU): AtomicLine[] {
   const adv = atoms.map((a) => a.advance);
   const indent = textIndentOf(ctx, box, ifc, available);
-  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, adv, available, indent) : breakLines(ctx, ifc, adv, available, indent);
+  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, adv, atoms.map((a) => add(a.marginLeft, a.marginRight)), available, indent) : breakLines(ctx, ifc, adv, available, indent);
   const rtl = directionOf(ctx, box) === 'rtl';
   checkClampContext(ctx, box, ifc, atoms.length);
   const out: AtomicLine[] = [];
@@ -2413,7 +2414,8 @@ const NEARLY_MAX_RAW = 2147483646;
 function shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: 'min' | 'max', adv: readonly LU[]): LU {
   let widest = ZERO;
   if (kind === 'max') {
-    const lines = breakShapedLines(ctx, box, ifc, adv, fromRaw(NEARLY_MAX_RAW), ZERO);
+    // No line overflows at this width, so no atomic inline's margins are read (HandleAtomicInline reads them only after an overflow).
+    const lines = breakShapedLines(ctx, box, ifc, adv, adv.map(() => ZERO), fromRaw(NEARLY_MAX_RAW), ZERO);
     // At max-content preserved spaces at the end of a line count, as on the Ahem path (intrinsicEndOf): LineBreaker at an unlimited
     // width keeps pre and break-spaces spaces, and pre-wrap's trailing spaces fit there, so none hangs.
     for (let n = 0; n < lines.length; n++) {
