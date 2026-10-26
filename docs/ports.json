@@ -2006,10 +2006,12 @@
         { "lines": "2516-2587", "symbol": "HitTestLineBoxFragment", "source": "located" },
         { "lines": "2711-2769", "symbol": "HitTestBlockChildren", "source": "located" },
         { "lines": "2796-2855", "symbol": "HitTestItemsChildren", "source": "located" },
-        { "lines": "2986-2995", "symbol": "HitTestClippedOutByBorder", "source": "located" }
+        { "lines": "2986-2995", "symbol": "HitTestClippedOutByBorder", "source": "located" },
+        { "lines": "884-889", "symbol": "BoxFragmentPainter::PaintObject", "source": "cited" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" },
+        { "file": "packages/dragon/src/analysis/paint-values/outline.ts", "symbol": "checkOutlinePlacement", "use": "reference" }
       ]
     },
     {
@@ -2169,10 +2171,15 @@
         { "lines": "2744-2770", "symbol": "AdjustRoundedClipForOverflowClipMargin", "source": "cited" },
         { "lines": "2772-2815", "symbol": "UpdateInnerBorderRadiusClip", "source": "cited" },
         { "lines": "2381-2405", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateCssClip", "source": "located" },
-        { "lines": "2426-2527", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateClipPathClip", "source": "located" }
+        { "lines": "2426-2527", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateClipPathClip", "source": "located" },
+        { "lines": "2591-2632", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateLocalBorderBoxContext", "source": "cited" },
+        { "lines": "2857-2948", "symbol": "FragmentPaintPropertyTreeBuilder::UpdateOverflowClip", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/analysis/paint-values/clip.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/paint-values/outline.ts", "symbol": "checkOutlinePlacement", "use": "port" },
+        { "file": "packages/dragon/src/emit/paint/outline.ts", "symbol": null, "use": "port" },
+        { "file": "packages/parity/test/outline-model.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/lower/paint/clip.ts", "symbol": null, "use": "reference" },
         { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" }

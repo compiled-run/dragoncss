@@ -7,9 +7,12 @@
 // currentcolor, a 1px groove that paints solid), in both environment directions. outline-web holds the translucent dashed and ridge
 // outlines: native refuses them (their transparency layer composites unlike Skia), so the lanes compile it on native as a lane-only
 // case (project.ts), it proves web rows only, and the device pixel lanes skip those outlines (pixel-reference.ts devicePoints). A
-// system colour and a viewport unit are refused. The native-only refusals (auto, a rounded outline in a style other than solid or
-// double, a translucent dotted, dashed or 3D one, inline boxes, an outline under an overflow clip or in a case with a positioned or
-// transformed box) are proven by packages/dragon/test/paint-outline.test.ts, since a reject fixture blocks the web output too.
+// system colour and a viewport unit are refused. outline-clip holds outlines under one overflow hidden or clip box (square, with a
+// border, two levels down, on a box that clips its own overflow), whose ancestors' clip Blink applies to the outline and its own clip
+// does not; outline-clip-rounded holds them under rounded clips whose radii are whole device px at every device DPR. The native-only
+// refusals (auto, a rounded outline in a style other than solid or double, a translucent dotted, dashed or 3D one, inline boxes, an
+// outline under two clips, a scroller or a rounded clip off the device px grid, or in a case with a positioned or transformed box)
+// are proven by packages/dragon/test/paint-outline.test.ts, since a reject fixture blocks the web output too.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
@@ -21,6 +24,8 @@ export const OUTLINE: readonly FixtureSpec[] = [
   both('outline-dashed'),
   both('outline-3d'),
   both('outline-web'),
+  both('outline-clip'),
+  both('outline-clip-rounded'),
   reject('reject-outline-color', 'DRAGON_UNSUPPORTED_VALUE', 'Highlight', 'outline-color: Highlight is unsupported:'),
   reject('reject-outline-viewport', 'DRAGON_UNSUPPORTED_VALUE', '2vw', 'outline-offset: 2vw is unsupported: an outline length in a viewport unit'),
 ];

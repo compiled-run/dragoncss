@@ -6,7 +6,9 @@
 // every pixel is crisp: each drawing operation covers it wholly or not at all with SAMPLE_INSET_DEVICE_PX to spare along the side
 // (dash ends and dot rims are anti-aliased); across the side, the band's edges are whole device px. A base colour point within
 // SAMPLE_INSET_DEVICE_PX of a ring edge is suppressed, as is a base scanline that comes that near one: the ring's edge, not the
-// point's own box, decides its colour there.
+// point's own box, decides its colour there. An outline under an overflow clip (its nearest clipping ancestor's padding box, rounded
+// by that box's padding-edge radii) drops each point, and each whole scanline, that comes within SAMPLE_INSET_DEVICE_PX of the clip's
+// edges or rounded corners: the clip's edge decides the colour there. Points wholly outside the clip stay, and show what is under it.
 import type { BorderOp, DashFaults } from '@dragon/layout';
 import { NO_DASH_FAULTS, outlineNeedsSidePainter, outlineOffsetPx, outlinePaintOps, outlineRings, outlineWidthPx } from '@dragon/layout';
 import type { SampleBox, SamplePoint } from '../samples.ts';
@@ -139,13 +141,40 @@ export function boxRings(ctx: PaintSampleContext, b: SampleBox, shift = 0): Ring
   return out;
 }
 
-type Outlined = { readonly box: SampleBox; readonly rings: readonly Ring[]; readonly ops: readonly BorderOp[] | null };
+/** The clip an outlined box's outline is drawn under: its nearest clipping ancestor's padding box and padding-edge arcs. */
+type OutlineClip = { readonly rect: readonly [number, number, number, number]; readonly arcs: readonly Arc[] };
+
+/** The overflow clip of a box's nearest clipping ancestor in the program (Blink's local border-box clip), or null. */
+export function outlineClipOf(ctx: PaintSampleContext, b: SampleBox): OutlineClip | null {
+  const nodes = new Map(ctx.program.nodes.map((n) => [n.id, n]));
+  for (let id = nodes.get(b.id)?.parent ?? null; id !== null; id = nodes.get(id)?.parent ?? null) {
+    const n = nodes.get(id);
+    if (n === undefined) throw new Error(`${b.id}: ancestor ${id} is not in the program`);
+    if (!n.clips) continue;
+    const c = ctx.boxes.find((x) => x.id === id);
+    if (c === undefined) throw new Error(`${b.id}: the clipping ancestor ${id} has no sample box`);
+    const il = c.left + c.border.left;
+    const it = c.top + c.border.top;
+    const ir = Math.max(il, c.right - c.border.right);
+    const ib = Math.max(it, c.bottom - c.border.bottom);
+    const radii = boxRadii(ctx.program, c, ctx.dpr);
+    return { rect: [il, it, ir, ib], arcs: radii === null ? [] : rectArcs(il, it, ir, ib, radii.slice(8, 16)) };
+  }
+  return null;
+}
+
+/** Whether a pixel comes within the sample inset of a clip's edges or rounded corners. */
+function nearClip(clip: OutlineClip | null, x: number, y: number): boolean {
+  return clip !== null && (nearRect(x, y, clip.rect, SAMPLE_INSET_DEVICE_PX) || clip.arcs.some((a) => nearArc(a, x, y)));
+}
+
+type Outlined = { readonly box: SampleBox; readonly rings: readonly Ring[]; readonly ops: readonly BorderOp[] | null; readonly clip: OutlineClip | null };
 const cache = new WeakMap<PaintSampleContext, readonly Outlined[]>();
 
 function outlined(ctx: PaintSampleContext): readonly Outlined[] {
   const hit = cache.get(ctx);
   if (hit !== undefined) return hit;
-  const out = ctx.boxes.map((box) => ({ box, rings: boxRings(ctx, box), ops: boxOutlineOps(ctx, box) })).filter((o) => o.rings.length > 0);
+  const out = ctx.boxes.map((box) => ({ box, rings: boxRings(ctx, box), ops: boxOutlineOps(ctx, box) })).filter((o) => o.rings.length > 0).map((o) => ({ ...o, clip: outlineClipOf(ctx, o.box) }));
   cache.set(ctx, out);
   return out;
 }
@@ -182,7 +211,7 @@ export const OUTLINE_SAMPLES: PaintSamples = {
     const inset = SAMPLE_INSET_DEVICE_PX;
     const inImage = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < ctx.size.width && y < ctx.size.height;
     const out: SamplePoint[] = [];
-    for (const { box, rings, ops } of outlined(ctx)) {
+    for (const { box, rings, ops, clip } of outlined(ctx)) {
       rings.forEach((r, k) => {
         const [ol, ot, or, ob] = r.outer;
         const [il, it, ir, ib] = r.inner;
@@ -201,7 +230,7 @@ export const OUTLINE_SAMPLES: PaintSamples = {
             const across = inward > 0 ? outerEdge + Math.floor((band - 1) / 2) : outerEdge - 1 - Math.floor((band - 1) / 2);
             const along = alongs.find((a) => {
               const [x, y] = horizontal ? [a, across] : [across, a];
-              return inImage(x, y) && crisp([[x, y]]);
+              return inImage(x, y) && crisp([[x, y]]) && !nearClip(clip, x, y);
             });
             if (along !== undefined) {
               const [x, y] = horizontal ? [along, across] : [across, along];
@@ -211,7 +240,7 @@ export const OUTLINE_SAMPLES: PaintSamples = {
           if (band >= inset + 1) {
             const first = inward > 0 ? outerEdge - inset - 1 : outerEdge + inset;
             const lineAt = (along: number): (readonly [number, number])[] => Array.from({ length: 2 * inset + 2 }, (_, j) => (horizontal ? [along, first + inward * j] : [first + inward * j, along]) as [number, number]);
-            const along = alongs.find((a) => lineAt(a).every(([x, y]) => inImage(x, y)) && crisp(lineAt(a)));
+            const along = alongs.find((a) => lineAt(a).every(([x, y]) => inImage(x, y) && !nearClip(clip, x, y)) && crisp(lineAt(a)));
             if (along !== undefined) for (const [x, y] of lineAt(along)) out.push({ x, y, rule: `edge:${box.id}:outline-${k}-${side}` });
           }
         }
