@@ -272,12 +272,16 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
       .map(([name, value]) => ({ name, value: [{ when: always, value }], origin: origin(el.start, el.openEnd) }));
     const children: TreeNode[] = [];
     let k = 0;
+    let blank = 0;
     for (const c of el.children) {
       if ('tag' in c) {
         if (c.tag === 'head') continue;
         children.push(convert(c));
       } else if (!isBlankText(c.text)) {
         children.push({ kind: 'text', id: `${id}-text${k++}`, text: c.text, origin: origin(c.start, c.end) });
+      } else if (c.text !== '') {
+        // Whitespace-only text stays in the tree, as in Chrome's DOM; the compiler's white space processing decides its box.
+        children.push({ kind: 'text', id: `${id}-space${blank++}`, text: c.text, origin: origin(c.start, c.end) });
       }
     }
     const names = classAttr === undefined ? [] : classAttr.split(/\s+/).filter((c) => c !== '');

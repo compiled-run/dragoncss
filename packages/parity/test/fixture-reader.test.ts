@@ -211,6 +211,27 @@ const BASE_DIGESTS: Readonly<Record<string, string>> = {
 
 const digest = (value: unknown): string => createHash('sha256').update(canonicalJson(value), 'utf8').digest('hex');
 
+/**
+ * The input without the whitespace-only text nodes the reader keeps since WS-INL (BASE dropped them): every other byte is BASE's.
+ * Throws on a dropped node that is not whitespace-only or not named <element>-space<k>, so only those nodes are excused.
+ */
+function withoutBlankText(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutBlankText);
+  if (value === null || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value)) {
+    out[k] = k === 'children' && Array.isArray(v)
+      ? v.filter((c: { kind?: unknown; id?: unknown; text?: unknown }) => {
+        if (c.kind !== 'text' || typeof c.text !== 'string' || !/^[ \t\n\r\f]+$/.test(c.text)) return true;
+        if (typeof c.id !== 'string' || !/-space\d+$/.test(c.id)) throw new Error(`whitespace-only text ${String(c.id)} is not named <element>-space<k>`);
+        return false;
+      }).map(withoutBlankText)
+      : withoutBlankText(v);
+  }
+  return out;
+}
+const baseDigest = (value: unknown): string => digest(withoutBlankText(value));
+
 // BASE fixtures a later package removed on purpose, with their BASE text, so the reader is still checked on them.
 // reject-background-important: casc-logical supports !important and replaced it with the layout fixture background-important.
 // reject-overflow-body, reject-overflow-scroll, reject-context-root-overflow: OVFL supports overflow on body and html (viewport
@@ -252,7 +273,9 @@ const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
 };
 
 describe('fixture reader identity', () => {
-  it('every fixture present at BASE reads to the byte-identical FrontEndResult', () => {
+  // WS-INL retargets the pin: the reader now keeps whitespace-only text (as Chrome's DOM does), so BASE's bytes are compared
+  // with those nodes removed, and the test below checks the nodes themselves.
+  it('every fixture present at BASE reads to the byte-identical FrontEndResult, apart from its whitespace-only text', () => {
     expect(Object.keys(BASE_DIGESTS)).toHaveLength(195);
     for (const [id, expected] of Object.entries(BASE_DIGESTS)) {
       const spec = FIXTURES.find((f) => f.id === id);
@@ -260,18 +283,19 @@ describe('fixture reader identity', () => {
       if (removed !== undefined) {
         expect(spec, `${id} is listed as removed`).toBeUndefined();
         expect(existsSync(new URL(`../fixtures/${id}.html`, import.meta.url)), `${id} is listed as removed`).toBe(false);
-        expect(digest(fixtureToInput(id, removed)), id).toBe(expected);
+        expect(baseDigest(fixtureToInput(id, removed)), id).toBe(expected);
         continue;
       }
       if (spec === undefined) throw new Error(`BASE fixture ${id} is no longer registered`);
       const retargeted = RETARGETED_AFTER_BASE[id];
       if (retargeted !== undefined) {
         expect(readHtmlFixture(id).html, `${id} is listed as retargeted`).not.toBe(retargeted);
-        expect(digest(fixtureToInput(id, retargeted)), id).toBe(expected);
+        expect(baseDigest(fixtureToInput(id, retargeted)), id).toBe(expected);
         continue;
       }
-      const input = spec.format === 'html' ? readHtmlFixture(id).input : readTreeFixture(id);
-      expect(digest(input), id).toBe(expected);
+      // A tree fixture's whitespace text was always in its tree; only the HTML reader changed.
+      if (spec.format === 'html') expect(baseDigest(readHtmlFixture(id).input), id).toBe(expected);
+      else expect(digest(readTreeFixture(id)), id).toBe(expected);
     }
   });
 
@@ -297,6 +321,16 @@ describe('fixture reader identity', () => {
 });
 
 const page = (head: string, body: string): string => `<!DOCTYPE html>\n<html data-dragon-id="html"><head>${head}</head><body data-dragon-id="body">${body}</body></html>\n`;
+
+describe('whitespace-only text', () => {
+  it('is kept in tree order as <element>-space<k>, numbered apart from the other text', () => {
+    const html = page('<style>.a{}</style>', '<div data-dragon-id="d"><span data-dragon-id="s">a</span> <b data-dragon-id="b">b</b>\n\t<i data-dragon-id="i">c</i> tail</div>');
+    type N = { readonly kind: string; readonly id: string; readonly text?: string; readonly children?: readonly N[] };
+    const root = fixtureToInput('blank', html).tree?.components[0]?.root[0] as unknown as N;
+    const div = root.children?.find((c) => c.id === 'body')?.children?.find((c) => c.id === 'd');
+    expect((div?.children ?? []).map((c) => (c.kind === 'text' ? `${c.id}=${JSON.stringify(c.text)}` : c.id))).toEqual(['s', 'd-space0=" "', 'b', 'd-space1="\\n\\t"', 'i', 'd-text0=" tail"']);
+  });
+});
 
 describe('HTML void elements', () => {
   it('are read without an end tag and with an immediate explicit one', () => {

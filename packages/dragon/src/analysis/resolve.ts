@@ -70,6 +70,8 @@ export type ResolvedText = {
 };
 
 const WHITE_SPACE = /[ \t\n\r\f]/;
+/** Whitespace-only text (HTML ASCII whitespace). */
+const BLANK_TEXT = /^[ \t\n\r\f]*$/;
 const ZWSP = '\u200b';
 
 /**
@@ -515,14 +517,22 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
       modes = [];
       transforms = [];
     };
-    const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>): void => {
+    // Blink Text::TextLayoutObjectIsNeeded (CanHaveWhitespaceChildren): whitespace-only text placed directly in a flex or grid
+    // container generates no box in any white-space mode, except in a <button>.
+    const selfDisplay = displayOf(self);
+    const dropsBlank = self.element.tag !== 'button' && ['flex', 'inline-flex', 'grid', 'inline-grid'].includes(selfDisplay);
+    const gather = (items: readonly (ResolvedElement | LinkedText)[], owner: ReadonlyMap<Longhand, ResolvedValue>, direct: boolean): void => {
       for (const kid of items) {
+        if (kid.kind === 'text' && direct && dropsBlank && BLANK_TEXT.test(kid.text)) {
+          collapsed.set(kid, '');
+          continue;
+        }
         if (kid.kind === 'text') {
           run.push(kid);
           modes.push(collapseModeOf(owner));
           transforms.push({ kind: 'text', node: kid, transform: textTransformOf(owner) });
         } else if (displayOf(kid) === 'none') continue;
-        else if (displayOf(kid) === 'contents' && pendingInline.has(kid)) gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
+        else if (displayOf(kid) === 'contents' && pendingInline.has(kid)) gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props, direct);
         else if (isInlineBox(kid)) {
           if (kid.element.tag === 'br') {
             run.push(null);
@@ -532,7 +542,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
           // Planted fault generatedTextCollapsedAlone: a generated box's text collapses as an inline formatting context of its own.
           const alone = faults.generatedTextCollapsedAlone && generated.has(kid);
           if (alone) flush();
-          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props);
+          gather(pendingInline.get(kid) as readonly (ResolvedElement | LinkedText)[], kid.props, false);
           if (alone) flush();
         } else if (isAtomicInline(kid)) {
           // Planted fault atomicCollapsesAsLineEnd: the atomic inline ends the context, so the white space around it goes.
@@ -549,7 +559,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         }
       }
     };
-    gather(kids, props);
+    gather(kids, props, true);
     flush();
     const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
       for (const kid of items) {

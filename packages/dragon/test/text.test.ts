@@ -81,6 +81,18 @@ describe('MF4: whitespace-only text never has an empty address', () => {
     const between = tree((r) => [text(r, 't0', 'XX'), text(r, 's0', '   '), text(r, 't1', 'YY')]);
     expect(summary(find(lowered(between), 'a'))).toBe('a(element)[a:text0="XX" a:space0=" " a:text1="YY"]');
   });
+  it('whitespace-only text directly in a flex or grid container generates no box, even preserved (Blink CanHaveWhitespaceChildren)', () => {
+    for (const display of ['flex', 'grid']) {
+      const input = inputFor(`${FONT} .c { display: ${display}; white-space: pre; } .i { width: 10px; height: 10px; }`, (r) => [div(r, 'c', ['c'], [text(r, 's0', '\n  '), div(r, 'i', ['i']), text(r, 's1', '\n  '), div(r, 'j', ['i']), text(r, 's2', '\n')])]);
+      const c = derive().compile(input);
+      expect(c.diagnostics.map((d) => d.message), display).toEqual([]);
+      expect(summary(find(lowered(input), 'c')), display).toBe('c(element)[i j]');
+    }
+  });
+  it('preserved whitespace-only text in a block container is still refused', () => {
+    const input = inputFor(`${FONT} .c { white-space: pre; }`, (r) => [div(r, 'c', ['c'], [div(r, 'i', []), text(r, 's0', '\n  '), div(r, 'j', [])])]);
+    expect(derive().compile(input).diagnostics.map((d) => d.message)).toEqual(['c:space0 is only white space kept by white-space-collapse: preserve (css-text-4 §4.1.1), which Dragon does not lay out yet']);
+  });
 });
 
 describe('text nodes carry their inherited text styles (goal.md principle 3)', () => {

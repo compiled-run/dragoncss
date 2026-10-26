@@ -48,6 +48,7 @@ import { INERT_LAYOUT } from './fixture-groups/inert-layout.ts';
 import { INHERIT_CONTEXTS } from './fixture-groups/inherit-contexts.ts';
 import { INLINE_REPLACED } from './fixture-groups/inline-replaced.ts';
 import { INLINE_TAGS } from './fixture-groups/inline-tags.ts';
+import { INLINE_WHITESPACE } from './fixture-groups/inline-whitespace.ts';
 import { INLINE } from './fixture-groups/inline.ts';
 import { INTERACTION } from './fixture-groups/interaction.ts';
 import { ISOLATION } from './fixture-groups/isolation.ts';
@@ -221,6 +222,7 @@ export const GROUPS = {
   inline: INLINE,
   'inline-replaced': INLINE_REPLACED,
   'inline-tags': INLINE_TAGS,
+  'inline-whitespace': INLINE_WHITESPACE,
   interaction: INTERACTION,
   isolation: ISOLATION,
   'line-clamp': LINE_CLAMP,
