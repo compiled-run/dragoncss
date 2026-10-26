@@ -209,15 +209,22 @@ function maxInlineSize(id: string, get: Get, p: Longhand, l: Lowering): MaxInlin
 
 // css-sizing-4 §3.1: height, min-height and max-height also take stretch; the engine reads it on a block-level box in block flow
 // and refuses it elsewhere.
+// css-sizing-3 §3.2: min-content, max-content and fit-content as a block size are the box's content height, which is its auto height
+// for a box in block flow (Chrome 145, values-intrinsic-heights): they lower to auto, and as a min-height or max-height to auto and
+// none, which analysis/computed-checks.ts checkIntrinsicHeights admits only where the clamp to the content height changes nothing.
+const INTRINSIC_BLOCK_KEYWORDS: readonly string[] = ['min-content', 'max-content', 'fit-content'];
+
 function blockSize(id: string, get: Get, p: Longhand, l: Lowering): BlockSizeValue {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
+  if (v.kind === 'keyword' && INTRINSIC_BLOCK_KEYWORDS.includes(v.value)) return { kind: 'auto' };
   return size(id, get, p, l);
 }
 
 function maxBlockSize(id: string, get: Get, p: Longhand, l: Lowering): MaxBlockSizeValue {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
+  if (v.kind === 'keyword' && INTRINSIC_BLOCK_KEYWORDS.includes(v.value)) return { kind: 'none' };
   return maxSize(id, get, p, l);
 }
 
