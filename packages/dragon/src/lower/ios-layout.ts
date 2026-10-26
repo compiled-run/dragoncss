@@ -867,9 +867,9 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at
     // rest it clips its text as overflow: clip does. A textarea's editor and every placeholder keep their computed overflow.
     const clipped: LayoutStyle = field.part === 'editor' && field.host.tag === 'input' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
-    // An empty editor still lays out one line of its own font (the engine's block.ts), so it carries its strut; but a textarea's
-    // empty editor beside its placeholder (any placeholder attribute, the empty one too) has no line (Chrome 145: 0 tall).
-    const lineless = field.part === 'editor' && field.host.tag === 'textarea' && field.host.attributes.has('placeholder') && children.length === 0;
+    // An input's empty editor still lays out one line of its own font (the engine's block.ts), so it carries its strut; but a
+    // textarea's empty editor has no line, with or without a placeholder (Chrome 145: 0 tall), so it gives the textarea no baseline.
+    const lineless = field.part === 'editor' && field.host.tag === 'textarea' && children.length === 0;
     const own = lineless ? null : field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
     return { kind: 'control', id, boxType: 'element', style: clipped, control: { kind: field.part === 'editor' ? 'text-editor' : 'text-placeholder' }, strut: own, children };
   }

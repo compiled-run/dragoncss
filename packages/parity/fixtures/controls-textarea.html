@@ -6,6 +6,7 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 textarea { display: block; font: inherit; appearance: none; margin: 0 0 2px; color: #000; background-color: #fff; border: 2px solid #036; padding: 1px 2px; resize: none; scrollbar-width: none; }
 .wrap { width: 300px; background-color: #eee; }
 .row { display: flex; align-items: flex-start; background-color: #ddd; }
+.base { display: flex; align-items: baseline; background-color: #ccc; }
 .lh7 { line-height: 7px; }
 .lh30 { line-height: 30px; }
 .h41 { height: 41px; }
@@ -42,6 +43,7 @@ textarea { display: block; font: inherit; appearance: none; margin: 0 0 2px; col
 <textarea data-dragon-id="a17" readonly="" cols="5" placeholder="PP">XX</textarea>
 <textarea data-dragon-id="a18" readonly="" class="big" cols="4" rows="2">XX  XX</textarea>
 <textarea data-dragon-id="a19" readonly="" cols="5" placeholder=""></textarea>
+<textarea data-dragon-id="a24" readonly="" cols="5"></textarea>
 <textarea data-dragon-id="a20" readonly="" cols="6" rows="2">XX XX XX XX XX XX XX</textarea>
 <textarea data-dragon-id="a21" readonly="" cols="3" rows="4">X     XXXXX</textarea>
 <textarea data-dragon-id="a22" readonly="" cols="3" rows="3">XXXX   XXXXXXX X</textarea>
@@ -50,6 +52,16 @@ textarea { display: block; font: inherit; appearance: none; margin: 0 0 2px; col
 <div data-dragon-id="r" class="row">
 <textarea data-dragon-id="f1" readonly="" cols="4" rows="1">XX</textarea>
 <textarea data-dragon-id="f2" readonly="" cols="3" rows="2">XXXX</textarea>
+</div>
+<div data-dragon-id="b1" class="base">
+<div data-dragon-id="b1a">A</div>
+<textarea data-dragon-id="b1t" readonly="" cols="3"></textarea>
+<textarea data-dragon-id="b1p" readonly="" cols="3" placeholder="PP"></textarea>
+<div data-dragon-id="b1w"><textarea data-dragon-id="b1n" readonly="" cols="3" rows="1"></textarea></div>
+</div>
+<div data-dragon-id="b2" class="base">
+<div data-dragon-id="b2a">A</div>
+<textarea data-dragon-id="b2t" readonly="" cols="3">XX</textarea>
 </div>
 </body>
 </html>

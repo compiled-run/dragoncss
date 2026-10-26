@@ -59,12 +59,23 @@ describe('FORM-b textareas', () => {
     expect(b.get('t')).toMatchObject({ width: 208, height: 26 });
   });
 
-  it('puts the placeholder at the content top and leaves the empty editor lineless beside it', () => {
+  it('puts the placeholder at the content top and leaves an empty editor lineless, beside a placeholder or not', () => {
     const b = boxes(compile('ta-placeholder', '', '<textarea data-dragon-id="p" readonly="" placeholder="PP"></textarea>\n<textarea data-dragon-id="e" readonly=""></textarea>\n<textarea data-dragon-id="v" readonly="" placeholder="PP">X</textarea>'));
     expect(b.get('p::placeholder')).toMatchObject({ y: 3, height: 10 });
     expect(b.get('p::editor')?.height).toBe(0);
-    expect(b.get('e::editor')?.height).toBe(10);
+    expect(b.get('e::editor')?.height).toBe(0);
     expect(b.has('v::placeholder')).toBe(false);
+  });
+
+  it('gives an empty textarea no baseline, with or without a placeholder, so a baseline-aligned flex row uses its border box bottom', () => {
+    // Chrome 145: A sits at y 18 beside an empty textarea (26px tall, A's baseline 8px down), and at 3 beside one with a value.
+    const row = (id: string, attrs: string, value: string): string => `<div data-dragon-id="${id}" class="f"><div data-dragon-id="${id}-a">A</div><textarea data-dragon-id="${id}-t" readonly=""${attrs}>${value}</textarea></div>`;
+    const c = compile('ta-baseline', '.f { display: flex; align-items: baseline; }', [row('e', '', ''), row('p', ' placeholder="PP"', ''), row('v', '', 'XX')].join('\n'));
+    expect(errors(c)).toEqual([]);
+    const b = boxes(c);
+    expect(b.get('e-a')?.y).toBe(18);
+    expect(b.get('p-a')?.y).toBe(18);
+    expect(b.get('v-a')?.y).toBe(3);
   });
 
   it('refuses a grip, a scrollbar gutter, overflow: visible and editing on iOS and Android', () => {
