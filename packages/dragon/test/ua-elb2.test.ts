@@ -5,7 +5,7 @@ import * as dark from '../src/ua/chrome-145.darwin-arm64.dark.generated.ts';
 import * as light from '../src/ua/chrome-145.darwin-arm64.generated.ts';
 import { darkDatasetFor, referenceDataset, uaDatasetFor } from '../src/ua/datasets.ts';
 
-const KEYS = ['button', 'input', 'input[type=range]', 'a', 'a[href]', 'img', 'span'];
+const KEYS = ['button', 'input', 'input[type=range]', 'button:disabled', 'input[type=range]:disabled', 'a', 'a[href]', 'img', 'span'];
 const SYSTEM_COLORS = [
   'Canvas', 'CanvasText', 'LinkText', 'VisitedText', 'ActiveText', 'ButtonFace', 'ButtonText', 'ButtonBorder', 'Field', 'FieldText',
   'Highlight', 'HighlightText', 'SelectedItem', 'SelectedItemText', 'Mark', 'MarkText', 'GrayText', 'AccentColor', 'AccentColorText',
