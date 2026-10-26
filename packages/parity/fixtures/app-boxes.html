@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* The app screens' other boxes (examples/real-pages): a settings row with a minimum height, an unread badge pinned to a tab, a grid of
+   cards with an aspect ratio, an unread badge and row separators drawn by abspos pseudo-elements, a full-width inline-block button with its border reset, and rem-sized footer text beside a link. */
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.row { position: relative; display: block; min-height: 24px; padding: 2px 8px; background-color: #eee; }
+.tabs { display: flex; justify-content: space-around; }
+.tab { position: relative; display: flex; flex-direction: column; align-items: center; }
+.icon { width: 20px; height: 20px; background-color: #888; }
+.count { position: absolute; top: -4px; left: 50%; min-width: 16px; height: 12px; padding: 0 4px; background-color: #c33; }
+.unread::after { content: "N"; position: absolute; top: -4px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; line-height: 16px; background-color: #c33; color: #fff; }
+.list { width: 200px; }
+.item { position: relative; display: flex; align-items: center; min-height: 24px; padding: 0 8px; }
+.item + .item::before { content: ""; position: absolute; top: 0; left: 30px; right: 0; height: 0.5px; background-color: #999; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 200px; }
+.thumb { aspect-ratio: 16 / 9; background-color: #69c; }
+.form { width: 200px; }
+.submit { display: inline-block; width: 100%; height: 20px; border: 0; background-color: #36c; }
+.foot { font-size: 0.875rem; font-weight: 600; }
+.foot span { font-size: 0.875rem; }
+.foot b { font-size: 0.875rem; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row" class="row">Hi</div>
+<div data-dragon-id="tabs" class="tabs"><div data-dragon-id="t1" class="tab"><div data-dragon-id="i1" class="icon"></div></div><div data-dragon-id="t2" class="tab"><div data-dragon-id="i2" class="icon"></div><div data-dragon-id="count" class="count"></div></div><div data-dragon-id="t3" class="tab unread"><div data-dragon-id="i3" class="icon"></div></div></div>
+<div data-dragon-id="list" class="list"><div data-dragon-id="item1" class="item"><div data-dragon-id="l1">Hi</div></div><div data-dragon-id="item2" class="item"><div data-dragon-id="l2">Hi</div></div></div>
+<div data-dragon-id="grid" class="grid"><div data-dragon-id="g1" class="thumb"></div><div data-dragon-id="g2" class="thumb"></div></div>
+<div data-dragon-id="form" class="form"><div data-dragon-id="submit" class="submit"></div></div>
+<div data-dragon-id="foot" class="foot">Have one <span data-dragon-id="link">Sign in</span> or <b data-dragon-id="b">now</b></div>
+</body>
+</html>
