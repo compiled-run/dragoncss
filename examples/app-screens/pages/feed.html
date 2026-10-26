@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+:root {
+  --bg: #f4f4f5;
+  --card: #ffffff;
+  --text: #18181b;
+  --muted: #71717a;
+  --accent: #e11d48;
+  --border: #e4e4e7;
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #09090b; --card: #18181b; --text: #fafafa; --muted: #a1a1aa; --border: #27272a; }
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; font-family: system-ui, sans-serif; font-size: 15px; line-height: 1.4; color: var(--text); background: var(--bg); }
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px 8px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.header h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 4px; }
+.chip {
+  flex: none;
+  scroll-snap-align: start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.chip.selected { background: var(--text); color: var(--card); border-color: var(--text); }
+
+.feed { display: flex; flex-direction: column; gap: 12px; padding: 12px 12px calc(env(safe-area-inset-bottom) + 72px); }
+
+.post { background: var(--card); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+.post-head { display: flex; align-items: center; gap: 10px; padding: 12px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.who { flex: 1; min-width: 0; }
+.name { font-weight: 600; margin: 0; }
+.time { color: var(--muted); font-size: 13px; margin: 0; }
+.more { color: var(--muted); font-size: 20px; padding: 4px 8px; }
+
+.photo { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+
+.post-body { padding: 12px; }
+.post-body p { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+.post-actions { display: flex; gap: 4px; padding: 0 8px 8px; }
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+}
+.action:active { background: var(--bg); }
+.action.liked { color: var(--accent); font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.grid img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 calc(env(safe-area-inset-bottom) + 8px);
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid var(--border);
+}
+.tab { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted); }
+.tab.current { color: var(--accent); }
+.tab-icon { width: 24px; height: 24px; border-radius: 6px; background: currentColor; opacity: 0.85; }
+.unread { position: relative; }
+.unread::after {
+  content: "3";
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<header class="header"><h1>Discover</h1><div class="chips"><button type="button" class="chip selected">For you</button><button type="button" class="chip">Following</button><button type="button" class="chip">Travel</button><button type="button" class="chip">Food</button><button type="button" class="chip">Design</button><button type="button" class="chip">Music</button></div></header>
+<main class="feed">
+<article class="post"><div class="post-head"><img class="avatar" src="img/avatar.png" alt=""><div class="who"><p class="name">Maya Chen</p><p class="time">2h &#183; Lisbon</p></div><span class="more">&#8943;</span></div><img class="photo" src="img/hero.png" alt="Tram on a hill"><div class="post-body"><p>Golden hour in Alfama. Took the 28 tram all the way up and walked back down through the old streets, stopping for pastel de nata twice. Highly recommend going before the crowds arrive in the morning.</p></div><div class="post-actions"><button type="button" class="action liked">&#9829; 128</button><button type="button" class="action">Comment</button><button type="button" class="action">Share</button></div></article>
+<article class="post"><div class="post-head"><img class="avatar" src="img/avatar.png" alt=""><div class="who"><p class="name">Studio Nord</p><p class="time">5h</p></div><span class="more">&#8943;</span></div><div class="grid"><img src="img/diagram.png" alt=""><img src="img/hero.png" alt=""><img src="img/diagram.png" alt=""></div><div class="post-body"><p>Three new chairs from the spring collection.</p></div><div class="post-actions"><button type="button" class="action">&#9825; 42</button><button type="button" class="action">Comment</button></div></article>
+</main>
+<nav class="tab-bar"><div class="tab current"><span class="tab-icon"></span>Home</div><div class="tab"><span class="tab-icon"></span>Search</div><div class="tab unread"><span class="tab-icon"></span>Inbox</div><div class="tab"><span class="tab-icon"></span>Profile</div></nav>
+</body>
+</html>

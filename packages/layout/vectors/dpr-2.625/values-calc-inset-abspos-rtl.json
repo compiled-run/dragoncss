@@ -159,6 +159,11 @@
     "containIntrinsicHeight": {
      "kind": "none"
     },
+    "textWrapStyle": {
+     "kind": "auto"
+    },
+    "multicol": null,
+    "textBoxTrim": null,
     "grid": null,
     "gridItem": null,
     "zoom": []
@@ -297,6 +302,11 @@
       "containIntrinsicHeight": {
        "kind": "none"
       },
+      "textWrapStyle": {
+       "kind": "auto"
+      },
+      "multicol": null,
+      "textBoxTrim": null,
       "grid": null,
       "gridItem": null,
       "zoom": []
@@ -437,6 +447,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
         "zoom": []
@@ -605,6 +620,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
           "zoom": []
@@ -804,6 +824,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
           "zoom": []
@@ -1003,6 +1028,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
           "zoom": []

@@ -110,7 +110,9 @@ function stretched(e: ResolvedElement, parent: ResolvedElement): boolean {
  */
 function inheritsZero(e: ResolvedElement, parent: ResolvedElement, ax: Axis, definite: boolean): boolean {
   if (keepsArea(e, ax) || outOfFlow(e)) return false;
-  if (hasPercent(valueOf(e, ax)) || hasPercent(valueOf(e, `max-${ax}`))) return ax === 'width' || definite;
+  // A percentage, or css-sizing-4 stretch (the containing block's size less margins), resolves against the zero.
+  const relative = (p: string): boolean => hasPercent(valueOf(e, p)) || keywordOf(e, p) === 'stretch';
+  if (relative(ax) || relative(`max-${ax}`)) return ax === 'width' || definite;
   if (!isAuto(valueOf(e, ax))) return false;
   const pd = keywordOf(parent, 'display');
   if (FLEX.includes(pd)) {

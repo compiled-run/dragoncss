@@ -267,6 +267,7 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
         if (blankNode && lines.length === 0) continue;
         const units: number[] = [];
         const blank: number[] = [];
+        let lastLine = 0;
         for (let i = 0; i < t.data.length; i++) {
           const r = document.createRange();
           r.setStart(t, i);
@@ -278,11 +279,22 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
             continue;
           }
           const cy = pick.y + pick.height / 2;
+          const cx = pick.x + pick.width / 2;
           let best = 0;
           lines.forEach((l, j) => {
             const b = lines[best] as DOMRect;
             if (Math.abs(l.y + l.height / 2 - cy) < Math.abs(b.y + b.height / 2 - cy)) best = j;
           });
+          // In a multi-column container, lines of different columns sit at the same y: among the lines tied for nearest, the unit is
+          // on one whose rect spans it horizontally, and a line that overflows its column can span the next column's line too, so it
+          // takes the first such line not before the previous unit's (lines come in content order). A single-column text has no ties,
+          // so this changes nothing there.
+          const near = Math.abs((lines[best] as DOMRect).y + (lines[best] as DOMRect).height / 2 - cy);
+          const tied = lines.map((l, j) => j).filter((j) => Math.abs(Math.abs((lines[j] as DOMRect).y + (lines[j] as DOMRect).height / 2 - cy) - near) < 0.001);
+          const spans = tied.filter((j) => cx >= (lines[j] as DOMRect).x - 0.5 && cx <= (lines[j] as DOMRect).x + (lines[j] as DOMRect).width + 0.5);
+          const spanning = spans.find((j) => j >= lastLine) ?? spans[0];
+          if (spanning !== undefined) best = spanning;
+          lastLine = best;
           units.push(best);
           if (pick.width === 0) blank.push(i);
         }

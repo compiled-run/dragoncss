@@ -44,6 +44,7 @@
     "native:swift": "node packages/translate/src/cli/native.ts swift",
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
     "native:planted": "node packages/translate/src/cli/planted.ts",
+    "app-screens": "node --conditions=dragon-internal examples/app-screens/tools/check.ts",
     "north-star:check": "node --conditions=dragon-internal examples/music-player/tools/check.ts",
     "north-star:capture": "node --conditions=dragon-internal examples/music-player/tools/capture-chrome.ts",
     "wpt:run": "node --conditions=dragon-internal packages/wpt/src/cli/run.ts",
