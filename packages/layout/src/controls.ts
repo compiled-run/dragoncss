@@ -10,6 +10,9 @@
 //   Linux, whose hinted advance of 0 is 13.1px, 40px), a Chrome observation. Its auto content height is the editor's; the editor
 //   is centred in the content box unsafely (a 41px field puts a 10px editor 15.5px down, a 4px one 3px up), and the placeholder
 //   is placed with its baseline on the editor's, or at the editor's top when either has no baseline (Chrome 145 probes).
+// - a textarea (text-area, FORM-b): the same pair of parts, both at the content box start. Its default content inline size is cols
+//   x the advance of 0, rounded up to a whole px, and its auto content height rows x its line height (Chrome 145 under Ahem: cols
+//   5 rows 3 at 10px is 50 x 30, with line-height 7px 50 x 21), with no scrollbar gutter (computed-checks.ts refuses one).
 // - a block button (button-block): its in-flow contents are centred in the block axis, safely (html.css
 //   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
 //   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
@@ -76,6 +79,12 @@ export function buttonContentShift(contentBoxBlockSize: LU, contentsBlockSize: L
 export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-field' }>): LU {
   const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
   return ceilFloatToWholePx(floatMul(zero, float32(c.size)));
+}
+
+/** FORM-b: a textarea's default content inline size, cols x the float advance of 0, rounded up to a whole px. */
+export function textAreaInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-area' }>): LU {
+  const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
+  return ceilFloatToWholePx(floatMul(zero, float32(c.cols)));
 }
 
 /** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */

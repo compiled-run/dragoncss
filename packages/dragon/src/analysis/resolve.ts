@@ -24,7 +24,7 @@ import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
 import { inputTypeState, isRangeType, isTextFieldType } from './elements/controls.ts';
-import { sanitizedTextValue, shownPlaceholder, TEXT_FIELD_UA_SHADOW } from '../forms/text-field.ts';
+import { sanitizedTextValue, shownPlaceholder, shownTextAreaPlaceholder, TEXT_AREA_UA_SHADOW, TEXT_FIELD_UA_SHADOW, textAreaValue } from '../forms/text-field.ts';
 import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
 import type { BlockInInlineChild } from './block-in-inline.ts';
 import { blockInInlineBlocker, isBlockInInline, markBlockInInline } from './block-in-inline.ts';
@@ -403,7 +403,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     applyDeclaredUserAgent(tag, props, defaulted, parent, environment.ua, fromParent, revertedProps);
     // A replaced key's forced values (iframe overflow: clip) hold whatever the cascade says (ELB-2 userAgentForced).
     applyForcedUserAgent(tag, props, environment.ua);
-    if (part !== null) (isTextFieldPart(part) ? applyTextFieldShadow : applyShadowUserAgent)(part as never, props, defaulted, fromParent);
+    if (part !== null && isTextFieldPart(part)) applyTextFieldShadow(textAreaParts.has(el) ? TEXT_AREA_UA_SHADOW : TEXT_FIELD_UA_SHADOW, part, props, defaulted, fromParent);
+    else if (part !== null) applyShadowUserAgent(part, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
     for (const p of LONGHANDS) {
@@ -447,7 +448,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     };
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
-    const kids: (ResolvedElement | LinkedText)[] = own.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    // FORM-b: a textarea's children are its value's text, which its inner editor holds; they are not boxes of their own.
+    const textarea = pseudo === null && part === null && el.tag === 'textarea';
+    const kids: (ResolvedElement | LinkedText)[] = textarea ? [] : own.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
     // css-lists-3 §3.1: a list item's ::marker rules cascade onto its marker, which inherits from the item; it is kept beside the
     // tree (markerOf), as only its color is drawn (generated.ts markerRuleRefusals refuses every other property).
     if (pseudo === null && part === null && markerRules.length > 0 && isListItem(props.get('display') as ResolvedValue)) {
@@ -489,6 +492,17 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else hiddenPlaceholders.set(self, placeholder);
       }
       kids.push(visit(textPartElement(el, 'editor', value), here, self, null, 'editor'));
+    }
+    if (textarea) {
+      // FORM-b: a textarea holds the same UA shadow tree, its value the child text (computed-checks.ts refuses an element child).
+      textFieldParts.set(self, { part: null, host: el });
+      const value = textAreaValue(el.children.map((c) => (c.kind === 'text' ? c.text : '')));
+      if (el.attributes.has('placeholder')) {
+        const placeholder = visit(textAreaPart(el, 'placeholder', shownTextAreaPlaceholder('', el.attributes.get('placeholder')) ?? ''), here, self, null, 'placeholder');
+        if (value === '') kids.push(placeholder);
+        else hiddenPlaceholders.set(self, placeholder);
+      }
+      kids.push(visit(textAreaPart(el, 'editor', value), here, self, null, 'editor'));
     }
     if (pseudo === null && (part === null || !isTextFieldPart(part))) {
       // FORM-a A4: input[type=range] holds Chrome's UA shadow tree, container > track > thumb, each a div (forms/ua-shadow.generated.ts).
@@ -674,17 +688,26 @@ function textPartElement(host: LinkedElement, part: TextFieldPart, text: string)
   return { kind: 'element', address, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children };
 }
 
+/** The parts of a textarea, whose UA shadow rules are TEXT_AREA_UA_SHADOW's. */
+const textAreaParts = new WeakSet<LinkedElement>();
+
+function textAreaPart(host: LinkedElement, part: TextFieldPart, text: string): LinkedElement {
+  const e = textPartElement(host, part, text);
+  textAreaParts.add(e);
+  return e;
+}
+
 /** The text field shadow rules' properties that no longhand models, and why each changes nothing Dragon lays out or paints. */
 // -webkit-text-security: none (no masking; a password field is refused). writing-mode and text-orientation: inherit (Dragon lays
 // out horizontal-tb only, and the input's is refused otherwise).
 const UNMODELLED_TEXT_FIELD = new Set(['-webkit-text-security', 'writing-mode', 'text-orientation']);
 
 /**
- * A text field part's UA declarations (TEXT_FIELD_UA_SHADOW, user-agent origin, in cascade order): a normal one applies to a
+ * A text field or textarea part's UA declarations (TEXT_FIELD_UA_SHADOW or TEXT_AREA_UA_SHADOW, user-agent origin, in cascade order): a normal one applies to a
  * longhand no author declaration set, an important one wins over the author's; inherit takes the input's value.
  */
-function applyTextFieldShadow(part: TextFieldPart, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, fromParent: (p: Longhand) => ResolvedValue): void {
-  for (const rule of TEXT_FIELD_UA_SHADOW[part]) {
+function applyTextFieldShadow(shadow: typeof TEXT_FIELD_UA_SHADOW, part: TextFieldPart, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, fromParent: (p: Longhand) => ResolvedValue): void {
+  for (const rule of shadow[part]) {
     for (const [name, text, important] of rule.declarations) {
       if (UNMODELLED_TEXT_FIELD.has(name)) continue;
       const p = name as Longhand;

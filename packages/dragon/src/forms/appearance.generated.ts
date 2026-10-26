@@ -22,5 +22,11 @@ export const APPEARANCE_PROBE = {
     "background-color": "css",
     "border": "css",
     "appearance-none": "css"
+  },
+  "textarea": {
+    "none": "theme",
+    "background-color": "css",
+    "border": "css",
+    "appearance-none": "css"
   }
 } as const;

@@ -75,7 +75,8 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     let k = 0;
     let spaces = 0;
     for (const child of Array.from(el.childNodes)) {
-      if (child.nodeType !== Node.TEXT_NODE) continue;
+      // FORM-b: a textarea's text is its value, which its UA shadow editor lays out (captureTextFieldParts); it has no box.
+      if (child.nodeType !== Node.TEXT_NODE || el.tagName === 'TEXTAREA') continue;
       const range = document.createRange();
       range.selectNodeContents(child);
       const rects = Array.from(range.getClientRects());
@@ -225,7 +226,7 @@ const isTextFieldInput = (type: string | undefined): boolean => {
 };
 
 /**
- * FORM-b: the UA shadow parts of every single-line text field with a data-dragon-id, as element nodes "<id>::placeholder" (while
+ * FORM-b: the UA shadow parts of every single-line text field and textarea with a data-dragon-id, as element nodes "<id>::placeholder" (while
  * Chrome shows one) and "<id>::editor" after the input, each followed by its text node "<id>::<part>:text0" and the text's
  * fragments "<id>::<part>:text0:line<j>" when it holds text: boxes from DOM.getBoxModel and DOM.getContentQuads (a text node's
  * quads are its fragments, the rects Range.getClientRects gives light-DOM text), computed values from CSS.getComputedStyleForNode.
@@ -233,7 +234,7 @@ const isTextFieldInput = (type: string | undefined): boolean => {
  */
 async function captureTextFieldParts(page: Page, props: readonly string[]): Promise<Map<string, CapturedNode[]>> {
   const out = new Map<string, CapturedNode[]>();
-  const count = await page.evaluate((types: readonly string[]) => Array.from(document.querySelectorAll('input[data-dragon-id]')).filter((e) => (e as HTMLInputElement).type !== undefined && types.includes((e as HTMLInputElement).type)).length, TEXT_FIELD_TYPES);
+  const count = await page.evaluate((types: readonly string[]) => Array.from(document.querySelectorAll('input[data-dragon-id]')).filter((e) => (e as HTMLInputElement).type !== undefined && types.includes((e as HTMLInputElement).type)).length + document.querySelectorAll('textarea[data-dragon-id]').length, TEXT_FIELD_TYPES);
   if (count === 0) return out;
   const cdp = await page.context().newCDPSession(page);
   try {
@@ -248,7 +249,7 @@ async function captureTextFieldParts(page: Page, props: readonly string[]): Prom
         return undefined;
       };
       const id = at('data-dragon-id');
-      if (n.nodeName === 'INPUT' && id !== undefined && isTextFieldInput(at('type'))) inputs.push({ id, node: n });
+      if (((n.nodeName === 'INPUT' && isTextFieldInput(at('type'))) || n.nodeName === 'TEXTAREA') && id !== undefined) inputs.push({ id, node: n });
       for (const c of n.children ?? []) walk(c);
     };
     walk(doc.root);
@@ -270,6 +271,8 @@ async function captureTextFieldParts(page: Page, props: readonly string[]): Prom
       for (const [part, n] of [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const]) {
         const style = (await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] };
         const byName = new Map(style.computedStyle.map((e) => [e.name, e.value]));
+        // Chrome keeps a hidden placeholder (display: none) while the value is not empty; Dragon leaves it out of the tree.
+        if (part === 'placeholder' && byName.get('display') === 'none') continue;
         const computed: Record<string, string> = {};
         for (const p of props) {
           const v = byName.get(p);

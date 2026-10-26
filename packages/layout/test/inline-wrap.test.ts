@@ -109,6 +109,8 @@ describe('refusals', () => {
     expect(lines(45, [leaf('t', 'a\u0153b', { wordBreak: 'break-all' })], 't')).toBe('text-glyph');
     expect(lines(45, [leaf('t', 'aa ', { wordBreak: 'break-all' }), leaf('u', 'bb', {})], 't')).toBe('mixed-text-wrap-mode');
     expect(lines(45, [leaf('t', 'aa ', {}), leaf('u', 'bb', { overflowWrap: 'anywhere' })], 't')).toBe('mixed-text-wrap-mode');
-    expect(lines(45, [leaf('t', 'aa', { overflowWrap: 'break-word', whiteSpaceCollapse: 'preserve' })], 't')).toBe('word-break');
+    expect(lines(45, [leaf('t', 'aa', { overflowWrap: 'anywhere', whiteSpaceCollapse: 'preserve' })], 't')).toBe('word-break');
+    // FORM-b: a textarea's break-word over preserve is laid out (the controls-textarea fixture).
+    expect(lines(45, [leaf('t', 'aa', { overflowWrap: 'break-word', whiteSpaceCollapse: 'preserve' })], 't')).not.toBe('word-break');
   });
 });
