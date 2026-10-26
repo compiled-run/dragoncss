@@ -42,15 +42,15 @@ describe('unit registry conversions', () => {
     expect(lengthToPx(1, 'vw', none)).toBeNull();
   });
   it('viewport, font-metric, line-height and container units and math functions are refused with a reason', () => {
-    for (const u of ['svh', 'lvh', 'dvh', 'svw', 'ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqh', 'cqb', 'cqmin', 'cqmax']) expect(unitRefusal(u), u).not.toBeNull();
+    for (const u of ['ex', 'ch', 'cap', 'ic', 'lh', 'rlh', 'cqh', 'cqb', 'cqmin', 'cqmax']) expect(unitRefusal(u), u).not.toBeNull();
     // CQ: cqw and cqi parse as lengths and resolve against the query container (analysis/container-rules.ts).
     for (const u of ['cqw', 'cqi']) expect(unitRefusal(u), u).toBeNull();
     for (const u of ['px', 'cm', 'mm', 'q', 'in', 'pt', 'pc', 'em', 'rem', 'furlong']) expect(unitRefusal(u), u).toBeNull();
     for (const f of ['round', 'mod', 'rem', 'abs', 'sign', 'ROUND']) expect(mathFunctionRefusal(f), f).not.toBeNull();
     expect(mathFunctionRefusal('rgb')).toBeNull();
   });
-  it('V1 of the value model accepts vw, vh, vi, vb, vmin and vmax, and calc(), min(), max() and clamp(); the engine resolves them', () => {
-    for (const u of ['vw', 'vh', 'vi', 'vb', 'vmin', 'vmax']) {
+  it('V1 of the value model accepts the viewport units and their small, large and dynamic forms, and calc(), min(), max() and clamp(); the engine resolves them', () => {
+    for (const u of ['vw', 'vh', 'vi', 'vb', 'vmin', 'vmax', 'svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvmin', 'dvw', 'dvh', 'dvb', 'dvmax']) {
       expect(unitRefusal(u), u).toBeNull();
       expect(lengthToPx(1, u, { em: 0, rem: 0 }), u).toBeNull();
     }
@@ -79,15 +79,23 @@ describe('computed lengths', () => {
     expect(keys).toContain('height:<length-cm>@block/ltr');
   });
   it('a refused unit is DRAGON_UNSUPPORTED_VALUE at its token, with the reason', () => {
-    const c = project().compile(inputFor(`${FONT} .a { width: 50svw; }`, (r) => [div(r, 'a', ['a'])]));
+    const c = project().compile(inputFor(`${FONT} .a { width: 2lh; }`, (r) => [div(r, 'a', ['a'])]));
     const d = c.diagnostics.find((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(d?.message).toMatch(/^width: 50svw is unsupported: small, large and dynamic viewport units need the viewport inputs of the value-model package V2/);
+    expect(d?.message).toMatch(/^width: 2lh is unsupported: it is the used line height/);
   });
   it('a viewport unit and a calculation reach the layout projection as engine calculations, with em as a leaf of the element font size', () => {
     const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'a', ['a'])];
     const a = style('.a { width: 50vw; height: calc(10px + 2em); }', tree, 'a');
     expect(a.style.width).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width', size: 'large' }, range: 'non-negative' });
     expect(a.style.height).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'px', value: 10 }, { kind: 'em', value: 2, fontSize: { kind: 'px', value: 10 } }] }, range: 'non-negative' });
+  });
+  it('a small, large or dynamic viewport unit reaches the engine as a viewport leaf of that size, alone and in a calculation', () => {
+    const tree = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'a', ['a'])];
+    const a = style('.a { min-height: 100dvh; width: 50svw; max-width: 80lvmin; height: calc(100svh - 10px); }', tree, 'a');
+    expect(a.style.minHeight).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 100, axis: 'height', size: 'dynamic' }, range: 'non-negative' });
+    expect(a.style.width).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 50, axis: 'width', size: 'small' }, range: 'non-negative' });
+    expect(a.style.maxWidth).toEqual({ kind: 'calc', expr: { kind: 'viewport', value: 80, axis: 'min', size: 'large' }, range: 'non-negative' });
+    expect(a.style.height).toEqual({ kind: 'calc', expr: { kind: 'sum', terms: [{ kind: 'viewport', value: 100, axis: 'height', size: 'small' }, { kind: 'px', value: -10 }] }, range: 'non-negative' });
   });
 });
 

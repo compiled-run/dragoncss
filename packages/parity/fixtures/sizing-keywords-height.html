@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 1; }
+.k { height: 6px; background-color: #999; }
+.mn { height: min-content; width: 120px; background-color: #c00; }
+.mx { height: max-content; padding: 3px 0 5px; border-bottom: 2px solid #000; background-color: #0c0; }
+.fc { height: -webkit-fit-content; box-sizing: border-box; padding: 4px 0; background-color: #00c; }
+.minh { min-height: max-content; background-color: #cc0; }
+.maxh { max-height: min-content; min-height: 5px; background-color: #0cc; }
+.both { height: fit-content; min-height: min-content; max-height: max-content; background-color: #c0c; }
+.empty { height: min-content; margin: 9px 0 4px; }
+.last { height: max-content; }
+.last > .c { height: 5px; margin-bottom: 12px; background-color: #963; }
+.fl { float: left; width: 30px; height: fit-content; background-color: #369; }
+.ib { display: inline-block; width: 40px; height: min-content; background-color: #693; }
+.rel { position: relative; top: 3px; height: max-content; background-color: #f90; }
+.scroll { overflow: auto; height: fit-content; width: 100px; }
+.flex { display: flex; height: min-content; align-items: stretch; background-color: #eee; }
+.flex > div { width: 20px; background-color: #a3c; }
+.pct { height: max-content; }
+.pct > .h { height: 50%; background-color: #3ca; }
+.wrap { overflow: hidden; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="mn" class="mn">XX XX XX XX XX XX XX</div>
+<div data-dragon-id="mx" class="mx"><div data-dragon-id="mxk" class="k"></div><div data-dragon-id="mxt">X</div></div>
+<div data-dragon-id="fc" class="fc">X<br data-dragon-id="br1">X</div>
+<div data-dragon-id="minh" class="minh">X<br data-dragon-id="br2">X<br data-dragon-id="br3">X</div>
+<div data-dragon-id="maxh" class="maxh">X</div>
+<div data-dragon-id="both" class="both"><div data-dragon-id="bothk" class="k"></div></div>
+<div data-dragon-id="e0" class="k"></div><div data-dragon-id="empty" class="empty"></div><div data-dragon-id="e1" class="k"></div>
+<div data-dragon-id="last" class="last"><div data-dragon-id="lastc" class="c"></div></div><div data-dragon-id="e2" class="k"></div>
+<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="fl" class="fl">X X X</div></div>
+<div data-dragon-id="iwrap"><span data-dragon-id="ib" class="ib">X X</span></div>
+<div data-dragon-id="rel" class="rel">X</div>
+<div data-dragon-id="scroll" class="scroll">XXXX XXXX XXXX</div>
+<div data-dragon-id="flex" class="flex"><div data-dragon-id="fa">X<br data-dragon-id="br4">X</div><div data-dragon-id="fb">X</div></div>
+<div data-dragon-id="pct" class="pct"><div data-dragon-id="pcth" class="h">X</div></div>
+</body>
+</html>
