@@ -704,7 +704,7 @@ function clipsOverflow(el: ResolvedElement): boolean {
 
 // TXT2-f (css-overflow-4 §3.1): an ellipsis truncates the lines of a block container whose overflow is not visible
 // (LayoutBlockFlow::ShouldTruncateOverflowingText), which the engine does left to right in the block's own inline formatting
-// context. Refused for every target: rtl, and inline content beside block children (Chrome truncates the anonymous blocks'
+// context, in either direction. Refused for every target: inline content beside block children (Chrome truncates the anonymous blocks'
 // lines, which the engine lays out with initial styles). Refused on native: an inline box whose colour, visibility or face differs
 // from the block's, since the native view draws the ellipsis with the text it follows while Chrome paints it in the block's style.
 function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
@@ -722,9 +722,6 @@ function checkTextOverflow(el: ResolvedElement, propagated: ResolvedElement | nu
     }
   };
   const at = `text-overflow: ellipsis on ${el.element.address}`;
-  if (keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl') {
-    refuse(targets, 'rtl', `${at} truncates rtl lines, which Dragon lays out left to right only`, `Remove text-overflow: ellipsis from ${el.element.address}, or make it ltr.`);
-  }
   // TXT2-b with TXT2-f: how Chrome spaces the ellipsis and cuts spaced text (OffsetToFit) has no Chrome comparison yet.
   const spaced = keywordOf(el.props.get('letter-spacing') as ResolvedValue) !== 'normal' || runs.some((run) => run.some((it) => it.kind === 'text' && keywordOf(it.text.props.get('letter-spacing') as ResolvedValue) !== 'normal'));
   if (spaced) {

@@ -492,11 +492,14 @@ function addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): void {
     const lineRect: OverflowRect = { x: add(ox, l), y: add(oy, line.top), width: sub(r, l), height: line.height };
     if (!isEmpty(lineRect)) c.overflow = uniteEvenIfEmpty(c.overflow, lineRect);
     if (c.scrollContainer) addInflow(c, lineRect);
-    let hidden = false;
+    // The pieces past the ellipsized one are hidden: after it in ltr, before it in rtl (LineTruncator::TruncateLine).
+    const rtl = directionOf(ix.ctx, box) === 'rtl';
+    let hidden = rtl && e !== null;
     for (const p of line.pieces) {
+      if (rtl && e !== null && p.leaf === e.leaf) hidden = false;
       if (hidden) continue;
-      addOverflow(c, { x: add(ox, p.x), y: add(oy, p.top), width: p.truncated ? p.truncatedWidth : p.width, height: add(p.ascent, p.descent) });
-      if (e !== null && p.leaf === e.leaf) hidden = true;
+      addOverflow(c, { x: add(ox, p.truncated ? p.truncatedX : p.x), y: add(oy, p.top), width: p.truncated ? p.truncatedWidth : p.width, height: add(p.ascent, p.descent) });
+      if (!rtl && e !== null && p.leaf === e.leaf) hidden = true;
     }
     if (e !== null) addOverflow(c, { x: add(ox, e.x), y: add(oy, e.top), width: e.width, height: add(e.ascent, e.descent) });
   }

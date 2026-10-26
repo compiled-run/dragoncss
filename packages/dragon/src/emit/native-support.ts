@@ -1187,17 +1187,19 @@ public final class DragonTree {
           if let f = firstBaselineOffset, dragonSingleRunBaselinePlant != 0 { baseline = top + f } else if firstBaselineOffset == nil { firstBaselineOffset = baseline - top }
           let xLU = a.x - e[0] * lu
           let painted = n == widths.count - 1
+          // A truncated rtl piece paints its end, [paintStart, paintEnd), at its truncated fragment (truncate.ts).
+          let paintStart = painted ? piece.paintStart : piece.start
           let paintEnd = painted ? piece.paintEnd : piece.start
-          let run = try glyphRun(leaves[li].text, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts.items, "line \(k)")
+          let run = try glyphRun(leaves[li].text, leafFont, paintStart, paintEnd, xLU / lu, piece.shifts.items, "line \(k)")
           var dots: (glyphs: [CGGlyph], xs: [Double]) = ([], [])
           var dotsSize: Double = 0
           var dotsFace = ""
           if painted, let el = ellipsis {
-            dots = try glyphRun(el.text, el.font, 0, Double(el.text.description.unicodeScalars.count), (xLU + el.x - piece.x) / lu, [], "ellipsis")
+            dots = try glyphRun(el.text, el.font, 0, Double(el.text.description.unicodeScalars.count), (xLU + el.x - piece.truncatedX) / lu, [], "ellipsis")
             dotsSize = try units_platformFontSize(el.font.size)
             dotsFace = el.font.family.description
           }
-          let shown = Array(scalars[Int(piece.start)..<Int(paintEnd)])
+          let shown = Array(scalars[Int(paintStart)..<Int(paintEnd)])
           // TDEC-b, TDEC-d: one geometry entry per line, the painted fragment's.
           if painted {
             // A <br> ends the line: the collapsible spaces before it are removed, not hung (css-text-3 §4.1.3), so the name ends there.
@@ -1208,7 +1210,7 @@ public final class DragonTree {
             geometryCps.append(shown.map { Double($0.value) })
             geometryPens.append(run.xs.map { $0 + e[0] })
           }
-          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize, ellipsisFace: dotsFace, sizes: try glyphSizes(leaves[li].text, leafFont, piece.start, paintEnd, "line \(k)")))
+          specs.append(DragonLineSpec(text: shown.map { String($0) }.joined(), glyphs: run.glyphs, xs: run.xs, xLU: xLU, widthLU: width, top: top - e[1], baseline: baseline - e[1], start: utf16(Int(piece.start)), end: utf16(Int(piece.end)), ellipsisGlyphs: dots.glyphs, ellipsisXs: dots.xs, ellipsisSize: dotsSize, ellipsisFace: dotsFace, sizes: try glyphSizes(leaves[li].text, leafFont, paintStart, paintEnd, "line \(k)")))
         }
         }
       }
@@ -2625,15 +2627,17 @@ class DragonTree(val context: Context) {
           if (f != null && DRAGON_SINGLE_RUN_BASELINE_PLANT != 0.0) baseline = top + f else if (f == null) firstBaselineOffset = baseline - top
           val xLU = a.x - e[0] * lu
           val painted = n == widths.size - 1
+          // A truncated rtl piece paints its end, [paintStart, paintEnd), at its truncated fragment (truncate.ts).
+          val paintStart = if (painted) piece.paintStart else piece.start
           val paintEnd = if (painted) piece.paintEnd else piece.start
           val from = utf16(piece.start.toInt())
-          val text = leafText.substring(from, utf16(paintEnd.toInt()))
-          val run = glyphRun(leafText, leafFont, piece.start, paintEnd, xLU / lu, piece.shifts, "line " + k)
+          val text = leafText.substring(utf16(paintStart.toInt()), utf16(paintEnd.toInt()))
+          val run = glyphRun(leafText, leafFont, paintStart, paintEnd, xLU / lu, piece.shifts, "line " + k)
           var dots = Pair(IntArray(0), DoubleArray(0))
           var dotsSize = 0.0
           var dotsFace = ""
           if (painted && ellipsis != null) {
-            dots = glyphRun(ellipsis.text, ellipsis.font, 0.0, ellipsis.text.codePointCount(0, ellipsis.text.length).toDouble(), (xLU + ellipsis.x - piece.x) / lu, emptyList(), "ellipsis")
+            dots = glyphRun(ellipsis.text, ellipsis.font, 0.0, ellipsis.text.codePointCount(0, ellipsis.text.length).toDouble(), (xLU + ellipsis.x - piece.truncatedX) / lu, emptyList(), "ellipsis")
             dotsSize = units_platformFontSize(ellipsis.font.size)
             dotsFace = ellipsis.font.family
           }
@@ -2647,7 +2651,7 @@ class DragonTree(val context: Context) {
             geometryCps.add(text.codePoints().toArray().map { it.toDouble() }.toDoubleArray())
             geometryPens.add(DoubleArray(run.second.size) { run.second[it] + e[0] })
           }
-          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize, dotsFace, glyphSizes(leafText, leafFont, piece.start, paintEnd, "line " + k)))
+          specs.add(DragonLineSpec(text, run.first, run.second, xLU, width, dragonCheckedInt(top - e[1], id + " line top"), dragonCheckedInt(baseline - e[1], id + " baseline"), from, utf16(piece.end.toInt()), dots.first, dots.second, dotsSize, dotsFace, glyphSizes(leafText, leafFont, paintStart, paintEnd, "line " + k)))
         }
       }
       if (specs.size != pieces.size) throw IllegalStateException("dragon: " + id + ": the engine's breaks give " + specs.size + " lines, its layout " + pieces.size)

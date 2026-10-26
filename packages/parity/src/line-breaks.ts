@@ -152,7 +152,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
       if (a === undefined || e === undefined) throw new Error(`no absolute rect for ${piece.id}`);
       const el = line.ellipsis !== null && line.ellipsis.leaf === li ? line.ellipsis : null;
       const ellipsis = el === null ? null : { x: a.x + el.x - first.x, cps: [...el.text].map((ch) => ch.codePointAt(0) as number), font: el.font };
-      const cps = mine.flatMap((q) => scalars.slice(q.start, q.paintEnd).map((ch) => ch.codePointAt(0) as number));
+      const cps = mine.flatMap((q) => scalars.slice(q.paintStart, q.paintEnd).map((ch) => ch.codePointAt(0) as number));
       // Only a line of collapsed text is justified, and it has one piece per leaf; preserved pieces have no shifts.
       const shifts = mine.flatMap((q) => q.shifts);
       const fragments = mine.flatMap((q) => Array.from({ length: q.truncated ? 2 : 1 }, () => [utf16(q.start), utf16(q.end)] as const));

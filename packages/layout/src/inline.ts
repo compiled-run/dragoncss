@@ -140,8 +140,9 @@ type Justified = { readonly runs: readonly JustifiedRun[]; readonly expansions: 
  * What one leaf shows on one line. Code points [start, visibleEnd) of the leaf show; [start, end) adds the leaf's own spaces that
  * hang at the line end. x is the line-left offset from the content-box left after text-align and width the advance, top the top
  * of the leaf's content area (its baseline minus its ascent) from the content-box top, ascent and descent the leaf font's.
- * text-overflow (truncate.ts): code points [start, paintEnd) are painted (visibleEnd unless the line is truncated); a truncated
- * piece also has a fragment of inline size truncatedWidth at x, beside its hidden full one.
+ * text-overflow (truncate.ts): code points [paintStart, paintEnd) are painted ([start, visibleEnd) unless the line is truncated);
+ * a truncated piece also has a fragment of inline size truncatedWidth at truncatedX, beside its hidden full one. In ltr it keeps
+ * the piece's start at x; in rtl its end, at the piece's right edge.
  */
 export type LinePiece = {
   readonly leaf: number;
@@ -158,8 +159,10 @@ export type LinePiece = {
    * the spaces before it in the piece; empty on any other line.
    */
   readonly shifts: readonly number[];
+  readonly paintStart: number;
   readonly paintEnd: number;
   readonly truncated: boolean;
+  readonly truncatedX: LU;
   readonly truncatedWidth: LU;
 };
 
@@ -1965,10 +1968,11 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
       // Planted fault fragmentFromLineTop: the leaf's content area starts at the line top instead of its baseline minus its ascent.
       const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
       const visibleEnd = it.at + (i - from);
-      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd, end: it.at + (through - from), x: penAt(ctx, ifc, adv, line, offset, from), width: spanWidth(ctx, ifc, adv, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: shiftsOf(line, from, i), paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO });
+      const pieceX = penAt(ctx, ifc, adv, line, offset, from);
+      pieces.push({ leaf: it.leaf, start: it.at, visibleEnd, end: it.at + (through - from), x: pieceX, width: spanWidth(ctx, ifc, adv, line, from, i), top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: shiftsOf(line, from, i), paintStart: it.at, paintEnd: visibleEnd, truncated: false, truncatedX: pieceX, truncatedWidth: ZERO });
     }
     const clamp = clampsLine(ctx, box, n, broken.length);
-    const cut = clamp || truncates(ctx, box) ? truncatePieces(ctx, box, ifc, available, on, baseline, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd), pieces, clamp && !ctx.faults.clampEllipsisMissingWhenLineFits) : null;
+    const cut = clamp || truncates(ctx, box) ? truncatePieces(ctx, box, ifc, available, on, baseline, spanWidth(ctx, ifc, adv, line, line.start, line.visibleEnd), endX, pieces, clamp && !ctx.faults.clampEllipsisMissingWhenLineFits) : null;
     // A <br>'s content area is its parent box's (Blink places the control item with the parent's text top and height).
     const breaks: number[] = [];
     const breakRects: Rect[] = [];
@@ -2013,9 +2017,7 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
 
 /** Whether a block container truncates its overflowing lines (LayoutBlockFlow::ShouldTruncateOverflowingText): overflow not visible. */
 function truncates(ctx: Ctx, box: LayoutBox): boolean {
-  if (box.style.textOverflow !== 'ellipsis' || (box.style.overflowX === 'visible' && box.style.overflowY === 'visible')) return false;
-  if (directionOf(ctx, box) === 'rtl') unsupported('text-overflow', box.id, 'css-overflow-4 §3.1', `text-overflow: ellipsis in the rtl block ${box.id} is not yet proven against Chrome`);
-  return true;
+  return box.style.textOverflow === 'ellipsis' && (box.style.overflowX !== 'visible' || box.style.overflowY !== 'visible');
 }
 
 /**
@@ -2061,7 +2063,7 @@ export function clampedLinesHeight(ctx: Ctx, box: LayoutBox, lines: readonly Pla
  */
 type Truncated = { readonly pieces: readonly LinePiece[]; readonly ellipsis: LineEllipsis | null };
 
-function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: readonly number[], baseline: LU, lineWidth: LU, pieces: readonly LinePiece[], forced: boolean): Truncated | null {
+function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: readonly number[], baseline: LU, lineWidth: LU, lineEnd: LU, pieces: readonly LinePiece[], forced: boolean): Truncated | null {
   if ((!forced && lineWidth <= add(available, fromRaw(1))) || pieces.length === 0) return null;
   for (const b of on) {
     if ((ifc.firstContent[b] as number) < 0) unsupported('text-overflow', (ifc.boxes[b] as InlineBox).id, 'css-overflow-4 §3.1', `the empty inline box ${(ifc.boxes[b] as InlineBox).id} is on a truncated line of ${box.id}`);
@@ -2078,11 +2080,11 @@ function truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU, on: r
     if (font.smallCaps) unsupported('text-overflow', t.id, 'css-overflow-4 §3.1', `${t.id} has small caps on a truncated line of ${box.id}`);
     sources.push({ text: t.text, font, start: p.start, end: p.visibleEnd, x: p.x, width: p.width });
   }
-  const r = truncateLine(ctx, box.id, available, fontOf(strut.font), sources, ifc.shaped);
+  const r = truncateLine(ctx, box.id, available, fontOf(strut.font), sources, ifc.shaped, directionOf(ctx, box) === 'rtl', lineEnd);
   const out: LinePiece[] = [];
   for (let k = 0; k < pieces.length; k++) {
     const p = pieces[k] as LinePiece;
-    out.push({ leaf: p.leaf, start: p.start, visibleEnd: p.visibleEnd, end: p.end, x: p.x, width: p.width, top: p.top, ascent: p.ascent, descent: p.descent, shifts: p.shifts, paintEnd: r.paintEnds[k] as number, truncated: r.truncated[k] as boolean, truncatedWidth: r.truncatedWidths[k] as LU });
+    out.push({ leaf: p.leaf, start: p.start, visibleEnd: p.visibleEnd, end: p.end, x: p.x, width: p.width, top: p.top, ascent: p.ascent, descent: p.descent, shifts: p.shifts, paintStart: r.paintStarts[k] as number, paintEnd: r.paintEnds[k] as number, truncated: r.truncated[k] as boolean, truncatedX: r.truncatedXs[k] as LU, truncatedWidth: r.truncatedWidths[k] as LU });
   }
   if (r.ellipsized < 0) return { pieces: out, ellipsis: null };
   const m = ctx.measurer.metrics(r.font);
@@ -2179,7 +2181,7 @@ function placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU
     const m = fontMetricsOf(ctx, t.id, t.font);
     const pieceTop = ctx.faults.fragmentFromLineTop ? top : sub(baseline, m.ascent);
     const visibleEnd = first.at + (f.visibleTo - f.from);
-    pieces.push({ leaf: first.leaf, start: first.at, visibleEnd, end: first.at + (f.to - f.from), x, width: f.width, top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: [], paintEnd: visibleEnd, truncated: false, truncatedWidth: ZERO });
+    pieces.push({ leaf: first.leaf, start: first.at, visibleEnd, end: first.at + (f.to - f.from), x, width: f.width, top: pieceTop, ascent: m.ascent, descent: m.descent, shifts: [], paintStart: first.at, paintEnd: visibleEnd, truncated: false, truncatedX: x, truncatedWidth: ZERO });
     x = add(x, f.width);
   }
   // TXT2-c with TXT2-f: Blink truncates a preserved line by its own items (control items, hanging spaces), which no Chrome case covers yet.
@@ -2261,7 +2263,7 @@ export function boxLineRects(ctx: Ctx, ifc: Ifc, line: PlacedLine, b: number): R
   for (const p of line.pieces) {
     if (!within(ifc.boxParent, leafBox(ifc, p.leaf), b)) continue;
     if (!(p.truncated && ctx.faults.truncateChangesBlockSize)) out.push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
-    if (p.truncated) out.push({ x: p.x, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
+    if (p.truncated) out.push({ x: p.truncatedX, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
     if (e !== null && e.leaf === p.leaf) out.push({ x: e.x, y: e.top, width: e.width, height: add(e.ascent, e.descent) });
   }
   return out;
@@ -2278,7 +2280,7 @@ function collectFragments(ctx: Ctx, ifc: Ifc, atoms: readonly AtomicLayout[], at
         // A truncated piece keeps its full fragment, hidden for paint, before its truncated one (LineTruncator::TruncateLine); planted
         // fault truncateChangesBlockSize keeps only the truncated one.
         if (!(p.truncated && ctx.faults.truncateChangesBlockSize)) rects.push({ x: p.x, y: p.top, width: p.width, height: add(p.ascent, p.descent) });
-        if (p.truncated) rects.push({ x: p.x, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
+        if (p.truncated) rects.push({ x: p.truncatedX, y: p.top, width: p.truncatedWidth, height: add(p.ascent, p.descent) });
       }
     }
     // A preserved U+000A's rect is empty, and Chrome's bounding rect of a Range skips empty rects (gfx::RectF::Union).

@@ -25,9 +25,9 @@ function outcomes(faults: EngineFaults): DprCaseOutcome[] {
 const failing = (faults: EngineFaults): string[] => outcomes(faults).filter((o) => o.status === 'fail').map((o) => `${o.id}@${o.dpr}`);
 
 describe('TXT2-f: text-overflow: ellipsis against Chrome 145', () => {
-  it('covers the three layout fixtures, ltr only, each case compiled with no error', () => {
-    expect([...own].sort()).toEqual(['text-overflow-blocks', 'text-overflow-fonts', 'text-overflow-lines']);
-    expect(corpus.map((f) => f.cases.length)).toEqual([1, 1, 1]);
+  it('covers the four layout fixtures in the ltr environment (text-overflow-rtl sets direction: rtl itself), each compiled with no error', () => {
+    expect([...own].sort()).toEqual(['text-overflow-blocks', 'text-overflow-fonts', 'text-overflow-lines', 'text-overflow-rtl']);
+    expect(corpus.map((f) => f.cases.length)).toEqual([1, 1, 1, 1]);
     for (const [id, c] of compiled) expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message), id).toEqual([]);
   });
 
@@ -39,6 +39,14 @@ describe('TXT2-f: text-overflow: ellipsis against Chrome 145', () => {
     const line = (id: string) => capture.nodes.find((n) => n.id === id);
     expect(line('a1:text0:line1')?.y).toBe(line('a1:text0:line0')?.y);
     expect(line('a3:text0:line1')).toBeUndefined();
+    // In rtl the truncated part keeps the text's end, at its right edge, and the ellipsis is on its left.
+    const rtl = committedDprCapture('text-overflow-rtl', 1);
+    const right = (id: string): number => {
+      const n = rtl.nodes.find((x) => x.id === id);
+      if (n === undefined) throw new Error(`no ${id} in the text-overflow-rtl capture`);
+      return n.x + n.width;
+    };
+    expect(right('r1:text0:line1')).toBe(right('r1:text0:line0'));
   });
 
   it('planted faults ellipsisInTextFont and truncateChangesBlockSize are caught', () => {

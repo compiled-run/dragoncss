@@ -33,7 +33,7 @@ describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
   it('cuts an overflowing nowrap line at a character, not a word, and puts U+2026 after it', () => {
     const b = box('a', TRUNCATE, [nowrap('t', 'XX XX XX XX')]);
     const [line] = placeLines(ctx(), b, fromCssPx(55));
-    expect(line?.pieces).toEqual([{ leaf: 0, start: 0, visibleEnd: 11, end: 11, x: 0, width: 11 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintEnd: 4, truncated: true, truncatedWidth: 4 * G }]);
+    expect(line?.pieces).toEqual([{ leaf: 0, start: 0, visibleEnd: 11, end: 11, x: 0, width: 11 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintStart: 0, paintEnd: 4, truncated: true, truncatedX: 0, truncatedWidth: 4 * G }]);
     expect(line?.ellipsis).toEqual({ leaf: 0, text: '…', font: { family: 'Ahem', size: 10, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, x: 4 * G, width: G, top: 0, ascent: 512, descent: 128 });
   });
 
@@ -96,9 +96,24 @@ describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
     expect(frags(r, 't')).toEqual([[0, 4 * G]]);
   });
 
-  it('refuses rtl and an empty inline box on a truncated line', () => {
-    const rtl = run(box('root', {}, [box('a', { ...TRUNCATE, direction: 'rtl' }, [nowrap('t', 'XX XX XX XX')])]));
-    expect(rtl.kind === 'unsupported' && rtl.unsupported.code).toBe('text-overflow');
+  it('in rtl cuts the text from its start, keeps its end at its right edge, and puts the ellipsis on its left', () => {
+    const RTL: Partial<LayoutStyle> = { ...TRUNCATE, direction: 'rtl' };
+    // The 110px line overflows the 55px box to the left: it starts at -55px, and 55px less the ellipsis keeps "X XX".
+    const [line] = placeLines(ctx(), box('a', RTL, [nowrap('t', 'XX XX XX XX')]), fromCssPx(55));
+    expect(line?.pieces).toEqual([{ leaf: 0, start: 0, visibleEnd: 11, end: 11, x: -5.5 * G, width: 11 * G, top: 0, ascent: 512, descent: 128, shifts: [], paintStart: 7, paintEnd: 11, truncated: true, truncatedX: 1.5 * G, truncatedWidth: 4 * G }]);
+    expect(line?.ellipsis).toMatchObject({ leaf: 0, text: '…', x: 0.5 * G, width: G });
+    expect(frags(run(box('root', {}, [box('a', RTL, [nowrap('t', 'XX XX XX XX')])])), 't')).toEqual([[-5.5 * G, 11 * G], [1.5 * G, 4 * G]]);
+    // A child that fits with the ellipsis on its left takes it; the children left of it are hidden.
+    const [two] = placeLines(ctx(), box('a', RTL, [nowrap('t0', 'XXXX'), span('s', [nowrap('t1', 'XXXX')])]), fromCssPx(55));
+    expect(two?.pieces.map((p) => [p.paintStart, p.paintEnd, p.truncated])).toEqual([[0, 0, false], [0, 4, false]]);
+    expect(two?.ellipsis).toMatchObject({ leaf: 1, x: 0.5 * G });
+    // The line's start child keeps its last character even when the ellipsis does not fit beside it.
+    const [narrow] = placeLines(ctx(), box('a', { ...RTL, width: px(15) }, [nowrap('t', 'XXXX')]), fromCssPx(15));
+    expect(narrow?.pieces.map((p) => [p.paintStart, p.paintEnd, p.truncatedX, p.truncatedWidth])).toEqual([[3, 4, 0.5 * G, G]]);
+    expect(narrow?.ellipsis?.x).toBe(-0.5 * G);
+  });
+
+  it('refuses an empty inline box on a truncated line', () => {
     const empty = run(box('root', {}, [box('a', TRUNCATE, [span('s', []), nowrap('t', 'XX XX XX XX')])]));
     expect(empty.kind === 'unsupported' && empty.unsupported.code).toBe('text-overflow');
   });
