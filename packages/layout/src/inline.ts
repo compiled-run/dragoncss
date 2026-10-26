@@ -2271,10 +2271,13 @@ function trimShiftRect(r: Rect, dy: LU): Rect {
   return { x: r.x, y: add(r.y, dy), width: r.width, height: r.height };
 }
 
+function trimShiftEllipsis(e: LineEllipsis, dy: LU): LineEllipsis {
+  return { ...e, top: add(e.top, dy) };
+}
+
 function trimShiftLine(line: PlacedLine, dy: LU): PlacedLine {
   const pieces = line.pieces.map((p): LinePiece => ({ ...p, top: add(p.top, dy) }));
-  const e = line.ellipsis;
-  const ellipsis = e === null ? null : { ...e, top: add(e.top, dy) };
+  const ellipsis: LineEllipsis | null = line.ellipsis === null ? null : trimShiftEllipsis(line.ellipsis, dy);
   return { ...line, top: add(line.top, dy), baseline: add(line.baseline, dy), pieces, boxRects: line.boxRects.map((r) => trimShiftRect(r, dy)), breakRects: line.breakRects.map((r) => trimShiftRect(r, dy)), ellipsis };
 }
 
@@ -2298,7 +2301,9 @@ function trimmedLineEnd(ctx: Ctx, box: LayoutBox, ifc: Ifc, lines: readonly Plac
  */
 function checkTextBoxTrimContext(ctx: Ctx, box: LayoutBox, ifc: Ifc, atomics: number): void {
   if (box.style.textBoxTrim === null) return;
-  const { position, float, gridItem } = box.style;
+  const position = box.style.position;
+  const float = box.style.float;
+  const gridItem = box.style.gridItem;
   if (box.style.multicol !== null) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on the multi-column container ${box.id} is not yet proven against Chrome`);
   if (position !== 'static' && position !== 'relative') unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which is position: ${position}, is not yet proven against Chrome`);
   if (float !== 'none') unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on the float ${box.id} is not yet proven against Chrome`);
