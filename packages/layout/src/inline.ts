@@ -3,9 +3,11 @@
 // at UAX #14 opportunities as Blink's break iterator applies them (linebreak.ts) and at every <br>, fitted with Blink's fit test
 // (linefit.ts), and each line box is sized from the strut and every inline box on it, aligned at their baselines (CSS2 §10.8.1).
 // Rounding follows Blink 145 as INL-P measured it (docs/research/inline-spike/blink-notes.md §4, §5).
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, LineHeightValue, MarginValue, NormalValue, NumberValue, PaddingValue, Px, ReplacedLeaf, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
+import type { CalcExpr, FontSpec, InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, LineHeightValue, LineStrut, MarginValue, MulticolStyle, NormalValue, NumberValue, PaddingValue, Px, ReplacedLeaf, TextFont, TextLeaf, WhiteSpaceCollapse } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toPx, ZERO } from './units.ts';
+import { add, clampNegativeToZero, divInt, floatToInlineRaw, floorToWholePx, fromFloatRound, fromPxCeil, fromRaw, inlineDivInt, inlineToFloat, lineHeightFromNumber, max, min, platformFontSize, sub, toFloat, toPx, ZERO } from './units.ts';
+import type { WrapCandidate } from './text-wrap.ts';
+import { linePenaltyOf, scoreBreakPoints } from './text-wrap.ts';
 import type { Frag, Placed, Point } from './box.ts';
 import { hasPercent, resolveBorder, resolveLength } from './box.ts';
 import type { Ctx } from './block.ts';
@@ -25,6 +27,7 @@ import { atomicContribution, isAtomicInline, layoutAtomic } from './inline-box.t
 import type { TruncSource } from './truncate.ts';
 import { truncateLine } from './truncate.ts';
 import { graphemeBreaks } from './grapheme.ts';
+import { balanceColumns, columnGeometry, columnOffsets } from './multicol.ts';
 
 const SPACE = 0x20;
 const ZWSP = 0x200b;
@@ -410,6 +413,7 @@ function checkAtomic(a: LayoutNode): void {
   if (s.position !== 'static') unsupported('inline-box-position', a.id, 'CSS2 §9.4.3', `a ${s.position} atomic inline ${a.id}`);
   const va = s.verticalAlign;
   if (va.kind !== 'keyword' || va.value !== 'baseline') unsupported('vertical-align', a.id, 'CSS2 §10.8.1', `vertical-align other than baseline on atomic inline ${a.id} (INL2)`);
+  if (s.height.kind === 'stretch' || s.minHeight.kind === 'stretch' || s.maxHeight.kind === 'stretch') unsupported('intrinsic-size-keyword', a.id, 'css-sizing-4 §3.1', `a stretch block size on atomic inline ${a.id}, outside a block-level box in block flow`);
   const percent = (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
   if (percent) unsupported('percent-height-flex', a.id, 'CSS2 §10.5', `a percentage block size on atomic inline ${a.id}, whose line boxes do not read their block container's height`);
 }
@@ -1848,6 +1852,175 @@ function onlyBreakIn(ifc: Ifc, b: number, start: number, end: number): number {
   return br;
 }
 
+/** score_line_break_context.h kMaxLinesForBalance and kMaxLinesForOptimal: the lines one balance or pretty pass takes. */
+const MAX_LINES_FOR_BALANCE = 6;
+const MAX_LINES_FOR_OPTIMAL = 4;
+
+/**
+ * css-text-4 §5.1 text-wrap-style: balance and pretty as Blink 145 lays them out (inline_layout_algorithm.cc LineBreakStrategy), from
+ * the greedy lines of a context wrapStyleContext accepted. A greedy line that overflows suspends both passes (LineBreaker
+ * HandleOverflow disables the score and bisect line breakers), and one line needs neither. balance initiates at the block start:
+ * ScoreLineBreaker::BalanceBreakPoints when the paragraph ends within 6 lines, else, or when that finds too few break opportunities,
+ * ParagraphLineBreaker::AttemptParagraphBalancing (bisectedLines). pretty runs ScoreLineBreaker::OptimalBreakPoints over a window of
+ * 4 lines that slides with each line laid out, so only the paragraph's last 4 greedy lines are optimized, and only when the last one
+ * is shorter than a third of the line and has no break opportunity (ShouldOptimize). Planted fault wrapStyleGreedy keeps the greedy
+ * lines.
+ */
+function wrapStyleLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, greedy: Line[]): Line[] {
+  const style = box.style.textWrapStyle;
+  if (style.kind === 'auto') return greedy;
+  if (ctx.faults.wrapStyleGreedy || greedy.length <= 1 || overflowingLine(ctx, ifc, adv, greedy, available)) return greedy;
+  if (style.kind === 'balance') {
+    if (greedy.length <= MAX_LINES_FOR_BALANCE) {
+      const scored = scoredLines(ctx, box, ifc, adv, available, greedy, 0, style.zoom, true);
+      if (scored !== null) return scored;
+    }
+    const bisected = bisectedLines(ctx, box, ifc, adv, available, greedy, style.zoom);
+    return bisected === null ? greedy : bisected;
+  }
+  const last = greedy[greedy.length - 1] as Line;
+  const lastWidth = clampNegativeToZero(width(ctx, ifc, adv, last.start, last.visibleEnd));
+  if (!(lastWidth < divInt(available, 3)) || breaksInside(ifc, last)) return greedy;
+  const from = greedy.length > MAX_LINES_FOR_OPTIMAL ? greedy.length - MAX_LINES_FOR_OPTIMAL : 0;
+  const scored = scoredLines(ctx, box, ifc, adv, available, greedy, from, style.zoom, false);
+  return scored === null ? greedy : scored;
+}
+
+/**
+ * The contexts balance and pretty are proven in against Chrome: one Ahem text leaf in its block container's font directly in it
+ * (no inline box, <br> or atomic inline), collapsed white space that wraps at normal opportunities, no spacing, soft
+ * hyphen, small caps, text-indent, justification, line clamp or truncation, and no list marker. The compiler refuses the rest first
+ * (analysis/computed-checks.ts checkTextWrapStyle).
+ */
+function wrapStyleContext(ctx: Ctx, box: LayoutBox, ifc: Ifc, indent: LU, kind: string): void {
+  const leaf = ifc.leaves.length === 1 ? (ifc.leaves[0] as TextLeaf) : null;
+  const strut = box.strut;
+  let beside = '';
+  if (leaf === null || ifc.boxes.length > 0 || ifc.brs.length > 0 || ifc.atomics.length > 0) beside = 'beside anything but one text run';
+  else if (ifc.shaped || leaf.font.family !== AHEM_FACE_ID) beside = 'in a real face';
+  else if (strut === null || strut.font.family !== leaf.font.family || strut.font.size !== leaf.font.size) beside = 'in a font other than its block container\'s';
+  else if (ifc.mode !== 'collapse' || !ifc.wrap) beside = 'with preserved white space or without wrapping';
+  else if (ifc.anywhere || ifc.minAnywhere || leaf.overflowWrap !== 'normal' || leaf.wordBreak !== 'normal') beside = 'with overflow-wrap or word-break';
+  else if (!zeroSpacing(leaf.letterSpacing) || !zeroSpacing(leaf.wordSpacing)) beside = 'with letter-spacing or word-spacing';
+  else if (leaf.smallCaps) beside = 'in small caps';
+  else if (holdsSoftHyphen(ifc)) beside = 'with a soft hyphen';
+  else if (indent !== ZERO) beside = 'with text-indent';
+  else if (box.style.textAlign === 'justify') beside = 'with text-align: justify';
+  else if (box.style.lineClamp !== 0) beside = 'with -webkit-line-clamp';
+  else if (box.style.textOverflow === 'ellipsis' && (box.style.overflowX !== 'visible' || box.style.overflowY !== 'visible')) beside = 'with text-overflow: ellipsis';
+  else if (box.marker !== null) beside = 'with a list marker';
+  if (beside !== '') unsupported('text-wrap-style', box.id, 'css-text-4 §5.1', `text-wrap-style: ${kind} on ${box.id} ${beside} is not proven against Chrome`);
+}
+
+function zeroSpacing(e: CalcExpr): boolean {
+  return e.kind === 'px' && e.value === 0;
+}
+
+function holdsSoftHyphen(ifc: Ifc): boolean {
+  for (const it of ifc.items) if (it.kind === 'char' && it.cp === SOFT_HYPHEN) return true;
+  return false;
+}
+
+/** Whether a line overflows the available width (LineBreaker HandleOverflow): the greedy breaker put one segment on it that does not fit. */
+function overflowingLine(ctx: Ctx, ifc: Ifc, adv: readonly LU[], lines: readonly Line[], available: LU): boolean {
+  const fit: FitFaults = { noEpsilon: ctx.faults.fitWithoutEpsilon, breakInsideWord: false };
+  for (const l of lines) if (!lineFits(ctx, ifc, adv, l.start, l.end, available, fit)) return true;
+  return false;
+}
+
+/** LineBreaker::CanBreakInside(const LineInfo&) for a line of one text item: a break opportunity inside it, before its end. */
+function breaksInside(ifc: Ifc, line: Line): boolean {
+  for (const b of ifc.boundaries) if (b.at > line.start && b.at < line.end) return true;
+  return false;
+}
+
+/**
+ * ScoreLineBreaker::Optimize over lines [from, end) (the paragraph's last lines): their break candidates as
+ * LineBreakCandidateContext::AppendLine and LineBreaker::AppendCandidates build them for one text item (a sentinel at the first
+ * line's start, one candidate per break opportunity after it, and the end of the text), positions in float px from the first line's
+ * start, then the score pass (text-wrap.ts). The lines before from stay; null
+ * where the pass finds too few opportunities.
+ */
+function scoredLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, lines: readonly Line[], from: number, zoom: number, balanced: boolean): Line[] | null {
+  const n = ifc.items.length;
+  const first = (lines[from] as Line).start;
+  const offsets: number[] = [first];
+  for (const b of ifc.boundaries) if (b.at > first && b.at < n) offsets.push(b.at);
+  offsets.push(n);
+  // ShapeResult::CachedPositionForOffset: the advance sum from the item's start ceiled to a LayoutUnit, made relative to the first
+  // line's start in float (SetBasePosition).
+  const base = Math.fround(0 - toFloat(width(ctx, ifc, adv, 0, first)));
+  const candidates: WrapCandidate[] = [{ offset: first, posNoBreak: 0, posIfBreak: 0, penalty: 0 }];
+  for (let k = 1; k < offsets.length; k++) {
+    const at = offsets[k] as number;
+    const end = visibleEndOf(ifc, offsets[k - 1] as number, at);
+    const posNoBreak = Math.fround(base + toFloat(width(ctx, ifc, adv, 0, at)));
+    candidates.push({ offset: at, posNoBreak, posIfBreak: Math.fround(base + toFloat(width(ctx, ifc, adv, 0, end))), penalty: 0 });
+  }
+  const line = clampNegativeToZero(available);
+  const fontSize = (box.strut as LineStrut).font.size;
+  const points = scoreBreakPoints(candidates, toFloat(add(line, fromRaw(1))), linePenaltyOf(toFloat(line), fontSize, zoom), zoom, balanced);
+  if (points === null) return null;
+  const out: Line[] = [];
+  for (let k = 0; k < from; k++) out.push(lines[k] as Line);
+  let start = first;
+  for (const p of points) {
+    const end = offsets[p] as number;
+    out.push({ start, end, visibleEnd: visibleEndOf(ifc, start, end), pieces: [], forced: end === n, justified: null });
+    start = end;
+  }
+  return out;
+}
+
+/**
+ * ParagraphLineBreaker::AttemptParagraphBalancing (paragraph_line_breaker.cc): gives up on text estimated at more than 12 lines (its
+ * length over how many spaces fit a line) or laid out greedily in more than 6, else bisects the available width, from 80% of the
+ * average line width up, in steps down to the zoom ceiled to a LayoutUnit, for the narrowest that keeps the greedy line count with no
+ * line overflowing. The lines are the greedy ones at that width; null where it gives up. A one-line paragraph never comes here.
+ */
+function bisectedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: readonly LU[], available: LU, greedy: readonly Line[], zoom: number): Line[] | null {
+  if (!(available > ZERO)) return null;
+  const font = (box.strut as LineStrut).font;
+  const space = ctx.measurer.measure(' ', fontOf(font));
+  if (!space.ok) return null;
+  const spaceWidth = toFloat(space.measure.width);
+  if (spaceWidth > 0) {
+    // EstimateNumLines: the text content's length over the whole spaces a line holds, ceiled (a zero quotient gives up).
+    const lineChars = Math.trunc(Math.fround(toFloat(available) / spaceWidth));
+    if (lineChars <= 0) return null;
+    const estimate = Math.trunc((textContentLength(ifc) + lineChars - 1) / lineChars);
+    if (estimate > MAX_LINES_FOR_BALANCE * 2) return null;
+  }
+  const numLines = greedy.length;
+  if (numLines > MAX_LINES_FOR_BALANCE) return null;
+  let total = ZERO;
+  for (const l of greedy) total = add(total, clampNegativeToZero(width(ctx, ifc, adv, l.start, l.visibleEnd)));
+  const average = divInt(total, numLines);
+  const epsilon = fromPxCeil(zoom);
+  let lower = fromFloatRound(Math.fround(toFloat(average) * Math.fround(0.8)));
+  let upper = available;
+  while (add(lower, epsilon) < upper) {
+    const middle = divInt(add(upper, lower), 2);
+    const lines = breakLines(ctx, ifc, adv, middle, ZERO);
+    if (lines.length <= numLines && !overflowingLine(ctx, ifc, adv, lines, middle)) upper = middle;
+    else lower = middle;
+  }
+  return breakLines(ctx, ifc, adv, upper, ZERO);
+}
+
+/** The length of the context's text content (InlineItemsData text_content): its characters without the collapsible spaces at its edges. */
+function textContentLength(ifc: Ifc): number {
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < ifc.items.length; i++) {
+    const it = ifc.items[i] as Item;
+    if (it.kind !== 'char' || it.cp === SPACE) continue;
+    if (first < 0) first = i;
+    last = i;
+  }
+  return first < 0 ? 0 : last + 1 - first;
+}
+
 // css-text-3 §8.1 (Blink LineBreaker::ComputeTextIndent, line_breaker.cc 811-822): the indent of a block container's first formatted
 // line, against the line's available inline size. What no Chrome case covers yet beside a nonzero indent is refused.
 function textIndentOf(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): LU {
@@ -1888,7 +2061,73 @@ export function placeLines(ctx: Ctx, box: LayoutBox, available: LU): PlacedLine[
 }
 
 export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): PlacedLine[] {
+  if (box.style.multicol !== null) return multicolLines(ctx, box, ifc, available).lines.map((l) => l.line);
   return placeAtomicLines(ctx, box, ifc, layoutAtomics(ctx, ifc, available), available).map((l) => l.line);
+}
+
+/** The lines of a multi-column container in their columns (multicol.ts), and the block size of its columns. */
+type ColumnLines = { readonly lines: readonly AtomicLine[]; readonly height: LU };
+
+/**
+ * css-multicol-1 §3 and §7: the lines break at the column inline size, the columns are balanced over their block sizes, and each
+ * column's lines move to its column: inline by the column's offset (from the content box's right edge in rtl), block to the top.
+ */
+function multicolLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU): ColumnLines {
+  const m = box.style.multicol as MulticolStyle;
+  checkMulticolContext(box, ifc);
+  const g = columnGeometry(m, box.style.columnGap, (box.strut as LineStrut).font.size, available);
+  const lines = placeAtomicLines(ctx, box, ifc, [], g.width).map((l) => l.line);
+  const columns = balanceColumns(lines.map((l) => l.height), g.count);
+  const offsets = columnOffsets(g, columns.starts.length);
+  const rtl = directionOf(ctx, box) === 'rtl';
+  // A <br>'s rect keeps the first column's inline offset in every column: Chrome 145 reports a <br> on a later column's line at
+  // its place in the first column, inline, and in its own column, block (measured, fixture multicol-ahem h3 and n; source not located).
+  const first = rtl ? sub(available, g.width) : ZERO;
+  const out: AtomicLine[] = [];
+  for (let c = 0; c < columns.starts.length; c++) {
+    const from = columns.starts[c] as number;
+    const to = c + 1 < columns.starts.length ? (columns.starts[c + 1] as number) : lines.length;
+    const offset = offsets[c] as LU;
+    const dx = rtl ? sub(sub(available, offset), g.width) : offset;
+    for (let j = from; j < to; j++) {
+      const line = lines[j] as PlacedLine;
+      out.push({ line: shiftLine(line, dx, sub(ZERO, (lines[from] as PlacedLine).top), first), atomics: [], atomicRects: [] });
+    }
+  }
+  return { lines: out, height: columns.height };
+}
+
+function shiftRect(r: Rect, dx: LU, dy: LU): Rect {
+  return { x: add(r.x, dx), y: add(r.y, dy), width: r.width, height: r.height };
+}
+
+/** A line moved by dx and dy, its <br> rects by breakDx and dy. */
+function shiftLine(line: PlacedLine, dx: LU, dy: LU, breakDx: LU): PlacedLine {
+  const pieces = line.pieces.map((p): LinePiece => ({ ...p, x: add(p.x, dx), top: add(p.top, dy) }));
+  return { ...line, top: add(line.top, dy), baseline: add(line.baseline, dy), pieces, boxRects: line.boxRects.map((r) => shiftRect(r, dx, dy)), breakRects: line.breakRects.map((r) => shiftRect(r, breakDx, dy)) };
+}
+
+/**
+ * The multi-column containers the engine lays out: one inline formatting context of collapsible text without inline boxes or
+ * atomic inlines, an auto block size, a px or normal column gap, overflow visible and no line clamp. The compiler refuses the
+ * rest; these guard the engine's own inputs.
+ */
+function checkMulticolContext(box: LayoutBox, ifc: Ifc): void {
+  const s = box.style;
+  const minHeight = s.minHeight;
+  if (ifc.atomics.length > 0) refuseMulticol(box, 'holds an atomic inline');
+  if (ifc.boxes.length > 0) refuseMulticol(box, 'holds an inline box');
+  if (ifc.mode !== 'collapse') refuseMulticol(box, 'preserves white space');
+  if (s.lineClamp !== 0) refuseMulticol(box, 'clamps its lines');
+  if (s.overflowX !== 'visible' || s.overflowY !== 'visible') refuseMulticol(box, 'clips its overflow');
+  const zeroMin = minHeight.kind === 'auto' || (minHeight.kind === 'px' && minHeight.value === 0);
+  if (s.height.kind !== 'auto' || s.maxHeight.kind !== 'none' || !zeroMin) refuseMulticol(box, 'has a specified block size');
+  if (s.columnGap.kind !== 'px' && s.columnGap.kind !== 'normal') refuseMulticol(box, 'has a percentage or calculated column gap');
+  if (s.textIndent.kind !== 'px') refuseMulticol(box, 'has a percentage or calculated text-indent');
+}
+
+function refuseMulticol(box: LayoutBox, what: string): never {
+  return unsupported('multicol', box.id, 'css-multicol-1 §3', `the multi-column container ${box.id} ${what}, which is not yet proven against Chrome`);
 }
 
 /** Lays out the atomic inlines of a formatting context whose content box is available wide (CSS2 §10.3.9). */
@@ -1899,9 +2138,13 @@ function layoutAtomics(ctx: Ctx, ifc: Ifc, available: LU): AtomicLayout[] {
 function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly AtomicLayout[], available: LU): AtomicLine[] {
   const adv = atoms.map((a) => a.advance);
   const indent = textIndentOf(ctx, box, ifc, available);
-  const broken = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
+  const wrapStyle = box.style.textWrapStyle;
+  if (wrapStyle.kind !== 'auto') wrapStyleContext(ctx, box, ifc, indent, wrapStyle.kind);
+  const greedy = ifc.shaped ? breakShapedLines(ctx, box, ifc, available, indent) : breakLines(ctx, ifc, adv, available, indent);
+  const broken = wrapStyle.kind === 'auto' ? greedy : wrapStyleLines(ctx, box, ifc, adv, available, greedy);
   const rtl = directionOf(ctx, box) === 'rtl';
   checkClampContext(ctx, box, ifc, atoms.length);
+  checkTextBoxTrimContext(ctx, box, ifc, atoms.length);
   const out: AtomicLine[] = [];
   let top = ZERO;
   for (let n = 0; n < broken.length; n++) {
@@ -2008,7 +2251,67 @@ function placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: readonly At
     out.push({ line: { top, height, baseline, pieces: cut === null ? pieces : cut.pieces, boxes: on, boxRects, breaks, breakRects, ellipsis: cut === null ? null : cut.ellipsis }, atomics, atomicRects });
     top = add(top, height);
   }
-  return out;
+  return trimLineStart(ctx, box, ifc, out);
+}
+
+/**
+ * css-inline-3 §5.1 text-box-trim: trim-start (InlineLayoutAlgorithm::ApplyTextBoxTrim): the first formatted line's box starts at
+ * its over edge, the strut font's ascent above its baseline (InlineBoxState::AdjustEdges, text-box-edge text or auto) instead of
+ * the line's own ascent, and every later line follows it (BlockLayoutAlgorithm places each line after the one before).
+ */
+function trimLineStart(ctx: Ctx, box: LayoutBox, ifc: Ifc, lines: readonly AtomicLine[]): AtomicLine[] {
+  const t = box.style.textBoxTrim;
+  const first = lines[0];
+  if (t === null || !t.start || first === undefined || ctx.faults.textBoxTrimIgnored) return [...lines];
+  const dy = sub(ifc.strut.ascent, sub(first.line.baseline, first.line.top));
+  return lines.map((l): AtomicLine => ({ line: trimShiftLine(l.line, dy), atomics: l.atomics, atomicRects: l.atomicRects.map((r) => trimShiftRect(r, dy)) }));
+}
+
+function trimShiftRect(r: Rect, dy: LU): Rect {
+  return { x: r.x, y: add(r.y, dy), width: r.width, height: r.height };
+}
+
+function trimShiftEllipsis(e: LineEllipsis, dy: LU): LineEllipsis {
+  return { ...e, top: add(e.top, dy) };
+}
+
+function trimShiftLine(line: PlacedLine, dy: LU): PlacedLine {
+  const pieces = line.pieces.map((p): LinePiece => ({ ...p, top: add(p.top, dy) }));
+  const ellipsis: LineEllipsis | null = line.ellipsis === null ? null : trimShiftEllipsis(line.ellipsis, dy);
+  return { ...line, top: add(line.top, dy), baseline: add(line.baseline, dy), pieces, boxRects: line.boxRects.map((r) => trimShiftRect(r, dy)), breakRects: line.breakRects.map((r) => trimShiftRect(r, dy)), ellipsis };
+}
+
+/**
+ * css-inline-3 §5.1 text-box-trim: trim-end (ApplyTextBoxTrim, SetTrimBlockEndBy): the block's content ends at the last line's under
+ * edge, the strut font's descent below its baseline (text-box-edge text or auto) or the baseline itself (alphabetic,
+ * FixedAlphabetic), instead of the line box's end. The amount the content's end moves up; zero without trim-end or lines.
+ */
+function trimmedLineEnd(ctx: Ctx, box: LayoutBox, ifc: Ifc, lines: readonly PlacedLine[]): LU {
+  const t = box.style.textBoxTrim;
+  const last = lines[lines.length - 1];
+  if (t === null || !t.end || last === undefined || ctx.faults.textBoxTrimIgnored) return ZERO;
+  const below = sub(add(last.top, last.height), last.baseline);
+  return t.alphabetic ? below : sub(below, ifc.strut.descent);
+}
+
+/**
+ * The text-box-trim containers the engine lays out: an in-flow, unfloated box that is not a grid item or a multi-column container,
+ * holding one inline formatting context of collapsible text and inline boxes, with no atomic inline, line clamp or text-overflow
+ * ellipsis. The compiler refuses the rest (analysis/text-box.ts); these guard the engine's own inputs.
+ */
+function checkTextBoxTrimContext(ctx: Ctx, box: LayoutBox, ifc: Ifc, atomics: number): void {
+  if (box.style.textBoxTrim === null) return;
+  const position = box.style.position;
+  const float = box.style.float;
+  const gridItem = box.style.gridItem;
+  if (box.style.multicol !== null) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on the multi-column container ${box.id} is not yet proven against Chrome`);
+  if (position !== 'static' && position !== 'relative') unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which is position: ${position}, is not yet proven against Chrome`);
+  if (float !== 'none') unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on the float ${box.id} is not yet proven against Chrome`);
+  if (gridItem !== null) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on the grid item ${box.id} is not yet proven against Chrome`);
+  if (ifc.mode !== 'collapse') unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, whose white space is preserved, is not yet proven against Chrome`);
+  if (atomics > 0) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which holds an atomic inline, is not yet proven against Chrome`);
+  if (box.style.lineClamp !== 0) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on the line-clamp container ${box.id} is not yet proven against Chrome`);
+  if (truncates(ctx, box)) unsupported('text-box-trim', box.id, 'css-inline-3 §5.1', `text-box-trim on ${box.id}, which truncates its lines with an ellipsis, is not yet proven against Chrome`);
 }
 
 /** Whether a block container truncates its overflowing lines (LayoutBlockFlow::ShouldTruncateOverflowingText): overflow not visible. */
@@ -2342,7 +2645,8 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
   const ifc = buildIfc(ctx, box);
   const atoms = layoutAtomics(ctx, ifc, available);
   // Without atomic inlines the lines are placeIfcLines' own, the function the native runtime and the break vectors call.
-  const atomicLines = atoms.length === 0 ? placeIfcLines(ctx, box, ifc, available).map((line): AtomicLine => ({ line, atomics: [], atomicRects: [] })) : placeAtomicLines(ctx, box, ifc, atoms, available);
+  const columns = box.style.multicol === null ? null : multicolLines(ctx, box, ifc, available);
+  const atomicLines = columns !== null ? columns.lines : atoms.length === 0 ? placeIfcLines(ctx, box, ifc, available).map((line): AtomicLine => ({ line, atomics: [], atomicRects: [] })) : placeAtomicLines(ctx, box, ifc, atoms, available);
   const lines = atomicLines.map((l) => l.line);
   const fragments: Fragments = { placed: new Map() };
   collectFragments(ctx, ifc, atoms, atomicLines, origin, directionOf(ctx, box) === 'rtl' ? available : ZERO, fragments);
@@ -2350,7 +2654,17 @@ export function layoutInline(ctx: Ctx, box: LayoutBox, available: LU, origin: Po
   placeTopFragments(inlineChildren(box), fragments, placed);
   const last = lines[lines.length - 1];
   const first = lines[0];
-  return { height: clampedLinesHeight(ctx, box, lines), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
+  if (columns !== null) return { height: columns.height, placed, firstBaseline: columnBaseline(lines, true), lastBaseline: columnBaseline(lines, false), lines: lines.length };
+  return { height: sub(clampedLinesHeight(ctx, box, lines), trimmedLineEnd(ctx, box, ifc, lines)), placed, firstBaseline: first === undefined ? null : first.baseline, lastBaseline: last === undefined ? null : last.baseline, lines: lines.length };
+}
+
+/** ColumnLayoutAlgorithm::PropagateBaselineFromChild: the highest first baseline of the columns, or the lowest last baseline. */
+function columnBaseline(lines: readonly PlacedLine[], first: boolean): LU | null {
+  let out: LU | null = null;
+  for (const l of lines) {
+    if (out === null || (first ? l.baseline < out : l.baseline > out)) out = l.baseline;
+  }
+  return out;
 }
 
 // css-sizing-3 §5.1 with css-text-3 §5: max-content breaks only at <br>s, so it is the widest forced line; min-content takes every

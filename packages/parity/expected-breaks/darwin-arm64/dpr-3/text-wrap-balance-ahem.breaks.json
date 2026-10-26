@@ -1,0 +1,24 @@
+{
+  "case": "text-wrap-balance-ahem",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"b1:text0","data":"XX XXX XX XXXX XX X XXX","lines":3,"units":[0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2],"blank":[6,14]},
+    {"id":"b2:text0","data":"XXXXXX XX XXX XXXX X XXXXX XX XXX","lines":4,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3],"blank":[9,18,26]},
+    {"id":"b3:text0","data":"XXXX XXXX XX","lines":2,"units":[0,0,0,0,0,1,1,1,1,1,1,1],"blank":[4]},
+    {"id":"b4:text0","data":"XX XXX XX XXXX XX X XXX","lines":3,"units":[0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2],"blank":[6,14]},
+    {"id":"b5:text0","data":"XX XXX XX XXXX XX X XXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1],"blank":[9]},
+    {"id":"b6:text0","data":"XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX","lines":8,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,7,7],"blank":[8,17,26,35,44,53,62]},
+    {"id":"b7:text0","data":"XXXXXXXXXXXXXX XX XX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],"blank":[14]},
+    {"id":"b8i:text0","data":"XX XXX XX XXXX XX X XXX","lines":3,"units":[0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2],"blank":[6,14]},
+    {"id":"b9:text0","data":"XXX XX XXXX X XX XXXXX XXX XX","lines":5,"units":[0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4],"blank":[6,11,16,22]},
+    {"id":"b10:text0","data":"XX XXX XX","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"p1:text0","data":"XXXXX XXX XXXXXX XXX X","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2],"blank":[9,16]},
+    {"id":"p2:text0","data":"XXXX XXXX XXXXX X XXXX XXX XX XXXXX X XXX","lines":5,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,4,4,4,4,4],"blank":[9,17,26,35]},
+    {"id":"p3:text0","data":"XX XXXX XXX XXXXX XXXX X","lines":3,"units":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2],"blank":[7,17]},
+    {"id":"p4:text0","data":"XXXX XXXX XX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,1,1],"blank":[9]},
+    {"id":"p5:text0","data":"XXXXX XXX XXXXXX XXX X","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2],"blank":[9,16]},
+    {"id":"rb:text0","data":"XX XXX XX XXXX XX X XXX","lines":3,"units":[0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2],"blank":[6,14]},
+    {"id":"rp:text0","data":"XXXXX XXX XXXXXX XXX X","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2],"blank":[9,16]}
+  ]
+}

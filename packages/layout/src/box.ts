@@ -1,5 +1,5 @@
 // Shared box-model resolution: padding, border, margins, box-sizing and min/max (CSS2 §8, §10.4, §10.7; css-sizing-3).
-import type { BorderWidthValue, BoxSizing, InlineSizeValue, LayoutBox, LayoutStyle, LengthCalc, MarginValue, MaxInlineSizeValue, MaxSizeValue, MinSizeValue, Percent, Px, SizeValue } from './input.ts';
+import type { BlockSizeValue, BorderWidthValue, BoxSizing, InlineSizeValue, LayoutBox, LayoutStyle, LengthCalc, MarginValue, MaxBlockSizeValue, MaxInlineSizeValue, MaxSizeValue, MinBlockSizeValue, MinSizeValue, Percent, Px, SizeValue } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { calcHasPercent, resolveCalc } from './calc.ts';
@@ -200,6 +200,25 @@ export function lengthMaxWidth(nodeId: string, v: MaxInlineSizeValue): MaxSizeVa
   return v;
 }
 
+/**
+ * css-sizing-4 §3.1: stretch as a block size is read only by a block-level box in block flow (specifiedBlockSizeWith and
+ * blockMinMaxWith with its BlockStretch); every other reader takes the length through these and refuses it.
+ */
+export function lengthHeight(nodeId: string, v: BlockSizeValue): SizeValue {
+  if (v.kind === 'stretch') return refuseKeyword(nodeId, 'height', v.kind);
+  return v;
+}
+
+export function lengthMinHeight(nodeId: string, v: MinBlockSizeValue): MinSizeValue {
+  if (v.kind === 'stretch') return refuseKeyword(nodeId, 'min-height', v.kind);
+  return v;
+}
+
+export function lengthMaxHeight(nodeId: string, v: MaxBlockSizeValue): MaxSizeValue {
+  if (v.kind === 'stretch') return refuseKeyword(nodeId, 'max-height', v.kind);
+  return v;
+}
+
 function refuseKeyword(nodeId: string, prop: string, keyword: string): never {
   return unsupported('intrinsic-size-keyword', nodeId, 'css-sizing-3 §3.2', `${prop}: ${keyword} outside a block-level box in block flow`);
 }
@@ -236,15 +255,33 @@ function blockBasisFor(box: LayoutBox, v: LengthPercent, basis: HeightBasis, pro
   return hasPercent(v) ? percentBlockBasis(box, basis, prop) : ZERO;
 }
 
+/**
+ * css-sizing-4 §3.1: what a block size of stretch fills. A block-level box in block flow fills its containing block's block size
+ * less the margins that count (block.ts stretchOf), as a percentage of it resolves (indefinite: stretch behaves as auto, 0 or
+ * none); every other box refuses it.
+ */
+export type BlockStretch = { readonly kind: 'refused' } | { readonly kind: 'available'; readonly basis: HeightBasis; readonly margins: LU };
+
+export const NO_STRETCH: BlockStretch = { kind: 'refused' };
+export const INDEFINITE_STRETCH: BlockStretch = { kind: 'available', basis: INDEFINITE, margins: ZERO };
+
+/** The border-box size stretch fills, whatever box-sizing says (at least the border and padding), or null when it behaves as auto. */
+function stretchBlockSize(box: LayoutBox, stretch: BlockStretch, borderPadding: LU, prop: string): LU | null {
+  if (stretch.kind === 'refused') return refuseKeyword(box.id, prop, 'stretch');
+  const basis = percentBlockBasis(box, stretch.basis, prop);
+  return basis === null ? null : max(sub(basis, stretch.margins), borderPadding);
+}
+
 /** specifiedBlockSize with no planted engine faults: the form external callers (the native hosts) use. */
 export function specifiedBlockSize(box: LayoutBox, basis: HeightBasis, borderPadding: LU): LU | null {
-  return specifiedBlockSizeWith(box, basis, borderPadding, NO_ENGINE_FAULTS);
+  return specifiedBlockSizeWith(box, basis, borderPadding, NO_ENGINE_FAULTS, NO_STRETCH);
 }
 
 /** The specified block size in border-box terms, or null when it behaves as auto (CSS2 §10.5). */
-export function specifiedBlockSizeWith(box: LayoutBox, basis: HeightBasis, borderPadding: LU, faults: EngineFaults): LU | null {
+export function specifiedBlockSizeWith(box: LayoutBox, basis: HeightBasis, borderPadding: LU, faults: EngineFaults, stretch: BlockStretch): LU | null {
   const h = box.style.height;
   if (h.kind === 'auto') return null;
+  if (h.kind === 'stretch') return stretchBlockSize(box, stretch, borderPadding, 'height');
   const v = resolveLengthOrNull(h, blockBasisFor(box, h, basis, 'height'), faults);
   return v === null ? null : borderBoxFromSpecified(v, borderPadding, box.style.boxSizing);
 }
@@ -259,18 +296,24 @@ export function resolveMinLength(v: LengthPercent, basis: LU | null, faults: Eng
 
 /** blockMinMax with no planted engine faults: the form external callers (the native hosts) use. */
 export function blockMinMax(box: LayoutBox, basis: HeightBasis, borderPadding: LU): MinMax {
-  return blockMinMaxWith(box, basis, borderPadding, NO_ENGINE_FAULTS);
+  return blockMinMaxWith(box, basis, borderPadding, NO_ENGINE_FAULTS, NO_STRETCH);
 }
 
 // CSS2 §10.7 min-height/max-height in border-box terms; against an indefinite block a min resolves against 0 and a max is none.
-export function blockMinMaxWith(box: LayoutBox, basis: HeightBasis, borderPadding: LU, faults: EngineFaults): MinMax {
+// A stretch min-height or max-height against an indefinite block is auto or none (Blink ResolveBlockLengthInternal kStretch).
+export function blockMinMaxWith(box: LayoutBox, basis: HeightBasis, borderPadding: LU, faults: EngineFaults, stretch: BlockStretch): MinMax {
   const s = box.style;
   let lo = borderPadding;
-  if (s.minHeight.kind !== 'auto') {
+  if (s.minHeight.kind === 'stretch') {
+    const v = stretchBlockSize(box, stretch, borderPadding, 'min-height');
+    if (v !== null) lo = v;
+  } else if (s.minHeight.kind !== 'auto') {
     lo = borderBoxFromSpecified(resolveMinLength(s.minHeight, blockBasisFor(box, s.minHeight, basis, 'min-height'), faults), borderPadding, s.boxSizing);
   }
   let hi: LU | null = null;
-  if (s.maxHeight.kind !== 'none') {
+  if (s.maxHeight.kind === 'stretch') {
+    hi = stretchBlockSize(box, stretch, borderPadding, 'max-height');
+  } else if (s.maxHeight.kind !== 'none') {
     const v = resolveLengthOrNull(s.maxHeight, blockBasisFor(box, s.maxHeight, basis, 'max-height'), faults);
     if (v !== null) hi = borderBoxFromSpecified(v, borderPadding, s.boxSizing);
   }

@@ -33,9 +33,13 @@ import {
   contentBox,
   hasPercent,
   isScrollContainer,
+  lengthHeight,
+  lengthMaxHeight,
   lengthMaxWidth,
+  lengthMinHeight,
   lengthMinWidth,
   lengthWidth,
+  NO_STRETCH,
   resolveBorder,
   resolveLength,
   resolveLengthOrNull,
@@ -198,6 +202,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
         heightBasis: itemHeightBasis,
         formattingContextRoot: true,
         bfcLineOffset: ZERO,
+        blockStretch: NO_STRETCH,
       });
       hypoFrag.set(item, r.frag);
       hypoCross.set(item, r.frag.height);
@@ -305,6 +310,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
           heightBasis: itemHeightBasis,
           formattingContextRoot: true,
           bfcLineOffset: ZERO,
+          blockStretch: NO_STRETCH,
         });
       const crossPos = add(linePhysical, crossInLine);
       const at: Placed = {
@@ -506,7 +512,7 @@ function buildItem(
     columnCross = max(constrain(w, mm), hbp);
   }
 
-  const mainSizeProp = isRow ? lengthWidth(box.id, s.width) : s.height;
+  const mainSizeProp = isRow ? lengthWidth(box.id, s.width) : lengthHeight(box.id, s.height);
   const specifiedMain = mainSizeContent(box, mainSizeProp, isRow, mainInner, mainBp, heightBasis, ctx.faults);
   let contentSized: LU | null = null;
   const contentMain = (): LU => {
@@ -526,6 +532,7 @@ function buildItem(
         heightBasis,
         formattingContextRoot: true,
         bfcLineOffset: ZERO,
+        blockStretch: NO_STRETCH,
       });
       contentSized = contentBox(r.frag.height, vbp);
     }
@@ -550,8 +557,8 @@ function buildItem(
 
   // Main-axis min and max in content-box terms; min auto is the automatic minimum size (§4.5), which is 0 for a scroll container
   // (planted fault scrollMinAuto keeps the content-based minimum).
-  const minProp = isRow ? lengthMinWidth(box.id, s.minWidth) : s.minHeight;
-  const maxProp = isRow ? lengthMaxWidth(box.id, s.maxWidth) : s.maxHeight;
+  const minProp = isRow ? lengthMinWidth(box.id, s.minWidth) : lengthMinHeight(box.id, s.minHeight);
+  const maxProp = isRow ? lengthMaxWidth(box.id, s.maxWidth) : lengthMaxHeight(box.id, s.maxHeight);
   let maxMain: LU | null = null;
   if (maxProp.kind !== 'none') {
     const basisLu = !hasPercent(maxProp) ? ZERO : isRow ? cbInline : percentMainHeight(box, heightBasis, 'max-height');
@@ -607,14 +614,15 @@ function buildItem(
 // css-flexbox-1 §4.5: a column item's content size suggestion is its content height with its own height treated as auto. Blink
 // flex_layout_algorithm.cc at 145.0.7632.6 (BSD) lines 1117-1120 and 914-923 take it from LayoutResult::IntrinsicBlockSize().
 function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox | ControlBox, cbInline: LU, borderBoxWidth: LU, heightBasis: HeightBasis, vbp: LU): LU {
-  // Blink resolves the children's percentage heights against the set height, which an auto-height measurement cannot reproduce.
-  const pct = (v: LayoutStyle['flexBasis'] | LayoutStyle['maxHeight']): boolean => v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'content' && hasPercent(v);
+  // Blink resolves the children's percentage and stretch heights against the set height, which an auto-height measurement cannot
+  // reproduce.
+  const pct = (v: LayoutStyle['flexBasis'] | LayoutStyle['maxHeight']): boolean => v.kind === 'stretch' || (v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'content' && hasPercent(v));
   const columnFlex = box.style.display === 'flex' && (box.style.flexDirection === 'column' || box.style.flexDirection === 'column-reverse');
   for (const k of box.children) {
     if (k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || isOutOfFlow(ctx, k)) continue;
     const ks = k.style;
     if (pct(ks.height) || pct(ks.minHeight) || pct(ks.maxHeight) || (columnFlex && pct(ks.flexBasis))) {
-      return unsupported('percent-height-flex', k.id, 'css-flexbox-1 §4.5', 'percentage height inside a column flex item whose content size suggestion is measured (not yet supported)');
+      return unsupported('percent-height-flex', k.id, 'css-flexbox-1 §4.5', 'percentage or stretch height inside a column flex item whose content size suggestion is measured (not yet supported)');
     }
   }
   const autoHeight = withAutoHeight(box);
@@ -626,6 +634,7 @@ function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox | ControlBox, cbInlin
     heightBasis,
     formattingContextRoot: true,
     bfcLineOffset: ZERO,
+    blockStretch: NO_STRETCH,
   });
   return contentBox(r.frag.height, vbp);
 }
@@ -775,8 +784,8 @@ function abs(v: LU): LU {
 // css-flexbox-1 §9.4 step 11: a stretched item's cross size is the line's, minus margins, clamped by min/max (percentages too).
 function stretchedCrossSize(item: Item, lineCross: LU, isRow: boolean, percentBasis: HeightBasis, faults: EngineFaults): LU {
   const s = item.box.style;
-  const minProp = isRow ? s.minHeight : lengthMinWidth(item.box.id, s.minWidth);
-  const maxProp = isRow ? s.maxHeight : lengthMaxWidth(item.box.id, s.maxWidth);
+  const minProp = isRow ? lengthMinHeight(item.box.id, s.minHeight) : lengthMinWidth(item.box.id, s.minWidth);
+  const maxProp = isRow ? lengthMaxHeight(item.box.id, s.maxHeight) : lengthMaxWidth(item.box.id, s.maxWidth);
   const resolve = (v: LengthPercent, prop: string): LU | null => {
     if (!hasPercent(v)) return resolveLength(v, ZERO, faults);
     return resolveLengthOrNull(v, percentMainHeight(item.box, percentBasis, prop), faults);
@@ -892,7 +901,8 @@ type RatioMain = { readonly base: LU; readonly suggestion: LU };
 function rowCrossBlock(box: LayoutBox, align: ItemAlign, singleLine: boolean, crossInner: LU | null, flexDependent: boolean, autoCrossMargin: boolean, vbp: LU, faults: EngineFaults): LU | null {
   const s = box.style;
   const mm = blockMinMaxWithNoPercent(box, vbp, faults);
-  if (s.height.kind !== 'auto') return constrain(borderBoxFromSpecified(resolveLength(s.height, ZERO, faults), vbp, s.boxSizing), mm);
+  const h = lengthHeight(box.id, s.height);
+  if (h.kind !== 'auto') return constrain(borderBoxFromSpecified(resolveLength(h, ZERO, faults), vbp, s.boxSizing), mm);
   if (align !== 'stretch' || !singleLine || crossInner === null || flexDependent || autoCrossMargin) return null;
   const margins = add(resolveLength(marginOrZero(s.marginTop), ZERO, faults), resolveLength(marginOrZero(s.marginBottom), ZERO, faults));
   return max(constrain(sub(crossInner, margins), mm), vbp);
@@ -905,8 +915,10 @@ function marginOrZero(v: LayoutStyle['marginTop']): LengthPercent {
 /** min-height and max-height in border-box terms for a box whose block lengths hold no percentage (the validator's ratio rule). */
 function blockMinMaxWithNoPercent(box: LayoutBox, vbp: LU, faults: EngineFaults): MinMax {
   const s = box.style;
-  const lo = s.minHeight.kind === 'auto' ? vbp : borderBoxFromSpecified(resolveMinLength(s.minHeight, ZERO, faults), vbp, s.boxSizing);
-  const hi = s.maxHeight.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(s.maxHeight, ZERO, faults), vbp, s.boxSizing);
+  const minHeight = lengthMinHeight(box.id, s.minHeight);
+  const maxHeight = lengthMaxHeight(box.id, s.maxHeight);
+  const lo = minHeight.kind === 'auto' ? vbp : borderBoxFromSpecified(resolveMinLength(minHeight, ZERO, faults), vbp, s.boxSizing);
+  const hi = maxHeight.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(maxHeight, ZERO, faults), vbp, s.boxSizing);
   return { min: lo, max: hi };
 }
 
@@ -931,7 +943,7 @@ function ratioFlexMain(ctx: Ctx, box: LayoutBox, isRow: boolean, columnCross: LU
   const fromRatio = blockFromRatio(s, hbp, vbp, columnCross);
   // The content height without the ratio (Blink LayoutResult::IntrinsicBlockSize).
   const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, strut: box.strut, marker: box.marker, children: box.children };
-  const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true, bfcLineOffset: ZERO });
+  const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true, bfcLineOffset: ZERO, blockStretch: NO_STRETCH });
   const minWidth = lengthMinWidth(box.id, s.minWidth);
   const maxWidth = lengthMaxWidth(box.id, s.maxWidth);
   const inlineMm: MinMax = {
