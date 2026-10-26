@@ -967,6 +967,29 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/html/forms/html_text_area_element.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome 145 captures of the textarea's UA shadow tree (placeholder and inner editor) read through CDP; text-field.ts cites this file only to name where Chrome builds that tree",
+        "proof": [
+          "packages/parity/test/form-b-textarea.test.ts",
+          "packages/parity/fixtures/controls-textarea.html"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Apple Inc. All rights; Copyright (C) 2007 Samuel Weinig (sam@webkit.org)",
+      "fileSha256": "10452e28e6abaced30e7149371bf654dc6f86ec15dc6cfad8a8c38b6a5d27a54",
+      "headerSha256": "d050762cda6224d3cdb46315c2205c66c082d658cd27a8ec1d4646dcc05857d5",
+      "ranges": [
+        { "lines": "115-117", "symbol": "HTMLTextAreaElement::DidAddUserAgentShadowRoot", "source": "located" },
+        { "lines": "767-799", "symbol": "HTMLTextAreaElement::UpdatePlaceholderText", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/html/forms/step_range.cc",
       "licence": "lgpl",
       "ruling": {
