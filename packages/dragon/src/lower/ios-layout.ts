@@ -56,7 +56,7 @@ import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
-import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
+import { FONT_METRIC_LAYOUT_UNITS, viewportLeaf } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
@@ -125,8 +125,6 @@ function floatOf(id: string, get: Get): Float {
 type Lowering = { readonly em: number | null; readonly emSize: CalcExpr | null; readonly rem: number | null; readonly font: (() => FontSpec) | null; readonly zoomed: boolean; readonly faults: CompilerFaults };
 type StyleFonts = { readonly em: number | null; readonly emSize?: CalcExpr | null; readonly rem: number | null; readonly font?: () => FontSpec };
 
-const VIEWPORT_AXIS: { readonly [unit: string]: 'width' | 'height' | 'min' | 'max' } = { vw: 'width', vi: 'width', vh: 'height', vb: 'height', vmin: 'min', vmax: 'max' };
-
 /**
  * ZOOM (analysis/zoom.ts): the values of an element under the zooms of its chain. Its lengths stay CSS px at zoom 1, which the
  * engine multiplies by the effective zoom in float as Blink does (layout input.ts LayoutStyle.zoom). Analysis refuses a calculation
@@ -149,7 +147,8 @@ function lengthPercentage(id: string, get: Get, p: Longhand, range: LengthCalc['
   const v = get(p);
   if (v.kind === 'length' && v.unit === 'px') return { kind: 'px', value: v.value };
   if (v.kind === 'percentage') return { kind: 'percent', value: v.value };
-  if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'calc', expr: { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' }, range };
+  const viewport = v.kind === 'length' ? viewportLeaf(v.unit, v.value) : null;
+  if (viewport !== null) return { kind: 'calc', expr: viewport, range };
   // CALC-2: an em under a font size that follows the viewport stays an em leaf over that size, which the engine resolves.
   if (v.kind === 'length' && v.unit === 'em' && l.emSize !== null) return { kind: 'calc', expr: { kind: 'em', value: v.value, fontSize: l.emSize }, range };
   // css-values-4 §6.1.1: ex, ch and cap read the element's own primary font, which the engine measures at the device's zoom
@@ -246,7 +245,7 @@ function borderWidth(id: string, get: Get, isInitial: IsInitial, side: 'top' | '
   const p = `border-${side}-width` as Longhand;
   const v = get(p);
   let px: number;
-  const calc = v.kind === 'other' || (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) ? lengthPercentage(id, get, p, 'non-negative', l) : null;
+  const calc = v.kind === 'other' || (v.kind === 'length' && viewportLeaf(v.unit, v.value) !== null) ? lengthPercentage(id, get, p, 'non-negative', l) : null;
   if (calc !== null && calc.kind === 'calc') return calc;
   if (v.kind === 'length' && v.unit === 'px') px = v.value;
   else if (v.kind === 'keyword' && ua.borderWidthKeywords[v.value] !== undefined) px = Number.parseFloat(ua.borderWidthKeywords[v.value] as string);
@@ -317,12 +316,12 @@ function fontPx(v: CssValue): number | null {
 }
 
 /**
- * CALC-2: a computed font-size that follows the large viewport (a vw, vh, vi, vb, vmin or vmax length, or a calculation reading one
+ * CALC-2: a computed font-size that follows the viewport (a viewport-unit length, or a calculation reading a large viewport one
  * whose em, rem and % analysis/computed.ts made px) as the engine's specified size expression, which it resolves on the device
  * (input.ts FontSpec.specifiedSize). Null for any other value.
  */
 export function viewportFontSize(v: CssValue): CalcExpr | null {
-  if (v.kind === 'length' && VIEWPORT_AXIS[v.unit] !== undefined) return { kind: 'viewport', value: v.value, axis: VIEWPORT_AXIS[v.unit] as 'width', size: 'large' };
+  if (v.kind === 'length') return viewportLeaf(v.unit, v.value);
   if (v.kind !== 'other' || !MATH_VALUE_FUNCTIONS.has(v.type.replace('()', ''))) return null;
   const context = mathContextFor('font-size');
   const parsed = 'refused' in context ? null : parseMath(v.text, context);

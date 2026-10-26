@@ -236,6 +236,7 @@ const REMOVED_AFTER_BASE: Readonly<Record<string, string>> = {
 // COL4 paints lab() and the other colour functions, so reject-color-lab moved to a translucent lab() outside the sRGB gamut, which Chrome
 // blends before it clamps.
 // FONT-UNITS lays out ex, ch and cap in an element's own sizes, so reject-unit-ex moved to ic, which Dragon still refuses.
+// The small, large and dynamic viewport units lay out in sizes, so reject-unit-vw moved to svw in a box-shadow length, which Dragon still refuses.
 const RETARGETED_AFTER_BASE: Readonly<Record<string, string>> = {
   'reject-unit-ex': "<!DOCTYPE html>\n<html data-dragon-id=\"html\">\n<head>\n<style>\nbody { margin: 0; }\n.a { width: 100px; height: 3ex; }\n</style>\n</head>\n<body data-dragon-id=\"body\">\n<div data-dragon-id=\"a\" class=\"a\"></div>\n</body>\n</html>\n",
   'reject-color-lab': '<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; }\n.swatch { width: 20px; height: 20px; color: lab(50% 40 59); }\n</style>\n</head>\n<body data-dragon-id="body">\n<div data-dragon-id="swatch" class="swatch"></div>\n</body>\n</html>\n',
