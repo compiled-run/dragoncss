@@ -2,7 +2,8 @@
 // css/properties/initial-only.ts, css/properties/scroll-snap.ts): Dragon drops what Chrome drops and no value Chrome keeps, and every
 // value Dragon accepts computes in Chrome to what the longhands it sets compute to, in an ltr and an rtl box (the flow-relative scroll
 // names map onto the physical longhands by direction). The initial-only families accept their initial values alone and keep every
-// other value to refuse it (analysis/scroll-containment.ts), so only their accepted values' computed values are compared; the
+// other value to refuse it (analysis/scroll-containment.ts), so only their accepted values' computed values are compared (contain-
+// intrinsic-width and -height read more: css/properties/containment.ts parseIntrinsicSize); the
 // scroll-snap family accepts every value it parses, and contain parses every value itself (css/properties/containment.ts
 // parseContain), its accepted values computing in Chrome as Dragon's do. Each planted reading must be caught. The overscroll family
 // takes every value Chrome parses: packages/parity/test/overscroll-parse.test.ts.
@@ -76,7 +77,9 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
 };
 
 /** How many of VALUES Dragon accepts and drops (pinned so a parser change that accepts or drops more or fewer is seen). */
-const ACCEPTED = 146;
+// contain-intrinsic-width, -height and contain-intrinsic-size read none, lengths and auto (contain-intrinsic-parse.test.ts), so 7
+// of their values here are accepted beside the initial ones.
+const ACCEPTED = 153;
 const DROPPED = 35;
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {

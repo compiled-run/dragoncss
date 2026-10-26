@@ -65,6 +65,8 @@ export type ResolvedValue = {
   readonly substitution?: Substitution;
   /** The author declaration that won the cascade and that a forced UA value then overrode (ELB-2 userAgentForced); it heads losing. */
   readonly forcedOver?: Declaration;
+  /** CASC: the declared value is a CSS-wide keyword that leaves the value the element takes with no author declaration of this longhand. */
+  readonly unchanged?: true;
 };
 
 const valueCache = new Map<string, CssValue>();

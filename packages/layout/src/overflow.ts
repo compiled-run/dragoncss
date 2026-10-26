@@ -7,7 +7,7 @@ import type { Direction, LayoutBox, LayoutInput, LayoutNode, ReplacedLeaf } from
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, fromCssPx, LU_PER_PX, max, min, snapEdge, sub, ZERO } from './units.ts';
 import type { Edges } from './box.ts';
-import { blockMinMaxWith, containsAbsolute, establishesFormattingContext, hasPercent, INDEFINITE, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
+import { blockMinMaxWith, containsAbsolute, establishesFormattingContext, hasPercent, INDEFINITE, INDEFINITE_STRETCH, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
 import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
@@ -656,10 +656,11 @@ function readChild(ix: Index, n: Node): ChildMargins {
   const height = n.rect.height;
   if (!r.hasContent && height === 0 && vbp === 0) return { escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough: true };
   const h = b.style.height;
-  if (h.kind !== 'auto' && hasPercent(h) && n.border.bottom === 0 && n.padding.bottom === 0 && (r.endStrut.positive !== 0 || r.endStrut.negative !== 0)) {
-    throw new OverflowRefusal(b.id, 'a percentage height on a box whose end margins may collapse through it: its basis is not decided here');
+  if (h.kind !== 'auto' && (h.kind === 'stretch' || hasPercent(h)) && n.border.bottom === 0 && n.padding.bottom === 0 && (r.endStrut.positive !== 0 || r.endStrut.negative !== 0)) {
+    throw new OverflowRefusal(b.id, 'a percentage or stretch height on a box whose end margins may collapse through it: its basis is not decided here');
   }
-  const minMax = blockMinMaxWith(b, INDEFINITE, vbp, ix.ctx.faults);
+  // A stretch min-height or max-height reads the basis a percentage one does here: indefinite.
+  const minMax = blockMinMaxWith(b, INDEFINITE, vbp, ix.ctx.faults, INDEFINITE_STRETCH);
   const specNoCollapse = ix.ctx.faults.minMaxEndMarginSpec && minMax.min > vbp;
   const bottomAdjoins = n.border.bottom === 0 && n.padding.bottom === 0 && h.kind === 'auto' && !specNoCollapse;
   const escapeBottom = bottomAdjoins && (height === add(r.cursor, vbp) || ix.ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;

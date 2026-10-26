@@ -1,7 +1,7 @@
 // The text-wrap and text-wrap-style grammars against Chrome 145 (scripts/gen-css-grammar.ts SYNTAX_OVERRIDES, Blink TextWrapStyle
 // and the text-wrap shorthand): Dragon takes a value as valid exactly when Chrome parses it, and each value it keeps sets the
-// longhands Chrome sets (text-wrap-mode and text-wrap-style computed alike). balance and pretty parse in Chrome and are refused by
-// Dragon (properties/text-wrap.ts), so only their validity is compared. Each planted reading must be caught.
+// longhands Chrome sets (text-wrap-mode and text-wrap-style computed alike), balance and pretty included (TXT-TW: Dragon lays them
+// out where fixture group text-wrap proves them, and refuses them elsewhere after parsing). Each planted reading must be caught.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -31,7 +31,7 @@ function item(p: string, v: string): Item {
 const VALUES: readonly (readonly [string, string])[] = [
   ...['nowrap', 'wrap', 'auto', 'stable', 'nowrap stable', 'stable nowrap', 'wrap auto', 'NOWRAP', 'Stable Wrap'].map((v) => ['text-wrap', v] as const),
   ...['auto', 'stable', 'STABLE'].map((v) => ['text-wrap-style', v] as const),
-  // Chrome parses balance and pretty; Dragon refuses them.
+  // Chrome parses balance and pretty, and so does Dragon.
   ...['balance', 'pretty', 'nowrap balance', 'pretty wrap'].map((v) => ['text-wrap', v] as const),
   ...['balance', 'pretty'].map((v) => ['text-wrap-style', v] as const),
   // Chrome drops two modes, two styles, css-text-4's avoid-orphans, none and a number.

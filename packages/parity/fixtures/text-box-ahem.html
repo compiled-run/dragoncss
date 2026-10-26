@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+div { width: 55px; margin-bottom: 7px; }
+.lh2 { line-height: 2; }
+.both { text-box-trim: trim-both; }
+.start { text-box-trim: trim-start; }
+.end { text-box-trim: trim-end; }
+.alpha { text-box: trim-both text alphabetic; }
+.alpha-end { text-box: trim-end text alphabetic; }
+.half { line-height: 0.5; }
+.lh15 { font-size: 13px; line-height: 1.5; }
+.lh23 { line-height: 23px; }
+.pad { padding: 5px 3px 4px 6px; border: 2px solid; }
+.big { font-size: 20px; line-height: 1; }
+.center { text-align: center; }
+.shorthand { text-box: text; }
+.normal { text-box: normal; }
+.under { text-box-edge: text alphabetic; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a" class="lh2 both">XX XXX XX XXXX X</div>
+<div data-dragon-id="b" class="lh2 start">XX XXX XX XXXX X</div>
+<div data-dragon-id="c" class="lh2 end">XX XXX XX XXXX X</div>
+<div data-dragon-id="d" class="lh2 alpha">XX XXX XX XXXX X</div>
+<div data-dragon-id="e" class="half both">XX XXX XX XXXX X</div>
+<div data-dragon-id="f" class="lh15 alpha-end">XX XXX XX XXXX X</div>
+<div data-dragon-id="g" class="lh23 both pad">XX XXX XX XXXX X</div>
+<div data-dragon-id="h" class="lh2 both">X <span data-dragon-id="h1" class="big">XX</span> XX XXXX <span data-dragon-id="h2" class="big">X</span></div>
+<div data-dragon-id="i" class="lh2 both center">XX X<br data-dragon-id="i1">XXX XX XXXX X</div>
+<div data-dragon-id="j" class="lh2 shorthand">XX XXX XX XXXX X</div>
+<div data-dragon-id="k" class="lh2 normal">XX XXX XX XXXX X</div>
+<div data-dragon-id="l" class="both">XX XXX XX XXXX X</div>
+<div data-dragon-id="m" class="lh2 under"><div data-dragon-id="m1" class="end">XX XXX XX XXXX X</div></div>
+<div data-dragon-id="n" class="lh2 both">XXX</div>
+<div data-dragon-id="o" class="lh2 both"></div>
+</body>
+</html>

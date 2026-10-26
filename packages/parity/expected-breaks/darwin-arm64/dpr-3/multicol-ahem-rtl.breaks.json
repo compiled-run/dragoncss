@@ -1,0 +1,30 @@
+{
+  "case": "multicol-ahem-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"a:text0","data":"XX XX XX XX XX XX XX","lines":4,"units":[0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2,2,2,3,3],"blank":[5,11,17]},
+    {"id":"b:text0","data":"XX XXXX X XXX XXXXX XX X XXXX XXX XX XXXXX X XX XXX XXXX X XX XXXXX XXX X XX XXXX","lines":7,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6],"blank":[13,24,36,51,61,76]},
+    {"id":"c:text0","data":"XXX X XX XXXXX XXXX X XXX XX X XXXXX XX XXX X XXXX XX X XXX XXXXX","lines":8,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7],"blank":[8,14,21,30,39,45,55]},
+    {"id":"d:text0","data":"XX XXX X XXXX XX XXXXX X XXX XX X","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],"blank":[28]},
+    {"id":"e:text0","data":"X XXX XX XXXX X XX XXXXX XXX X XX XXXX X XXX XX","lines":12,"units":[0,0,1,1,1,1,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,5,6,6,6,6,7,7,7,7,7,8,8,8,8,8,9,9,10,10,10,10,11,11],"blank":[1,5,8,13,18,24,28,33,38,40,44]},
+    {"id":"f:text0","data":"XX X XXX XX XXXX X XX XXX XXXXX X XX XXX X XXXX XX XXX X XX XXXXX X XXX XX X XXXX","lines":12,"units":[0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,6,6,6,7,7,7,7,7,7,7,8,8,8,8,8,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,11,11,11,11,11,11],"blank":[4,11,18,25,33,40,47,54,59,67,74]},
+    {"id":"g:text0","data":"XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX XXXX","lines":5,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4],"blank":[9,19,29,39]},
+    {"id":"h:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"h:text1","data":"XX XX XX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"h:text2","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"h:text3","data":"XXX XX X XX XXXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1],"blank":[8]},
+    {"id":"i:text0","data":"XXXXXXXXXXXX XX X XXX","lines":4,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,2,2,3,3,3],"blank":[12,15,17]},
+    {"id":"j:text0","data":"X XX XXX XXXX XXXXX XX X XXX XX XXXX X XX XXX X XXXXX XX","lines":6,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5],"blank":[8,19,28,38,47]},
+    {"id":"k:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"l:text0","data":"XX XXX X XXXX XX X XXX XX XXXXX X XX","lines":6,"units":[0,0,0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,5,5,5,5],"blank":[6,13,18,25,31]},
+    {"id":"m:text0","data":"XX XXX X XXXX XX X","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],"blank":[13]},
+    {"id":"n:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"n:text1","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n:text2","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"n:text3","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"n:text4","data":"XX X","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"n:text5","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"p:text0","data":"XX XXX X XXXX XX X XXX","lines":3,"units":[0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2],"blank":[8,18]}
+  ]
+}
