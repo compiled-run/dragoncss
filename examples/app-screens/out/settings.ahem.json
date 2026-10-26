@@ -2,6 +2,12 @@
  "id": "settings",
  "mode": "ahem",
  "rounds": 3,
+ "residualTargetless": 0,
+ "firstTargets": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
  "firstOutputs": {
   "web": "blocked",
   "ios": "blocked",

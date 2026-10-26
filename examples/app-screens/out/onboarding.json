@@ -2,6 +2,12 @@
  "id": "onboarding",
  "mode": "authored",
  "rounds": 2,
+ "residualTargetless": 0,
+ "firstTargets": {
+  "web": "blocked",
+  "ios": "blocked",
+  "android": "blocked"
+ },
  "firstOutputs": {
   "web": "blocked",
   "ios": "blocked",

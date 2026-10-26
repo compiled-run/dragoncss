@@ -1,14 +1,16 @@
-// Compiles each real page for web, ios and android through the public createProject, and collects every diagnostic.
+// Compiles each app screen for web, ios and android through the public createProject, and collects every diagnostic.
 // A target-less error stops Dragon's per-case analysis, so one compile hides most refusals. The check repeats: it neutralises
 // what each error names (blanks the declaration or the rule in the stylesheet, retags an unsupported element as a div, drops an
-// unsupported attribute) and compiles again, until no error is left. Every diagnostic from every round is kept.
-// Usage: node --conditions=dragon-internal examples/real-pages/tools/check.ts [page ...]
+// unsupported attribute) and compiles again, until no target-less error is left (or none can be neutralised). Every diagnostic from every round is kept.
+// Prints how many screens compile on iOS and Android and each screen's refusals; it reports and never fails.
+// Usage: pnpm app-screens [--ahem] [screen ...] (--ahem also writes out/<screen>.ahem.json, every font set to Ahem)
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Diagnostic, FontMap } from '../../../packages/dragon/src/index.ts';
 import { createProject } from '../../../packages/dragon/src/index.ts';
 import { fixtureToInput, parseFixtureHtml } from '../../../packages/parity/src/fixture-reader.ts';
 import { declarations } from './inventory.ts';
+import { blockersOf } from './blockers.ts';
 import { readPage } from './page.ts';
 
 const TARGETS = { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
@@ -29,7 +31,7 @@ const FONTS: FontMap = {
 };
 const PINNED = [...new Set(Object.values(FONTS.generics).flatMap((e) => (e?.mode === 'pinned' ? e.faces.map((f) => f.src) : [])))];
 /** Page images: copies of the music player's 1280x720 cover stand-ins, served to Chrome from pages/img. */
-const IMAGES = Object.fromEntries(['hero', 'avatar', 'diagram'].map((n) => [`img/${n}.png`, `examples/real-pages/pages/img/${n}.png`]));
+const IMAGES = Object.fromEntries(['hero', 'avatar', 'diagram'].map((n) => [`img/${n}.png`, `examples/app-screens/pages/img/${n}.png`]));
 const fileAsset = (id: string) => {
   const bytes = new Uint8Array(readFileSync(id));
   return { id, hash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
@@ -55,18 +57,25 @@ export function ahemPage(html: string): string {
 }
 
 export function checkPage(id: string, mode: 'authored' | 'ahem' = 'authored') {
-  const original = mode === 'ahem' ? ahemPage(readPage(`examples/real-pages/pages/${id}.html`)) : readPage(`examples/real-pages/pages/${id}.html`);
+  const original = mode === 'ahem' ? ahemPage(readPage(`examples/app-screens/pages/${id}.html`)) : readPage(`examples/app-screens/pages/${id}.html`);
   let html = original;
   const found = new Map<string, Found>();
   const firstOutputs: Record<string, string> = {};
+  const firstTargets: Record<string, string> = {};
   let lastOutputs: Record<string, string> = {};
+  let residual = 0;
   let round = 0;
   for (;;) {
     round++;
     const r = compile(id, html);
-    if (round === 1) for (const t of TARGET_IDS) firstOutputs[t] = r.outputs[t].kind;
+    if (round === 1) for (const t of TARGET_IDS) {
+      firstOutputs[t] = r.outputs[t].kind;
+      firstTargets[t] = r.targets[t];
+    }
     lastOutputs = Object.fromEntries(TARGET_IDS.map((t) => [t, r.outputs[t].kind]));
-    const style = parseFixtureHtml(html).style!;
+    residual = r.diagnostics.filter((d) => d.severity === 'error' && d.target === null).length;
+    const style = parseFixtureHtml(html).style;
+    if (style === null) throw new Error(`${id}: a screen needs exactly one <style>`);
     const css = html.slice(style.start, style.end);
     const inv = { declarations: declarations(css) };
     const edits: { kind: 'css'; a: number; b: number }[] = [];
@@ -159,18 +168,40 @@ export function checkPage(id: string, mode: 'authored' | 'ahem' = 'authored') {
     html = next;
     if (added === 0 || round >= 20) break;
   }
-  return { id, mode, rounds: round, firstOutputs, lastOutputs, found: [...found.values()] };
+  // residualTargetless > 0: errors the check could not neutralise still hide per-case refusals, so the list is a lower bound.
+  return { id, mode, rounds: round, residualTargetless: residual, firstTargets, firstOutputs, lastOutputs, found: [...found.values()] };
 }
 
+export const SCREENS = ['onboarding', 'settings', 'signup', 'article', 'feed'] as const;
+
+/** A screen compiles on a target when its authored input has no error for that target (Dragon checks it, not blocks it). */
+const compiles = (res: ReturnType<typeof checkPage>, t: T): boolean => res.firstTargets[t] === 'checked';
+
 function main(): void {
-  const pages = process.argv.slice(2).length > 0 ? process.argv.slice(2) : ['onboarding', 'settings', 'signup', 'article', 'feed'];
-  mkdirSync('examples/real-pages/out', { recursive: true });
-  for (const p of pages) for (const mode of ['authored', 'ahem'] as const) {
-    const res = checkPage(p, mode);
-    writeFileSync(`examples/real-pages/out/${p}${mode === 'ahem' ? '.ahem' : ''}.json`, `${JSON.stringify(res, null, 1)}\n`);
-    const errs = res.found.filter((f) => f.severity === 'error');
-    const by = (t: T) => errs.filter((f) => f.target === null || f.target === t).length;
-    console.log(`${p} ${mode}: rounds ${res.rounds}; outputs first ${JSON.stringify(res.firstOutputs)} last ${JSON.stringify(res.lastOutputs)}; errors web ${by('web')} ios ${by('ios')} android ${by('android')}; warnings ${res.found.length - errs.length}`);
+  const args = process.argv.slice(2);
+  const ahem = args.includes('--ahem');
+  const pages = args.filter((a) => a !== '--ahem');
+  const screens = pages.length > 0 ? pages : [...SCREENS];
+  const unknown = screens.filter((p) => !(SCREENS as readonly string[]).includes(p));
+  if (unknown.length > 0) throw new Error(`unknown screen ${unknown.join(', ')}; screens: ${SCREENS.join(', ')}`);
+  mkdirSync('examples/app-screens/out', { recursive: true });
+  const results = screens.map((p) => {
+    const res = checkPage(p, 'authored');
+    writeFileSync(`examples/app-screens/out/${p}.json`, `${JSON.stringify(res, null, 1)}\n`);
+    if (ahem) writeFileSync(`examples/app-screens/out/${p}.ahem.json`, `${JSON.stringify(checkPage(p, 'ahem'), null, 1)}\n`);
+    return res;
+  });
+  const n = (t: T): number => results.filter((r) => compiles(r, t)).length;
+  console.log(`${n('ios')} of ${results.length} screens compile on iOS / ${n('android')} of ${results.length} on Android`);
+  for (const res of results) {
+    const ios = blockersOf(res.found, 'ios');
+    const android = blockersOf(res.found, 'android');
+    const status = (t: T): string => (compiles(res, t) ? 'compiles' : 'blocked');
+    const errors = (b: Map<string, { count: number }>): number => [...b.values()].reduce((a, v) => a + v.count, 0);
+    console.log(`\n${res.id}: iOS ${status('ios')} (${errors(ios)} errors), Android ${status('android')} (${errors(android)} errors)`);
+    if (res.residualTargetless > 0) console.log(`  (lower bound: ${res.residualTargetless} target-less errors could not be neutralised and hide later checks)`);
+    for (const [k, v] of [...ios].sort((a, b) => b[1].count - a[1].count || (a[0] < b[0] ? -1 : 1))) console.log(`  ${String(v.count).padStart(3)}  ${k}${android.has(k) ? '' : ' (iOS only)'}`);
+    for (const k of [...android.keys()].filter((k) => !ios.has(k)).sort()) console.log(`  ${String(android.get(k)?.count).padStart(3)}  ${k} (Android only)`);
   }
 }
 if (import.meta.url === `file://${process.argv[1]}`) main();
