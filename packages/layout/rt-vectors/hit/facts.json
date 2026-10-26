@@ -925,6 +925,8 @@
     "controls-range-block-rtl": "r1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-range-flex": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-range-flex-rtl": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
+    "controls-disabled": "b1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
+    "controls-disabled-rtl": "b1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "display-contents": "a2 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "display-contents-rtl": "a2 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "opacity-basic": "stacking context on op-fold, op-zero, op-group, op-border, op-nest-kid, op-textonly: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
