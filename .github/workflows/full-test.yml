@@ -116,6 +116,7 @@ jobs:
           java-version: '17'
       - name: Swift 6.4.0 (swift.org) and kotlinc 2.4.20
         run: |
+          sudo apt-get update -q >/dev/null
           sudo apt-get install -y -q libcurl4-openssl-dev libxml2-dev >/dev/null
           curl -sSfL https://download.swift.org/swift-6.4.0-release/ubuntu2404-aarch64/swift-6.4.0-RELEASE/swift-6.4.0-RELEASE-ubuntu24.04-aarch64.tar.gz | tar xz -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/swift-6.4.0-RELEASE-ubuntu24.04-aarch64/usr/bin" >> "$GITHUB_PATH"
