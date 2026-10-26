@@ -1193,7 +1193,7 @@ export function hyphenAdvance(item: ShapeItem): LineResult {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
-// LineBreaker (line_breaker.cc): text items, open and close tags of undecorated inline boxes and forced breaks, with collapsible
+// LineBreaker (line_breaker.cc): text items, open and close tags of undecorated inline boxes, atomic inlines and forced breaks, with collapsible
 // white space, one text-wrap-mode and the initial word-break, overflow-wrap, line-break and hyphens.
 
 /**
@@ -1206,7 +1206,8 @@ export type BreakItem =
   | { readonly kind: 'text'; readonly item: ShapeItem; readonly result: ShapeResult; readonly opportunities: readonly number[]; readonly atEnd: boolean; readonly leads: readonly number[]; readonly offset: number }
   | { readonly kind: 'open'; readonly offset: number }
   | { readonly kind: 'close'; readonly offset: number; readonly spaceBefore: boolean; readonly spaceAfter: boolean }
-  | { readonly kind: 'br'; readonly offset: number };
+  | { readonly kind: 'br'; readonly offset: number }
+  | { readonly kind: 'atomic'; readonly offset: number; readonly width: LU; readonly margins: LU };
 
 /** One InlineItemResult: the item, its offsets, its inline size (with the hyphen), its view and whether a line may break after it. */
 export type BreakResult = {
@@ -1271,6 +1272,8 @@ type LineBuild = {
   override: boolean;
   readonly startItem: number;
   readonly startOffset: number;
+  /** LineInfo::HasOverflow: HandleOverflow let the line overflow. */
+  overflowed: boolean;
   results: MutableResult[];
   position: number;
   state: BreakState;
@@ -1524,12 +1527,54 @@ function handleOverflow(b: LineBuild): void {
     b.curOffset = b.startOffset;
     return;
   }
+  b.overflowed = true;
   if (breakBefore > 0) {
     rewindOverflow(b, breakBefore);
     return;
   }
   const tail = b.results[b.results.length - 1];
   b.state = tail !== undefined && tail.canBreakAfter ? 'trailing' : 'overflow';
+}
+
+/**
+ * LineBreaker::HandleAtomicInline: an item that is not trailable ends a trailing line that may break after its last result; one that
+ * starts past the end lets HandleOverflow find the break first, and when the line still overflows before it, the line breaks before it
+ * unless its negative margins bring the position back; then its margin box is a result, breakable after (line_breaker.cc:2997-3118).
+ */
+function handleAtomic(b: LineBuild): void {
+  const it = b.items[b.curItem] as BreakItem;
+  if (it.kind !== 'atomic') throw new BreakFailure('handleAtomic on an item that is not an atomic inline');
+  const last = b.results[b.results.length - 1];
+  if (b.state === 'trailing' && last !== undefined && last.canBreakAfter) {
+    b.state = 'done';
+    return;
+  }
+  // width is the margin box's; margins its inline margins (ComputeLineMarginsForVisualContainer's InlineSum).
+  let ignoreOverflowIfNegativeMargin = false;
+  const remaining = b.toFit - b.position;
+  if (b.state === 'continue' && remaining < 0) {
+    const index = b.curItem;
+    b.overflowed = false;
+    handleOverflow(b);
+    if (!b.overflowed || b.curItem !== index) return;
+    ignoreOverflowIfNegativeMargin = true;
+  }
+  if (ignoreOverflowIfNegativeMargin) {
+    // The margins do not put the position back (RemoveLastItem): the line breaks before this item.
+    if (it.margins >= remaining) return;
+    // A negative margin puts the position back on this once overflowing line.
+    b.state = 'continue';
+    b.overflowed = false;
+  }
+  removeHyphen(b);
+  // CanBreakAfterAtomicInline: always where the line wraps (an image only outside the sticky-images quirk, which standards mode lacks).
+  const r = emptyResult(b.curItem, 0, b.wrap);
+  r.width = it.width;
+  b.results.push(r);
+  b.leading = false;
+  b.position = b.position + r.width;
+  b.curItem++;
+  b.curOffset = 0;
 }
 
 /** LineBreaker::HandleText. */
@@ -1550,10 +1595,13 @@ function handleText(b: LineBuild): void {
     }
   }
   if (b.state === 'continue' && b.position > b.toFit) {
+    // HandleOverflow expects the trailable spaces added; when they end the line, it still finds the break (line_breaker.cc:1319-1336).
     if (b.wrap && isBreakableSpace(textUnit(it, b.curOffset))) {
       handleTrailingSpaces(b);
-      if (stateOf(b) !== 'done') b.state = 'continue';
-      return;
+      if (stateOf(b) !== 'done') {
+        b.state = 'continue';
+        return;
+      }
     }
     handleOverflow(b);
     return;
@@ -1627,6 +1675,7 @@ function breakOneLine(b: LineBuild): BrokenLine {
       b.curItem++;
       b.curOffset = 0;
     } else if (it.kind === 'close') handleCloseTag(b);
+    else if (it.kind === 'atomic') handleAtomic(b);
     else {
       // HandleForcedLineBreak: the <br>, then the close tags that follow it.
       b.results.push(emptyResult(b.curItem, 0, true));
@@ -1645,6 +1694,8 @@ function breakOneLine(b: LineBuild): BrokenLine {
   for (let i = b.results.length - 1; i >= 0 && !b.preserve; i--) {
     const r = b.results[i] as MutableResult;
     const it = b.items[r.index] as BreakItem;
+    // ComputeTrailingCollapsibleSpace: an atomic inline is not opaque to collapsing, so no space before it hangs.
+    if (it.kind === 'atomic') break;
     if (it.kind !== 'text' || r.end === r.start) continue;
     if (textUnit(it, r.end - 1) === 0x20 && r.view !== null) {
       hang = i;
@@ -1679,7 +1730,7 @@ export function breakItemLines(items: readonly BreakItem[], available: LU, wrap:
       const indented = lines.length === 0 || indentEvery || (indentAfterForced && afterForced);
       const b: LineBuild = {
         items, toFit: indented ? toFit - indent : toFit, wrap, accurateEnd, afterForced, lineStart: lineOffsetOf(items, curItem, curOffset), preserve,
-        anywhere, override: anywhere.always, startItem: curItem, startOffset: curOffset,
+        anywhere, override: anywhere.always, startItem: curItem, startOffset: curOffset, overflowed: false,
         results: [], position: 0, state: 'continue', leading: true, forced: false, curItem, curOffset,
       };
       const line = breakOneLine(b);
