@@ -132,7 +132,8 @@ func dragonDrawOutlineOps(_ ctx: CGContext, _ ops: [BorderOp], _ tones: [DragonR
 /// view holding the box, as its bounds or the radius module's rounded mask path, in the outline view's points; nil when no clip view
 /// holds the box. A box inside a scroll view or under two clip views is refused by the compiler, so it throws here.
 public func dragonOutlineClip(_ o: DragonOutlineView) -> CGPath? {
-  guard let v = o.owner, let root = o.superview else { return nil }
+  guard let root = o.superview else { return nil }
+  guard let v = o.owner else { fatalError("dragon: an outline view in the root view has no box") }
   var found: UIView? = nil
   var child: UIView = v
   var at = v.superview
@@ -356,8 +357,8 @@ fun dragonDrawOutlineOps(canvas: Canvas, ops: List<BorderOp>, tones: Array<Drago
  * the compiler, so it throws here.
  */
 fun dragonOutlineClip(o: DragonOutlineView): Path? {
-  val v = o.owner ?: return null
   val root = o.parent as? ViewGroup ?: return null
+  val v = o.owner ?: throw IllegalStateException("dragon: an outline view in the root view has no box")
   var found: DragonBoxView? = null
   var child: View = v
   var at = v.parent

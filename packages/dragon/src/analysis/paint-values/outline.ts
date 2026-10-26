@@ -18,7 +18,7 @@ import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { stackingOf } from '../../lower/paint/stacking.ts';
-import { NATIVE_DEVICE_DPRS } from './gradient-phase.ts';
+import { NATIVE_DEVICE_DPRS } from './device-dprs.ts';
 import { resolvedStackTree } from './stacking.ts';
 import { elementWillChange, transformsDescendants, transformWord } from './transform.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
@@ -138,7 +138,7 @@ function clipRefusal(clip: ResolvedElement, target: 'ios' | 'android'): string |
     for (const k of c) {
       if (k.value === 0) continue;
       if (k.kind !== 'length' || k.unit !== 'px') return `inside the rounded overflow clip of ${name}, whose ${p} is not in px, so its curve may fall off the device px grid`;
-      const off = NATIVE_DEVICE_DPRS[target].find((d) => !Number.isInteger(Math.round(k.value * d * 1e6) / 1e6));
+      const off = NATIVE_DEVICE_DPRS[target].find((d) => !Number.isInteger(k.value * d));
       if (off !== undefined) return `inside the rounded overflow clip of ${name}, whose ${p} of ${k.value}px is ${k.value * off} device px at DPR ${off}, off the device px grid`;
     }
   }

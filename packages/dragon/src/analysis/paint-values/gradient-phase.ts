@@ -17,8 +17,8 @@ import { usedColors } from '../../lower/paint/colors.ts';
 import type { BoxItem, ElementLayer } from './gradient.ts';
 import { BG2_TILING, obscuresOf, paintsGradient, resolvedLayers } from './gradient.ts';
 
-/** The device scales each native target's device lanes run at (parity targets.ts deviceDprs checks it holds the same). */
-export const NATIVE_DEVICE_DPRS: { readonly ios: readonly number[]; readonly android: readonly number[] } = { ios: [2, 3], android: [2, 3, 2.625] };
+import { NATIVE_DEVICE_DPRS } from './device-dprs.ts';
+export { NATIVE_DEVICE_DPRS };
 
 /** How far past zero, in CSS px, the proven offset must be: it absorbs the LU rounding of padding, percentages and the tile. */
 const MARGIN = 1 / 8;
