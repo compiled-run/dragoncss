@@ -6,11 +6,11 @@
 // Chrome's name-from-contents text (third_party/blink/renderer/modules/accessibility/ax_node_object.cc
 // ShouldInsertSpaceBetweenObjectsIfNeeded: a space between objects in different block flows, or when either is atomic inline-level).
 // Runs of ASCII white space collapse to one space, trimmed at each phrase's ends; a <br> is a space.
-import type { InlineChild, LayoutBox, LayoutNode } from '@dragon/layout';
+import type { ControlBox, InlineChild, LayoutBox, LayoutNode } from '@dragon/layout';
 
 const SPACES = /[ \t\n\r\f]+/g;
 
-const isAtomicInline = (b: LayoutBox): boolean => b.style.display === 'inline-block' || b.style.display === 'inline-flex' || b.style.display === 'inline-grid';
+const isAtomicInline = (b: LayoutBox | ControlBox): boolean => b.style.display === 'inline-block' || b.style.display === 'inline-flex' || b.style.display === 'inline-grid';
 
 /** The label of a box's subtree text without the hidden texts (by text address), or null when no phrase has text in it. */
 export function clipLabelOf(box: LayoutNode, hidden: ReadonlySet<string> = new Set()): string | null {
@@ -32,7 +32,7 @@ export function clipLabelOf(box: LayoutNode, hidden: ReadonlySet<string> = new S
     const run: string[] = [];
     for (const c of b.children) {
       if (c.kind === 'replaced') continue;
-      if (c.kind === 'box' && isAtomicInline(c)) {
+      if ((c.kind === 'box' || c.kind === 'control') && isAtomicInline(c)) {
         const own = clipLabelOf(c, hidden);
         if (own !== null) run.push(` ${own} `);
       } else if (c.kind === 'box' || c.kind === 'control') {

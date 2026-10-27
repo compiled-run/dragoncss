@@ -2,8 +2,9 @@
 // container's inline-level children. It is laid out as its block-level equivalent at its shrink-to-fit width, and takes part in its line as
 // one U+FFFC item whose advance is its margin box and which sits on the baseline with its own baseline (INL-P family 5,
 // docs/research/inline-spike/blink-notes.md §2 and §7). RF-INL: an inline-level replaced box (CSS 2.2 §10.3.2, §10.6.2) is one too, sized
-// as a block-level replaced box is, with no baseline of its own.
-import type { LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from './input.ts';
+// as a block-level replaced box is, with no baseline of its own; and so is an inline-block button (a button-block control), laid out
+// as a block button.
+import type { ControlBox, LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, max, min, sub, ZERO } from './units.ts';
 import type { Frag } from './box.ts';
@@ -16,24 +17,30 @@ import { layoutReplacedInFlow } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
 /**
- * Whether a node is an atomic inline: a box with display inline-block, inline-flex or inline-grid, or a replaced leaf with an
- * inline-level display (inline, inline-block or inline-flex; css-display-3 §2.4: a replaced element is always atomic).
+ * Whether a node is an atomic inline: a box with display inline-block, inline-flex or inline-grid, a replaced leaf with an
+ * inline-level display (inline, inline-block or inline-flex; css-display-3 §2.4: a replaced element is always atomic), or an
+ * inline-block button.
  */
 export function isAtomicInline(node: LayoutNode): boolean {
   const d = node.style.display;
   if (node.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  if (node.kind === 'control') return node.control.kind === 'button-block' && d === 'inline-block';
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
+/** An atomic inline that is laid out as a box: an inline-block, inline-flex or inline-grid box, or an inline-block button. */
+export type AtomicBox = LayoutBox | ControlBox;
+
 /**
  * The box with its block-level display (css-display-3 §2.4: inline-block is a flow-root block, inline-flex a flex container and
- * inline-grid a grid container).
+ * inline-grid a grid container). An inline-block button becomes a block button, which centres its contents as one.
  */
-export function blockLevelOf(box: LayoutBox): LayoutBox {
+export function blockLevelOf(box: AtomicBox): AtomicBox {
   if (!isAtomicInline(box)) return box;
   const d = box.style.display;
   const display = d === 'inline-flex' ? 'flex' : d === 'inline-grid' ? 'grid' : 'block';
   const style: LayoutStyle = { ...box.style, display };
+  if (box.kind === 'control') return { kind: 'control', id: box.id, boxType: box.boxType, style, control: box.control, strut: box.strut, children: box.children };
   return { kind: 'box', id: box.id, boxType: box.boxType, style, strut: box.strut, marker: box.marker, children: box.children };
 }
 
@@ -54,7 +61,7 @@ export type AtomicLayout = {
 // CSS2 §10.3.9 (Blink ComputeInlineSizeForFragment with shrink-to-fit): a specified width, or min(max(min-content, available),
 // max-content) with the available width the containing block's less the margins; then min-width and max-width. Planted fault
 // atomicShrinkToFitIgnored fills the available width instead.
-function atomicWidth(ctx: Ctx, box: LayoutBox, cbInline: LU, margins: LU): LU {
+function atomicWidth(ctx: Ctx, box: AtomicBox, cbInline: LU, margins: LU): LU {
   const s = box.style;
   const pad = resolvePaddingWith(s, cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -78,9 +85,20 @@ function atomicWidth(ctx: Ctx, box: LayoutBox, cbInline: LU, margins: LU): LU {
  * scroll container (physical_box_fragment.h:167-172). inline-flex: the flex container's first baseline (flex_layout_algorithm.cc
  * :80-142). inline-grid: the grid container's first baseline (grid_layout_algorithm.cc:2345-2352), since grid layout never sets
  * UseLastBaselineForInlineBaseline, so a scroll container keeps it too (logical_box_fragment.cc:20-28, physical_box_fragment.h
- * :163-172). A last baseline that a flex container inside the inline-block would decide is refused.
+ * :163-172). A last baseline that a flex container inside the inline-block would decide is refused. An inline-block button is laid
+ * out by BlockLayoutAlgorithm like any inline-block (html_button_element.cc:59-74), so it takes its last line box's baseline too,
+ * moved down with its centred contents (block_layout_algorithm.cc:1442-1451, box_fragment_builder.cc:402-410); without one it
+ * synthesizes the baseline at its content box's bottom edge (html_button_element.cc:76-80 sets kContentBox, and
+ * logical_box_fragment.cc:70-81 BaselineMetrics synthesizes off it), and overflow never forces the synthesis; a scroll container
+ * button clamps its last baseline to [0, its border-box height] instead (logical_box_fragment.h:61-70).
  */
-function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, lastFlex: string): LU | null {
+function atomicBaseline(ctx: Ctx, box: AtomicBox, frag: Frag, last: LU | null, lastFlex: string, cbInline: LU): LU | null {
+  if (box.kind === 'control') {
+    if (last === null) return buttonContentBaseline(ctx, box, frag, cbInline);
+    // A scroll container's last baseline stays within [0, its block size] (logical_box_fragment.h:61-70).
+    if (isScrollContainer(box.style) && !ctx.faults.overflowBaselineIgnored) return max(ZERO, min(last, frag.height));
+    return last;
+  }
   if (box.style.display === 'inline-grid') return inlineGridBaseline(ctx, box, frag);
   if (box.style.display === 'inline-flex') {
     if (!ctx.faults.inlineFlexLastBaseline) return frag.baseline;
@@ -96,10 +114,21 @@ function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, l
 }
 
 /**
+ * logical_box_fragment.cc:70-81 (kContentBox, alphabetic): the baseline at the content box's block-end edge, its size clamped to at
+ * least 0, from the border-box top.
+ */
+function buttonContentBaseline(ctx: Ctx, box: ControlBox, frag: Frag, cbInline: LU): LU {
+  const pad = resolvePaddingWith(box.style, cbInline, ctx.faults);
+  const bor = resolveBorder(box.style, ctx.devicePixelRatio);
+  const top = add(bor.top, pad.top);
+  return add(top, max(sub(frag.height, add(top, add(bor.bottom, pad.bottom))), ZERO));
+}
+
+/**
  * An inline-grid's baseline from its border-box top: its first baseline, which LogicalBoxFragment::FirstBaseline keeps within
  * [0, block size] for a scroll container (logical_box_fragment.h:42-51; layoutContents already clamps it to at most the height).
  */
-function inlineGridBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU | null {
+function inlineGridBaseline(ctx: Ctx, box: AtomicBox, frag: Frag): LU | null {
   if (ctx.faults.inlineGridLastItemBaseline) {
     // Planted fault inlineGridLastItemBaseline: the last item's own baseline.
     const item = frag.children[frag.children.length - 1];
@@ -111,7 +140,7 @@ function inlineGridBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU | null {
 }
 
 /** Lays out an atomic inline in a block container whose content box is cbInline wide (percentages resolve against it). */
-export function layoutAtomic(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, cbInline: LU): AtomicLayout {
+export function layoutAtomic(ctx: Ctx, atom: AtomicBox | ReplacedLeaf, cbInline: LU): AtomicLayout {
   if (atom.kind === 'replaced') return layoutAtomicReplaced(ctx, atom, cbInline);
   const box = atom;
   const s = box.style;
@@ -137,7 +166,7 @@ export function layoutAtomic(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, cbInline:
     bfcLineOffset: ZERO,
     blockStretch: NO_STRETCH,
   });
-  const baseline = atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
+  const baseline = atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex, cbInline);
   const marginBox = add(add(marginTop, r.frag.height), marginBottom);
   const above = baseline === null ? marginBox : add(marginTop, baseline);
   return { frag: r.frag, marginLeft, marginRight, marginTop, advance: add(add(marginLeft, width), marginRight), above, below: sub(marginBox, above) };
@@ -161,7 +190,7 @@ function layoutAtomicReplaced(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU): Atomi
 }
 
 /** An atomic inline's min-content or max-content contribution: its margin box (css-sizing-3 §5.2). */
-export function atomicContribution(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, kind: IntrinsicKind): LU {
+export function atomicContribution(ctx: Ctx, atom: AtomicBox | ReplacedLeaf, kind: IntrinsicKind): LU {
   const c = inlineContribution(ctx, atom.kind === 'replaced' ? atom : blockLevelOf(atom), kind);
   if (!ctx.faults.atomicMarginExcluded) return c;
   const s = atom.style;

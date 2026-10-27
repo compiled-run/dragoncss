@@ -770,7 +770,7 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
     errors.push({ path: `${path}.${key}`, code: 'bad-value', message });
   };
   if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
-  if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
+  if (control['kind'] === 'button-block' && style['display'] !== 'block' && style['display'] !== 'inline-block') bad('style.display', 'a block button control is a block container: display block, or inline-block among inline content');
   if (control['kind'] === 'slider-thumb' && typeof control['ratio'] === 'number' && control['ratio'] > 1) bad('control.ratio', 'a slider thumb ratio is at most 1');
   if (style['position'] === 'absolute') bad('style.position', 'an absolutely positioned form control is not supported');
   const ratio = style['aspectRatio'];
@@ -796,13 +796,14 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
 }
 
 /**
- * An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid, or a replaced leaf with display
- * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4).
+ * An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid, a replaced leaf with display
+ * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4), or an inline-block button (RF-INL).
  */
 const isAtomic = (c: unknown): boolean => {
   if (!isRecord(c) || !isRecord(c['style'])) return false;
   const d = c['style']['display'];
   if (c['kind'] === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  if (c['kind'] === 'control') return isRecord(c['control']) && c['control']['kind'] === 'button-block' && d === 'inline-block';
   return c['kind'] === 'box' && (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid');
 };
 

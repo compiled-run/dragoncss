@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+button { font-family: inherit; font-size: inherit; appearance: none; background-color: #cdf; border: 2px solid #036; padding: 1px 6px; color: #000; }
+.c { width: 300px; margin-bottom: 4px; background-color: #eee; }
+.big { font-size: 20px; }
+.narrow { width: 90px; }
+.full { width: 100%; padding: 12px 16px; border: 0; border-radius: 8px; background-color: #36c; color: #fff; }
+.pill { padding: 4px 10px; border: 0; border-radius: 6px; }
+.h40 { height: 40px; }
+.h6 { height: 6px; }
+.w120 { width: 120px; }
+.lines { width: 40px; }
+.e { width: 20px; height: 14px; }
+.mg { margin: 3px 5px 7px 2px; }
+.flex { display: inline-flex; align-items: center; }
+.flexh { display: inline-flex; height: 30px; align-items: flex-end; }
+.inner { width: 20px; height: 8px; background-color: #f80; }
+.left { text-align: left; }
+.clip { overflow: hidden; }
+.h14 { height: 14px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="words" class="c">XX <button data-dragon-id="b1">YY</button> XX</div>
+<div data-dragon-id="size" class="c big">XX <button data-dragon-id="b2">YY</button> XX</div>
+<div data-dragon-id="form" class="c"><button data-dragon-id="b3" class="full">XXXX XX</button></div>
+<div data-dragon-id="wrap" class="c narrow">XXXX XX <button data-dragon-id="b4">YYYY</button> XX</div>
+<div data-dragon-id="pill" class="c">X <button data-dragon-id="b5" class="pill">YY</button> X</div>
+<div data-dragon-id="tall" class="c">XX <button data-dragon-id="b6" class="h40">YY</button> XX</div>
+<div data-dragon-id="short" class="c">XX <button data-dragon-id="b7" class="h6">YY YY</button> XX</div>
+<div data-dragon-id="fixed" class="c">XX <button data-dragon-id="b8" class="w120 left">YY</button> XX</div>
+<div data-dragon-id="multi" class="c">XX <button data-dragon-id="b9" class="lines">YY YY YY</button> XX</div>
+<div data-dragon-id="empty" class="c">XX <button data-dragon-id="b10" class="e"></button> XX</div>
+<div data-dragon-id="block" class="c">XX <button data-dragon-id="b11" class="h40"><div data-dragon-id="b11-in" class="inner"></div></button> XX</div>
+<div data-dragon-id="margin" class="c">XX <button data-dragon-id="b12" class="mg">YY</button> XX</div>
+<div data-dragon-id="clipshort" class="c">XX <button data-dragon-id="b15" class="h6 clip">YY</button> XX</div>
+<div data-dragon-id="cliplines" class="c">XX <button data-dragon-id="b16" class="lines h14 clip">YY YY YY</button> XX</div>
+<div data-dragon-id="iflex" class="c">XX <button data-dragon-id="b13" class="flex">YY<div data-dragon-id="b13-in" class="inner"></div></button> XX</div>
+<div data-dragon-id="iflexh" class="c">XX <button data-dragon-id="b14" class="flexh">YY</button> XX</div>
+</body>
+</html>
