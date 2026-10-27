@@ -1,5 +1,5 @@
 // Fixture group block-elements: the block-level HTML elements with Chrome 145's user-agent defaults (p, h1-h6, the sectioning
-// elements, lists as blocks, blockquote, figure, figcaption, address, hr, dl, dt, dd), margin collapsing between them, and the
+// elements, lists as blocks, blockquote, figure, figcaption, address, hr, dl, dt, dd, form), margin collapsing between them, and the
 // precise refusals of the defaults Dragon does not model.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
@@ -9,6 +9,8 @@ export const BLOCK_ELEMENTS: readonly FixtureSpec[] = [
   both('block-elements-text'),
   layout('block-elements-font-size'),
   both('block-elements-margin-collapse'),
+  // form is a block-level element whose only Chrome 145 UA values are display: block and unicode-bidi: isolate.
+  both('block-elements-form'),
   reject('reject-ua-li-marker', 'DRAGON_UNSUPPORTED_VALUE', '<li data-dragon-id="li" class="a"></li>', 'display: list-item on <li> li'),
   reject('reject-ua-nested-list', 'DRAGON_UNSUPPORTED_ELEMENT', '<ul data-dragon-id="inner" class="a"></ul>', '<ul> inner inside <ol> outer'),
   reject('reject-ua-hr-inset', 'DRAGON_UNSUPPORTED_VALUE', '<hr data-dragon-id="hr"></hr>', 'border-top-style, border-right-style, border-bottom-style, border-left-style: inset'),
