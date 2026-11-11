@@ -100,6 +100,7 @@ public enum DragonStateWrite {
   case borderColors([DragonRGBA8])
   case clip
   case paintOrder(String, Int, Int)
+  case heading(Int)
   case text(String, String, DragonRGBA8)
 }
 
@@ -273,6 +274,7 @@ public final class DragonStateMachine {
         case .borderColors(let c): v.dragonBorderColors = dragonAnimatedSides(animator, n.id, c)
         case .clip: v.dragonEnableClip()
         case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
+        case .heading(let level): dragonHeading(v, level)
         case .text: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -498,6 +500,7 @@ sealed class DragonStateWrite {
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
   class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
+  class Heading(val level: Int) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
 }
 
@@ -675,6 +678,7 @@ class DragonStateMachine(
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = dragonAnimatedSides(animator, n.id, w.c)
           is DragonStateWrite.Clip -> v.dragonEnableClip()
           is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
+          is DragonStateWrite.Heading -> dragonHeading(v, w.level)
           is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
@@ -951,6 +955,9 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       }
       case 'border-widths':
       case 'text-color':
+        break;
+      case 'heading':
+        writes.push(lang === 'swift' ? `.heading(${w.level})` : `DragonStateWrite.Heading(${w.level})`);
         break;
       case 'synthetic-oblique':
         // TXT-W: the state runtime's text record carries no shear; a sheared run is drawn from the static program only.

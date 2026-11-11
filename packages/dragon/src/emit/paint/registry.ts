@@ -18,6 +18,7 @@ import { LIST_MARKER_EMITTER } from './list-marker.ts';
 import { OUTLINE_EMITTER } from './outline.ts';
 import { RADIUS_EMITTER } from './radius.ts';
 import { SCROLL_EMITTER } from './scroll.ts';
+import { ROLE_EMITTER } from './role.ts';
 import { SCROLLBAR_EMITTER } from './scrollbar.ts';
 import { SHADOW_EMITTER } from './shadow.ts';
 import { STACKING_EMITTER } from './stacking.ts';
@@ -50,6 +51,7 @@ const EMITTERS = [
   TEXT_DECORATION_EMITTER,
   TEXT_SHADOW_EMITTER,
   LIST_MARKER_EMITTER,
+  ROLE_EMITTER,
 ] as const;
 
 export const PAINT_EMITTERS: readonly PaintEmitter<string>[] = EMITTERS as readonly PaintEmitter<string>[];

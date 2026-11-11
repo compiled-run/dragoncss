@@ -14,6 +14,7 @@ import { IMAGE_VALUES } from './image.ts';
 import { LIST_MARKER_VALUES } from './list-marker.ts';
 import { OUTLINE_VALUES } from './outline.ts';
 import { RADIUS_VALUES } from './radius.ts';
+import { ROLE_VALUES } from './role.ts';
 import { SCROLL_VALUES } from './scroll.ts';
 import { SCROLLBAR_VALUES } from './scrollbar.ts';
 import { SHADOW_VALUES } from './shadow.ts';
@@ -48,6 +49,7 @@ export const PAINT_VALUES: readonly PaintValues[] = [
   TEXT_DECORATION_VALUES,
   TEXT_SHADOW_VALUES,
   LIST_MARKER_VALUES,
+  ROLE_VALUES,
 ];
 
 if (PAINT_VALUES.map((m) => m.name).join() !== PAINT_MODULE_NAMES.join()) throw new Error('the paint-values registry is not in PAINT_MODULE_NAMES order');
