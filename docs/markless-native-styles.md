@@ -7,7 +7,7 @@ This page describes the one call a Markless build makes, what it must pass in, w
 ## The entry point
 
 ```ts
-import { compileNativeStyles } from 'dragon';
+import { compileNativeStyles } from 'dragon';   // resolved under the `dragon-internal` export condition (node --conditions=dragon-internal)
 
 function compileNativeStyles(config: NativeStylesConfig, input: FrontEndResult): NativeStyles;
 
@@ -26,7 +26,7 @@ type NativeStyles = {
 };
 ```
 
-It lives in `packages/dragon/src/native-styles.ts`. It compiles with the same settings as `createProject`: the committed support profiles are enforced, and readiness is judged by the committed device lanes record. A bad config (no target, a name that is not an identifier starting with an ASCII capital, a viewport that is not a positive size) throws. Everything about the CSS comes back as data instead.
+It lives in `packages/dragon/src/native-styles.ts` and is exported from the internal entry only (`src/internal.ts`, which the package's `dragon-internal` export condition selects), not from the public entry. Native emission is experimental under [docs/api.md §1](api.md#1-audience-and-release-boundary), so it has no stable signature yet, and the public entry stays the five names its tests pin. A Markless build that calls it runs Node with `--conditions=dragon-internal`, as `pnpm run native:style-export` does. It compiles with the same settings as `createProject`: the committed support profiles are enforced, and readiness is judged by the committed device lanes record. A bad config (no target, a name that is not an identifier starting with an ASCII capital, a viewport that is not a positive size) throws. Everything about the CSS comes back as data instead.
 
 ## What the Markless compiler hands over
 
