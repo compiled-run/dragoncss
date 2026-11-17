@@ -109,6 +109,16 @@ describe('what native cannot do yet is an error that names it', () => {
     expect(r.targets.android).toEqual({ kind: 'blocked', reason: 'app/chip/chip: the state runtime cannot write box-shadow yet' });
   });
 
+  it('a config with one native target emits it without the other target configured', () => {
+    const both = compileNativeStyles(CONFIG, readTreeFixture('ms-toggle'));
+    for (const t of ['ios', 'android'] as const) {
+      const only = compileNativeStyles({ ...CONFIG, targets: { [t]: CONFIG.targets[t] } }, readTreeFixture('ms-toggle'));
+      expect(only.ok, t).toBe(true);
+      expect(Object.keys(only.targets)).toEqual([t]);
+      expect(emitted(only, t).program).toEqual(emitted(both, t).program);
+    }
+  });
+
   it('refuses a config it cannot name generated code for', () => {
     expect(() => compileNativeStyles({ ...CONFIG, name: 'ladder' }, readTreeFixture('ms-box'))).toThrow(/not an identifier starting with an ASCII capital/);
     expect(() => compileNativeStyles({ ...CONFIG, targets: {} }, readTreeFixture('ms-box'))).toThrow(/at least one native target/);
@@ -118,13 +128,16 @@ describe('what native cannot do yet is an error that names it', () => {
 
 describe('the native style export (dragon.native-style-export/1)', () => {
   it('ms-toggle: every assignment carries every node\'s writes and frame, and the transition table names them', () => {
-    const e = nativeStyleExport(compileNativeStyles(CONFIG, readTreeFixture('ms-toggle')), 'Ladder', 'packages/parity/fixtures/ms-toggle');
+    const styles = compileNativeStyles(CONFIG, readTreeFixture('ms-toggle'));
+    const e = nativeStyleExport(styles, 'Ladder', 'packages/parity/fixtures/ms-toggle');
     expect(e.schema).toBe(NATIVE_STYLE_EXPORT_SCHEMA);
     expect(e.fonts).toEqual([]);
     for (const t of ['ios', 'android'] as const) {
       const x = e.targets[t];
       if (x === undefined) throw new Error(`no ${t}`);
       expect([x.viewport, x.dpr]).toEqual([EXPORT_DEVICES[t].viewport, EXPORT_DEVICES[t].dpr]);
+      const r = emitted(styles, t).readiness;
+      expect(x.readiness).toEqual(r.kind === 'analysis-only' ? { kind: 'analysis-only', reason: r.reason } : { kind: r.kind });
       expect(x.states).toEqual([{ key: 'doc/app/chip#selected', domain: [false, true] }]);
       expect(x.assignments.map((a) => a.values)).toEqual([{ 'doc/app/chip#selected': false }, { 'doc/app/chip#selected': true }]);
       expect(x.next).toEqual([[[0, 1]], [[0, 1]]]);

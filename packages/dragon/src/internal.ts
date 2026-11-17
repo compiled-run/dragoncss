@@ -13,7 +13,7 @@ import type { Rgba8 } from './css/color.ts';
 import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
-import { colorChannels, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
+import { colorChannels, lowerNativeProgram, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
 import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
@@ -333,6 +333,22 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
     return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+  } catch (e) {
+    if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+    throw e;
+  }
+}
+
+/** One native backend's lowered program of one case: ready when the result checks that backend's target, whatever the other's. */
+export function nativeProgramFor(compiled: object, assignment: Assignment, target: 'ios' | 'android'): { readonly kind: 'ready'; readonly program: NativeProgram } | { readonly kind: 'blocked'; readonly reason: string } {
+  const c = caseOf(compiled, assignment, null);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  const state = ((compiled as { targets?: Record<string, string> }).targets ?? {})[target];
+  if (state !== 'checked') return { kind: 'blocked', reason: `the ${target} target is ${state === undefined ? 'not configured' : state}` };
+  if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
+  try {
+    const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;

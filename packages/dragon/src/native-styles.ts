@@ -3,7 +3,7 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { compiledCases, interactionPartitionOf, nativePrograms } from './internal.ts';
+import { compiledCases, interactionPartitionOf, nativeProgramFor } from './internal.ts';
 import type { NativeBackend } from './lower/native-program.ts';
 import type { StateProgram } from './lower/state-program.ts';
 import { deriveStateProgram, StateProgramError } from './lower/state-program.ts';
@@ -83,9 +83,9 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   for (const c of compiledCases(compiled)) {
     const partition = interactionPartitionOf(compiled, c.assignment);
     if (partition !== null && partition.states.length > 0) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
-    const p = nativePrograms(compiled, c.assignment);
+    const p = nativeProgramFor(compiled, c.assignment, t);
     if (p.kind === 'blocked') return { kind: 'blocked', reason: p.reason };
-    cases.push({ assignment: c.assignment, isInitial: c.isInitial, program: p.programs[backend] });
+    cases.push({ assignment: c.assignment, isInitial: c.isInitial, program: p.program });
   }
   try {
     const program = deriveStateProgram(backend, cases);

@@ -21,6 +21,7 @@ type NativeStylesConfig = {
 
 type NativeStyles = {
   ok: boolean;                             // true only when every configured target emitted
+  digest: string;                          // the compile digest: the same input, config and compiler give the same digest
   diagnostics: readonly Diagnostic[];      // every diagnostic of the compile, each with its source span and target
   targets: { ios?: NativeStyleOutput | NativeStyleBlocked; android?: NativeStyleOutput | NativeStyleBlocked };
 };
@@ -75,6 +76,7 @@ The Markless hosts (`packages/mobile` in Markless) apply styles from a JSON expo
 
 - `targets.<t>.nodes` is gone. Each target now has `assignments`, one per reachable state combination, and each holds its own `nodes`. Every assignment is complete: no host needs to merge deltas. A component without state has exactly one assignment, whose `nodes` are what `/0` had.
 - Each target gains `states` (`[{ key: "<instance>#<state>", domain }]`, in setter order), `initial` (the index of the starting assignment) and `next` (`next[a][s][v]`, the assignment reached from `a` by setting state `s` to its `v`-th domain value, or `-1` when that is unreachable). An assignment's `values` maps each state key to its value.
+- Each target gains `readiness`: `{ "kind": "ready" }` only when every committed device lane of the target passes, else `{ "kind": "analysis-only", "reason": "..." }` naming the lanes that do not pass. A host must not ship an `analysis-only` export as proven.
 - New top-level field `component`. `compiler` (the compile digest), `units`, `source`, `warnings` and `fonts` are as in `/0`. Ahem is listed as `{ "id": "Ahem", "file": "vendor/fonts/Ahem.ttf" }`; other faces by their `sha256:` id, as before.
 - The node shape is unchanged: `id`, `parent`, `kind`, `native`, `text`, `frame` (device px, relative to the parent box), `borderWidths` (device px) and `writes` (each with its `kind` and `key`, as in `/0`). The writes are exactly the state program's, so the hosts and the device lanes see the same data.
 

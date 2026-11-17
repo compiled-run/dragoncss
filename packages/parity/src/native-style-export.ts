@@ -36,6 +36,8 @@ export type ExportTarget = {
   readonly backend: string;
   readonly viewport: ExportDevice['viewport'];
   readonly dpr: number;
+  /** 'ready' only when every committed device lane of the target passes; otherwise not a shipping output, and why. */
+  readonly readiness: { readonly kind: 'ready' } | { readonly kind: 'analysis-only'; readonly reason: string };
   /** "<instance>#<state>" with its domain, in the order the setters index them. */
   readonly states: readonly { readonly key: string; readonly domain: readonly Scalar[] }[];
   readonly initial: number;
@@ -112,7 +114,10 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       });
       return { values: valuesOf(a.assignment), nodes };
     });
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next };
+    const r = o.readiness;
+    if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
+    const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next };
   }
   const files = vendoredFaces();
   return {
