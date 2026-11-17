@@ -46,12 +46,14 @@ for (const id of ids.length === 0 ? DEFAULT : ids) {
         const byId = new Map(a.nodes.map((n) => [n.id, n]));
         const absolute = (n: ExportNode): Frame => {
           if (n.frame === null) throw new Error(`${id}: ${n.id} has no frame`);
-          const p = n.parent === null ? { x: 0, y: 0 } : absolute(byId.get(n.parent) as ExportNode);
+          const parent = n.parent === null ? undefined : byId.get(n.parent);
+          if (n.parent !== null && parent === undefined) throw new Error(`${id}: ${n.id}'s parent ${n.parent} is not exported`);
+          const p = parent === undefined ? { x: 0, y: 0 } : absolute(parent);
           return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
         };
         const capture = await captureFixture(browser, id, model.render(authored, { kind: 'authored' }), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ahem' });
         const boxes = capture.nodes.filter((c) => c.hasBox && c.kind !== 'line' && byId.has(c.id));
-        if (boxes.length !== a.nodes.filter((n) => n.frame !== null).length) {
+        if (boxes.length === 0 || boxes.length !== a.nodes.filter((n) => n.frame !== null).length) {
           failed++;
           console.log(`${id} ${target} ${key(a.values)}: Chrome has ${boxes.length} of the ${a.nodes.length} exported boxes`);
         }
@@ -63,8 +65,8 @@ for (const id of ids.length === 0 ? DEFAULT : ids) {
           return { id: c.id, chrome, dragon: d, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX };
         });
         sets.push({ values: a.values, rows });
-        const worst = Math.max(...rows.map((r) => r.maxDeltaDevicePx));
-        console.log(`${id} ${target} ${key(a.values)}: ${rows.length} boxes, largest difference ${worst} device px, ${rows.every((r) => r.pass) ? 'pass' : 'FAIL'}`);
+        const worst = Math.max(0, ...rows.map((r) => r.maxDeltaDevicePx));
+        console.log(`${id} ${target} ${key(a.values)}: ${rows.length} boxes, largest difference ${worst} device px, ${rows.length > 0 && rows.every((r) => r.pass) ? 'pass' : 'FAIL'}`);
       }
       report[target] = { viewport: t.viewport, dpr: t.dpr, assignments: sets };
     } finally {

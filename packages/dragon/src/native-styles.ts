@@ -90,9 +90,10 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   try {
     const program = deriveStateProgram(backend, cases);
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [] };
-    // The second file is the lanes' script case table, empty here: a component has no case scripts.
-    const files = emitStatePrograms(backend, [emit]).slice(0, 1);
-    return { kind: 'emitted', backend, program, files, readiness: compiled.outputs[t] };
+    const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
+    const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
+    if (file === undefined) throw new Error(`compileNativeStyles: the ${backend} state emitter wrote no ${path}`);
+    return { kind: 'emitted', backend, program, files: [file], readiness: compiled.outputs[t] };
   } catch (e) {
     if (e instanceof StateProgramError || e instanceof StateEmitError) return { kind: 'blocked', reason: e.message };
     throw e;
