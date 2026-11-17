@@ -17,6 +17,7 @@ type NativeStylesConfig = {
   targets: { ios?: { minimum: string }; android?: { minSdk: number } };   // at least one
   fonts?: FontMap;                         // the font map (docs/api.md §2.3)
   viewport: { width: number; height: number };   // the CSS size the root starts at, before its view reports its own size
+  support?: 'enforced' | 'lanes';          // 'enforced' (default): committed profiles and lanes verdict; 'lanes': as the device lanes compile, never ready
 };
 
 type NativeStyles = {
@@ -85,6 +86,28 @@ The Markless hosts (`packages/mobile` in Markless) apply styles from a JSON expo
 **Chrome comparison of the export:** `native:style-export` also compares every frame of every assignment with Chrome's boxes. It does this at each proof device's viewport and ratio (`EXPORT_DEVICES`: iPhone 17, 402 by 778 points at 3x; Pixel 7, 411 by 818 dp at 2.625), under the device lanes' 1 device px gate. It writes `<fixture>.chrome-compare.json` and fails on any box outside the gate.
 
 The frames are computed at build time for one proof device size. A host on another screen size needs the on-device layout engine, which the generated Swift and Kotlin carry and the export does not. That is the reason both outputs exist.
+
+## From a Markless style input: one command
+
+The proof harness calls Dragon from a sibling checkout with the style input the Markless compiler writes (`markless.native-style-input/0`, from `nativeStyleInput` in Markless's `packages/mobile/src/style-input.ts`) as its only input:
+
+```sh
+pnpm --silent --dir "${DRAGON_DIR:-$HOME/wt/dragon/native-dragon-styles}" run markless:style-export -- native-style-input.json native-style.json
+```
+
+Relative paths are the caller's. It exits 0 and writes `dragon.native-style-export/1` (above). Otherwise it exits 1 with every reason on stderr: the input is malformed, the CSS does not compile (each error with its code, target and message), or a node of the input is missing from the export. Usage errors exit 2. Markless needs no package dependency on Dragon for this.
+
+What it does with the input (`packages/parity/src/markless-style-input.ts`):
+
+- **Validation.** It checks every field it reads. It refuses a node inside an `@if` arm or `@for` row (`arm`, `row`), a state that is not boolean, a `classByState` that names an unknown cell or does not have exactly one entry per combination of the states, and a parent that is not an earlier element.
+- **The document.** It builds the element tree under `html` > `body`, with the document sheet `body { margin: 0; font-family: sans-serif; }` and the input's `css` as one document-scoped sheet, since Markless has already scoped it with its `mk-` class.
+- **Classes and attributes.** A class attribute is split into its tokens, as HTML does. A `classByState` token present in only some combinations becomes a condition on the states, so Dragon compiles one state program, not one tree per combination. Other attributes are passed as written.
+- **Ids.** Element ids are the input's (`h0`, `h1`, ...). Dragon names a text node `<parent>:text<k>`, which is how Markless names it (`h1:text0`), and the command fails if any input id is missing from the export.
+- **States.** `states[].key` and each assignment's `values` use the input's cells (`state:liked`).
+- **Fonts.** It compiles with the pinned font map: `sans-serif` is "Dragon Sans", Inter Regular, Bold, Light and Italic from `vendor/fonts/Inter/`. `fonts[].file` is relative to the Dragon checkout.
+- **Support mode.** It calls `compileNativeStyles` with `support: 'lanes'`, as the device lanes compile, because real faces are not yet device-proven in the enforced profiles (see "Limits today"). So every target's `readiness` is `analysis-only`, with the reason. This is the output a device proof runs, not a shipping output.
+
+Checks: `packages/parity/test/markless-style-input.test.ts` exports the attributes rung's real input (`examples/markless-styles/input/attributes.native-style-input.json`). It checks the ids, the cells, the transition table and the `.like.on` background following `state:liked` on both targets, and every refusal above. For the styles and attributes rungs' inputs, this command's frames and writes equal those of the counter tool's Chrome-compared export (`examples/markless-counter/tools/markless-style.ts` on `cw/native-targets`) at 0 device px difference, on both targets and in every assignment.
 
 ## What CSS is supported
 

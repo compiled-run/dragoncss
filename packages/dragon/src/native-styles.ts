@@ -24,6 +24,12 @@ export type NativeStylesConfig = {
   readonly fonts?: FontMap;
   /** The CSS size the component's root starts at, before the view it mounts in reports its own size. */
   readonly viewport: { readonly width: number; readonly height: number };
+  /**
+   * 'enforced' (the default): the committed support profiles refuse what is not device-proven, and readiness is judged by the
+   * committed lanes verdict. 'lanes': compile as the parity device lanes do (support derived, real bundled faces, interaction
+   * states), to produce the output a device proof runs; its readiness is never 'ready'.
+   */
+  readonly support?: 'enforced' | 'lanes';
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -62,9 +68,13 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
   if (!/^[A-Z][A-Za-z0-9]*$/.test(config.name)) throw new Error(`compileNativeStyles: the name ${JSON.stringify(config.name)} is not an identifier starting with an ASCII capital`);
   const { width, height } = config.viewport;
   if (![width, height].every((v) => Number.isFinite(v) && v > 0)) throw new Error(`compileNativeStyles: viewport ${width}x${height} is not a positive size`);
+  const support = config.support ?? 'enforced';
+  if (support !== 'enforced' && support !== 'lanes') throw new Error(`compileNativeStyles: support ${JSON.stringify(support)} is neither 'enforced' nor 'lanes'`);
   const project = createProjectWith(
     { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }) },
-    { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', nativeLanes: NATIVE_LANES },
+    support === 'enforced'
+      ? { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', nativeLanes: NATIVE_LANES }
+      : { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true },
   );
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
   const out: { [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked } = {};
