@@ -59,6 +59,7 @@ import { LINK_PSEUDOS } from './fixture-groups/link-pseudos.ts';
 import { LIST_ITEMS } from './fixture-groups/list-items.ts';
 import { LIST_MARKERS } from './fixture-groups/list-markers.ts';
 import { LOGICAL_PROPS } from './fixture-groups/logical-props.ts';
+import { MARKLESS_STYLES } from './fixture-groups/markless-styles.ts';
 import { MASK } from './fixture-groups/mask.ts';
 import { MEDIA_ENVIRONMENT } from './fixture-groups/media-environment.ts';
 import { MEDIA_RUNTIME } from './fixture-groups/media-runtime.ts';
@@ -236,6 +237,7 @@ export const GROUPS = {
   'list-items': LIST_ITEMS,
   'list-markers': LIST_MARKERS,
   'logical-props': LOGICAL_PROPS,
+  'markless-styles': MARKLESS_STYLES,
   mask: MASK,
   media: MEDIA,
   'media-environment': MEDIA_ENVIRONMENT,

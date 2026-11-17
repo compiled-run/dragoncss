@@ -18,7 +18,7 @@ const spec = (id: string) => {
 
 describe('forced cases', () => {
   it('are only the registry\'s fixtures\', and leave the counted cases as they are', () => {
-    expect([...INTERACTION_FORCED]).toEqual(['interaction-hover', 'interaction-focus', 'interaction-active', 'interaction-combo']);
+    expect([...INTERACTION_FORCED]).toEqual(['interaction-hover', 'interaction-focus', 'interaction-active', 'interaction-combo', 'ms-press']);
     for (const f of FIXTURES) if (!INTERACTION_FORCED.has(f.id)) expect(forcedCases(f), f.id).toEqual([]);
     expect(casesOf(spec('interaction-hover'), fixtureInput(spec('interaction-hover'))).map((c) => c.id)).toEqual(['interaction-hover', 'interaction-hover-rtl']);
   });

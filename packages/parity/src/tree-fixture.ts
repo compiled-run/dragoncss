@@ -27,8 +27,8 @@ export type TreeFixtureFile = {
   /** Source files of the fixture directory, in snapshot order. */
   readonly sources: readonly string[];
   readonly modules: readonly { readonly id: string; readonly source: string }[];
-  /** scope: a component id, or "document". */
-  readonly styles: readonly { readonly id: string; readonly file: string; readonly scope: string }[];
+  /** scope: a component id, or "document"; block: the n-th (0-based) <style> element of file, whose content is the sheet, else the whole file. */
+  readonly styles: readonly { readonly id: string; readonly file: string; readonly scope: string; readonly block?: number }[];
   readonly document: {
     readonly root: string;
     readonly documentElement: string;
@@ -110,6 +110,20 @@ export function readTreeFixtureDir(dir: string, id: string, options: TreeFixture
     const text = readFileSync(repoPath(path), 'utf8');
     return { uri: `dragon-source://${PROJECT_ID}/${path}`, displayPath: path, text: options.text === undefined ? text : options.text(file, text) };
   });
+}
+
+/** The content range of the n-th <style> element of a fixture source, between its open and close tags. */
+function styleBlock(id: string, file: string, text: string, n: number): { start: number; end: number } {
+  if (!Number.isInteger(n) || n < 0) throw new Error(`${id}: bad style block ${n} in ${file}`);
+  let open = -1;
+  for (let i = 0; i <= n; i++) {
+    open = text.indexOf('<style>', open + 1);
+    if (open < 0) throw new Error(`${id}: ${file} has no <style> block ${n}`);
+  }
+  const start = open + '<style>'.length;
+  const end = text.indexOf('</style>', start);
+  if (end < 0) throw new Error(`${id}: <style> block ${n} of ${file} is not closed`);
+  return { start, end };
 }
 
 function treeFixtureInput(id: string, spec: TreeFixtureFile, load: (file: string) => { uri: string; displayPath: string; text: string }): FrontEndResult {
@@ -247,7 +261,7 @@ function treeFixtureInput(id: string, spec: TreeFixtureFile, load: (file: string
         const src = source(s.file);
         return {
           id: s.id,
-          css: { source: src.ref, start: 0, end: src.text.length },
+          css: { source: src.ref, ...(s.block === undefined ? { start: 0, end: src.text.length } : styleBlock(id, s.file, src.text, s.block)) },
           scope: s.scope === 'document' ? { kind: 'document' } : { kind: 'component', owner: s.scope },
         };
       }),

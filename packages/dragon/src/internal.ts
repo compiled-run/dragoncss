@@ -24,6 +24,8 @@ import type { Assignment, Origin, Target } from './types.ts';
 // The public API without createProject, whose committed lanes verdict (create-project.ts) the harness passes itself.
 export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
+export type { NativeStyleBlocked, NativeStyleOutput, NativeStyles, NativeStylesConfig, NativeStyleTarget } from './native-styles.ts';
+export { compileNativeStyles, NATIVE_STYLES_VERSION } from './native-styles.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
 export { NO_FAULTS } from './faults.ts';
