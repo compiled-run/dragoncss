@@ -14,6 +14,10 @@
     "height": 778
    },
    "dpr": 3,
+   "readiness": {
+    "kind": "analysis-only",
+    "reason": "The iOS output is analysis-only: its layout projection feeds the internal lanes, and the generated UIKit Swift stays internal to the native lanes until every ios lane passes in a current committed lanes record; these lanes do not pass: layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked); device-pixels fail (185 failures (pixel 185)); device-states fail (168 failures (pixel 168)); device-anim fail (52 failures (device-record 52))."
+   },
    "states": [],
    "initial": 0,
    "assignments": [
@@ -784,6 +788,10 @@
     "height": 818
    },
    "dpr": 2.625,
+   "readiness": {
+    "kind": "analysis-only",
+    "reason": "The Android output is analysis-only: its layout projection feeds the internal lanes, and the generated Android Views Kotlin stays internal to the native lanes until every android lane passes in a current committed lanes record; these lanes do not pass: layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked); device-pixels fail (253 failures (pixel 253)); device-states fail (252 failures (pixel 252)); device-anim fail (55 failures (device-record 52, frame-chrome 3)); device-traces fail (2 failures (trace-mismatch 2))."
+   },
    "states": [],
    "initial": 0,
    "assignments": [
