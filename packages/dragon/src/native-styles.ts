@@ -43,6 +43,8 @@ export type NativeStyleBlocked = { readonly kind: 'blocked'; readonly reason: st
 export type NativeStyles = {
   /** True only when every configured target emitted. */
   readonly ok: boolean;
+  /** The compile's digest: the same input, config and compiler give the same digest. */
+  readonly digest: string;
   /** Every diagnostic of the compile, for every target; an error names the property, value or selector and its source span. */
   readonly diagnostics: readonly Diagnostic[];
   readonly targets: { readonly [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked };
@@ -67,7 +69,7 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
   const out: { [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked } = {};
   for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport);
-  return { ok: targets.every((t) => out[t]?.kind === 'emitted'), diagnostics: compiled.diagnostics, targets: out };
+  return { ok: targets.every((t) => out[t]?.kind === 'emitted'), digest: compiled.digest, diagnostics: compiled.diagnostics, targets: out };
 }
 
 function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport']): NativeStyleOutput | NativeStyleBlocked {

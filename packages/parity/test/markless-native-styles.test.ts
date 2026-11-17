@@ -9,6 +9,7 @@ import { FIXTURES } from '../src/fixtures.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
 import { stateGroups, stateProgramOf } from '../src/state-cases.ts';
 import { readTreeFixture } from '../src/tree-fixture.ts';
+import { EXPORT_DEVICES, NATIVE_STYLE_EXPORT_SCHEMA, nativeStyleExport } from '../src/native-style-export.ts';
 
 const CONFIG: NativeStylesConfig = { projectId: PROJECT_ID, name: 'Ladder', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, viewport: { width: 390, height: 844 } };
 
@@ -112,5 +113,36 @@ describe('what native cannot do yet is an error that names it', () => {
     expect(() => compileNativeStyles({ ...CONFIG, name: 'ladder' }, readTreeFixture('ms-box'))).toThrow(/not an identifier starting with an ASCII capital/);
     expect(() => compileNativeStyles({ ...CONFIG, targets: {} }, readTreeFixture('ms-box'))).toThrow(/at least one native target/);
     expect(() => compileNativeStyles({ ...CONFIG, viewport: { width: 0, height: 844 } }, readTreeFixture('ms-box'))).toThrow(/not a positive size/);
+  });
+});
+
+describe('the native style export (dragon.native-style-export/1)', () => {
+  it('ms-toggle: every assignment carries every node\'s writes and frame, and the transition table names them', () => {
+    const e = nativeStyleExport(compileNativeStyles(CONFIG, readTreeFixture('ms-toggle')), 'Ladder', 'packages/parity/fixtures/ms-toggle');
+    expect(e.schema).toBe(NATIVE_STYLE_EXPORT_SCHEMA);
+    expect(e.fonts).toEqual([]);
+    for (const t of ['ios', 'android'] as const) {
+      const x = e.targets[t];
+      if (x === undefined) throw new Error(`no ${t}`);
+      expect([x.viewport, x.dpr]).toEqual([EXPORT_DEVICES[t].viewport, EXPORT_DEVICES[t].dpr]);
+      expect(x.states).toEqual([{ key: 'doc/app/chip#selected', domain: [false, true] }]);
+      expect(x.assignments.map((a) => a.values)).toEqual([{ 'doc/app/chip#selected': false }, { 'doc/app/chip#selected': true }]);
+      expect(x.next).toEqual([[[0, 1]], [[0, 1]]]);
+      const dot = x.assignments.map((a) => a.nodes.find((n) => n.id === 'app/chip/dot')?.frame?.width);
+      // 8px and 16px CSS wide at the device's ratio: the selected state's own layout, not the initial one's.
+      expect(dot).toEqual([8 * x.dpr, 16 * x.dpr]);
+      const chip = x.assignments[1]?.nodes.find((n) => n.id === 'app/chip/chip');
+      expect(chip?.writes.some((w) => w['kind'] === 'border-radius')).toBe(true);
+      expect(Object.keys(chip ?? {})).toEqual(['id', 'parent', 'kind', 'native', 'text', 'frame', 'borderWidths', 'writes']);
+    }
+  });
+
+  it('ms-text names the Ahem face by its vendored file', () => {
+    const e = nativeStyleExport(compileNativeStyles(CONFIG, readTreeFixture('ms-text')), 'Ladder', 'packages/parity/fixtures/ms-text');
+    expect(e.fonts).toEqual([{ id: 'Ahem', file: 'vendor/fonts/Ahem.ttf' }]);
+  });
+
+  it('refuses to export a blocked target', () => {
+    expect(() => nativeStyleExport(compileNativeStyles(CONFIG, readTreeFixture('ms-press')), 'Ladder', 'x')).toThrow('Ladder: no export: ios the ios compile has errors; see the diagnostics; android the android compile has errors; see the diagnostics');
   });
 });

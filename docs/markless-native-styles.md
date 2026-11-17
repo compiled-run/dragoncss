@@ -67,6 +67,23 @@ A boolean state gets a `Bool` setter, for example `set_doc_app_chip_selected(_ v
 
 **`readiness`** is the target's output state from the compile. It is `ready` only when the committed device lanes record (`packages/parity/out/lanes.json`) shows every lane of that target passing and none stale. Until then it is `analysis-only`, and its `reason` names the lanes that do not pass. The code is emitted either way so the lanes and integrations can run it, but only `ready` is a shipping output ([docs/api.md §2.2](api.md#22-no-publishable-partial-output)).
 
+## The export: `dragon.native-style-export/1` (format change from `/0`)
+
+The Markless hosts (`packages/mobile` in Markless) apply styles from a JSON export, not from the generated Swift or Kotlin above. `/0` came from the counter (`examples/markless-counter/tools/export.ts` on the dragon branch `cw/native-targets`). `/1` is the general form, built from `compileNativeStyles`'s output by `nativeStyleExport` (`packages/parity/src/native-style-export.ts`). `pnpm run native:style-export [-- <fixture>...]` writes it for the ladder to `examples/markless-styles/out/<fixture>.native-style.json`.
+
+**What changed from `/0`, for the iOS and Android host workers:**
+
+- `targets.<t>.nodes` is gone. Each target now has `assignments`, one per reachable state combination, and each holds its own `nodes`. Every assignment is complete: no host needs to merge deltas. A component without state has exactly one assignment, whose `nodes` are what `/0` had.
+- Each target gains `states` (`[{ key: "<instance>#<state>", domain }]`, in setter order), `initial` (the index of the starting assignment) and `next` (`next[a][s][v]`, the assignment reached from `a` by setting state `s` to its `v`-th domain value, or `-1` when that is unreachable). An assignment's `values` maps each state key to its value.
+- New top-level field `component`. `compiler` (the compile digest), `units`, `source`, `warnings` and `fonts` are as in `/0`. Ahem is listed as `{ "id": "Ahem", "file": "vendor/fonts/Ahem.ttf" }`; other faces by their `sha256:` id, as before.
+- The node shape is unchanged: `id`, `parent`, `kind`, `native`, `text`, `frame` (device px, relative to the parent box), `borderWidths` (device px) and `writes` (each with its `kind` and `key`, as in `/0`). The writes are exactly the state program's, so the hosts and the device lanes see the same data.
+
+**How a host switches state:** look up `next[current][s][v]`, then apply the new assignment's frames and writes to the retained views. Nothing is recompiled or matched on the device.
+
+**Chrome comparison of the export:** `native:style-export` also compares every frame of every assignment with Chrome's boxes. It does this at each proof device's viewport and ratio (`EXPORT_DEVICES`: iPhone 17, 402 by 778 points at 3x; Pixel 7, 411 by 818 dp at 2.625), under the device lanes' 1 device px gate. It writes `<fixture>.chrome-compare.json` and fails on any box outside the gate.
+
+The frames are computed at build time for one proof device size. A host on another screen size needs the on-device layout engine, which the generated Swift and Kotlin carry and the export does not. That is the reason both outputs exist.
+
 ## What CSS is supported
 
 Support is not restated here. It lives in the support profiles (`packages/dragon/src/profiles/ios.ts`, `android.ts`, generated from the lanes), and `querySupport` answers it per property, value and context. A row is `exact` or `caveat` only when it names a passing comparison against Chrome. The ladder below is the Markless-shaped evidence: each step is a `.tsrx` component in the parity corpus, compared against Chrome 145 by Dragon's own numbers and run on the iOS simulator and Android emulator device lanes.
