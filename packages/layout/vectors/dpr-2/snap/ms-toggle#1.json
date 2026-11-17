@@ -1,0 +1,93 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 5120
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 5120
+  },
+  {
+   "id": "app/list",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 5120
+  },
+  {
+   "id": "app/chip/chip",
+   "parent": "app/list",
+   "x": 512,
+   "y": 512,
+   "width": 13312,
+   "height": 4096
+  },
+  {
+   "id": "app/chip/dot",
+   "parent": "app/chip/chip",
+   "x": 1536,
+   "y": 768,
+   "width": 2048,
+   "height": 1024
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 80,
+   "width": 800,
+   "height": 80
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 80,
+   "width": 800,
+   "height": 80
+  },
+  {
+   "id": "app/list",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 80,
+   "width": 800,
+   "height": 80
+  },
+  {
+   "id": "app/chip/chip",
+   "left": 8,
+   "top": 8,
+   "right": 216,
+   "bottom": 72,
+   "width": 208,
+   "height": 64
+  },
+  {
+   "id": "app/chip/dot",
+   "left": 32,
+   "top": 20,
+   "right": 64,
+   "bottom": 36,
+   "width": 32,
+   "height": 16
+  }
+ ]
+}

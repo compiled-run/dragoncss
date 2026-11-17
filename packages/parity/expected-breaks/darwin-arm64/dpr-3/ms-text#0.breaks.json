@@ -1,0 +1,10 @@
+{
+  "case": "ms-text#0",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"app/title:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"app/note:text0","data":"XXXX X","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"app/plain:text0","data":"XXX XX","lines":1,"units":[0,0,0,0,0,0],"blank":[]}
+  ]
+}
