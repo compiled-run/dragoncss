@@ -414,6 +414,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     if (part !== null) applyShadowUserAgent(part, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
+    applyHidden(el, props, defaulted);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
@@ -714,6 +715,17 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
     // computed), so the root keeps a captured UA value.
     else if (was.origin === 'user-agent' && parent !== null) props.set(p, INHERITED.has(p) && parent !== null ? { ...fromParent(p), ...none } : { value: initialValue(p, ua), origin: 'initial', ...none });
   }
+}
+
+/**
+ * HTML §15.3.1: the UA rule `[hidden]:not([hidden=until-found i]) { display: none }`. An author display declaration beats it, as
+ * any author rule beats a UA rule; `hidden="until-found"` is refused before resolving (project.ts, the content-visibility it needs).
+ */
+function applyHidden(el: LinkedElement, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>): void {
+  const hidden = el.attributes.get('hidden');
+  if (hidden === undefined || hidden.toLowerCase() === 'until-found' || !defaulted.has('display')) return;
+  const none = { span: null, declaration: null, declared: null, losing: [] } as const;
+  props.set('display', { ...none, ...props.get('display'), value: { kind: 'keyword', value: 'none' }, origin: 'user-agent' });
 }
 
 function applyForcedUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, ua: UaDataset): void {

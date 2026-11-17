@@ -62,7 +62,6 @@ const OWNERS: Readonly<Record<string, string>> = {
   href: 'the inline and link package INL1 (an href makes the :link UA rules apply)',
   lang: 'the text package TXT1-C (lang feeds locale font fallback)',
   dir: 'the bidi package (dir sets direction and unicode-bidi)',
-  hidden: 'the display package (hidden applies display: none)',
   style: 'the style-attribute package SOV',
   // MEDIA-EL: a video without them shows its first frame and never plays; with them Chrome plays it or draws its own controls.
   controls: 'the media-element package MEDIA-EL (controls and playback)',
@@ -89,6 +88,8 @@ export function neutralAttribute(tag: string, name: string): NeutralAttribute | 
 export function attributeRefusal(tag: string, name: string): string | null {
   // TDEC-a: href on a makes it a hyperlink, whose a:any-link UA rule (color and underline) analysis/text-decoration.ts applies.
   if (tag === 'a' && name === 'href') return null;
+  // HIDDEN: its UA rule, display: none, is applied in analysis/resolve.ts (applyHidden); until-found is refused by value.
+  if (name === 'hidden') return null;
   if (neutralAttribute(tag, name) !== undefined) return null;
   if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
   // SVG-a1: the SVG tags' geometry and presentation attributes (analysis/elements/svg.ts), and the packages of the others.
