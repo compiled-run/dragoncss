@@ -44,6 +44,11 @@ export type ExportTarget = {
   readonly assignments: readonly ExportAssignment[];
   /** next[a][s][v]: the assignment reached from a by setting state s to its v-th domain value, or -1. */
   readonly next: readonly (readonly (readonly number[])[])[];
+  /**
+   * Only for a sheet with @media: each atom is one media feature the host evaluates on the device, each band the truth vector of
+   * every atom (in band order), each condition the band's media text. The state `@env#band` (domain 0..n-1) selects the band.
+   */
+  readonly bands?: { readonly atoms: readonly unknown[]; readonly bands: readonly (readonly boolean[])[]; readonly conditions: readonly string[] };
 };
 export type NativeStyleExport = {
   readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;
@@ -117,7 +122,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next };
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...(o.bands === null ? {} : { bands: { atoms: o.bands.table.atoms, bands: o.bands.table.bands, conditions: o.bands.conditions } }) };
   }
   const files = vendoredFaces();
   return {

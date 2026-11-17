@@ -4,7 +4,7 @@
 // the span of the input file itself; its CSS is its own source, whole.
 import { createHash } from 'node:crypto';
 import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, SourceFile, TreeNode } from 'dragon';
-import { compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -18,7 +18,7 @@ export type MarklessStyleInput = {
   readonly version: typeof MARKLESS_STYLE_INPUT_VERSION;
   readonly component: string;
   readonly nodes: readonly (
-    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly arm?: unknown }
+    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly arm?: unknown }
     | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly arm?: unknown }
   )[];
   readonly css: string;
@@ -65,13 +65,22 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (!isString(node['element']) || !/^[a-z][a-z0-9-]*$/.test(node['element'])) fail(`${id}: bad element name ${JSON.stringify(node['element'])}`);
       if (node['parent'] !== null && !(isString(node['parent']) && ids.has(node['parent']))) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
-      const byState = node['classByState'];
-      if (byState !== undefined) {
-        if (!Array.isArray(byState)) fail(`${id}: classByState is not a list`);
+      const checkByState = (what: string, byState: unknown): void => {
+        if (!Array.isArray(byState)) fail(`${id}: ${what} is not a list`);
         for (const e of byState as unknown[]) {
-          if (!isRecord(e) || !(e['value'] === null || isString(e['value'])) || !isRecord(e['when'])) fail(`${id}: bad classByState entry ${JSON.stringify(e)}`);
+          if (!isRecord(e) || !(e['value'] === null || isString(e['value'])) || !isRecord(e['when'])) fail(`${id}: bad ${what} entry ${JSON.stringify(e)}`);
           const when = (e as Record<string, unknown>)['when'] as Record<string, unknown>;
-          for (const [cell, value] of Object.entries(when)) if (!cells.has(cell) || typeof value !== 'boolean') fail(`${id}: classByState names ${cell}, which is not a boolean state`);
+          for (const [cell, value] of Object.entries(when)) if (!cells.has(cell) || typeof value !== 'boolean') fail(`${id}: ${what} names ${cell}, which is not a boolean state`);
+        }
+      };
+      if (node['classByState'] !== undefined) checkByState('classByState', node['classByState']);
+      const attributesByState = node['attributesByState'];
+      if (attributesByState !== undefined) {
+        if (!isRecord(attributesByState)) fail(`${id}: attributesByState is not an object`);
+        for (const [name, byState] of Object.entries(attributesByState as Record<string, unknown>)) {
+          if (name === 'class' || !/^[a-z][a-z0-9-]*$/.test(name)) fail(`${id}: attributesByState names ${JSON.stringify(name)}, which is not a non-class attribute name`);
+          if (name in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${name} is both a fixed attribute and an attribute by state`);
+          checkByState(`attributesByState.${name}`, byState);
         }
       }
     } else fail(`${id}: kind ${JSON.stringify(node['kind'])} is neither element nor text`);
@@ -86,7 +95,29 @@ const classTokens = (value: string): string[] => value.split(/[\t\n\f\r ]+/).fil
 /** The input's state for a cell, named s<k> in Dragon (a cell id such as "state:liked" is not a state identifier). */
 const stateIds = (input: MarklessStyleInput): Map<string, string> => new Map(input.states.map((s, k) => [s.cell, `s${k}`]));
 
+/**
+ * Dragon's own id for each element of the input: the input's id where Dragon accepts it, else `m<k>` (Markless names a
+ * component's nodes by their path, `component-edge:0/h0`, and Dragon's ids hold no "/" or ":").
+ */
+export function dragonElementIds(input: MarklessStyleInput): Map<string, string> {
+  const elements = input.nodes.filter((n) => n.kind === 'element');
+  const taken = new Set(elements.map((n) => n.id));
+  const out = new Map<string, string>();
+  let k = 0;
+  for (const n of elements) {
+    if (!n.id.includes('/') && !n.id.includes(':')) {
+      out.set(n.id, n.id);
+      continue;
+    }
+    while (taken.has(`m${k}`)) k++;
+    taken.add(`m${k}`);
+    out.set(n.id, `m${k}`);
+  }
+  return out;
+}
+
 export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, inputPath: string): FrontEndResult {
+  const dragonId = dragonElementIds(input);
   const file = (name: string, text: string): SourceFile => ({ ref: { uri: `dragon-source://${PROJECT_ID}/markless/${input.component}/${name}`, revision: 'markless', hash: `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}` }, text, displayPath: name === 'input.json' ? inputPath : `${inputPath}#${name}` });
   const src = file('input.json', inputText);
   const css = file('component.css', input.css);
@@ -105,17 +136,22 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   const node = (n: MarklessStyleInput['nodes'][number]): TreeNode => {
     // Dragon names a text node "<parent>:text<k>" itself, as Markless does; marklessStyleExport checks the two agree.
     if (n.kind === 'text') return { kind: 'text', id: `t${input.nodes.indexOf(n)}`, text: n.text, origin } as TreeNode;
+    type ByState = readonly { readonly when: When; readonly value: string | null }[];
+    // One entry per combination of the states, so each value's condition is exactly the combinations that carry it.
+    const entriesOf = (what: string, byState: ByState): ByState => {
+      const entries = combos.map((c) => {
+        const found = byState.filter((e) => Object.keys(e.when).length === Object.keys(c).length && Object.entries(e.when).every(([cell, v]) => c[cell] === v));
+        if (found.length !== 1) fail(`${n.id}: ${what} has ${found.length} entries for ${JSON.stringify(c)}`);
+        return found[0] as ByState[number];
+      });
+      if (byState.length !== combos.length) fail(`${n.id}: ${what} has ${byState.length} entries for ${combos.length} combinations`);
+      return entries;
+    };
     let classes: { value: { when: Condition; value: ClassSymbol | null }[]; origin: typeof origin }[];
     if (n.classByState === undefined) classes = classTokens(n.attributes['class'] ?? '').map((t) => ({ value: [{ when: { kind: 'true' }, value: symbol(t) }], origin }));
     else {
       const byState = n.classByState;
-      // One entry per combination of the states, so each token's condition is exactly the combinations that carry it.
-      const entryOf = combos.map((c) => {
-        const found = byState.filter((e) => Object.keys(e.when).length === Object.keys(c).length && Object.entries(e.when).every(([cell, v]) => c[cell] === v));
-        if (found.length !== 1) fail(`${n.id}: classByState has ${found.length} entries for ${JSON.stringify(c)}`);
-        return found[0] as (typeof byState)[number];
-      });
-      if (byState.length !== combos.length) fail(`${n.id}: classByState has ${byState.length} entries for ${combos.length} combinations`);
+      const entryOf = entriesOf('classByState', byState);
       const tokens = [...new Set(entryOf.flatMap((e) => classTokens(e.value ?? '')))];
       classes = tokens.map((t) => {
         const on = entryOf.filter((e) => classTokens(e.value ?? '').includes(t));
@@ -126,10 +162,26 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
     }
     return {
       kind: 'element',
-      id: n.id,
+      id: dragonId.get(n.id) as string,
       tag: n.element,
       classes,
-      attributes: Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
+      attributes: [
+        ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
+        // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
+        ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
+          const entryOf = entriesOf(`attributesByState.${name}`, byState);
+          const values = [...new Set(entryOf.map((e) => e.value))];
+          return {
+            name,
+            value: values.map((value) => {
+              const on = entryOf.filter((e) => e.value === value);
+              const when: Condition = on.length === combos.length ? { kind: 'true' } : on.length === 1 ? all((on[0] as ByState[number]).when) : { kind: 'or', values: on.map((e) => all(e.when)) };
+              return { when, value };
+            }),
+            origin,
+          };
+        }),
+      ],
       children: (children.get(n.id) ?? []).map(node),
       origin,
     } as TreeNode;
@@ -171,7 +223,22 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
-  const exported = nativeStyleExport(styles, parsed.component, inputPath);
+  const raw = nativeStyleExport(styles, parsed.component, inputPath);
+  // Back to the input's ids: an element by its own, a text node "<element>:text<k>" by its element's.
+  const marklessId = new Map([...dragonElementIds(parsed)].map(([m, d]): [string, string] => [d, m]));
+  const dragonIds = dragonElementIds(parsed);
+  const textOf = new Map<string, string>(parsed.nodes.filter((n) => n.kind === 'element').flatMap((n) => {
+    const texts = parsed.nodes.filter((c) => c.kind === 'text' && c.parent === n.id);
+    return texts.map((c, k): [string, string] => [`${dragonIds.get(n.id) as string}:text${k}`, c.id]);
+  }));
+  const rename = (id: string): string => marklessId.get(id) ?? textOf.get(id) ?? id;
+  const exported: NativeStyleExport = {
+    ...raw,
+    targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
+      ...x,
+      assignments: x.assignments.map((a) => ({ ...a, nodes: a.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })),
+    }])),
+  };
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     const missing = parsed.nodes.filter((n) => !have.has(n.id)).map((n) => n.id);
@@ -180,6 +247,7 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
   // Dragon keys a state "<instance>#s<k>"; the hosts know the cell.
   const cellOf = new Map(parsed.states.map((s, k) => [`s${k}`, s.cell]));
   const rekey = (key: string): string => {
+    if (key === BAND_KEY) return key;
     const state = key.slice(key.lastIndexOf('#') + 1);
     const cell = cellOf.get(state);
     if (cell === undefined) fail(`Dragon's state ${key} is not one of the input's`);
