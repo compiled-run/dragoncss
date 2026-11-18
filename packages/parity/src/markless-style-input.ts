@@ -21,7 +21,7 @@ export type MarklessStyleInput = {
   readonly version: typeof MARKLESS_STYLE_INPUT_VERSION;
   readonly component: string;
   readonly nodes: readonly (
-    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly arm?: unknown }
+    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly boxless?: true; readonly arm?: unknown }
     | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly textByState?: readonly { readonly when: When; readonly value: string }[]; readonly arm?: unknown }
   )[];
   readonly css: string;
@@ -35,6 +35,17 @@ export type MarklessStyleInput = {
 
 /** The document a detached component is laid out in, as Chrome renders it for the comparison: no body margin, the pinned sans face. */
 export const MARKLESS_DOCUMENT_CSS = 'body { margin: 0; font-family: sans-serif; }';
+
+/** The attribute a boxless element carries, and the rule that keeps its box out of the layout. */
+export const MARKLESS_BOXLESS_ATTRIBUTE = 'data-markless-boxless';
+const BOXLESS_CSS = `[${MARKLESS_BOXLESS_ATTRIBUTE}] { display: contents !important; }`;
+
+/**
+ * The document a tree is laid out in: the base sheet, and for a tree with boxless elements (the markup ancestors of a sheet's
+ * content, there for its selectors and inheritance) the rule that gives them no box.
+ */
+export const marklessDocumentCss = (input: MarklessStyleInput): string =>
+  input.nodes.some((n) => n.kind === 'element' && n.boxless === true) ? `${MARKLESS_DOCUMENT_CSS}\n${BOXLESS_CSS}` : MARKLESS_DOCUMENT_CSS;
 
 const fail = (what: string): never => {
   throw new Error(`markless style input: ${what}`);
@@ -98,6 +109,8 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (!isString(node['element']) || !/^[a-z][a-z0-9-]*$/.test(node['element'])) fail(`${id}: bad element name ${JSON.stringify(node['element'])}`);
       if (node['parent'] !== null && !(isString(node['parent']) && ids.has(node['parent']))) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
+      if (node['boxless'] !== undefined && node['boxless'] !== true) fail(`${id}: boxless is true or absent`);
+      if (MARKLESS_BOXLESS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
       if (node['classByState'] !== undefined) checkByState('classByState', node['classByState']);
       const attributesByState = node['attributesByState'];
       if (attributesByState !== undefined) {
@@ -147,7 +160,8 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   const file = (name: string, text: string): SourceFile => ({ ref: { uri: `dragon-source://${PROJECT_ID}/markless/${input.component}/${name}`, revision: 'markless', hash: `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}` }, text, displayPath: name === 'input.json' ? inputPath : `${inputPath}#${name}` });
   const src = file('input.json', inputText);
   const css = file('component.css', input.css);
-  const doc = file('document.css', MARKLESS_DOCUMENT_CSS);
+  const documentCss = marklessDocumentCss(input);
+  const doc = file('document.css', documentCss);
   const origin = { kind: 'authored' as const, span: { source: src.ref, start: 0, end: inputText.length } };
   const states = stateIds(input);
   const combos = input.states.reduce<Record<string, StateValue>[]>((all, s) => all.flatMap((p) => s.domain.map((value) => ({ ...p, [s.cell]: value }))), [{}]);
@@ -211,6 +225,7 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
         ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
         // The host shows a <dialog> with showModal(), which sets open: the export lays it out shown (topLayer 'host').
         ...(n.element === 'dialog' && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
+        ...(n.boxless === true ? [{ name: MARKLESS_BOXLESS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
           const entryOf = entriesOf(n.id, `attributesByState.${name}`, byState);
@@ -251,7 +266,7 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
       }],
       documents: [{ id: DOCUMENT_ID, rootInstance: input.component, documentElement: 'html', styles: ['document', 'component'], initial: [] }],
       styles: [
-        { id: 'document', css: { source: doc.ref, start: 0, end: MARKLESS_DOCUMENT_CSS.length }, scope: { kind: 'document' } },
+        { id: 'document', css: { source: doc.ref, start: 0, end: documentCss.length }, scope: { kind: 'document' } },
         { id: 'component', css: { source: css.ref, start: 0, end: input.css.length }, scope: { kind: 'document' } },
       ],
     },
@@ -303,7 +318,10 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
   for (const x of Object.values(exported.targets)) (x as { assignments: unknown }).assignments = x.assignments.map(boxless);
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
-    const missing = parsed.nodes.filter((n) => !have.has(n.id)).map((n) => n.id);
+    const boxless = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'element' && n.boxless === true;
+    const boxed = parsed.nodes.filter((n) => boxless(n) && have.has(n.id)).map((n) => n.id);
+    if (boxed.length > 0) fail(`${t}: ${boxed.join(', ')} must generate no box (an ancestor in the markup, there for selectors and inheritance), but the CSS gives it a display other than contents`);
+    const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id)).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
   // Dragon keys a state "<instance>#s<k>"; the hosts know the cell.
