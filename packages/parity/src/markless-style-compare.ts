@@ -8,9 +8,10 @@ import { captureFixture } from './capture.ts';
 import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
-import type { MarklessFontFile, MarklessStyleInput, StateValue } from './markless-style-input.ts';
+import type { MarklessFontFile, MarklessFonts, MarklessStyleInput, StateValue } from './markless-style-input.ts';
 import { MARKLESS_BOXLESS_ATTRIBUTE, marklessDocumentCss, schemeOf } from './markless-style-input.ts';
 import type { NativeStyleExport } from './native-style-export.ts';
+import { systemFontReference } from './system-fonts/reference.ts';
 
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 type Values = Readonly<Record<string, unknown>>;
@@ -25,7 +26,7 @@ function valueUnder(entries: readonly { readonly when: Readonly<Record<string, S
 }
 
 /** The input's tree as one assignment shows it, each element named by its input id (data-dragon-id). */
-export function marklessDocumentHtml(input: MarklessStyleInput, values: Values): string {
+export function marklessDocumentHtml(input: MarklessStyleInput, values: Values, fonts: MarklessFonts = 'pinned'): string {
   const children = new Map<string | null, MarklessStyleInput['nodes'][number][]>();
   for (const n of input.nodes) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
   const render = (n: MarklessStyleInput['nodes'][number]): string => {
@@ -41,7 +42,7 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
     const open = [`<${n.element} data-dragon-id="${escape(n.id)}"`, ...attributes.map(([k, v]) => `${k}="${escape(v)}"`)].join(' ');
     return `${open}>${(children.get(n.id) ?? []).map(render).join('')}</${n.element}>`;
   };
-  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${marklessDocumentCss(input)}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
+  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${marklessDocumentCss(input, fonts)}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
 }
 
 
@@ -50,13 +51,17 @@ export type CompareRow = { readonly target: string; readonly values: Values; rea
 /**
  * With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device
  * screenshot is read beside. `unbanded`: the colour-scheme preference Chrome is given for an assignment no band fixes (light).
- * `fonts`: the input's author font files (marklessFontFiles), which Chrome loads at their urls.
+ * `fonts`: the input's author font files (marklessFontFiles), which Chrome loads at their urls. `mode`: how the export resolved fonts
+ * (marklessStyleExport); with system fonts Chrome draws each target's system faces from the files the export measured
+ * (system-fonts/reference.ts), else the pinned reference faces.
  */
-export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light', fonts: readonly MarklessFontFile[] = []): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
+export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light', fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned', only: readonly string[] | null = null): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   for (const [target, t] of Object.entries(exported.targets)) {
-    if (t === undefined) continue;
+    if (t === undefined || (only !== null && !only.includes(target))) continue;
+    // Safari, not Chrome, is the web that draws iOS's system faces: Chrome on the Mac rounds their metrics and spaces otherwise.
+    if (mode === 'system' && target === 'ios' && (exported.systemFonts ?? []).some((e) => e.ios !== undefined)) throw new Error(`${input.component}: the iOS target draws system faces, which are compared with Safari on iOS (markless:style-web-column), not Chrome; compare the other targets`);
     const browser: Browser = await launchChrome(t.dpr);
     try {
       for (const [index, assignment] of t.assignments.entries()) {
@@ -69,8 +74,8 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
           const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
           return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
         };
-        const fonts = fontReferencePrepare(FONT_REFERENCE_MAP);
-        const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, assignment.values), files), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
+        const fonts = mode === 'system' ? systemFontReference(target as 'ios' | 'android', exported.systemFonts ?? []) : fontReferencePrepare(FONT_REFERENCE_MAP);
+        const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, assignment.values, mode), files), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
           await page.emulateMedia({ colorScheme: scheme });
           await fonts(page);
           if (screenshots !== undefined) await page.screenshot({ path: join(screenshots, `${target}-${index}.png`), fullPage: true });

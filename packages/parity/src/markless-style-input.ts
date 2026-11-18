@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
-import type { BrotliDecompress, ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
+import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, decodeFontFile, TREE_SCHEMA_REVISION } from 'dragon';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -13,6 +13,7 @@ import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, nativeStyleExport } from './native-style-export.ts';
+import { systemFontsFor } from './system-fonts/provider.ts';
 
 export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
 
@@ -60,8 +61,21 @@ export const NODE_BROTLI: BrotliDecompress = (data, limit) => new Uint8Array(bro
 /** Where the export command writes the decoded sfnt of each WOFF or WOFF2 author font, relative to the input file. */
 export const DECODED_FONTS_DIR = 'dragon-decoded-fonts';
 
+/**
+ * How a Markless export resolves fonts. 'system' (what the markless:style-export command uses, owner 2026-11-18): system-ui,
+ * sans-serif, serif, monospace and no font-family at all are each target's own platform font, measured at build time
+ * (system-fonts/). 'pinned': Dragon's stated reference, which pins sans-serif to Inter and monospace to Noto Sans Mono
+ * (font-reference.ts), as the device lanes do.
+ */
+export type MarklessFonts = 'system' | 'pinned';
+
 /** The document a detached component is laid out in, as Chrome renders it for the comparison: no body margin, the pinned sans face. */
 export const MARKLESS_DOCUMENT_CSS = 'body { margin: 0; font-family: sans-serif; }';
+/** The document with system fonts: no body margin, and no font-family, so a text with none is the browser's default font. */
+export const MARKLESS_SYSTEM_DOCUMENT_CSS = 'body { margin: 0; }';
+
+/** The font map with system fonts: each generic a system face plays is left to the platform, which the export measures. */
+export const MARKLESS_SYSTEM_FONT_MAP: FontMap = { generics: { 'system-ui': { mode: 'platform' }, 'sans-serif': { mode: 'platform' }, serif: { mode: 'platform' }, monospace: { mode: 'platform' } } };
 
 /** The attribute a boxless element carries, and the rule that keeps its box out of the layout. */
 export const MARKLESS_BOXLESS_ATTRIBUTE = 'data-markless-boxless';
@@ -71,8 +85,10 @@ const BOXLESS_CSS = `[${MARKLESS_BOXLESS_ATTRIBUTE}] { display: contents !import
  * The document a tree is laid out in: the base sheet, and for a tree with boxless elements (the markup ancestors of a sheet's
  * content, there for its selectors and inheritance) the rule that gives them no box.
  */
-export const marklessDocumentCss = (input: MarklessStyleInput): string =>
-  input.nodes.some((n) => n.kind === 'element' && n.boxless === true) ? `${MARKLESS_DOCUMENT_CSS}\n${BOXLESS_CSS}` : MARKLESS_DOCUMENT_CSS;
+export const marklessDocumentCss = (input: MarklessStyleInput, fonts: MarklessFonts = 'pinned'): string => {
+  const base = fonts === 'system' ? MARKLESS_SYSTEM_DOCUMENT_CSS : MARKLESS_DOCUMENT_CSS;
+  return input.nodes.some((n) => n.kind === 'element' && n.boxless === true) ? `${base}\n${BOXLESS_CSS}` : base;
+};
 
 const fail = (what: string): never => {
   throw new Error(`markless style input: ${what}`);
@@ -210,14 +226,14 @@ export function marklessFontFiles(input: MarklessStyleInput, read: (file: string
 /** The snapshot asset id of an author font file. */
 const fontAssetId = (file: string): string => `markless-font:${file}`;
 
-export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[] = []): FrontEndResult {
+export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned'): FrontEndResult {
   const unread = (input.fonts ?? []).filter((f) => !fonts.some((r) => r.url === f.url && r.file === f.file));
   if (unread.length > 0) fail(`the font file ${unread.map((f) => f.file).join(', ')} was not read`);
   const dragonId = dragonElementIds(input);
   const file = (name: string, text: string): SourceFile => ({ ref: { uri: `dragon-source://${PROJECT_ID}/markless/${input.component}/${name}`, revision: 'markless', hash: `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}` }, text, displayPath: name === 'input.json' ? inputPath : `${inputPath}#${name}` });
   const src = file('input.json', inputText);
   const css = file('component.css', input.css);
-  const documentCss = marklessDocumentCss(input);
+  const documentCss = marklessDocumentCss(input, mode);
   const doc = file('document.css', documentCss);
   const origin = { kind: 'authored' as const, span: { source: src.ref, start: 0, end: inputText.length } };
   const states = stateIds(input);
@@ -337,22 +353,24 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   } as unknown as FrontEndResult;
 }
 
-/** The input compiled as the device lanes compile (support 'lanes', the pinned font map), exported with the cells' own keys. */
 /**
+ * The input compiled as the device lanes compile (support 'lanes'), exported with the cells' own keys: with system fonts each
+ * target measures its platform's own fonts at build time; pinned, the stated reference's font map.
  * `decoded`: the sfnt of each WOFF or WOFF2 author font, by its path relative to the input (DECODED_FONTS_DIR), which the export
  * lists with `from: 'input'` and the caller writes there.
  */
-export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned'): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const parsed = parseMarklessStyleInput(inputText);
   if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
-  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts), FONT_REFERENCE_MAP);
+  const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
+  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
-  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })));
+  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null);
   // Back to the input's ids: an element by its own, a text node "<element>:text<k>" by its element's.
   const marklessId = new Map([...dragonElementIds(parsed)].map(([m, d]): [string, string] => [d, m]));
   const dragonIds = dragonElementIds(parsed);

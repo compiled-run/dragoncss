@@ -43,7 +43,7 @@ export type WebCapture = {
 };
 
 /** Runs in the page: every data-dragon-id element's box and computed values, and its text and line boxes. */
-const collectNodes = (props: string[]): CapturedNode[] => {
+export const collectNodes = (props: string[]): CapturedNode[] => {
   const out: CapturedNode[] = [];
   const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
   // Runs in the page (page.evaluate), so it closes over nothing: the elements Chrome lays out as LayoutReplaced.

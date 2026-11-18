@@ -8,7 +8,8 @@ import {
   roundFontMetricToWholePx, sub, textAdvanceAt, textRunLayoutUnit, ZERO,
 } from './units.ts';
 
-export type FontMetrics = { readonly ascent: LU; readonly descent: LU; readonly lineGap: LU };
+/** normalGapAbove: the part of lineGap a line-height: normal line puts above the glyphs; Blink puts none there, WebKit half. */
+export type FontMetrics = { readonly ascent: LU; readonly descent: LU; readonly lineGap: LU; readonly normalGapAbove: LU };
 
 /** The float font metrics ex, cap and ch read (css-values-4 §6.1.1), in px at a font instance size. */
 export type FontLengths = { readonly xHeight: number; readonly capHeight: number; readonly zeroWidth: number };
@@ -273,6 +274,7 @@ export function fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMe
         ascent: round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.ascent)),
         descent: round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.descent)),
         lineGap: data.lineGap === 0 ? ZERO : round(fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.lineGap)),
+        normalGapAbove: ZERO,
       };
     },
     // css-fonts-4 §5: every covered glyph advances its whole-em advance; anything else is not an Ahem glyph.

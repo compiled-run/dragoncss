@@ -1491,7 +1491,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
       const d = faceOf(font.family).data;
       const size = platformFontSize(font.size);
       const round = (units: number): LU => (sf.metricRoundingSwapped ? roundFontMetricHalfUpToWholePx(fontMetricPx(size, d.unitsPerEm, units)) : roundCoreTextMetricToWholePx(units, d.unitsPerEm, size));
-      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap) };
+      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap), normalGapAbove: ZERO };
     },
     measure(text: string, font: TextFont): MeasureResult {
       const r = itemFor(text, font);

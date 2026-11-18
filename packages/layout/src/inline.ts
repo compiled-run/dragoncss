@@ -364,7 +364,7 @@ export function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: Line
   const lh = resolvedLineHeight(id, lineHeight);
   const height = lh.kind === 'normal' ? glyphHeight : lh.kind === 'number' ? lineHeightFromNumber(font.size, lh.value) : fromFloatRound(lh.value);
   const exact = ctx.faults.halfLeadingSpec || (inlineBox && ctx.faults.halfLeadingUnflooredPerBox);
-  const half = exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
+  const half = lh.kind === 'normal' ? m.normalGapAbove : exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
   const above = add(m.ascent, half);
   return { above, below: sub(height, above), ascent: m.ascent, descent: m.descent };
 }
