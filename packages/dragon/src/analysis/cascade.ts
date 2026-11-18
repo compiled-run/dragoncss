@@ -68,7 +68,7 @@ export type CascadeResult = {
 };
 
 /** GEN-a (notes/T151-gen-spec.md R6): the cascade of a ::before, ::after or ::marker box, and its host's direction, which it takes. */
-export type CascadePseudo = { readonly name: GeneratedPseudo | 'marker'; readonly direction: Direction };
+export type CascadePseudo = { readonly name: GeneratedPseudo | 'marker' | 'backdrop'; readonly direction: Direction };
 
 /** A range part's cascade: the part's pseudo-element (null for the container, which no author selector reaches) and its direction. */
 export type CascadePart = { readonly name: RangePart | null; readonly direction: Direction };

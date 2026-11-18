@@ -12,7 +12,7 @@ import type { CssValue, Declaration, Rule } from '../css/stylesheet.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx, normalizeUnit } from '../css/units.ts';
 import type { FoldBases } from '../css/math.ts';
 import { foldableUnits, foldLength, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
-import { FOLDED_MATH_PROPERTIES, isPositionProperty, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX } from '../css/values.ts';
+import { FOLDED_MATH_PROPERTIES, isPositionProperty, MATH_VALUE_FUNCTIONS, positionOffsetText, positionValue, ratioValue, REFUSED_MATH_PREFIX, toValue } from '../css/values.ts';
 import type { GenBFaults } from '../faults/gen-b.ts';
 import type { TxtFsFaults } from '../faults/txt-fs.ts';
 import { TXT_FS_FAULTS } from '../faults/txt-fs.ts';
@@ -92,6 +92,9 @@ export function parseValueText(property: Longhand, text: string): CssValue {
   else if (only.type === 'Number') {
     const n = Number(only['value']);
     v = n === 0 && !['flex-grow', 'flex-shrink', 'order', 'line-height', 'font-weight', 'border-image-outset'].includes(property) ? { kind: 'length', value: 0, unit: CANONICAL_LENGTH_UNIT } : { kind: 'number', value: n };
+  } else if (only.type === 'Function' && MATH_VALUE_FUNCTIONS.has(String(only['name']).toLowerCase())) {
+    // A captured calculation (the :modal dialog's max-width, calc(100% - 6px - 2em)) is a math value as an author's is.
+    v = toValue(only, property);
   } else v = { kind: 'other', type: only.type, text };
   valueCache.set(key, v);
   return v;

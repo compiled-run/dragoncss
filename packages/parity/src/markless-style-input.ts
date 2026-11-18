@@ -188,6 +188,8 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
       classes,
       attributes: [
         ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
+        // The host shows a <dialog> with showModal(), which sets open: the export lays it out shown (topLayer 'host').
+        ...(n.element === 'dialog' && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
           const entryOf = entriesOf(`attributesByState.${name}`, byState);
@@ -241,7 +243,7 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
   const parsed = parseMarklessStyleInput(inputText);
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath), FONT_REFERENCE_MAP);
   const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes' };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host' };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -253,7 +255,9 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
     const texts = parsed.nodes.filter((c) => c.kind === 'text' && c.parent === n.id);
     return texts.map((c, k): [string, string] => [`${dragonIds.get(n.id) as string}:text${k}`, c.id]);
   }));
-  const rename = (id: string): string => marklessId.get(id) ?? textOf.get(id) ?? id;
+  // A <dialog>'s ::backdrop box is named after its dialog: "<input id>::backdrop".
+  const backdropOf = new Map([...marklessId].map(([d, m]): [string, string] => [`${d}::backdrop`, `${m}::backdrop`]));
+  const rename = (id: string): string => marklessId.get(id) ?? textOf.get(id) ?? backdropOf.get(id) ?? id;
   const exported: NativeStyleExport = {
     ...raw,
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {

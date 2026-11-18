@@ -32,6 +32,11 @@ export type NativeStylesConfig = {
    * states), to produce the output a device proof runs; its readiness is never 'ready'.
    */
   readonly support?: 'enforced' | 'lanes';
+  /**
+   * 'host': the host presents the top layer itself, so every <dialog> is laid out as shown with showModal(): in the top layer, a
+   * child of the root box with its frame against the viewport, after its ::backdrop box. Absent: <dialog> is refused.
+   */
+  readonly topLayer?: 'host';
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -79,10 +84,14 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
   if (support !== 'enforced' && support !== 'lanes') throw new Error(`compileNativeStyles: support ${JSON.stringify(support)} is neither 'enforced' nor 'lanes'`);
   const project = createProjectWith(
     { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }) },
-    support === 'enforced'
-      ? { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', nativeLanes: NATIVE_LANES }
-      : { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true },
+    {
+      ...(support === 'enforced'
+        ? { faults: NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
+        : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
+      ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
+    },
   );
+  if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
   const out: { [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked } = {};
   for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport);

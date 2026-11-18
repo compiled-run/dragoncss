@@ -32,9 +32,14 @@ export const GENERATED_TAGS: ReadonlySet<string> = new Set(['::before', '::after
 /** The tag of the element resolve.ts cascades a list item's ::marker rules on; only its color is read (markerOf). */
 export const MARKER_TAG = '::marker';
 
+/** The tag of the element resolve.ts builds for a <dialog>'s ::backdrop box (the host presents the top layer). */
+export const BACKDROP_TAG = '::backdrop';
+
 /** The UA dataset row an element's tag reads; a control's also depends on its type attribute. */
 export function uaTagOf(tag: string, type?: string): UaKey {
   if (Object.hasOwn(REPLACED_UA_KEYS, tag)) return REPLACED_UA_KEYS[tag] as UaKey;
+  if (tag === 'dialog') return 'dialog';
+  if (tag === BACKDROP_TAG) return 'backdrop';
   if (GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return 'dragon-unstyled';
   const control = controlUaKey(tag, type);
   if (control !== null) return control;

@@ -296,6 +296,11 @@ export type InternalOptions = {
    * of the native runtime; every other compile refuses them there unless the profile proves them (gateInteractionFeatures).
    */
   readonly interactionLanes?: boolean;
+  /**
+   * The host presents the top layer itself (a Markless host): every <dialog> is laid out as shown with showModal(), in the top
+   * layer with its ::backdrop, and the host shows or hides it. Without it <dialog> is refused, as nothing would present it.
+   */
+  readonly hostTopLayer?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -311,6 +316,7 @@ type Resolved = {
   readonly foldViewport: Viewport | null;
   readonly nativeRealFaces: boolean;
   readonly interactionLanes: boolean;
+  readonly hostTopLayer: boolean;
   readonly nativeLanes: NativeLanes | null;
 };
 
@@ -388,10 +394,12 @@ function checkTranslucentPaint(root: ResolvedElement, targets: readonly string[]
   checkTranslucentRoundedDoubles(root, targets, diagnostics, reported);
 }
 
-function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): void {
+function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], hostTopLayer: boolean): void {
   for (const n of nodes) {
     if (n.kind === 'element') {
-      if (!SUPPORTED_TAGS.has(n.tag)) {
+      if (n.tag === 'dialog' && !hostTopLayer) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<dialog> ${n.id} is not supported: it renders in the top layer with a ::backdrop, which Dragon lays out only when the host presents the top layer itself (compileNativeStyles topLayer: 'host')` }));
+      } else if (n.tag !== 'dialog' && !SUPPORTED_TAGS.has(n.tag)) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
       }
       for (const a of n.attributes) {
@@ -411,12 +419,12 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
           if (svg !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name}="${c.value}" on ${n.id} is not supported: ${svg}`, manual: 'Write the attribute with plain numbers (or px) and the commands M, L, H, V, C, S, Q, T and Z.' }));
         }
       }
-      checkTemplates(n.children, diagnostics);
+      checkTemplates(n.children, diagnostics, hostTopLayer);
     } else if (n.kind === 'branch') {
-      checkTemplates(n.then, diagnostics);
-      checkTemplates(n.else, diagnostics);
+      checkTemplates(n.then, diagnostics, hostTopLayer);
+      checkTemplates(n.else, diagnostics, hostTopLayer);
     } else if (n.kind === 'call') {
-      for (const s of n.slots) checkTemplates(s.children, diagnostics);
+      for (const s of n.slots) checkTemplates(s.children, diagnostics, hostTopLayer);
     }
   }
 }
@@ -1390,8 +1398,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
     }
     if (options.profiles === 'enforce' && rules.some((r) => r.container !== undefined)) gateContainerRules(containerConditions, targets, profiles, diagnostics);
-    for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
-    checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics);
+    for (const c of valid.components.values()) checkTemplates(c.root, diagnostics, options.hostTopLayer);
+    checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics, options.hostTopLayer);
     checkSvgContent(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
     // reports a rule for the targets of the bands it applies in, so a rule in no band blocks nothing.
@@ -1882,6 +1890,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
     nativeRealFaces: options.nativeRealFaces !== false,
     interactionLanes: options.interactionLanes === true,
+    hostTopLayer: options.hostTopLayer === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };
   const configDiagnostics = validateConfig(config);
