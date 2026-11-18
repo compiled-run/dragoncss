@@ -173,11 +173,11 @@ fun units_sum(values: JsArray<Double>): Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:135
   run {
-    val _a381 = values
-    var _i381 = 0
-    while (_i381 < _a381.size) {
-      val v: Double = _a381[_i381]
-      _i381++
+    val _a380 = values
+    var _i380 = 0
+    while (_i380 < _a380.size) {
+      val v: Double = _a380[_i380]
+      _i380++
       total = units_add(total, v)
     }
   }
@@ -762,11 +762,11 @@ fun units_effectiveZoom(deviceZoom: Double, zooms: JsArray<Double>): Double {
   var z: Double = deviceZoom
   // ts: packages/layout/src/units.ts:690
   run {
-    val _a382 = zooms
-    var _i382 = 0
-    while (_i382 < _a382.size) {
-      val own: Double = _a382[_i382]
-      _i382++
+    val _a381 = zooms
+    var _i381 = 0
+    while (_i381 < _a381.size) {
+      val own: Double = _a381[_i381]
+      _i381++
       val zoomed: Double = jsFround((z * jsFround(own)))
       z = (if ((zoomed < 0.000001)) 0.000001 else (if ((zoomed > 1000000.0)) 1000000.0 else zoomed))
     }

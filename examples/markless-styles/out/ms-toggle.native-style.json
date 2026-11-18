@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "cff1fc16d898077dd9c3e74bbd9863dbb32622d714f557cbd090831de085c045",
+ "compiler": "bc10e11ccc93504761a6ee5af35da2a8dea43c42b3a46d2c0501ac423179c629",
  "component": "Toggle",
  "source": "packages/parity/fixtures/ms-toggle",
  "warnings": [],
@@ -32,6 +32,12 @@
     {
      "values": {
       "doc/app/chip#selected": false
+     },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
      },
      "nodes": [
       {
@@ -452,6 +458,12 @@
     {
      "values": {
       "doc/app/chip#selected": true
+     },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
      },
      "nodes": [
       {
@@ -911,6 +923,12 @@
      "values": {
       "doc/app/chip#selected": false
      },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -1330,6 +1348,12 @@
     {
      "values": {
       "doc/app/chip#selected": true
+     },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
      },
      "nodes": [
       {

@@ -1083,6 +1083,8 @@
     "outline-rounded-rtl": "border-radius on r1, r2, r3, r4, r5, r6: hit testing through rounded corners is not modelled yet (PNT1)",
     "overflow-text-cards": "border-radius on r1, r2, g1, g2: hit testing through rounded corners is not modelled yet (PNT1)",
     "overflow-text-cards-rtl": "border-radius on r1, r2, g1, g2: hit testing through rounded corners is not modelled yet (PNT1)",
+    "overflow-controls": "b1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
+    "overflow-controls-rtl": "b1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "radius-basic": "border-radius on px, pct, circle, pill, ellipse, corners, eight, rem, em, mixed, one, frac, tall: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-basic-rtl": "border-radius on px, pct, circle, pill, ellipse, corners, eight, rem, em, mixed, one, frac, tall: hit testing through rounded corners is not modelled yet (PNT1)",
     "radius-borders": "border-radius on base, thin, thick, sides, colors, partial, hidden, circle, alpha, ellipse: hit testing through rounded corners is not modelled yet (PNT1)",
