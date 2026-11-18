@@ -135,8 +135,8 @@ describe('an author web font in a Markless style input', () => {
     }
     const { exported } = marklessStyleExport(input(FACES + PAGE, FONTS), 'web-font.json', read, 'system');
     const boxes = (t: 'ios' | 'android'): Record<string, [number, number]> => Object.fromEntries(exported.targets[t]!.assignments[0]!.nodes.filter((n) => n.kind === 'text').map((n) => [n.id, [n.frame!.width, n.frame!.height]]));
-    const safari = { 'h2:text0': [491.274, 102], 'h3:text0': [771.579, 66], 'h4:text0': [591.975, 66] };
-    const chrome = { 'h2:text0': [429.875, 89], 'h3:text0': [674.1719, 57], 'h4:text0': [517.9844, 57] };
+    const safari: Record<string, readonly [number, number]> = { 'h2:text0': [491.274, 102], 'h3:text0': [771.579, 66], 'h4:text0': [591.975, 66] };
+    const chrome: Record<string, readonly [number, number]> = { 'h2:text0': [429.875, 89], 'h3:text0': [674.1719, 57], 'h4:text0': [517.9844, 57] };
     for (const [t, web] of [['ios', safari], ['android', chrome]] as const) {
       const got = boxes(t);
       for (const [id, [w, h]] of Object.entries(web)) {
