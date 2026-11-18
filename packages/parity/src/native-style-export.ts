@@ -3,7 +3,7 @@
 // node's lowered writes and the frame the reference engine lays it out at for the proof device, in device px.
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
-import type { BorderOp, LayoutBox, LU, ScrollRange } from '@dragon/layout';
+import type { BorderOp, LayoutBox, LU, ScrollRange, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
 import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
 import { borderDevicePx, programAt, programInput } from 'dragon';
@@ -14,6 +14,7 @@ import type { EngineText } from './line-breaks.ts';
 import { engineTextLines } from './line-breaks.ts';
 import { engineBoxes, expectedEngine, referenceMeasurer } from './native-host.ts';
 import { viewportDirectionOf } from './scroll-metrics.ts';
+import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 
 export const NATIVE_STYLE_EXPORT_SCHEMA = 'dragon.native-style-export/1';
@@ -90,7 +91,8 @@ export type NativeStyleExport = {
   readonly component: string;
   readonly source: string;
   readonly warnings: readonly { readonly code: string; readonly message: string }[];
-  readonly fonts: readonly { readonly id: string; readonly file: string }[];
+  /** Each face by id; `file` is relative to the Dragon checkout, or with `from: 'input'` to the style input's directory. */
+  readonly fonts: readonly { readonly id: string; readonly file: string; readonly from?: 'input' }[];
   readonly targets: { readonly [T in NativeStyleTarget]?: ExportTarget };
 };
 
@@ -144,12 +146,12 @@ function dashedBorder(id: string, writes: readonly Write[], rect: { readonly x: 
 }
 
 /** The viewport's and every scroll container's offset range for one assignment's layout; a range the engine does not decide throws, naming it. */
-function scrollOffsets(component: string, program: NativeProgram, viewport: ExportDevice['viewport'], dpr: number): { readonly page: ScrollOffsets | { readonly undecided: string; readonly nodeId: string; readonly detail: string }; readonly containers: ReadonlyMap<string, ScrollOffsets> } {
+function scrollOffsets(component: string, program: NativeProgram, viewport: ExportDevice['viewport'], dpr: number, measurer: () => TextMeasurer): { readonly page: ScrollOffsets | { readonly undecided: string; readonly nodeId: string; readonly detail: string }; readonly containers: ReadonlyMap<string, ScrollOffsets> } {
   const input = programInput(program, viewport, dpr);
-  const ranges = scrollRanges(input, referenceMeasurer());
+  const ranges = scrollRanges(input, measurer());
   if (ranges.kind === 'refused') throw new Error(`${component}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
   if (ranges.refused.length > 0) throw new Error(`${component}: no scroll range for ${ranges.refused.map((r) => `${r.id} (at ${r.nodeId}: ${r.detail})`).join('; ')}`);
-  const metrics = scrollMetricsWithFaults(input, referenceMeasurer(), viewportDirectionOf(input), NO_ENGINE_FAULTS);
+  const metrics = scrollMetricsWithFaults(input, measurer(), viewportDirectionOf(input), NO_ENGINE_FAULTS);
   const containers = new Map(ranges.ranges.map((r) => [r.id, offsetsOf(r)]));
   if (metrics.kind === 'refused') return { page: { undecided: `the page's scroll range is not decided at ${metrics.nodeId}: ${metrics.detail}`, nodeId: metrics.nodeId, detail: metrics.detail }, containers };
   const v = metrics.viewport;
@@ -176,8 +178,7 @@ function runsOf(face: string, glyphs: readonly number[], xs: readonly number[], 
 }
 
 /** Each text node's lines as native-support.ts builds its DragonLineSpecs: engine breaks, pieceGlyphs, snapped top and baseline. */
-function textLines(texts: readonly EngineText[], leafText: ReadonlyMap<string, string>, origin: ReadonlyMap<string, { readonly x: number; readonly y: number }>): Map<string, TextLine[]> {
-  const m = referenceMeasurer();
+function textLines(texts: readonly EngineText[], leafText: ReadonlyMap<string, string>, origin: ReadonlyMap<string, { readonly x: number; readonly y: number }>, m: TextMeasurer): Map<string, TextLine[]> {
   const out = new Map<string, TextLine[]>();
   for (const t of texts) {
     const text = leafText.get(t.id);
@@ -208,7 +209,9 @@ const offsetsOf = ({ minX, maxX, minY, maxY }: ScrollRange): ScrollOffsets => ({
 const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
 /** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. */
-export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES): NativeStyleExport {
+export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES, inputFonts: readonly { readonly id: string; readonly file: string; readonly bytes: Uint8Array }[] = []): NativeStyleExport {
+  const inputFaces = new Map(inputFonts.map((f) => [registerFace(f.bytes), f.file]));
+  const measurer = (): TextMeasurer => referenceMeasurer([...inputFaces.keys()]);
   if (!styles.ok) throw new Error(`${component}: no export: ${Object.entries(styles.targets).map(([t, o]) => `${t} ${o.kind === 'blocked' ? o.reason : 'emitted'}`).join('; ')}`);
   const faces = new Set<string>();
   const undecided = new Set<string>();
@@ -221,17 +224,17 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const sp = o.program;
     const assignments = sp.assignments.map((a, i): ExportAssignment => {
       const program = programAt(sp, i);
-      const laid = engineBoxes(program, d.viewport, d.dpr);
+      const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
       const boxes = new Map(laid.map((b) => [b.id, b]));
       const absolute = absoluteRects(laid);
       const deviceBorders = borderDevicePx(expectedEngine(), programInput(program, d.viewport, d.dpr));
       const style = boxStyles(program.root);
-      const scroll = scrollOffsets(component, program, d.viewport, d.dpr);
+      const scroll = scrollOffsets(component, program, d.viewport, d.dpr, measurer);
       const px = (v: number): number => v / LU_PER_PX;
       const input = programInput(program, d.viewport, d.dpr);
       const texts = new Map([...cssFontSizes(input.root)].map(([id, f]) => [id, f.text] as const));
       const origins = new Map([...absolute].map(([id, r]) => [id, { x: px(r.x), y: px(r.y) }] as const));
-      const lines = textLines(engineTextLines(input, referenceMeasurer()), texts, origins);
+      const lines = textLines(engineTextLines(input, measurer()), texts, origins, measurer());
       const nodes = program.nodes.map((n): ExportNode => {
         const box = boxes.get(n.id);
         const s = style.get(n.id);
@@ -272,9 +275,11 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       ...[...undecided].map((message) => ({ code: 'DRAGON_PAGE_SCROLL_UNDECIDED', message })),
     ],
     fonts: [...faces].sort().map((id) => {
-      const file = files.get(id);
-      if (file === undefined) throw new Error(`${component}: face ${id} is not a vendored font`);
-      return { id, file };
+      const file = inputFaces.get(id);
+      if (file !== undefined) return { id, file, from: 'input' as const };
+      const vendored = files.get(id);
+      if (vendored === undefined) throw new Error(`${component}: face ${id} is not a vendored font`);
+      return { id, file: vendored };
     }),
     targets,
   };

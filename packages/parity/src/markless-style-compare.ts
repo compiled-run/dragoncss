@@ -8,7 +8,7 @@ import { captureFixture } from './capture.ts';
 import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
-import type { MarklessStyleInput, StateValue } from './markless-style-input.ts';
+import type { MarklessFontFile, MarklessStyleInput, StateValue } from './markless-style-input.ts';
 import { MARKLESS_BOXLESS_ATTRIBUTE, marklessDocumentCss, schemeOf } from './markless-style-input.ts';
 import type { NativeStyleExport } from './native-style-export.ts';
 
@@ -50,9 +50,11 @@ export type CompareRow = { readonly target: string; readonly values: Values; rea
 /**
  * With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device
  * screenshot is read beside. `unbanded`: the colour-scheme preference Chrome is given for an assignment no band fixes (light).
+ * `fonts`: the input's author font files (marklessFontFiles), which Chrome loads at their urls.
  */
-export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light'): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
+export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light', fonts: readonly MarklessFontFile[] = []): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
+  const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined) continue;
     const browser: Browser = await launchChrome(t.dpr);
@@ -68,7 +70,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
           return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
         };
         const fonts = fontReferencePrepare(FONT_REFERENCE_MAP);
-        const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, assignment.values)), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
+        const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, assignment.values), files), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
           await page.emulateMedia({ colorScheme: scheme });
           await fonts(page);
           if (screenshots !== undefined) await page.screenshot({ path: join(screenshots, `${target}-${index}.png`), fullPage: true });

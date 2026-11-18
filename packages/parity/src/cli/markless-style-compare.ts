@@ -2,10 +2,10 @@
 // Chrome's boxes per assignment (packages/parity/src/markless-style-compare.ts). Exits 1 when a box is outside the gate.
 // `--screenshots <dir>` also saves Chrome's rendering of each assignment there.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { GATE_DEVICE_PX } from '../compare.ts';
 import { compareMarklessExport } from '../markless-style-compare.ts';
-import { parseMarklessStyleInput } from '../markless-style-input.ts';
+import { marklessFontFiles, parseMarklessStyleInput } from '../markless-style-input.ts';
 import type { NativeStyleExport } from '../native-style-export.ts';
 
 const all = process.argv.slice(2).filter((a) => a !== '--');
@@ -20,7 +20,9 @@ const caller = (a: string): string => resolve(process.env['INIT_CWD'] ?? process
 const [inputPath, exportPath, reportPath] = args.map(caller) as [string, string, string];
 const shotDir = shots === undefined ? undefined : caller(shots);
 if (shotDir !== undefined) mkdirSync(shotDir, { recursive: true });
-const report = await compareMarklessExport(parseMarklessStyleInput(readFileSync(inputPath, 'utf8')), JSON.parse(readFileSync(exportPath, 'utf8')) as NativeStyleExport, shotDir);
+const input = parseMarklessStyleInput(readFileSync(inputPath, 'utf8'));
+const fonts = marklessFontFiles(input, (file) => readFileSync(resolve(dirname(inputPath), file)));
+const report = await compareMarklessExport(input, JSON.parse(readFileSync(exportPath, 'utf8')) as NativeStyleExport, shotDir, 'light', fonts);
 writeFileSync(reportPath, `${JSON.stringify({ gateDevicePx: GATE_DEVICE_PX, ...report }, null, 1)}\n`);
 console.log(`${report.compared} boxes compared, ${report.failed} outside ${GATE_DEVICE_PX} device px`);
 if (report.failed > 0 || report.compared === 0) process.exit(1);

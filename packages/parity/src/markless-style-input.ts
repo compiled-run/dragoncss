@@ -3,6 +3,7 @@
 // (docs/markless-native-styles.md "From a Markless style input"). The input carries no spans into the .tsrx, so every origin is
 // the span of the input file itself; its CSS is its own source, whole.
 import { createHash } from 'node:crypto';
+import { posix } from 'node:path';
 import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
 import { textDecoration } from '@dragon/layout';
@@ -31,7 +32,15 @@ export type MarklessStyleInput = {
    * height, measured on the device by the host that presents it. Absent: the export devices' page viewports.
    */
   readonly viewports?: { readonly [T in NativeStyleTarget]: { readonly width: number; readonly height: number } };
+  /**
+   * Each @font-face src url of `css` that names a file of the app: the url exactly as `css` spells it, and the file's path relative
+   * to the directory of the input file.
+   */
+  readonly fonts?: readonly { readonly url: string; readonly file: string }[];
 };
+
+/** An author font file of the input, read: its url as `css` spells it, its path, its bytes and their SHA-256 id. */
+export type MarklessFontFile = { readonly url: string; readonly file: string; readonly id: string; readonly bytes: Uint8Array };
 
 /** The document a detached component is laid out in, as Chrome renders it for the comparison: no body margin, the pinned sans face. */
 export const MARKLESS_DOCUMENT_CSS = 'body { margin: 0; font-family: sans-serif; }';
@@ -80,6 +89,18 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       // Whole CSS px, as the page viewports are: Chrome, the reference the export is compared with, lays out no other size.
       const ok = isRecord(size) && Object.keys(size).sort().join() === 'height,width' && [size['width'], size['height']].every((n) => Number.isInteger(n) && (n as number) > 0);
       if (!ok) fail(`viewports.${t} is not a { width, height } of positive whole CSS px`);
+    }
+  }
+  if (o['fonts'] !== undefined) {
+    if (!Array.isArray(o['fonts'])) fail('fonts is not a list');
+    const files = new Map<string, string>();
+    for (const f of o['fonts'] as unknown[]) {
+      const ok = isRecord(f) && Object.keys(f).sort().join() === 'file,url' && isString(f['url']) && f['url'] !== '' && isString(f['file']) && f['file'] !== '';
+      if (!ok) fail(`bad fonts entry ${JSON.stringify(f)}: a font is { url, file }`);
+      const { url, file } = f as { url: string; file: string };
+      if (posix.isAbsolute(file) || file.split('/').includes('')) fail(`fonts: ${file} is not a path relative to the input file`);
+      if (files.has(url)) fail(`fonts: ${url} is listed twice`);
+      files.set(url, file);
     }
   }
   if (!Array.isArray(o['nodes'])) fail('nodes is not a list');
@@ -155,7 +176,20 @@ export function dragonElementIds(input: MarklessStyleInput): Map<string, string>
   return out;
 }
 
-export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, inputPath: string): FrontEndResult {
+/** The input's author font files, read by the caller (who owns file access) from each path relative to the input file. */
+export function marklessFontFiles(input: MarklessStyleInput, read: (file: string) => Uint8Array): MarklessFontFile[] {
+  return (input.fonts ?? []).map(({ url, file }) => {
+    const bytes = read(file);
+    return { url, file, id: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
+  });
+}
+
+/** The snapshot asset id of an author font file. */
+const fontAssetId = (file: string): string => `markless-font:${file}`;
+
+export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[] = []): FrontEndResult {
+  const unread = (input.fonts ?? []).filter((f) => !fonts.some((r) => r.url === f.url && r.file === f.file));
+  if (unread.length > 0) fail(`the font file ${unread.map((f) => f.file).join(', ')} was not read`);
   const dragonId = dragonElementIds(input);
   const file = (name: string, text: string): SourceFile => ({ ref: { uri: `dragon-source://${PROJECT_ID}/markless/${input.component}/${name}`, revision: 'markless', hash: `sha256:${createHash('sha256').update(text, 'utf8').digest('hex')}` }, text, displayPath: name === 'input.json' ? inputPath : `${inputPath}#${name}` });
   const src = file('input.json', inputText);
@@ -249,7 +283,13 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   const html = { kind: 'element', id: 'html', tag: 'html', classes: [], attributes: [], children: [body], origin } as TreeNode;
   return {
     producer: { name: 'markless-native-style-input', version: '0', schemaRevision: TREE_SCHEMA_REVISION },
-    snapshot: { projectId: PROJECT_ID, revision: 'markless', sources: [src, css, doc], assets: [], resolutions: [] },
+    snapshot: {
+      projectId: PROJECT_ID,
+      revision: 'markless',
+      sources: [src, css, doc],
+      assets: [...new Map(fonts.map((f) => [fontAssetId(f.file), { id: fontAssetId(f.file), hash: f.id, bytes: f.bytes }])).values()],
+      resolutions: fonts.map((f) => ({ from: css.ref, specifier: f.url, kind: 'asset', to: fontAssetId(f.file) })),
+    },
     diagnostics: [],
     tree: {
       schema: 'dragon/tree@0',
@@ -275,15 +315,17 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
 }
 
 /** The input compiled as the device lanes compile (support 'lanes', the pinned font map), exported with the cells' own keys. */
-export function marklessStyleExport(inputText: string, inputPath: string): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport } {
+export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport } {
   const parsed = parseMarklessStyleInput(inputText);
-  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath), FONT_REFERENCE_MAP);
+  if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
+  const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
+  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts), FONT_REFERENCE_MAP);
   const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program' };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
-  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices);
+  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts);
   // Back to the input's ids: an element by its own, a text node "<element>:text<k>" by its element's.
   const marklessId = new Map([...dragonElementIds(parsed)].map(([m, d]): [string, string] => [d, m]));
   const dragonIds = dragonElementIds(parsed);

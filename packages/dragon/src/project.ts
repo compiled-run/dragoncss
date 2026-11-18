@@ -694,7 +694,7 @@ function fontIssueDiagnostic(issue: FontFaceIssue, origin: Origin, where: string
     case 'unresolved-asset':
       return diagnostic('DRAGON_FONT_UNRESOLVED_ASSET', { origin, message: `${where}: src url(${issue.url}) does not resolve to an asset of the source snapshot` });
     case 'unreadable-font':
-      return diagnostic('DRAGON_FONT_UNREADABLE', { origin, message: `${where}: src url(${issue.url.startsWith('data:') ? 'data:…' : issue.url}) is not a readable font (${issue.refusal.kind})` });
+      return diagnostic('DRAGON_FONT_UNREADABLE', { origin, message: `${where}: src url(${issue.url.startsWith('data:') ? 'data:…' : issue.url}) is not a readable font (${issue.refusal.kind === 'unsupported-container' ? `unsupported-container ${issue.refusal.container}` : issue.refusal.kind})` });
     case 'unsupported-descriptor':
       return diagnostic('DRAGON_FONT_UNSUPPORTED_DESCRIPTOR', { origin, message: `${where}: ${issue.descriptor}: ${issue.reason}` });
     case 'variable-font-refused':
