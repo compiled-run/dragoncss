@@ -9,7 +9,8 @@ import { repoPath } from '../src/paths.ts';
 const PATH = 'examples/markless-styles/input/tabs.native-style-input.json';
 const TEXT = readFileSync(repoPath(PATH), 'utf8');
 const input = parseMarklessStyleInput(TEXT);
-const cell = input.states[0]!.cell;
+const cell = input.states.find((s) => s.cell.endsWith('tabs.value'))!.cell;
+const shown = input.states.find((s) => s.cell === 'state:shown')!.cell;
 const edit = (f: (v: Record<string, any>) => void): string => {
   const v = JSON.parse(TEXT) as Record<string, any>;
   f(v);
@@ -23,10 +24,12 @@ describe('a Markless state whose values are strings', () => {
   it('compiles one assignment per value, with the transition table over the value list', () => {
     for (const t of ['ios', 'android'] as const) {
       const x = exported.targets[t]!;
-      expect(x.states).toEqual([{ key: cell, domain: ['a', 'b', 'c'] }]);
-      expect(x.assignments.map((a) => a.values[cell])).toEqual(['a', 'b', 'c']);
-      expect(x.initial).toBe(0);
-      expect(x.next).toEqual([[[0, 1, 2]], [[0, 1, 2]], [[0, 1, 2]]]);
+      expect(x.states).toEqual([{ key: shown, domain: ['a', 'b', 'c'] }, { key: cell, domain: ['a', 'b', 'c'] }]);
+      expect(x.assignments.length).toBe(9);
+      const at = (s: string, v: string): number => x.assignments.findIndex((a) => a.values[shown] === s && a.values[cell] === v);
+      expect(x.initial).toBe(at('a', 'a'));
+      // Setting the selected value moves along its own state only.
+      expect(x.next[at('a', 'a')]![1]).toEqual([at('a', 'a'), at('a', 'b'), at('a', 'c')]);
     }
   });
 
@@ -34,7 +37,8 @@ describe('a Markless state whose values are strings', () => {
     const tabs = elements('tab');
     const panels = elements('tabpanel');
     for (const t of ['ios', 'android'] as const) {
-      for (const [k, a] of exported.targets[t]!.assignments.entries()) {
+      for (const a of exported.targets[t]!.assignments) {
+        const k = ['a', 'b', 'c'].indexOf(a.values[cell] as string);
         const byId = new Map(a.nodes.map((n) => [n.id, n]));
         expect(panels.map((id) => byId.get(id)!.frame !== null)).toEqual(panels.map((_, i) => i === k));
         const bg = tabs.map((id) => byId.get(id)!.writes.find((w) => w['kind'] === 'background-color')?.['color']);
@@ -48,6 +52,20 @@ describe('a Markless state whose values are strings', () => {
     expect(report.compared).toBeGreaterThan(90);
     expect(report.rows.filter((r) => !r.pass)).toEqual([]);
     expect(new Set(report.rows.map((r) => r.values[cell]))).toEqual(new Set(['a', 'b', 'c']));
+  });
+
+  it('lays a text that follows a state out at each of its strings', () => {
+    const text = input.nodes.find((n) => n.kind === 'text' && n.textByState !== undefined)!;
+    for (const t of ['ios', 'android'] as const) {
+      const widths = new Map<unknown, number>();
+      for (const a of exported.targets[t]!.assignments) {
+        const node = a.nodes.find((n) => n.id === text.id)!;
+        expect(node.text).toBe(`Showing ${String(a.values[shown])}`);
+        widths.set(a.values[shown], node.frame!.width);
+      }
+      // Inter's b is wider than its a: the frame follows the string shown.
+      expect(widths.get('b')!).toBeGreaterThan(widths.get('a')!);
+    }
   });
 
   it('refuses a domain that is not [false, true] or distinct strings, an initial outside it and a value outside it', () => {

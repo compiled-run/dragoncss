@@ -29,7 +29,7 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
   const children = new Map<string | null, MarklessStyleInput['nodes'][number][]>();
   for (const n of input.nodes) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
   const render = (n: MarklessStyleInput['nodes'][number]): string => {
-    if (n.kind === 'text') return escape(n.text);
+    if (n.kind === 'text') return escape(n.textByState === undefined ? n.text : (valueUnder(n.textByState, values, n.id) as string));
     const attributes: [string, string][] = Object.entries(n.attributes).filter(([name]) => name !== 'class');
     const cls = n.classByState === undefined ? (n.attributes['class'] ?? null) : valueUnder(n.classByState, values, n.id);
     if (cls !== null) attributes.push(['class', cls]);
