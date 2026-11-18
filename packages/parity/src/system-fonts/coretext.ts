@@ -10,8 +10,8 @@ import { repoPath } from '../paths.ts';
 
 export const CORETEXT_HELPER_SOURCE = new URL('./coretext-helper.swift', import.meta.url);
 
-/** A Core Text face as the iOS host rebuilds it: the system UI font at a UIFont.Weight value and design, or a font by PostScript name. */
-export type CoreTextFace = { readonly kind: 'system'; readonly weight: number; readonly design: 'default' | 'serif' | 'monospaced' } | { readonly kind: 'name'; readonly postScriptName: string };
+/** A Core Text face: the system UI font at a UIFont.Weight value and design, a font by PostScript name, or a registered author file. */
+export type CoreTextFace = { readonly kind: 'system'; readonly weight: number; readonly design: 'default' | 'serif' | 'monospaced' } | { readonly kind: 'name'; readonly postScriptName: string } | { readonly kind: 'data'; readonly sha256: string };
 
 /** What the helper reports for a face at a size (coretext-helper.swift describe). */
 export type CoreTextDescription = {
@@ -83,6 +83,7 @@ export class CoreText {
   private readonly flag: Int32Array;
   private readonly bytes: Uint8Array;
   private readonly cache = new Map<string, unknown>();
+  private readonly registered = new Set<string>();
 
   constructor(binary: string = coreTextHelper()) {
     const shared = new SharedArrayBuffer(8 + (16 << 20));
@@ -96,16 +97,32 @@ export class CoreText {
     const line = JSON.stringify(request);
     const hit = this.cache.get(line);
     if (hit !== undefined) return hit as Record<string, unknown>;
+    const reply = this.send(request);
+    if (reply['ok'] !== true) throw new Error(`Core Text: ${String(reply['error'])}`);
+    this.cache.set(line, reply);
+    return reply;
+  }
+
+  private send(request: Record<string, unknown>): Record<string, unknown> {
+    const line = JSON.stringify(request);
     Atomics.store(this.flag, 0, 0);
     this.worker.postMessage(line);
     if (Atomics.wait(this.flag, 0, 0, 60_000) === 'timed-out') throw new Error('the Core Text helper did not answer in 60 s');
     const n = this.flag[1] as number;
     if (n === -2) throw new Error('the Core Text helper exited');
     if (n < 0) throw new Error('the Core Text helper answered with more than 16 MB');
-    const reply = JSON.parse(new TextDecoder().decode(this.bytes.slice(0, n))) as Record<string, unknown>;
-    if (reply['ok'] !== true) throw new Error(`Core Text: ${String(reply['error'])}`);
-    this.cache.set(line, reply);
-    return reply;
+    return JSON.parse(new TextDecoder().decode(this.bytes.slice(0, n))) as Record<string, unknown>;
+  }
+
+  /** Hands Core Text an author font file; the face that draws it is { kind: 'data', sha256 }. */
+  register(bytes: Uint8Array): CoreTextFace {
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    if (!this.registered.has(sha256)) {
+      const reply = this.send({ op: 'register', sha256, bytes: Buffer.from(bytes).toString('base64') });
+      if (reply['ok'] !== true) throw new Error(`Core Text: ${String(reply['error'])}`);
+      this.registered.add(sha256);
+    }
+    return { kind: 'data', sha256 };
   }
 
   describe(face: CoreTextFace, size: number): CoreTextDescription {

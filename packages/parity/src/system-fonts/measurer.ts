@@ -25,17 +25,19 @@ export function fontFamiliesOf(program: unknown): Set<string> {
   return out;
 }
 
-export function systemMeasurer(system: SystemFonts, program: unknown, bundled: readonly string[], dpr: number): TextMeasurer {
+export function systemMeasurer(system: SystemFonts, program: unknown, bundled: readonly string[], dpr: number, authorFiles: ReadonlyMap<string, Uint8Array> = new Map()): TextMeasurer {
   const used = [...fontFamiliesOf(program)].filter((f) => systemRequestOf(f) !== null);
   const faces = new Map<string, FontData>([...shimFaces().map((f) => f.id), ...bundled].map((id) => [id, fontDataOf(id)] as const));
   for (const id of used) faces.set(id, system.fontData(id));
+  const platform = new Set(used);
+  for (const [id, bytes] of authorFiles) if (system.authorFace(id, bytes)) platform.add(id);
   const shaper: GlyphShaper = {
-    shape: (face, ...rest) => (systemRequestOf(face) === null ? hostShaper.shape(face, ...rest) : system.shaper.shape(face, ...rest)),
+    shape: (face, ...rest) => (platform.has(face) ? system.shaper.shape(face, ...rest) : hostShaper.shape(face, ...rest)),
   };
   const m = deviceShapedMeasurer(faces, shaper);
   return {
     ...m,
-    metrics: (font) => (systemRequestOf(font.family) === null ? null : system.metrics(font.family, platformFontSize(font.size), dpr)) ?? m.metrics(font),
-    lengths: (font) => (systemRequestOf(font.family) === null ? m.lengths(font) : system.lengths(font.family, platformFontSize(font.size))),
+    metrics: (font) => (platform.has(font.family) ? system.metrics(font.family, platformFontSize(font.size), dpr) : null) ?? m.metrics(font),
+    lengths: (font) => (platform.has(font.family) ? system.lengths(font.family, platformFontSize(font.size)) : m.lengths(font)),
   };
 }

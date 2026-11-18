@@ -60,8 +60,8 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined || (only !== null && !only.includes(target))) continue;
-    // Safari, not Chrome, is the web that draws iOS's system faces: Chrome on the Mac rounds their metrics and spaces otherwise.
-    if (mode === 'system' && target === 'ios' && (exported.systemFonts ?? []).some((e) => e.ios !== undefined)) throw new Error(`${input.component}: the iOS target draws system faces, which are compared with Safari on iOS (markless:style-web-column), not Chrome; compare the other targets`);
+    // Safari, not Chrome, is the web that draws iOS's system and author faces: Chrome on the Mac rounds their metrics and spaces otherwise.
+    if (mode === 'system' && target === 'ios' && ((exported.systemFonts ?? []).some((e) => e.ios !== undefined) || exported.fonts.some((f) => f.from === 'input'))) throw new Error(`${input.component}: the iOS target measures its faces as Safari does, so it is compared with Safari on iOS (markless:style-web-column), not Chrome; compare the other targets`);
     const browser: Browser = await launchChrome(t.dpr);
     try {
       for (const [index, assignment] of t.assignments.entries()) {

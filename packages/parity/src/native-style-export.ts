@@ -235,7 +235,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const sp = o.program;
     // A target measures its system faces with its own platform's fonts; the lowered program is shared.
     const system = systemFonts === null ? null : systemFonts(t, d.dpr);
-    const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr);
+    const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr, new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])));
     const measurer = (): TextMeasurer => shared ?? referenceMeasurer([...inputFaces.keys()]);
     const assignments = sp.assignments.map((a, i): ExportAssignment => {
       const program = programAt(sp, i);

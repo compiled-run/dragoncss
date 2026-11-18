@@ -7,6 +7,8 @@ import Foundation
 
 struct Fail: Error { let message: String }
 
+var registered: [String: CGFont] = [:]
+
 func weightOf(_ w: Double) -> NSFont.Weight { NSFont.Weight(rawValue: CGFloat(w)) }
 
 func font(_ spec: [String: Any], _ size: Double) throws -> CTFont {
@@ -30,9 +32,19 @@ func font(_ spec: [String: Any], _ size: Double) throws -> CTFont {
 		let got = CTFontCopyPostScriptName(f) as String
 		if got != name { throw Fail(message: "Core Text has no font \(name) (it gave \(got))") }
 		return f
+	case "data":
+		guard let key = spec["sha256"] as? String, let cg = registered[key] else { throw Fail(message: "no registered font \(String(describing: spec["sha256"]))") }
+		return CTFontCreateWithGraphicsFont(cg, CGFloat(size), nil, nil)
 	default:
 		throw Fail(message: "unknown face kind \(String(describing: spec["kind"]))")
 	}
+}
+
+/// An author font file the build measures, kept by its SHA-256 for later data faces.
+func register(_ r: [String: Any]) throws {
+	guard let key = r["sha256"] as? String, let b64 = r["bytes"] as? String, let data = Data(base64Encoded: b64),
+		let provider = CGDataProvider(data: data as CFData), let cg = CGFont(provider) else { throw Fail(message: "register needs sha256 and the base64 bytes of a font Core Text reads") }
+	registered[key] = cg
 }
 
 func table(_ f: CTFont, _ tag: String) -> Data? {
@@ -156,6 +168,9 @@ while let line = readLine(strippingNewline: true) {
 		case "describe":
 			guard let spec = request["face"] as? [String: Any], let size = request["size"] as? Double else { throw Fail(message: "describe needs face and size") }
 			reply = ["ok": true, "face": try describe(spec, size)]
+		case "register":
+			try register(request)
+			reply = ["ok": true]
 		case "shape":
 			reply = ["ok": true] .merging(try shape(request)) { a, _ in a }
 		default:

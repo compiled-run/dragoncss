@@ -58,6 +58,8 @@ export type SystemFonts = {
   lengths(id: string, sizePx: number): FontLengths;
   /** The line metrics the target's browser rounds to, where they are not the engine's (Blink's) own; null keeps the engine's. */
   metrics(id: string, sizePx: number, dpr: number): FontMetrics | null;
+  /** Takes an author face to measure as the target's browser does; false leaves it to the engine's own (Blink's) rules. */
+  authorFace(id: string, bytes: Uint8Array): boolean;
   readonly shaper: GlyphShaper;
 };
 
@@ -76,7 +78,10 @@ function features(ints: readonly number[]): { tag: string; value: number; start:
  */
 export function iosSystemFonts(dpr: number): SystemFonts {
   const ct = coreText();
-  const entryOf = (id: string): (typeof IOS_ROLE_FACES)[SystemFaceRole][number] => {
+  const authored = new Map<string, { readonly face: CoreTextFace; readonly lineMetrics?: undefined }>();
+  const entryOf = (id: string): (typeof IOS_ROLE_FACES)[SystemFaceRole][number] | { readonly face: CoreTextFace; readonly lineMetrics?: undefined } => {
+    const author = authored.get(id);
+    if (author !== undefined) return author;
     const r = systemRequestOf(id) ?? refuse(`${id} is not a system face`);
     return pick(id, IOS_ROLE_FACES[(r as SystemFaceRequest).role], r as SystemFaceRequest, 'iOS');
   };
@@ -113,6 +118,11 @@ export function iosSystemFonts(dpr: number): SystemFonts {
     lengths(id, sizePx) {
       const d = ct.describe(entryOf(id).face, sizePx / dpr);
       return { xHeight: d.xTop * dpr, capHeight: d.capHeight * dpr, zeroWidth: d.zeroAdvance * dpr };
+    },
+    // Safari draws an author font with Core Text too, so the iOS target measures it as it measures a system face.
+    authorFace(id, bytes) {
+      authored.set(id, { face: ct.register(bytes) });
+      return true;
     },
     // Safari lays out in CSS px and rounds each of Core Text's metrics up there (WebKit FontCocoa.mm), measured on iOS 27.2.
     metrics(id, sizePx, dpr) {
@@ -198,6 +208,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
       };
     },
     metrics: () => null,
+    authorFace: () => false,
     lengths(id, sizePx) {
       const data = this.fontData(id);
       const k = sizePx / data.unitsPerEm;

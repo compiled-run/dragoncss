@@ -3,10 +3,15 @@
 // The faces are files no Dragon checkout bundles, so nothing here leans on the vendored Lato.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { compareMarklessExport } from '../src/markless-style-compare.ts';
 import { DECODED_FONTS_DIR, marklessFontFiles, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import { vendorFontBytes } from '../src/font-reference.ts';
+import { repoPath } from '../src/paths.ts';
+import { androidSystemImagePath } from '../src/system-fonts/android.ts';
+
+const { missingToolchain } = (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as { readonly missingToolchain: (subject: string, missing: string) => string };
 
 const FACES = `@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.ttf') format('truetype'); font-weight: 400; }
 @font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Bold.ttf') format('truetype'); font-weight: 700; }
@@ -114,6 +119,31 @@ describe('an author web font in a Markless style input', () => {
     const report = await compareMarklessExport(parseMarklessStyleInput(text), exported, undefined, 'light', files);
     expect(report.compared).toBe(18);
     expect(report.rows.filter((r) => !r.pass)).toEqual([]);
+  });
+
+  // Safari 27.2 on an iPhone 17 Pro simulator, and Chrome 133 on a Pixel 7 emulator (Android 36), laid this page out at these boxes.
+  it('with system fonts, the iOS target measures the author font as Safari does and Android as Chrome does', () => {
+    let image = true;
+    try {
+      androidSystemImagePath();
+    } catch {
+      image = false;
+    }
+    if (process.platform !== 'darwin' || !image) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const { exported } = marklessStyleExport(input(FACES + PAGE, FONTS), 'web-font.json', read, 'system');
+    const boxes = (t: 'ios' | 'android'): Record<string, [number, number]> => Object.fromEntries(exported.targets[t]!.assignments[0]!.nodes.filter((n) => n.kind === 'text').map((n) => [n.id, [n.frame!.width, n.frame!.height]]));
+    const safari = { 'h2:text0': [491.274, 102], 'h3:text0': [771.579, 66], 'h4:text0': [591.975, 66] };
+    const chrome = { 'h2:text0': [429.875, 89], 'h3:text0': [674.1719, 57], 'h4:text0': [517.9844, 57] };
+    for (const [t, web] of [['ios', safari], ['android', chrome]] as const) {
+      const got = boxes(t);
+      for (const [id, [w, h]] of Object.entries(web)) {
+        expect(got[id]![1], `${t} ${id} height`).toBe(h);
+        expect(Math.abs(got[id]![0] - w), `${t} ${id} width ${got[id]![0]} against ${w}`).toBeLessThan(0.02);
+      }
+    }
   });
 
   it('refuses a malformed WOFF2 by name', () => {

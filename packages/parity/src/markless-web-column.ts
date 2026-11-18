@@ -118,6 +118,7 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
       run('adb', ['-s', device.serial, 'reverse', '--remove', `tcp:${port}`]);
       run('adb', ['-s', device.serial, 'shell', 'rm', '-f', '/data/local/tmp/chrome-command-line']);
     }
+    server.closeAllConnections();
     server.close();
   }
   return { browser, compared: rows.length, failed: rows.filter((r) => !r.pass).length, rows };

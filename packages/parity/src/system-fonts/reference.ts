@@ -35,6 +35,7 @@ export function systemFontReference(target: NativeStyleTarget, entries: readonly
         if (r.role !== 'system-ui' || d.face.design !== 'default') throw new Error(`${e.id}: Chrome has no way to draw the system font's ${d.face.design} design as ${r.role}`);
         continue;
       }
+      if (d.face.kind === 'data') throw new Error(`${e.id}: a system face is never an author file`);
       rules.push(`@font-face{${descriptors};src:local(${quote(d.face.postScriptName)})}`);
     }
     families.set(r.role, family);
