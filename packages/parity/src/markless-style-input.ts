@@ -13,7 +13,9 @@ import { EXPORT_DEVICES, nativeStyleExport } from './native-style-export.ts';
 
 export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
 
-type When = Readonly<Record<string, boolean>>;
+/** A state's value: true or false, or one of the strings a cell can hold (a tab's selected value). */
+export type StateValue = boolean | string;
+type When = Readonly<Record<string, StateValue>>;
 export type MarklessStyleInput = {
   readonly version: typeof MARKLESS_STYLE_INPUT_VERSION;
   readonly component: string;
@@ -22,7 +24,7 @@ export type MarklessStyleInput = {
     | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly arm?: unknown }
   )[];
   readonly css: string;
-  readonly states: readonly { readonly cell: string; readonly domain: readonly [false, true]; readonly initial: boolean }[];
+  readonly states: readonly { readonly cell: string; readonly domain: readonly StateValue[]; readonly initial: StateValue }[];
   /**
    * The CSS size each target lays this tree out in, when it is not the page: a system sheet's content area at one resting
    * height, measured on the device by the host that presents it. Absent: the export devices' page viewports.
@@ -47,13 +49,17 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
   if (!isString(o['component']) || !/^[A-Z][A-Za-z0-9]*$/.test(o['component'])) fail(`component ${JSON.stringify(o['component'])} is not an identifier starting with an ASCII capital`);
   if (!isString(o['css'])) fail('css is not a string');
   if (!Array.isArray(o['states'])) fail('states is not a list');
-  const cells = new Set<string>();
+  const cells = new Map<string, readonly StateValue[]>();
   for (const s of o['states'] as unknown[]) {
-    if (!isRecord(s) || !isString(s['cell']) || typeof s['initial'] !== 'boolean') fail(`bad state ${JSON.stringify(s)}`);
+    if (!isRecord(s) || !isString(s['cell'])) fail(`bad state ${JSON.stringify(s)}`);
     const st = s as Record<string, unknown>;
-    if (!Array.isArray(st['domain']) || st['domain'].length !== 2 || st['domain'][0] !== false || st['domain'][1] !== true) fail(`${String(st['cell'])}: only boolean states are supported`);
+    const domain = st['domain'];
+    const boolean = Array.isArray(domain) && domain.length === 2 && domain[0] === false && domain[1] === true;
+    const strings = Array.isArray(domain) && domain.length > 0 && domain.every(isString) && new Set(domain).size === domain.length;
+    if (!boolean && !strings) fail(`${String(st['cell'])}: a state's domain is [false, true] or a list of distinct strings, not ${JSON.stringify(domain)}`);
+    if (!(domain as unknown[]).includes(st['initial'])) fail(`${String(st['cell'])}: initial ${JSON.stringify(st['initial'])} is not in its domain`);
     if (cells.has(st['cell'] as string)) fail(`state ${String(st['cell'])} is listed twice`);
-    cells.add(st['cell'] as string);
+    cells.set(st['cell'] as string, domain as StateValue[]);
   }
   if (o['viewports'] !== undefined) {
     const viewports = o['viewports'];
@@ -84,7 +90,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         for (const e of byState as unknown[]) {
           if (!isRecord(e) || !(e['value'] === null || isString(e['value'])) || !isRecord(e['when'])) fail(`${id}: bad ${what} entry ${JSON.stringify(e)}`);
           const when = (e as Record<string, unknown>)['when'] as Record<string, unknown>;
-          for (const [cell, value] of Object.entries(when)) if (!cells.has(cell) || typeof value !== 'boolean') fail(`${id}: ${what} names ${cell}, which is not a boolean state`);
+          for (const [cell, value] of Object.entries(when)) if (!(cells.get(cell) ?? []).includes(value as StateValue)) fail(`${id}: ${what} names ${cell}=${JSON.stringify(value)}, which is not a state and one of its values`);
         }
       };
       if (node['classByState'] !== undefined) checkByState('classByState', node['classByState']);
@@ -139,8 +145,8 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   const doc = file('document.css', MARKLESS_DOCUMENT_CSS);
   const origin = { kind: 'authored' as const, span: { source: src.ref, start: 0, end: inputText.length } };
   const states = stateIds(input);
-  const combos = input.states.reduce<Record<string, boolean>[]>((all, s) => all.flatMap((p) => s.domain.map((value) => ({ ...p, [s.cell]: value }))), [{}]);
-  const eq = (cell: string, value: boolean): Condition => ({ kind: 'eq', ref: { instance: '.', state: states.get(cell) as string }, value });
+  const combos = input.states.reduce<Record<string, StateValue>[]>((all, s) => all.flatMap((p) => s.domain.map((value) => ({ ...p, [s.cell]: value }))), [{}]);
+  const eq = (cell: string, value: StateValue): Condition => ({ kind: 'eq', ref: { instance: '.', state: states.get(cell) as string }, value });
   const all = (when: When): Condition => {
     const terms = Object.entries(when).map(([cell, value]) => eq(cell, value));
     return terms.length === 1 ? (terms[0] as Condition) : { kind: 'and', values: terms };

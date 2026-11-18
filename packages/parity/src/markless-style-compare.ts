@@ -8,7 +8,7 @@ import { captureFixture } from './capture.ts';
 import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
-import type { MarklessStyleInput } from './markless-style-input.ts';
+import type { MarklessStyleInput, StateValue } from './markless-style-input.ts';
 import { MARKLESS_DOCUMENT_CSS } from './markless-style-input.ts';
 import type { NativeStyleExport } from './native-style-export.ts';
 
@@ -18,7 +18,7 @@ type Values = Readonly<Record<string, unknown>>;
 const escape = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** The value a by-state list gives under an assignment's values; the input lists one entry per combination. */
-function valueUnder(entries: readonly { readonly when: Readonly<Record<string, boolean>>; readonly value: string | null }[], values: Values, id: string): string | null {
+function valueUnder(entries: readonly { readonly when: Readonly<Record<string, StateValue>>; readonly value: string | null }[], values: Values, id: string): string | null {
   const found = entries.filter((e) => Object.entries(e.when).every(([cell, v]) => values[cell] === v));
   if (found.length !== 1) throw new Error(`${id}: ${found.length} by-state entries hold for ${JSON.stringify(values)}`);
   return (found[0] as (typeof entries)[number]).value;

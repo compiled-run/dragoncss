@@ -58,7 +58,7 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][2]['arm'] = { branch: 'b0', arm: 'then' }; }))).toThrow('h1:text0: styles inside @if arms');
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][3]['classByState'][0]['when'] = { 'state:other': false }; }))).toThrow('h2: classByState names state:other');
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][1]['parent'] = 'h9'; }))).toThrow('h1: parent h9 is not an earlier element');
-    expect(() => parseMarklessStyleInput(edit((v) => { v['states'][0]['domain'] = [0, 1]; }))).toThrow('only boolean states');
+    expect(() => parseMarklessStyleInput(edit((v) => { v['states'][0]['domain'] = [0, 1]; }))).toThrow('a list of distinct strings');
     expect(() => marklessStyleExport(edit((v) => { v['nodes'][3]['classByState'].pop(); }), PATH)).toThrow('h2: classByState has 0 entries');
   });
 
