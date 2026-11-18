@@ -206,6 +206,7 @@ export function lengthMaxWidth(nodeId: string, v: MaxInlineSizeValue): MaxSizeVa
  */
 export function lengthHeight(nodeId: string, v: BlockSizeValue): SizeValue {
   if (v.kind === 'stretch') return refuseKeyword(nodeId, 'height', v.kind);
+  if (v.kind === 'min-content' || v.kind === 'max-content' || v.kind === 'fit-content') return unsupported('intrinsic-size-keyword', nodeId, 'css-sizing-3 §3.2', `height: ${v.kind} on ${nodeId}, which is not absolutely positioned`);
   return v;
 }
 
@@ -282,6 +283,7 @@ export function specifiedBlockSizeWith(box: LayoutBox, basis: HeightBasis, borde
   const h = box.style.height;
   if (h.kind === 'auto') return null;
   if (h.kind === 'stretch') return stretchBlockSize(box, stretch, borderPadding, 'height');
+  if (h.kind === 'min-content' || h.kind === 'max-content' || h.kind === 'fit-content') return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-3 §3.2', `height: ${h.kind} on ${box.id}, which is not absolutely positioned`);
   const v = resolveLengthOrNull(h, blockBasisFor(box, h, basis, 'height'), faults);
   return v === null ? null : borderBoxFromSpecified(v, borderPadding, box.style.boxSizing);
 }

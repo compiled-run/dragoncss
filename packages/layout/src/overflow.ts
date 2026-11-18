@@ -18,6 +18,7 @@ import { placeLines } from './inline.ts';
 import { isAtomicInline } from './inline-box.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { isFloat } from './float.ts';
+import { controlAsBox } from './controls.ts';
 import type { TextMeasurer } from './text.ts';
 
 /** A grid container: display grid, or inline-grid (an atomic inline, css-grid-2 §5.1). */
@@ -92,9 +93,28 @@ type Index = {
   readonly flows: Map<string, Flow>;
   /** The inflow bounds of each grid scroll container, by id (layout.ts InflowBounds). */
   readonly gridInflow: Map<string, OverflowRect>;
-  /** The form controls of the tree in preorder (FORM-a): their scrollable overflow is not decided here, so every scroll container is refused. */
+  /** The form controls of the tree in preorder (FORM-a), but block buttons: their scrollable overflow is not decided here, so every scroll container is refused. */
   readonly controls: string[];
+  /** The block buttons by id, indexed as the plain boxes they are (blockButtonsAsBoxes). */
+  readonly buttons: Map<string, boolean>;
 };
+
+/**
+ * A block button (FORM-a button-block) as the plain box it is to scrollable overflow: a block container and a formatting context
+ * root (block.ts), whose border box and contents add their overflow as a block's do (Chrome 145, markless-dialog test). Other
+ * controls stay controls, which indexOf refuses.
+ */
+function blockButtonsAsBoxes(box: LayoutBox, buttons: Map<string, boolean>): LayoutBox {
+  const children: LayoutBox['children'][number][] = [];
+  for (const k of box.children) {
+    if (k.kind === 'control' && k.control.kind === 'button-block') {
+      buttons.set(k.id, true);
+      children.push(blockButtonsAsBoxes(controlAsBox(k), buttons));
+    } else if (k.kind === 'box') children.push(blockButtonsAsBoxes(k, buttons));
+    else children.push(k);
+  }
+  return { ...box, children };
+}
 
 /** scrollMetrics with planted engine faults; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasurer, viewportDirection: Direction, faults: EngineFaults): ScrollMetricsResult {
@@ -207,7 +227,7 @@ function nodeOf(ix: Index, id: string): Node {
 }
 
 function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inflow: readonly InflowBounds[]): Index {
-  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: [] };
+  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: [], buttons: new Map() };
   for (const f of inflow) ix.gridInflow.set(f.id, { x: f.x, y: f.y, width: f.width, height: f.height });
   const icbWidth = fromCssPx(input.viewport.width);
   const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null, basisKnown: boolean): void => {
@@ -248,7 +268,7 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
       }
     }
   };
-  walk(input.root, null, icbWidth, null, true);
+  walk(blockButtonsAsBoxes(input.root, ix.buttons), null, icbWidth, null, true);
   return ix;
 }
 
@@ -580,7 +600,7 @@ type Flow = {
 
 /** layoutContents' formattingContextRoot for a child of a block flow. */
 function isFcRoot(ix: Index, b: OverflowNode): boolean {
-  return b.kind === 'replaced' || establishesFormattingContext(b.style, ix.ctx.faults);
+  return b.kind === 'replaced' || establishesFormattingContext(b.style, ix.ctx.faults) || ix.buttons.has(b.id);
 }
 
 function flowOf(ix: Index, n: Node): Flow {
@@ -656,7 +676,7 @@ function readChild(ix: Index, n: Node): ChildMargins {
   const height = n.rect.height;
   if (!r.hasContent && height === 0 && vbp === 0) return { escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough: true };
   const h = b.style.height;
-  if (h.kind !== 'auto' && (h.kind === 'stretch' || hasPercent(h)) && n.border.bottom === 0 && n.padding.bottom === 0 && (r.endStrut.positive !== 0 || r.endStrut.negative !== 0)) {
+  if (h.kind === 'stretch' || ((h.kind === 'percent' || h.kind === 'calc') && hasPercent(h)) && n.border.bottom === 0 && n.padding.bottom === 0 && (r.endStrut.positive !== 0 || r.endStrut.negative !== 0)) {
     throw new OverflowRefusal(b.id, 'a percentage or stretch height on a box whose end margins may collapse through it: its basis is not decided here');
   }
   // A stretch min-height or max-height reads the basis a percentage one does here: indefinite.

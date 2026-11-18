@@ -34,6 +34,7 @@ import type {
   MarginValue,
   Overflow,
   MaxBlockSizeValue,
+  MinBlockSizeValue,
   MaxInlineSizeValue,
   MaxSizeValue,
   PaddingValue,
@@ -211,6 +212,15 @@ function maxInlineSize(id: string, get: Get, p: Longhand, l: Lowering): MaxInlin
 // css-sizing-4 §3.1: height, min-height and max-height also take stretch; the engine reads it on a block-level box in block flow
 // and refuses it elsewhere.
 function blockSize(id: string, get: Get, p: Longhand, l: Lowering): BlockSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
+  // css-sizing-3 §3.2: height also takes min-content, max-content and fit-content; the engine reads them on an absolutely
+  // positioned box and refuses them elsewhere.
+  if (p === 'height' && v.kind === 'keyword' && (v.value === 'min-content' || v.value === 'max-content' || v.value === 'fit-content')) return { kind: v.value };
+  return size(id, get, p, l);
+}
+
+function minBlockSize(id: string, get: Get, p: Longhand, l: Lowering): MinBlockSizeValue {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
   return size(id, get, p, l);
@@ -499,6 +509,12 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   const display = displayOfStyle(id, get, lineClamp);
+  // css-sizing-3 §3.2: the engine reads a min-content, max-content or fit-content height on an absolutely positioned box only.
+  const heightValue = get('height');
+  const positionValue = get('position');
+  if (heightValue.kind === 'keyword' && ['min-content', 'max-content', 'fit-content'].includes(heightValue.value) && !(positionValue.kind === 'keyword' && (positionValue.value === 'absolute' || positionValue.value === 'fixed'))) {
+    throw new LoweringError(id, 'height', `height: ${heightValue.value} on ${id}, which is not absolutely positioned, is not laid out (css-sizing-3 §3.2)`);
+  }
   return {
     display,
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute', 'fixed', 'sticky']),
@@ -514,7 +530,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     width: inlineSize(id, get, 'width', l),
     height: blockSize(id, get, 'height', l),
     minWidth: inlineSize(id, get, 'min-width', l),
-    minHeight: blockSize(id, get, 'min-height', l),
+    minHeight: minBlockSize(id, get, 'min-height', l),
     maxWidth: maxInlineSize(id, get, 'max-width', l),
     maxHeight: maxBlockSize(id, get, 'max-height', l),
     marginTop: margin(id, get, 'margin-top', l),
