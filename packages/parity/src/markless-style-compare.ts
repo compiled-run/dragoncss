@@ -9,7 +9,7 @@ import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { MarklessStyleInput } from './markless-style-input.ts';
-import { MARKLESS_DOCUMENT_CSS } from './markless-style-input.ts';
+import { MARKLESS_BOXLESS_ATTRIBUTE, marklessDocumentCss } from './markless-style-input.ts';
 import type { NativeStyleExport } from './native-style-export.ts';
 
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
@@ -31,6 +31,7 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
   const render = (n: MarklessStyleInput['nodes'][number]): string => {
     if (n.kind === 'text') return escape(n.text);
     const attributes: [string, string][] = Object.entries(n.attributes).filter(([name]) => name !== 'class');
+    if (n.boxless === true) attributes.push([MARKLESS_BOXLESS_ATTRIBUTE, '']);
     const cls = n.classByState === undefined ? (n.attributes['class'] ?? null) : valueUnder(n.classByState, values, n.id);
     if (cls !== null) attributes.push(['class', cls]);
     for (const [name, entries] of Object.entries(n.attributesByState ?? {})) {
@@ -40,7 +41,7 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
     const open = [`<${n.element} data-dragon-id="${escape(n.id)}"`, ...attributes.map(([k, v]) => `${k}="${escape(v)}"`)].join(' ');
     return `${open}>${(children.get(n.id) ?? []).map(render).join('')}</${n.element}>`;
   };
-  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${MARKLESS_DOCUMENT_CSS}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
+  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${marklessDocumentCss(input)}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
 }
 
 type Bands = NonNullable<NativeStyleExport['targets']['ios']>['bands'];
