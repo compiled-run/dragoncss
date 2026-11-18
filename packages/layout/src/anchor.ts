@@ -7,7 +7,7 @@
 // compiler refuses an anchored box whose own direction differs from it, so the box's direction is the containing block's.
 import type { AnchorEdge, AnchorOption, AnchorSizeRef, AreaTrack, BlockSizeValue, InlineSizeValue, LayoutBox, LayoutStyle, MaxBlockSizeValue, MaxInlineSizeValue, MinBlockSizeValue, Px } from './input.ts';
 import type { LU } from './units.ts';
-import { add, divInt, fromFloatRound, max, min, sub, toFloat, toPx, ZERO } from './units.ts';
+import { add, anchorPercentOffset, divInt, fromFloatRound, max, min, sub, toPx, ZERO } from './units.ts';
 import type { MarginResolved, StaticAxis } from './box.ts';
 import {
   blockMinMaxWith,
@@ -79,7 +79,7 @@ function edgeAt(start: LU, size: LU, fraction: number): LU {
   if (fraction === 0) return start;
   if (fraction === 1) return add(start, size);
   if (fraction === 0.5) return add(start, fromFloatRound(toPx(size) * 0.5));
-  return add(start, fromFloatRound(Math.fround(Math.fround(toFloat(size) * Math.fround(fraction * 100)) / 100)));
+  return add(start, anchorPercentOffset(size, fraction));
 }
 
 /**
