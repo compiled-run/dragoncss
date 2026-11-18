@@ -5,6 +5,7 @@
 import { createHash } from 'node:crypto';
 import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
+import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -296,14 +297,17 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
     assignments: x.assignments.map((a, i) => ({
       ...a,
       values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])),
-      canvas: canvasOf(a.nodes, `${t} assignment ${i}`),
+      ...rootPaint(a.nodes, `${t} assignment ${i}`),
     })),
   }]));
   return { input, exported: { ...exported, targets } };
 }
 
-/** An assignment of a Markless export: also the colour of the canvas, which the host paints behind the page and the system bars. */
-export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8 };
+/**
+ * An assignment of a Markless export: also the colour of the canvas, which the host paints behind the page and the system bars,
+ * and the colour body paints in its own box (its frame) when html's background is the canvas, else null.
+ */
+export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null };
 export type MarklessStyleExport = Omit<NativeStyleExport, 'targets'> & {
   readonly targets: { readonly [T in NativeStyleTarget]?: Omit<ExportTarget, 'assignments'> & { readonly assignments: readonly MarklessExportAssignment[] } };
 };
@@ -314,15 +318,36 @@ const backgroundOf = (nodes: readonly ExportNode[], id: string): Rgba8 => {
   return color as Rgba8;
 };
 
+/** The writes html and body may carry: the hosts draw the canvas and body's background, and no border, image or effect of either. */
+const ROOT_WRITES: ReadonlySet<string> = new Set(['background-color', 'border-widths', 'border-styles', 'border-colors']);
+
+function checkRootPaint(nodes: readonly ExportNode[], id: string, where: string): void {
+  const node = nodes.find((n) => n.id === id);
+  for (const w of node?.writes ?? []) {
+    if (!ROOT_WRITES.has(w['kind'] as string)) fail(`${where}: ${id} has a ${String(w['kind'])} write, which the hosts do not draw on ${id}`);
+  }
+  if (Object.values(node?.borderWidths ?? {}).some((v) => v !== 0)) fail(`${where}: ${id} has a border, which the hosts do not draw on ${id}`);
+}
+
+const WHITE: Rgba8 = { r: 255, g: 255, b: 255, alpha: 255 };
+/** Skia's src-over of a colour onto an opaque pixel, as Chrome rasterises a background fill (textDecoration.blendOver). */
+const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
+  if (src.alpha === 255) return src;
+  const p = textDecoration.blendOver({ r: dst.r, g: dst.g, b: dst.b, a: 255 }, { r: src.r, g: src.g, b: src.b, a: src.alpha }, 256);
+  return { r: p.r, g: p.g, b: p.b, alpha: 255 };
+};
+
 /**
- * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's, else white. The hosts paint no html
- * or body box, so a background body keeps for its own box (under an html background) and a translucent canvas are refused.
+ * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's (propagated, so body's box paints
+ * none), drawn over the white base background of a top-level page. When html has its own background, body keeps its own for its
+ * box, which lies on the canvas; that box's colour is given composited, as Chrome shows it.
  */
-function canvasOf(nodes: readonly ExportNode[], where: string): Rgba8 {
+function rootPaint(nodes: readonly ExportNode[], where: string): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
+  checkRootPaint(nodes, 'html', where);
+  checkRootPaint(nodes, 'body', where);
   const html = backgroundOf(nodes, 'html');
   const body = backgroundOf(nodes, 'body');
-  if (html.alpha !== 0 && body.alpha !== 0) fail(`${where}: body has its own background under html's, and the export draws no body box`);
-  const canvas = html.alpha !== 0 ? html : body.alpha !== 0 ? body : { r: 255, g: 255, b: 255, alpha: 255 };
-  if (canvas.alpha !== 255) fail(`${where}: the canvas background is translucent, which the export does not blend over white yet`);
-  return canvas;
+  if (html.alpha === 0) return { canvas: over(WHITE, body), bodyBackground: null };
+  const canvas = over(WHITE, html);
+  return { canvas, bodyBackground: body.alpha === 0 ? null : over(canvas, body) };
 }
