@@ -1,6 +1,7 @@
 // Every frame of every assignment of a Markless style export against Chrome's boxes for the same element tree, at the export's
 // viewport and ratio, under the device lanes' gate: classes and attributes as each assignment's states set them, and the colour
 // scheme its @media band reads. Usage: pnpm run markless:style-compare -- <input.json> <export.json> <report.json>
+import { join } from 'node:path';
 import type { Browser } from 'playwright';
 import { authoredFontHtml } from './cases.ts';
 import { captureFixture } from './capture.ts';
@@ -8,7 +9,7 @@ import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { MarklessStyleInput } from './markless-style-input.ts';
-import { MARKLESS_DOCUMENT_CSS } from './markless-style-input.ts';
+import { MARKLESS_BOXLESS_ATTRIBUTE, marklessDocumentCss } from './markless-style-input.ts';
 import type { NativeStyleExport } from './native-style-export.ts';
 
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
@@ -30,6 +31,7 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
   const render = (n: MarklessStyleInput['nodes'][number]): string => {
     if (n.kind === 'text') return escape(n.text);
     const attributes: [string, string][] = Object.entries(n.attributes).filter(([name]) => name !== 'class');
+    if (n.boxless === true) attributes.push([MARKLESS_BOXLESS_ATTRIBUTE, '']);
     const cls = n.classByState === undefined ? (n.attributes['class'] ?? null) : valueUnder(n.classByState, values, n.id);
     if (cls !== null) attributes.push(['class', cls]);
     for (const [name, entries] of Object.entries(n.attributesByState ?? {})) {
@@ -39,7 +41,7 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
     const open = [`<${n.element} data-dragon-id="${escape(n.id)}"`, ...attributes.map(([k, v]) => `${k}="${escape(v)}"`)].join(' ');
     return `${open}>${(children.get(n.id) ?? []).map(render).join('')}</${n.element}>`;
   };
-  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${MARKLESS_DOCUMENT_CSS}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
+  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${marklessDocumentCss(input)}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
 }
 
 type Bands = NonNullable<NativeStyleExport['targets']['ios']>['bands'];
@@ -59,13 +61,14 @@ function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
 
 export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number; readonly pass: boolean };
 
-export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
+/** With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device screenshot is read beside. */
+export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined) continue;
     const browser: Browser = await launchChrome(t.dpr);
     try {
-      for (const assignment of t.assignments) {
+      for (const [index, assignment] of t.assignments.entries()) {
         const band = assignment.values['@env#band'];
         const scheme = typeof band === 'number' ? schemeOf(t.bands, band) : 'light';
         const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
@@ -79,6 +82,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
         const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, assignment.values)), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
           await page.emulateMedia({ colorScheme: scheme });
           await fonts(page);
+          if (screenshots !== undefined) await page.screenshot({ path: join(screenshots, `${target}-${index}.png`), fullPage: true });
         });
         for (const c of capture.nodes) {
           const node = byId.get(c.id);
