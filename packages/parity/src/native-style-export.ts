@@ -3,12 +3,15 @@
 // node's lowered writes and the frame the reference engine lays it out at for the proof device, in device px.
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
-import type { BorderOp, LayoutBox, ScrollRange } from '@dragon/layout';
-import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
+import type { BorderOp, LayoutBox, LU, ScrollRange } from '@dragon/layout';
+import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
 import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
 import { borderDevicePx, programAt, programInput } from 'dragon';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdge } from '../../layout/src/units.ts';
+import { cssFontSizes } from './ahem-lines.ts';
+import type { EngineText } from './line-breaks.ts';
+import { engineTextLines } from './line-breaks.ts';
 import { engineBoxes, expectedEngine, referenceMeasurer } from './native-host.ts';
 import { viewportDirectionOf } from './scroll-metrics.ts';
 import { repoPath } from './paths.ts';
@@ -26,6 +29,10 @@ export const EXPORT_DEVICES: { readonly [T in NativeStyleTarget]: ExportDevice }
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 /** A scroll offset range in whole device px, in CSS scroll-offset terms: 0 is the start position, and the user scrolls between min and max. */
 export type ScrollOffsets = { readonly minX: number; readonly maxX: number; readonly minY: number; readonly maxY: number };
+/** Consecutive glyphs of a line in one face at one instance size (device px), each x its pen origin. */
+export type GlyphRun = { readonly face: string; readonly size: number; readonly glyphs: readonly number[]; readonly xs: readonly number[] };
+/** One engine line of a text node: its line box top and baseline, in device px from the node's frame. */
+export type TextLine = { readonly top: number; readonly baseline: number; readonly runs: readonly GlyphRun[] };
 export type ExportNode = {
   readonly id: string;
   readonly parent: string | null;
@@ -44,6 +51,8 @@ export type ExportNode = {
   readonly borderOps?: { readonly origin: { readonly x: number; readonly y: number }; readonly size: { readonly width: number; readonly height: number }; readonly widths: readonly number[]; readonly ops: readonly BorderOp[] };
   /** Only on a node with a scroll-container write: the offset range its scroll view scrolls over. */
   readonly scrollRange?: ScrollOffsets;
+  /** Only on a text node with a frame: its lines as Dragon's native text views draw them (DragonLineSpec), glyph for glyph. */
+  readonly lines?: readonly TextLine[];
 };
 /**
  * pageScroll: the offset range of the viewport, the page's own scroll view, at the target's viewport; null when the engine does not
@@ -151,6 +160,53 @@ function scrollOffsets(component: string, program: NativeProgram, viewport: Expo
   return { page, containers };
 }
 
+/** Splits a line's glyphs into runs where the instance size changes (small caps). */
+function runsOf(face: string, glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): GlyphRun[] {
+  const out: { face: string; size: number; glyphs: number[]; xs: number[] }[] = [];
+  for (const [j, g] of glyphs.entries()) {
+    const size = sizes[j] as number;
+    const last = out[out.length - 1];
+    if (last === undefined || last.size !== size) out.push({ face, size, glyphs: [g], xs: [xs[j] as number] });
+    else {
+      last.glyphs.push(g);
+      last.xs.push(xs[j] as number);
+    }
+  }
+  return out;
+}
+
+/**
+ * Each text node's lines as the device's text pass places them (emit/native-support.ts, the DragonLineSpec loop): the engine's
+ * breaks (engineTextLines), each piece's glyphs from pieceGlyphs at its line's left plus its justification shift, the line top
+ * snapped and the baseline at the snapped piece top plus the ascent, then a truncated line's ellipsis in its own font.
+ */
+function textLines(texts: readonly EngineText[], leafText: ReadonlyMap<string, string>, origin: ReadonlyMap<string, { readonly x: number; readonly y: number }>): Map<string, TextLine[]> {
+  const m = referenceMeasurer();
+  const out = new Map<string, TextLine[]>();
+  for (const t of texts) {
+    const text = leafText.get(t.id);
+    const at = origin.get(t.id);
+    if (text === undefined || at === undefined) continue;
+    const ascent = m.metrics(t.textFont).ascent / LU_PER_PX;
+    out.set(t.id, t.lines.map((line, k): TextLine => {
+      const start = [...text.slice(0, line.start)].length;
+      const g = pieceGlyphs(m, text, t.textFont, start, start + line.cps.length);
+      if (!g.ok) throw new Error(`${t.id} line ${k}: the shaped measurer refused its text: ${g.reason}`);
+      const x0 = line.rect.x / LU_PER_PX - at.x;
+      const xs = g.xs.map((x, j) => x0 + x + (line.shifts.length === 0 ? 0 : (line.shifts[g.chars[j] as number] as number)));
+      const runs = runsOf(t.textFont.family, g.glyphs, xs, g.sizes);
+      const e = line.ellipsis;
+      if (e !== null) {
+        const d = pieceGlyphs(m, String.fromCodePoint(...e.cps), e.font, 0, e.cps.length);
+        if (!d.ok) throw new Error(`${t.id} line ${k} ellipsis: the shaped measurer refused its text: ${d.reason}`);
+        runs.push(...runsOf(e.font.family, d.glyphs, d.xs.map((x) => e.x / LU_PER_PX - at.x + x), d.sizes));
+      }
+      return { top: snapEdge((line.rect.y - line.halfLeading) as LU) - at.y, baseline: line.snapped.top + ascent - at.y, runs };
+    }));
+  }
+  return out;
+}
+
 const offsetsOf = ({ minX, maxX, minY, maxY }: ScrollRange): ScrollOffsets => ({ minX, maxX, minY, maxY });
 
 const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
@@ -176,6 +232,10 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       const style = boxStyles(program.root);
       const scroll = scrollOffsets(component, program, d.viewport, d.dpr);
       const px = (v: number): number => v / LU_PER_PX;
+      const input = programInput(program, d.viewport, d.dpr);
+      const texts = new Map([...cssFontSizes(input.root)].map(([id, f]) => [id, f.text] as const));
+      const origins = new Map([...absolute].map(([id, r]) => [id, { x: px(r.x), y: px(r.y) }] as const));
+      const lines = textLines(engineTextLines(input, referenceMeasurer()), texts, origins);
       const nodes = program.nodes.map((n): ExportNode => {
         const box = boxes.get(n.id);
         const s = style.get(n.id);
@@ -183,6 +243,8 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
         const scrolls = n.writes.some((w) => w.kind === 'scroll-container');
         const range = scroll.containers.get(n.id);
         if (scrolls && range === undefined) throw new Error(`${component}: ${t} node ${n.id} is a scroll container with no scroll range`);
+        const own = n.kind === 'text' && box !== undefined ? lines.get(n.id) : undefined;
+        if (n.kind === 'text' && box !== undefined && own === undefined) throw new Error(`${component}: ${t} text node ${n.id} has a frame but no engine lines`);
         return {
           id: n.id, parent: n.parent, kind: n.kind, native: n.native, text: n.text,
           frame: box === undefined ? null : { x: px(box.x), y: px(box.y), width: px(box.width), height: px(box.height) },
@@ -190,6 +252,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           writes: n.writes.map(({ css: _css, detail: _detail, technique: _technique, ...w }) => w),
           ...dashedBorder(n.id, n.writes, absolute.get(n.id), deviceBorders.get(n.id)),
           ...(scrolls && range !== undefined ? { scrollRange: range } : {}),
+          ...(own === undefined ? {} : { lines: own }),
         };
       });
       if ('undecided' in scroll.page) undecided.add(`${t}: ${scroll.page.undecided}`);
