@@ -147,17 +147,25 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     expect(r.kind === 'refused' ? r.nodeId : '').toBe('k');
   });
 
-  it('a form control is refused, never skipped: its scrollable overflow is not decided here', () => {
-    const button = control('button', { kind: 'button-block' }, { width: px(300), height: px(300) });
-    for (const i of [input([box('s', sc('auto'), [button])]), input([button])]) {
+  it('a form control other than a block button is refused, never skipped: its scrollable overflow is not decided here', () => {
+    const range = control('range', { kind: 'range', defaultInlineSize: 129 }, { display: 'flex', width: px(300), height: px(300) });
+    for (const i of [input([box('s', sc('auto'), [range])]), input([range])]) {
       const r = scrollMetrics(i, ahemMeasurer, 'ltr');
       expect(r.kind).toBe('refused');
-      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : []).toEqual(['button', 'a form control: its scrollable overflow is not decided here']);
+      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : []).toEqual(['range', 'a form control: its scrollable overflow is not decided here']);
     }
     // scrollRanges, which the native runtime calls on every layout, refuses each scroll container instead of the whole layout.
     const detail = 'a form control: its scrollable overflow is not decided here';
-    expect(scrollRanges(input([button]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [] });
-    expect(scrollRanges(input([box('s', sc('auto'), [button]), box('a', sc('hidden'), [])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [{ id: 's', nodeId: 'button', detail }, { id: 'a', nodeId: 'button', detail }] });
+    expect(scrollRanges(input([range]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [] });
+    expect(scrollRanges(input([box('s', sc('auto'), [range]), box('a', sc('hidden'), [])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [{ id: 's', nodeId: 'range', detail }, { id: 'a', nodeId: 'range', detail }] });
+  });
+
+  it('a block button adds its border box to its scroll container, as a block does (Chrome: parity top-layer-layout test)', () => {
+    const button = control('button', { kind: 'button-block' }, { width: px(300), height: px(300) });
+    const r = scrollRanges(input([box('s', sc('auto'), [button])]), ahemMeasurer);
+    expect(r.kind).toBe('ok');
+    expect(r.kind === 'ok' ? r.refused : null).toEqual([]);
+    expect(r.kind === 'ok' ? r.ranges.map((x) => x.id) : null).toEqual(['s']);
   });
 });
 

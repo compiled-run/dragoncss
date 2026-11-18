@@ -18,7 +18,7 @@ import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { appearanceDisplay, blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, synthesizesSmallCaps, userAgentValue } from './computed.ts';
-import { MARKER_TAG, uaTagOf } from './elements.ts';
+import { BACKDROP_TAG, MARKER_TAG, uaTagOf } from './elements.ts';
 import { generatedElement, generatedText, generatedTextNode, hostRefusal } from './generated.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
@@ -295,7 +295,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // GEN-a: the generated pseudo-elements some rule selects; only these are cascaded on each element.
   const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
-  const rulesOf = new Map([...GENERATED_PSEUDOS, 'marker' as const].map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && sel.pseudoElement.kind !== 'static-empty' && sel.pseudoElement.name === p))] as const));
+  const rulesOf = new Map([...GENERATED_PSEUDOS, 'marker' as const, 'backdrop' as const].map((p) => [p, rules.filter((r) => r.selectors.some((sel) => sel.pseudoElement !== null && (sel.pseudoElement.kind === 'static-empty') === (p === 'backdrop') && sel.pseudoElement.name === p))] as const));
   const markerRules = rulesOf.get('marker') as readonly Rule[];
   const scrollbarRules = hasScrollbarRules(rules);
   // CQ: a @container rule takes part only where environment.container says its query container matches. Its query is decided only
@@ -316,7 +316,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
   // parent, the host.
   // FORM-a A4: part is set for a part of a range input's UA shadow tree, which likewise cascades its pseudo-element's rules on
   // the input's chain (chain ends with the input); it has no chain of its own.
-  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | 'marker' | null = null, part: RangeShadowPart | null = null): ResolvedElement => {
+  const visit = (el: LinkedElement, chain: LinkedElement[], parent: ResolvedElement | null, pseudo: GeneratedPseudo | 'marker' | 'backdrop' | null = null, part: RangeShadowPart | null = null): ResolvedElement => {
     const here = pseudo === null && part === null ? [...chain, el] : chain;
     const partName = part === null ? null : PART_PSEUDO[part];
     const selects = (r: Rule): boolean => r.selectors.some((sel) => (pseudo !== null ? pseudoSelectorMatches(r, sel, here, pseudo, faults, interaction) : part !== null ? partName !== null && partSelectorMatches(r, sel, here, partName, faults, interaction) : selectorMatches(r, sel, here, here.length - 1, 0, faults, interaction)));
@@ -443,11 +443,11 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     computeInheritedMathLengths(props, ownFontSize, rootFontSize ?? ownFontSize);
     computeJustifyItems(props, parent === null ? null : parent.props);
     if (pseudo === null) computeLists(props, faults);
-    else if (pseudo !== 'marker') computePseudoContent(props, faults);
+    else if (pseudo !== 'marker' && pseudo !== 'backdrop') computePseudoContent(props, faults);
     // R3: a generated box's one text child (none for an empty string); the element is built once its content is computed.
-    const content = pseudo === null || pseudo === 'marker' ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
+    const content = pseudo === null || pseudo === 'marker' || pseudo === 'backdrop' ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
     const host = pseudo === null ? null : (chain[chain.length - 1] as LinkedElement);
-    const own = pseudo === null || pseudo === 'marker' || host === null || content === null || content === '' ? el : generatedElement(host, pseudo, [generatedTextNode(host, pseudo, content, props.get('content') as ResolvedValue)]);
+    const own = pseudo === null || pseudo === 'marker' || pseudo === 'backdrop' || host === null || content === null || content === '' ? el : generatedElement(host, pseudo, [generatedTextNode(host, pseudo, content, props.get('content') as ResolvedValue)]);
     const self: { kind: 'element'; element: LinkedElement; props: Map<Longhand, ResolvedValue>; children: (ResolvedElement | ResolvedText)[] } = {
       kind: 'element',
       element: own,
@@ -484,6 +484,9 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
         else kids.push(box);
       }
     }
+    // css-position-4 §3.2: a <dialog> shown modal (the host presents the top layer: project.ts refuses <dialog> otherwise) has a
+    // ::backdrop box, which inherits from it; it is the dialog's last child here and lowerTree moves both into the top layer.
+    if (pseudo === null && part === null && el.tag === 'dialog') kids.push(visit(generatedElement(el, 'backdrop', []), here, self, 'backdrop'));
     if (pseudo === null) {
       // FORM-a A4: input[type=range] holds Chrome's UA shadow tree, container > track > thumb, each a div (forms/ua-shadow.generated.ts).
       const host = part === null ? (el.tag === 'input' && isRangeType(el.attributes.get('type')) ? el : null) : (rangeParts.get(parent as ResolvedElement) as RangePartInfo).host;
@@ -582,8 +585,38 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     return self;
   };
   const resolved = visit(root, [], null);
+  liftTopLayer(resolved);
   resolvedEnvironments.set(resolved, environment);
   return resolved;
+}
+
+/**
+ * css-position-4 §3: a <dialog> shown modal leaves its place for the top layer, which is laid out against the initial containing
+ * block and painted after the root's contents: each dialog becomes one of the root's last children, after its ::backdrop box, in
+ * document order (the order a page opening them top to bottom gives). Their values were computed in place, inheriting from their
+ * DOM parents, as Chrome computes them.
+ */
+function liftTopLayer(root: ResolvedElement): void {
+  const lifted: ResolvedElement[] = [];
+  const walk = (el: ResolvedElement): void => {
+    const kids = el.children as (ResolvedElement | ResolvedText)[];
+    for (let i = 0; i < kids.length; i++) {
+      const k = kids[i] as ResolvedElement | ResolvedText;
+      if (k.kind !== 'element') continue;
+      if (k.element.tag === 'dialog') {
+        kids.splice(i, 1);
+        i--;
+        const own = k.children as (ResolvedElement | ResolvedText)[];
+        const at = own.findIndex((c) => c.kind === 'element' && c.element.tag === BACKDROP_TAG);
+        if (at < 0) throw new Error(`${k.element.address}: a dialog without its ::backdrop box`);
+        const backdrop = own.splice(at, 1)[0] as ResolvedElement;
+        lifted.push(backdrop, k);
+      }
+      walk(k);
+    }
+  };
+  walk(root);
+  (root.children as (ResolvedElement | ResolvedText)[]).push(...lifted);
 }
 
 const resolvedEnvironments = new WeakMap<ResolvedElement, ResolveEnvironment>();

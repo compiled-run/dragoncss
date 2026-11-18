@@ -214,11 +214,26 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
 
   // Width: specified, stretched between two insets, or shrink-to-fit (min(max(min-content, available), max-content)); then min/max.
   const margins = add(inlineAxis.marginStart.value, inlineAxis.marginEnd.value);
-  const specified = resolveInlineLengthWith(lengthWidth(box.id, s.width), cb.width, ctx.faults);
+  const sizeKeyword = (k: string): boolean => k === 'min-content' || k === 'max-content' || k === 'fit-content' || k === 'stretch';
+  if (hasAspectRatio(s) && (sizeKeyword(s.width.kind) || sizeKeyword(s.height.kind))) unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `an intrinsic size keyword with an aspect-ratio on absolutely positioned ${box.id}`);
+  if (s.height.kind === 'stretch') unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §3.1', `height: stretch on absolutely positioned ${box.id}`);
+  const specified = sizeKeyword(s.width.kind) ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cb.width, ctx.faults);
   let width: LU;
   const bothBlockInsets = blockAxis.insetStart !== null && blockAxis.insetEnd !== null;
+  // css-sizing-3 §3.2 and css-sizing-4 §3.1 (Blink ResolveInlineLengthInternal): min-content and max-content are the content sizes
+  // plus border and padding, fit-content min(max-content, max(min-content, the inset-modified containing block less the margins)),
+  // stretch that space.
+  if (sizeKeyword(s.width.kind)) {
+    const available = sub(axisAvailable(inlineAxis), margins);
+    if (s.width.kind === 'stretch') width = available;
+    else {
+      const minContent = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
+      const maxContent = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
+      width = s.width.kind === 'min-content' ? minContent : s.width.kind === 'max-content' ? maxContent : min(maxContent, max(minContent, available));
+    }
+  }
   // css-sizing-4 §5.1 (ratio.ts): an auto width may come through the ratio from a height or a stretched block size.
-  if (specified === null && hasAspectRatio(s)) width = ratioAbsoluteInlineSize(ctx, box, cb.width, inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null ? sub(axisAvailable(inlineAxis), margins) : null, sub(axisAvailable(inlineAxis), margins), bothBlockInsets ? sub(axisAvailable(blockAxis), add(mt.value, mb.value)) : null);
+  else if (specified === null && hasAspectRatio(s)) width = ratioAbsoluteInlineSize(ctx, box, cb.width, inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null ? sub(axisAvailable(inlineAxis), margins) : null, sub(axisAvailable(inlineAxis), margins), bothBlockInsets ? sub(axisAvailable(blockAxis), add(mt.value, mb.value)) : null);
   else if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   else if (inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null) width = sub(axisAvailable(inlineAxis), margins);
   else {
@@ -229,12 +244,15 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   width = max(constrain(width, inlineMinMaxOf(box.id, s, cb.width, hbp, ctx.faults)), hbp);
 
   // Height: auto with both insets set stretches; otherwise the contents decide (layoutContents applies height and min/max).
+  // css-sizing-3 §3.2: min-content, max-content and fit-content are the content's block size, which the contents decide as auto does.
   const heightBasis: HeightBasis = { kind: 'definite', value: cb.height };
   let forced: LU | null = null;
   if (s.height.kind === 'auto' && bothBlockInsets && !ratioSetsAbsoluteHeight(box)) {
     forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMaxWith(box, heightBasis, vbp, ctx.faults, NO_STRETCH)), vbp);
   }
-  const r = layoutContents(ctx, box, {
+  const contentHeight = s.height.kind === 'min-content' || s.height.kind === 'max-content' || s.height.kind === 'fit-content';
+  const sized: LayoutBox = contentHeight ? { ...box, style: { ...s, height: { kind: 'auto' } } } : box;
+  const r = layoutContents(ctx, sized, {
     cbInline: cb.width,
     borderBoxWidth: width,
     forcedBorderBoxHeight: forced,

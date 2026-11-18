@@ -213,11 +213,11 @@ fun harness_expect(c: Cursor, cp: Double): Unit {
 fun harness_word(c: Cursor, cps: JsArray<Double>): Unit {
   // ts: packages/translate/harness/harness.ts:217
   run {
-    val _a374 = cps
-    var _i374 = 0
-    while (_i374 < _a374.size) {
-      val cp: Double = _a374[_i374]
-      _i374++
+    val _a375 = cps
+    var _i375 = 0
+    while (_i375 < _a375.size) {
+      val cp: Double = _a375[_i375]
+      _i375++
       harness_expect(c, cp)
     }
   }
@@ -479,11 +479,11 @@ fun harness_parseJson(text: String): U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj
   val cps: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/translate/harness/harness.ts:371
   run {
-    val _a375 = jsCodePoints(text)
-    var _i375 = 0
-    while (_i375 < _a375.size) {
-      val ch: String = _a375[_i375]
-      _i375++
+    val _a376 = jsCodePoints(text)
+    var _i376 = 0
+    while (_i376 < _a376.size) {
+      val ch: String = _a376[_i376]
+      _i376++
       jsPush(cps, jsUnwrap(jsCodePointAt0(ch)))
     }
   }
@@ -509,11 +509,11 @@ fun harness_obj(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, keys: Js
   }
   // ts: packages/translate/harness/harness.ts:384
   run {
-    val _a376 = keys
-    var _i376 = 0
-    while (_i376 < _a376.size) {
-      val k: String = _a376[_i376]
-      _i376++
+    val _a377 = keys
+    var _i377 = 0
+    while (_i377 < _a377.size) {
+      val k: String = _a377[_i377]
+      _i377++
       // ts: packages/translate/harness/harness.ts:384
       if ((!(v as JsonObj).values.has(k))) {
         harness_fail((path + ": missing key " + k))
@@ -841,10 +841,10 @@ fun harness_pxOrNone(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, pat
 }
 
 // ts: packages/translate/harness/harness.ts:583
-fun harness_blockSizeValue(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, path: String): U_Auto_LengthCalc_Percent_Px_Stretch {
+fun harness_blockSizeValue(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, path: String): U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch {
   // ts: packages/translate/harness/harness.ts:584
   if (!jsStrEq(harness_kindOf(v, path), "stretch")) {
-    return (harness_sizeValue(v, path) as U_Auto_LengthCalc_Percent_Px_Stretch)
+    return (harness_sizeValue(v, path) as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch)
   }
   harness_obj(v, jsArrayOf<String>("kind"), path)
   return Stretch("stretch")
@@ -1329,7 +1329,7 @@ fun harness_decodeStyle(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, 
   fun p(k: String): String {
     return (path + "." + k)
   }
-  return LayoutStyle(harness_lit(f("display"), jsArrayOf<String>("block", "flex", "grid", "inline", "inline-block", "inline-flex", "inline-grid"), p("display")), harness_lit(f("position"), jsArrayOf<String>("static", "relative", "absolute"), p("position")), harness_lit(f("float"), jsArrayOf<String>("none", "left", "right"), p("float")), harness_sizeValue(f("top"), p("top")), harness_sizeValue(f("right"), p("right")), harness_sizeValue(f("bottom"), p("bottom")), harness_sizeValue(f("left"), p("left")), harness_lit(f("overflowX"), jsArrayOf<String>("visible", "hidden", "clip", "auto", "scroll"), p("overflowX")), harness_lit(f("overflowY"), jsArrayOf<String>("visible", "hidden", "clip", "auto", "scroll"), p("overflowY")), harness_lit(f("direction"), jsArrayOf<String>("ltr", "rtl"), p("direction")), harness_lit(f("boxSizing"), jsArrayOf<String>("content-box", "border-box"), p("boxSizing")), harness_inlineSizeValue(f("width"), p("width")), harness_blockSizeValue(f("height"), p("height")), harness_inlineSizeValue(f("minWidth"), p("minWidth")), harness_blockSizeValue(f("minHeight"), p("minHeight")), harness_maxInlineSizeValue(f("maxWidth"), p("maxWidth")), harness_maxBlockSizeValue(f("maxHeight"), p("maxHeight")), harness_sizeValue(f("marginTop"), p("marginTop")), harness_sizeValue(f("marginRight"), p("marginRight")), harness_sizeValue(f("marginBottom"), p("marginBottom")), harness_sizeValue(f("marginLeft"), p("marginLeft")), harness_paddingValue(f("paddingTop"), p("paddingTop")), harness_paddingValue(f("paddingRight"), p("paddingRight")), harness_paddingValue(f("paddingBottom"), p("paddingBottom")), harness_paddingValue(f("paddingLeft"), p("paddingLeft")), harness_borderValue(f("borderTopWidth"), p("borderTopWidth")), harness_borderValue(f("borderRightWidth"), p("borderRightWidth")), harness_borderValue(f("borderBottomWidth"), p("borderBottomWidth")), harness_borderValue(f("borderLeftWidth"), p("borderLeftWidth")), harness_lit(f("flexDirection"), jsArrayOf<String>("row", "row-reverse", "column", "column-reverse"), p("flexDirection")), harness_lit(f("flexWrap"), jsArrayOf<String>("nowrap", "wrap", "wrap-reverse"), p("flexWrap")), harness_num(f("flexGrow"), p("flexGrow")), harness_num(f("flexShrink"), p("flexShrink")), harness_flexBasisValue(f("flexBasis"), p("flexBasis")), harness_num(f("order"), p("order")), harness_lit(f("justifyContent"), jsArrayOf<String>("normal", "flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly", "stretch", "start", "end", "left", "right"), p("justifyContent")), harness_lit(f("alignItems"), harness_ALIGN_ITEMS, p("alignItems")), (if (jsStrEq(harness_str(f("alignSelf"), p("alignSelf")), "auto")) "auto" else harness_lit(f("alignSelf"), harness_ALIGN_ITEMS, p("alignSelf"))), harness_lit(f("alignContent"), jsArrayOf<String>("normal", "stretch", "flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly", "baseline", "start", "end"), p("alignContent")), harness_gapValue(f("rowGap"), p("rowGap")), harness_gapValue(f("columnGap"), p("columnGap")), harness_lit(f("textAlign"), jsArrayOf<String>("start", "end", "left", "right", "center", "justify"), p("textAlign")), harness_aspectRatioValue(f("aspectRatio"), p("aspectRatio")), harness_verticalAlignValue(f("verticalAlign"), p("verticalAlign")), harness_lit(f("textOverflow"), jsArrayOf<String>("clip", "ellipsis"), p("textOverflow")), harness_paddingValue(f("textIndent"), p("textIndent")), harness_num(f("lineClamp"), p("lineClamp")), harness_bool(f("containLayout"), p("containLayout")), harness_bool(f("containPaint"), p("containPaint")), harness_lit(f("containSize"), jsArrayOf<String>("none", "inline-size", "size"), p("containSize")), harness_pxOrNone(f("containIntrinsicWidth"), p("containIntrinsicWidth")), harness_pxOrNone(f("containIntrinsicHeight"), p("containIntrinsicHeight")), harness_textWrapStyleValue(f("textWrapStyle"), p("textWrapStyle")), harness_decodeMulticol(f("multicol"), p("multicol")), harness_decodeTextBoxTrim(f("textBoxTrim"), p("textBoxTrim")), harness_decodeGrid(f("grid"), p("grid")), harness_decodeGridItem(f("gridItem"), p("gridItem")), harness_numbers(f("zoom"), p("zoom")))
+  return LayoutStyle(harness_lit(f("display"), jsArrayOf<String>("block", "flex", "grid", "inline", "inline-block", "inline-flex", "inline-grid"), p("display")), harness_lit(f("position"), jsArrayOf<String>("static", "relative", "absolute"), p("position")), harness_lit(f("float"), jsArrayOf<String>("none", "left", "right"), p("float")), harness_sizeValue(f("top"), p("top")), harness_sizeValue(f("right"), p("right")), harness_sizeValue(f("bottom"), p("bottom")), harness_sizeValue(f("left"), p("left")), harness_lit(f("overflowX"), jsArrayOf<String>("visible", "hidden", "clip", "auto", "scroll"), p("overflowX")), harness_lit(f("overflowY"), jsArrayOf<String>("visible", "hidden", "clip", "auto", "scroll"), p("overflowY")), harness_lit(f("direction"), jsArrayOf<String>("ltr", "rtl"), p("direction")), harness_lit(f("boxSizing"), jsArrayOf<String>("content-box", "border-box"), p("boxSizing")), harness_inlineSizeValue(f("width"), p("width")), harness_blockSizeValue(f("height"), p("height")), harness_inlineSizeValue(f("minWidth"), p("minWidth")), (harness_blockSizeValue(f("minHeight"), p("minHeight")) as U_Auto_LengthCalc_Percent_Px_Stretch), harness_maxInlineSizeValue(f("maxWidth"), p("maxWidth")), harness_maxBlockSizeValue(f("maxHeight"), p("maxHeight")), harness_sizeValue(f("marginTop"), p("marginTop")), harness_sizeValue(f("marginRight"), p("marginRight")), harness_sizeValue(f("marginBottom"), p("marginBottom")), harness_sizeValue(f("marginLeft"), p("marginLeft")), harness_paddingValue(f("paddingTop"), p("paddingTop")), harness_paddingValue(f("paddingRight"), p("paddingRight")), harness_paddingValue(f("paddingBottom"), p("paddingBottom")), harness_paddingValue(f("paddingLeft"), p("paddingLeft")), harness_borderValue(f("borderTopWidth"), p("borderTopWidth")), harness_borderValue(f("borderRightWidth"), p("borderRightWidth")), harness_borderValue(f("borderBottomWidth"), p("borderBottomWidth")), harness_borderValue(f("borderLeftWidth"), p("borderLeftWidth")), harness_lit(f("flexDirection"), jsArrayOf<String>("row", "row-reverse", "column", "column-reverse"), p("flexDirection")), harness_lit(f("flexWrap"), jsArrayOf<String>("nowrap", "wrap", "wrap-reverse"), p("flexWrap")), harness_num(f("flexGrow"), p("flexGrow")), harness_num(f("flexShrink"), p("flexShrink")), harness_flexBasisValue(f("flexBasis"), p("flexBasis")), harness_num(f("order"), p("order")), harness_lit(f("justifyContent"), jsArrayOf<String>("normal", "flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly", "stretch", "start", "end", "left", "right"), p("justifyContent")), harness_lit(f("alignItems"), harness_ALIGN_ITEMS, p("alignItems")), (if (jsStrEq(harness_str(f("alignSelf"), p("alignSelf")), "auto")) "auto" else harness_lit(f("alignSelf"), harness_ALIGN_ITEMS, p("alignSelf"))), harness_lit(f("alignContent"), jsArrayOf<String>("normal", "stretch", "flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly", "baseline", "start", "end"), p("alignContent")), harness_gapValue(f("rowGap"), p("rowGap")), harness_gapValue(f("columnGap"), p("columnGap")), harness_lit(f("textAlign"), jsArrayOf<String>("start", "end", "left", "right", "center", "justify"), p("textAlign")), harness_aspectRatioValue(f("aspectRatio"), p("aspectRatio")), harness_verticalAlignValue(f("verticalAlign"), p("verticalAlign")), harness_lit(f("textOverflow"), jsArrayOf<String>("clip", "ellipsis"), p("textOverflow")), harness_paddingValue(f("textIndent"), p("textIndent")), harness_num(f("lineClamp"), p("lineClamp")), harness_bool(f("containLayout"), p("containLayout")), harness_bool(f("containPaint"), p("containPaint")), harness_lit(f("containSize"), jsArrayOf<String>("none", "inline-size", "size"), p("containSize")), harness_pxOrNone(f("containIntrinsicWidth"), p("containIntrinsicWidth")), harness_pxOrNone(f("containIntrinsicHeight"), p("containIntrinsicHeight")), harness_textWrapStyleValue(f("textWrapStyle"), p("textWrapStyle")), harness_decodeMulticol(f("multicol"), p("multicol")), harness_decodeTextBoxTrim(f("textBoxTrim"), p("textBoxTrim")), harness_decodeGrid(f("grid"), p("grid")), harness_decodeGridItem(f("gridItem"), p("gridItem")), harness_numbers(f("zoom"), p("zoom")))
 }
 
 // ts: packages/translate/harness/harness.ts:953
@@ -1531,11 +1531,11 @@ fun harness_q(s: String): String {
   var out: String = "\""
   // ts: packages/translate/harness/harness.ts:1259
   run {
-    val _a377 = jsCodePoints(s)
-    var _i377 = 0
-    while (_i377 < _a377.size) {
-      val ch: String = _a377[_i377]
-      _i377++
+    val _a378 = jsCodePoints(s)
+    var _i378 = 0
+    while (_i378 < _a378.size) {
+      val ch: String = _a378[_i378]
+      _i378++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/translate/harness/harness.ts:1261
       if (jsStrEq(ch, "\"")) {
@@ -1642,11 +1642,11 @@ fun harness_replayShaper(calls: JsArray<ReplayCall>): GlyphShaper {
   return GlyphShaper(fun(face: String, size: Double, text: String, start: Double, end: Double, script: String, rtl: Boolean, language: String, features: JsArray<Double>): JsArray<Double> {
     // ts: packages/translate/harness/harness.ts:1359
     run {
-      val _a378 = calls
-      var _i378 = 0
-      while (_i378 < _a378.size) {
-        val c: ReplayCall = _a378[_i378]
-        _i378++
+      val _a379 = calls
+      var _i379 = 0
+      while (_i379 < _a379.size) {
+        val c: ReplayCall = _a379[_i379]
+        _i379++
         // ts: packages/translate/harness/harness.ts:1360
         if (((((((((jsStrEq(c.face, face) && (c.size == size)) && jsStrEq(c.text, text)) && (c.start == start)) && (c.end == end)) && jsStrEq(c.script, script)) && (c.rtl == rtl)) && jsStrEq(c.language, language)) && harness_sameNumbers(c.features, features))) {
           return c.glyphs
@@ -2394,11 +2394,11 @@ fun harness_commaList(parts: JsArray<String>): String {
   var out: String = ""
   // ts: packages/translate/harness/harness.ts:1811
   run {
-    val _a379 = parts
-    var _i379 = 0
-    while (_i379 < _a379.size) {
-      val x: String = _a379[_i379]
-      _i379++
+    val _a380 = parts
+    var _i380 = 0
+    while (_i380 < _a380.size) {
+      val x: String = _a380[_i380]
+      _i380++
       out = (if (jsStrEq(out, "")) x else (out + "," + x))
     }
   }
@@ -2472,11 +2472,11 @@ fun harness_tableTrig(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, pa
   fun find(r: Double): TrigEntry {
     // ts: packages/translate/harness/harness.ts:1860
     run {
-      val _a380 = table
-      var _i380 = 0
-      while (_i380 < _a380.size) {
-        val e: TrigEntry = _a380[_i380]
-        _i380++
+      val _a381 = table
+      var _i381 = 0
+      while (_i381 < _a381.size) {
+        val e: TrigEntry = _a381[_i381]
+        _i381++
         // ts: packages/translate/harness/harness.ts:1860
         if ((e.radians == r)) {
           return e
@@ -2772,13 +2772,13 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:2113
       run {
-        val _a381 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
+        val _a382 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
     return (x.key - y.key)
 })
-        var _i381 = 0
-        while (_i381 < _a381.size) {
-          val it: SortItem = _a381[_i381]
-          _i381++
+        var _i382 = 0
+        while (_i382 < _a382.size) {
+          val it: SortItem = _a382[_i382]
+          _i382++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_q(it.tag))
         }
       }
@@ -2810,11 +2810,11 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:2131
       run {
-        val _a382 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
-        var _i382 = 0
-        while (_i382 < _a382.size) {
-          val ch: String = _a382[_i382]
-          _i382++
+        val _a383 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
+        var _i383 = 0
+        while (_i383 < _a383.size) {
+          val ch: String = _a383[_i383]
+          _i383++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_h(jsUnwrap(jsCodePointAt0(ch))))
         }
       }
@@ -3722,22 +3722,22 @@ fun harness_rtAnimatorResult(a: JsArray<U_JsonArr_JsonBool_JsonNull_JsonNum_Json
       var values: String = ""
       // ts: packages/translate/harness/harness.ts:2821
       run {
-        val _a383 = frame
-        var _i383 = 0
-        while (_i383 < _a383.size) {
-          val e: FrameEntry = _a383[_i383]
-          _i383++
+        val _a384 = frame
+        var _i384 = 0
+        while (_i384 < _a384.size) {
+          val e: FrameEntry = _a384[_i384]
+          _i384++
           values += ((if (jsStrEq(values, "")) "" else ",") + "[" + harness_q(e.node) + "," + harness_q(e.property) + "," + harness_q(rtInterpolate_serializeValue(e.value, 0.0, 0.0, harness_RT_TRIG)) + "]")
         }
       }
       var colors: String = ""
       // ts: packages/translate/harness/harness.ts:2823
       run {
-        val _a384 = rtAnimator_frameColors(frame, t, harness_AN_NO_FAULTS)
-        var _i384 = 0
-        while (_i384 < _a384.size) {
-          val c: ColorWrite = _a384[_i384]
-          _i384++
+        val _a385 = rtAnimator_frameColors(frame, t, harness_AN_NO_FAULTS)
+        var _i385 = 0
+        while (_i385 < _a385.size) {
+          val c: ColorWrite = _a385[_i385]
+          _i385++
           colors += ((if (jsStrEq(colors, "")) "" else ",") + "[" + harness_q(c.node) + "," + harness_q(c.property) + "," + harness_h(c.rgba.r) + "," + harness_h(c.rgba.g) + "," + harness_h(c.rgba.b) + "," + harness_h(c.rgba.alpha) + "]")
         }
       }
@@ -3748,19 +3748,19 @@ fun harness_rtAnimatorResult(a: JsArray<U_JsonArr_JsonBool_JsonNull_JsonNum_Json
       var transforms: String = ""
       // ts: packages/translate/harness/harness.ts:2827
       run {
-        val _a385 = rtAnimator_frameTransforms(s, t, frame)
-        var _i385 = 0
-        while (_i385 < _a385.size) {
-          val w: TransformWrite = _a385[_i385]
-          _i385++
+        val _a386 = rtAnimator_frameTransforms(s, t, frame)
+        var _i386 = 0
+        while (_i386 < _a386.size) {
+          val w: TransformWrite = _a386[_i386]
+          _i386++
           var ops: String = ""
           // ts: packages/translate/harness/harness.ts:2829
           run {
-            val _a386 = w.ops
-            var _i386 = 0
-            while (_i386 < _a386.size) {
-              val o: TransformOp = _a386[_i386]
-              _i386++
+            val _a387 = w.ops
+            var _i387 = 0
+            while (_i387 < _a387.size) {
+              val o: TransformOp = _a387[_i387]
+              _i387++
               ops += ((if (jsStrEq(ops, "")) "" else ",") + "[" + harness_q(o.fn) + "," + len(o.x) + "," + len(o.y) + "," + harness_h(o.angle) + "," + harness_h(o.sx) + "," + harness_h(o.sy) + "]")
             }
           }
@@ -3832,11 +3832,11 @@ fun harness_iaElements(xs: JsArray<Double>): String {
   var out: String = ""
   // ts: packages/translate/harness/harness.ts:2902
   run {
-    val _a387 = xs
-    var _i387 = 0
-    while (_i387 < _a387.size) {
-      val x: Double = _a387[_i387]
-      _i387++
+    val _a388 = xs
+    var _i388 = 0
+    while (_i388 < _a388.size) {
+      val x: Double = _a388[_i388]
+      _i388++
       out += ((if (jsStrEq(out, "")) "" else ",") + harness_h(x))
     }
   }

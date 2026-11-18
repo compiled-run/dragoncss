@@ -92,6 +92,8 @@ export function attributeRefusal(tag: string, name: string): string | null {
   if (tag === 'a' && name === 'href') return null;
   // HIDDEN: its UA rule, display: none, is applied in analysis/resolve.ts (applyHidden); until-found is refused by value.
   if (name === 'hidden') return null;
+  // A <dialog> compiles only when the host presents the top layer, which lays every dialog out as shown modal, so open set.
+  if (tag === 'dialog' && name === 'open') return null;
   if (neutralAttribute(tag, name) !== undefined) return null;
   if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
   // SVG-a1: the SVG tags' geometry and presentation attributes (analysis/elements/svg.ts), and the packages of the others.

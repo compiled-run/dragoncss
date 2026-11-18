@@ -75,7 +75,8 @@ const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
 const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {}, stretch: {} } as const;
-const blockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, stretch: {} });
+const minBlockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, stretch: {} });
+const blockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxBlockSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, stretch: {} });
 const inlineSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxInlineSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, ...intrinsic });
@@ -171,7 +172,7 @@ export const styleSchema = obj({
   width: inlineSize,
   height: blockSize,
   minWidth: inlineSize,
-  minHeight: blockSize,
+  minHeight: minBlockSize,
   maxWidth: maxInlineSize,
   maxHeight: maxBlockSize,
   marginTop: margin,

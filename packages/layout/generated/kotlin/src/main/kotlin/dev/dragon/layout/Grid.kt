@@ -3081,7 +3081,7 @@ fun grid_contributionFor(ctx: Ctx, grid: GridState, c: GridCollection, type: Str
   } else {
     val props: GridProps = grid_itemProps(item, c.axis)
     val special: Boolean = ((!props.autoMin) || (props.flexible && (grid_itemSpanSize(item, c.axis) > 1.0)))
-    val main: U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch = (if (columns) s.width else (s.height as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch))
+    val main: U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch = (if (columns) s.width else s.height)
     val minLength: U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch = (if (columns) s.minWidth else (s.minHeight as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch))
     val measured: GridMeasure = grid_contentContribution(ctx, grid, item, columns, "min")
     val minContent: Double = measured.size

@@ -18,6 +18,7 @@ import type {
   AnchorOption,
   BlockSizeValue,
   MaxBlockSizeValue,
+  MinBlockSizeValue,
   BorderWidthValue,
   CalcExpr,
   ControlBox,
@@ -338,7 +339,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     width: resolveInlineSize(s.width, env),
     height: resolveBlockSize(s.height, env),
     minWidth: resolveInlineSize(s.minWidth, env),
-    minHeight: resolveBlockSize(s.minHeight, env),
+    minHeight: resolveMinBlock(s.minHeight, env),
     maxWidth: resolveMaxInline(s.maxWidth, env),
     maxHeight: resolveMaxBlock(s.maxHeight, env),
     marginTop: envMargin(s.marginTop, env),
@@ -509,6 +510,12 @@ function resolveMax(v: MaxSizeValue, env: Env): MaxSizeValue {
 
 /** An inline size: lengths as resolveSize; the intrinsic size keywords are resolved in layout. */
 function resolveBlockSize(v: BlockSizeValue, env: Env): BlockSizeValue {
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
+  if (v.kind === 'calc') return resolveLengthCalc(v, env);
+  return v;
+}
+
+function resolveMinBlock(v: MinBlockSizeValue, env: Env): MinBlockSizeValue {
   if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;

@@ -12,6 +12,7 @@
     "grammar:gen": "node scripts/gen-css-grammar.ts",
     "libm:capture": "node scripts/capture-libm.ts",
     "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
+    "ua:capture-top-layer": "node --conditions=dragon-internal scripts/capture-top-layer-ua.ts",
     "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",
     "parity:report": "node --conditions=dragon-internal packages/parity/src/cli/report.ts",
     "layout:vectors": "node --conditions=dragon-internal packages/parity/src/cli/vectors.ts",

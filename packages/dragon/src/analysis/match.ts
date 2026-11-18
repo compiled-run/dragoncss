@@ -256,8 +256,10 @@ export function selectorMatches(rule: Rule, sel: Selector, chain: readonly Linke
 }
 
 /** GEN-a (notes/T151-gen-spec.md R6): whether sel styles the ::before, ::after or ::marker box of the host chain[chain.length - 1]. */
-export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo | 'marker', faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
-  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.kind === 'static-empty' || sel.pseudoElement.name !== pseudo) return false;
+export function pseudoSelectorMatches(rule: Rule, sel: Selector, chain: readonly LinkedElement[], pseudo: GeneratedPseudo | 'marker' | 'backdrop', faults: CompilerFaults, ix: InteractionState = NO_INTERACTION): boolean {
+  if (chain.length === 0 || sel.pseudoElement === null || sel.pseudoElement.name !== pseudo) return false;
+  // ::backdrop parses as a statically empty pseudo-element; it styles a box only on a <dialog> whose host presents the top layer.
+  if ((sel.pseudoElement.kind === 'static-empty') !== (pseudo === 'backdrop')) return false;
   if (sel.dropped && !faults.invalidSelectorListKept) return false;
   return matchFrom(rule, sel, chain, 0, faults, ix, () => true);
 }

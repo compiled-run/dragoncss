@@ -97,8 +97,11 @@ export type Stretch = { readonly kind: 'stretch' };
 export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
 export type InlineSizeValue = SizeValue | SizeKeyword;
 export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
-/** css-sizing-4 §3.1: height, min-height and max-height also take stretch, read only on a block-level box in block flow. */
-export type BlockSizeValue = SizeValue | Stretch;
+/**
+ * css-sizing-4 §3.1: height, min-height and max-height also take stretch, read only on a block-level box in block flow; height also
+ * takes min-content, max-content and fit-content, read only on an absolutely positioned box (css-sizing-3 §3.2: the content's block size).
+ */
+export type BlockSizeValue = SizeValue | Stretch | MinContent | MaxContent | FitContent;
 export type MinBlockSizeValue = MinSizeValue | Stretch;
 export type MaxBlockSizeValue = MaxSizeValue | Stretch;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
