@@ -353,7 +353,7 @@ public func environment_resolveSpacing(_ property: JsString, _ e: any U_CalcClam
   }
   // ts: packages/layout/src/environment.ts:325
   if try calc_calcHasPercent(((e as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength) as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength)) {
-    try unsupported_unsupported(property, env.node, ((property == S.s_letter_spacing) ? S.s688 : S.s687), jsConcat(S.s539, property, S.s145, env.node, S.s9))
+    try unsupported_unsupported(property, env.node, ((property == S.s_letter_spacing) ? S.s689 : S.s688), jsConcat(S.s540, property, S.s146, env.node, S.s9))
   }
   return try Px(S.s_px, units_cssLengthFixed(environment_lengthDouble(LengthCalc(S.s_calc, ((e as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_RootFontLength_ViewportLength) as! any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength), S.s_all), env)))
 }
@@ -727,7 +727,7 @@ public func environment_fontLengths(_ font: FontSpec, _ env: Env) throws -> Font
 public func environment_refuseUnknownFace(_ m: TextMeasurer, _ font: FontSpec, _ env: Env) throws -> Void {
   // ts: packages/layout/src/environment.ts:579
   if try (!m.hasFace(font.family)) {
-    try unsupported_unsupported(S.s_text_glyph, env.node, S.s664, jsConcat(env.node, S.s136, font.family, S.s211))
+    try unsupported_unsupported(S.s_text_glyph, env.node, S.s665, jsConcat(env.node, S.s137, font.family, S.s212))
   }
 }
 
@@ -862,7 +862,7 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
   case S.s_env:
     return try units_zoomCssPx(((e as! EnvLength).value * environment_safeAreaInset((e as! EnvLength).side, env)), z)
   case S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s525, (e as! any U_FontCalc_FontPercent).kind, S.s138))
+    throw JsError(message: jsConcat(S.s526, (e as! any U_FontCalc_FontPercent).kind, S.s139))
   default:
     return nil
   }

@@ -32,6 +32,12 @@ export type NativeStylesConfig = {
    * states), to produce the output a device proof runs; its readiness is never 'ready'.
    */
   readonly support?: 'enforced' | 'lanes';
+  /**
+   * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
+   * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
+   * block the target.
+   */
+  readonly output?: 'program-and-sources' | 'program';
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -40,7 +46,7 @@ export type NativeStyleOutput = {
   readonly backend: NativeBackend;
   /** Every reachable state assignment's styles: the initial one in full, each other one as a delta, plus the setter transitions. */
   readonly program: StateProgram;
-  /** The generated source: the state machine and a typed setter per state (UIKit Swift, or Android Views Kotlin). */
+  /** The generated source: the state machine and a typed setter per state (UIKit Swift, or Android Views Kotlin); empty for output 'program'. */
   readonly files: readonly GeneratedFile[];
   /** Whether the target's committed device lanes all pass: only 'ready' is a shipping output (docs/api.md §2.2). */
   readonly readiness: ArtifactState;
@@ -83,13 +89,15 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
       ? { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', nativeLanes: NATIVE_LANES }
       : { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true },
   );
+  const output = config.output ?? 'program-and-sources';
+  if (output !== 'program-and-sources' && output !== 'program') throw new Error(`compileNativeStyles: output ${JSON.stringify(output)} is neither 'program-and-sources' nor 'program'`);
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
   const out: { [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked } = {};
-  for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport);
+  for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport, output === 'program-and-sources');
   return { ok: targets.every((t) => out[t]?.kind === 'emitted'), digest: compiled.digest, diagnostics: compiled.diagnostics, targets: out };
 }
 
-function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport']): NativeStyleOutput | NativeStyleBlocked {
+function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean): NativeStyleOutput | NativeStyleBlocked {
   if (compiled.targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} compile has errors; see the diagnostics` };
   const record = internalRecord(compiled);
   if (record === undefined) throw new Error('compileNativeStyles: the compile result carries no internal record');
@@ -106,6 +114,7 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   try {
     const bands = nativeBands(compiled);
     const program = bands === null ? deriveStateProgram(backend, cases) : nativeBandProgram(compiled, backend);
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);

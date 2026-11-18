@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "81bc1ff9ddd71fc56b07a29894c7a0a6cbfea00fc863f92c0f6376126e5d496f",
+ "compiler": "02d704f2b89b0eff2d2bf94170b7ce6de748dcb29f40d2e9bb3a4feec9a120d1",
  "component": "Box",
  "source": "packages/parity/fixtures/ms-box",
  "warnings": [],
@@ -23,6 +23,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -423,6 +429,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",

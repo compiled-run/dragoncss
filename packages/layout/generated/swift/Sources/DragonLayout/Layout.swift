@@ -164,7 +164,7 @@ public func layout_layoutWithInflow(_ given: LayoutInput, _ measurer: TextMeasur
     let offset: RelativeOffset = try position_relativeOffsetWith(root, icbWidth, HeightBasis_definite(S.s_definite, icbHeight), icbDirection, ctx.faults)
     // ts: packages/layout/src/layout.ts:94
     if (root.style.position == S.s_sticky) {
-      try unsupported_unsupported(S.s_sticky, root.id, S.s673, jsConcat(S.s1130, root.id, S.s49))
+      try unsupported_unsupported(S.s_sticky, root.id, S.s674, jsConcat(S.s1131, root.id, S.s50))
     }
     let sticky: JsStringMap<Sticky> = JsStringMap<Sticky>()
     try layout_collectSticky(root, nil, nil, sticky)
@@ -238,23 +238,23 @@ public func layout_collectSticky(_ b: LayoutBox, _ scroller: JsString?, _ within
       var sticky: JsString? = within
       // ts: packages/layout/src/layout.ts:134
       if ((c as! any U_LayoutBox_ReplacedLeaf).style.position == S.s_sticky) {
-        let spec: JsString = S.s673
+        let spec: JsString = S.s674
         // ts: packages/layout/src/layout.ts:136
         if (scroller != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1131, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s76, jsUnwrap(scroller), S.s176))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1132, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s77, jsUnwrap(scroller), S.s177))
         }
         // ts: packages/layout/src/layout.ts:137
         if (within != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1131, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s77, jsUnwrap(within)))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1132, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s78, jsUnwrap(within)))
         }
         // ts: packages/layout/src/layout.ts:138
         if ((((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_block) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_flex)) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_grid)) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1131, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s72, b.id))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1132, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s73, b.id))
         }
         let s: LayoutStyle = b.style
         // ts: packages/layout/src/layout.ts:140
         if try (((box_hasPercent(s.paddingTop) || box_hasPercent(s.paddingRight)) || box_hasPercent(s.paddingBottom)) || box_hasPercent(s.paddingLeft)) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s543, b.id, S.s203, (c as! any U_LayoutBox_ReplacedLeaf).id))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s544, b.id, S.s204, (c as! any U_LayoutBox_ReplacedLeaf).id))
         }
         _ = out.set((c as! any U_LayoutBox_ReplacedLeaf).id, Sticky(((c as! any U_LayoutBox_ReplacedLeaf) as! any U_ControlBox_LayoutBox_ReplacedLeaf), b))
         sticky = (c as! any U_LayoutBox_ReplacedLeaf).id
@@ -278,7 +278,7 @@ public func layout_stickyOffset(_ st: StickyIndex, _ s: Sticky, _ x: Double, _ y
   let r: AbsoluteRect? = out.absolute.get(s.parent.id)
   // ts: packages/layout/src/layout.ts:163
   if (r == nil) {
-    throw JsError(message: jsConcat(S.s646, s.parent.id, S.s144, s.box.id, S.s111))
+    throw JsError(message: jsConcat(S.s647, s.parent.id, S.s145, s.box.id, S.s112))
   }
   let ps: LayoutStyle = s.parent.style
   let bor: Edges = try box_resolveBorder(ps, ctx.devicePixelRatio)
@@ -375,7 +375,7 @@ public func layout_containingBlock(_ ctx: Ctx, _ box: LayoutBox, _ parentOf: JsS
   let r: AbsoluteRect? = try out.absolute.get(jsUnwrap(at).id)
   // ts: packages/layout/src/layout.ts:223
   if (r == nil) {
-    throw try JsError(message: jsConcat(S.s646, jsUnwrap(at).id, S.s142, box.id, S.s111))
+    throw try JsError(message: jsConcat(S.s647, jsUnwrap(at).id, S.s143, box.id, S.s112))
   }
   let bor: Edges = try box_resolveBorder(jsUnwrap(at).style, ctx.devicePixelRatio)
   let s: LayoutStyle = try jsUnwrap(at).style

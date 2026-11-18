@@ -167,7 +167,7 @@ public func rtTransition_transitionValue(_ t: RunningTransition, _ range: JsStri
   }
   // ts: packages/layout/src/rt-transition.ts:96
   if try jsUnwrap(v).refused {
-    throw JsError(message: S.s553)
+    throw JsError(message: S.s554)
   }
   return try jsUnwrap(v).value
 }
@@ -254,7 +254,7 @@ public func rtTransition_stateAt(_ states: JsArray<TransitionState>, _ i: Double
   let s: TransitionState? = (jsIsInteger(i) ? (jsAt(states, i) as TransitionState?) : (nil as TransitionState?))
   // ts: packages/layout/src/rt-transition.ts:175
   if (s == nil) {
-    throw JsError(message: jsConcat(S.s1142, jsNumberToString(i), S.s120, jsNumberToString(jsLength(states)), S.s162))
+    throw JsError(message: jsConcat(S.s1143, jsNumberToString(i), S.s121, jsNumberToString(jsLength(states)), S.s163))
   }
   return try jsUnwrap(s)
 }
