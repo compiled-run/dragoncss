@@ -59,8 +59,9 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     const viewports = o['viewports'];
     if (!isRecord(viewports) || Object.keys(viewports).sort().join() !== Object.keys(EXPORT_DEVICES).sort().join()) fail(`viewports names ${JSON.stringify(viewports)}, not one size per target (${Object.keys(EXPORT_DEVICES).join(', ')})`);
     for (const [t, size] of Object.entries(viewports as Record<string, unknown>)) {
-      const ok = isRecord(size) && Object.keys(size).sort().join() === 'height,width' && [size['width'], size['height']].every((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
-      if (!ok) fail(`viewports.${t} is not a positive { width, height }`);
+      // Whole CSS px, as the page viewports are: Chrome, the reference the export is compared with, lays out no other size.
+      const ok = isRecord(size) && Object.keys(size).sort().join() === 'height,width' && [size['width'], size['height']].every((n) => Number.isInteger(n) && (n as number) > 0);
+      if (!ok) fail(`viewports.${t} is not a { width, height } of positive whole CSS px`);
     }
   }
   if (!Array.isArray(o['nodes'])) fail('nodes is not a list');

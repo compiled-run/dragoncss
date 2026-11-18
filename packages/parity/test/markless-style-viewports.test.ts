@@ -7,7 +7,7 @@ import { repoPath } from '../src/paths.ts';
 
 const PATH = 'examples/markless-styles/input/attributes.native-style-input.json';
 const TEXT = readFileSync(repoPath(PATH), 'utf8');
-const SHEET = { ios: { width: 386, height: 418 }, android: { width: 1080 / 2.625, height: 975 / 2.625 } };
+const SHEET = { ios: { width: 386, height: 418 }, android: { width: 411, height: 371 } };
 const withViewports = (viewports: unknown): string => JSON.stringify({ ...JSON.parse(TEXT), viewports });
 const widest = (exported: ReturnType<typeof marklessStyleExport>['exported'], t: 'ios' | 'android'): number =>
   Math.max(...exported.targets[t]!.assignments[0]!.nodes.map((n) => n.frame?.width ?? 0));
@@ -29,6 +29,7 @@ describe('viewports in a Markless style input', () => {
 
   it('refuses a size for only one target, or one that is not a positive size', () => {
     expect(() => marklessStyleExport(withViewports({ ios: SHEET.ios }), PATH)).toThrow(/one size per target/);
-    expect(() => marklessStyleExport(withViewports({ ...SHEET, android: { width: 0, height: 10 } }), PATH)).toThrow(/viewports.android is not a positive/);
+    expect(() => marklessStyleExport(withViewports({ ...SHEET, android: { width: 0, height: 10 } }), PATH)).toThrow(/viewports.android is not a \{ width, height \} of positive whole CSS px/);
+    expect(() => marklessStyleExport(withViewports({ ...SHEET, android: { width: 411.5, height: 371 } }), PATH)).toThrow(/viewports.android is not a/);
   });
 });
