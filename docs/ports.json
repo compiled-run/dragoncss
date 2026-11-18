@@ -4699,6 +4699,25 @@
   "notChrome": [
     {
       "cited": [
+        "metadata_format.h"
+      ],
+      "source": "AOSP system/core fs_mgr/liblp include/liblp/metadata_format.h, Apache-2.0: the on-disk layout of a dynamic-partition super image, which Dragon reads to take the system fonts out of the Android SDK's system image; not a Blink/Skia/gfx port",
+      "files": [
+        "packages/parity/src/system-fonts/android-image.ts"
+      ]
+    },
+    {
+      "cited": [
+        "FontCocoa.mm"
+      ],
+      "source": "WebKit Source/WebCore/platform/graphics/coretext/FontCoreText.cpp (formerly cocoa/FontCocoa.mm), BSD-2-Clause, Apple Inc.: Safari's line metrics on iOS (each metric rounded up, Helvetica's ascent +15%), each matched by measurement in Safari on iOS 27.2; not a Blink/Skia/gfx port",
+      "files": [
+        "packages/parity/src/system-fonts/provider.ts",
+        "packages/parity/src/system-fonts/web-generics.ts"
+      ]
+    },
+    {
+      "cited": [
         "uscript.h",
         "vendor/icu/77.1/uscript.h",
         "raw.githubusercontent.com/unicode-org/icu/release-77-1/icu4c/source/common/unicode/uscript.h"
