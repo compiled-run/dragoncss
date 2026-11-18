@@ -64,7 +64,6 @@ const OWNERS: Readonly<Record<string, string>> = {
   href: 'the inline and link package INL1 (an href makes the :link UA rules apply)',
   lang: 'the text package TXT1-C (lang feeds locale font fallback)',
   dir: 'the bidi package (dir sets direction and unicode-bidi)',
-  style: 'the style-attribute package SOV',
   // MEDIA-EL: a video without them shows its first frame and never plays; with them Chrome plays it or draws its own controls.
   controls: 'the media-element package MEDIA-EL (controls and playback)',
   autoplay: 'the media-element package MEDIA-EL (controls and playback)',
@@ -94,6 +93,8 @@ export function attributeRefusal(tag: string, name: string): string | null {
   if (name === 'hidden') return null;
   // A <dialog> compiles only when the host presents the top layer, which lays every dialog out as shown modal, so open set.
   if (tag === 'dialog' && name === 'open') return null;
+  // css-style-attr: its declarations cascade as element-attached author declarations (analysis/style-attribute.ts).
+  if (name === 'style') return null;
   if (neutralAttribute(tag, name) !== undefined) return null;
   if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
   // SVG-a1: the SVG tags' geometry and presentation attributes (analysis/elements/svg.ts), and the packages of the others.

@@ -2,6 +2,7 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
+import { styleAttributeRules } from './analysis/style-attribute.ts';
 import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
@@ -410,7 +411,7 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], h
         for (const c of a.value) {
           if (c.value === null) continue;
           if (a.name === 'hidden' && c.value.toLowerCase() === 'until-found')
-            diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute hidden="until-found" on ${n.id} is not supported: Chrome renders it with content-visibility: hidden, which Dragon does not lay out`, manual: 'Use hidden with no value (display: none), or hide the element with a class.' }));
+            diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute hidden="until-found" on ${n.id} is not supported: Chrome renders it with content-visibility: hidden (HTML §15.3.1), which keeps the box with its padding and border at size containment and skips its contents (laid out, not painted, out of the accessibility tree); no native view write skips a box's contents yet`, manual: 'Use hidden with no value (display: none), or hide the element with a class.' }));
           const dimension = dimensionRefusal(n.tag, a.name, c.value);
           if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
           const src = iframeSrcRefusal(n.tag, a.name, c.value);
@@ -489,7 +490,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
   const seen = new Set<Declaration>();
   for (const rule of rules) {
     // A rule Chrome drops never applies (css/selectors.ts), so its values need no support.
-    if (rule.selectors.every((s) => s.dropped)) continue;
+    if (rule.selectors.length > 0 && rule.selectors.every((s) => s.dropped)) continue;
     // MQ-a: a rule is checked only for the targets whose band it applies in.
     const ruleTargets = scope === null ? targets : targets.filter((t) => scope(rule).includes(t));
     for (const [i, d] of rule.declarations.entries()) {
@@ -750,7 +751,7 @@ function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly
 function checkFamilies(rules: readonly Rule[], fonts: FamilyKeyContext, faults: CompilerFaults, out: Diagnostic[], scope: { readonly of: RuleScope; readonly targets: readonly KnownTarget[] } | null = null): void {
   const seen = new Set<Declaration>();
   for (const rule of rules) {
-    if (rule.selectors.every((sel) => sel.dropped)) continue;
+    if (rule.selectors.length > 0 && rule.selectors.every((sel) => sel.dropped)) continue;
     // MQ-a: a rule outside the native band blocks web only (scopedTo), one that applies in no configured output blocks nothing.
     const diagnostics: Diagnostic[] = [];
     for (const d of rule.declarations) {
@@ -1399,6 +1400,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     }
     if (options.profiles === 'enforce' && rules.some((r) => r.container !== undefined)) gateContainerRules(containerConditions, targets, profiles, diagnostics);
     for (const c of valid.components.values()) checkTemplates(c.root, diagnostics, options.hostTopLayer);
+    // css-style-attr: each style attribute value's declarations take every support check a stylesheet rule's take.
+    const styleRules = styleAttributeRules(valid.components.values(), diagnostics);
+    const withStyles = [...rules, ...styleRules];
     checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics, options.hostTopLayer);
     checkSvgContent(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
@@ -1406,9 +1410,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const bandList = bands === null ? [null] : bands.partition.bands;
     const passTargets = (_k: number): readonly KnownTarget[] => targets;
     const bandRules = bandList.map((b) => new Set(rulesIn(rules, bands, b, options.faults)));
-    const scopeOf: RuleScope = (r) => targets.filter((t) => bandRules.some((set, k) => passTargets(k).includes(t) && set.has(r)));
+    const styleRuleSet = new Set<Rule>(styleRules);
+    const scopeOf: RuleScope = (r) => (styleRuleSet.has(r) ? targets : targets.filter((t) => bandRules.some((set, k) => passTargets(k).includes(t) && set.has(r))));
     fonts = compileFonts(input, config.fonts, fontFaces, diagnostics);
-    checkFamilies(rules, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
+    checkFamilies(withStyles, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
     const keys = fonts.keys;
     let valuesAt = diagnostics.length;
     if (preLinked === undefined) linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
@@ -1531,7 +1536,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.
         const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
-        checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
+        checkValues(withStyles, targets, profiles, usedOf, values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
@@ -1581,14 +1586,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     } else if (linked !== null) {
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
-        checkValues(rules, targets, profiles, [], values, keys, scopeOf);
+        checkValues(withStyles, targets, profiles, [], values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
       cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [], partition: null, interaction: [] }));
       bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
-      checkValues(rules, targets, profiles, [], values, keys, scopeOf);
+      checkValues(withStyles, targets, profiles, [], values, keys, scopeOf);
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
