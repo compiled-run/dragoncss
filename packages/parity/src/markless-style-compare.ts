@@ -47,8 +47,11 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
 
 export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number; readonly pass: boolean };
 
-/** With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device screenshot is read beside. */
-export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
+/**
+ * With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device
+ * screenshot is read beside. `unbanded`: the colour-scheme preference Chrome is given for an assignment no band fixes (light).
+ */
+export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light'): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined) continue;
@@ -56,7 +59,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
     try {
       for (const [index, assignment] of t.assignments.entries()) {
         const band = assignment.values['@env#band'];
-        const scheme = typeof band === 'number' ? schemeOf(t.bands, band) : 'light';
+        const scheme = typeof band === 'number' ? schemeOf(t.bands, band) : unbanded;
         const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
         const absolute = (id: string): Frame => {
           const n = byId.get(id);

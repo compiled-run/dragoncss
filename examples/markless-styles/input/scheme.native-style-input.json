@@ -1,0 +1,83 @@
+{
+ "version": "markless.native-style-input/0",
+ "component": "App",
+ "nodes": [
+  {
+   "kind": "element",
+   "id": "h0",
+   "element": "main",
+   "parent": null,
+   "attributes": {
+    "class": "page"
+   }
+  },
+  {
+   "kind": "element",
+   "id": "h1",
+   "element": "h1",
+   "parent": "h0",
+   "attributes": {}
+  },
+  {
+   "kind": "text",
+   "id": "h1:text0",
+   "parent": "h1",
+   "text": "Appearance"
+  },
+  {
+   "kind": "element",
+   "id": "h2",
+   "element": "p",
+   "parent": "h0",
+   "attributes": {}
+  },
+  {
+   "kind": "text",
+   "id": "h2:text0",
+   "parent": "h2",
+   "text": "Follows the phone's light or dark setting"
+  },
+  {
+   "kind": "element",
+   "id": "h3",
+   "element": "p",
+   "parent": "h0",
+   "attributes": {
+    "class": "accent"
+   }
+  },
+  {
+   "kind": "text",
+   "id": "h3:text0",
+   "parent": "h3",
+   "text": "Accent text"
+  },
+  {
+   "kind": "element",
+   "id": "h4",
+   "element": "div",
+   "parent": "h0",
+   "attributes": {
+    "class": "row"
+   }
+  },
+  {
+   "kind": "element",
+   "id": "h5",
+   "element": "button",
+   "parent": "h4",
+   "attributes": {
+    "class": "btn",
+    "type": "button"
+   }
+  },
+  {
+   "kind": "text",
+   "id": "h5:text0",
+   "parent": "h5",
+   "text": "Save"
+  }
+ ],
+ "css": ":root { color-scheme: light dark; }\n.page { padding: 16px; }\n.accent { color: #1d4ed8; }\n.row { display: flex; gap: 8px; }\n.btn { font-family: inherit; font-size: 18px; padding: 10px 18px; border: 2px solid #22223b; border-radius: 10px; background: #8d99ae; }\n@media (prefers-color-scheme: dark) {\n  .accent { color: #93c5fd; }\n}",
+ "states": []
+}

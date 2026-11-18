@@ -279,7 +279,7 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
   const parsed = parseMarklessStyleInput(inputText);
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath), FONT_REFERENCE_MAP);
   const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', output: 'program' };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program' };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -333,23 +333,32 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
     if (cell === undefined) fail(`Dragon's state ${key} is not one of the input's`);
     return cell as string;
   };
-  const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => [t, {
-    ...x,
-    states: x.states.map((s) => ({ ...s, key: rekey(s.key) })),
-    assignments: x.assignments.map((a, i) => ({
-      ...a,
-      values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])),
-      ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY])),
-    })),
-  }]));
+  const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
+    const out = styles.targets[t as NativeStyleTarget];
+    if (out?.kind !== 'emitted' || out.schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment`);
+    const schemes = (out as Extract<typeof out, { kind: 'emitted' }>).schemes;
+    return [t, {
+      ...x,
+      states: x.states.map((s) => ({ ...s, key: rekey(s.key) })),
+      assignments: x.assignments.map((a, i) => ({
+        ...a,
+        values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])),
+        colorScheme: (schemes[i] as UsedScheme).colorScheme,
+        ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+      })),
+    }];
+  }));
   return { input, exported: { ...exported, targets } };
 }
 
+type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 };
+
 /**
  * An assignment of a Markless export: also the colour of the canvas, which the host paints behind the page and the system bars,
- * and the colour body paints in its own box (its frame) when html's background is the canvas, else null.
+ * the colour body paints in its own box (its frame) when html's background is the canvas, else null, and the root's used colour
+ * scheme, whose UA colours the nodes' writes already carry.
  */
-export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null };
+export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null; readonly colorScheme: 'light' | 'dark' };
 export type MarklessStyleExport = Omit<NativeStyleExport, 'targets'> & {
   readonly targets: { readonly [T in NativeStyleTarget]?: Omit<ExportTarget, 'assignments'> & { readonly assignments: readonly MarklessExportAssignment[] } };
 };
@@ -392,7 +401,6 @@ function bandScheme(bands: Bands, band: unknown): 'light' | 'dark' | null {
   return bands !== undefined && bands.atoms.every((a) => (a as { feature: string }).feature === 'prefers-color-scheme') ? schemeOf(bands, band) : null;
 }
 
-const WHITE: Rgba8 = { r: 255, g: 255, b: 255, alpha: 255 };
 /** Skia's src-over of a colour onto an opaque pixel, as Chrome rasterises a background fill (textDecoration.blendOver). */
 const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
   if (src.alpha === 255) return src;
@@ -402,19 +410,19 @@ const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
 
 /**
  * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's (propagated, so body's box paints
- * none), drawn over the white base background of a top-level page. When html has its own background, body keeps its own for its
- * box, which lies on the canvas; that box's colour is given composited, as Chrome shows it.
+ * none), drawn over the base background of a top-level page, Chrome's Canvas colour in the root's used scheme (white, or
+ * rgb(18, 18, 18) under dark). When html has its own background, body keeps its own for its box, which lies on the canvas; that
+ * box's colour is given composited, as Chrome shows it.
  */
-function rootPaint(nodes: readonly ExportNode[], where: string, scheme: 'light' | 'dark' | null): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
+function rootPaint(nodes: readonly ExportNode[], where: string, band: 'light' | 'dark' | null, used: UsedScheme): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
   checkRootPaint(nodes, 'html', where);
   checkRootPaint(nodes, 'body', where);
   const html = backgroundOf(nodes, 'html');
   const body = backgroundOf(nodes, 'body');
-  // Under an emulated dark preference Chrome 145 draws the page over a dark base (the dark dataset's Canvas), not white, whatever
-  // the root's color-scheme; which base a phone in dark mode should show through a see-through background is not decided here.
+  // Owner ruling: a light page keeps the white base in a dark band, where Chrome 145 uses rgb(18, 18, 18), so see-through is refused there.
   const seeThrough = (html.alpha === 0 ? body : html).alpha;
-  if (scheme !== 'light' && seeThrough !== 0 && seeThrough !== 255) fail(`${where}: the page background is see-through in a ${scheme === 'dark' ? 'dark-mode band' : 'band of another media feature'}, where Chrome's base colour under it is not known to be white`);
-  if (html.alpha === 0) return { canvas: over(WHITE, body), bodyBackground: null };
-  const canvas = over(WHITE, html);
+  if (used.colorScheme === 'light' && band !== 'light' && seeThrough !== 0 && seeThrough !== 255) fail(`${where}: the page background is see-through in a ${band === 'dark' ? 'dark-mode band' : 'band of another media feature'}, where Chrome's base colour under it is not known to be white`);
+  if (html.alpha === 0) return { canvas: over(used.canvas, body), bodyBackground: null };
+  const canvas = over(used.canvas, html);
   return { canvas, bodyBackground: body.alpha === 0 ? null : over(canvas, body) };
 }
