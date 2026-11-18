@@ -3,12 +3,12 @@
 // (docs/markless-native-styles.md "From a Markless style input"). The input carries no spans into the .tsrx, so every origin is
 // the span of the input file itself; its CSS is its own source, whole.
 import { createHash } from 'node:crypto';
-import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, SourceFile, TreeNode } from 'dragon';
+import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
-import type { NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, nativeStyleExport } from './native-style-export.ts';
 
 export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
@@ -216,7 +216,7 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
 }
 
 /** The input compiled as the device lanes compile (support 'lanes', the pinned font map), exported with the cells' own keys. */
-export function marklessStyleExport(inputText: string, inputPath: string): { readonly input: FrontEndResult; readonly exported: NativeStyleExport } {
+export function marklessStyleExport(inputText: string, inputPath: string): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport } {
   const parsed = parseMarklessStyleInput(inputText);
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath), FONT_REFERENCE_MAP);
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: EXPORT_DEVICES.ios.viewport, support: 'lanes' };
@@ -256,7 +256,36 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
   const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => [t, {
     ...x,
     states: x.states.map((s) => ({ ...s, key: rekey(s.key) })),
-    assignments: x.assignments.map((a) => ({ ...a, values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])) })),
+    assignments: x.assignments.map((a, i) => ({
+      ...a,
+      values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])),
+      canvas: canvasOf(a.nodes, `${t} assignment ${i}`),
+    })),
   }]));
   return { input, exported: { ...exported, targets } };
+}
+
+/** An assignment of a Markless export: also the colour of the canvas, which the host paints behind the page and the system bars. */
+export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8 };
+export type MarklessStyleExport = Omit<NativeStyleExport, 'targets'> & {
+  readonly targets: { readonly [T in NativeStyleTarget]?: Omit<ExportTarget, 'assignments'> & { readonly assignments: readonly MarklessExportAssignment[] } };
+};
+
+const backgroundOf = (nodes: readonly ExportNode[], id: string): Rgba8 => {
+  const color = nodes.find((n) => n.id === id)?.writes.find((w) => w['kind'] === 'background-color')?.['color'];
+  if (!isRecord(color) || !['r', 'g', 'b', 'alpha'].every((k) => typeof color[k] === 'number')) fail(`the export has no background colour for ${id}`);
+  return color as Rgba8;
+};
+
+/**
+ * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's, else white. The hosts paint no html
+ * or body box, so a background body keeps for its own box (under an html background) and a translucent canvas are refused.
+ */
+function canvasOf(nodes: readonly ExportNode[], where: string): Rgba8 {
+  const html = backgroundOf(nodes, 'html');
+  const body = backgroundOf(nodes, 'body');
+  if (html.alpha !== 0 && body.alpha !== 0) fail(`${where}: body has its own background under html's, and the export draws no body box`);
+  const canvas = html.alpha !== 0 ? html : body.alpha !== 0 ? body : { r: 255, g: 255, b: 255, alpha: 255 };
+  if (canvas.alpha !== 255) fail(`${where}: the canvas background is translucent, which the export does not blend over white yet`);
+  return canvas;
 }
