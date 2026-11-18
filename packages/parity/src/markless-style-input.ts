@@ -3,7 +3,7 @@
 // (docs/markless-native-styles.md "From a Markless style input"). The input carries no spans into the .tsrx, so every origin is
 // the span of the input file itself; its CSS is its own source, whole.
 import { createHash } from 'node:crypto';
-import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, SourceFile, TreeNode } from 'dragon';
+import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
@@ -23,6 +23,11 @@ export type MarklessStyleInput = {
   )[];
   readonly css: string;
   readonly states: readonly { readonly cell: string; readonly domain: readonly [false, true]; readonly initial: boolean }[];
+  /**
+   * The CSS size each target lays this tree out in, when it is not the page: a system sheet's content area at one resting
+   * height, measured on the device by the host that presents it. Absent: the export devices' page viewports.
+   */
+  readonly viewports?: { readonly [T in NativeStyleTarget]: { readonly width: number; readonly height: number } };
 };
 
 /** The document a detached component is laid out in, as Chrome renders it for the comparison: no body margin, the pinned sans face. */
@@ -49,6 +54,14 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     if (!Array.isArray(st['domain']) || st['domain'].length !== 2 || st['domain'][0] !== false || st['domain'][1] !== true) fail(`${String(st['cell'])}: only boolean states are supported`);
     if (cells.has(st['cell'] as string)) fail(`state ${String(st['cell'])} is listed twice`);
     cells.add(st['cell'] as string);
+  }
+  if (o['viewports'] !== undefined) {
+    const viewports = o['viewports'];
+    if (!isRecord(viewports) || Object.keys(viewports).sort().join() !== Object.keys(EXPORT_DEVICES).sort().join()) fail(`viewports names ${JSON.stringify(viewports)}, not one size per target (${Object.keys(EXPORT_DEVICES).join(', ')})`);
+    for (const [t, size] of Object.entries(viewports as Record<string, unknown>)) {
+      const ok = isRecord(size) && Object.keys(size).sort().join() === 'height,width' && [size['width'], size['height']].every((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
+      if (!ok) fail(`viewports.${t} is not a positive { width, height }`);
+    }
   }
   if (!Array.isArray(o['nodes'])) fail('nodes is not a list');
   const ids = new Set<string>();
@@ -219,11 +232,12 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
 export function marklessStyleExport(inputText: string, inputPath: string): { readonly input: FrontEndResult; readonly exported: NativeStyleExport } {
   const parsed = parseMarklessStyleInput(inputText);
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath), FONT_REFERENCE_MAP);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: EXPORT_DEVICES.ios.viewport, support: 'lanes' };
+  const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes' };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
-  const raw = nativeStyleExport(styles, parsed.component, inputPath);
+  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices);
   // Back to the input's ids: an element by its own, a text node "<element>:text<k>" by its element's.
   const marklessId = new Map([...dragonElementIds(parsed)].map(([m, d]): [string, string] => [d, m]));
   const dragonIds = dragonElementIds(parsed);
