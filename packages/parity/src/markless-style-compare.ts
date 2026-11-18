@@ -1,6 +1,7 @@
 // Every frame of every assignment of a Markless style export against Chrome's boxes for the same element tree, at the export's
 // viewport and ratio, under the device lanes' gate: classes and attributes as each assignment's states set them, and the colour
 // scheme its @media band reads. Usage: pnpm run markless:style-compare -- <input.json> <export.json> <report.json>
+import { join } from 'node:path';
 import type { Browser } from 'playwright';
 import { authoredFontHtml } from './cases.ts';
 import { captureFixture } from './capture.ts';
@@ -59,13 +60,14 @@ function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
 
 export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number; readonly pass: boolean };
 
-export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
+/** With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device screenshot is read beside. */
+export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined) continue;
     const browser: Browser = await launchChrome(t.dpr);
     try {
-      for (const assignment of t.assignments) {
+      for (const [index, assignment] of t.assignments.entries()) {
         const band = assignment.values['@env#band'];
         const scheme = typeof band === 'number' ? schemeOf(t.bands, band) : 'light';
         const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
@@ -79,6 +81,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
         const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, assignment.values)), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
           await page.emulateMedia({ colorScheme: scheme });
           await fonts(page);
+          if (screenshots !== undefined) await page.screenshot({ path: join(screenshots, `${target}-${index}.png`), fullPage: true });
         });
         for (const c of capture.nodes) {
           const node = byId.get(c.id);
