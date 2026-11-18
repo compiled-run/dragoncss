@@ -401,6 +401,8 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
         }
         for (const c of a.value) {
           if (c.value === null) continue;
+          if (a.name === 'hidden' && c.value.toLowerCase() === 'until-found')
+            diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute hidden="until-found" on ${n.id} is not supported: Chrome renders it with content-visibility: hidden, which Dragon does not lay out`, manual: 'Use hidden with no value (display: none), or hide the element with a class.' }));
           const dimension = dimensionRefusal(n.tag, a.name, c.value);
           if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
           const src = iframeSrcRefusal(n.tag, a.name, c.value);
