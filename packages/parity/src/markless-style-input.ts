@@ -297,7 +297,7 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
     assignments: x.assignments.map((a, i) => ({
       ...a,
       values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])),
-      ...rootPaint(a.nodes, `${t} assignment ${i}`),
+      ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY])),
     })),
   }]));
   return { input, exported: { ...exported, targets } };
@@ -329,6 +329,27 @@ function checkRootPaint(nodes: readonly ExportNode[], id: string, where: string)
   if (Object.values(node?.borderWidths ?? {}).some((v) => v !== 0)) fail(`${where}: ${id} has a border, which the hosts do not draw on ${id}`);
 }
 
+type Bands = NonNullable<NativeStyleExport['targets']['ios']>['bands'];
+
+/** The colour scheme whose readings make a band's atoms true; a band no scheme reaches, or another feature, is refused. */
+export function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
+  const want = bands?.bands[band];
+  if (bands === undefined || want === undefined) throw new Error(`no band ${band}`);
+  const truth = (dark: boolean): boolean[] => bands.atoms.map((a) => {
+    const atom = a as { feature: string; comparisons: readonly unknown[]; keyword: string };
+    if (atom.feature !== 'prefers-color-scheme' || atom.comparisons.length > 0) throw new Error(`the comparison reads prefers-color-scheme only, not ${atom.feature}`);
+    return atom.keyword === 'any' || (atom.keyword === 'dark') === dark;
+  });
+  for (const scheme of ['light', 'dark'] as const) if (truth(scheme === 'dark').every((v, i) => v === want[i])) return scheme;
+  throw new Error(`no colour scheme reaches band ${band}`);
+}
+
+/** The colour scheme an assignment's band reads, or null for a band of another media feature. */
+function bandScheme(bands: Bands, band: unknown): 'light' | 'dark' | null {
+  if (typeof band !== 'number') return 'light';
+  return bands !== undefined && bands.atoms.every((a) => (a as { feature: string }).feature === 'prefers-color-scheme') ? schemeOf(bands, band) : null;
+}
+
 const WHITE: Rgba8 = { r: 255, g: 255, b: 255, alpha: 255 };
 /** Skia's src-over of a colour onto an opaque pixel, as Chrome rasterises a background fill (textDecoration.blendOver). */
 const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
@@ -342,11 +363,15 @@ const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
  * none), drawn over the white base background of a top-level page. When html has its own background, body keeps its own for its
  * box, which lies on the canvas; that box's colour is given composited, as Chrome shows it.
  */
-function rootPaint(nodes: readonly ExportNode[], where: string): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
+function rootPaint(nodes: readonly ExportNode[], where: string, scheme: 'light' | 'dark' | null): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
   checkRootPaint(nodes, 'html', where);
   checkRootPaint(nodes, 'body', where);
   const html = backgroundOf(nodes, 'html');
   const body = backgroundOf(nodes, 'body');
+  // Under an emulated dark preference Chrome 145 draws the page over a dark base (the dark dataset's Canvas), not white, whatever
+  // the root's color-scheme; which base a phone in dark mode should show through a see-through background is not decided here.
+  const seeThrough = (html.alpha === 0 ? body : html).alpha;
+  if (scheme !== 'light' && seeThrough !== 0 && seeThrough !== 255) fail(`${where}: the page background is see-through in a ${scheme === 'dark' ? 'dark-mode band' : 'band of another media feature'}, where Chrome's base colour under it is not known to be white`);
   if (html.alpha === 0) return { canvas: over(WHITE, body), bodyBackground: null };
   const canvas = over(WHITE, html);
   return { canvas, bodyBackground: body.alpha === 0 ? null : over(canvas, body) };

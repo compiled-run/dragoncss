@@ -9,7 +9,7 @@ import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { MarklessStyleInput, StateValue } from './markless-style-input.ts';
-import { MARKLESS_DOCUMENT_CSS } from './markless-style-input.ts';
+import { MARKLESS_DOCUMENT_CSS, schemeOf } from './markless-style-input.ts';
 import type { NativeStyleExport } from './native-style-export.ts';
 
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
@@ -43,20 +43,6 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
   return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${MARKLESS_DOCUMENT_CSS}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
 }
 
-type Bands = NonNullable<NativeStyleExport['targets']['ios']>['bands'];
-
-/** The colour scheme whose readings make a band's atoms true; a band no scheme reaches, or another feature, is refused. */
-function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
-  const want = bands?.bands[band];
-  if (bands === undefined || want === undefined) throw new Error(`no band ${band}`);
-  const truth = (dark: boolean): boolean[] => bands.atoms.map((a) => {
-    const atom = a as { feature: string; comparisons: readonly unknown[]; keyword: string };
-    if (atom.feature !== 'prefers-color-scheme' || atom.comparisons.length > 0) throw new Error(`the comparison reads prefers-color-scheme only, not ${atom.feature}`);
-    return atom.keyword === 'any' || (atom.keyword === 'dark') === dark;
-  });
-  for (const scheme of ['light', 'dark'] as const) if (truth(scheme === 'dark').every((v, i) => v === want[i])) return scheme;
-  throw new Error(`no colour scheme reaches band ${band}`);
-}
 
 export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number; readonly pass: boolean };
 

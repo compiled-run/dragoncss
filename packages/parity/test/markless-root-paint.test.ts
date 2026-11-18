@@ -71,6 +71,13 @@ describe('the page background a Markless export gives the hosts', () => {
     expect(dragonPaint('html { background: #fefae0; }\nbody { background: #264653; }', 'ios').bodyBackground).toEqual({ r: 38, g: 70, b: 83, alpha: 255 });
   });
 
+  it('refuses a see-through page background in a dark-mode band, where Chrome draws it over a dark base', () => {
+    const css = 'html { background: #fefae0; }\n@media (prefers-color-scheme: dark) { html { background: rgba(0, 0, 0, 0.5); } }';
+    expect(() => dragonPaint(css, 'ios')).toThrow('see-through in a dark-mode band');
+    const opaque = marklessStyleExport(inputText('html { background: #fefae0; }\n@media (prefers-color-scheme: dark) { html { background: #10212a; } body { background: rgba(231, 111, 81, 0.35); } }'), 'root-paint.json').exported.targets.ios!;
+    expect(opaque.assignments.map((a) => a.bodyBackground === null)).toEqual(opaque.assignments.map((a) => a.values['@env#band'] === 0));
+  });
+
   it('refuses paint of html or body the hosts do not draw, naming it', () => {
     expect(() => dragonPaint('body { border: 2px solid red; }', 'ios')).toThrow('body has a border, which the hosts do not draw on body');
     expect(() => dragonPaint('html { border-top: 1px solid red; }', 'ios')).toThrow('html has a border');
