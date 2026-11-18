@@ -3,11 +3,11 @@
 // node's lowered writes and the frame the reference engine lays it out at for the proof device, in device px.
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
-import type { LayoutBox } from '@dragon/layout';
-import { LU_PER_PX, resolveBorder } from '@dragon/layout';
+import type { BorderOp, LayoutBox } from '@dragon/layout';
+import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, resolveBorder, snapRect } from '@dragon/layout';
 import type { Assignment, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
-import { programAt } from 'dragon';
-import { engineBoxes } from './native-host.ts';
+import { borderDevicePx, programAt, programInput } from 'dragon';
+import { engineBoxes, expectedEngine } from './native-host.ts';
 import { repoPath } from './paths.ts';
 
 export const NATIVE_STYLE_EXPORT_SCHEMA = 'dragon.native-style-export/1';
@@ -30,6 +30,13 @@ export type ExportNode = {
   readonly frame: Frame | null;
   readonly borderWidths: Readonly<Record<string, number>> | null;
   readonly writes: readonly Readonly<Record<string, unknown>>[];
+  /**
+   * Only for a box with a visible dashed or dotted side: the drawing operations Dragon's own native paint runs for its border
+   * (paint-dash.ts, Blink 145's side painter, judged against Chrome's pixels by p6a-dash-oracle), in device px with the snapped
+   * border box's top-left at `origin`, which is relative to this node's frame; `size` is that box and `widths` its sides (top,
+   * right, bottom, left) in whole device px.
+   */
+  readonly borderOps?: { readonly origin: { readonly x: number; readonly y: number }; readonly size: { readonly width: number; readonly height: number }; readonly widths: readonly number[]; readonly ops: readonly BorderOp[] };
 };
 export type ExportAssignment = { readonly values: Readonly<Record<string, Scalar>>; readonly nodes: readonly ExportNode[] };
 export type ExportTarget = {
@@ -88,6 +95,28 @@ function boxStyles(root: LayoutBox): Map<string, LayoutBox['style']> {
   return out;
 }
 
+type Write = { readonly kind: string };
+
+/**
+ * The border operations of a box with a visible dashed or dotted side, as Dragon's native paint computes them from the box's
+ * absolute snapped edges and its whole device px widths. Dragon's compile refuses such a side on a rounded box (PNT1b).
+ */
+function dashedBorder(id: string, writes: readonly Write[], rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | undefined, widths: readonly number[] | undefined): Pick<ExportNode, 'borderOps'> {
+  const field = (kind: string, key: string): unknown => (writes.find((w) => w.kind === kind) as Readonly<Record<string, unknown>> | undefined)?.[key];
+  const styles = field('border-styles', 'styles') as readonly string[] | undefined;
+  const colors = field('border-colors', 'colors') as readonly { r: number; g: number; b: number; alpha: number }[] | undefined;
+  if (styles === undefined || colors === undefined || rect === undefined || widths === undefined) return {};
+  const rgba = colors.flatMap((c) => [c.r, c.g, c.b, c.alpha]);
+  const dashed = styles.some((st, k) => (st === 'dashed' || st === 'dotted') && (widths[k] ?? 0) > 0 && (colors[k]?.alpha ?? 0) > 0);
+  if (!dashed || !borderNeedsSidePainter([...widths], styles, rgba)) return {};
+  const b = snapRect({ ...rect, id } as Parameters<typeof snapRect>[0]);
+  const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, [...widths], styles, rgba, NO_DASH_FAULTS).map((o) => ({
+    ...o,
+    points: o.op === 'dot' ? [(o.points[0] as number) - b.left, (o.points[1] as number) - b.top, o.points[2] as number] : o.points.map((v, i) => v - (i % 2 === 0 ? b.left : b.top)),
+  }));
+  return { borderOps: { origin: { x: b.left - rect.x / LU_PER_PX, y: b.top - rect.y / LU_PER_PX }, size: { width: b.width, height: b.height }, widths: [...widths], ops } };
+}
+
 const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
 /** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. */
@@ -103,7 +132,10 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const sp = o.program;
     const assignments = sp.assignments.map((a, i): ExportAssignment => {
       const program = programAt(sp, i);
-      const boxes = new Map(engineBoxes(program, d.viewport, d.dpr).map((b) => [b.id, b]));
+      const laid = engineBoxes(program, d.viewport, d.dpr);
+      const boxes = new Map(laid.map((b) => [b.id, b]));
+      const absolute = absoluteRects(laid);
+      const deviceBorders = borderDevicePx(expectedEngine(), programInput(program, d.viewport, d.dpr));
       const style = boxStyles(program.root);
       const px = (v: number): number => v / LU_PER_PX;
       const nodes = program.nodes.map((n): ExportNode => {
@@ -115,6 +147,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           frame: box === undefined ? null : { x: px(box.x), y: px(box.y), width: px(box.width), height: px(box.height) },
           borderWidths: s === undefined ? null : Object.fromEntries(Object.entries(resolveBorder(s, d.dpr)).map(([k, v]) => [k, px(v) * d.dpr])),
           writes: n.writes.map(({ css: _css, detail: _detail, technique: _technique, ...w }) => w),
+          ...dashedBorder(n.id, n.writes, absolute.get(n.id), deviceBorders.get(n.id)),
         };
       });
       return { values: valuesOf(a.assignment), nodes };
