@@ -167,7 +167,7 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
 export function marklessStyleExport(inputText: string, inputPath: string): { readonly input: FrontEndResult; readonly exported: NativeStyleExport } {
   const parsed = parseMarklessStyleInput(inputText);
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath), FONT_REFERENCE_MAP);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: EXPORT_DEVICES.ios.viewport, support: 'lanes' };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: EXPORT_DEVICES.ios.viewport, support: 'lanes', output: 'program' };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
