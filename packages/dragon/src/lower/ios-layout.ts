@@ -914,7 +914,9 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
       if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
       throw e;
     }
-    el = { ...given, props: new Map([...given.props].map(([p, v]) => [p, { ...v, value: anchorNeutralValue(p, v.value) }])) };
+    const position = (given.props.get('position') as ResolvedValue).value;
+    const abspos = position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed');
+    el = { ...given, props: new Map([...given.props].map(([p, v]) => [p, { ...v, value: anchorNeutralValue(p, v.value, abspos) }])) };
   }
   const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;

@@ -39,5 +39,6 @@ export const SCROLL_CONTAINMENT: readonly FixtureSpec[] = [
   both('anchor-lookup'),
   both('anchor-box-model'),
   both('anchor-containing-blocks'),
+  both('anchor-control'),
   reject('reject-shape-rendering', 'DRAGON_UNSUPPORTED_VALUE', 'crispEdges', 'shape-rendering: crispEdges'),
 ];

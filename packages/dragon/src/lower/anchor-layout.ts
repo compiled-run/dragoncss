@@ -4,7 +4,7 @@
 // A part of the spec this file does not lower is refused by name (AnchorLoweringError), never approximated.
 import type { CssNode } from 'css-tree';
 import { generate, parse } from 'css-tree';
-import type { AnchorEdge, AnchorOption, AnchorSizeRef, AnchorStyle, AreaTrack, InsetValue, LayoutBox, LayoutStyle, PositionArea } from '@dragon/layout';
+import type { AnchorEdge, AnchorOption, AnchorSizeRef, AnchorStyle, AreaTrack, ControlBox, InsetValue, LayoutBox, LayoutStyle, PositionArea, ReplacedLeaf } from '@dragon/layout';
 import { list } from '../css/ast.ts';
 import { asciiLower } from '../css/escapes.ts';
 import { ANCHOR_VALUE_TYPES } from '../css/properties/anchor-position.ts';
@@ -53,8 +53,9 @@ const splitList = (text: string): string[][] => text.split(',').map((e) => e.tri
 /** Whether an element's computed values use anchor positioning at all. */
 export function usesAnchors(el: ResolvedElement): boolean {
   const k = (p: Longhand): string => keyword(valueOf(el, p));
+  const abspos = k('position') === 'absolute' || k('position') === 'fixed';
   return k('anchor-name') !== 'none' || k('anchor-scope') !== 'none' || k('position-anchor') !== 'none' || k('position-area') !== 'none' || k('position-try-fallbacks') !== 'none'
-    || k('position-try-order') !== 'normal' || k('justify-self') === 'anchor-center' || k('align-self') === 'anchor-center'
+    || k('position-try-order') !== 'normal' || (abspos && (k('justify-self') === 'anchor-center' || k('align-self') === 'anchor-center'))
     || INSETS.some((p) => isFunction(valueOf(el, p), 'anchor') || isFunction(valueOf(el, p), 'anchor-size'))
     || SIZES.some((p) => isFunction(valueOf(el, p), 'anchor-size')) || MARGINS.some((p) => isFunction(valueOf(el, p), 'anchor-size') || isFunction(valueOf(el, p), 'anchor'));
 }
@@ -89,15 +90,18 @@ const AUTO: CssValue = { kind: 'keyword', value: 'auto' };
  * The value the box's own style lowers in place of an anchor function or anchor-center: an inset or size holding one is auto there
  * (the anchored layout reads the function from its options), and anchor-center is normal self-alignment.
  */
-export function anchorNeutralValue(p: Longhand, v: CssValue): CssValue {
+export function anchorNeutralValue(p: Longhand, v: CssValue, abspos: boolean): CssValue {
   if ((INSETS as readonly string[]).includes(p) && (isFunction(v, 'anchor') || isFunction(v, 'anchor-size'))) return AUTO;
   if ((SIZES as readonly string[]).includes(p) && isFunction(v, 'anchor-size')) return p.startsWith('max-') ? { kind: 'keyword', value: 'none' } : AUTO;
-  if ((p === 'align-self' || p === 'justify-self') && v.kind === 'keyword' && v.value === 'anchor-center') return AUTO;
+  // Off an absolutely positioned box, anchor-center behaves as center (§4.2), which the box's own lowering reads.
+  if (abspos && (p === 'align-self' || p === 'justify-self') && v.kind === 'keyword' && v.value === 'anchor-center') return AUTO;
   return v;
 }
 
 /** A box of the lowered tree with its place: the boxes are visited in tree order. */
-type Node = { readonly box: LayoutBox; readonly parent: Node | null; readonly order: number };
+/** A box of the tree, anchored or anchor: a block, flex or grid box, a form control or a replaced element. */
+type BoxLike = LayoutBox | ControlBox | ReplacedLeaf;
+type Node = { readonly box: BoxLike; readonly parent: Node | null; readonly order: number };
 
 const isAbspos = (s: LayoutStyle): boolean => s.position === 'absolute' || s.position === 'fixed';
 
@@ -123,11 +127,11 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
   if (facts.size === 0) return root;
   const nodes: Node[] = [];
   const byId = new Map<string, Node>();
-  const walk = (box: LayoutBox, parent: Node | null): void => {
+  const walk = (box: BoxLike, parent: Node | null): void => {
     const n: Node = { box, parent, order: nodes.length };
     nodes.push(n);
     byId.set(box.id, n);
-    for (const c of box.children) if (c.kind === 'box') walk(c, n);
+    if (box.kind !== 'replaced') for (const c of box.children) if (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') walk(c, n);
   };
   walk(root, null);
   const scopeOf = (n: Node, name: string): Node | null => {
@@ -146,6 +150,8 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
   };
   /** §2.3 target anchor element for a <dashed-ident>: the nearest ancestor that qualifies, else the last in tree order. */
   const target = (q: Node, name: string): Node | null => {
+    // An element that names an anchor but is no box of the tree (an inline box) would be an anchor in Chrome.
+    for (const [id, g] of facts) if (g.names.includes(name) && !byId.has(id)) throw new AnchorLoweringError(q.box.id, 'position-anchor', `${id}, which names the anchor ${name} that ${q.box.id} looks up, is an inline box, whose fragments' bounding rectangle Dragon does not lay out yet`);
     const queryScope = scopeOf(q, name);
     const ok = nodes.filter((a) => {
       if (!(facts.get(a.box.id)?.names.includes(name) ?? false)) return false;
@@ -162,13 +168,13 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
     const f = facts.get(n.box.id);
     if (f === undefined) continue;
     const s = n.box.style;
-    const anchoring = f.positionAnchor !== null || f.area !== null || f.fallbacks.length > 0 || f.justifySelf === 'anchor-center' || f.alignSelf === 'anchor-center'
+    const centered = isAbspos(s) && (f.justifySelf === 'anchor-center' || f.alignSelf === 'anchor-center');
+    const anchoring = f.positionAnchor !== null || f.area !== null || f.fallbacks.length > 0 || centered
       || INSETS.some((p) => isFunction(f.insets[p], 'anchor') || isFunction(f.insets[p], 'anchor-size')) || SIZES.some((p) => isFunction(f.sizes[p], 'anchor-size'));
     if (!anchoring) continue;
     if (!isAbspos(s)) {
       const fn = INSETS.find((p) => isFunction(f.insets[p], 'anchor') || isFunction(f.insets[p], 'anchor-size')) ?? SIZES.find((p) => isFunction(f.sizes[p], 'anchor-size'));
       if (fn !== undefined) throw new AnchorLoweringError(f.id, fn, `${fn} on ${f.id}: an anchor function on a box that is not absolutely positioned takes its fallback (css-anchor-position-1 §3.2.1), which Dragon does not lower yet`);
-      if (f.justifySelf === 'anchor-center' || f.alignSelf === 'anchor-center') throw new AnchorLoweringError(f.id, 'justify-self', `anchor-center on ${f.id}, which is not absolutely positioned, behaves as center (css-anchor-position-1 §4.2), which Dragon does not lower yet`);
       continue;
     }
     const cb = containingBlockOf(n, containsAbsolute);
@@ -193,9 +199,9 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
     styles.set(f.id, { anchor: def, options, order });
   }
   if (styles.size === 0) return root;
-  const rewrite = (box: LayoutBox): LayoutBox => {
+  const rewrite = <B extends LayoutBox | ControlBox>(box: B): B => {
     const a = styles.get(box.id);
-    const children = box.children.map((c) => (c.kind === 'box' ? rewrite(c) : c));
+    const children = box.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? rewrite(c) : c.kind === 'replaced' && styles.has(c.id) ? { ...c, style: { ...c.style, anchor: styles.get(c.id) as AnchorStyle } } : c));
     return { ...box, style: a === undefined ? box.style : { ...box.style, anchor: a }, children };
   };
   return rewrite(root);
