@@ -16,6 +16,7 @@ import { textFontsOf, uaRows } from '../ua/datasets.ts';
 import { blockify } from './blockify.ts';
 import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
+import { attachedDeclarations } from './style-attribute.ts';
 import type { ResolveEnvironment, ResolvedValue } from './computed.ts';
 import { appearanceDisplay, blockifyRoot, computeFontStyleLonghands, computeGridLengths, computeInheritedMathLengths, computeJustifyItems, computeLengths, computeLetterSpacing, computeLists, computeOverflowPair, computeWordSpacing, declaredUserAgentValue, initialValue, pxOf, parseValueText, substituteVariables, synthesizesSmallCaps, userAgentValue } from './computed.ts';
 import { BACKDROP_TAG, MARKER_TAG, uaTagOf } from './elements.ts';
@@ -322,7 +323,7 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     const selects = (r: Rule): boolean => r.selectors.some((sel) => (pseudo !== null ? pseudoSelectorMatches(r, sel, here, pseudo, faults, interaction) : part !== null ? partName !== null && partSelectorMatches(r, sel, here, partName, faults, interaction) : selectorMatches(r, sel, here, here.length - 1, 0, faults, interaction)));
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
-    const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart);
+    const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart, pseudo === null && part === null ? attachedDeclarations(el) : undefined);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag, el.attributes.get('type'), pseudo === null && part === null && isDisabled(here));
     const none = { declaration: null, declared: null, losing: [] } as const;

@@ -145,7 +145,8 @@ export function compiledFixtureHtml(html: string, css: string, classOf: Readonly
     if (id !== undefined) {
       const cls = classOf.get(id);
       if (cls === undefined) throw new Error(`no generated class for ${id}`);
-      const attrs = [...el.attrs.entries()].filter(([k]) => k !== 'class').map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join('');
+      // Dragon's class carries the style attribute's declarations too (css-style-attr), so the compiled markup drops both.
+      const attrs = [...el.attrs.entries()].filter(([k]) => k !== 'class' && k !== 'style').map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join('');
       edits.push({ start: el.start, end: el.openEnd, text: `<${el.tag}${attrs} class="${cls}"${el.selfClosing ? '/' : ''}>` });
     }
     for (const c of el.children) if ('tag' in c) visit(c);
