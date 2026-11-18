@@ -11,12 +11,12 @@ import type { ResolvedValue } from '../computed.ts';
 export const CONTROL_TAGS: readonly string[] = ['button', 'input'];
 
 /**
- * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it); an input's
- * do, and only type=range (ASCII case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is
- * refused (computed-checks.ts).
+ * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it), but do on
+ * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range (ASCII
+ * case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is refused (computed-checks.ts).
  */
-export function controlUaKey(tag: string, type: string | undefined): ControlKey | null {
-  if (tag === 'button') return 'button';
+export function controlUaKey(tag: string, type: string | undefined, disabled = false): ControlKey | null {
+  if (tag === 'button') return disabled ? 'button[disabled]' : 'button';
   if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : 'input';
   return null;
 }
