@@ -48,6 +48,10 @@ export type ResolveEnvironment = {
    * (null for a generated box); absent, no @container rule applies (analysis/container-rules.ts finds the containers without them).
    */
   readonly container?: (rule: Rule, ancestors: readonly LinkedElement[], self: LinkedElement | null) => boolean;
+  /** The prefers-color-scheme reading of the band being resolved; null or absent where the band does not fix it. */
+  readonly colorScheme?: 'light' | 'dark' | null;
+  /** The output paints the root's canvas in its used scheme, so a root whose used scheme is dark resolves with the dark UA dataset. */
+  readonly hostCanvas?: boolean;
 };
 
 export type RootFont = 'ahem' | 'ua-default';

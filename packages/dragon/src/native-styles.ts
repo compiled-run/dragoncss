@@ -3,7 +3,7 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { compiledCases, interactionPartitionOf, nativeBandProgram, nativeBands, nativeProgramFor } from './internal.ts';
+import { BAND_STATE, compiledCases, ENV_INSTANCE, interactionPartitionOf, nativeBandProgram, nativeBands, nativeProgramFor, usedSchemeOf } from './internal.ts';
 import type { rtBand } from '@dragon/layout';
 import { BandProgramError } from './lower/band-program.ts';
 import type { NativeBackend } from './lower/native-program.ts';
@@ -11,6 +11,7 @@ import type { StateProgram } from './lower/state-program.ts';
 import { deriveStateProgram, StateProgramError } from './lower/state-program.ts';
 import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { createProjectWith, internalRecord } from './project.ts';
+import type { Rgba8 } from './css/color.ts';
 import type { ArtifactState, Compiled, Diagnostic, FontMap, FrontEndResult, GeneratedFile } from './types.ts';
 
 export const NATIVE_STYLES_VERSION = 'dragon.native-styles/1';
@@ -38,6 +39,11 @@ export type NativeStylesConfig = {
    */
   readonly topLayer?: 'host';
   /**
+   * 'host': the host paints the canvas behind the page in each assignment's used colour scheme (NativeStyleOutput.schemes), so a
+   * root whose color-scheme picks dark is drawn with Chrome's dark UA colours. Absent: a root color-scheme that can be dark is refused.
+   */
+  readonly canvas?: 'host';
+  /**
    * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
    * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
    * block the target.
@@ -60,6 +66,8 @@ export type NativeStyleOutput = {
    * vector of every atom; the program's env#band state selects one, so a band change is a setter like any other.
    */
   readonly bands: { readonly table: rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null;
+  /** Per program assignment: the root's used colour scheme there (css-color-adjust-1 §2.1) and Chrome's Canvas colour in it. */
+  readonly schemes: readonly { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 }[];
 };
 
 export type NativeStyleBlocked = { readonly kind: 'blocked'; readonly reason: string };
@@ -95,9 +103,11 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
         ? { faults: NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
         : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
       ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
+      ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
     },
   );
   if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);
+  if (config.canvas !== undefined && config.canvas !== 'host') throw new Error(`compileNativeStyles: canvas ${JSON.stringify(config.canvas)} is not 'host'`);
   const output = config.output ?? 'program-and-sources';
   if (output !== 'program-and-sources' && output !== 'program') throw new Error(`compileNativeStyles: output ${JSON.stringify(output)} is neither 'program-and-sources' nor 'program'`);
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
@@ -123,12 +133,19 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   try {
     const bands = nativeBands(compiled);
     const program = bands === null ? deriveStateProgram(backend, cases) : nativeBandProgram(compiled, backend);
-    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands };
+    const schemes = program.assignments.map(({ assignment }) => {
+      const isBand = (x: (typeof assignment)[number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
+      const band = assignment.find(isBand)?.value ?? 0;
+      const s = usedSchemeOf(compiled, assignment.filter((x) => !isBand(x)), band as number);
+      if (typeof s === 'string') throw new Error(`compileNativeStyles: ${s}`);
+      return s;
+    });
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
     if (file === undefined) throw new Error(`compileNativeStyles: the ${backend} state emitter wrote no ${path}`);
-    return { kind: 'emitted', backend, program, files: [file], readiness: compiled.outputs[t], bands };
+    return { kind: 'emitted', backend, program, files: [file], readiness: compiled.outputs[t], bands, schemes };
   } catch (e) {
     if (e instanceof StateProgramError || e instanceof StateEmitError || e instanceof BandProgramError) return { kind: 'blocked', reason: e.message };
     throw e;

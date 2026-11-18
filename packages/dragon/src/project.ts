@@ -57,7 +57,8 @@ import type { PropertySource, Registrations } from './css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
-import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { environmentOf, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { usedColorScheme } from './css/properties/color-scheme.ts';
 import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
 import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
@@ -92,7 +93,7 @@ import type { BandAnalysis } from './lower/band-program.ts';
 import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
 import type { rtBand } from '@dragon/layout';
 import type { Band, BandPartition } from './media/index.ts';
-import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './media/index.ts';
+import { band, bandAt, bandColorScheme, evaluateInBand, featuresOfList, holdsWholePx, parseMediaQueryList } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
@@ -302,6 +303,8 @@ export type InternalOptions = {
    * layer with its ::backdrop, and the host shows or hides it. Without it <dialog> is refused, as nothing would present it.
    */
   readonly hostTopLayer?: boolean;
+  /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
+  readonly hostCanvas?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -318,6 +321,7 @@ type Resolved = {
   readonly nativeRealFaces: boolean;
   readonly interactionLanes: boolean;
   readonly hostTopLayer: boolean;
+  readonly hostCanvas: boolean;
   readonly nativeLanes: NativeLanes | null;
 };
 
@@ -908,11 +912,11 @@ const isFontProfileRefusal = (d: Diagnostic): boolean =>
  * proven only in other contexts blocks with the proven contexts, the alternatives in its own context (T005 rec 6) and, for a
  * shorthand-filled longhand, the shorthand and what to write instead (T005 rec 2).
  */
-function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS, containers: ContainerBand | null = null): CaseResult[] {
+function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS, containers: ContainerBand | null = null, colorScheme: 'light' | 'dark' | null = null): CaseResult[] {
   const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
@@ -1202,6 +1206,25 @@ function rulesIn(rules: readonly Rule[], bands: Bands | null, b: Band | null, fa
   }));
 }
 
+/** (prefers-color-scheme: dark) where a case's root names light and dark in a band that does not fix the preference; else null. */
+function preferenceCondition(linked: Linked | null, rules: readonly Rule[], bands: Bands | null, options: Resolved, registered: Registrations): RuleCondition | null {
+  if (linked === null) return null;
+  for (const b of bands === null ? [null] : bands.partition.bands) {
+    const colorScheme = b === null || bands === null ? null : bandColorScheme(bands.partition, b);
+    if (colorScheme !== null) continue;
+    const inBand = rulesIn(rules, bands, b, options.faults);
+    for (const c of linked.cases) {
+      const v = resolveTree(c.root, inBand, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered }).props.get('color-scheme') as ResolvedValue;
+      if (usedColorScheme(v.value, null) !== null) continue;
+      const span = v.declaration?.valueSpan ?? v.span;
+      if (span === null) throw new Error(`${c.root.address}: a color-scheme naming light and dark with no declaration`);
+      const text = '(prefers-color-scheme: dark)';
+      return { list: parseMediaQueryList(text), text, span };
+    }
+  }
+  return null;
+}
+
 /** The band the native output is resolved in: the one holding the fold viewport, else the first. */
 function nativeBandIndex(bands: Bands | null, fold: Viewport | null, faults: CompilerFaults): number {
   if (bands === null || fold === null) return 0;
@@ -1359,13 +1382,22 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const interactionRules = [...rules];
     const conditions = conditionsOf(rules);
     let partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
+    const schemeFatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
+    if (options.hostCanvas && partition?.kind !== 'refused' && !schemeFatal && rules.some((r) => r.declarations.some((d) => d.property === 'color-scheme' || d.longhands.some((l) => l.property === 'color-scheme')))) {
+      preLinked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, preLinkDiagnostics);
+      const scheme = preferenceCondition(preLinked, rules, partition === null ? null : { partition, conditions }, options, registered);
+      if (scheme !== null) {
+        conditions.push(scheme);
+        partition = band(conditions.map((c) => c.list));
+      }
+    }
     // CQ: each width a @container query compares with its container's adds a viewport atom; the containers come from resolving
     // every case in every @media band without the @container rules (analysis/container-rules.ts).
     const containerConditions = containerConditionsOf(rules);
     if (containerConditions.length > 0) refuseContainerAnimations(rules, diagnostics);
     const preFatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
     if (containerConditions.length > 0 && partition?.kind !== 'refused' && !preFatal) {
-      preLinked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, preLinkDiagnostics);
+      if (preLinked === undefined) preLinked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, preLinkDiagnostics);
       const mediaBands: Bands | null = partition === null ? null : { partition, conditions };
       const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
       const found = preLinked;
@@ -1443,7 +1475,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const bandTargets = passTargets(k);
         // CQ: cqw and cqi resolve against each element's query container, which the same pass finds. Every pass looks, since a unit
         // may appear only after var() substitution (a custom property, a registered initial value, an escaped unit).
-        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, containerBand(b, containerRefusals, unitRefusals)) };
+        const scheme = b === null || bands === null ? null : bandColorScheme(bands.partition, b);
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, containerBand(b, containerRefusals, unitRefusals), scheme) };
         return { result, diagnostics: scopedTo(own, bandTargets, targets) };
       });
       bandCases = passes.map((p) => p.result);
@@ -1657,7 +1690,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           const userOutput = options.nativeLanes !== null;
           const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
           const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
-          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
+          const tree = lowerTree(c.resolved, options.faults, environmentOf(c.resolved).ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
           // may refuse is refused here, naming the engine's reason.
@@ -1693,7 +1726,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (c.resolved === null) continue;
       const faces = engineFacesOf(c.resolved, engineFonts);
       try {
-        engineLowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
+        engineLowered.set(c.key, lowerTree(c.resolved, options.faults, environmentOf(c.resolved).ua, images === null ? new Map() : images.naturals, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         engineRefusals.set(c.key, `${e.nodeId} ${e.property}: ${e.message}`);
@@ -1896,6 +1929,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     nativeRealFaces: options.nativeRealFaces !== false,
     interactionLanes: options.interactionLanes === true,
     hostTopLayer: options.hostTopLayer === true,
+    hostCanvas: options.hostCanvas === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };
   const configDiagnostics = validateConfig(config);

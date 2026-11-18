@@ -17,6 +17,10 @@ type DirRows = { readonly ltr: { readonly [property: string]: string }; readonly
 export type UaDataset = {
   readonly platform: string;
   readonly chromeVersion: string;
+  /** The root's used colour scheme the capture ran under (light, or dark under html{color-scheme:dark}). */
+  readonly colorScheme: string;
+  /** The computed value of each system colour in that scheme (null where Chrome has none). */
+  readonly systemColors: { readonly [name: string]: string | null };
   readonly computed: { readonly [T in CapturedTag]: { readonly [property: string]: string } };
   readonly userAgentLonghands: { readonly [T in CapturedTag]: readonly string[] };
   readonly borderWidthKeywords: { readonly [keyword: string]: string };

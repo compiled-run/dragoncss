@@ -12,7 +12,8 @@ import { GENERATED_PSEUDOS } from '../css/selectors.ts';
 import type { CompilerFaults } from '../faults.ts';
 import { STRING_VALUE_TYPE } from '../css/properties/lists.ts';
 import type { UaDataset, UaKey } from '../ua/datasets.ts';
-import { textFontsOf, uaRows } from '../ua/datasets.ts';
+import { darkDatasetFor, textFontsOf, uaRows } from '../ua/datasets.ts';
+import { usedColorScheme } from '../css/properties/color-scheme.ts';
 import { blockify } from './blockify.ts';
 import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
@@ -293,6 +294,15 @@ export function resolvedCustoms(el: ResolvedElement): CustomProperties {
 // the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
 export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
+  const tree = resolveTreeWith(root, rules, faults, environment, interaction);
+  if (environment.hostCanvas !== true || environment.ua.colorScheme === 'dark') return tree;
+  if (usedColorScheme((tree.props.get('color-scheme') as ResolvedValue).value, environment.colorScheme ?? null) !== 'dark') return tree;
+  // css-color-adjust-1 §2.1: the root's used scheme is dark, so its UA colours are the dark capture's; without one the check refuses it.
+  const dark = darkDatasetFor(environment.ua.platform);
+  return dark.kind === 'ok' ? resolveTreeWith(root, rules, faults, { ...environment, ua: dark.dataset }, interaction) : tree;
+}
+
+function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState): ResolvedElement {
   // GEN-a: the generated pseudo-elements some rule selects; only these are cascaded on each element.
   const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).

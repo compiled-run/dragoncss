@@ -1,11 +1,11 @@
 // Internal entry for the parity harness, selected by the "dragon-internal" export condition. Not a public API.
-import { TRANSPARENT } from './css/color.ts';
+import { parseComputedColor, TRANSPARENT } from './css/color.ts';
 import type { LayoutInput } from '@dragon/layout';
 import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
-import { markerStyleOf } from './analysis/resolve.ts';
+import { environmentOf, markerStyleOf } from './analysis/resolve.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -519,6 +519,20 @@ export function nativeBandPrograms(compiled: object, assignment: Assignment, ban
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
   }
+}
+
+/** The used colour scheme of a case's root in a band (the scheme of the UA dataset it was resolved with) and that scheme's Canvas colour. */
+export function usedSchemeOf(compiled: object, assignment: Assignment, band: number): { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 } | string {
+  const record = internalRecord(compiled);
+  if (record === undefined) return 'not a compiled result from this package';
+  const key = keyOfAssignment(assignment);
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === key);
+  if (c === undefined || c.resolved === null) return `no resolved case for the assignment ${JSON.stringify(assignment)} in band ${band}`;
+  const ua = environmentOf(c.resolved).ua;
+  const canvas = ua.systemColors['Canvas'];
+  const parsed = canvas === undefined || canvas === null ? null : parseComputedColor(canvas);
+  if (parsed === null || (ua.colorScheme !== 'light' && ua.colorScheme !== 'dark')) throw new Error(`the ${ua.platform} UA dataset has no Canvas colour or scheme`);
+  return { colorScheme: ua.colorScheme, canvas: parsed };
 }
 
 /**

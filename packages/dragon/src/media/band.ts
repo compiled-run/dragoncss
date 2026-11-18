@@ -408,6 +408,14 @@ export function band(lists: readonly MediaQueryList[], faults: MediaFaults = NO_
   return { kind: 'bands', atoms, bands };
 }
 
+/** The prefers-color-scheme reading a band's atoms fix, or null where they hold under both readings. */
+export function bandColorScheme(partition: Extract<BandPartition, { kind: 'bands' }>, b: Band): 'light' | 'dark' | null {
+  const fits = (['light', 'dark'] as const).filter((colorScheme) => partition.atoms.every((a, k) => a.feature.base !== 'prefers-color-scheme'
+    || evaluateFeature(a.feature, { width: 0, height: 0, device: { ...DESKTOP_DEVICE, colorScheme } }) === b.truth[k]));
+  if (fits.length === 0) throw new Error(`no colour scheme reaches band ${b.index}`);
+  return fits.length === 1 ? (fits[0] as 'light' | 'dark') : null;
+}
+
 /**
  * The band that holds a viewport (CSS px, Chrome's media size) on a device: its width and height intervals hold the viewport and
  * its ratio and device truths equal those atoms there. Null when none does (only a faulted partition leaves a gap).
