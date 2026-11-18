@@ -37,13 +37,13 @@ class Frag(
   val width: Double,
   val height: Double,
   val baseline: Double?,
-  val children: JsArray<Placed>,
+  val children: JsArray<Box_Placed>,
   val outOfFlow: JsArray<OutOfFlow>,
   val inflow: AreaRect?,
 )
 
 // ts: packages/layout/src/box.ts:42
-class Placed(
+class Box_Placed(
   val frag: Frag,
   val x: Double,
   val y: Double,

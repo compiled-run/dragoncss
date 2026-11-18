@@ -166,6 +166,7 @@
     "textBoxTrim": null,
     "grid": null,
     "gridItem": null,
+    "anchor": null,
     "zoom": []
    },
    "strut": null,
@@ -309,6 +310,7 @@
       "textBoxTrim": null,
       "grid": null,
       "gridItem": null,
+      "anchor": null,
       "zoom": []
      },
      "strut": null,
@@ -467,6 +469,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -626,6 +629,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -789,6 +793,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -948,6 +953,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -1120,6 +1126,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -1279,6 +1286,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -1424,6 +1432,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -1582,6 +1591,7 @@
           "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1741,6 +1751,7 @@
           "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1904,6 +1915,7 @@
           "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2063,6 +2075,7 @@
           "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2235,6 +2248,7 @@
           "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2394,6 +2408,7 @@
           "textBoxTrim": null,
           "grid": null,
           "gridItem": null,
+          "anchor": null,
           "zoom": []
          },
          "strut": null,

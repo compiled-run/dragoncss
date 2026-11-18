@@ -30,7 +30,7 @@ fun inlineBox_blockLevelOf(box: LayoutBox): LayoutBox {
   }
   val d: String = box.style.display
   val display: String = (if (jsStrEq(d, "inline-flex")) "flex" else (if (jsStrEq(d, "inline-grid")) "grid" else "block"))
-  val style: LayoutStyle = LayoutStyle(display, box.style.position, box.style.float, box.style.top, box.style.right, box.style.bottom, box.style.left, box.style.overflowX, box.style.overflowY, box.style.direction, box.style.boxSizing, box.style.width, box.style.height, box.style.minWidth, box.style.minHeight, box.style.maxWidth, box.style.maxHeight, box.style.marginTop, box.style.marginRight, box.style.marginBottom, box.style.marginLeft, box.style.paddingTop, box.style.paddingRight, box.style.paddingBottom, box.style.paddingLeft, box.style.borderTopWidth, box.style.borderRightWidth, box.style.borderBottomWidth, box.style.borderLeftWidth, box.style.flexDirection, box.style.flexWrap, box.style.flexGrow, box.style.flexShrink, box.style.flexBasis, box.style.order, box.style.justifyContent, box.style.alignItems, box.style.alignSelf, box.style.alignContent, box.style.rowGap, box.style.columnGap, box.style.textAlign, box.style.aspectRatio, box.style.verticalAlign, box.style.textOverflow, box.style.textIndent, box.style.lineClamp, box.style.containLayout, box.style.containPaint, box.style.containSize, box.style.containIntrinsicWidth, box.style.containIntrinsicHeight, box.style.textWrapStyle, box.style.multicol, box.style.textBoxTrim, box.style.grid, box.style.gridItem, box.style.zoom)
+  val style: LayoutStyle = LayoutStyle(display, box.style.position, box.style.float, box.style.top, box.style.right, box.style.bottom, box.style.left, box.style.overflowX, box.style.overflowY, box.style.direction, box.style.boxSizing, box.style.width, box.style.height, box.style.minWidth, box.style.minHeight, box.style.maxWidth, box.style.maxHeight, box.style.marginTop, box.style.marginRight, box.style.marginBottom, box.style.marginLeft, box.style.paddingTop, box.style.paddingRight, box.style.paddingBottom, box.style.paddingLeft, box.style.borderTopWidth, box.style.borderRightWidth, box.style.borderBottomWidth, box.style.borderLeftWidth, box.style.flexDirection, box.style.flexWrap, box.style.flexGrow, box.style.flexShrink, box.style.flexBasis, box.style.order, box.style.justifyContent, box.style.alignItems, box.style.alignSelf, box.style.alignContent, box.style.rowGap, box.style.columnGap, box.style.textAlign, box.style.aspectRatio, box.style.verticalAlign, box.style.textOverflow, box.style.textIndent, box.style.lineClamp, box.style.containLayout, box.style.containPaint, box.style.containSize, box.style.containIntrinsicWidth, box.style.containIntrinsicHeight, box.style.textWrapStyle, box.style.multicol, box.style.textBoxTrim, box.style.grid, box.style.gridItem, box.style.anchor, box.style.zoom)
   return LayoutBox("box", box.id, box.boxType, style, box.strut, box.marker, box.children)
 }
 
@@ -68,7 +68,7 @@ fun inlineBox_atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: Double?
     if ((!ctx.faults.inlineFlexLastBaseline)) {
       return frag.baseline
     }
-    val item: Placed? = jsAt(frag.children, (jsLength(frag.children) - 1.0))
+    val item: Box_Placed? = jsAt(frag.children, (jsLength(frag.children) - 1.0))
     return (if (((item == null) || (jsUnwrap(item).frag.baseline == null))) frag.baseline else units_add(jsUnwrap(item).y, jsUnwrap(jsUnwrap(item).frag.baseline)))
   }
   // ts: packages/layout/src/inline-box.ts:91
@@ -90,7 +90,7 @@ fun inlineBox_atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: Double?
 fun inlineBox_inlineGridBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): Double? {
   // ts: packages/layout/src/inline-box.ts:103
   if (ctx.faults.inlineGridLastItemBaseline) {
-    val item: Placed? = jsAt(frag.children, (jsLength(frag.children) - 1.0))
+    val item: Box_Placed? = jsAt(frag.children, (jsLength(frag.children) - 1.0))
     return (if (((item == null) || (jsUnwrap(item).frag.baseline == null))) frag.baseline else units_add(jsUnwrap(item).y, jsUnwrap(jsUnwrap(item).frag.baseline)))
   }
   val b: Double? = frag.baseline

@@ -393,14 +393,14 @@ public func replaced_replacedBlockBasis(_ leaf: ReplacedLeaf, _ basis: any U_Hei
   }
   // ts: packages/layout/src/replaced.ts:266
   if try (((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) && replaced_blockLengthsHavePercent(leaf.style)) {
-    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s664, S.s979)
+    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s673, S.s990)
   }
   return nil
 }
 
 // ts: packages/layout/src/replaced.ts:273
 public func replaced_replacedFrag(_ leaf: ReplacedLeaf, _ size: ReplacedSize) throws -> Frag {
-  return Frag(leaf.id, size.inline, size.block, nil, JsArray<Placed>([]), JsArray<OutOfFlow>([]), nil)
+  return Frag(leaf.id, size.inline, size.block, nil, JsArray<Box_Placed>([]), JsArray<OutOfFlow>([]), nil)
 }
 
 // ts: packages/layout/src/replaced.ts:278
