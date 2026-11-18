@@ -28,6 +28,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -631,6 +637,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",

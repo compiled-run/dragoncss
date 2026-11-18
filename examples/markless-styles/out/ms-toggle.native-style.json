@@ -33,6 +33,12 @@
      "values": {
       "doc/app/chip#selected": false
      },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -452,6 +458,12 @@
     {
      "values": {
       "doc/app/chip#selected": true
+     },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
      },
      "nodes": [
       {
@@ -911,6 +923,12 @@
      "values": {
       "doc/app/chip#selected": false
      },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -1330,6 +1348,12 @@
     {
      "values": {
       "doc/app/chip#selected": true
+     },
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
      },
      "nodes": [
       {
