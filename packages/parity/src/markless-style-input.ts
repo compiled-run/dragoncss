@@ -5,6 +5,7 @@
 import { createHash } from 'node:crypto';
 import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
+import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -21,7 +22,7 @@ export type MarklessStyleInput = {
   readonly component: string;
   readonly nodes: readonly (
     | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly arm?: unknown }
-    | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly arm?: unknown }
+    | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly textByState?: readonly { readonly when: When; readonly value: string }[]; readonly arm?: unknown }
   )[];
   readonly css: string;
   readonly states: readonly { readonly cell: string; readonly domain: readonly StateValue[]; readonly initial: StateValue }[];
@@ -78,21 +79,25 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     const id = node['id'] as string;
     if (ids.has(id)) fail(`node ${id} is listed twice`);
     if (node['arm'] !== undefined || node['row'] !== undefined) fail(`${id}: styles inside @if arms and @for rows are not supported yet`);
+    const checkByState = (what: string, byState: unknown): void => {
+      if (!Array.isArray(byState)) fail(`${id}: ${what} is not a list`);
+      for (const e of byState as unknown[]) {
+        if (!isRecord(e) || !(e['value'] === null || isString(e['value'])) || !isRecord(e['when'])) fail(`${id}: bad ${what} entry ${JSON.stringify(e)}`);
+        const when = (e as Record<string, unknown>)['when'] as Record<string, unknown>;
+        for (const [cell, value] of Object.entries(when)) if (!(cells.get(cell) ?? []).includes(value as StateValue)) fail(`${id}: ${what} names ${cell}=${JSON.stringify(value)}, which is not a state and one of its values`);
+      }
+    };
     if (node['kind'] === 'text') {
       if (!isString(node['parent']) || !ids.has(node['parent'])) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isString(node['text'])) fail(`${id}: text is not a string`);
+      if (node['textByState'] !== undefined) {
+        checkByState('textByState', node['textByState']);
+        if (!(node['textByState'] as unknown[]).every((e) => isString((e as Record<string, unknown>)['value']))) fail(`${id}: textByState gives a text that is not a string`);
+      }
     } else if (node['kind'] === 'element') {
       if (!isString(node['element']) || !/^[a-z][a-z0-9-]*$/.test(node['element'])) fail(`${id}: bad element name ${JSON.stringify(node['element'])}`);
       if (node['parent'] !== null && !(isString(node['parent']) && ids.has(node['parent']))) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
-      const checkByState = (what: string, byState: unknown): void => {
-        if (!Array.isArray(byState)) fail(`${id}: ${what} is not a list`);
-        for (const e of byState as unknown[]) {
-          if (!isRecord(e) || !(e['value'] === null || isString(e['value'])) || !isRecord(e['when'])) fail(`${id}: bad ${what} entry ${JSON.stringify(e)}`);
-          const when = (e as Record<string, unknown>)['when'] as Record<string, unknown>;
-          for (const [cell, value] of Object.entries(when)) if (!(cells.get(cell) ?? []).includes(value as StateValue)) fail(`${id}: ${what} names ${cell}=${JSON.stringify(value)}, which is not a state and one of its values`);
-        }
-      };
       if (node['classByState'] !== undefined) checkByState('classByState', node['classByState']);
       const attributesByState = node['attributesByState'];
       if (attributesByState !== undefined) {
@@ -154,25 +159,41 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   const symbol = (name: string): ClassSymbol => ({ owner: DOCUMENT_ID, sheet: 'component', name });
   const children = new Map<string | null, MarklessStyleInput['nodes'][number][]>();
   for (const n of input.nodes) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
+  type ByStateList = readonly { readonly when: When; readonly value: string | null }[];
+  // One entry per combination of the states, so each value's condition is exactly the combinations that carry it.
+  const entriesOf = (id: string, what: string, byState: ByStateList): ByStateList => {
+    const entries = combos.map((c) => {
+      const found = byState.filter((e) => Object.keys(e.when).length === Object.keys(c).length && Object.entries(e.when).every(([cell, v]) => c[cell] === v));
+      if (found.length !== 1) fail(`${id}: ${what} has ${found.length} entries for ${JSON.stringify(c)}`);
+      return found[0] as ByStateList[number];
+    });
+    if (byState.length !== combos.length) fail(`${id}: ${what} has ${byState.length} entries for ${combos.length} combinations`);
+    return entries;
+  };
   const node = (n: MarklessStyleInput['nodes'][number]): TreeNode => {
     // Dragon names a text node "<parent>:text<k>" itself, as Markless does; marklessStyleExport checks the two agree.
-    if (n.kind === 'text') return { kind: 'text', id: `t${input.nodes.indexOf(n)}`, text: n.text, origin } as TreeNode;
     type ByState = readonly { readonly when: When; readonly value: string | null }[];
-    // One entry per combination of the states, so each value's condition is exactly the combinations that carry it.
-    const entriesOf = (what: string, byState: ByState): ByState => {
-      const entries = combos.map((c) => {
-        const found = byState.filter((e) => Object.keys(e.when).length === Object.keys(c).length && Object.entries(e.when).every(([cell, v]) => c[cell] === v));
-        if (found.length !== 1) fail(`${n.id}: ${what} has ${found.length} entries for ${JSON.stringify(c)}`);
-        return found[0] as ByState[number];
-      });
-      if (byState.length !== combos.length) fail(`${n.id}: ${what} has ${byState.length} entries for ${combos.length} combinations`);
-      return entries;
-    };
+    if (n.kind === 'text') {
+      const at = input.nodes.indexOf(n);
+      if (n.textByState === undefined) return { kind: 'text', id: `t${at}`, text: n.text, origin } as TreeNode;
+      // A text that follows state: one arm per distinct string, each holding exactly the combinations that give it, so every
+      // assignment lays out the string it shows.
+      const entryOf = entriesOf(n.id, 'textByState', n.textByState);
+      const values = [...new Set(entryOf.map((e) => e.value as string))];
+      const arm = (k: number): TreeNode => {
+        const text = { kind: 'text', id: `t${at}v${k}`, text: values[k] as string, origin } as TreeNode;
+        if (k === values.length - 1) return text;
+        const on = entryOf.filter((e) => e.value === values[k]);
+        const when: Condition = on.length === 1 ? all((on[0] as ByState[number]).when) : { kind: 'or', values: on.map((e) => all(e.when)) };
+        return { kind: 'branch', id: `b${at}v${k}`, when, then: [text], else: [arm(k + 1)], origin } as TreeNode;
+      };
+      return arm(0);
+    }
     let classes: { value: { when: Condition; value: ClassSymbol | null }[]; origin: typeof origin }[];
     if (n.classByState === undefined) classes = classTokens(n.attributes['class'] ?? '').map((t) => ({ value: [{ when: { kind: 'true' }, value: symbol(t) }], origin }));
     else {
       const byState = n.classByState;
-      const entryOf = entriesOf('classByState', byState);
+      const entryOf = entriesOf(n.id, 'classByState', byState);
       const tokens = [...new Set(entryOf.flatMap((e) => classTokens(e.value ?? '')))];
       classes = tokens.map((t) => {
         const on = entryOf.filter((e) => classTokens(e.value ?? '').includes(t));
@@ -192,7 +213,7 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
         ...(n.element === 'dialog' && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
-          const entryOf = entriesOf(`attributesByState.${name}`, byState);
+          const entryOf = entriesOf(n.id, `attributesByState.${name}`, byState);
           const values = [...new Set(entryOf.map((e) => e.value))];
           return {
             name,
@@ -300,14 +321,17 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
     assignments: x.assignments.map((a, i) => ({
       ...a,
       values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])),
-      canvas: canvasOf(a.nodes, `${t} assignment ${i}`),
+      ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY])),
     })),
   }]));
   return { input, exported: { ...exported, targets } };
 }
 
-/** An assignment of a Markless export: also the colour of the canvas, which the host paints behind the page and the system bars. */
-export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8 };
+/**
+ * An assignment of a Markless export: also the colour of the canvas, which the host paints behind the page and the system bars,
+ * and the colour body paints in its own box (its frame) when html's background is the canvas, else null.
+ */
+export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null };
 export type MarklessStyleExport = Omit<NativeStyleExport, 'targets'> & {
   readonly targets: { readonly [T in NativeStyleTarget]?: Omit<ExportTarget, 'assignments'> & { readonly assignments: readonly MarklessExportAssignment[] } };
 };
@@ -318,15 +342,61 @@ const backgroundOf = (nodes: readonly ExportNode[], id: string): Rgba8 => {
   return color as Rgba8;
 };
 
+/** The writes html and body may carry: the hosts draw the canvas and body's background, and no border, image or effect of either. */
+const ROOT_WRITES: ReadonlySet<string> = new Set(['background-color', 'border-widths', 'border-styles', 'border-colors']);
+
+function checkRootPaint(nodes: readonly ExportNode[], id: string, where: string): void {
+  const node = nodes.find((n) => n.id === id);
+  for (const w of node?.writes ?? []) {
+    if (!ROOT_WRITES.has(w['kind'] as string)) fail(`${where}: ${id} has a ${String(w['kind'])} write, which the hosts do not draw on ${id}`);
+  }
+  if (Object.values(node?.borderWidths ?? {}).some((v) => v !== 0)) fail(`${where}: ${id} has a border, which the hosts do not draw on ${id}`);
+}
+
+type Bands = NonNullable<NativeStyleExport['targets']['ios']>['bands'];
+
+/** The colour scheme whose readings make a band's atoms true; a band no scheme reaches, or another feature, is refused. */
+export function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
+  const want = bands?.bands[band];
+  if (bands === undefined || want === undefined) throw new Error(`no band ${band}`);
+  const truth = (dark: boolean): boolean[] => bands.atoms.map((a) => {
+    const atom = a as { feature: string; comparisons: readonly unknown[]; keyword: string };
+    if (atom.feature !== 'prefers-color-scheme' || atom.comparisons.length > 0) throw new Error(`the comparison reads prefers-color-scheme only, not ${atom.feature}`);
+    return atom.keyword === 'any' || (atom.keyword === 'dark') === dark;
+  });
+  for (const scheme of ['light', 'dark'] as const) if (truth(scheme === 'dark').every((v, i) => v === want[i])) return scheme;
+  throw new Error(`no colour scheme reaches band ${band}`);
+}
+
+/** The colour scheme an assignment's band reads, or null for a band of another media feature. */
+function bandScheme(bands: Bands, band: unknown): 'light' | 'dark' | null {
+  if (typeof band !== 'number') return 'light';
+  return bands !== undefined && bands.atoms.every((a) => (a as { feature: string }).feature === 'prefers-color-scheme') ? schemeOf(bands, band) : null;
+}
+
+const WHITE: Rgba8 = { r: 255, g: 255, b: 255, alpha: 255 };
+/** Skia's src-over of a colour onto an opaque pixel, as Chrome rasterises a background fill (textDecoration.blendOver). */
+const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
+  if (src.alpha === 255) return src;
+  const p = textDecoration.blendOver({ r: dst.r, g: dst.g, b: dst.b, a: 255 }, { r: src.r, g: src.g, b: src.b, a: src.alpha }, 256);
+  return { r: p.r, g: p.g, b: p.b, alpha: 255 };
+};
+
 /**
- * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's, else white. The hosts paint no html
- * or body box, so a background body keeps for its own box (under an html background) and a translucent canvas are refused.
+ * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's (propagated, so body's box paints
+ * none), drawn over the white base background of a top-level page. When html has its own background, body keeps its own for its
+ * box, which lies on the canvas; that box's colour is given composited, as Chrome shows it.
  */
-function canvasOf(nodes: readonly ExportNode[], where: string): Rgba8 {
+function rootPaint(nodes: readonly ExportNode[], where: string, scheme: 'light' | 'dark' | null): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
+  checkRootPaint(nodes, 'html', where);
+  checkRootPaint(nodes, 'body', where);
   const html = backgroundOf(nodes, 'html');
   const body = backgroundOf(nodes, 'body');
-  if (html.alpha !== 0 && body.alpha !== 0) fail(`${where}: body has its own background under html's, and the export draws no body box`);
-  const canvas = html.alpha !== 0 ? html : body.alpha !== 0 ? body : { r: 255, g: 255, b: 255, alpha: 255 };
-  if (canvas.alpha !== 255) fail(`${where}: the canvas background is translucent, which the export does not blend over white yet`);
-  return canvas;
+  // Under an emulated dark preference Chrome 145 draws the page over a dark base (the dark dataset's Canvas), not white, whatever
+  // the root's color-scheme; which base a phone in dark mode should show through a see-through background is not decided here.
+  const seeThrough = (html.alpha === 0 ? body : html).alpha;
+  if (scheme !== 'light' && seeThrough !== 0 && seeThrough !== 255) fail(`${where}: the page background is see-through in a ${scheme === 'dark' ? 'dark-mode band' : 'band of another media feature'}, where Chrome's base colour under it is not known to be white`);
+  if (html.alpha === 0) return { canvas: over(WHITE, body), bodyBackground: null };
+  const canvas = over(WHITE, html);
+  return { canvas, bodyBackground: body.alpha === 0 ? null : over(canvas, body) };
 }

@@ -101,6 +101,27 @@ function isEmpty(el: LinkedElement, faults: CompilerFaults): boolean {
   return el.children.every((c) => c.kind === 'text' && (c.text === '' || (faults.emptyIgnoresWhitespace && !/[^ \t\n\r\f]/.test(c.text))));
 }
 
+/** HTML §4.16.3: the elements :disabled and :enabled apply to (form-associated custom elements are not built). */
+const CAN_BE_DISABLED: ReadonlySet<string> = new Set(['button', 'input', 'select', 'textarea', 'optgroup', 'option', 'fieldset']);
+
+/**
+ * HTML §4.10.18.5 and §4.10.15: an element is disabled by its own disabled attribute, or as a button, input, select or textarea
+ * inside a disabled fieldset but not inside that fieldset's first legend. path ends with the element.
+ */
+export function isDisabled(path: readonly LinkedElement[]): boolean {
+  const el = path[path.length - 1];
+  if (el === undefined || !CAN_BE_DISABLED.has(el.tag)) return false;
+  if (el.attributes.has('disabled')) return true;
+  if (!['button', 'input', 'select', 'textarea'].includes(el.tag)) return false;
+  for (let i = path.length - 2; i >= 0; i--) {
+    const a = path[i] as LinkedElement;
+    if (a.tag !== 'fieldset' || !a.attributes.has('disabled')) continue;
+    const firstLegend = a.children.find((c): c is LinkedElement => c.kind === 'element' && c.tag === 'legend');
+    if (firstLegend === undefined || path[i + 1] !== firstLegend) return true;
+  }
+  return false;
+}
+
 /** Whether some n >= 0 gives a*n + b = index (1-based). */
 const nthHolds = (a: number, b: number, index: number): boolean => (a === 0 ? index === b : (index - b) % a === 0 && (index - b) / a >= 0);
 
@@ -131,6 +152,8 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
       return p.selectors.some((s) => hasMatches(rule, s, path, faults, ix));
     case 'link':
       return p.state !== 'visited' && isAnyLink(el);
+    case 'disabled':
+      return CAN_BE_DISABLED.has(el.tag) && isDisabled(path) !== p.enabled;
     case 'interaction': {
       const set = p.pseudo === 'focus-visible' ? 'focusVisible' : p.pseudo;
       ix.probe?.[set].add(el.address);

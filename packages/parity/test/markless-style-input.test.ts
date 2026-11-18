@@ -49,8 +49,8 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
     const bands = dark?.assignments.map((a) => a.values['@env#band']) ?? [];
     expect(new Set(bands)).toEqual(new Set([0, 1]));
     expect(dark?.assignments.map((a) => a.canvas)).toEqual(bands.map((b) => (b === 0 ? white : navy)));
-    expect(() => canvases('\nhtml { background: #123456; }\nbody { background: #ffffff; }')).toThrow('body has its own background under html\'s');
-    expect(() => canvases('\nbody { background: rgba(0, 0, 0, 0.5); }')).toThrow('the canvas background is translucent');
+    // A body background under html's, and a translucent canvas: packages/parity/test/markless-root-paint.test.ts, against Chrome's pixels.
+    expect(canvases('\nhtml { background: #123456; }\nbody { background: #ffffff; }')).toEqual([navy, navy]);
   });
 
   it('refuses an input it cannot convert faithfully, naming why', () => {

@@ -37,7 +37,9 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   iframe: ['src', 'width', 'height'],
   // FORM-a A3: a button's type (button, submit, reset, or an invalid value, which is submit) changes only its activation
   // behaviour; Chrome's UA rules for button do not read it (HTML §15.5.3; parity fixture controls-button-type).
-  button: ['type'],
+  // :disabled: a disabled button reads Chrome's captured button[disabled] UA row (elements.ts uaTagOf) and matches :disabled
+  // (analysis/match.ts isDisabled); the parity fixtures controls-button-disabled prove both.
+  button: ['type', 'disabled'],
   // MEDIA-EL: a video's src is the stream that sizes it (videos/compile.ts), and preload none keeps it at the default object size.
   video: ['src', 'width', 'height', 'preload'],
   // GEN-c (notes/T151-gen-spec.md R14): ol start and reversed and li value set list item ordinals (HTML §4.4.5, §4.4.8), which
