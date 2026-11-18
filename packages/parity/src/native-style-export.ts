@@ -42,7 +42,13 @@ export type ExportNode = {
  * pageScroll: the offset range of the viewport, the page's own scroll view, at the target's viewport; null when the engine does not
  * decide it (a form control on the page), with the reason in the export's warnings.
  */
-export type ExportAssignment = { readonly values: Readonly<Record<string, Scalar>>; readonly pageScroll: ScrollOffsets | null; readonly nodes: readonly ExportNode[] };
+export type ExportAssignment = {
+  readonly values: Readonly<Record<string, Scalar>>;
+  readonly pageScroll: ScrollOffsets | null;
+  /** Only when pageScroll is null: the node the engine stopped at and why, for a build error that names the element. */
+  readonly pageScrollUndecided?: { readonly nodeId: string; readonly detail: string };
+  readonly nodes: readonly ExportNode[];
+};
 export type ExportTarget = {
   readonly backend: string;
   readonly viewport: ExportDevice['viewport'];
@@ -95,14 +101,14 @@ function boxStyles(root: LayoutBox): Map<string, LayoutBox['style']> {
 }
 
 /** The viewport's and every scroll container's offset range for one assignment's layout; a range the engine does not decide throws, naming it. */
-function scrollOffsets(component: string, program: NativeProgram, viewport: ExportDevice['viewport'], dpr: number): { readonly page: ScrollOffsets | { readonly undecided: string }; readonly containers: ReadonlyMap<string, ScrollOffsets> } {
+function scrollOffsets(component: string, program: NativeProgram, viewport: ExportDevice['viewport'], dpr: number): { readonly page: ScrollOffsets | { readonly undecided: string; readonly nodeId: string; readonly detail: string }; readonly containers: ReadonlyMap<string, ScrollOffsets> } {
   const input = programInput(program, viewport, dpr);
   const ranges = scrollRanges(input, referenceMeasurer());
   if (ranges.kind === 'refused') throw new Error(`${component}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
   if (ranges.refused.length > 0) throw new Error(`${component}: no scroll range for ${ranges.refused.map((r) => `${r.id} (at ${r.nodeId}: ${r.detail})`).join('; ')}`);
   const metrics = scrollMetricsWithFaults(input, referenceMeasurer(), viewportDirectionOf(input), NO_ENGINE_FAULTS);
   const containers = new Map(ranges.ranges.map((r) => [r.id, offsetsOf(r)]));
-  if (metrics.kind === 'refused') return { page: { undecided: `the page's scroll range is not decided at ${metrics.nodeId}: ${metrics.detail}` }, containers };
+  if (metrics.kind === 'refused') return { page: { undecided: `the page's scroll range is not decided at ${metrics.nodeId}: ${metrics.detail}`, nodeId: metrics.nodeId, detail: metrics.detail }, containers };
   const v = metrics.viewport;
   // As overflow.ts rangeOf does for an element scroll container.
   const ox = Math.floor((v.paddingX - v.scrollRect.x) / LU_PER_PX);
@@ -149,7 +155,8 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
         };
       });
       if ('undecided' in scroll.page) undecided.add(`${t}: ${scroll.page.undecided}`);
-      return { values: valuesOf(a.assignment), pageScroll: 'undecided' in scroll.page ? null : scroll.page, nodes };
+      if ('undecided' in scroll.page) return { values: valuesOf(a.assignment), pageScroll: null, pageScrollUndecided: { nodeId: scroll.page.nodeId, detail: scroll.page.detail }, nodes };
+      return { values: valuesOf(a.assignment), pageScroll: scroll.page, nodes };
     });
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);

@@ -55,6 +55,19 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
     expect(() => marklessStyleExport(edit((v) => { v['css'] += '\n.like.mk-1x9vgkx { color: nonsense-colour; }'; }), PATH)).toThrow(/does not compile/);
   });
 
+  it('a page whose range the engine does not decide has pageScroll null, the node it stopped at, and a warning', () => {
+    const exported = marklessStyleExport(edit((v) => {
+      v['nodes'].push({ kind: 'element', id: 'h9', element: 'input', parent: 'h0', attributes: { type: 'range' } });
+      v['css'] += '\ninput { display: block; appearance: none; } input::-webkit-slider-thumb { appearance: none; }';
+    }), PATH).exported;
+    for (const t of ['ios', 'android'] as const) {
+      const a = exported.targets[t]?.assignments[0];
+      expect(a?.pageScroll, t).toBeNull();
+      expect(a?.pageScrollUndecided?.nodeId, t).toBe('h9');
+    }
+    expect(exported.warnings.filter((w) => w.code === 'DRAGON_PAGE_SCROLL_UNDECIDED').length).toBe(2);
+  });
+
   it('a box with overflow auto carries its scroll range, and the page its own, in device px per target', () => {
     const row = (id: string, parent: string) => ({ kind: 'element', id, element: 'p', parent, attributes: { class: 'row' } });
     const input = (extra: number): string => JSON.stringify({
