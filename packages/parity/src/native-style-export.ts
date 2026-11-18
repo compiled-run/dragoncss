@@ -16,6 +16,9 @@ import { engineBoxes, expectedEngine, referenceMeasurer } from './native-host.ts
 import { viewportDirectionOf } from './scroll-metrics.ts';
 import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
+import { systemMeasurer } from './system-fonts/measurer.ts';
+import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
+import { systemRequestOf } from './system-fonts/provider.ts';
 
 export const NATIVE_STYLE_EXPORT_SCHEMA = 'dragon.native-style-export/1';
 
@@ -93,8 +96,16 @@ export type NativeStyleExport = {
   readonly warnings: readonly { readonly code: string; readonly message: string }[];
   /** Each face by id; `file` is relative to the Dragon checkout, or with `from: 'input'` to the style input's directory. */
   readonly fonts: readonly { readonly id: string; readonly file: string; readonly from?: 'input' }[];
+  /**
+   * Only when a text is drawn in a system face (dragon fonts/system-faces.ts): each such face id with how each target's host
+   * rebuilds the platform's own font (system-fonts/provider.ts SystemFaceDescriptor). Nothing of it is bundled.
+   */
+  readonly systemFonts?: readonly SystemFontEntry[];
   readonly targets: { readonly [T in NativeStyleTarget]?: ExportTarget };
 };
+
+/** A system face of the export: its id, and per target the platform font a host draws it with. */
+export type SystemFontEntry = { readonly id: string } & { readonly [T in NativeStyleTarget]?: Omit<Extract<SystemFaceDescriptor, { platform: T }>, 'platform'> };
 
 let vendored: ReadonlyMap<string, string> | null = null;
 
@@ -209,9 +220,9 @@ const offsetsOf = ({ minX, maxX, minY, maxY }: ScrollRange): ScrollOffsets => ({
 const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
 /** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. */
-export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES, inputFonts: readonly { readonly id: string; readonly file: string; readonly bytes: Uint8Array }[] = []): NativeStyleExport {
+export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES, inputFonts: readonly { readonly id: string; readonly file: string; readonly bytes: Uint8Array }[] = [], systemFonts: ((t: NativeStyleTarget, dpr: number) => SystemFonts) | null = null): NativeStyleExport {
   const inputFaces = new Map(inputFonts.map((f) => [registerFace(f.bytes), f.file]));
-  const measurer = (): TextMeasurer => referenceMeasurer([...inputFaces.keys()]);
+  const systemUsed = new Map<string, Record<string, unknown>>();
   if (!styles.ok) throw new Error(`${component}: no export: ${Object.entries(styles.targets).map(([t, o]) => `${t} ${o.kind === 'blocked' ? o.reason : 'emitted'}`).join('; ')}`);
   const faces = new Set<string>();
   const undecided = new Set<string>();
@@ -222,6 +233,10 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     if (o.kind !== 'emitted') throw new Error(`${component}: ${t} is blocked: ${o.reason}`);
     const d = devices[t];
     const sp = o.program;
+    // A target measures its system faces with its own platform's fonts; the lowered program is shared.
+    const system = systemFonts === null ? null : systemFonts(t, d.dpr);
+    const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr);
+    const measurer = (): TextMeasurer => shared ?? referenceMeasurer([...inputFaces.keys()]);
     const assignments = sp.assignments.map((a, i): ExportAssignment => {
       const program = programAt(sp, i);
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
@@ -238,7 +253,15 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       const nodes = program.nodes.map((n): ExportNode => {
         const box = boxes.get(n.id);
         const s = style.get(n.id);
-        for (const w of n.writes) if (w.kind === 'font') faces.add(w.font.family);
+        for (const w of n.writes) {
+          if (w.kind !== 'font') continue;
+          if (systemRequestOf(w.font.family) === null) faces.add(w.font.family);
+          else if (system === null) throw new Error(`${component}: ${t} node ${n.id} is drawn in the system face ${w.font.family}, and the export was given no system fonts`);
+          else {
+            const { platform: _platform, ...descriptor } = system.descriptor(w.font.family);
+            systemUsed.set(w.font.family, { ...(systemUsed.get(w.font.family) ?? { id: w.font.family }), [t]: descriptor });
+          }
+        }
         const scrolls = n.writes.some((w) => w.kind === 'scroll-container');
         const range = scroll.containers.get(n.id);
         if (scrolls && range === undefined) throw new Error(`${component}: ${t} node ${n.id} is a scroll container with no scroll range`);
@@ -281,6 +304,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       if (vendored === undefined) throw new Error(`${component}: face ${id} is not a vendored font`);
       return { id, file: vendored };
     }),
+    ...(systemUsed.size === 0 ? {} : { systemFonts: [...systemUsed.values()].sort((a, b) => (String(a['id']) < String(b['id']) ? -1 : 1)) as unknown as SystemFontEntry[] }),
     targets,
   };
 }

@@ -73,7 +73,9 @@ import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import type { FontSelectionRequest } from './fonts/selection.ts';
-import { foldFamily } from './fonts/selection.ts';
+import { candidates, foldFamily } from './fonts/selection.ts';
+import { isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
+import type { SystemFaceRole } from './fonts/system-faces.ts';
 import { synthesisTraits } from './fonts/metrics.ts';
 import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
 import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from './fonts/weight.ts';
@@ -305,6 +307,11 @@ export type InternalOptions = {
   readonly hostTopLayer?: boolean;
   /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
   readonly hostCanvas?: boolean;
+  /**
+   * Native targets resolve the font map's platform generics, and a font-family left at its initial value, to system faces
+   * (fonts/system-faces.ts), which the export measures per target at build time. Off: native refuses them as before.
+   */
+  readonly systemFonts?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -322,6 +329,7 @@ type Resolved = {
   readonly interactionLanes: boolean;
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
+  readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
 };
 
@@ -593,11 +601,17 @@ function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest, allow
 const bundledFaces = (fonts: ProjectFonts): DeclaredFace[] => [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
 
 /** The one face Chrome draws a text with at a UA font, or why the engine cannot lay it out (engine mode, notes/T083-txt1a-1.md). */
-function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string, font: TextFont): EngineFace {
+function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string, font: TextFont, systemFonts: boolean, initial: boolean): EngineFace {
+  if (systemFonts && initial) return systemFaceFor('default', font);
   const listText = familyListText(family.value);
   const support = listText === null ? null : familySupport(listText, fonts.keys.map, fonts.keys.declared);
   if (support === null || support.kind !== 'resolved') return { kind: 'refused', reason: 'the family list does not resolve to bundled faces' };
   const request = requestOf(font.weight, font.style);
+  if (systemFonts) {
+    // The first entry that draws U+0020 decides the primary font: a family with a bundled face for it, or a platform generic.
+    const first = support.resolutions.find((r) => r.kind === 'platform' || ((r.kind === 'declared' || r.kind === 'pinned') && candidates(bundledFaces(fonts), r.family, request, 0x20).length > 0));
+    if (first?.kind === 'platform') return isSystemFaceRole(first.key) ? systemFaceFor(first.key, font) : { kind: 'refused', reason: `${first.key} is left to the platform, and no system face plays it` };
+  }
   const rendered = renderedFaces(bundledFaces(fonts), support.resolutions, text, request);
   if (rendered.length !== 1) return { kind: 'refused', reason: rendered.length === 0 ? 'no bundled face draws it' : `Chrome draws it with ${rendered.length} faces (font fallback), and the engine lays out one face per text` };
   const face = (rendered[0] as { face: DeclaredFace }).face;
@@ -608,19 +622,33 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   return { kind: 'face', id: `sha256:${sha256HexBytes(face.source.bytes)}` };
 }
 
-/** Engine mode's faces of a case, by address: each element's primary font (the strut, U+0020) and each laid-out text node's text. */
-function engineFacesOf(root: ResolvedElement, fonts: ProjectFonts): Map<string, EngineFace> {
+/** The system face of a role at a text font (fonts/system-faces.ts); a weight or style no system face is requested at is refused. */
+function systemFaceFor(role: SystemFaceRole, font: TextFont): EngineFace {
+  if (font.style.kind === 'oblique') return { kind: 'refused', reason: `font-style ${serializeFontStyle(font.style)} has no system face (normal and italic do)` };
+  const id = systemFaceId(role, font.weight, font.style.kind);
+  return id === null ? { kind: 'refused', reason: `font-weight ${serializeFontWeight(font.weight)} has no system face (the nine weights 100 to 900 do)` } : { kind: 'face', id };
+}
+
+/**
+ * Engine mode's faces of a case, by address: each element's primary font (the strut, U+0020) and each laid-out text node's text.
+ * With system fonts, a font-family that is still the initial value (inherited from a root that declares none) is the browser's default.
+ */
+function engineFacesOf(root: ResolvedElement, fonts: ProjectFonts, systemFonts = false): Map<string, EngineFace> {
   const out = new Map<string, EngineFace>();
-  const walk = (el: ResolvedElement): void => {
+  const walk = (el: ResolvedElement, parentInitial: boolean): void => {
     const own = textFontOf(el);
     const family = el.props.get('font-family') as ResolvedValue;
-    out.set(el.element.address, engineFaceFor(fonts, family, ' ', own));
+    const initial = family.origin === 'initial' || (family.origin === 'inherited' && parentInitial);
+    out.set(el.element.address, engineFaceFor(fonts, family, ' ', own, systemFonts, initial));
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c);
-      else out.set(c.node.address, engineFaceFor(fonts, c.props.get('font-family') as ResolvedValue, c.text, own));
+      if (c.kind === 'element') walk(c, initial);
+      else {
+        const text = c.props.get('font-family') as ResolvedValue;
+        out.set(c.node.address, engineFaceFor(fonts, text, c.text, own, systemFonts, text.origin === 'initial' || (text.origin === 'inherited' && initial)));
+      }
     }
   };
-  walk(root);
+  walk(root, false);
   return out;
 }
 
@@ -880,10 +908,10 @@ const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatM
  * TXT1a-2: the faces of a case's nodes that resolve to one real bundled static face, as engine mode resolves them, by address;
  * empty without fonts. A node in the family Ahem never reads it (it keeps AHEM_FACE).
  */
-function realFacesOf(root: ResolvedElement, fonts: ProjectFonts | null, ua: UaDataset): Map<string, EngineFace> {
+function realFacesOf(root: ResolvedElement, fonts: ProjectFonts | null, ua: UaDataset, systemFonts = false): Map<string, EngineFace> {
   const out = new Map<string, EngineFace>();
   if (fonts === null) return out;
-  for (const [address, face] of engineFacesOf(root, fonts)) if (face.kind === 'face') out.set(address, face);
+  for (const [address, face] of engineFacesOf(root, fonts, systemFonts)) if (face.kind === 'face') out.set(address, face);
   return out;
 }
 
@@ -920,7 +948,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
-    const realFaces = realFacesOf(resolved, projectFonts, options.ua);
+    const realFaces = realFacesOf(resolved, projectFonts, options.ua, options.systemFonts);
     // On by default (InternalOptions.nativeRealFaces); turned off, native targets refuse real faces, and the engine lane lowers them
     // in engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
@@ -1658,6 +1686,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     ...(options.nativeRealFaces ? { nativeRealFaces: true } : {}),
+    ...(options.systemFonts ? { systemFonts: true } : {}),
     direction: options.direction,
     config,
     input: canonicalInput(input),
@@ -1688,7 +1717,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           // font (its strut) counts, not only its text. A compile given the lanes verdict (a user's, whose output can be ready) refuses
           // them too: a ready output's support files bundle no faces and no shim, so its app could not draw them.
           const userOutput = options.nativeLanes !== null;
-          const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
+          const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua, options.systemFonts) : new Map<string, EngineFace>();
           const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
           const tree = lowerTree(c.resolved, options.faults, environmentOf(c.resolved).ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
@@ -1930,6 +1959,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     interactionLanes: options.interactionLanes === true,
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
+    systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
   };
   const configDiagnostics = validateConfig(config);

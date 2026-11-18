@@ -49,6 +49,12 @@ export type NativeStylesConfig = {
    * block the target.
    */
   readonly output?: 'program-and-sources' | 'program';
+  /**
+   * 'measured': the font map's platform generics (system-ui, sans-serif, serif, monospace) and a font-family left at its initial
+   * value resolve to system faces (fonts/system-faces.ts), each the platform's own font, measured per target at build time by the
+   * caller's export; nothing is bundled. Only with support 'lanes'. Absent: native refuses them.
+   */
+  readonly systemFonts?: 'measured';
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -104,8 +110,10 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
         : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
       ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
+      ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
     },
   );
+  if (config.systemFonts !== undefined && (config.systemFonts !== 'measured' || support !== 'lanes')) throw new Error(`compileNativeStyles: systemFonts ${JSON.stringify(config.systemFonts)} is 'measured', with support 'lanes'`);
   if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);
   if (config.canvas !== undefined && config.canvas !== 'host') throw new Error(`compileNativeStyles: canvas ${JSON.stringify(config.canvas)} is not 'host'`);
   const output = config.output ?? 'program-and-sources';
