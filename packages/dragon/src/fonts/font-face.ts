@@ -12,7 +12,7 @@ import { capabilitiesOf } from './selection.ts';
 import type { FontSelectionCapabilities, UnicodeRange } from './selection.ts';
 import { readSfnt } from './sfnt.ts';
 import { decodeFontFile } from './woff.ts';
-import type { FontContainer } from './woff.ts';
+import type { BrotliDecompress, FontContainer } from './woff.ts';
 import type { SfntFont, SfntRefusal } from './sfnt.ts';
 import { fenceVariableFace } from './variable-fence.ts';
 import type { VariableFontRefusal } from './variable-fence.ts';
@@ -108,7 +108,8 @@ const nodeList = (node: CssNode | null | undefined, key: string): CssNode[] => {
 };
 
 /** Parses the @font-face at-rule node (the AtRuleContext node shape) with its declaration order among the document's faces. */
-export function parseFontFace(node: CssNode, order: number, resolve: FontAssetResolver, faults: FontFaults = NO_FONT_FAULTS): FontFaceResult {
+/** brotli: the host's Brotli decoder for a WOFF2 src; null refuses WOFF2 (no-brotli). */
+export function parseFontFace(node: CssNode, order: number, resolve: FontAssetResolver, faults: FontFaults = NO_FONT_FAULTS, brotli: BrotliDecompress | null = null): FontFaceResult {
   const issues: FontFaceIssue[] = [];
   const d: { -readonly [K in keyof FontFaceDescriptors]: FontFaceDescriptors[K] } = {};
   for (const decl of nodeList(node['block'] as CssNode | null, 'children')) {
@@ -142,7 +143,7 @@ export function parseFontFace(node: CssNode, order: number, resolve: FontAssetRe
   // FontFace::Create (font_face.cc): no FontFace without a valid font-family and a src list.
   if (d.family === undefined) return { face: null, descriptors, issues: [...issues, { kind: 'rule-dropped', reason: 'missing-family' }] };
   if (d.src === undefined) return { face: null, descriptors, issues: [...issues, { kind: 'rule-dropped', reason: 'missing-src' }] };
-  const source = chooseSource(d.src, resolve, issues, faults);
+  const source = chooseSource(d.src, resolve, issues, faults, brotli);
   return {
     face: { family: d.family, descriptors, capabilities: capabilitiesOf(descriptors), ranges: d.unicodeRange ?? [{ start: 0, end: 0x10ffff }], order, source },
     descriptors,
@@ -439,10 +440,10 @@ function consumeSrcUrl(s: TokenStream): SrcEntry | null {
  * The src Dragon uses: the first entry of Chrome's parsed list, because Chrome falls through only when a load fails. When Dragon
  * cannot read it the result is a typed error; Dragon never skips ahead to a later src.
  */
-function chooseSource(src: readonly SrcEntry[], resolve: FontAssetResolver, issues: FontFaceIssue[], faults: FontFaults): FaceSource | null {
+function chooseSource(src: readonly SrcEntry[], resolve: FontAssetResolver, issues: FontFaceIssue[], faults: FontFaults, brotli: BrotliDecompress | null): FaceSource | null {
   const candidates = faults.skipUnreadableSrc ? src : src.slice(0, 1);
   for (const entry of candidates) {
-    const got = sourceOf(entry, resolve, faults);
+    const got = sourceOf(entry, resolve, faults, brotli);
     if ('refused' in got) {
       if (!faults.skipUnreadableSrc) issues.push(got.refused);
       continue;
@@ -452,7 +453,7 @@ function chooseSource(src: readonly SrcEntry[], resolve: FontAssetResolver, issu
   return null;
 }
 
-function sourceOf(entry: SrcEntry, resolve: FontAssetResolver, faults: FontFaults): { source: FaceSource | null } | { refused: FontFaceIssue } {
+function sourceOf(entry: SrcEntry, resolve: FontAssetResolver, faults: FontFaults, brotli: BrotliDecompress | null): { source: FaceSource | null } | { refused: FontFaceIssue } {
   if (entry.kind === 'local') return { refused: { kind: 'local-font', name: entry.name } };
   const url = entry.url;
   const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(url)?.[1];
@@ -473,7 +474,7 @@ function sourceOf(entry: SrcEntry, resolve: FontAssetResolver, faults: FontFault
     bytes = asset.bytes;
     base = { kind: 'asset', assetId: asset.id };
   }
-  const decoded = decodeFontFile(bytes);
+  const decoded = decodeFontFile(bytes, brotli);
   if (!decoded.ok) return { refused: { kind: 'unreadable-font', url, refusal: decoded.refusal } };
   const read = readSfnt(decoded.sfnt);
   if (!read.ok) return { refused: { kind: 'unreadable-font', url, refusal: read.refusal } };

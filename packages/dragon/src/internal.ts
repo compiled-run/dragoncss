@@ -58,7 +58,7 @@ export { preprocessInput } from './css/escapes.ts';
 export { parseStylesheet } from './css/stylesheet.ts';
 export { collectFontFaces } from './fonts/wire.ts';
 export { decodeFontFile } from './fonts/woff.ts';
-export type { DecodedFontFile, FontContainer } from './fonts/woff.ts';
+export type { BrotliDecompress, DecodedFontFile, FontContainer } from './fonts/woff.ts';
 export { CATALOGUE } from './diagnostics/catalogue.ts';
 export type { CatalogueEntry } from './diagnostics/catalogue.ts';
 export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';

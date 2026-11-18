@@ -8,7 +8,7 @@ export type SfntRefusal =
   | { readonly kind: 'variable-font' }
   | { readonly kind: 'malformed'; readonly reason: string }
   | { readonly kind: 'malformed-container'; readonly container: 'woff' | 'woff2'; readonly reason: string }
-  /** WOFF2 needs Brotli, which the core takes from Node's zlib; outside Node a WOFF2 file is refused. */
+  /** WOFF2 needs a Brotli decoder, which the host gives the compile (InternalOptions.brotliDecompress); without one it is refused. */
   | { readonly kind: 'no-brotli' };
 
 export type Head = {

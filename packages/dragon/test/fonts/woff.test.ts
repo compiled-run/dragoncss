@@ -2,17 +2,20 @@
 // The decoded tables must mean what the .ttf's do: every glyph's outline, instructions and bounds, every advance and side bearing,
 // and every other table byte for byte. Byte equality of the whole file is not expected (WOFF2 §5.1).
 import { readFileSync } from 'node:fs';
-import { brotliCompressSync } from 'node:zlib';
+import { brotliCompressSync, brotliDecompressSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { CssNode } from 'css-tree';
 import { decodeFontFile, parseFontFace, readSfnt } from '../../src/fonts/index.ts';
-import type { SfntFont } from '../../src/fonts/index.ts';
+import type { BrotliDecompress, SfntFont } from '../../src/fonts/index.ts';
 import { atRules, vendorBytes } from './compare.ts';
+
+/** The host's decoder, as the parity layer passes it to the compile. */
+const brotli: BrotliDecompress = (data, limit) => new Uint8Array(brotliDecompressSync(data, { maxOutputLength: Math.max(1, limit) }));
 
 const fixture = (name: string): Uint8Array => new Uint8Array(readFileSync(new URL(`./woff/${name}`, import.meta.url)));
 
 const decode = (bytes: Uint8Array): Uint8Array => {
-  const r = decodeFontFile(bytes);
+  const r = decodeFontFile(bytes, brotli);
   if (!r.ok) throw new Error(JSON.stringify(r.refusal));
   return r.sfnt;
 };
@@ -191,11 +194,11 @@ describe('WOFF 1.0', () => {
     const d = new DataView(woff.buffer, woff.byteOffset, woff.byteLength);
     const past = woff.slice();
     new DataView(past.buffer).setUint32(44 + 4, woff.length);
-    expect(decodeFontFile(past)).toEqual({ ok: false, refusal: { kind: 'malformed-container', container: 'woff', reason: `table ${String.fromCharCode(...woff.subarray(44, 48))} runs past the end of the file` } });
+    expect(decodeFontFile(past, brotli)).toEqual({ ok: false, refusal: { kind: 'malformed-container', container: 'woff', reason: `table ${String.fromCharCode(...woff.subarray(44, 48))} runs past the end of the file` } });
     const entry = Array.from({ length: d.getUint16(12) }, (_, i) => 44 + i * 20).find((e) => d.getUint32(e + 8) < d.getUint32(e + 12)) as number;
     const corrupt = woff.slice();
     corrupt.fill(0xff, d.getUint32(entry + 4), d.getUint32(entry + 4) + 8);
-    const r = decodeFontFile(corrupt);
+    const r = decodeFontFile(corrupt, brotli);
     expect(r.ok ? null : r.refusal).toMatchObject({ kind: 'malformed-container', container: 'woff', reason: expect.stringMatching(new RegExp(`^table ${String.fromCharCode(...woff.subarray(entry, entry + 4))}: the zlib stream is invalid`)) });
   });
 });
@@ -231,7 +234,7 @@ function woff2Of(tables: readonly { tag: string; data: Uint8Array; flags?: numbe
 describe('malformed or unsupported WOFF2 is refused by name', () => {
   const lato = fixture('Lato-Regular.woff2');
   const refusal = (bytes: Uint8Array) => {
-    const r = decodeFontFile(bytes);
+    const r = decodeFontFile(bytes, brotli);
     return r.ok ? null : r.refusal;
   };
 
@@ -283,13 +286,13 @@ describe('malformed or unsupported WOFF2 is refused by name', () => {
   });
 
   it('an @font-face whose WOFF2 src is malformed has no face and an unreadable-font issue naming woff2', () => {
-    const r = parseFontFace(atRules('@font-face{font-family:A;src:url(a.woff2) format("woff2")}')[0] as CssNode, 0, () => ({ id: 'a', bytes: lato.subarray(0, 4000) }));
+    const r = parseFontFace(atRules('@font-face{font-family:A;src:url(a.woff2) format("woff2")}')[0] as CssNode, 0, () => ({ id: 'a', bytes: lato.subarray(0, 4000) }), undefined, brotli);
     expect(r.face?.source).toBeNull();
     expect(r.issues).toEqual([{ kind: 'unreadable-font', url: 'a.woff2', refusal: { kind: 'malformed-container', container: 'woff2', reason: `the header length ${lato.length} is not the file length 4000` } }]);
   });
 
   it('an @font-face whose src is a WOFF2 measures from the decoded sfnt and keeps the file as authored', () => {
-    const r = parseFontFace(atRules('@font-face{font-family:A;src:url(a.woff2) format("woff2")}')[0] as CssNode, 0, () => ({ id: 'a', bytes: lato }));
+    const r = parseFontFace(atRules('@font-face{font-family:A;src:url(a.woff2) format("woff2")}')[0] as CssNode, 0, () => ({ id: 'a', bytes: lato }), undefined, brotli);
     expect(r.issues).toEqual([]);
     expect(r.face?.source?.container).toBe('woff2');
     expect(r.face?.source?.file).toBe(lato);

@@ -11,6 +11,7 @@ import type { StateProgram } from './lower/state-program.ts';
 import { deriveStateProgram, StateProgramError } from './lower/state-program.ts';
 import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { createProjectWith, internalRecord } from './project.ts';
+import type { BrotliDecompress } from './fonts/woff.ts';
 import type { Rgba8 } from './css/color.ts';
 import type { ArtifactState, Compiled, Diagnostic, FontMap, FrontEndResult, GeneratedFile } from './types.ts';
 
@@ -25,6 +26,8 @@ export type NativeStylesConfig = {
   /** The native targets to compile; each is checked, and one target's error blocks only that target's output. */
   readonly targets: { readonly ios?: { readonly minimum: string }; readonly android?: { readonly minSdk: number } };
   readonly fonts?: FontMap;
+  /** The host's Brotli decoder for WOFF2 @font-face sources (Node: zlib.brotliDecompressSync); without one a WOFF2 is refused. */
+  readonly brotliDecompress?: BrotliDecompress;
   /** The CSS size the component's root starts at, before the view it mounts in reports its own size. */
   readonly viewport: { readonly width: number; readonly height: number };
   /**
@@ -104,6 +107,7 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
         : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
       ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
+      ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
     },
   );
   if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);

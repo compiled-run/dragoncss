@@ -4,7 +4,8 @@
 // the span of the input file itself; its CSS is its own source, whole.
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
-import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
+import { brotliDecompressSync } from 'node:zlib';
+import type { BrotliDecompress, ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, decodeFontFile, TREE_SCHEMA_REVISION } from 'dragon';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -52,6 +53,9 @@ export type MarklessFontFile = {
   readonly sfnt: Uint8Array;
   readonly sfntFile: string;
 };
+
+/** The Brotli decoder the parity layer gives Dragon's compile for WOFF2 sources: Node's zlib. */
+export const NODE_BROTLI: BrotliDecompress = (data, limit) => new Uint8Array(brotliDecompressSync(data, { maxOutputLength: Math.max(1, limit) }));
 
 /** Where the export command writes the decoded sfnt of each WOFF or WOFF2 author font, relative to the input file. */
 export const DECODED_FONTS_DIR = 'dragon-decoded-fonts';
@@ -195,7 +199,7 @@ export function marklessFontFiles(input: MarklessStyleInput, read: (file: string
   return (input.fonts ?? []).map(({ url, file }) => {
     const bytes = read(file);
     // A file that does not decode is compiled as it is, so Dragon reports it (DRAGON_FONT_UNREADABLE).
-    const decoded = decodeFontFile(bytes);
+    const decoded = decodeFontFile(bytes, NODE_BROTLI);
     const sfnt = decoded.ok ? decoded.sfnt : bytes;
     const hex = createHash('sha256').update(sfnt).digest('hex');
     const sfntFile = decoded.ok && decoded.container !== 'sfnt' ? `${DECODED_FONTS_DIR}/${hex}.${String.fromCharCode(...sfnt.subarray(0, 4)) === 'OTTO' ? 'otf' : 'ttf'}` : file;
@@ -344,7 +348,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts), FONT_REFERENCE_MAP);
   const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program' };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);

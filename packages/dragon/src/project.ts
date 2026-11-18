@@ -74,6 +74,7 @@ import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import type { FontSelectionRequest } from './fonts/selection.ts';
 import type { SfntRefusal } from './fonts/sfnt.ts';
+import type { BrotliDecompress } from './fonts/woff.ts';
 import { foldFamily } from './fonts/selection.ts';
 import { synthesisTraits } from './fonts/metrics.ts';
 import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
@@ -306,6 +307,8 @@ export type InternalOptions = {
   readonly hostTopLayer?: boolean;
   /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
   readonly hostCanvas?: boolean;
+  /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
+  readonly brotliDecompress?: BrotliDecompress;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -324,6 +327,7 @@ type Resolved = {
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
   readonly nativeLanes: NativeLanes | null;
+  readonly brotliDecompress: BrotliDecompress | null;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -688,7 +692,7 @@ function variableMessage(r: VariableFontRefusal): string {
 function refusalText(r: SfntRefusal): string {
   if (r.kind === 'unsupported-container') return `unsupported-container ${r.container}`;
   if (r.kind === 'malformed-container') return `malformed ${r.container}: ${r.reason}`;
-  if (r.kind === 'no-brotli') return 'woff2 needs Brotli, which this runtime does not provide';
+  if (r.kind === 'no-brotli') return 'no Brotli decoder was given to the compile';
   return r.kind;
 }
 
@@ -741,14 +745,14 @@ function fontDiagnostics(problems: readonly FontWireProblem[], diagnostics: Diag
  * Collects the accepted @font-face rules (their src URLs resolved through the snapshot's asset resolutions from the stylesheet
  * that holds them), projects the font map and manifest, and reports every font problem.
  */
-function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly AtRuleContext[], diagnostics: Diagnostic[]): ProjectFonts {
+function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly AtRuleContext[], diagnostics: Diagnostic[], brotli: BrotliDecompress | null): ProjectFonts {
   const assets = new Map(input.snapshot.assets.map((a) => [a.id, a]));
   const collected = collectFontFaces(contexts, (specifier, context) => {
     const r = input.snapshot.resolutions.find((x) => x.kind === 'asset' && x.from.uri === context.span.source.uri && x.specifier === specifier);
     const a = r === undefined || r.to === null ? undefined : assets.get(r.to);
     return a === undefined ? null : { id: a.id, bytes: a.bytes };
-  });
-  const projected = projectFonts(rawMap, collected.results, input.snapshot.assets);
+  }, brotli);
+  const projected = projectFonts(rawMap, collected.results, input.snapshot.assets, brotli);
   fontDiagnostics([...collected.problems, ...projected.problems], diagnostics);
   const declaredFaces = collected.results.flatMap((r) => (r.face === null || r.face.source === null ? [] : [r.face]));
   const keys: FamilyKeyContext = { map: projected.map, declared: new Set(collected.results.flatMap((r) => (r.face === null ? [] : [r.face.family]))) };
@@ -1457,7 +1461,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const bandRules = bandList.map((b) => new Set(rulesIn(rules, bands, b, options.faults)));
     const styleRuleSet = new Set<Rule>(styleRules);
     const scopeOf: RuleScope = (r) => (styleRuleSet.has(r) ? targets : targets.filter((t) => bandRules.some((set, k) => passTargets(k).includes(t) && set.has(r))));
-    fonts = compileFonts(input, config.fonts, fontFaces, diagnostics);
+    fonts = compileFonts(input, config.fonts, fontFaces, diagnostics, options.brotliDecompress);
     checkFamilies(withStyles, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
     const keys = fonts.keys;
     let valuesAt = diagnostics.length;
@@ -1944,6 +1948,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
+    brotliDecompress: options.brotliDecompress ?? null,
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap };

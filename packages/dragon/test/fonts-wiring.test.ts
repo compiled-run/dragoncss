@@ -3,10 +3,11 @@
 // the web output rewritten through the map with its @font-face prelude and font assets, and the four planted compiler faults.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { brotliDecompressSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { Compiled, FontMap, FrontEndResult, TreeNode } from '../src/index.ts';
 import { createProject, querySupport } from '../src/index.ts';
-import type { CompilerFaults } from '../src/internal.ts';
+import type { CompilerFaults, InternalOptions } from '../src/internal.ts';
 import { compiledFeatures, createProjectWith, iosProfile, NO_FAULTS, WEB_CSS_PATH, webProfile } from '../src/internal.ts';
 import { featureOf } from '../src/css/values.ts';
 import { parse } from 'css-tree';
@@ -53,8 +54,10 @@ function fontInput(css: string, opts: { files?: Record<string, Uint8Array>; urls
 }
 
 type Web = 'web';
-const compileWith = (input: FrontEndResult, fonts: FontMap | undefined, faults: Partial<CompilerFaults> = {}, targets: object = { web: {} }): Compiled<Web> =>
-  createProjectWith({ projectId: 'test', targets: targets as { web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults: { ...NO_FAULTS, ...faults }, profiles: 'derive', direction: 'ltr' }).compile(input) as Compiled<Web>;
+const compileWith = (input: FrontEndResult, fonts: FontMap | undefined, faults: Partial<CompilerFaults> = {}, targets: object = { web: {} }, host: Pick<InternalOptions, 'brotliDecompress'> = {}): Compiled<Web> =>
+  createProjectWith({ projectId: 'test', targets: targets as { web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults: { ...NO_FAULTS, ...faults }, profiles: 'derive', direction: 'ltr', ...host }).compile(input) as Compiled<Web>;
+/** The host's Brotli decoder, as the parity layer passes it. */
+const NODE_BROTLI = { brotliDecompress: (data: Uint8Array, limit: number) => new Uint8Array(brotliDecompressSync(data, { maxOutputLength: Math.max(1, limit) })) };
 const cssOf = (c: Compiled<Web>): string => {
   if (c.outputs.web.kind !== 'ready') throw new Error(`web ${c.outputs.web.kind}: ${c.diagnostics.map((d) => `${d.code} ${d.message}`).join('; ')}`);
   return c.outputs.web.files.find((f) => f.path === WEB_CSS_PATH)?.text ?? '';
@@ -107,12 +110,20 @@ describe('font-family resolution', () => {
   it('a WOFF2 @font-face src measures from the decoded sfnt, and the web output ships the .woff2 file as authored', () => {
     const woff2 = new Uint8Array(readFileSync(new URL('./fonts/woff/Lato-Regular.woff2', import.meta.url)));
     const css = "@font-face { font-family: 'Harbour Lato'; src: url(fonts/Lato-Regular.woff2) format('woff2') } .a { font-family: 'Harbour Lato' }";
-    const c = compileWith(fontInput(css, { files: { ...FILES, 'fonts/Lato-Regular.woff2': woff2 }, urls: ['fonts/Lato-Regular.woff2'] }), MAP);
+    const input = fontInput(css, { files: { ...FILES, 'fonts/Lato-Regular.woff2': woff2 }, urls: ['fonts/Lato-Regular.woff2'] });
+    const c = compileWith(input, MAP, {}, { web: {} }, NODE_BROTLI);
     expect(codes(c)).toEqual([]);
     const path = `fonts/${hex(woff2).slice(0, 16)}.woff2`;
     expect(cssOf(c)).toContain(`src:url("${path}")`);
     if (c.outputs.web.kind !== 'ready') throw new Error('web not ready');
     expect(c.outputs.web.assets.map((a) => [a.path, a.hash])).toEqual([[path, `sha256:${hex(woff2)}`]]);
+  });
+
+  it('a compile given no Brotli decoder refuses a WOFF2 src by name', () => {
+    const woff2 = new Uint8Array(readFileSync(new URL('./fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const css = "@font-face { font-family: 'Harbour Lato'; src: url(fonts/Lato-Regular.woff2) format('woff2') } .a { font-family: 'Harbour Lato' }";
+    const c = compileWith(fontInput(css, { files: { ...FILES, 'fonts/Lato-Regular.woff2': woff2 }, urls: ['fonts/Lato-Regular.woff2'] }), MAP);
+    expect(c.diagnostics.filter((d) => d.code === 'DRAGON_FONT_UNREADABLE').map((d) => d.message)).toEqual(['@font-face 1: src url(fonts/Lato-Regular.woff2) is not a readable font (no Brotli decoder was given to the compile)']);
   });
 
   it('a named family that is not provided, before one that resolves, is skipped with the warning DRAGON_FONT_FAMILY_NOT_PROVIDED naming it, and the web CSS keeps the list as written', () => {

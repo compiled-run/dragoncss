@@ -13,6 +13,7 @@ import type { FamilyList } from './family-list.ts';
 import { rewriteFamilyList, validateFontMap } from './font-map.ts';
 import type { EntryResolution, FontMap, FontMapError, PinnedFace } from './font-map.ts';
 import { buildManifest, manifestDigestInput } from './manifest.ts';
+import type { BrotliDecompress } from './woff.ts';
 import type { FontManifest } from './manifest.ts';
 import { candidates, foldFamily } from './selection.ts';
 import type { FontSelectionRequest } from './selection.ts';
@@ -44,13 +45,13 @@ export type ContextAssetResolver = (specifier: string, context: AtRuleContext) =
  * Parses the accepted @font-face at-rules in document order with font-face.ts. resolveUrl maps a relative src URL to its snapshot
  * asset. Contexts of any other at-rule are skipped.
  */
-export function collectFontFaces(contexts: readonly AtRuleContext[], resolveUrl: ContextAssetResolver): CollectedFontFaces {
+export function collectFontFaces(contexts: readonly AtRuleContext[], resolveUrl: ContextAssetResolver, brotli: BrotliDecompress | null = null): CollectedFontFaces {
   const results: FontFaceResult[] = [];
   const problems: FontWireProblem[] = [];
   for (const context of contexts) {
     if (asciiLower(context.name) !== 'font-face') continue;
     const order = results.length;
-    const result = parseFontFace(context.node, order, (specifier) => resolveUrl(specifier, context));
+    const result = parseFontFace(context.node, order, (specifier) => resolveUrl(specifier, context), undefined, brotli);
     results.push(result);
     for (const issue of result.issues) problems.push({ kind: 'font-face', blocking: FONT_FACE_ERRORS.has(issue.kind), source: { kind: 'rule', context, order }, issue });
   }
@@ -92,7 +93,7 @@ const atRuleNode = (css: string): CssNode => {
  * Validates the project font map, parses every pinned face (its src is a snapshot asset id or a data: URL; anything else is
  * unresolved-asset), and builds the manifest of the authored and pinned faces. rawMap is the untyped config value (undefined: none).
  */
-export function projectFonts(rawMap: unknown, faces: readonly FontFaceResult[], assets: readonly SnapshotAsset[]): ProjectedFonts {
+export function projectFonts(rawMap: unknown, faces: readonly FontFaceResult[], assets: readonly SnapshotAsset[], brotli: BrotliDecompress | null = null): ProjectedFonts {
   const problems: FontWireProblem[] = [];
   let map: FontMap | null = null;
   let mapInvalid = false;
@@ -121,7 +122,7 @@ export function projectFonts(rawMap: unknown, faces: readonly FontFaceResult[], 
       if (seen.has(e.family)) continue;
       seen.add(e.family);
       e.faces.forEach((f, index) => {
-        const result = parseFontFace(atRuleNode(pinnedFaceCss(e.family, f)), index, resolveId);
+        const result = parseFontFace(atRuleNode(pinnedFaceCss(e.family, f)), index, resolveId, undefined, brotli);
         pinned.push({ key, family: e.family, index, result });
         for (const issue of result.issues) problems.push({ kind: 'font-face', blocking: FONT_FACE_ERRORS.has(issue.kind), source: { kind: 'map', key, face: index }, issue });
       });

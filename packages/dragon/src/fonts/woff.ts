@@ -1,4 +1,5 @@
 // WOFF 1.0 and WOFF 2.0 (W3C Recommendations; section numbers below are WOFF2's) decoded at build time to the sfnt the hosts load.
+// WOFF tables inflate with the core's own zlib; WOFF2's Brotli decoder is given by the host, and without one a WOFF2 is refused.
 import { zlibInflate } from '../images/inflate.ts';
 import type { SfntRefusal } from './sfnt.ts';
 
@@ -9,19 +10,8 @@ export type DecodedFontFile =
   | { readonly ok: true; readonly container: FontContainer; readonly sfnt: Uint8Array }
   | { readonly ok: false; readonly refusal: SfntRefusal };
 
-/** Decompresses a Brotli stream that must not grow past limit bytes; throws on any malformed stream. */
+/** Decompresses a Brotli stream that must not grow past limit bytes; throws on any malformed stream. The host supplies it. */
 export type BrotliDecompress = (data: Uint8Array, limit: number) => Uint8Array;
-
-type NodeZlib = { brotliDecompressSync(data: Uint8Array, options: { maxOutputLength: number }): Uint8Array };
-
-function nodeBrotli(): BrotliDecompress | null {
-  const proc = (globalThis as { process?: { getBuiltinModule?: (id: string) => unknown } }).process;
-  const mod = typeof proc?.getBuiltinModule === 'function' ? proc.getBuiltinModule('node:zlib') : undefined;
-  if (typeof (mod as Partial<NodeZlib> | undefined)?.brotliDecompressSync !== 'function') return null;
-  const zlib = mod as NodeZlib;
-  return (data, limit) => new Uint8Array(zlib.brotliDecompressSync(data, { maxOutputLength: Math.max(1, limit) }));
-}
-const NODE_BROTLI = nodeBrotli();
 
 class Malformed extends Error {}
 const bad = (why: string): never => {
@@ -31,7 +21,7 @@ const bad = (why: string): never => {
 const tagAt = (b: Uint8Array, at: number): string => String.fromCharCode(b[at] ?? 0, b[at + 1] ?? 0, b[at + 2] ?? 0, b[at + 3] ?? 0);
 
 /** Decodes a WOFF or WOFF2 file to its sfnt; any other file passes through as itself, for readSfnt to judge. */
-export function decodeFontFile(bytes: Uint8Array, brotli: BrotliDecompress | null = NODE_BROTLI): DecodedFontFile {
+export function decodeFontFile(bytes: Uint8Array, brotli: BrotliDecompress | null): DecodedFontFile {
   const signature = tagAt(bytes, 0);
   if (signature !== 'wOFF' && signature !== 'wOF2') return { ok: true, container: 'sfnt', sfnt: bytes };
   const container = signature === 'wOFF' ? 'woff' : 'woff2';

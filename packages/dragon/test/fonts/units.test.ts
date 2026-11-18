@@ -81,7 +81,7 @@ describe('@font-face src', () => {
     const css = '@font-face{font-family:A;src:url(a.woff2) format("woff2"), url("fonts/Inter/Inter-Regular.ttf")}';
     const good = parseFontFace(atRules(css)[0] as CssNode, 0, resolve);
     expect(good.face?.source).toBeNull();
-    expect(good.issues).toContainEqual({ kind: 'unreadable-font', url: 'a.woff2', refusal: { kind: 'malformed-container', container: 'woff2', reason: `the header length ${new DataView(woff2.buffer).getUint32(8)} is not the file length ${woff2.length}` } });
+    expect(good.issues).toContainEqual({ kind: 'unreadable-font', url: 'a.woff2', refusal: { kind: 'no-brotli' } });
     const faulted = parseFontFace(atRules(css)[0] as CssNode, 0, resolve, withFault('skipUnreadableSrc'));
     expect(faulted.face?.source?.font.names.postScriptName).toBe('Inter-Regular');
   });
