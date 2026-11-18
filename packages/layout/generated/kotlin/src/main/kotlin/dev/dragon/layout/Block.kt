@@ -177,7 +177,7 @@ class FlowArgs(
 // ts: packages/layout/src/block.ts:701
 class FlowResult(
   val cursor: Double,
-  val placed: JsArray<Placed>,
+  val placed: JsArray<Box_Placed>,
   val escapeTop: Strut,
   val endStrut: Strut,
   val hasContent: Boolean,
@@ -231,10 +231,10 @@ fun block_collapsed(s: Strut): Double {
 fun block_withBlockInInlineLines(frag: Frag, firstLine: Double, end: Strut, direction: String): Frag {
   val start: Double = (if (jsStrEq(direction, "rtl")) frag.width else units_ZERO)
   // ts: packages/layout/src/block.ts:387
-  fun line(j: Double, x: Double, y: Double, width: Double, height: Double): Placed {
-    return Placed(Frag((frag.id + ":line" + jsNumberToString(j)), width, height, null, jsArrayOf<Placed>(), jsArrayOf<OutOfFlow>(), null), x, y)
+  fun line(j: Double, x: Double, y: Double, width: Double, height: Double): Box_Placed {
+    return Box_Placed(Frag((frag.id + ":line" + jsNumberToString(j)), width, height, null, jsArrayOf<Box_Placed>(), jsArrayOf<OutOfFlow>(), null), x, y)
   }
-  val lines: JsArray<Placed> = jsArrayOf<Placed>(line(0.0, start, firstLine, units_ZERO, units_ZERO), line(1.0, units_ZERO, units_ZERO, frag.width, frag.height), line(2.0, start, units_add(frag.height, block_collapsed(end)), units_ZERO, units_ZERO))
+  val lines: JsArray<Box_Placed> = jsArrayOf<Box_Placed>(line(0.0, start, firstLine, units_ZERO, units_ZERO), line(1.0, units_ZERO, units_ZERO, frag.width, frag.height), line(2.0, start, units_add(frag.height, block_collapsed(end)), units_ZERO, units_ZERO))
   return Frag(frag.id, frag.width, frag.height, frag.baseline, jsConcatArrays(listOf(frag.children, lines)), frag.outOfFlow, frag.inflow)
 }
 
@@ -303,7 +303,7 @@ fun block_layoutOwnContents(ctx: Ctx, node: U_ControlBox_LayoutBox, a: ContentsA
   val canCollapseTop: Boolean = (((!a.formattingContextRoot) && (bor.top == 0.0)) && (pad.top == 0.0))
   val marker: MarkerBox? = (if ((box.marker == null)) null else marker_layoutMarker(ctx, jsUnwrap(box.marker)))
   val flow: FlowResult = block_layoutBlockFlow(ctx, box, FlowArgs(contentWidth, a.borderBoxWidth, (if (a.formattingContextRoot) units_ZERO else a.bfcLineOffset), Point(units_add(bor.left, pad.left), units_add(bor.top, pad.top)), canCollapseTop, ((a.formattingContextRoot || (bor.bottom != 0.0)) || (pad.bottom != 0.0)), childBasis, marker))
-  val r: FlowResult = (if ((marker == null)) flow else FlowResult(flow.cursor, jsConcatArrays(listOf(flow.placed, jsArrayOf<Placed>(block_markerPlaced(jsUnwrap(marker), flow.markerY, a.borderBoxWidth, block_directionOf(ctx, box))))), flow.escapeTop, flow.endStrut, flow.hasContent, flow.baseline, flow.outOfFlow, flow.lastBaseline, flow.lastBaselineFlex, flow.defaultLastBaseline, flow.defaultLastBaselineFlex, flow.markerY))
+  val r: FlowResult = (if ((marker == null)) flow else FlowResult(flow.cursor, jsConcatArrays(listOf(flow.placed, jsArrayOf<Box_Placed>(block_markerPlaced(jsUnwrap(marker), flow.markerY, a.borderBoxWidth, block_directionOf(ctx, box))))), flow.escapeTop, flow.endStrut, flow.hasContent, flow.baseline, flow.outOfFlow, flow.lastBaseline, flow.lastBaselineFlex, flow.defaultLastBaseline, flow.defaultLastBaselineFlex, flow.markerY))
   val specNoCollapse: Boolean = (ctx.faults.minMaxEndMarginSpec && (minMax.min > vbp))
   val bottomAdjoins: Boolean = (((((!a.formattingContextRoot) && (bor.bottom == 0.0)) && (pad.bottom == 0.0)) && (fixedBorderBox == null)) && (!specNoCollapse))
   val flowEnd: Double = (if (bottomAdjoins) r.cursor else units_add(r.cursor, block_collapsed(r.endStrut)))
@@ -315,8 +315,8 @@ fun block_layoutOwnContents(ctx: Ctx, node: U_ControlBox_LayoutBox, a: ContentsA
   // ts: packages/layout/src/block.ts:501
   if (((control != null) && jsStrEq(jsUnwrap(control).kind, "button-block"))) {
     val shift: Double = controls_buttonContentShift(box_contentBox(height, vbp), intrinsic)
-    val placed: JsArray<Placed> = jsMap(r.placed, fun(p: Placed): Placed {
-    return Placed(p.frag, p.x, units_add(p.y, shift))
+    val placed: JsArray<Box_Placed> = jsMap(r.placed, fun(p: Box_Placed): Box_Placed {
+    return Box_Placed(p.frag, p.x, units_add(p.y, shift))
 })
     val outOfFlow: JsArray<OutOfFlow> = jsMap(r.outOfFlow, fun(o: OutOfFlow): OutOfFlow {
     return OutOfFlow(o.box, o.x, StaticAxis(units_add(o.y.offset, shift), o.y.edge), o.area)
@@ -455,15 +455,15 @@ fun block_stretchOf(a: FlowArgs, inline: BlockLevelInline): U_BlockStretch_avail
 }
 
 // ts: packages/layout/src/block.ts:723
-fun block_markerPlaced(marker: MarkerBox, y: Double?, borderBoxWidth: Double, direction: String): Placed {
+fun block_markerPlaced(marker: MarkerBox, y: Double?, borderBoxWidth: Double, direction: String): Box_Placed {
   val t: MarkerText? = marker.text
-  val children: JsArray<Placed> = jsArrayOf<Placed>()
+  val children: JsArray<Box_Placed> = jsArrayOf<Box_Placed>()
   // ts: packages/layout/src/block.ts:726
   if ((t != null)) {
-    val line: Placed = Placed(Frag((jsUnwrap(t).id + ":line0"), marker.width, jsUnwrap(t).height, null, jsArrayOf<Placed>(), jsArrayOf<OutOfFlow>(), null), units_ZERO, units_ZERO)
-    jsPush(children, Placed(Frag(jsUnwrap(t).id, marker.width, jsUnwrap(t).height, null, jsArrayOf<Placed>(line), jsArrayOf<OutOfFlow>(), null), units_ZERO, jsUnwrap(t).top))
+    val line: Box_Placed = Box_Placed(Frag((jsUnwrap(t).id + ":line0"), marker.width, jsUnwrap(t).height, null, jsArrayOf<Box_Placed>(), jsArrayOf<OutOfFlow>(), null), units_ZERO, units_ZERO)
+    jsPush(children, Box_Placed(Frag(jsUnwrap(t).id, marker.width, jsUnwrap(t).height, null, jsArrayOf<Box_Placed>(line), jsArrayOf<OutOfFlow>(), null), units_ZERO, jsUnwrap(t).top))
   }
-  return Placed(Frag(marker.id, marker.width, marker.height, null, children, jsArrayOf<OutOfFlow>(), null), marker_markerX(marker, borderBoxWidth, direction), (if ((y == null)) units_ZERO else jsUnwrap(y)))
+  return Box_Placed(Frag(marker.id, marker.width, marker.height, null, children, jsArrayOf<OutOfFlow>(), null), marker_markerX(marker, borderBoxWidth, direction), (if ((y == null)) units_ZERO else jsUnwrap(y)))
 }
 
 // ts: packages/layout/src/block.ts:737
@@ -501,7 +501,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     unsupported_unsupported("text-box-trim", box.id, "css-inline-3 \u00a75.1", ("text-box-trim on " + box.id + ", which holds block-level boxes, is not yet proven against Chrome"))
   }
   val direction: String = block_directionOf(ctx, box)
-  val placed: JsArray<Placed> = jsArrayOf<Placed>()
+  val placed: JsArray<Box_Placed> = jsArrayOf<Box_Placed>()
   var strut: Strut = block_EMPTY_STRUT
   var cursor: Double = units_ZERO
   var seen: Boolean = false
@@ -523,12 +523,12 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   // ts: packages/layout/src/block.ts:779
   run {
     var k: Double = 0.0
-    loop26@ while ((k < jsLength(kids))) {
-      loop26_body@ do {
+    loop28@ while ((k < jsLength(kids))) {
+      loop28_body@ do {
         val child: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = jsUnwrap(jsAt(kids, k))
         // ts: packages/layout/src/block.ts:781
         if (((!jsStrEq(child.kind, "box") && !jsStrEq((child as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control")) && !jsStrEq((child as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
-          break@loop26_body
+          break@loop28_body
         }
         var kid: U_ControlBox_LayoutBox_ReplacedLeaf = (child as U_ControlBox_LayoutBox_ReplacedLeaf)
         // ts: packages/layout/src/block.ts:783
@@ -536,7 +536,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
           val rtl: Boolean = (jsStrEq(direction, "rtl") && (!ctx.faults.staticPosLtr))
           val sy: Double = (if (((!seen) && a.canCollapseTop)) units_ZERO else units_add(cursor, block_collapsed(strut)))
           jsPush(outOfFlow, OutOfFlow((kid as LayoutBox), (if (rtl) StaticAxis(units_add(a.origin.x, a.contentWidth), "far") else StaticAxis(a.origin.x, "near")), StaticAxis(units_add(a.origin.y, sy), "near"), null))
-          break@loop26_body
+          break@loop28_body
         }
         // ts: packages/layout/src/block.ts:796
         if (float_isFloat(ctx, kid)) {
@@ -548,8 +548,8 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
           val f: FloatLayout = float_layoutFloat(ctx, (kid as U_LayoutBox_ReplacedLeaf), a.contentWidth, a.childBasis)
           val area: FloatArea = float_placeFloat(floats, (kid as U_LayoutBox_ReplacedLeaf).style.float, units_add(units_add(f.marginLeft, f.frag.width), f.marginRight), units_add(units_add(f.marginTop, f.frag.height), f.marginBottom), top, a.contentWidth)
           jsPush(floats, area)
-          jsPush(placed, Placed(f.frag, units_add(units_add(a.origin.x, area.x), f.marginLeft), units_add(units_add(a.origin.y, area.y), f.marginTop)))
-          break@loop26_body
+          jsPush(placed, Box_Placed(f.frag, units_add(units_add(a.origin.x, area.x), f.marginLeft), units_add(units_add(a.origin.y, area.y), f.marginTop)))
+          break@loop28_body
         }
         inflow = true
         var inline: BlockLevelInline
@@ -607,7 +607,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         }
         val thumb: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb? = (if (jsStrEq(kid.kind, "control")) (kid as ControlBox).control else null)
         val thumbShift: Double = (if (((thumb != null) && jsStrEq(jsUnwrap(thumb).kind, "slider-thumb"))) controls_sliderThumbShift((jsUnwrap(thumb) as ControlKind_sliderThumb).ratio, a.contentWidth, c.frag.width, direction) else units_ZERO)
-        val at: Placed = Placed(c.frag, units_add(inline.x, thumbShift), units_add(a.origin.y, y))
+        val at: Box_Placed = Box_Placed(c.frag, units_add(inline.x, thumbShift), units_add(a.origin.y, y))
         // ts: packages/layout/src/block.ts:876
         if (((baseline == null) && (c.frag.baseline != null))) {
           baseline = units_add(at.y, jsUnwrap(c.frag.baseline))
@@ -635,7 +635,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
         val offset: RelativeOffset = position_relativeOffsetWith(kid, a.contentWidth, a.childBasis, direction, ctx.faults)
         val firstLine: Double = (if (((lineStart == null) || c.collapseThrough)) units_ZERO else units_sub(jsUnwrap(lineStart), y))
         val frag: Frag = (if ((jsStrEq(kid.kind, "box") && jsStrEq((kid as LayoutBox).boxType, "block-in-inline"))) block_withBlockInInlineLines(at.frag, firstLine, c.escapeBottom, direction) else at.frag)
-        jsPush(placed, Placed(frag, units_add(at.x, offset.dx), units_add(at.y, offset.dy)))
+        jsPush(placed, Box_Placed(frag, units_add(at.x, offset.dx), units_add(at.y, offset.dy)))
         // ts: packages/layout/src/block.ts:903
         if ((ctx.faults.relativeShiftsFlow && (!c.collapseThrough))) {
           cursor = units_add(cursor, offset.dy)
@@ -666,7 +666,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
 }
 
 // ts: packages/layout/src/block.ts:923
-fun block_markerLineFlow(marker: MarkerBox, contentTop: Double, placed: JsArray<Placed>): FlowResult {
+fun block_markerLineFlow(marker: MarkerBox, contentTop: Double, placed: JsArray<Box_Placed>): FlowResult {
   val baseline: Double = units_add(contentTop, marker.ascent)
   return FlowResult(marker.height, placed, block_EMPTY_STRUT, block_EMPTY_STRUT, true, baseline, jsArrayOf<OutOfFlow>(), baseline, "", baseline, "", contentTop)
 }

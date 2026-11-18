@@ -58,11 +58,11 @@ fun position_checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): Unit {
 }) as LayoutBox?)
   // ts: packages/layout/src/position.ts:46
   run {
-    val _a227 = box.children
-    var _i227 = 0
-    while (_i227 < _a227.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a227[_i227]
-      _i227++
+    val _a235 = box.children
+    var _i235 = 0
+    while (_i235 < _a235.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a235[_i235]
+      _i235++
       // ts: packages/layout/src/position.ts:47
       if ((jsStrEq(k.kind, "replaced") && position_isOutOfFlow(ctx, (k as ReplacedLeaf)))) {
         unsupported_unsupported("replaced-out-of-flow", (k as ReplacedLeaf).id, "CSS 2.2 \u00a710.3.8, \u00a710.6.5", ("absolutely positioned replaced " + (k as ReplacedLeaf).id + " is not supported"))
@@ -98,11 +98,11 @@ fun position_inset(v: U_Auto_LengthCalc_Percent_Px, basis: Double, faults: Engin
 fun position_checkControlSubtree(ctx: Ctx, box: LayoutBox): Unit {
   // ts: packages/layout/src/position.ts:63
   run {
-    val _a228 = box.children
-    var _i228 = 0
-    while (_i228 < _a228.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a228[_i228]
-      _i228++
+    val _a236 = box.children
+    var _i236 = 0
+    while (_i236 < _a236.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a236[_i236]
+      _i236++
       // ts: packages/layout/src/position.ts:64
       if ((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         continue
@@ -300,7 +300,7 @@ fun position_layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, stati
     forced = units_max(box_constrain(units_sub(position_axisAvailable(blockAxis), units_add(mt.value, mb.value)), box_blockMinMaxWith(box, heightBasis, vbp, ctx.faults, box_NO_STRETCH)), vbp)
   }
   val contentHeight: Boolean = ((jsStrEq((s.height as U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind, "min-content") || jsStrEq((s.height as U_Auto_FitContent_LengthCalc_MaxContent_Percent_Px).kind, "max-content")) || jsStrEq((s.height as U_Auto_FitContent_LengthCalc_Percent_Px).kind, "fit-content"))
-  val sized: LayoutBox = (if (contentHeight) LayoutBox(box.kind, box.id, box.boxType, LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, Auto("auto"), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.zoom), box.strut, box.marker, box.children) else box)
+  val sized: LayoutBox = (if (contentHeight) LayoutBox(box.kind, box.id, box.boxType, LayoutStyle(s.display, s.position, s.float, s.top, s.right, s.bottom, s.left, s.overflowX, s.overflowY, s.direction, s.boxSizing, s.width, Auto("auto"), s.minWidth, s.minHeight, s.maxWidth, s.maxHeight, s.marginTop, s.marginRight, s.marginBottom, s.marginLeft, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth, s.flexDirection, s.flexWrap, s.flexGrow, s.flexShrink, s.flexBasis, s.order, s.justifyContent, s.alignItems, s.alignSelf, s.alignContent, s.rowGap, s.columnGap, s.textAlign, s.aspectRatio, s.verticalAlign, s.textOverflow, s.textIndent, s.lineClamp, s.containLayout, s.containPaint, s.containSize, s.containIntrinsicWidth, s.containIntrinsicHeight, s.textWrapStyle, s.multicol, s.textBoxTrim, s.grid, s.gridItem, s.anchor, s.zoom), box.strut, box.marker, box.children) else box)
   val r: ContentsResult = block_layoutContents(ctx, sized, ContentsArgs(cb.width, width, forced, true, heightBasis, true, units_ZERO, box_NO_STRETCH))
   val u: Double = position_axisOffset(inlineAxis, width)
   val v: Double = position_axisOffset(blockAxis, r.frag.height)

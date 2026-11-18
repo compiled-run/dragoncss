@@ -122,6 +122,41 @@ const gridContainer = obj({
 });
 const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
 
+// css-anchor-position-1: a position option (input.ts AnchorOption) and an anchored box's anchor and options.
+const areaTrack = lit('start', 'center', 'end');
+const anchorEdge = nullable(obj({ anchor: str, fraction: num(0) }));
+const anchorSize = nullable(obj({ anchor: str, axis: lit('width', 'height') }));
+const anchorOption = obj({
+  area: nullable(obj({ rowStart: areaTrack, rowEnd: areaTrack, columnStart: areaTrack, columnEnd: areaTrack })),
+  top: inset,
+  right: inset,
+  bottom: inset,
+  left: inset,
+  topAnchor: anchorEdge,
+  rightAnchor: anchorEdge,
+  bottomAnchor: anchorEdge,
+  leftAnchor: anchorEdge,
+  marginTop: margin,
+  marginRight: margin,
+  marginBottom: margin,
+  marginLeft: margin,
+  width: inlineSize,
+  height: blockSize,
+  minWidth: inlineSize,
+  minHeight: minBlockSize,
+  maxWidth: maxInlineSize,
+  maxHeight: maxBlockSize,
+  widthAnchor: anchorSize,
+  heightAnchor: anchorSize,
+  minWidthAnchor: anchorSize,
+  minHeightAnchor: anchorSize,
+  maxWidthAnchor: anchorSize,
+  maxHeightAnchor: anchorSize,
+  justifySelf: lit('normal', 'anchor-center'),
+  alignSelf: lit('normal', 'anchor-center'),
+});
+const anchorStyle = obj({ anchor: nullable(str), options: arr(anchorOption, 1), order: lit('normal', 'most-width', 'most-height') });
+
 export const styleSchema = obj({
   display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
   position: lit('static', 'relative', 'absolute', 'fixed', 'sticky'),
@@ -189,6 +224,7 @@ export const styleSchema = obj({
   textBoxTrim: nullable(obj({ start: bool, end: bool, alphabetic: bool })),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
+  anchor: nullable(anchorStyle),
   zoom: arr({ t: 'number', min: 0, exclusiveMin: true, integer: false }, 0),
 });
 
@@ -985,6 +1021,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   multicol: null,
   textBoxTrim: null,
   grid: null,
+  anchor: null,
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its

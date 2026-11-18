@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.cb { position: relative; width: 300px; height: 160px; border: 2px solid #000; }
+.b { display: block; margin: 30px 0 0 60px; font: inherit; padding: 4px 8px; border: 2px solid #000; background-color: #ddd; anchor-name: --button; }
+.g { display: block; margin: 20px 0 0 150px; width: 40px; height: 20px; background-color: #bbb; anchor-name: --box; }
+.p { position: absolute; background-color: #f88; padding: 2px; }
+.p1 { position-anchor: --button; position-area: block-end span-inline-end; width: anchor-size(width); }
+.p2 { position-anchor: --button; position-area: inline-end; margin-left: 4px; }
+.p3 { position-anchor: --box; position-area: block-start; }
+.p4 { position-anchor: --button; justify-self: anchor-center; align-self: anchor-center; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c" class="cb"><button data-dragon-id="b" class="b">Go</button><div data-dragon-id="g" class="g"></div><div data-dragon-id="p1" class="p p1">aa</div><div data-dragon-id="p2" class="p p2">b</div><div data-dragon-id="p3" class="p p3">c</div><div data-dragon-id="p4" class="p p4">d</div></div>
+</body>
+</html>

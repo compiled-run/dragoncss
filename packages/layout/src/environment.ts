@@ -15,6 +15,7 @@
 // size, the font's metrics from the measurer, and the line height, each unzoomed by the font's zoom and zoomed by the conversion
 // zoom as CSSToLengthConversionData does. Every environment input is explicit in the LayoutInput.
 import type {
+  AnchorOption,
   BlockSizeValue,
   MaxBlockSizeValue,
   MinBlockSizeValue,
@@ -229,6 +230,7 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
   for (const v of [s.containIntrinsicWidth, s.containIntrinsicHeight]) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   const m = s.multicol;
   if (m !== null && m.width.kind === 'px' && !inCssLengthRange(m.width.value)) return true;
+  if (s.anchor !== null) for (const o of s.anchor.options) for (const v of anchorOptionLengths(o)) if (v.kind === 'calc' || (v.kind === 'px' && !inCssLengthRange(v.value))) return true;
   return gridNeedsEnvironment(s.grid);
 }
 
@@ -363,8 +365,35 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     textWrapStyle: resolveTextWrapStyle(s.textWrapStyle, env),
     multicol: s.multicol === null ? null : resolveMulticol(s.multicol, env),
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
+    anchor: s.anchor === null ? null : { anchor: s.anchor.anchor, options: s.anchor.options.map((o) => resolveAnchorOption(o, env)), order: s.anchor.order },
     zoom: [],
   };
+}
+
+/** A position option's lengths at the element's environment, as its style's (css-anchor-position-1 §6). */
+function resolveAnchorOption(o: AnchorOption, env: Env): AnchorOption {
+  return {
+    ...o,
+    top: resolveInset(o.top, env),
+    right: resolveInset(o.right, env),
+    bottom: resolveInset(o.bottom, env),
+    left: resolveInset(o.left, env),
+    marginTop: envMargin(o.marginTop, env),
+    marginRight: envMargin(o.marginRight, env),
+    marginBottom: envMargin(o.marginBottom, env),
+    marginLeft: envMargin(o.marginLeft, env),
+    width: resolveInlineSize(o.width, env),
+    height: resolveBlockSize(o.height, env),
+    minWidth: resolveInlineSize(o.minWidth, env),
+    minHeight: resolveMinBlock(o.minHeight, env),
+    maxWidth: resolveMaxInline(o.maxWidth, env),
+    maxHeight: resolveMaxBlock(o.maxHeight, env),
+  };
+}
+
+/** The lengths of a position option, for the checks a style's lengths take. */
+function anchorOptionLengths(o: AnchorOption): (InsetValue | MarginValue | InlineSizeValue | BlockSizeValue | MaxInlineSizeValue | MaxBlockSizeValue)[] {
+  return [o.top, o.right, o.bottom, o.left, o.marginTop, o.marginRight, o.marginBottom, o.marginLeft, o.width, o.height, o.minWidth, o.minHeight, o.maxWidth, o.maxHeight];
 }
 
 /** text-wrap-style balance and pretty at the block's effective zoom, a float: the device pixel ratio (ComputedStyle::EffectiveZoom). */
@@ -1115,6 +1144,7 @@ function styleDependencies(s: LayoutStyle, out: DependencyFlags): void {
   if (s.verticalAlign.kind === 'calc') calcDependencies(s.verticalAlign.expr, out);
   if (s.textIndent.kind === 'calc') calcDependencies(s.textIndent.expr, out);
   if (s.grid !== null) gridDependencies(s.grid, out);
+  if (s.anchor !== null) for (const o of s.anchor.options) for (const v of anchorOptionLengths(o)) if (v.kind === 'calc') calcDependencies(v.expr, out);
 }
 
 /** The environment inputs a grid container's track sizes read. */

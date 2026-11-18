@@ -345,6 +345,65 @@ export type GridItemStyle = {
   readonly justifySelf: 'auto' | GridSelfAlign;
 };
 
+/** css-anchor-position-1 §3.1.2: one physical track of the position-area grid: before the anchor, the anchor's own, or after it. */
+export type AreaTrack = 'start' | 'center' | 'end';
+
+/**
+ * css-anchor-position-1 §3.1: the physical region of the position-area grid, the rows (top to bottom) and the columns (left to
+ * right) it spans; the compiler resolves the logical keywords against the containing block (Blink PositionArea::ToPhysical).
+ */
+export type PositionArea = { readonly rowStart: AreaTrack; readonly rowEnd: AreaTrack; readonly columnStart: AreaTrack; readonly columnEnd: AreaTrack };
+
+/** css-anchor-position-1 §3.2: anchor() in an inset, a position along the anchor box in its physical axis (0 the top or left edge, 1 the bottom or right). */
+export type AnchorEdge = { readonly anchor: string; readonly fraction: number };
+
+/** css-anchor-position-1 §5.1: anchor-size(), the anchor box's width or height. */
+export type AnchorSizeRef = { readonly anchor: string; readonly axis: 'width' | 'height' };
+
+/** The self-alignment an anchored box takes in one axis: normal (the position-area's default, §4.1) or anchor-center (§4.2). */
+export type AnchorSelfAlign = 'normal' | 'anchor-center';
+
+/**
+ * css-anchor-position-1 §6: one position option, the accepted @position-try properties in physical terms. An inset, margin or size
+ * whose anchor field is not null is that anchor() or anchor-size(); otherwise its value is the length.
+ */
+export type AnchorOption = {
+  readonly area: PositionArea | null;
+  readonly top: InsetValue;
+  readonly right: InsetValue;
+  readonly bottom: InsetValue;
+  readonly left: InsetValue;
+  readonly topAnchor: AnchorEdge | null;
+  readonly rightAnchor: AnchorEdge | null;
+  readonly bottomAnchor: AnchorEdge | null;
+  readonly leftAnchor: AnchorEdge | null;
+  readonly marginTop: MarginValue;
+  readonly marginRight: MarginValue;
+  readonly marginBottom: MarginValue;
+  readonly marginLeft: MarginValue;
+  readonly width: InlineSizeValue;
+  readonly height: BlockSizeValue;
+  readonly minWidth: InlineSizeValue;
+  readonly minHeight: MinBlockSizeValue;
+  readonly maxWidth: MaxInlineSizeValue;
+  readonly maxHeight: MaxBlockSizeValue;
+  readonly widthAnchor: AnchorSizeRef | null;
+  readonly heightAnchor: AnchorSizeRef | null;
+  readonly minWidthAnchor: AnchorSizeRef | null;
+  readonly minHeightAnchor: AnchorSizeRef | null;
+  readonly maxWidthAnchor: AnchorSizeRef | null;
+  readonly maxHeightAnchor: AnchorSizeRef | null;
+  readonly justifySelf: AnchorSelfAlign;
+  readonly alignSelf: AnchorSelfAlign;
+};
+
+/**
+ * css-anchor-position-1 on an absolutely positioned box: its default anchor box (the target anchor element the compiler found, §2.3),
+ * null when it has none, and its position options, the base style first and then each position-try-fallbacks entry (§6.1), tried in
+ * position-try-order (§6.2, physical).
+ */
+export type AnchorStyle = { readonly anchor: string | null; readonly options: readonly AnchorOption[]; readonly order: 'normal' | 'most-width' | 'most-height' };
+
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
@@ -426,6 +485,8 @@ export type LayoutStyle = {
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
+  /** css-anchor-position-1: written for an absolutely positioned box placed against an anchor; null otherwise. */
+  readonly anchor: AnchorStyle | null;
   /**
    * ZOOM (css-viewport-1 §5): the zoom of each element from the root down to this one that is not 1, root first; an anonymous box
    * takes its parent's. Its lengths and its text's font sizes and spacings are CSS px at zoom 1, which the environment pass

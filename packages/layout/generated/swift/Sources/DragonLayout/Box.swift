@@ -57,10 +57,10 @@ public final class Frag {
   public let width: Double
   public let height: Double
   public let baseline: Double?
-  public let children: JsArray<Placed>
+  public let children: JsArray<Box_Placed>
   public let outOfFlow: JsArray<OutOfFlow>
   public let inflow: AreaRect?
-  public init(_ id: JsString, _ width: Double, _ height: Double, _ baseline: Double?, _ children: JsArray<Placed>, _ outOfFlow: JsArray<OutOfFlow>, _ inflow: AreaRect?) {
+  public init(_ id: JsString, _ width: Double, _ height: Double, _ baseline: Double?, _ children: JsArray<Box_Placed>, _ outOfFlow: JsArray<OutOfFlow>, _ inflow: AreaRect?) {
     self.id = id
     self.width = width
     self.height = height
@@ -72,7 +72,7 @@ public final class Frag {
 }
 
 // ts: packages/layout/src/box.ts:42
-public final class Placed {
+public final class Box_Placed {
   public let frag: Frag
   public let x: Double
   public let y: Double
@@ -234,7 +234,7 @@ public func box_resolvePaddingWith(_ style: LayoutStyle, _ cbInline: Double, _ f
 public func box_borderWidthPx(_ v: any U_DevicePx_LengthCalc_Px) throws -> Double {
   // ts: packages/layout/src/box.ts:112
   if (v.kind == S.s_calc) {
-    throw JsError(message: S.s529)
+    throw JsError(message: S.s533)
   }
   return (v as! any U_DevicePx_Px).value
 }
@@ -341,7 +341,7 @@ public func box_lengthHeight(_ nodeId: JsString, _ v: any U_Auto_FitContent_Leng
   }
   // ts: packages/layout/src/box.ts:209
   if ((((v as! any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind == S.s_min_content) || ((v as! any U_Auto_FitContent_LengthCalc_MaxContent_Percent_Px).kind == S.s_max_content)) || ((v as! any U_Auto_FitContent_LengthCalc_Percent_Px).kind == S.s_fit_content)) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s677, jsConcat(S.s789, (v as! any U_FitContent_MaxContent_MinContent).kind, S.s145, nodeId, S.s207))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s686, jsConcat(S.s799, (v as! any U_FitContent_MaxContent_MinContent).kind, S.s149, nodeId, S.s211))
   }
   return (v as! any U_Auto_LengthCalc_Percent_Px)
 }
@@ -366,7 +366,7 @@ public func box_lengthMaxHeight(_ nodeId: JsString, _ v: any U_LengthCalc_NoneVa
 
 // ts: packages/layout/src/box.ts:223
 public func box_refuseKeyword(_ nodeId: JsString, _ prop: JsString, _ keyword: JsString) throws -> Never {
-  try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s677, jsConcat(prop, S.s240, keyword, S.s147))
+  try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s686, jsConcat(prop, S.s244, keyword, S.s151))
 }
 
 // ts: packages/layout/src/box.ts:228
@@ -389,7 +389,7 @@ public func box_percentBlockBasis(_ box: LayoutBox, _ basis: any U_HeightBasis_d
   }
   // ts: packages/layout/src/box.ts:248
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s664, jsConcat(prop, S.s150))
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s673, jsConcat(prop, S.s154))
   }
   return nil
 }
@@ -422,7 +422,7 @@ public func box_specifiedBlockSizeWith(_ box: LayoutBox, _ basis: any U_HeightBa
   }
   // ts: packages/layout/src/box.ts:286
   if ((((h as! any U_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind == S.s_min_content) || ((h as! any U_FitContent_LengthCalc_MaxContent_Percent_Px).kind == S.s_max_content)) || ((h as! any U_FitContent_LengthCalc_Percent_Px).kind == S.s_fit_content)) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s677, jsConcat(S.s789, (h as! any U_FitContent_MaxContent_MinContent).kind, S.s145, box.id, S.s207))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s686, jsConcat(S.s799, (h as! any U_FitContent_MaxContent_MinContent).kind, S.s149, box.id, S.s211))
   }
   let v: Double? = try box_resolveLengthOrNull((h as! any U_LengthCalc_Percent_Px), box_blockBasisFor(box, (h as! any U_LengthCalc_Percent_Px), basis, S.s_height), faults)
   return try ((v == nil) ? (nil as Double?) : (box_borderBoxFromSpecified(jsUnwrap(v), borderPadding, box.style.boxSizing) as Double?))

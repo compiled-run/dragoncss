@@ -348,7 +348,7 @@ fun replaced_replacedBlockBasis(leaf: ReplacedLeaf, basis: U_HeightBasis_definit
 
 // ts: packages/layout/src/replaced.ts:273
 fun replaced_replacedFrag(leaf: ReplacedLeaf, size: ReplacedSize): Frag {
-  return Frag(leaf.id, size.inline, size.block, null, jsArrayOf<Placed>(), jsArrayOf<OutOfFlow>(), null)
+  return Frag(leaf.id, size.inline, size.block, null, jsArrayOf<Box_Placed>(), jsArrayOf<OutOfFlow>(), null)
 }
 
 // ts: packages/layout/src/replaced.ts:278
