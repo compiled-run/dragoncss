@@ -256,15 +256,17 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
   const rtl = cb.direction === 'rtl';
   const s = optionStyle(box.style, o, anchors, box.id);
   const def = defaultAnchor === null ? null : anchorOf(anchors, defaultAnchor, box.id);
-  const area = def === null ? null : o.area;
+  // A position area aligns the box whether or not it has a default anchor (absolute_utils.cc ComputeAlignment); its offsets need one.
+  const area = o.area;
+  const offsetArea = def === null ? null : area;
   // The position area's offsets from the containing block's physical sides (anchor_evaluator_impl.cc 545-641).
   let top = ZERO;
   let bottom = ZERO;
   let left = ZERO;
   let right = ZERO;
-  if (area !== null && def !== null) {
-    const rows = areaOffsets(area.rowStart, area.rowEnd, sub(def.y, cb.y), add(sub(def.y, cb.y), def.height), cb.height);
-    const columns = areaOffsets(area.columnStart, area.columnEnd, sub(def.x, cb.x), add(sub(def.x, cb.x), def.width), cb.width);
+  if (offsetArea !== null && def !== null) {
+    const rows = areaOffsets(offsetArea.rowStart, offsetArea.rowEnd, sub(def.y, cb.y), add(sub(def.y, cb.y), def.height), cb.height);
+    const columns = areaOffsets(offsetArea.columnStart, offsetArea.columnEnd, sub(def.x, cb.x), add(sub(def.x, cb.x), def.width), cb.width);
     top = rows.start;
     bottom = rows.end;
     left = columns.start;
@@ -273,10 +275,11 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
   const regionWidth = max(sub(sub(cb.width, left), right), ZERO);
   const regionHeight = max(sub(sub(cb.height, top), bottom), ZERO);
   // Used self-alignment: the author's anchor-center, else the position area's default (position_area.cc 207-292).
-  const xAlign: Align = o.justifySelf === 'anchor-center' && def !== null ? 'anchor-center' : area !== null ? areaAlign(area.columnStart, area.columnEnd, rtl) : 'normal';
-  const yAlign: Align = o.alignSelf === 'anchor-center' && def !== null ? 'anchor-center' : area !== null ? areaAlign(area.rowStart, area.rowEnd, false) : 'normal';
-  const forceX = area !== null || xAlign === 'anchor-center';
-  const forceY = area !== null || yAlign === 'anchor-center';
+  const xAlign: Align = o.justifySelf === 'anchor-center' ? 'anchor-center' : area !== null ? areaAlign(area.columnStart, area.columnEnd, rtl) : 'normal';
+  const yAlign: Align = o.alignSelf === 'anchor-center' ? 'anchor-center' : area !== null ? areaAlign(area.rowStart, area.rowEnd, false) : 'normal';
+  // ComputeOutOfFlowInsets: auto insets are 0 beside position-area offsets, and in an axis whose alignment is anchor-center.
+  const forceX = offsetArea !== null || xAlign === 'anchor-center';
+  const forceY = offsetArea !== null || yAlign === 'anchor-center';
   const zeroIfForced = (v: LU | null, force: boolean): LU | null => (v === null && force ? ZERO : v);
   const leftInset = zeroIfForced(insetOf(ctx, o.left, o.leftAnchor, false, left, regionWidth, anchors, cb.x, false, box.id), forceX);
   const rightInset = zeroIfForced(insetOf(ctx, o.right, o.rightAnchor, true, left, regionWidth, anchors, cb.x, false, box.id), forceX);
@@ -299,7 +302,7 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
     marginEnd: rtl ? ml : mr,
     align: xAlign,
     anchorCenter: xCenter === null ? null : rtl ? sub(regionWidth, xCenter) : xCenter,
-    anchorPositioning: area !== null || xCenter !== null,
+    anchorPositioning: offsetArea !== null || xCenter !== null,
     staticOffset: rtl ? sub(add(cb.x, cb.width), staticX.offset) : sub(staticX.offset, cb.x),
     staticEdge: staticBias(staticX.edge, rtl),
   };
@@ -313,7 +316,7 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
     marginEnd: mb,
     align: yAlign,
     anchorCenter: yCenter,
-    anchorPositioning: area !== null || yCenter !== null,
+    anchorPositioning: offsetArea !== null || yCenter !== null,
     staticOffset: sub(staticY.offset, cb.y),
     staticEdge: staticBias(staticY.edge, false),
   };

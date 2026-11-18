@@ -190,13 +190,6 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
       else options.push({ ...base, area: physicalArea(entry, rtl, f.id) });
     }
     const order = f.order === 'most-width' || f.order === 'most-inline-size' ? 'most-width' : f.order === 'most-height' || f.order === 'most-block-size' ? 'most-height' : 'normal';
-    // Nothing anchors the box: no default anchor and no anchor function resolved, so it lays out as any absolutely positioned box.
-    const resolved = def !== null || options.some((o) => [o.topAnchor, o.rightAnchor, o.bottomAnchor, o.leftAnchor, o.widthAnchor, o.heightAnchor, o.minWidthAnchor, o.minHeightAnchor, o.maxWidthAnchor, o.maxHeightAnchor].some((r) => r !== null));
-    if (!resolved && options.length === 1 && base.justifySelf === 'normal' && base.alignSelf === 'normal') {
-      if (INSETS.some((p) => s[p].kind !== base[p].kind)) throw new AnchorLoweringError(f.id, 'top', `an unresolvable anchor function on ${f.id} takes its fallback, which Dragon lowers only beside an anchor`);
-      continue;
-    }
-    if (def === null && (f.justifySelf === 'anchor-center' || f.alignSelf === 'anchor-center')) throw new AnchorLoweringError(f.id, 'justify-self', `anchor-center on ${f.id} with no default anchor behaves as center (css-anchor-position-1 §4.2), which Dragon does not lower yet`);
     styles.set(f.id, { anchor: def, options, order });
   }
   if (styles.size === 0) return root;
@@ -295,7 +288,7 @@ function baseOption(f: AnchorFacts, s: LayoutStyle, def: string | null, named: (
     throw new AnchorLoweringError(f.id, p, `${p}: ${k} on the anchored ${f.id}: Dragon lowers normal and anchor-center self-alignment on an anchored box`);
   };
   return {
-    area: f.area === null || def === null ? null : physicalArea(f.area, rtl, f.id),
+    area: f.area === null ? null : physicalArea(f.area, rtl, f.id),
     top: top.value,
     right: right.value,
     bottom: bottom.value,
