@@ -123,7 +123,7 @@ Support is not restated here. It lives in the support profiles (`packages/dragon
 | Flex | `ms-flex` | flex row and column, `gap`, `align-items`, `justify-content` |
 | Toggle | `ms-toggle` | a class switched by a component state at run time, with rounded corners in both states |
 | Press | `ms-press` | `:active` on a pressable element and on its descendant |
-| Disabled | `reject-ms-button-disabled` | `:disabled`, refused on every target |
+| Disabled | `reject-ms-button-disabled`; `examples/markless-styles/input/disabled.native-style-input.json` | `:disabled` and `:enabled` follow the `disabled` attribute's state (the fixture stays refused for its `:active` on a button); a disabled button reads Chrome's captured `button[disabled]` UA row (`packages/parity/test/markless-disabled.test.ts`: colours and frames against Chrome) |
 
 The checks that prove each step are the parity comparison (`packages/parity/test/parity.test.ts` over the committed Chrome captures) and the device lanes: `device-frames`, `device-applied`, `device-lines` and `device-pixels` for each case, and `device-states` for the toggle's run-time switch. Per-case failures are listed in `packages/parity/out/device-failures-<target>.json`.
 
@@ -136,9 +136,8 @@ Nothing is dropped silently. There are two outcomes, and both name what they ref
 - `:active` before its device proof passes: `DRAGON_UNSUPPORTED_SELECTOR [ios] :active is not supported on ios: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch`.
 - `:active` on a `<button>`: native hit testing does not go through form controls yet (FORM-a).
 - `:active` on a box with `border-radius`: hit testing through rounded corners is not built yet (SELD-R2b).
-- `:disabled` on any target: `DRAGON_UNSUPPORTED_SELECTOR`. Its fix tells you to model the state as a component state and select it with a class or a `ui-*` attribute, for example `.button[ui-disabled]`.
 - A font family list on native, such as `font-family: Helvetica, sans-serif` with both mapped: `DRAGON_UNSUPPORTED_VALUE [ios] font-family: Helvetica , sans-serif is unsupported`. Native text is laid out in Ahem only until the real-font rows are device-proven. An unmapped family is `DRAGON_FONT_UNMAPPED_FAMILY` on every target, because Dragon never uses a font that happens to be installed.
-- The attribute `disabled` on a `<button>`: `DRAGON_UNSUPPORTED_ATTRIBUTE`, because Chrome's user-agent styles for it are not modelled.
+- A `<button>` with no author background or border: Chrome paints it with the platform theme (`appearance: auto`), which waits for the FORM-b package; in normal flow it is also an inline-level control (the RF-INL package), and its UA font (Arial) is not pinned. Give it a background or border, `font-family: inherit`, and a block or flex context. Its disabled look then follows Chrome's `button[disabled]` UA row where the author sets no colour.
 
 **A blocked target with a reason.** The CSS is supported, but the generated state runtime has no writer for it yet, so emitting would lose it. For example, a `box-shadow` inside a state program gives `{ kind: 'blocked', reason: 'app/chip/chip: the state runtime cannot write box-shadow yet' }`. Transitions and animations are also blocked by this entry point for now, with the reason. `@media` bands are emitted (since `cw/native-app-styles`): the state program is the band program (`nativeBandProgram`), with one more state `@env#band` whose value is the band index, and `NativeStyleOutput.bands` carries the band table. The export writes it per target as `bands: { atoms, bands, conditions }` (each atom a media feature the host evaluates on the device, each band the truth vector of every atom), and keeps `@env#band` as the state's key. Markless should report a blocked reason as a build error for that platform.
 
