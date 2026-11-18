@@ -11,6 +11,8 @@ import type { FontFaults } from './faults.ts';
 import { capabilitiesOf } from './selection.ts';
 import type { FontSelectionCapabilities, UnicodeRange } from './selection.ts';
 import { readSfnt } from './sfnt.ts';
+import { decodeFontFile } from './woff.ts';
+import type { FontContainer } from './woff.ts';
 import type { SfntFont, SfntRefusal } from './sfnt.ts';
 import { fenceVariableFace } from './variable-fence.ts';
 import type { VariableFontRefusal } from './variable-fence.ts';
@@ -76,9 +78,17 @@ export const FONT_FACE_ERRORS: ReadonlySet<FontFaceIssue['kind']> = new Set(['un
 /** A relative src URL resolved through the snapshot: its asset id and bytes, or null when the snapshot has no asset for it. */
 export type FontAssetResolver = (specifier: string) => { readonly id: string; readonly bytes: Uint8Array } | null;
 
-/** The bytes a face renders from: a snapshot asset, or a data: URL decoded at build time. */
-export type FaceSource = { readonly kind: 'asset'; readonly assetId: string; readonly url: string; readonly bytes: Uint8Array; readonly font: SfntFont }
-  | { readonly kind: 'data'; readonly url: string; readonly bytes: Uint8Array; readonly font: SfntFont };
+/**
+ * The bytes a face renders from: a snapshot asset, or a data: URL decoded at build time. bytes is the sfnt the hosts load; file
+ * is the font file as authored, which differs from bytes for a WOFF or WOFF2 container (decoded at build time, woff.ts).
+ */
+export type FaceSource = ({ readonly kind: 'asset'; readonly assetId: string } | { readonly kind: 'data' }) & {
+  readonly url: string;
+  readonly bytes: Uint8Array;
+  readonly font: SfntFont;
+  readonly container: FontContainer;
+  readonly file: Uint8Array;
+};
 
 /** A FontFace as Chrome creates it: family, capabilities, unicode ranges and declaration order; source null when Dragon refused it. */
 export type DeclaredFace = {
@@ -463,11 +473,13 @@ function sourceOf(entry: SrcEntry, resolve: FontAssetResolver, faults: FontFault
     bytes = asset.bytes;
     base = { kind: 'asset', assetId: asset.id };
   }
-  const read = readSfnt(bytes);
+  const decoded = decodeFontFile(bytes);
+  if (!decoded.ok) return { refused: { kind: 'unreadable-font', url, refusal: decoded.refusal } };
+  const read = readSfnt(decoded.sfnt);
   if (!read.ok) return { refused: { kind: 'unreadable-font', url, refusal: read.refusal } };
-  const fenced = fenceVariableFace(bytes, read.font, faults);
+  const fenced = fenceVariableFace(decoded.sfnt, read.font, faults);
   if (fenced !== null) return { refused: { kind: 'variable-font-refused', url, refusal: fenced } };
-  return { source: base.kind === 'asset' ? { kind: 'asset', assetId: base.assetId, url, bytes, font: read.font } : { kind: 'data', url, bytes, font: read.font } };
+  return { source: { ...base, url, bytes: decoded.sfnt, font: read.font, container: decoded.container, file: bytes } };
 }
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

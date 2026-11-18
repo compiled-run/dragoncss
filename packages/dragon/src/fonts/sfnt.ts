@@ -1,12 +1,15 @@
 // A read-only TrueType and OpenType table reader: the facts the font manifest, matching and metrics need, and typed refusals for
-// what Dragon cannot measure yet (WOFF containers, CFF glyph bounds, variable-font metrics).
+// what Dragon cannot measure yet (collections, CFF glyph bounds, variable-font metrics).
 
 /** Why a font file, or one quantity of it, cannot be used. The manifest still hashes the bytes of every refused file. */
 export type SfntRefusal =
   | { readonly kind: 'unsupported-container'; readonly container: 'woff' | 'woff2' | 'collection' | 'unknown' }
   | { readonly kind: 'cff-bounds'; readonly glyph: number }
   | { readonly kind: 'variable-font' }
-  | { readonly kind: 'malformed'; readonly reason: string };
+  | { readonly kind: 'malformed'; readonly reason: string }
+  | { readonly kind: 'malformed-container'; readonly container: 'woff' | 'woff2'; readonly reason: string }
+  /** WOFF2 needs Brotli, which the core takes from Node's zlib; outside Node a WOFF2 file is refused. */
+  | { readonly kind: 'no-brotli' };
 
 export type Head = {
   readonly unitsPerEm: number;
@@ -76,7 +79,7 @@ const tag = (d: DataView, at: number): string => String.fromCharCode(d.getUint8(
 
 class Malformed extends Error {}
 
-/** Reads an sfnt file. WOFF, WOFF2 and collections are refused with unsupported-container. */
+/** Reads an sfnt file. Collections, and WOFF or WOFF2 not decoded first (woff.ts), are refused with unsupported-container. */
 export function readSfnt(bytes: Uint8Array): SfntResult {
   if (bytes.length < 12) return { ok: false, refusal: { kind: 'malformed', reason: 'shorter than an sfnt header' } };
   const d = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

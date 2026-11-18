@@ -73,6 +73,7 @@ import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import type { FontSelectionRequest } from './fonts/selection.ts';
+import type { SfntRefusal } from './fonts/sfnt.ts';
 import { foldFamily } from './fonts/selection.ts';
 import { synthesisTraits } from './fonts/metrics.ts';
 import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
@@ -80,7 +81,7 @@ import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from 
 import { synthesisAllowedOf, textFontOfProps } from './analysis/computed.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
-import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
+import { collectFontFaces, familySupport, isSkippedFamily, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
@@ -684,6 +685,13 @@ function variableMessage(r: VariableFontRefusal): string {
   }
 }
 
+function refusalText(r: SfntRefusal): string {
+  if (r.kind === 'unsupported-container') return `unsupported-container ${r.container}`;
+  if (r.kind === 'malformed-container') return `malformed ${r.container}: ${r.reason}`;
+  if (r.kind === 'no-brotli') return 'woff2 needs Brotli, which this runtime does not provide';
+  return r.kind;
+}
+
 /** The diagnostic of one @font-face issue, or null for a value Chrome keeps that needs no report. */
 function fontIssueDiagnostic(issue: FontFaceIssue, origin: Origin, where: string): Diagnostic {
   switch (issue.kind) {
@@ -694,7 +702,7 @@ function fontIssueDiagnostic(issue: FontFaceIssue, origin: Origin, where: string
     case 'unresolved-asset':
       return diagnostic('DRAGON_FONT_UNRESOLVED_ASSET', { origin, message: `${where}: src url(${issue.url}) does not resolve to an asset of the source snapshot` });
     case 'unreadable-font':
-      return diagnostic('DRAGON_FONT_UNREADABLE', { origin, message: `${where}: src url(${issue.url.startsWith('data:') ? 'data:…' : issue.url}) is not a readable font (${issue.refusal.kind === 'unsupported-container' ? `unsupported-container ${issue.refusal.container}` : issue.refusal.kind})` });
+      return diagnostic('DRAGON_FONT_UNREADABLE', { origin, message: `${where}: src url(${issue.url.startsWith('data:') ? 'data:…' : issue.url}) is not a readable font (${refusalText(issue.refusal)})` });
     case 'unsupported-descriptor':
       return diagnostic('DRAGON_FONT_UNSUPPORTED_DESCRIPTOR', { origin, message: `${where}: ${issue.descriptor}: ${issue.reason}` });
     case 'variable-font-refused':
@@ -749,7 +757,8 @@ function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly
 
 /**
  * Context-free check of every font-family declaration of a rule that applies: each entry of its list must be declared with
- * @font-face or be in the font map (pinned or platform); an unmapped entry is DRAGON_FONT_UNMAPPED_FAMILY for every target.
+ * @font-face or be in the font map (pinned or platform); an unmapped entry is DRAGON_FONT_UNMAPPED_FAMILY for every target, except
+ * a named family skipped for a later one that resolves (DRAGON_FONT_FAMILY_NOT_PROVIDED, a warning).
  * A value holding var() is keyed after substitution (computed-checks.ts).
  */
 function checkFamilies(rules: readonly Rule[], fonts: FamilyKeyContext, faults: CompilerFaults, out: Diagnostic[], scope: { readonly of: RuleScope; readonly targets: readonly KnownTarget[] } | null = null): void {
@@ -805,10 +814,14 @@ function mergePasses(passes: readonly (readonly Diagnostic[])[]): Diagnostic[] {
   return out;
 }
 
-/** The unmapped-family diagnostics of one resolved font-family list, located at its value. */
+/** The unmapped-family diagnostics of one resolved font-family list, located at its value: a skipped named family warns. */
 function unmappedDiagnostics(resolutions: readonly EntryResolution[], text: string, valueSpan: Span, diagnostics: Diagnostic[]): void {
   for (const r of resolutions) {
     if (r.kind !== 'unmapped-family') continue;
+    if (r.entry.kind === 'family' && isSkippedFamily(r, resolutions)) {
+      diagnostics.push(diagnostic('DRAGON_FONT_FAMILY_NOT_PROVIDED', { origin: authored(valueSpan), message: `font-family: ${text}: the family "${r.entry.name}" is neither declared with @font-face nor in the font map, so every target skips it and draws with the next family in the list`, manual: `Declare "${r.entry.name}" with an @font-face rule whose src is a bundled font file, map it under fonts.families, or remove it from the list.` }));
+      continue;
+    }
     const name = r.entry.kind === 'generic' ? `the generic ${r.entry.keyword}` : `the family "${r.entry.name}"`;
     const fix = r.entry.kind === 'generic'
       ? `Pin ${r.entry.keyword} in the font map (fonts.generics["${r.entry.keyword}"]: { mode: "pinned", family, faces }, for example the recommended "Dragon Sans" faces), or map it with { mode: "platform" }.`

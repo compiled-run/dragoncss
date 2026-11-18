@@ -104,9 +104,45 @@ describe('font-family resolution', () => {
     expect(c.targets).toEqual({ web: 'blocked', ios: 'blocked' });
   });
 
-  it('an enforced project reports an unmapped family reached through var() once, as DRAGON_FONT_UNMAPPED_FAMILY', () => {
-    const c = createProjectWith({ projectId: 'test', targets: { web: {} }, fonts: MAP }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(fontInput('.a { --f: Nope, sans-serif; font-family: var(--f) }'));
-    expect(c.diagnostics.map((d) => d.code)).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
+  it('a WOFF2 @font-face src measures from the decoded sfnt, and the web output ships the .woff2 file as authored', () => {
+    const woff2 = new Uint8Array(readFileSync(new URL('./fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const css = "@font-face { font-family: 'Harbour Lato'; src: url(fonts/Lato-Regular.woff2) format('woff2') } .a { font-family: 'Harbour Lato' }";
+    const c = compileWith(fontInput(css, { files: { ...FILES, 'fonts/Lato-Regular.woff2': woff2 }, urls: ['fonts/Lato-Regular.woff2'] }), MAP);
+    expect(codes(c)).toEqual([]);
+    const path = `fonts/${hex(woff2).slice(0, 16)}.woff2`;
+    expect(cssOf(c)).toContain(`src:url("${path}")`);
+    if (c.outputs.web.kind !== 'ready') throw new Error('web not ready');
+    expect(c.outputs.web.assets.map((a) => [a.path, a.hash])).toEqual([[path, `sha256:${hex(woff2)}`]]);
+  });
+
+  it('a named family that is not provided, before one that resolves, is skipped with the warning DRAGON_FONT_FAMILY_NOT_PROVIDED naming it, and the web CSS keeps the list as written', () => {
+    const css = ".a { font-family: 'Nowhere Sans', Lato, sans-serif }";
+    const c = compileWith(fontInput(css), MAP, {}, { web: {}, ios: { minimum: '15.0' } });
+    expect(codes(c)).toEqual(['DRAGON_FONT_FAMILY_NOT_PROVIDED']);
+    expect(c.diagnostics[0]?.severity).toBe('warning');
+    expect(c.diagnostics[0]?.message).toBe('font-family: "Nowhere Sans",Lato,sans-serif: the family "Nowhere Sans" is neither declared with @font-face nor in the font map, so every target skips it and draws with the next family in the list');
+    expect(c.ok).toBe(true);
+    expect(webFeatures(c)).toEqual(['font-family:<pinned>@text-in-block/ltr']);
+    // The web CSS is what the compile wrote before the ruling, when the unmapped family was accepted (unmappedFamilyAccepted).
+    const web = cssOf(compileWith(fontInput(css), MAP));
+    expect(web).toContain('font-family: "Nowhere Sans", "Lato", "Dragon Sans"');
+    expect(web).toBe(cssOf(compileWith(fontInput(css), MAP, { unmappedFamilyAccepted: true })));
+  });
+
+  it('a skipped family keys the value like the family after it alone', () => {
+    const faces = (css: string) => compiledFeatures(compileWith(fontInput(css), MAP), 'web', []);
+    expect(faces(".a { font-family: 'Nowhere Sans', Lato }")).toEqual(faces('.a { font-family: Lato }'));
+  });
+
+  it('a list where no family resolves stays an error for each entry, and an unmapped generic is never skipped', () => {
+    expect(codes(compileWith(fontInput(".a { font-family: 'Nowhere Sans', 'Elsewhere' }"), MAP))).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY', 'DRAGON_FONT_UNMAPPED_FAMILY']);
+    expect(codes(compileWith(fontInput(".a { font-family: 'Nowhere Sans', Lato, cursive }"), MAP))).toEqual(['DRAGON_FONT_FAMILY_NOT_PROVIDED', 'DRAGON_FONT_UNMAPPED_FAMILY']);
+  });
+
+  it('an enforced project reports a family reached through var() once: skipped for sans-serif it warns, alone it is DRAGON_FONT_UNMAPPED_FAMILY', () => {
+    const at = (css: string) => createProjectWith({ projectId: 'test', targets: { web: {} }, fonts: MAP }, { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr' }).compile(fontInput(css));
+    expect(at('.a { --f: Nope, sans-serif; font-family: var(--f) }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_FONT_FAMILY_NOT_PROVIDED']);
+    expect(at('.a { --f: Nope; font-family: var(--f) }').diagnostics.map((d) => d.code)).toEqual(['DRAGON_FONT_UNMAPPED_FAMILY']);
   });
 
   it('a font-family holding var() is checked after substitution', () => {

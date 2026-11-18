@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import type { ClassSymbol, Condition, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compileNativeStyles, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compileNativeStyles, decodeFontFile, TREE_SCHEMA_REVISION } from 'dragon';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
@@ -39,8 +39,22 @@ export type MarklessStyleInput = {
   readonly fonts?: readonly { readonly url: string; readonly file: string }[];
 };
 
-/** An author font file of the input, read: its url as `css` spells it, its path, its bytes and their SHA-256 id. */
-export type MarklessFontFile = { readonly url: string; readonly file: string; readonly id: string; readonly bytes: Uint8Array };
+/**
+ * An author font file of the input, read: its url as `css` spells it, its path and bytes (what Chrome loads), and the sfnt the hosts
+ * load with its SHA-256 id and its path relative to the input. For a .ttf or .otf that is the file itself; a WOFF or WOFF2 is decoded
+ * at build time and its sfnt is written to DECODED_FONTS_DIR beside the input.
+ */
+export type MarklessFontFile = {
+  readonly url: string;
+  readonly file: string;
+  readonly bytes: Uint8Array;
+  readonly id: string;
+  readonly sfnt: Uint8Array;
+  readonly sfntFile: string;
+};
+
+/** Where the export command writes the decoded sfnt of each WOFF or WOFF2 author font, relative to the input file. */
+export const DECODED_FONTS_DIR = 'dragon-decoded-fonts';
 
 /** The document a detached component is laid out in, as Chrome renders it for the comparison: no body margin, the pinned sans face. */
 export const MARKLESS_DOCUMENT_CSS = 'body { margin: 0; font-family: sans-serif; }';
@@ -180,7 +194,12 @@ export function dragonElementIds(input: MarklessStyleInput): Map<string, string>
 export function marklessFontFiles(input: MarklessStyleInput, read: (file: string) => Uint8Array): MarklessFontFile[] {
   return (input.fonts ?? []).map(({ url, file }) => {
     const bytes = read(file);
-    return { url, file, id: `sha256:${createHash('sha256').update(bytes).digest('hex')}`, bytes };
+    // A file that does not decode is compiled as it is, so Dragon reports it (DRAGON_FONT_UNREADABLE).
+    const decoded = decodeFontFile(bytes);
+    const sfnt = decoded.ok ? decoded.sfnt : bytes;
+    const hex = createHash('sha256').update(sfnt).digest('hex');
+    const sfntFile = decoded.ok && decoded.container !== 'sfnt' ? `${DECODED_FONTS_DIR}/${hex}.${String.fromCharCode(...sfnt.subarray(0, 4)) === 'OTTO' ? 'otf' : 'ttf'}` : file;
+    return { url, file, bytes, id: `sha256:${hex}`, sfnt, sfntFile };
   });
 }
 
@@ -287,7 +306,7 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
       projectId: PROJECT_ID,
       revision: 'markless',
       sources: [src, css, doc],
-      assets: [...new Map(fonts.map((f) => [fontAssetId(f.file), { id: fontAssetId(f.file), hash: f.id, bytes: f.bytes }])).values()],
+      assets: [...new Map(fonts.map((f) => [fontAssetId(f.file), { id: fontAssetId(f.file), hash: `sha256:${createHash('sha256').update(f.bytes).digest('hex')}`, bytes: f.bytes }])).values()],
       resolutions: fonts.map((f) => ({ from: css.ref, specifier: f.url, kind: 'asset', to: fontAssetId(f.file) })),
     },
     diagnostics: [],
@@ -315,7 +334,11 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
 }
 
 /** The input compiled as the device lanes compile (support 'lanes', the pinned font map), exported with the cells' own keys. */
-export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport } {
+/**
+ * `decoded`: the sfnt of each WOFF or WOFF2 author font, by its path relative to the input (DECODED_FONTS_DIR), which the export
+ * lists with `from: 'input'` and the caller writes there.
+ */
+export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const parsed = parseMarklessStyleInput(inputText);
   if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
@@ -325,7 +348,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
-  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts);
+  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })));
   // Back to the input's ids: an element by its own, a text node "<element>:text<k>" by its element's.
   const marklessId = new Map([...dragonElementIds(parsed)].map(([m, d]): [string, string] => [d, m]));
   const dragonIds = dragonElementIds(parsed);
@@ -390,7 +413,8 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
       })),
     }];
   }));
-  return { input, exported: { ...exported, targets } };
+  const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
+  return { input, exported: { ...exported, targets }, decoded };
 }
 
 type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 };

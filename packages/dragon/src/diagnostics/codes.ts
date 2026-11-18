@@ -5,6 +5,7 @@
 // test/diagnostic-codes/<feature>.json.
 import { ANIM_B1 } from './codes/anim-b1.ts';
 import { BROWSER_ONLY } from './codes/browser-only.ts';
+import { FONT_FALLBACK } from './codes/font-fallback.ts';
 import { FORM_A } from './codes/form-a.ts';
 import { NA_NATIVE } from './codes/na-native.ts';
 import { REPL_A } from './codes/repl-a.ts';
@@ -20,6 +21,7 @@ import { TXT2_I } from './codes/txt2-i.ts';
 export const DIAGNOSTIC_FEATURES = {
   'anim-b1': ANIM_B1,
   'browser-only': BROWSER_ONLY,
+  'font-fallback': FONT_FALLBACK,
   'form-a': FORM_A,
   'na-native': NA_NATIVE,
   'repl-a': REPL_A,

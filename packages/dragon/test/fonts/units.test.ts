@@ -40,7 +40,7 @@ describe('sfnt', () => {
     }
   });
 
-  it('refuses WOFF, WOFF2 and collections as unsupported-container', () => {
+  it('refuses collections, and WOFF or WOFF2 not decoded first (woff.ts), as unsupported-container', () => {
     for (const [magic, container] of [['wOFF', 'woff'], ['wOF2', 'woff2'], ['ttcf', 'collection']] as const) {
       const bytes = new Uint8Array(REGULAR);
       for (let k = 0; k < 4; k++) bytes[k] = magic.charCodeAt(k);
@@ -81,7 +81,7 @@ describe('@font-face src', () => {
     const css = '@font-face{font-family:A;src:url(a.woff2) format("woff2"), url("fonts/Inter/Inter-Regular.ttf")}';
     const good = parseFontFace(atRules(css)[0] as CssNode, 0, resolve);
     expect(good.face?.source).toBeNull();
-    expect(good.issues).toContainEqual({ kind: 'unreadable-font', url: 'a.woff2', refusal: { kind: 'unsupported-container', container: 'woff2' } });
+    expect(good.issues).toContainEqual({ kind: 'unreadable-font', url: 'a.woff2', refusal: { kind: 'malformed-container', container: 'woff2', reason: `the header length ${new DataView(woff2.buffer).getUint32(8)} is not the file length ${woff2.length}` } });
     const faulted = parseFontFace(atRules(css)[0] as CssNode, 0, resolve, withFault('skipUnreadableSrc'));
     expect(faulted.face?.source?.font.names.postScriptName).toBe('Inter-Regular');
   });

@@ -2,9 +2,10 @@
 // caller, resolve to snapshot assets, so Dragon measures with the file's own tables and the export lists each face with its file.
 // The faces are files no Dragon checkout bundles, so nothing here leans on the vendored Lato.
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { compareMarklessExport } from '../src/markless-style-compare.ts';
-import { marklessFontFiles, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
+import { DECODED_FONTS_DIR, marklessFontFiles, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import { vendorFontBytes } from '../src/font-reference.ts';
 
 const FACES = `@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.ttf') format('truetype'); font-weight: 400; }
@@ -43,11 +44,18 @@ function authorCopy(file: string): Uint8Array {
   return bytes;
 }
 
+/** Vendored Lato as WOFF2, made with fontTools (packages/dragon/test/fonts/woff/README.md). */
+function woff2(name: string): Uint8Array {
+  return new Uint8Array(readFileSync(new URL(`../../dragon/test/fonts/woff/${name}`, import.meta.url)));
+}
+
 /** The app's files by their path relative to the input. */
 const files: Record<string, Uint8Array> = {
   '../styles/fonts/Lato-Regular.ttf': authorCopy('Lato/Lato-Regular.ttf'),
   '../styles/fonts/Lato-Bold.ttf': authorCopy('Lato/Lato-Bold.ttf'),
-  '../styles/fonts/Lato-Regular.woff2': new Uint8Array([0x77, 0x4f, 0x46, 0x32, ...new Array<number>(44).fill(0)]),
+  '../styles/fonts/Lato-Regular.woff2': woff2('Lato-Regular.woff2'),
+  '../styles/fonts/Lato-Bold.woff2': woff2('Lato-Bold.woff2'),
+  '../styles/fonts/Broken.woff2': woff2('Lato-Regular.woff2').subarray(0, 4000),
 };
 const read = (file: string): Uint8Array => {
   const bytes = files[file];
@@ -64,7 +72,8 @@ describe('an author web font in a Markless style input', () => {
     const { exported } = marklessStyleExport(text, 'web-font.json', read);
     const parsed = parseMarklessStyleInput(text);
     const fonts = marklessFontFiles(parsed, read);
-    expect(exported.fonts).toEqual(fonts.map((f) => ({ id: f.id, file: f.file, from: 'input' })).sort((a, b) => (a.id < b.id ? -1 : 1)));
+    expect(exported.fonts).toEqual(fonts.map((f) => ({ id: f.id, file: f.sfntFile, from: 'input' })).sort((a, b) => (a.id < b.id ? -1 : 1)));
+    expect(fonts.map((f) => f.sfntFile)).toEqual(fonts.map((f) => f.file));
     expect(fonts.map((f) => f.id)).not.toContain(`sha256:${createHash('sha256').update(vendorFontBytes('Lato/Lato-Regular.ttf')).digest('hex')}`);
     for (const t of ['ios', 'android'] as const) {
       const lato = textWidths(text, t);
@@ -76,10 +85,41 @@ describe('an author web font in a Markless style input', () => {
     expect(report.rows.filter((r) => !r.pass)).toEqual([]);
   });
 
-  it('refuses a WOFF2 src by its container', () => {
-    const css = `@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); }\nbody { font-family: 'Harbour Lato', sans-serif; }`;
-    expect(() => marklessStyleExport(input(css, [{ url: './fonts/Lato-Regular.woff2', file: '../styles/fonts/Lato-Regular.woff2' }]), 'woff2.json', read)).toThrow(
-      'DRAGON_FONT_UNREADABLE [all] @font-face 1: src url(./fonts/Lato-Regular.woff2) is not a readable font (unsupported-container woff2)',
+  it('skips a named family that is not provided, with a warning naming it, and lays out as the family after it alone, matching Chrome', async () => {
+    const skipped = FACES.replace("body { margin: 0; font-family: 'Harbour Lato', sans-serif; }", "body { margin: 0; font-family: 'Nowhere Sans', 'Harbour Lato'; }");
+    const alone = FACES.replace("body { margin: 0; font-family: 'Harbour Lato', sans-serif; }", "body { margin: 0; font-family: 'Harbour Lato'; }");
+    expect(skipped).not.toBe(FACES);
+    const text = input(skipped + PAGE, FONTS);
+    const { exported } = marklessStyleExport(text, 'fallback.json', read);
+    expect(exported.warnings.filter((w) => w.code === 'DRAGON_FONT_FAMILY_NOT_PROVIDED').map((w) => w.message)).toEqual([
+      'font-family: "Nowhere Sans","Harbour Lato": the family "Nowhere Sans" is neither declared with @font-face nor in the font map, so every target skips it and draws with the next family in the list',
+    ]);
+    for (const t of ['ios', 'android'] as const) expect(textWidths(text, t)).toEqual(textWidths(input(alone + PAGE, FONTS), t));
+    const report = await compareMarklessExport(parseMarklessStyleInput(text), exported, undefined, 'light', marklessFontFiles(parseMarklessStyleInput(text), read));
+    expect(report.compared).toBe(18);
+    expect(report.rows.filter((r) => !r.pass)).toEqual([]);
+  });
+
+  it('decodes a WOFF2 src at build time: Dragon measures the decoded Lato, the export lists the decoded sfnt beside the input, and every box matches Chrome loading the .woff2 within 1 device px', async () => {
+    const faces = FACES.replaceAll('.ttf', '.woff2').replaceAll("format('truetype')", "format('woff2')");
+    const fonts = FONTS.map((f) => ({ url: f.url.replace('.ttf', '.woff2'), file: f.file.replace('.ttf', '.woff2') }));
+    const text = input(faces + PAGE, fonts);
+    const { exported, decoded } = marklessStyleExport(text, 'woff2.json', read);
+    const files = marklessFontFiles(parseMarklessStyleInput(text), read);
+    const sha = (b: Uint8Array): string => `sha256:${createHash('sha256').update(b).digest('hex')}`;
+    expect(decoded.map((d) => [d.file, sha(d.bytes)])).toEqual(files.map((f) => [`${DECODED_FONTS_DIR}/${f.id.slice('sha256:'.length)}.ttf`, f.id]));
+    expect(exported.fonts).toEqual(decoded.map((d) => ({ id: sha(d.bytes), file: d.file, from: 'input' })).sort((a, b) => (a.id < b.id ? -1 : 1)));
+    for (const f of files) expect(f.id).not.toBe(sha(f.bytes));
+    for (const t of ['ios', 'android'] as const) expect(textWidths(text, t)).toEqual(textWidths(input(FACES + PAGE, FONTS), t));
+    const report = await compareMarklessExport(parseMarklessStyleInput(text), exported, undefined, 'light', files);
+    expect(report.compared).toBe(18);
+    expect(report.rows.filter((r) => !r.pass)).toEqual([]);
+  });
+
+  it('refuses a malformed WOFF2 by name', () => {
+    const css = `@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Broken.woff2') format('woff2'); }\nbody { font-family: 'Harbour Lato', sans-serif; }`;
+    expect(() => marklessStyleExport(input(css, [{ url: './fonts/Broken.woff2', file: '../styles/fonts/Broken.woff2' }]), 'broken.json', read)).toThrow(
+      `DRAGON_FONT_UNREADABLE [all] @font-face 1: src url(./fonts/Broken.woff2) is not a readable font (malformed woff2: the header length ${files['../styles/fonts/Lato-Regular.woff2']!.length} is not the file length 4000)`,
     );
   });
 
