@@ -175,11 +175,7 @@ function runsOf(face: string, glyphs: readonly number[], xs: readonly number[], 
   return out;
 }
 
-/**
- * Each text node's lines as the device's text pass places them (emit/native-support.ts, the DragonLineSpec loop): the engine's
- * breaks (engineTextLines), each piece's glyphs from pieceGlyphs at its line's left plus its justification shift, the line top
- * snapped and the baseline at the snapped piece top plus the ascent, then a truncated line's ellipsis in its own font.
- */
+/** Each text node's lines as native-support.ts builds its DragonLineSpecs: engine breaks, pieceGlyphs, snapped top and baseline. */
 function textLines(texts: readonly EngineText[], leafText: ReadonlyMap<string, string>, origin: ReadonlyMap<string, { readonly x: number; readonly y: number }>): Map<string, TextLine[]> {
   const m = referenceMeasurer();
   const out = new Map<string, TextLine[]>();
