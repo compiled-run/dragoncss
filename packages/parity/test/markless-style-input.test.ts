@@ -35,13 +35,11 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
       const bg = (a: number, id: string): unknown => x.assignments[a]?.nodes.find((n) => n.id === id)?.writes.find((w) => w['kind'] === 'background-color')?.['color'];
       expect([bg(0, 'h2'), bg(1, 'h2')]).toEqual([{ r: 233, g: 236, b: 239, alpha: 255 }, { r: 239, g: 71, b: 111, alpha: 255 }]);
       expect([bg(0, 'h3'), bg(1, 'h3')]).toEqual([{ r: 233, g: 236, b: 239, alpha: 255 }, { r: 233, g: 236, b: 239, alpha: 255 }]);
-      // The overflow port does not decide a page with a form control (the buttons), so the page range is null and says why.
-      expect(x.assignments.map((a) => a.pageScroll), t).toEqual([null, null]);
+      // Its buttons are block buttons, whose scrollable overflow is their plain box's (overflow-controls), so the page's range is
+      // decided: the page is shorter than the viewport.
+      expect(x.assignments.map((a) => a.pageScroll), t).toEqual([{ minX: 0, maxX: 0, minY: 0, maxY: 0 }, { minX: 0, maxX: 0, minY: 0, maxY: 0 }]);
     }
-    expect(exported.warnings.filter((w) => w.code === 'DRAGON_PAGE_SCROLL_UNDECIDED').map((w) => w.message)).toEqual([
-      "ios: the page's scroll range is not decided at h2: a form control: its scrollable overflow is not decided here",
-      "android: the page's scroll range is not decided at h2: a form control: its scrollable overflow is not decided here",
-    ]);
+    expect(exported.warnings.filter((w) => w.code === 'DRAGON_PAGE_SCROLL_UNDECIDED')).toEqual([]);
   });
 
   it('refuses an input it cannot convert faithfully, naming why', () => {
