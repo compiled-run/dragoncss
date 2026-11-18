@@ -67,6 +67,13 @@ function addAnchor(v: unknown): unknown {
 
 const ROOTS = ['packages/layout/vectors', 'packages/layout/break-vectors', 'packages/layout/rt-vectors'];
 const CORPORA = ['packages/translate/corpus.json', 'packages/translate/corpus-dpr.json'];
+/** Files keyed by case: every case of the base keeps its entry exactly; the only new keys are the new fixtures' cases. */
+const KEYED = new Set(['packages/layout/rt-vectors/hit/facts.json']);
+/**
+ * The corpus locks hold counts and sha256 digests of the vector files checked one by one above, so they change with any vector;
+ * they are rebuilt by native-gen and checked by the translator tests, not here.
+ */
+const LOCKS = new Set(CORPORA);
 
 if (process.argv.includes('--migrate-hand-written')) {
   const dir = 'packages/layout/vectors/calc';
@@ -144,8 +151,20 @@ for (const f of atBase) {
     after = plant[1](after);
     planted = true;
   }
-  if (after === before) continue;
+  if (after === before || LOCKS.has(f)) continue;
   changed++;
+  if (KEYED.has(f)) {
+    const was = JSON.parse(before) as Record<string, unknown>;
+    const now = JSON.parse(after) as Record<string, unknown>;
+    // { cases, refused }: each a map from case id to its facts or its refusal.
+    for (const part of [...new Set([...Object.keys(was), ...Object.keys(now)])]) {
+      const a = isRecord(was[part]) ? (was[part] as Record<string, unknown>) : {};
+      const b = isRecord(now[part]) ? (now[part] as Record<string, unknown>) : {};
+      for (const [k, v] of Object.entries(a)) if (JSON.stringify(b[k]) !== JSON.stringify(v)) { console.error(`${f}: ${part}.${k} changed`); failures++; }
+      for (const k of Object.keys(b)) if (!(k in a) && !newFixtures.some((id) => k === id || k === `${id}-rtl`)) { console.error(`${f}: ${part}.${k} is new but belongs to no new fixture`); failures++; }
+    }
+    continue;
+  }
   try {
     const json = JSON.parse(after) as unknown;
     removed += stripAnchor(json, f);
