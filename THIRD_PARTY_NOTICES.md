@@ -37,6 +37,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/css/ua_counter_style_map.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/html/list_item_ordinal.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/absolute_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/anchor_evaluator_impl.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/baseline_utils.h`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm_utils.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
@@ -81,6 +82,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/list/unpositioned_list_marker.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/logical_box_fragment.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/logical_box_fragment.h`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/out_of_flow_layout_part.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/physical_box_fragment.h`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.h`: Copyright 2020 The Chromium Authors
@@ -99,6 +101,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/text_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/display_style.h`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/style/position_area.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/opentype/open_type_caps_support.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors

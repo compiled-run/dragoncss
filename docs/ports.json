@@ -1068,6 +1068,30 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/anchor_evaluator_impl.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "dbc744775c258e78645aca1fb77c0a9f52afe2f69767a9ec162cff33889aa9e7",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "60-213", "symbol": null, "source": "cited" },
+        { "lines": "545-656", "symbol": null, "source": "cited" },
+        { "lines": "89-183", "symbol": "ResolveAnchorValue", "source": "located" },
+        { "lines": "187-216", "symbol": "ResolveAnchorSizeValue", "source": "located" },
+        { "lines": "545-641", "symbol": "AnchorEvaluatorImpl::ComputePositionAreaOffsetsForLayout", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "areaOffsets", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "anchorSizePx", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "insetOf", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" },
+        { "file": "packages/layout/src/units.ts", "symbol": "anchorPercentOffset", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/baseline_utils.h",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1112,11 +1136,22 @@
       "fileSha256": "46fa3e1ac5646589f28326891f1e82bb403084d84e6c31ebc26bc2feadd845a9",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
+        { "lines": "51-416", "symbol": null, "source": "cited" },
+        { "lines": "467-603", "symbol": null, "source": "cited" },
+        { "lines": "622-945", "symbol": null, "source": "cited" },
         { "lines": "659-815", "symbol": "ComputeOofInlineDimensions", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioAbsoluteInlineSize", "use": "port" }
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioAbsoluteInlineSize", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "alignBias", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "resize", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "unclampedImcb", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "clampedImcb", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "margins", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "insetStartOf", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" }
       ]
     },
     {
@@ -1843,6 +1878,26 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": "marginsOf", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/out_of_flow_layout_part.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "3eb79230dfb5a5f6a4d76fafb4f1f299b269ec3cb83591495936f8bc704cc7ae",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "65-107", "symbol": null, "source": "cited" },
+        { "lines": "2276-2470", "symbol": null, "source": "cited" },
+        { "lines": "2190-2190", "symbol": "kMaxTryAttempts", "source": "located" },
+        { "lines": "2515-2835", "symbol": "OutOfFlowLayoutPart::TryCalculateOffset", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "MAX_TRY_ATTEMPTS", "use": "port" }
       ]
     },
     {
@@ -4601,6 +4656,27 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-select.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/position_area.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "0a00aa35e5e8f193e44ff066047f9b924ba75bf0de4a45760c50e67d51db1c45",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "207-292", "symbol": null, "source": "cited" },
+        { "lines": "167-234", "symbol": "PositionArea::ToPhysical", "source": "located" },
+        { "lines": "237-306", "symbol": "PositionArea::AlignJustifySelfFromPhysical", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "areaAlign", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" },
+        { "file": "packages/dragon/src/lower/anchor-layout.ts", "symbol": "physicalArea", "use": "port" },
+        { "file": "packages/dragon/test/anchor-lowering.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
