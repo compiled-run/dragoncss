@@ -83,7 +83,8 @@
     "parity:device-mqr": "node --conditions=dragon-internal packages/parity/src/cli/device-mqr.ts",
     "parity:pointer-vectors": "node --conditions=dragon-internal packages/parity/src/cli/pointer-vectors.ts",
     "parity:resize-capture": "node --conditions=dragon-internal packages/parity/src/cli/resize-capture.ts",
-    "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts"
+    "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts",
+    "markless:style-compare": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-compare.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
