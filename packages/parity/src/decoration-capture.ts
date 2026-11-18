@@ -9,14 +9,17 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
 import type { ControlBox, LayoutBox, InlineChild, TextFont } from '@dragon/layout';
-import { pieceGlyphs, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { pieceGlyphs, platformFontSize, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
 import { appliedDecorationsOf, NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
+import type { SfntFont } from '../../dragon/src/fonts/sfnt.ts';
 import { readSfnt } from '../../dragon/src/fonts/sfnt.ts';
+import type { InterceptFaults } from '../../layout/src/glyph-intercepts.ts';
+import { glyphIntercept, interceptInk, NO_INTERCEPT_FAULTS } from '../../layout/src/glyph-intercepts.ts';
 import type { ParityCase } from './cases.ts';
 import { atDpr, dprLabel } from './dpr.ts';
 import type { FontFixture } from './fixture-groups/fonts.ts';
-import { FONT_FIXTURES, withFontMapAssets } from './fixture-groups/fonts.ts';
+import { FONT_FIXTURES, REAL_SKIP_FIXTURES, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { fixtureToInput, parseFixtureHtml } from './fixture-reader.ts';
 import { fontCases } from './fonts-run.ts';
 import { engineTextLines } from './line-breaks.ts';
@@ -24,7 +27,7 @@ import type { RgbaImage } from './native-compare.ts';
 import { repoPath } from './paths.ts';
 import { decodePng } from './pixel-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import { faceIdOf, referenceShapedMeasurer, shapedInk } from './text-shaper-host.ts';
+import { faceIdOf, referenceShapedMeasurer, shapedInk, vendoredFaces } from './text-shaper-host.ts';
 
 /** Every DPR the decoration capture renders, DPR 1 included. */
 export const DECORATION_DPRS: readonly number[] = [1, 2, 3, 2.625];
@@ -37,6 +40,12 @@ export const decorationFixtures = (): FontFixture[] => FONT_FIXTURES.filter((f) 
 
 /** Every case of the decorated fixtures. */
 export const decorationCases = (): { readonly fixture: FontFixture; readonly case: ParityCase }[] => decorationFixtures().flatMap((f) => fontCases(f).map((c) => ({ fixture: f, case: c })));
+
+/** The real-face skip-ink cases (REAL_SKIP_FIXTURES), captured with the others but not yet proven. */
+export const realSkipCases = (): { readonly fixture: FontFixture; readonly case: ParityCase }[] => REAL_SKIP_FIXTURES.flatMap((f) => fontCases(f).map((c) => ({ fixture: f, case: c })));
+
+/** Every case the capture renders: the decorated fixtures, then the real-face skip-ink ones. */
+export const captureCases = (): { readonly fixture: FontFixture; readonly case: ParityCase }[] => [...decorationCases(), ...realSkipCases()];
 
 export const decorationDir = (dpr: number): string => repoPath(`packages/parity/expected-decorations/${REFERENCE_PLATFORM}/${dprLabel(dpr)}`);
 export const decorationPath = (caseId: string, dpr: number, stripped: boolean): string => `${decorationDir(dpr)}/${caseId}${stripped ? '.stripped' : ''}.png`;
@@ -67,6 +76,21 @@ export type PaintedRect = td.DecorationRect & { readonly color: td.Rgba; readonl
 
 /** A case's predicted decorations, or the reason the engine refuses one (skip-ink-intercepts: TDEC-d on a real face). */
 export type Prediction = { readonly kind: 'rects'; readonly rects: readonly PaintedRect[] } | { readonly kind: 'refused'; readonly code: 'skip-ink-intercepts'; readonly detail: string };
+
+let sfntCache: Map<string, SfntFont> | null = null;
+/** A vendored face's sfnt by its face id, for its glyph outlines. */
+function sfntOf(face: string): SfntFont {
+  if (sfntCache === null) {
+    sfntCache = new Map();
+    for (const { id, file } of vendoredFaces()) {
+      const read = readSfnt(new Uint8Array(readFileSync(file)));
+      if (read.ok) sfntCache.set(id, read.font);
+    }
+  }
+  const f = sfntCache.get(face);
+  if (f === undefined) throw new Error(`no vendored face ${face}`);
+  return f;
+}
 
 let underlineThicknessCache: Map<string, (size: number) => number> | null = null;
 /** post.underlineThickness at a size, by face id: only the autoThicknessFromFont plant reads it. */
@@ -152,7 +176,7 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
  * The engine's decorations of one case at a DPR: the stripped copy's layout and the decorated compile's applied decorations.
  * faults plant the geometry; compilerFaults the propagation.
  */
-export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, faults: td.DecorationFaults = td.NO_DECORATION_FAULTS, compilerFaults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS): Prediction {
+export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, faults: td.DecorationFaults = td.NO_DECORATION_FAULTS, compilerFaults: DecorationAnalysisFaults = NO_DECORATION_ANALYSIS_FAULTS, interceptFaults: InterceptFaults = NO_INTERCEPT_FAULTS): Prediction {
   const p = prepare(f, c, dpr);
   const analysis = appliedDecorationsOf(p.decorated, c.assignment, compilerFaults);
   if (analysis === null) throw new Error(`${c.id}: the decorated compile did not resolve`);
@@ -189,8 +213,18 @@ export function predictDecorations(f: FontFixture, c: ParityCase, dpr: number, f
               if (!g.ok || g.xs.length !== line.cps.length) throw new Error(`${c.id}: ${t.id} has no glyph per code point: ${g.ok ? g.xs.length : g.reason}`);
               clips = td.skipInkClips(r, td.ahemLineInk(line.cps, g.xs.map((x) => input.left + x), t.font.size, baseline), faults);
             } else {
-              const glyphs = shapedInk(t.font.family, t.font.size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing, t.textFont.wordSpacing).flatMap((g) => (g === null ? [] : [{ top: baseline - g.top, bottom: baseline - g.bottom }]));
-              if (!td.skipInkClear(r, glyphs)) return { kind: 'refused', code: 'skip-ink-intercepts', detail: `${t.id} ${r.line} at DPR ${dpr}: a glyph's ink crosses the skip-ink band (TDEC-d)` };
+              // TDEC-d for a real face: Skia's intercepts of each glyph's outline with the band (layout glyph-intercepts.ts).
+              const face = sfntOf(t.font.family);
+              const bandTop = r.y + 0.5;
+              const bandBottom = r.y + r.thickness - 0.5;
+              const size = platformFontSize(t.font.size);
+              const intercepts = shapedInk(t.font.family, t.font.size, String.fromCodePoint(...line.cps), t.textFont.letterSpacing, t.textFont.wordSpacing).map((g) => {
+                if (g === null) return null;
+                const contours = face.glyphContours(g.glyph);
+                if (!Array.isArray(contours)) throw new Error(`${t.font.family}: glyph ${g.glyph} has no TrueType contours`);
+                return glyphIntercept(contours, face.head.unitsPerEm, size, input.left + g.x, baseline - g.y, bandTop, bandBottom, interceptFaults);
+              });
+              clips = td.skipInkClips(r, interceptInk(intercepts, bandTop, bandBottom), faults);
             }
           }
           rects.push({ ...r, color: { r: d.color.r, g: d.color.g, b: d.color.b, a: d.color.alpha }, text: t.id, ink: ink === undefined ? null : { r: ink.r, g: ink.g, b: ink.b, a: ink.alpha }, clips });

@@ -8,7 +8,7 @@ import { captureFixture } from '../capture.ts';
 import type { ParityCase } from '../cases.ts';
 import { CHROME_VERSION, launchChrome, openPage } from '../chrome.ts';
 import { CHROME_PAGES, inOrder } from '../chrome-pool.ts';
-import { DECORATION_DPRS, DECORATION_MANIFEST, decorationCases, decorationDir, decorationPath, sha256, strippedHtml } from '../decoration-capture.ts';
+import { captureCases, DECORATION_DPRS, DECORATION_MANIFEST, decorationDir, decorationPath, sha256, strippedHtml } from '../decoration-capture.ts';
 import type { DecorationManifest } from '../decoration-capture.ts';
 import { atDpr, zoomGuard } from '../dpr.ts';
 import { referenceTransform } from '../fonts-run.ts';
@@ -37,7 +37,7 @@ async function shoot(browser: Browser, html: string, c: ParityCase, dpr: number,
 const frames = (nodes: readonly { id: string; kind: string; hasBox: boolean; x: number; y: number; width: number; height: number }[]): string =>
   JSON.stringify(nodes.map((n) => [n.id, n.kind, n.hasBox, n.x, n.y, n.width, n.height]));
 
-const cases = decorationCases();
+const cases = captureCases();
 const out: DecorationManifest['cases'][number][] = [];
 let exit = 0;
 for (const dpr of DECORATION_DPRS) {

@@ -56,6 +56,14 @@ export const FONT_FIXTURES: readonly FontFixture[] = [
   font('text-decoration-double', FONT_REFERENCE_MAP, { d1: 'Lato-Regular', d2: 'Lato-Regular', d3: 'Lato-Regular', d4: 'Lato-Regular', d5: 'Lato-Regular', d6: 'Ahem' }),
 ];
 
+/**
+ * TDEC-d on real faces, not proven yet: auto underlines over Inter and Lato descenders, captured by the decoration capture beside
+ * the proven fixtures and measured by test/text-decoration-real-skip.test.ts against Skia's intercepts (layout glyph-intercepts.ts).
+ */
+export const REAL_SKIP_FIXTURES: readonly FontFixture[] = [
+  font('text-decoration-real-skip', FONT_REFERENCE_MAP, { r1: 'Inter-Regular', r2: 'Inter-Regular', r3: 'Inter-Bold', r4: 'Inter-Regular', r5: 'Inter-Regular', r6: 'Inter-Regular', r7: 'Lato-Regular' }),
+];
+
 /** An invalid map: a pinned entry with no faces. */
 const INVALID_MAP = { generics: { 'sans-serif': { mode: 'pinned', family: 'Dragon Sans', faces: [] } } } as unknown as FontMap;
 

@@ -50,6 +50,9 @@ export type TableFacts = {
   readonly tables: readonly string[];
 };
 
+/** A TrueType outline point in font units (y up) and whether it lies on the curve (glyf flag ON_CURVE_POINT). */
+export type OutlinePoint = { readonly x: number; readonly y: number; readonly on: boolean };
+
 export type SfntFont = {
   readonly tables: ReadonlyMap<string, { readonly offset: number; readonly length: number }>;
   readonly head: Head;
@@ -67,6 +70,8 @@ export type SfntFont = {
   advance(glyph: number): number;
   /** The bounds of a glyph's outline points in font units, null for an empty glyph; CFF outlines are refused. */
   glyphBounds(glyph: number): GlyphBounds | null | SfntRefusal;
+  /** A glyph's TrueType contours in font units, each point with its on-curve flag; CFF outlines are refused. */
+  glyphContours(glyph: number): readonly (readonly OutlinePoint[])[] | SfntRefusal;
   facts(): TableFacts;
 };
 
@@ -152,7 +157,7 @@ function parse(d: DataView): SfntFont {
   };
   const glyphBounds = (glyph: number): GlyphBounds | null | SfntRefusal => {
     if (outlines !== 'truetype') return { kind: 'cff-bounds', glyph };
-    const pts = glyphPoints(d, glyphRange, glyph, 0);
+    const pts = glyphContoursOf(d, glyphRange, glyph, 0).flat().map((q): [number, number] => [q.x, q.y]);
     if (pts.length === 0) return null;
     let xMin = Infinity;
     let yMin = Infinity;
@@ -179,6 +184,7 @@ function parse(d: DataView): SfntFont {
     glyphForCodePoint: cmap,
     advance,
     glyphBounds,
+    glyphContours: (glyph) => (outlines !== 'truetype' ? { kind: 'cff-bounds', glyph } : glyphContoursOf(d, glyphRange, glyph, 0)),
     facts: () => ({ outlines, variable, unitsPerEm: head.unitsPerEm, numGlyphs, tables: [...tables.keys()].sort() }),
   };
 }
@@ -297,14 +303,15 @@ function readCmap(d: DataView, t: { offset: number; length: number } | undefined
   throw new Malformed('no Unicode cmap subtable of format 4 or 12');
 }
 
+const ON_CURVE = 1;
 const X_SHORT = 2;
 const Y_SHORT = 4;
 const REPEAT = 8;
 const X_SAME = 16;
 const Y_SAME = 32;
 
-/** The outline points of a glyph in font units, composites resolved with their offsets and 2x2 transforms. */
-function glyphPoints(d: DataView, range: (g: number) => [number, number], glyph: number, depth: number): [number, number][] {
+/** The contours of a glyph in font units, composites resolved with their offsets and 2x2 transforms. */
+function glyphContoursOf(d: DataView, range: (g: number) => [number, number], glyph: number, depth: number): OutlinePoint[][] {
   if (depth > 16) throw new Malformed('composite glyphs nest too deeply');
   const [start, end] = range(glyph);
   if (end <= start) return [];
@@ -335,7 +342,7 @@ function glyphPoints(d: DataView, range: (g: number) => [number, number], glyph:
       }
       xs.push(x);
     }
-    const pts: [number, number][] = [];
+    const pts: OutlinePoint[] = [];
     let y = 0;
     for (let i = 0; i < flags.length; i++) {
       const f = flags[i] as number;
@@ -346,11 +353,19 @@ function glyphPoints(d: DataView, range: (g: number) => [number, number], glyph:
         y += d.getInt16(p);
         p += 2;
       }
-      pts.push([xs[i] as number, y]);
+      pts.push({ x: xs[i] as number, y, on: (f & ON_CURVE) !== 0 });
     }
-    return pts;
+    const contoursOut: OutlinePoint[][] = [];
+    let from = 0;
+    for (let k = 0; k < contours; k++) {
+      const last = d.getUint16(endPts + k * 2);
+      if (last < from || last >= pts.length) throw new Malformed(`glyph ${glyph}'s contour ends are not increasing`);
+      contoursOut.push(pts.slice(from, last + 1));
+      from = last + 1;
+    }
+    return contoursOut;
   }
-  const out: [number, number][] = [];
+  const out: OutlinePoint[][] = [];
   let p = start + 10;
   for (;;) {
     const flags = d.getUint16(p);
@@ -387,7 +402,7 @@ function glyphPoints(d: DataView, range: (g: number) => [number, number], glyph:
       dd = f2dot14(p + 6);
       p += 8;
     }
-    for (const [x, y] of glyphPoints(d, range, component, depth + 1)) out.push([a * x + c * y + dx, b * x + dd * y + dy]);
+    for (const contour of glyphContoursOf(d, range, component, depth + 1)) out.push(contour.map((q) => ({ x: a * q.x + c * q.y + dx, y: b * q.x + dd * q.y + dy, on: q.on })));
     if (!(flags & 0x20)) break;
   }
   return out;

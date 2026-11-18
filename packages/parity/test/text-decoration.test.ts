@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { textDecoration } from '@dragon/layout';
 import { NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
 import { ahemGlyphBoxes } from '../src/pixel-reference.ts';
-import { checkDecorations, committedDecorations, compileHtml, DECORATION_DPRS, decorationCases, decorationManifest, decorationPath, predictDecorations, sha256 } from '../src/decoration-capture.ts';
+import { captureCases, checkDecorations, committedDecorations, compileHtml, DECORATION_DPRS, decorationCases, decorationManifest, decorationPath, predictDecorations, sha256 } from '../src/decoration-capture.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
 import { TEXT_DECORATION_LONGHANDS } from '../../dragon/src/css/properties/text-decoration.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
@@ -117,7 +117,7 @@ describe('the decoration capture against the engine (TDEC-a2)', () => {
 
   it('every capture is committed with its sha256, and Chrome lays out each stripped copy as its decorated case', () => {
     const m = decorationManifest();
-    const cases = decorationCases();
+    const cases = captureCases();
     expect(m.cases.length).toBe(cases.length * DECORATION_DPRS.length);
     for (const e of m.cases) {
       expect(e.sameLayout, `${e.case}@${e.dpr}`).toBe(true);
