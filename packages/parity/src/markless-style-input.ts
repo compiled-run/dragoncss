@@ -103,6 +103,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
   return v as MarklessStyleInput;
 }
 
+
 /** HTML's class attribute: a set of tokens separated by ASCII whitespace. */
 const classTokens = (value: string): string[] => value.split(/[\t\n\f\r ]+/).filter((t) => t !== '');
 
@@ -254,6 +255,21 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
       assignments: x.assignments.map((a) => ({ ...a, nodes: a.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })),
     }])),
   };
+  // An element display: none leaves (with everything inside it) has no box in that assignment: the export names it with no frame,
+  // so a host hides its view there instead of keeping another assignment's box. Any other missing node is an error.
+  const boxless = (a: ExportAssignment): ExportAssignment => {
+    const have = new Set(a.nodes.map((n) => n.id));
+    const none = new Set<string>();
+    const added = parsed.nodes.flatMap((n): ExportNode[] => {
+      if (have.has(n.id)) return [];
+      const own = n.kind === 'element' && n.attributesByState?.['hidden'] !== undefined;
+      if (!own && !none.has(n.parent ?? '')) return [];
+      none.add(n.id);
+      return [{ id: n.id, parent: n.parent, kind: n.kind, native: n.kind === 'text' ? 'DragonTextView' : 'DragonBoxView', text: n.kind === 'text' ? n.text : null, frame: null, borderWidths: null, writes: [] }];
+    });
+    return { ...a, nodes: [...a.nodes, ...added] };
+  };
+  for (const x of Object.values(exported.targets)) (x as { assignments: unknown }).assignments = x.assignments.map(boxless);
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     const missing = parsed.nodes.filter((n) => !have.has(n.id)).map((n) => n.id);
