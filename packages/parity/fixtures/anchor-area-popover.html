@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.root { position: relative; width: 300px; height: 200px; padding: 10px; anchor-scope: --p; }
+.trigger { display: block; margin-left: 40px; width: 60px; height: 20px; anchor-name: --p; background-color: #ccc; }
+.pop { position: absolute; position-anchor: --p; position-area: block-end; width: 100px; height: 30px; background-color: #f88; }
+.tip { position: absolute; position-anchor: --p; position-area: block-start; padding: 2px; background-color: #8f8; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="r" class="root"><div data-dragon-id="t" class="trigger"></div><div data-dragon-id="p" class="pop"></div><div data-dragon-id="q" class="tip">tip</div></div>
+</body>
+</html>

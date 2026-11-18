@@ -52,6 +52,7 @@ import type {
   VerticalAlignValue,
   WhiteSpaceCollapse,
 } from '@dragon/layout';
+import { containsAbsolute } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
@@ -80,6 +81,8 @@ import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
 import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
 import { isBlockInInline } from '../analysis/block-in-inline.ts';
+import type { AnchorFacts } from './anchor-layout.ts';
+import { AnchorLoweringError, anchorFactsOf, anchorNeutralValue, lowerAnchors, usesAnchors } from './anchor-layout.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -563,6 +566,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     textBoxTrim: textBoxTrim(get, display),
     grid: null,
     gridItem: null,
+    anchor: null,
     zoom,
   };
 }
@@ -741,7 +745,7 @@ const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind ===
  * propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. zoom is the zoom chain of the
  * element whose content is being lowered: the one its text and anonymous boxes take, and the parent chain of its children.
  */
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[] };
+type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[] };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -811,9 +815,15 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   if (isControlTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a form control`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
   const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
-  const box = lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [] }, null);
+  const anchors = new Map<string, AnchorFacts>();
+  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [] }, null);
   if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
-  return box;
+  try {
+    return lowerAnchors(box, anchors, containsAbsolute);
+  } catch (e) {
+    if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
+    throw e;
+  }
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -893,8 +903,19 @@ const INLINE_IGNORES = {
  * none children are omitted, so they never split a run. The engine never creates boxes. A flex or grid item is blockified
  * (css-display-3 §2.7), so an inline-level element in one is lowered as a box, never an inline box.
  */
-function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox | ControlBox {
-  const id = el.element.address;
+function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox | ControlBox {
+  const id = given.element.address;
+  // css-anchor-position-1: an anchor function or anchor-center lowers as auto or normal here; lower/anchor-layout.ts reads it.
+  let el = given;
+  if (usesAnchors(given)) {
+    try {
+      l.anchors.set(id, anchorFactsOf(given));
+    } catch (e) {
+      if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
+      throw e;
+    }
+    el = { ...given, props: new Map([...given.props].map(([p, v]) => [p, { ...v, value: anchorNeutralValue(p, v.value) }])) };
+  }
   const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);

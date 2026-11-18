@@ -10,7 +10,7 @@ import { browserOnlyEntry } from '../profiles/browser-only-native.ts';
 import type { Longhand } from '../css/properties.ts';
 import { CONTAINMENT_INITIAL, CONTAINMENT_INITIAL_ONLY } from '../css/properties/containment.ts';
 import { alignsSnap, snapTypeOf } from '../css/properties/scroll-snap.ts';
-import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS } from '../css/properties/anchor-position.ts';
+import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS, anchorValueAccepted } from '../css/properties/anchor-position.ts';
 import { SVG_EXTRA_INITIAL, SVG_EXTRA_LONGHANDS } from '../css/properties/svg-extra.ts';
 import { VIEW_TRANSITION_INITIAL, VIEW_TRANSITION_LONGHANDS } from '../css/properties/view-transition.ts';
 import { ANIMATION_EXTRA_INITIAL, ANIMATION_EXTRA_LONGHANDS } from '../css/properties/animation-extra.ts';
@@ -26,13 +26,15 @@ import { isSvgShapeTag } from './elements/svg.ts';
  * userAgent: a value the Chrome UA sheet sets (origin user-agent) is accepted too, as every page has it. */
 export type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string; readonly userAgent?: true;
   /** BROWSER-ONLY: the longhands are on profiles/browser-only-native.ts, so iOS and Android get DRAGON_BROWSER_ONLY_NATIVE instead. */
-  readonly browserOnly?: true };
+  readonly browserOnly?: true;
+  /** A computed value the family lays out besides its initial value (anchor-position's typed values). */
+  readonly accepts?: (p: Longhand, v: CssValue) => boolean };
 
 /** Refuses the element's first longhand of the family whose computed value is not initial, once per element and family. */
 export function refuseNonInitial(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, f: InitialOnlyFamily): void {
   const accepted = (q: Longhand): boolean => {
     const v = el.props.get(q) as ResolvedValue;
-    return isInitialValue(f.initial[q] as CssValue, v.value) || (f.userAgent === true && v.origin === 'user-agent');
+    return isInitialValue(f.initial[q] as CssValue, v.value) || (f.userAgent === true && v.origin === 'user-agent') || (f.accepts !== undefined && f.accepts(q, v.value));
   };
   const p = f.longhands.find((q) => !accepted(q));
   if (p === undefined) return;
@@ -99,7 +101,13 @@ function checkContainerType(el: ResolvedElement, targets: readonly string[], dia
 }
 
 // css-anchor-position-1: an anchor name or scope only names anchors, and the position longhands move or hide an anchored box.
-const ANCHOR_POSITION: InitialOnlyFamily = { id: 'anchor-position', longhands: ANCHOR_POSITION_LONGHANDS, initial: ANCHOR_POSITION_INITIAL, reason: 'Dragon implements no anchor positioning yet' };
+const ANCHOR_POSITION: InitialOnlyFamily = {
+  id: 'anchor-position',
+  longhands: ANCHOR_POSITION_LONGHANDS,
+  initial: ANCHOR_POSITION_INITIAL,
+  reason: 'Dragon lays out the css-anchor-position-1 grammar it reads and hides no anchored box (position-visibility)',
+  accepts: (p, v) => anchorValueAccepted(p as (typeof ANCHOR_POSITION_LONGHANDS)[number], v),
+};
 // SVG 2: baseline-shift of SVG text, which Dragon does not build, and the rendering hints, which would change how its shapes are
 // drawn (the stop, flood, mask-type and text-anchor properties are SVG-inert-b's, css/properties/svg.ts, accepted at every value).
 const SVG_EXTRA: InitialOnlyFamily = { id: 'svg-extra', longhands: SVG_EXTRA_LONGHANDS, initial: SVG_EXTRA_INITIAL, reason: 'Dragon builds no SVG text and draws its shapes with the default rendering hints' };

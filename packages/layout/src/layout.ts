@@ -13,6 +13,8 @@ import type { GridFaults } from './grid.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import type { ContainingBlock, RelativeOffset } from './position.ts';
 import { layoutAbsolute, relativeOffsetWith } from './position.ts';
+import type { AnchorRect } from './anchor.ts';
+import { layoutAnchored } from './anchor.ts';
 import type { TextMeasurer } from './text.ts';
 import { ahemMeasurerWith } from './text.ts';
 import type { LayoutUnsupported } from './unsupported.ts';
@@ -36,7 +38,7 @@ export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult
 type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly originX: LU; readonly originY: LU };
 
 /** A border box in absolute LU. */
-type AbsoluteRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+type AbsoluteRect = AnchorRect;
 
 /** A sticky box and its parent, whose content box is its containing block (css-position-3 §3.4). */
 type Sticky = { readonly box: LayoutNode; readonly parent: LayoutBox };
@@ -262,7 +264,8 @@ function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Conta
     const cb: ContainingBlock = area === null ? own : { x: add(p.originX, area.x), y: add(p.originY, area.y), width: area.width, height: area.height, direction: own.direction };
     const staticX: StaticAxis = { offset: add(p.originX, p.oof.x.offset), edge: p.oof.x.edge };
     const staticY: StaticAxis = { offset: add(p.originY, p.oof.y.offset), edge: p.oof.y.edge };
-    const r = layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY);
+    if (p.oof.box.style.anchor !== null && area !== null) unsupported('anchor-order', p.oof.box.id, 'css-anchor-position-1 §3', `the anchored ${p.oof.box.id} has a grid area as its containing block, which is not laid out yet`);
+    const r = p.oof.box.style.anchor === null ? layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY) : layoutAnchored(ctx, p.oof.box, cb, staticX, staticY, out.absolute);
     flatten(r.frag, p.parent, sub(r.x, p.originX), sub(r.y, p.originY), p.originX, p.originY, out);
   }
 }
