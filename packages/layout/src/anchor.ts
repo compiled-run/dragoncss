@@ -379,6 +379,18 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
   };
 }
 
+/** Whether every anchor box a style reads (its default anchor, its anchor() and anchor-size() functions) is laid out. */
+export function anchorsPlaced(s: LayoutStyle, anchors: Map<string, AnchorRect>): boolean {
+  const a = s.anchor;
+  if (a === null) return true;
+  if (a.anchor !== null && !anchors.has(a.anchor)) return false;
+  for (const o of a.options) {
+    for (const e of [o.topAnchor, o.rightAnchor, o.bottomAnchor, o.leftAnchor]) if (e !== null && !anchors.has(e.anchor)) return false;
+    for (const r of [o.widthAnchor, o.heightAnchor, o.minWidthAnchor, o.minHeightAnchor, o.maxWidthAnchor, o.maxHeightAnchor]) if (r !== null && !anchors.has(r.anchor)) return false;
+  }
+  return true;
+}
+
 /** Chrome's limit on the options tried after the base style (out_of_flow_layout_part.cc kMaxTryAttempts, 5 + 1). */
 const MAX_TRY_ATTEMPTS = 6;
 

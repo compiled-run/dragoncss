@@ -14,7 +14,7 @@ import { NO_GRID_FAULTS } from './grid.ts';
 import type { ContainingBlock, RelativeOffset } from './position.ts';
 import { layoutAbsolute, relativeOffsetWith } from './position.ts';
 import type { AnchorRect } from './anchor.ts';
-import { layoutAnchored } from './anchor.ts';
+import { anchorsPlaced, layoutAnchored } from './anchor.ts';
 import type { TextMeasurer } from './text.ts';
 import { ahemMeasurerWith } from './text.ts';
 import type { LayoutUnsupported } from './unsupported.ts';
@@ -35,7 +35,8 @@ export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult
 }
 
 /** An absolutely positioned box waiting for placement: its parent's absolute border-box origin and its static position there. */
-type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly originX: LU; readonly originY: LU };
+/** deferredAt: how many boxes were placed when an anchored box was put back to wait for its anchor, else -1. */
+type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly originX: LU; readonly originY: LU; readonly deferredAt: number };
 
 /** A border box in absolute LU. */
 type AbsoluteRect = AnchorRect;
@@ -120,7 +121,7 @@ function flatten(frag: Frag, parent: string | null, inFlowX: LU, inFlowY: LU, pa
   out.boxes.push({ id: frag.id, parent, x, y, width: frag.width, height: frag.height });
   out.absolute.set(frag.id, { x: absX, y: absY, width: frag.width, height: frag.height });
   if (frag.inflow !== null) out.inflow.push({ id: frag.id, x: frag.inflow.x, y: frag.inflow.y, width: frag.inflow.width, height: frag.inflow.height });
-  for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY });
+  for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY, deferredAt: -1 });
   for (const c of frag.children) flatten(c.frag, frag.id, c.x, c.y, absX, absY, out);
 }
 
@@ -256,8 +257,16 @@ export function resolvedInput(given: LayoutInput, measurer: TextMeasurer, faults
 /** Places each pending absolutely positioned box in order; boxes found inside one are queued after it. */
 function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: ContainingBlock): void {
   const parentOf = parents(input.root);
+  let placed = 0;
   for (let i = 0; i < out.pending.length; i++) {
     const p = out.pending[i] as Pending;
+    // An anchored box waits for an anchor inside an absolutely positioned box queued after it, which Chrome lays out first.
+    if (!anchorsPlaced(p.oof.box.style, out.absolute)) {
+      if (p.deferredAt === placed) unsupported('anchor-order', p.oof.box.id, 'css-anchor-position-1 §2.3', `an anchor of ${p.oof.box.id} is never laid out before it`);
+      out.pending.push({ oof: p.oof, parent: p.parent, originX: p.originX, originY: p.originY, deferredAt: placed });
+      continue;
+    }
+    placed++;
     const area = p.oof.area;
     const own = containingBlock(ctx, p.oof.box, parentOf, out, icb);
     // css-grid-2 §9.1: a positioned grid parent is the containing block, and the child's grid area its rectangle.

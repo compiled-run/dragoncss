@@ -148,7 +148,10 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
     if (ca === cq) return !isAbspos(a.box.style) || a.order < q.order;
     return ca !== null && acceptable(ca, q);
   };
-  /** §2.3 target anchor element for a <dashed-ident>: the nearest ancestor that qualifies, else the last in tree order. */
+  /**
+   * §2.3 target anchor element for a <dashed-ident>: Chrome 145 takes the last that qualifies in tree order, an ancestor or not
+   * (WPT anchor-name-001, which Chrome passes), where the spec text prefers the nearest qualifying ancestor.
+   */
   const target = (q: Node, name: string): Node | null => {
     // An element that names an anchor but is no box of the tree (an inline box) would be an anchor in Chrome.
     for (const [id, g] of facts) if (g.names.includes(name) && !byId.has(id)) throw new AnchorLoweringError(q.box.id, 'position-anchor', `${id}, which names the anchor ${name} that ${q.box.id} looks up, is an inline box, whose fragments' bounding rectangle Dragon does not lay out yet`);
@@ -160,7 +163,6 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
       if (queryScope !== null && !isInclusiveAncestor(queryScope, a)) return false;
       return acceptable(a, q);
     });
-    for (let at = q.parent; at !== null; at = at.parent) if (ok.includes(at)) return at;
     return ok.length === 0 ? null : (ok[ok.length - 1] as Node);
   };
   const styles = new Map<string, AnchorStyle>();
