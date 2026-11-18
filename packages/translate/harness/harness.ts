@@ -88,16 +88,29 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
-import { measurerFor } from '../../layout/src/platform.ts';
+import { absoluteRects, layout, layoutWithFaults, resolvedInput, zoomInput } from '../../layout/src/layout.ts';
+import type { Ctx } from '../../layout/src/block.ts';
+import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
+import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
+import type { Edges } from '../../layout/src/box.ts';
+import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
+import { controlAsBox } from '../../layout/src/controls.ts';
+import { markerTextId } from '../../layout/src/marker.ts';
+import type { LinePiece } from '../../layout/src/inline.ts';
+import { inlineLeaves, leafFontOf, placeLines } from '../../layout/src/inline.ts';
+import { clampedInput } from '../../layout/src/line-clamp.ts';
+import type { ScrollRange } from '../../layout/src/overflow.ts';
+import { scrollRanges } from '../../layout/src/overflow.ts';
+import { deviceShapedMeasurer, measurerFor } from '../../layout/src/platform.ts';
 import type { GlyphShaper, HanKerningFontData, ShapedItem, ShapeResult, ShapingFaults } from '../../layout/src/shaping.ts';
-import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
+import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, pieceGlyphs, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from '../../layout/src/text.ts';
 import { fontMetricLengths, smallCapsFontSize } from '../../layout/src/text.ts';
 import type { TextFont } from '../../layout/src/input.ts';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
-import { snapEdges } from '../../layout/src/snap.ts';
+import type { SnappedRect } from '../../layout/src/snap.ts';
+import { snapEdges, snapRect } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
@@ -116,6 +129,7 @@ import {
   floatInvert,
   fractionalFreeSpace,
   fromCssPx,
+  LU_PER_PX,
   fromDouble,
   fromFloatRound,
   fromPxCeil,
@@ -3102,4 +3116,485 @@ function rtPointerResult(a: readonly JsonValue[]): string {
   const r = androidPointerReadings(sources, { bandBoundaryExclusive: false, primaryPointerFineFirst: false });
   const b = (x: boolean): string => h(x ? 1 : 0);
   return `[${h(r.pointer === 'coarse' ? 1 : r.pointer === 'fine' ? 2 : 0)},${b(r.hover)},${b(r.anyCoarse)},${b(r.anyFine)},${b(r.anyHover)}]`;
+}
+
+// ---------------------------------------------------------------- Markless plans
+
+/**
+ * A Markless page laid out on the device at its own size (Dragon parity markless-plan.ts writes the plan): the engine input of one
+ * assignment, measured with the text shaping the build recorded at the device's ratio, and the geometry the hosts apply, as the
+ * export computes it at build time (native-style-export.ts): every box's frame relative to its parent and border widths, every
+ * text node's lines with its glyphs, every dashed border's operations, every scroll container's range and the page's.
+ */
+type PlanDensity = { readonly dpr: number; readonly calls: readonly ReplayCall[]; readonly metrics: Map<string, FontMetrics>; readonly ownMetrics: Map<string, boolean>; readonly lengths: Map<string, FontLengths> };
+const PLAN_DASH_FAULTS: DashFaults = { phase1: false, gapUnfitted: false };
+type PlanDashed = { readonly id: string; readonly styles: readonly string[]; readonly colors: readonly number[] };
+
+function planFontKey(family: string, size: number): string {
+  return `${family}@${bitsHex(size)}`;
+}
+
+function planDensity(v: JsonValue, path: string): PlanDensity {
+  const o = obj(v, ['dpr', 'calls', 'metrics', 'lengths'], path);
+  const calls: ReplayCall[] = [];
+  arr(field(o, 'calls', path), `${path}.calls`).forEach((c, i) => {
+    const at = `${path}.calls[${i}]`;
+    const a = arr(c, at);
+    if (a.length !== 10) fail(`${at}: expected 10 fields, got ${a.length}`);
+    const item = (k: number): JsonValue => a[k] as JsonValue;
+    const glyphs = numbers(item(9), `${at}[9]`);
+    if (!Number.isInteger(glyphs.length / GLYPH_STRIDE)) fail(`${at}[9]: ${glyphs.length} integers are not whole glyph records of ${GLYPH_STRIDE}`);
+    calls.push({
+      face: str(item(0), `${at}[0]`), size: num(item(1), `${at}[1]`), text: str(item(2), `${at}[2]`), start: num(item(3), `${at}[3]`), end: num(item(4), `${at}[4]`),
+      script: str(item(5), `${at}[5]`), rtl: bool(item(6), `${at}[6]`), language: str(item(7), `${at}[7]`), features: numbers(item(8), `${at}[8]`), glyphs,
+    });
+  });
+  const metrics = new Map<string, FontMetrics>();
+  const ownMetrics = new Map<string, boolean>();
+  arr(field(o, 'metrics', path), `${path}.metrics`).forEach((m, i) => {
+    const at = `${path}.metrics[${i}]`;
+    const a = arr(m, at);
+    const key = planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`));
+    if (a.length === 2) {
+      ownMetrics.set(key, false);
+      return;
+    }
+    if (a.length !== 6) fail(`${at}: expected 2 or 6 fields, got ${a.length}`);
+    ownMetrics.set(key, true);
+    metrics.set(key, { ascent: num(a[2] as JsonValue, `${at}[2]`) as LU, descent: num(a[3] as JsonValue, `${at}[3]`) as LU, lineGap: num(a[4] as JsonValue, `${at}[4]`) as LU, normalGapAbove: num(a[5] as JsonValue, `${at}[5]`) as LU });
+  });
+  const lengths = new Map<string, FontLengths>();
+  arr(field(o, 'lengths', path), `${path}.lengths`).forEach((m, i) => {
+    const at = `${path}.lengths[${i}]`;
+    const a = arr(m, at);
+    if (a.length !== 5) fail(`${at}: expected 5 fields, got ${a.length}`);
+    lengths.set(planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`)), { xHeight: num(a[2] as JsonValue, `${at}[2]`), capHeight: num(a[3] as JsonValue, `${at}[3]`), zeroWidth: num(a[4] as JsonValue, `${at}[4]`) });
+  });
+  return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, metrics, ownMetrics, lengths };
+}
+
+/** The device's measurer: the build's measurer replayed, a platform face's metrics and lengths as the build read them. */
+function planMeasurer(faces: ReadonlyMap<string, FontData>, d: PlanDensity): TextMeasurer {
+  const m = deviceShapedMeasurer(faces, replayShaper(d.calls));
+  return {
+    metrics(font: TextFont): FontMetrics {
+      const key = planFontKey(font.family, font.size);
+      const own = d.ownMetrics.get(key);
+      if (own === undefined) return m.metrics(font);
+      if (!own) return m.metrics(font);
+      return d.metrics.get(key) as FontMetrics;
+    },
+    measure(text: string, font: TextFont): MeasureResult {
+      return m.measure(text, font);
+    },
+    measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      return m.measureRange(text, start, end, font);
+    },
+    lengths(font: TextFont): FontLengths {
+      const own = d.lengths.get(planFontKey(font.family, font.size));
+      if (own === undefined) return m.lengths(font);
+      return own;
+    },
+    shaped(text: string, font: TextFont): ShapedItem {
+      return m.shaped(text, font);
+    },
+    hasFace(family: string): boolean {
+      return m.hasFace(family);
+    },
+  };
+}
+
+function edgeHex(e: Edges, scale: number): string {
+  return `[${h((e.top / LU_PER_PX) * scale)},${h((e.right / LU_PER_PX) * scale)},${h((e.bottom / LU_PER_PX) * scale)},${h((e.left / LU_PER_PX) * scale)}]`;
+}
+
+function numsHex(xs: readonly number[]): string {
+  let out = '[';
+  xs.forEach((x, i) => {
+    if (i > 0) out += ',';
+    out += h(x);
+  });
+  return `${out}]`;
+}
+
+/** Every box's style by id, through controls and replaced leaves, as the export reads border widths from the unzoomed input. */
+function planStyles(b: LayoutBox, out: Map<string, LayoutStyle>): void {
+  out.set(b.id, b.style);
+  for (const c of b.children) {
+    if (c.kind === 'box') planStyles(c, out);
+    else if (c.kind === 'control') planStyles(controlAsBox(c), out);
+    else if (c.kind === 'replaced') out.set(c.id, c.style);
+  }
+}
+
+/** Every text leaf's text by id, and each text marker's, of the unzoomed input (ahem-lines.ts cssFontSizes). */
+function planTexts(b: LayoutBox, out: Map<string, string>): void {
+  const m = b.marker;
+  if (m !== null && m.kind === 'text' && m.text !== null) out.set(markerTextId(m.id), m.text);
+  for (const c of b.children) {
+    if (c.kind === 'box') planTexts(c, out);
+    else if (c.kind === 'control') planTexts(controlAsBox(c), out);
+    else if (c.kind !== 'replaced') planInlineTexts(c, out);
+  }
+}
+
+function planInlineTexts(c: InlineChild, out: Map<string, string>): void {
+  if (c.kind === 'text') out.set(c.id, c.text);
+  else if (c.kind === 'inline') for (const k of c.children) planInlineTexts(k, out);
+}
+
+/** Border widths of every box of the zoomed input in whole device px (expected-dump.ts borderDevicePx). */
+function planDeviceBorders(b: LayoutBox, dpr: number, out: Map<string, readonly number[]>): void {
+  const e = resolveBorder(b.style, dpr);
+  out.set(b.id, [e.top / LU_PER_PX, e.right / LU_PER_PX, e.bottom / LU_PER_PX, e.left / LU_PER_PX]);
+  for (const c of b.children) {
+    if (c.kind === 'box') planDeviceBorders(c, dpr, out);
+    else if (c.kind === 'control') planDeviceBorders(controlAsBox(c), dpr, out);
+    else if (c.kind === 'replaced') {
+      const r = resolveBorder(c.style, dpr);
+      out.set(c.id, [r.top / LU_PER_PX, r.right / LU_PER_PX, r.bottom / LU_PER_PX, r.left / LU_PER_PX]);
+    }
+  }
+}
+
+function isLineRect(r: LayoutRect): boolean {
+  const parent = r.parent;
+  if (parent === null) return false;
+  const id = codePointsOf(r.id);
+  const prefix = codePointsOf(`${parent}:line`);
+  if (id.length < prefix.length) return false;
+  for (let i = 0; i < prefix.length; i++) if ((id[i] as number) !== (prefix[i] as number)) return false;
+  return true;
+}
+
+function codePointsOf(text: string): number[] {
+  const out: number[] = [];
+  for (const ch of text) out.push(ch.codePointAt(0) as number);
+  return out;
+}
+
+function sliceCodePoints(cps: readonly number[], start: number, end: number): number[] {
+  const out: number[] = [];
+  for (let i = start; i < end && i < cps.length; i++) out.push(cps[i] as number);
+  return out;
+}
+
+type PlanEllipsis = { readonly x: number; readonly cps: readonly number[]; readonly font: TextFont };
+/** start: the line's first code point in its text. */
+type PlanLine = { readonly start: number; readonly cps: readonly number[]; readonly shifts: readonly number[]; readonly rect: LayoutRect; readonly snappedTop: number; readonly halfLeading: number; readonly ellipsis: PlanEllipsis | null };
+type PlanText = { readonly id: string; readonly textFont: TextFont; readonly lines: readonly PlanLine[] };
+
+/** Every text node's lines as the device places them (line-breaks.ts engineTextLines). */
+function planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: readonly LayoutRect[]): PlanText[] {
+  const abs = absoluteRects(boxes);
+  const snappedList = snapEdges(boxes);
+  const snappedTop = new Map<string, number>();
+  boxes.forEach((b, i) => {
+    snappedTop.set(b.id, (snappedList[i] as SnappedRect).top);
+  });
+  const zoomed = clampedInput(resolvedInput(input, measurer, NO_ENGINE_FAULTS), boxes, measurer);
+  const zBoxes = new Map<string, LayoutBox>();
+  const zParent = new Map<string, string>();
+  const textContainer = new Map<string, string>();
+  const notText = new Map<string, boolean>();
+  const markers = new Map<string, ListMarker>();
+  const walkInline = (c: InlineChild, container: string): void => {
+    if (c.kind === 'text') textContainer.set(c.id, container);
+    else {
+      notText.set(c.id, true);
+      if (c.kind === 'inline') for (const k of c.children) walkInline(k, container);
+    }
+  };
+  const walk = (b: LayoutBox): void => {
+    notText.set(b.id, true);
+    zBoxes.set(b.id, b);
+    const mk = b.marker;
+    if (mk !== null) {
+      notText.set(mk.id, true);
+      if (mk.kind === 'text') markers.set(markerTextId(mk.id), mk);
+    }
+    for (const c of b.children) {
+      if (c.kind === 'box') {
+        zParent.set(c.id, b.id);
+        walk(c);
+      } else if (c.kind === 'control') {
+        zParent.set(c.id, b.id);
+        walk(controlAsBox(c));
+      } else if (c.kind === 'replaced') notText.set(c.id, true);
+      else walkInline(c, b.id);
+    }
+  };
+  walk(zoomed.root);
+  const rects = new Map<string, LayoutRect>();
+  for (const r of boxes) if (!isLineRect(r)) rects.set(r.id, r);
+  const widths = new Map<string, LU>();
+  const contentWidth = (id: string): LU => {
+    const hit = widths.get(id);
+    if (hit !== undefined) return hit;
+    const z = zBoxes.get(id);
+    const r = rects.get(id);
+    if (z === undefined || r === undefined) return fail(`no box ${id}`);
+    const parent = zParent.get(id);
+    const cb = parent === undefined ? fromCssPx(zoomed.viewport.width) : contentWidth(parent);
+    const pad = resolvePadding(z.style, cb);
+    const bor = resolveBorder(z.style, zoomed.devicePixelRatio);
+    const w = (r.width - bor.left - bor.right - pad.left - pad.right) as LU;
+    widths.set(id, w);
+    return w;
+  };
+  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const out: PlanText[] = [];
+  for (const r of boxes) {
+    if (isLineRect(r)) continue;
+    const pieces: LayoutRect[] = [];
+    for (const b of boxes) {
+      const parent = b.parent;
+      if (parent !== null && parent === r.id && isLineRect(b)) pieces.push(b);
+    }
+    const marker = markers.get(r.id);
+    if (marker !== undefined) {
+      const piece = pieces[0];
+      const box = abs.get(marker.id);
+      if (piece === undefined || pieces.length !== 1 || marker.text === null || box === undefined) return fail(`${r.id}: the text marker is not placed`);
+      const a = abs.get(piece.id) as LayoutRect;
+      out.push({ id: r.id, textFont: { family: marker.font.family, size: marker.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, lines: [{ start: 0, cps: codePointsOf(marker.text), shifts: [], rect: a, snappedTop: snappedTop.get(piece.id) as number, halfLeading: a.y - box.y, ellipsis: null }] });
+      continue;
+    }
+    const pId = textContainer.get(r.id);
+    if (pId === undefined) {
+      if (notText.has(r.id)) continue;
+      return fail(`rect ${r.id} is not a node of the layout input`);
+    }
+    const p = zBoxes.get(pId);
+    if (p === undefined) return fail(`text ${r.id} has no container`);
+    const leaves = inlineLeaves(p);
+    let li = -1;
+    leaves.forEach((t, i) => {
+      if (li < 0 && t.id === r.id) li = i;
+    });
+    if (li < 0) return fail(`no leaf ${r.id}`);
+    const leaf = leaves[li] as TextLeaf;
+    const scalars = codePointsOf(leaf.text);
+    const placed = placeLines(ctx, p, contentWidth(pId));
+    const own: PlanLine[] = [];
+    let used = 0;
+    for (const line of placed) {
+      const mine: LinePiece[] = [];
+      for (const q of line.pieces) if (q.leaf === li) mine.push(q);
+      const first = mine[0];
+      const last = mine[mine.length - 1];
+      if (first === undefined || last === undefined) continue;
+      const piece = pieces[used];
+      let n = 0;
+      for (const q of mine) n += q.truncated ? 2 : 1;
+      if (piece === undefined || used + n > pieces.length) return fail(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      used += n;
+      const a = abs.get(piece.id) as LayoutRect;
+      const el = line.ellipsis;
+      let ellipsis: PlanEllipsis | null = null;
+      if (el !== null && el.leaf === li) ellipsis = { x: a.x + el.x - first.x, cps: codePointsOf(el.text), font: el.font };
+      const cps: number[] = [];
+      const shifts: number[] = [];
+      for (const q of mine) {
+        for (const c of sliceCodePoints(scalars, q.start, q.paintEnd)) cps.push(c);
+        for (const s of q.shifts) shifts.push(s);
+      }
+      own.push({ start: first.start, cps, shifts, rect: a, snappedTop: snappedTop.get(piece.id) as number, halfLeading: first.top - line.top, ellipsis });
+    }
+    if (used !== pieces.length) return fail(`${r.id}: the engine's breaks give ${used} fragments, its layout ${pieces.length}`);
+    out.push({ id: r.id, textFont: leafFontOf(leaf), lines: own });
+  }
+  return out;
+}
+
+/** A run of glyphs in one face at one size (native-style-export.ts runsOf), as [face, size, glyphs, xs]. */
+function planRuns(face: string, glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): string[] {
+  const out: string[] = [];
+  let size = -1;
+  let gs: number[] = [];
+  let ps: number[] = [];
+  const flush = (): void => {
+    if (gs.length > 0) out.push(`[${q(face)},${h(size)},${numsHex(gs)},${numsHex(ps)}]`);
+  };
+  glyphs.forEach((g, j) => {
+    const s = sizes[j] as number;
+    if (gs.length === 0 || s !== size) {
+      flush();
+      size = s;
+      gs = [];
+      ps = [];
+    }
+    gs.push(g);
+    ps.push(xs[j] as number);
+  });
+  flush();
+  return out;
+}
+
+/** A text node's lines (native-style-export.ts textLines), as [[top, baseline, runs], ...] in device px from its frame. */
+function planLines(t: PlanText, text: string, at: LayoutRect, m: TextMeasurer): string {
+  const ascent = m.metrics(t.textFont).ascent / LU_PER_PX;
+  const ax = at.x / LU_PER_PX;
+  const ay = at.y / LU_PER_PX;
+  let out = '[';
+  t.lines.forEach((line, k) => {
+    const start = line.start;
+    const g = pieceGlyphs(m, text, t.textFont, start, start + line.cps.length);
+    if (!g.ok) return fail(`${t.id} line ${k}: the shaped measurer refused its text: ${g.reason}`);
+    const x0 = line.rect.x / LU_PER_PX - ax;
+    const xs: number[] = [];
+    g.xs.forEach((x, j) => {
+      xs.push(x0 + x + (line.shifts.length === 0 ? 0 : (line.shifts[g.chars[j] as number] as number)));
+    });
+    const runs = planRuns(t.textFont.family, g.glyphs, xs, g.sizes);
+    const e = line.ellipsis;
+    if (e !== null) {
+      const d = pieceGlyphs(m, fromCodePoints(e.cps), e.font, 0, e.cps.length);
+      if (!d.ok) return fail(`${t.id} line ${k} ellipsis: the shaped measurer refused its text: ${d.reason}`);
+      const exs: number[] = [];
+      for (const x of d.xs) exs.push(e.x / LU_PER_PX - ax + x);
+      for (const r of planRuns(e.font.family, d.glyphs, exs, d.sizes)) runs.push(r);
+    }
+    if (k > 0) out += ',';
+    let joined = '';
+    runs.forEach((run, i) => {
+      joined += i > 0 ? `,${run}` : run;
+    });
+    out += `[${h(snapEdge((line.rect.y - line.halfLeading) as LU) - ay)},${h(line.snappedTop + ascent - ay)},[${joined}]]`;
+  });
+  return `${out}]`;
+}
+
+/** A dashed or dotted box's border operations (native-style-export.ts dashedBorder), or the empty string. */
+function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]): string {
+  let dashed = false;
+  d.styles.forEach((st, k) => {
+    if ((st === 'dashed' || st === 'dotted') && (widths[k] as number) > 0 && (d.colors[k * 4 + 3] as number) > 0) dashed = true;
+  });
+  if (!dashed || !borderNeedsSidePainter(widths, d.styles, d.colors)) return '';
+  const b = snapRect(rect);
+  const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, widths, d.styles, d.colors, PLAN_DASH_FAULTS);
+  let out = `[[${h(b.left - rect.x / LU_PER_PX)},${h(b.top - rect.y / LU_PER_PX)}],[${h(b.width)},${h(b.height)}],${numsHex(widths)},[`;
+  ops.forEach((o, i) => {
+    if (i > 0) out += ',';
+    const points: number[] = [];
+    o.points.forEach((v, j) => {
+      if (o.op === 'dot') points.push(j === 0 ? v - b.left : j === 1 ? v - b.top : v);
+      else points.push(Math.floor(j / 2) * 2 === j ? v - b.left : v - b.top);
+    });
+    out += `[${q(o.op)},${o.side},${h(o.alpha)},${o.antialias ? 'true' : 'false'},${numsHex(points)}]`;
+  });
+  return `${out}]]`;
+}
+
+/**
+ * One Markless layout: {"assignment", "dpr", "viewport": {width, height}, "safeArea": {top, right, bottom, left}, "plan"}. The
+ * result is ["ok", pageScroll, nodes] with every number as its bit pattern: pageScroll [minX, maxX, minY, maxY] or ["undecided",
+ * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
+ * left] or null, lines or null, borderOps or null, scrollRange or null].
+ */
+export function runMarklessLayout(line: string): string {
+  try {
+    const o = obj(parseJson(line), ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'], '$');
+    const plan = obj(field(o, 'plan', '$'), ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
+    if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
+    const dpr = numField(o, 'dpr', '$');
+    const faces = new Map<string, FontData>();
+    arr(field(plan, 'faces', '$.plan'), '$.plan.faces').forEach((f, i) => {
+      const at = `$.plan.faces[${i}]`;
+      const fo = obj(f, ['id', 'data'], at);
+      faces.set(str(field(fo, 'id', at), `${at}.id`), fontData(field(fo, 'data', at), `${at}.data`));
+    });
+    let density: PlanDensity | null = null;
+    arr(field(plan, 'densities', '$.plan'), '$.plan.densities').forEach((d, i) => {
+      const at = `$.plan.densities[${i}]`;
+      if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+    });
+    if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
+    const measurer = planMeasurer(faces, density);
+    const k = numField(o, 'assignment', '$');
+    const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
+    if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`$.assignment: ${k} is not an assignment of the plan`);
+    const ao = obj(assignments[k] as JsonValue, ['variant', 'dashed', 'scroll'], `$.plan.assignments[${k}]`);
+    const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+    const vi = numField(ao, 'variant', '$.plan.assignment');
+    if (!Number.isInteger(vi) || vi < 0 || vi >= variants.length) fail(`$.plan.assignments[${k}].variant: ${vi} is not a variant`);
+    const vo = obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], `$.plan.variants[${vi}]`);
+    const rootValue = field(vo, 'root', '$.plan.variant');
+    if (rootValue.kind !== 'obj' || kindOf(rootValue, '$.plan.variant.root') !== 'box') return fail('$.plan.variant.root: expected a box');
+    const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
+    const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
+    const input: LayoutInput = {
+      viewport,
+      devicePixelRatio: dpr,
+      viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
+      safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
+      rootFontSize: numField(vo, 'rootFontSize', '$.plan.variant'),
+      root: decodeBox(rootValue, '$.plan.variant.root'),
+    };
+    const dashed = new Map<string, PlanDashed>();
+    arr(field(ao, 'dashed', '$.plan.assignment'), '$.plan.assignment.dashed').forEach((d, i) => {
+      const at = `$.plan.assignment.dashed[${i}]`;
+      const a = arr(d, at);
+      if (a.length !== 3) fail(`${at}: expected 3 fields`);
+      const styles: string[] = [];
+      for (const s of arr(a[1] as JsonValue, `${at}[1]`)) styles.push(str(s, `${at}[1]`));
+      dashed.set(str(a[0] as JsonValue, `${at}[0]`), { id: str(a[0] as JsonValue, `${at}[0]`), styles, colors: numbers(a[2] as JsonValue, `${at}[2]`) });
+    });
+    const scrollers = new Map<string, boolean>();
+    for (const s of arr(field(ao, 'scroll', '$.plan.assignment'), '$.plan.assignment.scroll')) scrollers.set(str(s, '$.plan.assignment.scroll'), true);
+
+    const r = layout(input, measurer);
+    if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
+    const boxes = r.boxes;
+    const abs = absoluteRects(boxes);
+    const styles = new Map<string, LayoutStyle>();
+    planStyles(input.root, styles);
+    const texts = new Map<string, string>();
+    planTexts(input.root, texts);
+    const deviceBorders = new Map<string, readonly number[]>();
+    const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+    planDeviceBorders(zoomed.root, zoomed.devicePixelRatio, deviceBorders);
+    const lines = new Map<string, string>();
+    for (const t of planTextLines(input, measurer, boxes)) {
+      const text = texts.get(t.id);
+      const at = abs.get(t.id);
+      if (text !== undefined && at !== undefined) lines.set(t.id, planLines(t, text, at, measurer));
+    }
+    const ranges = scrollRanges(input, measurer);
+    if (ranges.kind === 'refused') return fail(`the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
+    const rangeOf = new Map<string, ScrollRange>();
+    for (const sr of ranges.ranges) rangeOf.set(sr.id, sr);
+    for (const sr of ranges.refused) if (scrollers.has(sr.id)) fail(`no scroll range for ${sr.id} (at ${sr.nodeId}: ${sr.detail})`);
+    const body = input.root.children.find((c) => c.kind === 'box' && c.id === 'body');
+    const direction = body !== undefined && body.kind === 'box' ? body.style.direction : input.root.style.direction;
+    const metrics = scrollMetricsWithFaults(input, measurer, direction, NO_ENGINE_FAULTS);
+    let page = '';
+    if (metrics.kind === 'refused') page = `["undecided",${q(metrics.nodeId)},${q(metrics.detail)}]`;
+    else {
+      const v = metrics.viewport;
+      const ox = Math.floor((v.paddingX - v.scrollRect.x) / LU_PER_PX);
+      const oy = Math.floor((v.paddingY - v.scrollRect.y) / LU_PER_PX);
+      page = `[${h(0 - ox)},${h(snapEdge(v.scrollRect.width) - snapEdge(v.clientWidth) - ox)},${h(0 - oy)},${h(snapEdge(v.scrollRect.height) - snapEdge(v.clientHeight) - oy)}]`;
+    }
+    let out = `["ok",${page},[`;
+    let first = true;
+    for (const b of boxes) {
+      if (isLineRect(b)) continue;
+      if (!first) out += ',';
+      first = false;
+      const s = styles.get(b.id);
+      const ownLines = lines.get(b.id);
+      const d = dashed.get(b.id);
+      const rect = abs.get(b.id) as LayoutRect;
+      const dev = deviceBorders.get(b.id);
+      const ops = d === undefined || dev === undefined ? '' : planDashed(d, rect, dev);
+      const range = rangeOf.get(b.id);
+      out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
+    }
+    return `${out}]]`;
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
 }

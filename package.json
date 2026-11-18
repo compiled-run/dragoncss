@@ -46,6 +46,7 @@
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
     "native:planted": "node packages/translate/src/cli/planted.ts",
     "markless:style-export": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-export.ts",
+    "markless:any-size": "node --conditions=dragon-internal packages/parity/src/cli/markless-any-size.ts",
     "markless:style-web-column": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-web-column.ts",
     "native:style-export": "node --conditions=dragon-internal packages/parity/src/cli/native-style-export.ts",
     "app-screens": "node --conditions=dragon-internal examples/app-screens/tools/check.ts",

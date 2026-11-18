@@ -17,6 +17,8 @@ import { viewportDirectionOf } from './scroll-metrics.ts';
 import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
+import type { MarklessPlan } from './markless-plan.ts';
+import { marklessPlan } from './markless-plan.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
 import { systemRequestOf } from './system-fonts/provider.ts';
 
@@ -86,6 +88,10 @@ export type ExportTarget = {
    * every atom (in band order), each condition the band's media text. The state `@env#band` (domain 0..n-1) selects the band.
    */
   readonly bands?: { readonly atoms: readonly unknown[]; readonly bands: readonly (readonly boolean[])[]; readonly conditions: readonly string[] };
+  /** Only when asked for: what a phone needs to lay every assignment out again at its own size (markless-plan.ts). */
+  readonly plan?: MarklessPlan;
+  /** With a plan, from a Markless input: each Dragon id the plan's geometry names, with the input's id for it. */
+  readonly planNames?: readonly (readonly [string, string])[];
 };
 export type NativeStyleExport = {
   readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;
@@ -220,7 +226,7 @@ const offsetsOf = ({ minX, maxX, minY, maxY }: ScrollRange): ScrollOffsets => ({
 const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
 /** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. */
-export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES, inputFonts: readonly { readonly id: string; readonly file: string; readonly bytes: Uint8Array }[] = [], systemFonts: ((t: NativeStyleTarget, dpr: number) => SystemFonts) | null = null): NativeStyleExport {
+export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES, inputFonts: readonly { readonly id: string; readonly file: string; readonly bytes: Uint8Array }[] = [], systemFonts: ((t: NativeStyleTarget, dpr: number) => SystemFonts) | null = null, plan = false): NativeStyleExport {
   const inputFaces = new Map(inputFonts.map((f) => [registerFace(f.bytes), f.file]));
   const systemUsed = new Map<string, Record<string, unknown>>();
   if (!styles.ok) throw new Error(`${component}: no export: ${Object.entries(styles.targets).map(([t, o]) => `${t} ${o.kind === 'blocked' ? o.reason : 'emitted'}`).join('; ')}`);
@@ -284,7 +290,9 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...(o.bands === null ? {} : { bands: { atoms: o.bands.table.atoms, bands: o.bands.table.bands, conditions: o.bands.conditions } }) };
+    if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
+    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height) } : {};
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...(o.bands === null ? {} : { bands: { atoms: o.bands.table.atoms, bands: o.bands.table.bands, conditions: o.bands.conditions } }), ...laidOut };
   }
   const files = vendoredFaces();
   return {
