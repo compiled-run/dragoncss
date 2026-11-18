@@ -1,0 +1,10 @@
+{
+  "case": "attr-style-visually-hidden-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"t1:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"vh:text0","data":"Skip to content","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

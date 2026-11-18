@@ -1,0 +1,9 @@
+{
+  "case": "attr-style-visually-hidden",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1:text0","lines":[[0,4]]},
+    {"id":"t2:text0","lines":[[0,2]]},
+    {"id":"vh:text0","lines":[[0,15]]}
+  ]
+}
