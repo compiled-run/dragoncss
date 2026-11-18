@@ -770,6 +770,15 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   }
   // An inline box is never a grid item (a grid blockifies its children, analysis/blockify.ts), so last baseline stays refused on it.
   const inner: Lowerer = { ...l, zoom };
+  // css-anchor-position-1: its anchor names are recorded, so a lookup that would find it is refused (lower/anchor-layout.ts).
+  if (usesAnchors(c)) {
+    try {
+      l.anchors.set(id, anchorFactsOf(c));
+    } catch (e) {
+      if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
+      throw e;
+    }
+  }
   return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE, zoom, l.mode), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, inner)) };
 }
 
