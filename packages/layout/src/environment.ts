@@ -385,7 +385,7 @@ function resolveAnchorOption(o: AnchorOption, env: Env): AnchorOption {
     width: resolveInlineSize(o.width, env),
     height: resolveBlockSize(o.height, env),
     minWidth: resolveInlineSize(o.minWidth, env),
-    minHeight: resolveBlockSize(o.minHeight, env),
+    minHeight: resolveMinBlock(o.minHeight, env),
     maxWidth: resolveMaxInline(o.maxWidth, env),
     maxHeight: resolveMaxBlock(o.maxHeight, env),
   };

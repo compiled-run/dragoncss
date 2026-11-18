@@ -5,7 +5,7 @@
 // the position-area offsets); style/position_area.cc 207-292 (default alignment of a position area); out_of_flow_layout_part.cc 65-107
 // and 2276-2470 (the non-overflow check and the position options). Every axis is in the containing block's writing direction; the
 // compiler refuses an anchored box whose own direction differs from it, so the box's direction is the containing block's.
-import type { AnchorEdge, AnchorOption, AnchorSizeRef, AreaTrack, BlockSizeValue, InlineSizeValue, LayoutBox, LayoutStyle, MaxBlockSizeValue, MaxInlineSizeValue, Px } from './input.ts';
+import type { AnchorEdge, AnchorOption, AnchorSizeRef, AreaTrack, BlockSizeValue, InlineSizeValue, LayoutBox, LayoutStyle, MaxBlockSizeValue, MaxInlineSizeValue, MinBlockSizeValue, Px } from './input.ts';
 import type { LU } from './units.ts';
 import { add, divInt, fromFloatRound, max, min, sub, toFloat, toPx, ZERO } from './units.ts';
 import type { MarginResolved, StaticAxis } from './box.ts';
@@ -208,6 +208,11 @@ function blockSizeOf(v: BlockSizeValue, ref: AnchorSizeRef | null, anchors: Map<
   return px === null ? v : px;
 }
 
+function minBlockSizeOf(v: MinBlockSizeValue, ref: AnchorSizeRef | null, anchors: Map<string, AnchorRect>, box: string): MinBlockSizeValue {
+  const px = anchorSizePx(ref, anchors, box);
+  return px === null ? v : px;
+}
+
 function maxInlineSizeOf(v: MaxInlineSizeValue, ref: AnchorSizeRef | null, anchors: Map<string, AnchorRect>, box: string): MaxInlineSizeValue {
   const px = anchorSizePx(ref, anchors, box);
   return px === null ? v : px;
@@ -225,7 +230,7 @@ function optionStyle(s: LayoutStyle, o: AnchorOption, anchors: Map<string, Ancho
     width: inlineSizeOf(o.width, o.widthAnchor, anchors, box),
     height: blockSizeOf(o.height, o.heightAnchor, anchors, box),
     minWidth: inlineSizeOf(o.minWidth, o.minWidthAnchor, anchors, box),
-    minHeight: blockSizeOf(o.minHeight, o.minHeightAnchor, anchors, box),
+    minHeight: minBlockSizeOf(o.minHeight, o.minHeightAnchor, anchors, box),
     maxWidth: maxInlineSizeOf(o.maxWidth, o.maxWidthAnchor, anchors, box),
     maxHeight: maxBlockSizeOf(o.maxHeight, o.maxHeightAnchor, anchors, box),
     marginTop: o.marginTop,

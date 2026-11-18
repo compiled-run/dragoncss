@@ -143,7 +143,7 @@ const anchorOption = obj({
   width: inlineSize,
   height: blockSize,
   minWidth: inlineSize,
-  minHeight: blockSize,
+  minHeight: minBlockSize,
   maxWidth: maxInlineSize,
   maxHeight: maxBlockSize,
   widthAnchor: anchorSize,
