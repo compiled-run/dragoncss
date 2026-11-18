@@ -3054,7 +3054,7 @@ export const STYLE_FIELDS = [
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
   'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout',
-  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'zoom',
+  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'anchor', 'zoom',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -3141,6 +3141,25 @@ function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: 
     reps(g.templateColumns), reps(g.templateRows), sizes(g.autoColumns), sizes(g.autoRows), doubleLit(g.explicitColumnCount), doubleLit(g.explicitRowCount),
     autoRepeat(g.autoRepeatColumns), autoRepeat(g.autoRepeatRows), str(g.autoFlow), g.dense ? 'true' : 'false', str(g.justifyItems),
   ].join(', ')})`;
+}
+
+/** css-anchor-position-1: LayoutStyle.anchor in the translated AnchorStyle's field order (input.ts), null off an anchored box. */
+function anchorValue(lang: Lang, v: unknown, str: (s: string) => string): string {
+  if (v === undefined) throw new Error('LayoutStyle.anchor is missing; it is null where unused');
+  const none = lang === 'swift' ? 'nil' : 'null';
+  if (v === null) return none;
+  const a = v as import('@dragon/layout').AnchorStyle;
+  const edge = (e: import('@dragon/layout').AnchorEdge | null): string => (e === null ? none : `AnchorEdge(${str(e.anchor)}, ${doubleLit(e.fraction)})`);
+  const size = (r: import('@dragon/layout').AnchorSizeRef | null): string => (r === null ? none : `AnchorSizeRef(${str(r.anchor)}, ${str(r.axis)})`);
+  const area = (r: import('@dragon/layout').PositionArea | null): string =>
+    r === null ? none : `PositionArea(${str(r.rowStart)}, ${str(r.rowEnd)}, ${str(r.columnStart)}, ${str(r.columnEnd)})`;
+  const option = (o: import('@dragon/layout').AnchorOption): string =>
+    `AnchorOption(${[
+      area(o.area), ...[o.top, o.right, o.bottom, o.left].map((x) => engineValue(lang, x)), ...[o.topAnchor, o.rightAnchor, o.bottomAnchor, o.leftAnchor].map(edge),
+      ...[o.marginTop, o.marginRight, o.marginBottom, o.marginLeft, o.width, o.height, o.minWidth, o.minHeight, o.maxWidth, o.maxHeight].map((x) => engineValue(lang, x)),
+      ...[o.widthAnchor, o.heightAnchor, o.minWidthAnchor, o.minHeightAnchor, o.maxWidthAnchor, o.maxHeightAnchor].map(size), str(o.justifySelf), str(o.alignSelf),
+    ].join(', ')})`;
+  return `AnchorStyle(${a.anchor === null ? none : str(a.anchor)}, ${engineArray(lang, 'AnchorOption', false, a.options.map(option))}, ${str(a.order)})`;
 }
 
 /** The translated union of CalcExpr (V2 of the value model): the element type of a calculation's operand list. */
@@ -3268,6 +3287,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     const v = (st as unknown as Record<string, unknown>)[f];
     if (f === 'multicol') return multicolValue(lang, v);
     if (f === 'textBoxTrim') return textBoxTrimValue(lang, v);
+    if (f === 'anchor') return anchorValue(lang, v, str);
     if (f === 'zoom') return engineArray(lang, 'Double', false, (v as readonly number[]).map(doubleLit));
     return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
   };

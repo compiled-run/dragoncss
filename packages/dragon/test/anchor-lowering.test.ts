@@ -1,10 +1,11 @@
 // css-anchor-position-1 at build time (lower/anchor-layout.ts): the physical position area of each keyword form, and every part of
 // the spec Dragon does not lower refused by name on the native targets while the web output keeps it (the parity fixtures anchor-*
 // prove what is lowered against Chrome).
+import { containsAbsolute as engineContainsAbsolute, type LayoutStyle } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
-import { physicalArea } from '../src/lower/anchor-layout.ts';
+import { containsAbsolute, physicalArea } from '../src/lower/anchor-layout.ts';
 import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const project = () => createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' });
@@ -23,6 +24,14 @@ function errors(css: string): { readonly ios: string[]; readonly web: string[] }
 }
 
 describe('anchor positioning at build time', () => {
+  it("finds an anchored box's containing block by the engine's own rule", () => {
+    for (const position of ['static', 'relative', 'absolute', 'fixed', 'sticky'] as const)
+      for (const containLayout of [false, true])
+        for (const containPaint of [false, true]) {
+          const s = { position, containLayout, containPaint } as unknown as LayoutStyle;
+          expect(containsAbsolute(s), JSON.stringify(s)).toBe(engineContainsAbsolute(s));
+        }
+  });
   it('turns every keyword form of position-area into its physical rows and columns (position_area.cc ToPhysical)', () => {
     const area = (k: string, rtl = false): string => {
       const a = physicalArea(k.split(' '), rtl, 'p');

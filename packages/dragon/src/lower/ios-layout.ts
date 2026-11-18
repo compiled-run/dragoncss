@@ -53,7 +53,6 @@ import type {
   VerticalAlignValue,
   WhiteSpaceCollapse,
 } from '@dragon/layout';
-import { containsAbsolute } from '@dragon/layout';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
@@ -844,7 +843,7 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [] }, null);
   if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
   try {
-    return lowerAnchors(box, anchors, containsAbsolute);
+    return lowerAnchors(box, anchors);
   } catch (e) {
     if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
     throw e;

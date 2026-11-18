@@ -105,8 +105,11 @@ type Node = { readonly box: BoxLike; readonly parent: Node | null; readonly orde
 
 const isAbspos = (s: LayoutStyle): boolean => s.position === 'absolute' || s.position === 'fixed';
 
+/** CSS2 §10.1 item 4, css-contain-2 §3.2, §3.4: the engine's containsAbsolute (box.ts), which the core may import as a type only. */
+export const containsAbsolute = (s: LayoutStyle): boolean => s.position !== 'static' || s.containLayout || s.containPaint;
+
 /** The box generating a box's containing block, or null for the initial containing block (CSS2 §10.1). */
-function containingBlockOf(n: Node, containsAbsolute: (s: LayoutStyle) => boolean): Node | null {
+function containingBlockOf(n: Node): Node | null {
   if (n.box.style.position === 'fixed') return null;
   let at = n.parent;
   if (n.box.style.position === 'absolute') while (at !== null && !containsAbsolute(at.box.style)) at = at.parent;
@@ -119,11 +122,8 @@ const isAncestor = (a: Node, of: Node): boolean => {
 };
 const isInclusiveAncestor = (a: Node, of: Node): boolean => a === of || isAncestor(a, of);
 
-/**
- * The lowered tree with style.anchor written on every anchored box. facts holds each element the tree pass reads (usesAnchors);
- * containsAbsolute is the engine's containing-block rule.
- */
-export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorFacts>, containsAbsolute: (s: LayoutStyle) => boolean): LayoutBox {
+/** The lowered tree with style.anchor written on every anchored box. facts holds each element the tree pass reads (usesAnchors). */
+export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorFacts>): LayoutBox {
   if (facts.size === 0) return root;
   const nodes: Node[] = [];
   const byId = new Map<string, Node>();
@@ -143,8 +143,8 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
   };
   const acceptable = (a: Node, q: Node): boolean => {
     if (a === q) return false;
-    const ca = containingBlockOf(a, containsAbsolute);
-    const cq = containingBlockOf(q, containsAbsolute);
+    const ca = containingBlockOf(a);
+    const cq = containingBlockOf(q);
     if (ca === cq) return !isAbspos(a.box.style) || a.order < q.order;
     return ca !== null && acceptable(ca, q);
   };
@@ -179,7 +179,7 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
       if (fn !== undefined) throw new AnchorLoweringError(f.id, fn, `${fn} on ${f.id}: an anchor function on a box that is not absolutely positioned takes its fallback (css-anchor-position-1 §3.2.1), which Dragon does not lower yet`);
       continue;
     }
-    const cb = containingBlockOf(n, containsAbsolute);
+    const cb = containingBlockOf(n);
     const rtl = (cb === null ? root.style.direction : cb.box.style.direction) === 'rtl';
     if (s.direction !== (rtl ? 'rtl' : 'ltr')) throw new AnchorLoweringError(f.id, 'direction', `the anchored ${f.id} has direction ${s.direction} in a ${rtl ? 'rtl' : 'ltr'} containing block, which Dragon does not lay out yet (Blink resolves its insets in its own writing direction)`);
     if (f.positionAnchor === 'auto') throw new AnchorLoweringError(f.id, 'position-anchor', `position-anchor: auto on ${f.id} uses an implicit anchor element (css-anchor-position-1 §2.4.1), which Dragon does not model yet`);
