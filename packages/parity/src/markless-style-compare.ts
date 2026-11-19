@@ -8,13 +8,16 @@ import { BAND_KEY } from 'dragon';
 import { authoredFontHtml } from './cases.ts';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
-import { launchChrome } from './chrome.ts';
+import { launchChrome, openPage } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { CapturedNode } from './capture.ts';
-import type { MarklessCompiledTarget, MarklessFontFile, MarklessFonts, MarklessStyleInput } from './markless-style-input.ts';
-import { MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, stateCombinations, valueUnder } from './markless-style-input.ts';
+import type { MarklessCompiledTarget, MarklessExportAssignment, MarklessFontFile, MarklessFonts, MarklessStyleExport, MarklessStyleInput } from './markless-style-input.ts';
+import { checkMarklessExport, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, stateCombinations, valueUnder } from './markless-style-input.ts';
 import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import { decodePng } from './pixel-reference.ts';
+import type { SystemFonts } from './system-fonts/provider.ts';
+import { systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
 import { systemFontReference } from './system-fonts/reference.ts';
 
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
@@ -319,6 +322,102 @@ async function checkBackdrops(page: Page, measured: readonly CapturedNode[]): Pr
   }
 }
 
+/**
+ * Runs in the page (so it closes over nothing), after the boxes are read: the height 100vh resolves to, the viewport's (the initial
+ * containing block's), and the Canvas colour as the root's used colour scheme gives it and as light and dark give it, from probes
+ * outside body that are removed again.
+ */
+export const readRootProbe = (): RootProbe => {
+  const probe = (scheme: string): { readonly color: string; readonly height: number } => {
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute!important;visibility:hidden!important;width:0!important;height:100vh!important;color-scheme:${scheme}!important;color:Canvas!important`;
+    document.documentElement.append(el);
+    const cs = getComputedStyle(el);
+    const out = { color: cs.color, height: parseFloat(cs.height) };
+    el.remove();
+    return out;
+  };
+  const root = probe('inherit');
+  return { vh: root.height, viewportHeight: document.documentElement.clientHeight, innerHeight, prefersDark: matchMedia('(prefers-color-scheme: dark)').matches, canvas: root.color, lightCanvas: probe('light').color, darkCanvas: probe('dark').color };
+};
+export type RootProbe = { readonly vh: number; readonly viewportHeight: number; readonly innerHeight: number; readonly prefersDark: boolean; readonly canvas: string; readonly lightCanvas: string; readonly darkCanvas: string };
+
+/** The root's used colour scheme as the browser resolves it: the scheme whose Canvas colour the root's gives. */
+export function usedScheme(p: RootProbe): 'light' | 'dark' {
+  if (p.lightCanvas === p.darkCanvas) throw new Error(`the browser gives Canvas one colour, ${p.lightCanvas}, in light and dark, so its used colour scheme cannot be read`);
+  if (p.canvas === p.lightCanvas) return 'light';
+  if (p.canvas === p.darkCanvas) return 'dark';
+  throw new Error(`the root's Canvas colour ${p.canvas} is neither light's ${p.lightCanvas} nor dark's ${p.darkCanvas}`);
+}
+
+type Rgba8 = MarklessExportAssignment['canvas'];
+
+/** What Chrome paints for the page itself: the canvas, body's own box (null where body shows no area), and the root's used scheme. */
+export type ChromePagePaint = { readonly canvas: Rgba8; readonly body: Rgba8 | null; readonly colorScheme: 'light' | 'dark' };
+
+/**
+ * Chrome's page paint for one assignment, in a page of its own so the capture is untouched: with every box but html and body
+ * hidden (body's content, html's ::before and ::after, every ::backdrop), the pixel at body's centre, then with body hidden too
+ * the canvas pixel at the viewport's top left.
+ */
+export async function chromePagePaint(browser: Browser, html: string, input: MarklessStyleInput, t: ExportTarget, values: Values, scheme: 'light' | 'dark'): Promise<ChromePagePaint> {
+  const page = await openPage(browser, html, { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' });
+  try {
+    await page.emulateMedia({ colorScheme: scheme });
+    const mismatch = documentMismatch(marklessDocumentTree(input, values), await page.evaluate(readDocumentTree));
+    if (mismatch !== null) throw new Error(`Chrome's document is not the input's tree: ${mismatch}`);
+    const colorScheme = usedScheme(await page.evaluate(readRootProbe));
+    const pixel = async (x: number, y: number): Promise<Rgba8> => {
+      const image = decodePng(await page.screenshot({ clip: { x, y, width: 1, height: 1 } }));
+      return { r: image.data[0] as number, g: image.data[1] as number, b: image.data[2] as number, alpha: image.data[3] as number };
+    };
+    await page.addStyleTag({ content: 'body *, html::before, html::after { visibility: hidden !important; } ::backdrop { display: none !important; }' });
+    const box = await page.evaluate(() => {
+      const r = document.body.getBoundingClientRect();
+      const x0 = Math.max(0, r.left), y0 = Math.max(0, r.top), x1 = Math.min(innerWidth, r.right), y1 = Math.min(innerHeight, r.bottom);
+      return x1 - x0 >= 1 && y1 - y0 >= 1 ? { x: Math.floor((x0 + x1) / 2), y: Math.floor((y0 + y1) / 2) } : null;
+    });
+    const body = box === null ? null : await pixel(box.x, box.y);
+    await page.addStyleTag({ content: 'body { visibility: hidden !important; }' });
+    return { canvas: await pixel(0, 0), body, colorScheme };
+  } finally {
+    await page.context().close();
+  }
+}
+
+/** One of the page's own paint fields of an assignment against Chrome's: exact equality, failing on any difference. */
+export type PaintRow = { readonly target: string; readonly values: Values; readonly field: 'canvas' | 'bodyBackground' | 'colorScheme'; readonly exported: unknown; readonly chrome: unknown; readonly pass: boolean };
+
+/** The assignment's canvas, body background (Chrome's body pixel is the canvas where body paints none) and colour scheme against Chrome's. */
+export function paintRows(target: string, a: MarklessExportAssignment, chrome: ChromePagePaint): PaintRow[] {
+  const same = (x: unknown, y: unknown): boolean => JSON.stringify(x) === JSON.stringify(y);
+  const body = chrome.body === null ? null : same(chrome.body, chrome.canvas) ? null : chrome.body;
+  const bodyPass = chrome.body === null || same(a.bodyBackground ?? a.canvas, chrome.body);
+  return [
+    { target, values: a.values, field: 'canvas', exported: a.canvas, chrome: chrome.canvas, pass: same(a.canvas, chrome.canvas) },
+    { target, values: a.values, field: 'bodyBackground', exported: a.bodyBackground, chrome: chrome.body === null ? 'body shows no area' : body, pass: bodyPass },
+    { target, values: a.values, field: 'colorScheme', exported: a.colorScheme, chrome: chrome.colorScheme, pass: a.colorScheme === chrome.colorScheme },
+  ];
+}
+
+/**
+ * Refuses a target's system faces that are not what the input's compile resolves: a system face a font write names with no entry
+ * for the target, or an entry whose platform font is not the provider's for that face.
+ */
+export function checkSystemFonts(exported: NativeStyleExport, target: NativeStyleTarget, provider: Pick<SystemFonts, 'descriptor'>): void {
+  const entries = new Map((exported.systemFonts ?? []).map((e) => [e.id, e[target]]));
+  const named = new Set(exported.targets[target]?.assignments.flatMap((a) => a.nodes.flatMap((n) => n.writes.flatMap((w) => {
+    const family = (w['font'] as { family?: unknown } | undefined)?.family;
+    return w['kind'] === 'font' && typeof family === 'string' && systemRequestOf(family) !== null ? [family] : [];
+  }))) ?? []);
+  for (const id of named) if (entries.get(id) === undefined) throw new Error(`${target}: the export draws text in the system face ${id} and lists no ${target} font for it`);
+  for (const [id, got] of entries) {
+    if (got === undefined) continue;
+    const { platform: _platform, ...want } = provider.descriptor(id);
+    if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`${target}: the export lists ${JSON.stringify(got)} for the system face ${id}, where the input's compile resolves ${JSON.stringify(want)}`);
+  }
+}
+
 /** Why a node has a box on only one side. */
 export type BoxProblem = 'no-node' | 'no-frame' | 'no-box' | 'unseen' | 'anonymous';
 
@@ -380,21 +479,27 @@ export type CompareRow = { readonly target: string; readonly values: Values; rea
 /**
  * With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device
  * screenshot is read beside. `unbanded`: the colour-scheme preference Chrome is given for an assignment no band fixes (light).
- * `fonts`: the input's author font files (marklessFontFiles), which Chrome loads at their urls. `mode`: how the export resolved fonts
- * (marklessStyleExport); with system fonts Chrome draws each target's system faces from the files the export measured
- * (system-fonts/reference.ts), else the pinned reference faces.
+ * `fonts`: the input's author font files (marklessFontFiles), which Chrome loads at their urls. The export's fontMode says how it
+ * resolved fonts; with system fonts Chrome draws each target's system faces from the files the export measured
+ * (system-fonts/reference.ts), else the pinned reference faces. `mode`, when given, must be the export's. `failed` counts the box
+ * rows and the page's paint rows (`paint`) that fail.
  */
-export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light', fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned', only: readonly string[] | null = null): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
+export async function compareMarklessExport(input: MarklessStyleInput, given: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light', fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts | null = null, only: readonly string[] | null = null): Promise<{ readonly fontMode: MarklessFonts; readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[]; readonly paint: readonly PaintRow[] }> {
+  const exported: MarklessStyleExport = checkMarklessExport(given);
+  if (mode !== null && mode !== exported.fontMode) throw new Error(`the export resolved fonts as ${exported.fontMode}, not the ${mode} the comparison was asked for`);
+  const fontMode = exported.fontMode;
   const rows: CompareRow[] = [];
+  const paint: PaintRow[] = [];
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
-  const compiled = marklessCompiledTargets(input, fonts, mode);
+  const compiled = marklessCompiledTargets(input, fonts, fontMode);
   checkTargets(input, exported, compiled, only);
   checkInputFonts(exported, fonts);
   for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, t);
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined || (only !== null && !only.includes(target))) continue;
     // Safari, not Chrome, is the web that draws iOS's system and author faces: Chrome on the Mac rounds their metrics and spaces otherwise.
-    if (mode === 'system' && target === 'ios' && ((exported.systemFonts ?? []).some((e) => e.ios !== undefined) || exported.fonts.some((f) => f.from === 'input'))) throw new Error(`${input.component}: the iOS target measures its faces as Safari does, so it is compared with Safari on iOS (markless:style-web-column), not Chrome; compare the other targets`);
+    if (fontMode === 'system' && target === 'ios' && ((exported.systemFonts ?? []).some((e) => e.ios !== undefined) || exported.fonts.some((f) => f.from === 'input'))) throw new Error(`${input.component}: the iOS target measures its faces as Safari does, so it is compared with Safari on iOS (markless:style-web-column), not Chrome; compare the other targets`);
+    if (fontMode === 'system' && target === 'android') checkSystemFonts(exported, 'android', systemFontsFor('android', t.dpr));
     const browser: Browser = await launchChrome(t.dpr);
     try {
       for (const [index, assignment] of t.assignments.entries()) {
@@ -407,8 +512,9 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
           const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
           return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
         };
-        const prepare = mode === 'system' ? systemFontReference(target as 'ios' | 'android', exported.systemFonts ?? []) : fontReferencePrepare(FONT_REFERENCE_MAP);
-        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${index}.png`));
+        const prepare = fontMode === 'system' ? systemFontReference(target as 'ios' | 'android', exported.systemFonts ?? []) : fontReferencePrepare(FONT_REFERENCE_MAP);
+        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${index}.png`));
+        paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(input, assignment.values, fontMode), files), input, t, assignment.values, scheme)));
         const paired = pairBoxes(input, assignment, capture.nodes);
         for (const { id, kind } of paired.problems) rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: null, pass: false, problem: CHROME_PROBLEM[kind] });
         for (const { id, c } of paired.pairs) {
@@ -422,5 +528,5 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
       await browser.close();
     }
   }
-  return { compared: rows.filter((r) => r.maxDeltaDevicePx !== null).length, failed: rows.filter((r) => !r.pass).length, rows };
+  return { fontMode, compared: rows.filter((r) => r.maxDeltaDevicePx !== null).length, failed: rows.filter((r) => !r.pass).length + paint.filter((r) => !r.pass).length, rows, paint };
 }

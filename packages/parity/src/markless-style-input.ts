@@ -542,7 +542,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
-  return { input, exported: { ...exported, targets }, decoded };
+  return { input, exported: { ...exported, fontMode: mode, targets }, decoded };
 }
 
 type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 };
@@ -553,9 +553,28 @@ type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgb
  * scheme, whose UA colours the nodes' writes already carry.
  */
 export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null; readonly colorScheme: 'light' | 'dark' };
+/** `fontMode`: how the export resolved fonts, which the comparisons draw Chrome's text with. */
 export type MarklessStyleExport = Omit<NativeStyleExport, 'targets'> & {
+  readonly fontMode: MarklessFonts;
   readonly targets: { readonly [T in NativeStyleTarget]?: Omit<ExportTarget, 'assignments'> & { readonly assignments: readonly MarklessExportAssignment[] } };
 };
+
+const isRgba8 = (v: unknown): v is Rgba8 => isRecord(v) && Object.keys(v).sort().join() === 'alpha,b,g,r' && ['r', 'g', 'b', 'alpha'].every((k) => Number.isInteger(v[k]) && (v[k] as number) >= 0 && (v[k] as number) <= 255);
+
+/** Refuses, naming the field, an export without the font mode and each assignment's canvas, body background and colour scheme. */
+export function checkMarklessExport(exported: NativeStyleExport): MarklessStyleExport {
+  const o = exported as unknown as Record<string, unknown>;
+  if (o['fontMode'] !== 'system' && o['fontMode'] !== 'pinned') throw new Error(`the export's fontMode ${JSON.stringify(o['fontMode'] ?? null)} is neither system nor pinned`);
+  for (const [t, x] of Object.entries(exported.targets)) {
+    for (const [i, a] of (x?.assignments ?? []).entries()) {
+      const p = a as unknown as Record<string, unknown>;
+      if (!isRgba8(p['canvas'])) throw new Error(`${t} assignment ${i}: canvas ${JSON.stringify(p['canvas'] ?? null)} is not a colour`);
+      if (p['bodyBackground'] !== null && !isRgba8(p['bodyBackground'])) throw new Error(`${t} assignment ${i}: bodyBackground ${JSON.stringify(p['bodyBackground'])} is not a colour or null`);
+      if (p['colorScheme'] !== 'light' && p['colorScheme'] !== 'dark') throw new Error(`${t} assignment ${i}: colorScheme ${JSON.stringify(p['colorScheme'] ?? null)} is neither light nor dark`);
+    }
+  }
+  return exported as unknown as MarklessStyleExport;
+}
 
 const backgroundOf = (nodes: readonly ExportNode[], id: string): Rgba8 => {
   const color = nodes.find((n) => n.id === id)?.writes.find((w) => w['kind'] === 'background-color')?.['color'];

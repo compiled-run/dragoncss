@@ -82,8 +82,12 @@ iOS `kind: "system"` is `UIFont.systemFont(ofSize:weight:)` at that `UIFont.Weig
 ## Comparisons
 
 - **Safari and Chrome on the phones** (`pnpm run markless:style-web-column`): the export's frames against the boxes the phone's own
-  browser lays the same document out at, in device px.
-- **Chrome on the Mac** (`markless:style-compare`): for Android, Chrome loads the image's font files as web fonts. Chrome on the Mac
+  browser lays the same document out at, in device px. It compares only an export whose `fontMode` is `system`, and refuses a
+  browser whose ratio, width, height (100vh and the viewport's height), colour-scheme preference (the one each assignment's band
+  reads) or root used colour scheme is not the export's.
+- **Chrome on the Mac** (`markless:style-compare`): the font mode is the export's `fontMode` (`--fonts`, when given, must match
+  it). For Android, each system face's file must be the one the image's fonts.xml resolves for it, and Chrome loads those files as
+  web fonts. Chrome on the Mac
   does not draw iOS's system faces as Safari does (other line metric rounding, Helvetica and Times metric adjustments, San
   Francisco without Core Text's tracking), so an iOS target with system faces is refused there and compared with Safari instead.
 
