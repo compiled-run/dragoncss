@@ -1,5 +1,5 @@
 // pnpm run markless:style-compare -- <native-style-input.json> <native-style.json> <report.json>: the export's frames against
-// Chrome's boxes per assignment (packages/parity/src/markless-style-compare.ts). Exits 1 when a box is outside the gate or only one side has it, or the export is malformed or leaves out a state.
+// Chrome's boxes per assignment (packages/parity/src/markless-style-compare.ts). Exits 1 when a box is outside the gate or only one side has it, or the export is malformed or leaves out a target or a state.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { GATE_DEVICE_PX } from '../compare.ts';

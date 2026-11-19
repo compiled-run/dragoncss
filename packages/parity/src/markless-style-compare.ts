@@ -17,7 +17,14 @@ import type { ExportTarget, NativeStyleExport } from './native-style-export.ts';
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 type Values = Readonly<Record<string, unknown>>;
 
-const escape = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const HTML_NS = 'http://www.w3.org/1999/xhtml';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
+
+/** A node of the document as Chrome must hold it: an element (namespace, name, attributes in order) or a text node. */
+export type DocumentNode =
+  | { readonly element: string; readonly namespace: string; readonly attributes: readonly (readonly [string, string])[]; readonly children: readonly DocumentNode[] }
+  | { readonly text: string };
 
 /** The value a by-state list gives under an assignment's values; the input lists one entry per combination. */
 function valueUnder(entries: readonly { readonly when: Readonly<Record<string, boolean>>; readonly value: string | null }[], values: Values, id: string): string | null {
@@ -26,23 +33,85 @@ function valueUnder(entries: readonly { readonly when: Readonly<Record<string, b
   return (found[0] as (typeof entries)[number]).value;
 }
 
-/** The input's tree as one assignment shows it, each element named by its input id (data-dragon-id). */
-export function marklessDocumentHtml(input: MarklessStyleInput, values: Values): string {
+/** The input's body as one assignment shows it, node for node, each element named by its input id (data-dragon-id). */
+export function marklessBodyTree(input: MarklessStyleInput, values: Values): DocumentNode[] {
   const children = new Map<string | null, MarklessStyleInput['nodes'][number][]>();
   for (const n of input.nodes) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
-  const render = (n: MarklessStyleInput['nodes'][number]): string => {
-    if (n.kind === 'text') return escape(n.text);
-    const attributes: [string, string][] = Object.entries(n.attributes).filter(([name]) => name !== 'class');
+  const build = (n: MarklessStyleInput['nodes'][number], parentNs: string): DocumentNode => {
+    if (n.kind === 'text') return { text: n.text };
+    // An element made by name takes its namespace as the HTML parser would give it: <svg> and <math> open their own.
+    const namespace = n.element === 'svg' ? SVG_NS : n.element === 'math' ? MATHML_NS : parentNs;
+    const attributes: [string, string][] = [['data-dragon-id', n.id], ...Object.entries(n.attributes).filter(([name]) => name !== 'class')];
     const cls = n.classByState === undefined ? (n.attributes['class'] ?? null) : valueUnder(n.classByState, values, n.id);
     if (cls !== null) attributes.push(['class', cls]);
     for (const [name, entries] of Object.entries(n.attributesByState ?? {})) {
       const v = valueUnder(entries, values, n.id);
       if (v !== null) attributes.push([name, v]);
     }
-    const open = [`<${n.element} data-dragon-id="${escape(n.id)}"`, ...attributes.map(([k, v]) => `${k}="${escape(v)}"`)].join(' ');
-    return `${open}>${(children.get(n.id) ?? []).map(render).join('')}</${n.element}>`;
+    if (attributes.slice(1).some(([name]) => name === 'data-dragon-id')) throw new Error(`${n.id}: data-dragon-id is the comparison's own attribute, so the input cannot set it`);
+    return { element: n.element, namespace, attributes, children: (children.get(n.id) ?? []).map((c) => build(c, namespace)) };
   };
-  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${MARKLESS_DOCUMENT_CSS}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
+  return (children.get(null) ?? []).map((n) => build(n, HTML_NS));
+}
+
+/** The whole document Chrome must lay out: html, an empty head (its content is the comparison's own styles) and the body. */
+export function marklessDocumentTree(input: MarklessStyleInput, values: Values): DocumentNode {
+  return {
+    element: 'html',
+    namespace: HTML_NS,
+    attributes: [['data-dragon-id', 'html']],
+    children: [{ element: 'head', namespace: HTML_NS, attributes: [], children: [] }, { element: 'body', namespace: HTML_NS, attributes: [['data-dragon-id', 'body']], children: marklessBodyTree(input, values) }],
+  };
+}
+
+/** Runs in the page: the document as marklessDocumentTree describes it, the head's content left out. */
+export const readDocumentTree = (): DocumentNode => {
+  const read = (n: Node): DocumentNode => {
+    if (n.nodeType === Node.TEXT_NODE) return { text: (n as Text).data };
+    if (n.nodeType !== Node.ELEMENT_NODE) return { element: `#${n.nodeName}`, namespace: '', attributes: [], children: [] };
+    const el = n as Element;
+    return { element: el.localName, namespace: el.namespaceURI ?? '', attributes: [...el.attributes].map((a) => [a.name, a.value] as const), children: el === document.head ? [] : [...el.childNodes].map(read) };
+  };
+  return read(document.documentElement);
+};
+
+/** Where Chrome's document first differs from the tree it must hold, or null when it holds exactly that tree. */
+export function documentMismatch(want: DocumentNode, got: DocumentNode, path = 'html'): string | null {
+  if ('text' in want || 'text' in got) return JSON.stringify(want) === JSON.stringify(got) ? null : `${path}: ${JSON.stringify(got)} where the input has ${JSON.stringify(want)}`;
+  if (want.element !== got.element || want.namespace !== got.namespace || JSON.stringify(want.attributes) !== JSON.stringify(got.attributes)) {
+    return `${path}: <${got.element}> in ${got.namespace} with ${JSON.stringify(got.attributes)} where the input has <${want.element}> in ${want.namespace} with ${JSON.stringify(want.attributes)}`;
+  }
+  if (want.children.length !== got.children.length) return `${path}: ${got.children.length} child nodes where the input has ${want.children.length}`;
+  for (const [i, w] of want.children.entries()) {
+    const m = documentMismatch(w, got.children[i] as DocumentNode, `${path}/${i}`);
+    if (m !== null) return m;
+  }
+  return null;
+}
+
+/** The input's document as one assignment shows it, its body built by DOM calls since the HTML parser rebuilds some trees (a <div> in a <p>). */
+export function marklessDocumentHtml(input: MarklessStyleInput, values: Values): string {
+  // The HTML tokenizer ends a <style> at "</style" followed by white space, "/" or ">".
+  if (/<\/style[\t\n\f\r />]/i.test(input.css)) throw new Error(`${input.component}: the css holds "</style", which would end the document's <style> early`);
+  const json = (v: unknown): string => JSON.stringify(v).replace(/</g, '\\u003c');
+  const build = `(() => {
+  const self = document.currentScript;
+  const tree = ${json(marklessBodyTree(input, values))};
+  const make = (n) => {
+    if ('text' in n) return document.createTextNode(n.text);
+    const el = document.createElementNS(n.namespace, n.element);
+    for (const [name, value] of n.attributes) el.setAttribute(name, value);
+    for (const c of n.children) el.append(make(c));
+    return el;
+  };
+  document.addEventListener('DOMContentLoaded', () => {
+    const sheet = document.createElement('style');
+    sheet.textContent = ${json(MARKLESS_DOCUMENT_CSS)};
+    self.replaceWith(sheet);
+    document.body.append(...tree.map(make));
+  }, { once: true });
+})();`;
+  return `<!DOCTYPE html>\n<html data-dragon-id="html"><head><script>${build}</script><style>${input.css}</style></head><body data-dragon-id="body"></body></html>`;
 }
 
 type Bands = ExportTarget['bands'];
@@ -91,6 +160,8 @@ export function captureMarklessAssignment(browser: Browser, input: MarklessStyle
   return captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, values)), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
     await page.emulateMedia({ colorScheme: scheme });
     await fonts(page);
+    const mismatch = documentMismatch(marklessDocumentTree(input, values), await page.evaluate(readDocumentTree));
+    if (mismatch !== null) throw new Error(`Chrome's document is not the input's tree: ${mismatch}`);
   });
 }
 
@@ -100,6 +171,8 @@ export type CompareRow = { readonly target: string; readonly values: Values; rea
 export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
   const compiled = marklessCompiledTargets(input);
+  const targetsOf = (o: object): string[] => Object.entries(o).filter(([, t]) => t !== undefined).map(([k]) => k).sort();
+  if (JSON.stringify(targetsOf(exported.targets)) !== JSON.stringify(targetsOf(compiled))) throw new Error(`the export's targets ${targetsOf(exported.targets).join(', ') || 'none'} are not the targets the input compiles to, ${targetsOf(compiled).join(', ')}`);
   for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, t);
   // Chrome's capture names nodes by Dragon's rule under each element's data-dragon-id, its input id, as the export does.
   const idOf = marklessNodeId(input, (id) => id);
