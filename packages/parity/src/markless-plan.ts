@@ -1,7 +1,8 @@
 // The layout plan of a Markless export: what a phone needs to lay a page out again at its own size with Dragon's translated engine
 // (harness.ts runMarklessLayout). Per assignment its engine input variant, dashed borders and scroll containers; per ratio the text
 // shaping the build measured, recorded at every root width a phone in PLAN_WIDTHS can have, so the device never shapes text.
-import type { FontData, FontLengths, FontMetrics, LayoutInput } from '@dragon/layout';
+// The text is recorded at one viewport height: a page whose text changes with the height is refused.
+import type { FontData, FontLengths, FontMetrics, LayoutInput, TextMeasurer } from '@dragon/layout';
 import { layout } from '@dragon/layout';
 import type { NativeStyleTarget, StateProgram } from 'dragon';
 import { programAt } from 'dragon';
@@ -16,6 +17,8 @@ export const PLAN_DENSITIES: { readonly [T in NativeStyleTarget]: readonly numbe
 
 /** The root widths in CSS px whose text the plan records: phones and tablets, portrait and landscape. */
 export const PLAN_WIDTHS = { min: 320, max: 1400 } as const;
+/** The viewport heights in CSS px at which the plan's text must be the text recorded at the export's height. */
+export const PLAN_HEIGHTS = { min: 320, max: 1400 } as const;
 
 export type PlanDensity = {
   readonly dpr: number;
@@ -63,14 +66,35 @@ function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFon
       lengths.set(`${family}@${size}`, [family, size, l.xHeight, l.capHeight, l.zeroWidth]);
     },
   };
+  const lay = (m: TextMeasurer, vi: number, width: number, h: number): void => {
+    const v = sp.variants[vi] as StateProgram['variants'][number];
+    const viewport = { width, height: h };
+    const input: LayoutInput = { viewport, devicePixelRatio: dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: v.rootFontSize, root: v.root };
+    const r = layout(input, m);
+    if (r.kind !== 'ok') throw new Error(`${t}: the engine refused variant ${vi} at ${width} x ${h} css px and ${dpr}x: ${r.unsupported.code} at ${r.unsupported.nodeId}`);
+  };
   const m = systemMeasurer(system, sp, bundled, dpr, authorFiles, recorder);
   const widths = planWidths(dpr);
-  sp.variants.forEach((v, vi) => {
-    for (const width of widths) {
-      const viewport = { width, height };
-      const input: LayoutInput = { viewport, devicePixelRatio: dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: v.rootFontSize, root: v.root };
-      const r = layout(input, m);
-      if (r.kind !== 'ok') throw new Error(`${t}: the engine refused variant ${vi} at ${width} css px and ${dpr}x: ${r.unsupported.code} at ${r.unsupported.nodeId}`);
+  sp.variants.forEach((_, vi) => {
+    for (const width of widths) lay(m, vi, width, height);
+  });
+  const unrecorded: string[] = [];
+  const check: MeasurerRecorder = {
+    shape(call) {
+      if (!calls.has(JSON.stringify(call))) unrecorded.push(`shapes ${JSON.stringify(call[2])} in ${String(call[0])} at ${String(call[1])} css px`);
+    },
+    metrics(family, size) {
+      if (!metrics.has(`${family}@${size}`)) unrecorded.push(`reads the metrics of ${family} at ${size} css px`);
+    },
+    lengths(family, size) {
+      if (!lengths.has(`${family}@${size}`)) unrecorded.push(`reads the lengths of ${family} at ${size} css px`);
+    },
+  };
+  const strict = systemMeasurer(system, sp, bundled, dpr, authorFiles, check);
+  sp.variants.forEach((_, vi) => {
+    for (const h of [PLAN_HEIGHTS.min, PLAN_HEIGHTS.max]) for (const width of widths) {
+      lay(strict, vi, width, h);
+      if (unrecorded.length > 0) throw new Error(`${t}: variant ${vi} at ${width} x ${h} css px and ${dpr}x ${unrecorded[0]}, which it does not at height ${height}; the plan records text at one viewport height, so a page whose text depends on the height (a font size in vh, vmin or vmax, a text box sized by the height) has none`);
     }
   });
   return { dpr, calls: [...calls.values()], metrics: [...metrics.values()], lengths: [...lengths.values()] };
@@ -78,8 +102,8 @@ function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFon
 
 /**
  * The plan of one target. `system(dpr)` is the target's system fonts at a ratio; `bundled` the face ids the measurer reads from
- * bundled files; `height` the height every recorded layout uses (a plan whose text depends on the height is refused by the
- * caller's check).
+ * bundled files; `height` the height every recorded layout uses. A page whose text at PLAN_HEIGHTS' heights is not the text
+ * recorded at `height` is refused.
  */
 export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number): MarklessPlan {
   const densities = PLAN_DENSITIES[t].map((dpr) => recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height));

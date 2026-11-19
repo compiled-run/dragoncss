@@ -25,7 +25,7 @@ export function fontFamiliesOf(program: unknown): Set<string> {
   return out;
 }
 
-/** What a measurer was asked, for a device to replay: every shaper call with its glyphs, and each platform face's metrics and lengths. */
+/** What a measurer was asked, for a device to replay: every shaper call with its glyphs, and each face's metrics (null: the engine's own) and lengths. */
 export type MeasurerRecorder = {
   shape(call: readonly unknown[], glyphs: readonly number[]): void;
   metrics(family: string, size: number, metrics: FontMetrics | null): void;
@@ -49,13 +49,20 @@ export function systemMeasurer(system: SystemFonts, program: unknown, bundled: r
   return {
     ...m,
     metrics: (font) => {
-      if (!platform.has(font.family)) return m.metrics(font);
+      if (!platform.has(font.family)) {
+        recorder?.metrics(font.family, font.size, null);
+        return m.metrics(font);
+      }
       const own = system.metrics(font.family, platformFontSize(font.size), dpr);
       recorder?.metrics(font.family, font.size, own);
       return own ?? m.metrics(font);
     },
     lengths: (font) => {
-      if (!platform.has(font.family)) return m.lengths(font);
+      if (!platform.has(font.family)) {
+        const engine = m.lengths(font);
+        recorder?.lengths(font.family, font.size, engine);
+        return engine;
+      }
       const own = system.lengths(font.family, platformFontSize(font.size));
       recorder?.lengths(font.family, font.size, own);
       return own;

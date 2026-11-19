@@ -86,6 +86,21 @@ describe('the layout plan of a Markless export', () => {
     expect(deviceLayout(plan, 9, 400, 800, 2)).toEqual(['harness-error', '$.assignment: 9 is not an assignment of the plan']);
   });
 
+  it('refuses a page whose text depends on the viewport height, by name', () => {
+    const path = 'examples/markless-styles/input/width-media.native-style-input.json';
+    const input = JSON.parse(readFileSync(repoPath(path), 'utf8')) as { css: string };
+    const tall = JSON.stringify({ ...input, css: `${input.css}\n.note { font-size: 4vh; }` });
+    expect(() => marklessStyleExport(tall, path, undefined, 'system', undefined, true)).toThrow(/^ios: variant 0 at 320 x 320 css px and 2x (shapes|reads the metrics of) .*, which it does not at height 778; the plan records text at one viewport height/);
+  });
+
+  it("fails on the device where the plan holds no record of a face's metrics, instead of using the engine's", () => {
+    const path = 'examples/markless-styles/input/width-media.native-style-input.json';
+    const plan = marklessStyleExport(readFileSync(repoPath(path), 'utf8'), path, undefined, 'system', undefined, true).exported.targets.ios!.plan!;
+    expect(deviceLayout(plan, 0, 402, 778, 3)[0]).toBe('ok');
+    const without: MarklessPlan = { ...plan, densities: plan.densities.map((d) => ({ ...d, metrics: [] })) };
+    expect(deviceLayout(without, 0, 402, 778, 3)).toEqual(['harness-error', expect.stringMatching(/^the plan holds no metrics of /)]);
+  });
+
   it('records every root width a phone from 320 to 1400 css px can have, in whole device and whole css px', () => {
     const w = planWidths(2.625);
     expect(w[0]).toBeCloseTo(320, 9);

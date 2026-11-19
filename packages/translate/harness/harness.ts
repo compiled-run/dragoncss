@@ -3173,14 +3173,14 @@ function planDensity(v: JsonValue, path: string): PlanDensity {
   return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, metrics, ownMetrics, lengths };
 }
 
-/** The device's measurer: the build's measurer replayed, a platform face's metrics and lengths as the build read them. */
+/** The device's measurer: the build's measurer replayed, each face's metrics and lengths as the build read them; anything else fails. */
 function planMeasurer(faces: ReadonlyMap<string, FontData>, d: PlanDensity): TextMeasurer {
   const m = deviceShapedMeasurer(faces, replayShaper(d.calls));
   return {
     metrics(font: TextFont): FontMetrics {
       const key = planFontKey(font.family, font.size);
       const own = d.ownMetrics.get(key);
-      if (own === undefined) return m.metrics(font);
+      if (own === undefined) return fail(`the plan holds no metrics of ${font.family} at ${font.size} css px`);
       if (!own) return m.metrics(font);
       return d.metrics.get(key) as FontMetrics;
     },
@@ -3192,7 +3192,7 @@ function planMeasurer(faces: ReadonlyMap<string, FontData>, d: PlanDensity): Tex
     },
     lengths(font: TextFont): FontLengths {
       const own = d.lengths.get(planFontKey(font.family, font.size));
-      if (own === undefined) return m.lengths(font);
+      if (own === undefined) return fail(`the plan holds no lengths of ${font.family} at ${font.size} css px`);
       return own;
     },
     shaped(text: string, font: TextFont): ShapedItem {
