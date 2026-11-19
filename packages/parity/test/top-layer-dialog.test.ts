@@ -21,9 +21,11 @@ const CASES: readonly { readonly name: string; readonly css: string }[] = [
   { name: 'author styles on the dialog and its ::backdrop', css: 'main { padding: 20px; }\ndialog { padding: 12px; border: 4px solid #333; background: #fffbe6; border-radius: 0; }\ndialog::backdrop { background: rgba(10, 20, 30, 0.5); }\n.k { padding: 4px; background: #ddd; }' },
   { name: 'a fixed width and an author font size the em padding follows', css: 'dialog { width: 200px; font-size: 20px; }' },
   { name: 'content taller than the viewport, clamped by the UA max-height', css: '.k { height: 600px; }' },
+  { name: 'font size, line height, letter spacing and text fill colour inherited from the dialog\'s DOM ancestors', css: 'main { font-size: 15px; line-height: 2; letter-spacing: 1px; -webkit-text-fill-color: #036; }' },
 ];
 
 type Rgba = { r: number; g: number; b: number; alpha: number };
+const css = (x: Rgba): string => (x.alpha === 255 ? `rgb(${x.r}, ${x.g}, ${x.b})` : `rgba(${x.r}, ${x.g}, ${x.b}, ${Number((x.alpha / 255).toFixed(2))})`);
 const compileFor = (html: string, hostTopLayer: boolean) =>
   createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', platform: REFERENCE_PLATFORM, rootFont: 'ahem', foldViewport: ENVIRONMENT.viewport, hostTopLayer }).compile(fixtureToInput('top-layer-dialog', html));
 
@@ -59,13 +61,19 @@ describe('a modal <dialog> and its ::backdrop, the host presenting the top layer
             return { x: o.x + b.x / 64, y: o.y + b.y / 64, width: b.width / 64, height: b.height / 64 };
           };
           let chromeBackdrop = '';
+          let chromeText = { fontSize: '', fill: '' };
           const capture = await captureFixture(browser, 'top-layer-dialog', html, env, [], async (page) => {
-            chromeBackdrop = await page.evaluate(() => {
+            [chromeBackdrop, chromeText] = await page.evaluate(() => {
               const d = document.querySelector('dialog') as HTMLDialogElement;
               d.showModal();
-              return getComputedStyle(d, '::backdrop').backgroundColor;
+              const t = getComputedStyle(document.querySelector('h2') as HTMLElement);
+              return [getComputedStyle(d, '::backdrop').backgroundColor, { fontSize: t.fontSize, fill: t.webkitTextFillColor }] as const;
             });
           });
+          const textWrites = program.nodes.find((n) => n.id === 't:text0')?.writes ?? [];
+          const font = textWrites.find((w) => w.kind === 'font') as { font: { size: number } } | undefined;
+          const fill = textWrites.find((w) => w.kind === 'text-color') as { color: Rgba } | undefined;
+          expect({ fontSize: font === undefined ? null : `${font.font.size}px`, fill: fill === undefined ? null : css(fill.color) }).toEqual(chromeText);
           const compared: string[] = [];
           for (const n of capture.nodes) {
             if (!n.hasBox || n.kind === 'line' || !['d', 't', 'k'].includes(n.id)) continue;
@@ -78,12 +86,48 @@ describe('a modal <dialog> and its ::backdrop, the host presenting the top layer
           expect(compared.sort()).toEqual(['d', 'k', 't']);
           expect(absolute('d::backdrop')).toEqual({ x: 0, y: 0, width: env.viewport.width * dpr, height: env.viewport.height * dpr });
           const backdrop = program.nodes.find((n) => n.id === 'd::backdrop')?.writes.find((w) => w.kind === 'background-color') as { color: Rgba } | undefined;
-          const css = (x: Rgba): string => (x.alpha === 255 ? `rgb(${x.r}, ${x.g}, ${x.b})` : `rgba(${x.r}, ${x.g}, ${x.b}, ${Number((x.alpha / 255).toFixed(2))})`);
           expect(backdrop === undefined ? null : css(backdrop.color)).toBe(chromeBackdrop);
         });
       }
     });
   }
+
+  // A modal dialog's overflow is forced to auto, and native does not zoom a scroll container yet, so a dialog under zoom is refused
+  // with the effective zoom Chrome gives it, which it takes from its DOM ancestors though its box is the root's child.
+  describe('a dialog under zoom inherited from its DOM ancestors', () => {
+    let browser: Browser;
+    beforeAll(async () => {
+      browser = await launchChrome(1);
+    }, 120_000);
+    afterAll(async () => {
+      await browser?.close();
+    });
+    for (const [name, zoomCss] of [['the body at zoom 2', 'body { zoom: 2; }'], ['the body at zoom 2 and main at 1.5', 'body { zoom: 2; }\nmain { zoom: 1.5; }']] as const) {
+      it(`${name}: refused at Chrome's effective zoom, naming the scroll container`, async () => {
+        const html = doc(`${zoomCss}\ndialog { width: 100px; height: 50px; padding: 0; border: 0; margin: 0; inset: 0; }`, BODY);
+        let chromeZoom = 0;
+        await captureFixture(browser, 'top-layer-dialog-zoom', html, ENVIRONMENT, [], async (page) => {
+          chromeZoom = await page.evaluate(() => {
+            const d = document.querySelector('dialog') as HTMLDialogElement;
+            d.showModal();
+            return (d as HTMLElement & { currentCSSZoom: number }).currentCSSZoom;
+          });
+        });
+        expect(chromeZoom).toBeGreaterThan(1);
+        const errors = compileFor(html, true).diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
+        expect(errors).toContain(`<dialog> d is laid out at zoom ${chromeZoom} and overflow-x: auto makes it a scroll container, which native does not zoom yet (ZOOM)`);
+      });
+    }
+  });
+
+  it('refuses an em the dialog inherits through a DOM ancestor with its own font size, as for a box in place', () => {
+    const css = 'main { font-size: 4vw; letter-spacing: 0.1em; }\n.s { font-size: 20px; }';
+    const inherited = (tag: string): string[] =>
+      compileFor(doc(css, `<main data-dragon-id="m"><section data-dragon-id="s" class="s"><${tag} data-dragon-id="d">Text</${tag}></section></main>`), true)
+        .diagnostics.filter((d) => d.severity === 'error' && d.message.includes('inherits an em')).map((d) => d.message);
+    expect(inherited('div')).toEqual(['letter-spacing on <div> d inherits an em an ancestor took of a font-size that follows the viewport, which the native targets do not resolve yet']);
+    expect(inherited('dialog')).toEqual(['letter-spacing on <dialog> d inherits an em an ancestor took of a font-size that follows the viewport, which the native targets do not resolve yet']);
+  });
 
   it('refuses <dialog> when the host does not present the top layer, naming why', () => {
     const compiled = compileFor(doc('', BODY), false);

@@ -616,11 +616,12 @@ function placeInTopLayer(props: Map<Longhand, ResolvedValue>): void {
  * css-position-4 §3: a <dialog> shown modal leaves its place for the top layer, which is laid out against the initial containing
  * block and painted after the root's contents: each dialog becomes one of the root's last children, after its ::backdrop box, in
  * document order (the order a page opening them top to bottom gives). Their values were computed in place, inheriting from their
- * DOM parents, as Chrome computes them. A dialog that is display: none, or inside a display: none element, stays in place.
+ * DOM parents, as Chrome computes them, and their effective zoom follows those parents too (topLayerAncestorsOf). A dialog that is display: none, or inside a display: none element, stays in place.
  */
 function liftTopLayer(root: ResolvedElement): void {
   const lifted: ResolvedElement[] = [];
-  const walk = (el: ResolvedElement): void => {
+  const walk = (el: ResolvedElement, ancestors: readonly ResolvedElement[]): void => {
+    const path = [...ancestors, el];
     const kids = el.children as (ResolvedElement | ResolvedText)[];
     for (let i = 0; i < kids.length; i++) {
       const k = kids[i] as ResolvedElement | ResolvedText;
@@ -633,13 +634,13 @@ function liftTopLayer(root: ResolvedElement): void {
         if (at < 0) throw new Error(`${k.element.address}: a dialog without its ::backdrop box`);
         const backdrop = own.splice(at, 1)[0] as ResolvedElement;
         lifted.push(backdrop, k);
-        enterTopLayer(backdrop);
-        enterTopLayer(k);
+        enterTopLayer(backdrop, [...path, k]);
+        enterTopLayer(k, path);
       }
-      walk(k);
+      walk(k, path);
     }
   };
-  walk(root);
+  walk(root, []);
   (root.children as (ResolvedElement | ResolvedText)[]).push(...lifted);
 }
 

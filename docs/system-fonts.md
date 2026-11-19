@@ -42,13 +42,15 @@ a test reads the runtime's files to check the list. Helvetica has a third uprigh
   overrides). system.img is a GPT disk whose `super` partition holds liblp logical partitions; Dragon reads the `system` partition's
   ext4 file system (packages/parity/src/system-fonts/android-image.ts) for `/system/etc/fonts.xml` and `/system/fonts/*`, caching
   each file with its SHA-256 under `node_modules/.cache/dragon-system-fonts`. Text is shaped with Dragon's HarfBuzz on the font file at
-  the instance fonts.xml names.
+  the instance fonts.xml names. The tests check each glyph's x against Paint's within each word only: Minikin shapes word by word, so
+  across a space Paint's x is not what Chrome draws (Chrome's run widths are checked instead).
 
 ## Safari's rules Dragon follows on iOS
 
 - **Spaces**: a space gets the font's own space advance, dropping kerning Core Text puts on the space glyph (Times New Roman and
   Helvetica regular otherwise differ by up to 0.506 px). The tests check Dragon against this rule (`spaceRuleWidth` in
-  ios-coretext.json, computed from Core Text), not against Safari. The Safari widths of Times New Roman and Helvetica the rule was
+  ios-coretext.json, computed from Core Text), not against Safari, and each glyph's x against Core Text's x shifted by the rule
+  from each space on. The Safari widths of Times New Roman and Helvetica the rule was
   derived from are not committed. The one committed Safari width the rule changes is an author font's: Lato Regular at 18 px,
   "Lato for the body, regular weight", 257.193 CSS px in Safari (packages/parity/test/markless-web-font.test.ts), which is the
   rule's width; Core Text's own line width is 256.824.

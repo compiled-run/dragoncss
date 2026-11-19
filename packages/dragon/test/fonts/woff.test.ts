@@ -204,7 +204,7 @@ describe('WOFF 1.0', () => {
 });
 
 /** A WOFF2 file of the given tables, all untransformed except as flagged, with the header's lengths filled in. */
-function woff2Of(tables: readonly { tag: string; data: Uint8Array; flags?: number; transformLength?: number }[], flavor = 0x00010000): Uint8Array {
+function woff2Of(tables: readonly { tag: string; data: Uint8Array; flags?: number; transformLength?: number; origLength?: number }[], flavor = 0x00010000): Uint8Array {
   const base128 = (v: number): number[] => {
     const out = [v & 0x7f];
     for (v = Math.floor(v / 128); v > 0; v = Math.floor(v / 128)) out.unshift((v & 0x7f) | 0x80);
@@ -214,7 +214,7 @@ function woff2Of(tables: readonly { tag: string; data: Uint8Array; flags?: numbe
   for (const t of tables) {
     dir.push(t.flags ?? 0x3f);
     if (((t.flags ?? 0x3f) & 0x3f) === 0x3f) dir.push(...[...t.tag].map((c) => c.charCodeAt(0)));
-    dir.push(...base128(t.data.length));
+    dir.push(...base128(t.origLength ?? t.data.length));
     if (t.transformLength !== undefined) dir.push(...base128(t.transformLength));
   }
   const stream = new Uint8Array(brotliCompressSync(Buffer.concat(tables.map((t) => t.data))));
@@ -225,10 +225,48 @@ function woff2Of(tables: readonly { tag: string; data: Uint8Array; flags?: numbe
   d.setUint32(4, flavor);
   d.setUint32(8, length);
   d.setUint16(12, tables.length);
+  d.setUint32(16, Math.max(length, tables.reduce((n, t) => n + (((t.origLength ?? t.data.length) + 3) & ~3), 12 + 16 * tables.length)));
   d.setUint32(20, stream.length);
   out.set(dir, 48);
   out.set(stream, 48 + dir.length);
   return out;
+}
+
+/** The directory entries and stream bytes of a WOFF2 file, in directory order, as woff2Of takes them. */
+function woff2Tables(file: Uint8Array): { tag: string; data: Uint8Array; flags: number; origLength: number; transformLength?: number }[] {
+  const d = new DataView(file.buffer, file.byteOffset, file.byteLength);
+  let p = 48;
+  const base128 = (): number => {
+    let v = 0;
+    for (;;) {
+      const x = file[p++] as number;
+      v = v * 128 + (x & 0x7f);
+      if ((x & 0x80) === 0) return v;
+    }
+  };
+  const known = [
+    'cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'post', 'cvt ', 'fpgm', 'glyf', 'loca', 'prep', 'CFF ', 'VORG', 'EBDT',
+    'EBLC', 'gasp', 'hdmx', 'kern', 'LTSH', 'PCLT', 'VDMX', 'vhea', 'vmtx', 'BASE', 'GDEF', 'GPOS', 'GSUB', 'EBSC', 'JSTF', 'MATH',
+    'CBDT', 'CBLC', 'COLR', 'CPAL', 'SVG ', 'sbix', 'acnt', 'avar', 'bdat', 'bloc', 'bsln', 'cvar', 'fdsc', 'feat', 'fmtx', 'fvar',
+    'gvar', 'hsty', 'just', 'lcar', 'mort', 'morx', 'opbd', 'prop', 'trak', 'Zapf', 'Silf', 'Glat', 'Gloc', 'Feat', 'Sill',
+  ];
+  const entries = Array.from({ length: d.getUint16(12) }, () => {
+    const flags = file[p++] as number;
+    const explicit = (flags & 0x3f) === 0x3f;
+    const tag = explicit ? String.fromCharCode(...file.subarray(p, p + 4)) : (known[flags & 0x3f] as string);
+    if (explicit) p += 4;
+    const origLength = base128();
+    const version = flags >> 6;
+    const transformed = tag === 'glyf' || tag === 'loca' ? version === 0 : version !== 0;
+    return { tag, flags, origLength, ...(transformed ? { transformLength: base128() } : {}) };
+  });
+  const stream = new Uint8Array(brotliDecompressSync(file.subarray(p, p + d.getUint32(20))));
+  let at = 0;
+  return entries.map((e) => {
+    const n = e.transformLength ?? e.origLength;
+    at += n;
+    return { ...e, data: stream.subarray(at - n, at) };
+  });
 }
 
 describe('malformed or unsupported WOFF2 is refused by name', () => {
@@ -267,17 +305,20 @@ describe('malformed or unsupported WOFF2 is refused by name', () => {
     bumped[49] = 0x80;
     bumped.set(zero.subarray(49), 50);
     new DataView(bumped.buffer).setUint32(8, bumped.length);
+    new DataView(bumped.buffer).setUint32(16, bumped.length);
     expect(refusal(bumped)).toEqual({ kind: 'malformed-container', container: 'woff2', reason: 'a UIntBase128 has a leading zero' });
     expect(refusal(woff2Of([{ tag: 'name', data: new Uint8Array(4), flags: 5 }, { tag: 'name', data: new Uint8Array(4) }]))).toEqual({ kind: 'malformed-container', container: 'woff2', reason: 'table name is listed twice' });
   });
 
-  it('glyf transformed without loca, and a transformed hmtx with invalid flags', () => {
+  it('glyf transformed without loca, hmtx transformed without glyf, and a transformed hmtx with invalid flags', () => {
     expect(refusal(woff2Of([{ tag: 'glyf', data: new Uint8Array(4), flags: 10, transformLength: 4 }]))).toMatchObject({ kind: 'malformed-container', container: 'woff2', reason: 'the font has only one of glyf and loca' });
     const ttf = vendorBytes('Lato/Lato-Regular.ttf');
     const f = font(ttf);
     const tables = ['head', 'hhea', 'maxp', 'glyf', 'loca'].map((tag) => ({ tag, data: tableBytes(ttf, f, tag), ...(tag === 'glyf' || tag === 'loca' ? { flags: 0x3f | 0xc0 } : {}) }));
-    const bad = woff2Of([...tables, { tag: 'hmtx', data: new Uint8Array([0x04]), flags: 3 | 0x40, transformLength: 1 }]);
-    expect(refusal(bad)).toEqual({ kind: 'malformed-container', container: 'woff2', reason: 'the hmtx transform flags 4 are invalid' });
+    const untransformedGlyf = woff2Of([...tables, { tag: 'hmtx', data: new Uint8Array([0x03]), flags: 3 | 0x40, transformLength: 1 }]);
+    expect(refusal(untransformedGlyf)).toEqual({ kind: 'malformed-container', container: 'woff2', reason: 'hmtx is transformed but glyf is not' });
+    const transformed = woff2Tables(fixture('Lato-Regular.hmtx.woff2')).map((t) => (t.tag === 'hmtx' ? { ...t, data: t.data.map((x, i) => (i === 0 ? 0x04 : x)) } : t));
+    expect(refusal(woff2Of(transformed))).toEqual({ kind: 'malformed-container', container: 'woff2', reason: 'the hmtx transform flags 4 are invalid' });
   });
 
   it('a collection is unsupported-container collection; without Brotli a WOFF2 is no-brotli', () => {

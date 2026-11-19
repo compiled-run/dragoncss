@@ -100,20 +100,35 @@ export function readSfnt(bytes: Uint8Array): SfntResult {
 
 function parse(d: DataView): SfntFont {
   const numTables = d.getUint16(4);
+  const dataStart = 12 + 16 * numTables;
+  if (dataStart > d.byteLength) throw new Malformed('the table directory runs past the end of the file');
   const tables = new Map<string, { offset: number; length: number }>();
+  // As Chrome 145's sanitizer judges the directory: each table 4-byte aligned after the directory, not empty, inside the file and
+  // overlapping no other; a tag listed twice takes its last entry.
+  const bounds: [number, number][] = [];
   for (let i = 0; i < numTables; i++) {
     const rec = 12 + i * 16;
     const offset = d.getUint32(rec + 8);
     const length = d.getUint32(rec + 12);
+    if (offset % 4 !== 0) throw new Malformed(`table ${tag(d, rec)} does not start on a 4-byte boundary`);
+    if (offset < dataStart || offset >= d.byteLength) throw new Malformed(`table ${tag(d, rec)} starts outside the table data`);
+    if (length === 0) throw new Malformed(`table ${tag(d, rec)} is empty`);
     if (offset + length > d.byteLength) throw new Malformed(`table ${tag(d, rec)} runs past the end of the file`);
+    bounds.push([offset, 1], [offset + length, 0]);
     tables.set(tag(d, rec), { offset, length });
   }
+  let open = 0;
+  for (const [, starts] of bounds.sort((x, y) => x[0] - y[0] || x[1] - y[1])) if ((open += starts === 1 ? 1 : -1) > 1) throw new Malformed('two tables overlap');
+  // Chrome 145's sanitizer refuses a font without any of these (measured: a WOFF of Lato without each table).
+  for (const t of ['cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'post']) if (!tables.has(t)) throw new Malformed(`no ${t} table`);
+  if (!tables.has('CFF ') && !tables.has('CFF2') && !(tables.has('glyf') && tables.has('loca'))) throw new Malformed('no glyf and loca, CFF or CFF2 table');
   const need = (name: string): number => {
     const t = tables.get(name);
     if (t === undefined) throw new Malformed(`no ${name} table`);
     return t.offset;
   };
   const h = need('head');
+  if (d.getUint32(h + 12) !== 0x5f0f3cf5) throw new Malformed('the head magicNumber is not 0x5F0F3CF5');
   const head: Head = {
     unitsPerEm: d.getUint16(h + 18),
     xMin: d.getInt16(h + 36),
