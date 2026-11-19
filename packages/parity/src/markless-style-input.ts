@@ -7,8 +7,10 @@ import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, TREE_SCHEMA_REVISION } from 'dragon';
+import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
+import { PLAN_HEIGHTS } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
@@ -476,6 +478,38 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
   const parsed = parseMarklessStyleInput(inputText);
   if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
+  return exportMarkless(parsed, inputText, inputPath, fonts, mode, at, plan);
+}
+
+/**
+ * What makes a target's page depend on the viewport's height, each named: an @media feature that reads it, and each node whose
+ * frame differs when the page is laid out at `width` and each of `heights` and PLAN_HEIGHTS' (vh units, percentage heights that
+ * resolve against the viewport, text sized by the height). Empty when the page depends on the width alone.
+ */
+export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[], mode: MarklessFonts, t: NativeStyleTarget, width: number, dpr: number, heights: readonly number[]): string[] {
+  const text = JSON.stringify(parsed);
+  const path = `${parsed.component}.native-style-input.json`;
+  const out = new Set<string>();
+  const o = compileMarkless(parsed, text, path, fonts, mode).styles.targets[t];
+  for (const a of o?.kind === 'emitted' ? o.bands?.table.atoms ?? [] : []) if (HEIGHT_FEATURES.has(a.feature)) out.add(`@media (${a.feature})`);
+  const laidOut = [...new Set([...heights, PLAN_HEIGHTS.min, PLAN_HEIGHTS.max])].map((height) => {
+    const device = { viewport: { width, height }, dpr };
+    const x = exportMarkless(parsed, text, path, fonts, mode, { ios: device, android: device }, false).exported.targets[t];
+    if (x === undefined) return fail(`the export has no ${t} target`);
+    return x.assignments.map((a) => new Map(a.nodes.map((n) => [n.id, JSON.stringify(n.frame)])));
+  });
+  const [first, ...rest] = laidOut;
+  for (const other of rest) for (const [i, nodes] of (first ?? []).entries()) {
+    const there = other[i];
+    for (const [id, frame] of nodes) if (there?.get(id) !== frame) out.add(`node ${id}`);
+  }
+  return [...out];
+}
+
+/** The media features whose value changes with the viewport's height. */
+const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
+
+function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
   const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
   const rekey = cellKey(parsed);

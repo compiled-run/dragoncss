@@ -13,7 +13,7 @@ import { BAND_KEY } from 'dragon';
 import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme, withCleanup } from './markless-style-compare.ts';
 import type { BoxProblem, CompareRow, DocumentNode, RootProbe } from './markless-style-compare.ts';
 import type { MarklessAtSize, MarklessExportAssignment, MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
-import { checkMarklessExport, marklessCompiledTargets, schemeOf } from './markless-style-input.ts';
+import { checkMarklessExport, marklessCompiledTargets, marklessHeightDependence, schemeOf } from './markless-style-input.ts';
 import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
@@ -67,8 +67,12 @@ export type NativeLayout = { readonly assignment: number; readonly viewport: { r
  */
 export type WebColumnSize = { readonly kind: 'proof'; readonly at?: MarklessAtSize } | { readonly kind: 'scaled' } | { readonly kind: 'native'; readonly layout: NativeLayout };
 
-/** A size the compared boxes were laid out at: `by` names who laid them out, `fix` what to do when the browser's page is another size. */
-export type LaidOutAt = { readonly viewport: { readonly width: number; readonly height: number }; readonly dpr: number; readonly by: string; readonly fix: string };
+/**
+ * A size the compared boxes were laid out at: `by` names who laid them out, `fix` what to do when the browser's page is another size.
+ * `widthOnly`: the page was refused unless its layout reads the width alone, so the browser's height is not compared (a phone's page
+ * area is not its browser's 100vh: on an iPhone 17 Safari's 100vh is 754 CSS px and an app's page area 778).
+ */
+export type LaidOutAt = { readonly viewport: { readonly width: number; readonly height: number }; readonly dpr: number; readonly by: string; readonly fix: string; readonly widthOnly?: boolean };
 
 /**
  * How one assignment's browser boxes are compared: `browserDpr` is the browser's ratio; with `anySize` the browser laid the page out
@@ -117,15 +121,15 @@ const PROBLEM: { readonly [K in BoxProblem]: string } = {
 
 /**
  * Refuses a browser whose page is not the one compared with for this assignment: another ratio, width or height (100vh and the
- * viewport's height, which vh units, percentage heights and a modal dialog read) than `laid` (the export's own, unless given; null
- * when the compared frames are scaled to the browser's size), the other colour-scheme preference from the one the assignment's band
+ * viewport's height, which vh units, percentage heights and a modal dialog read; not with `widthOnly`) than `laid` (the export's own,
+ * unless given; null when the compared frames are scaled to the browser's size), the other colour-scheme preference from the one the assignment's band
  * reads, or a root used colour scheme other than the export's.
  */
 export function checkBrowserPage(target: WebColumnDevice['target'], t: Pick<ExportTarget, 'viewport' | 'dpr' | 'bands'>, assignment: MarklessExportAssignment, m: Pick<Measured, 'dpr' | 'innerWidth' | 'probe'>, index: number, laid: LaidOutAt | null = { viewport: t.viewport, dpr: t.dpr, by: 'the export', fix: "use the export's proof device" }): void {
   if (laid !== null) {
     if (Math.abs(m.dpr - laid.dpr) > 1e-6 || Math.abs(m.innerWidth - laid.viewport.width) > 1) throw new Error(`${target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, ${laid.by} ${laid.viewport.width} at ${laid.dpr}x; ${laid.fix}`);
     const { vh, viewportHeight, innerHeight } = m.probe;
-    if (Math.abs(vh - laid.viewport.height) > 1 || Math.abs(viewportHeight - laid.viewport.height) > 1) throw new Error(`${target}: the browser lays out 100vh at ${vh} and its viewport at ${viewportHeight} CSS px tall (innerHeight ${innerHeight}), ${laid.by} at ${laid.viewport.height}; ${laid.fix}`);
+    if (laid.widthOnly !== true && (Math.abs(vh - laid.viewport.height) > 1 || Math.abs(viewportHeight - laid.viewport.height) > 1)) throw new Error(`${target}: the browser lays out 100vh at ${vh} and its viewport at ${viewportHeight} CSS px tall (innerHeight ${innerHeight}), ${laid.by} at ${laid.viewport.height}; ${laid.fix}`);
   }
   const want = wantScheme(t, assignment);
   if (m.probe.prefersDark !== (want === 'dark')) throw new Error(`${target} assignment ${index}: the browser prefers ${m.probe.prefersDark ? 'dark' : 'light'}, and this assignment is laid out for ${want}; set the device's appearance to ${want}`);
@@ -202,8 +206,12 @@ export async function webColumn(input: MarklessStyleInput, given: NativeStyleExp
   const native = size.kind === 'native' ? size.layout : undefined;
   const anySize = size.kind !== 'proof';
   if (native !== undefined && t.assignments[native.assignment] === undefined) throw new Error(`the phone drew assignment ${native.assignment}, which the export's ${device.target} target does not have`);
+  if (native !== undefined) {
+    const reads = marklessHeightDependence(input, fonts, 'system', device.target, native.viewport.width, native.scale, [t.viewport.height, native.viewport.height]);
+    if (reads.length > 0) throw new Error(`${device.target}: the page's layout depends on the viewport's height through ${reads.join(', ')}; a phone's page area is not its browser's 100vh, so a phone's layout is compared only for a page laid out by its width`);
+  }
   const laid: LaidOutAt | null | undefined = size.kind === 'scaled' ? null
-    : native !== undefined ? { viewport: native.viewport, dpr: native.scale, by: 'the phone', fix: 'measure on the device the phone drew on' }
+    : native !== undefined ? { viewport: native.viewport, dpr: native.scale, by: 'the phone', fix: 'measure on the device the phone drew on', widthOnly: true }
     : at !== undefined ? { viewport: t.viewport, dpr: t.dpr, by: 'the export laid out at size', fix: "lay the export out at this device's own size" }
     : undefined;
   const results = new Map<number, (m: Measured | Error) => void>();

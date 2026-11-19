@@ -4,7 +4,7 @@ import { BAND_KEY } from 'dragon';
 import type { Browser, BrowserContext } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { launchChrome } from '../src/chrome.ts';
-import { marklessStyleExport, parseMarklessStyleInput, schemeOf } from '../src/markless-style-input.ts';
+import { marklessHeightDependence, marklessStyleExport, parseMarklessStyleInput, schemeOf } from '../src/markless-style-input.ts';
 import type { MarklessStyleExport } from '../src/markless-style-input.ts';
 import type { WebColumnDevice, WebColumnHost } from '../src/markless-web-column.ts';
 import { withCleanup } from '../src/markless-style-compare.ts';
@@ -34,9 +34,9 @@ type Fake = { readonly host: WebColumnHost; readonly log: string[]; readonly con
 
 /**
  * A device whose browser takes `lag` page loads after an appearance change to prefer the new scheme (never, for Infinity), and
- * whose command `fail` names throws.
+ * whose command `fail` names throws; its browser shows `viewport` (the export's, unless given).
  */
-function fakeDevice(device: WebColumnDevice, start: string, lag: number, fail: (args: string) => boolean = () => false): Fake {
+function fakeDevice(device: WebColumnDevice, start: string, lag: number, fail: (args: string) => boolean = () => false, viewport?: { readonly width: number; readonly height: number }): Fake {
   const log: string[] = [];
   const contexts: BrowserContext[] = [];
   let appearance = start;
@@ -64,7 +64,7 @@ function fakeDevice(device: WebColumnDevice, start: string, lag: number, fail: (
     log.push(`open ${new URL(url).searchParams.get('i')}`);
     const prefers = loads++ < lag ? previous : appearance;
     void (async () => {
-      const context = await browser.newContext({ viewport: t.viewport, deviceScaleFactor: t.dpr });
+      const context = await browser.newContext({ viewport: viewport ?? t.viewport, deviceScaleFactor: t.dpr });
       contexts.push(context);
       const page = await context.newPage();
       await page.emulateMedia({ colorScheme: dark(prefers) ? 'dark' : 'light' });
@@ -72,6 +72,23 @@ function fakeDevice(device: WebColumnDevice, start: string, lag: number, fail: (
     })();
   };
   return { host: { run, open, screenshot: () => {}, wait: async () => {} }, log, contexts, appearance: () => appearance };
+}
+
+/** The boxes a phone draws for an export's assignment, in points or dp from the page's top left: the export's own frames. */
+function phoneBoxes(e: MarklessStyleExport, target: 'ios' | 'android', index: number): Map<string, { x: number; y: number; width: number; height: number }> {
+  const t = e.targets[target]!;
+  const byId = new Map(t.assignments[index]!.nodes.map((n) => [n.id, n]));
+  const absolute = (id: string): { x: number; y: number } => {
+    const n = byId.get(id)!;
+    const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
+    return { x: p.x + n.frame!.x, y: p.y + n.frame!.y };
+  };
+  return new Map([...byId.values()].flatMap((n) => {
+    const f = n.frame;
+    if (f === null) return [];
+    const at = absolute(n.id);
+    return [[n.id, { x: at.x / t.dpr, y: at.y / t.dpr, width: f.width / t.dpr, height: f.height / t.dpr }] as const];
+  }));
 }
 
 const wants = (target: 'ios' | 'android'): ('light' | 'dark')[] => exported.targets[target]!.assignments.map((a) => schemeOf(exported.targets[target]!.bands, a.values[BAND_KEY] as number));
@@ -108,14 +125,7 @@ describe('the web column sets the device\'s appearance per assignment', () => {
   it('switches and restores the appearance in the scaled and native size modes too, measuring only the assignment the phone drew', async () => {
     const t = exported.targets.android!;
     const dark = wants('android').indexOf('dark');
-    const byId = new Map(t.assignments[dark]!.nodes.map((n) => [n.id, n]));
-    const absolute = (id: string): { x: number; y: number; width: number; height: number } => {
-      const n = byId.get(id)!;
-      const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
-      return { x: p.x + n.frame!.x, y: p.y + n.frame!.y, width: n.frame!.width, height: n.frame!.height };
-    };
-    const f = absolute('h0');
-    const boxes = new Map([['h0', { x: f.x / t.dpr, y: f.y / t.dpr, width: f.width / t.dpr, height: f.height / t.dpr }]]);
+    const boxes = phoneBoxes(exported, 'android', dark);
     for (const size of [{ kind: 'scaled' }, { kind: 'native', layout: { assignment: dark, viewport: t.viewport, scale: t.dpr, boxes } }] as const) {
       const fake = fakeDevice(ANDROID, 'no', 1);
       try {
@@ -197,5 +207,45 @@ describe('the web column sets the device\'s appearance per assignment', () => {
       throw original;
     })).rejects.toBe(original);
     expect(ran).toEqual(['b', 'a']);
+  });
+});
+
+describe('a phone\'s layout is compared by width alone', () => {
+  // Text only where Chrome on this computer draws none: its system fonts are not the phone's.
+  const page = (css: string, text = false): string => JSON.stringify({ version: 'markless.native-style-input/0', component: 'Page', nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'box' } }, ...(text ? [{ kind: 'text', id: 't0', parent: 'h0', text: 'Hello' }] : [])], css, states: [] });
+  const dependence = (css: string): string[] => marklessHeightDependence(parseMarklessStyleInput(page(css, true)), [], 'system', 'ios', 402, 3, [778, 754]);
+
+  it('names what makes a page\'s layout depend on the viewport\'s height, from the compile', () => {
+    expect(dependence('.box { height: 40px; width: 50%; }')).toEqual([]);
+    expect(dependence('.box { height: 50vh; }')).toEqual(['node html', 'node body', 'node h0']);
+    expect(dependence('html, body { height: 100%; } .box { height: 50%; }')).toEqual(['node html', 'node body', 'node h0']);
+    expect(dependence('.box { font-size: 3vh; }')).toContain('node t0');
+    expect(dependence('@media (min-height: 600px) { .box { height: 60px; } }')).toEqual(['@media (height)']);
+    expect(dependence('@media (orientation: landscape) { .box { height: 60px; } }')).toEqual(['@media (orientation)']);
+  });
+
+  it('passes a width-only page drawn 778 points tall against a browser whose 100vh is 754 CSS px (an iPhone 17\'s app and Safari)', async () => {
+    const text = page('.box { height: 40px; width: 50%; }');
+    const e: MarklessStyleExport = { ...marklessStyleExport(text, 'web-column.json').exported, fontMode: 'system' };
+    const t = e.targets.ios!;
+    expect(t.viewport).toEqual({ width: 402, height: 778 });
+    const fake = fakeDevice(IOS, 'light', 0, () => false, { width: 402, height: 754 });
+    try {
+      const r = await webColumn(parseMarklessStyleInput(text), e, IOS, [], undefined, { kind: 'native', layout: { assignment: 0, viewport: t.viewport, scale: t.dpr, boxes: phoneBoxes(e, 'ios', 0) } }, fake.host);
+      expect(r.size.vh).toBe(754);
+      expect(r.compared).toBeGreaterThan(0);
+      expect(r.rows.filter((x) => !x.pass)).toEqual([]);
+    } finally {
+      for (const c of fake.contexts) await c.close();
+    }
+  }, 120_000);
+
+  it('refuses a page whose layout reads the viewport\'s height by name, before touching the device', async () => {
+    const text = page('.box { height: 50vh; }');
+    const e: MarklessStyleExport = { ...marklessStyleExport(text, 'web-column.json').exported, fontMode: 'system' };
+    const t = e.targets.ios!;
+    const fake = fakeDevice(IOS, 'light', 0);
+    await expect(webColumn(parseMarklessStyleInput(text), e, IOS, [], undefined, { kind: 'native', layout: { assignment: 0, viewport: t.viewport, scale: t.dpr, boxes: phoneBoxes(e, 'ios', 0) } }, fake.host)).rejects.toThrow('ios: the page\'s layout depends on the viewport\'s height through node html, node body, node h0; a phone\'s page area is not its browser\'s 100vh');
+    expect(fake.log).toEqual([]);
   });
 });

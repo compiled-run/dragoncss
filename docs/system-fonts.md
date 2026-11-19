@@ -85,8 +85,12 @@ iOS `kind: "system"` is `UIFont.systemFont(ofSize:weight:)` at that `UIFont.Weig
   browser lays the same document out at, in device px. It compares only an export whose `fontMode` is `system`, and refuses a
   browser whose ratio, width, height (100vh and the viewport's height), colour-scheme preference (the one each assignment's band
   reads) or root used colour scheme is not the export's. `markless:any-size` and `markless:native-check` check the size each
-  compares at: an export laid out at the device's own size against that size, a phone's layout dump against the phone's viewport
-  and ratio; frames scaled from the proof device to the browser's size are checked for the preference and used scheme only.
+  compares at: an export laid out at the device's own size against that size, a phone's layout dump against the phone's width and
+  ratio only (an app's page area is not the browser's 100vh: 778 against 754 CSS px on an iPhone 17), so `markless:native-check`
+  refuses, by name, a page whose layout reads the viewport's height (an @media height, orientation or aspect-ratio feature, or a
+  box that moves or resizes when the compile lays the page out at another height); frames scaled from the proof device to the
+  browser's size are checked for the preference and used scheme only. Before each assignment the device's appearance is set to the
+  scheme its band reads, in every mode, and restored afterwards.
 - **Chrome on the Mac** (`markless:style-compare`): the font mode is the export's `fontMode` (`--fonts`, when given, must match
   it). For Android, each system face's file must be the one the image's fonts.xml resolves for it, and Chrome loads those files as
   web fonts. Each face's `@font-face` sets `font-variation-settings` to every axis of the instance the provider shapes (fonts.xml's
