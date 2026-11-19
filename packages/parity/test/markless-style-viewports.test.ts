@@ -1,7 +1,8 @@
 // A tree laid out where it is not the page: a system sheet's content area, sized per target by the input's `viewports`.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { marklessStyleExport } from '../src/markless-style-input.ts';
+import { marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
+import { webColumn } from '../src/markless-web-column.ts';
 import { EXPORT_DEVICES } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -31,5 +32,10 @@ describe('viewports in a Markless style input', () => {
     expect(() => marklessStyleExport(withViewports({ ios: SHEET.ios }), PATH)).toThrow(/one size per target/);
     expect(() => marklessStyleExport(withViewports({ ...SHEET, android: { width: 0, height: 10 } }), PATH)).toThrow(/viewports.android is not a \{ width, height \} of positive whole CSS px/);
     expect(() => marklessStyleExport(withViewports({ ...SHEET, android: { width: 411.5, height: 371 } }), PATH)).toThrow(/viewports.android is not a/);
+  });
+
+  it('the web column refuses an export laid out at another size than the input asks for, before it opens the device', async () => {
+    await expect(webColumn(parseMarklessStyleInput(withViewports(SHEET)), page, { target: 'android', serial: 'no-device' })).rejects.toThrow('ios: viewport {"width":402,"height":778} at 3x is not the input\'s {"width":386,"height":418} at 3x');
+    await expect(webColumn(parseMarklessStyleInput(TEXT), sheet, { target: 'android', serial: 'no-device' })).rejects.toThrow('ios: viewport {"width":386,"height":418} at 3x is not the input\'s {"width":402,"height":778} at 3x');
   });
 });

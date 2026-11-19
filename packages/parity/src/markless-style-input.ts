@@ -11,8 +11,8 @@ import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
-import type { ExportAssignment, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
-import { EXPORT_DEVICES, exportBands, nativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
 import { systemFontsFor } from './system-fonts/provider.ts';
 
@@ -409,11 +409,15 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   } as unknown as FrontEndResult;
 }
 
+/** The device each target lays the input out on: the export devices, at the input's viewports when it gives them. */
+export const marklessDevices = (parsed: MarklessStyleInput): { readonly [T in NativeStyleTarget]: ExportDevice } =>
+  parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
+
 /** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
 function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: typeof EXPORT_DEVICES } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
-  const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
+  const devices = marklessDevices(parsed);
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
@@ -432,12 +436,15 @@ function cellKey(parsed: MarklessStyleInput): (key: string) => string {
   };
 }
 
-/** What the input compiles to per target, keyed as the export keys it: the states and the @media bands. */
-export type MarklessCompiledTarget = Pick<ExportTarget, 'states' | 'bands'>;
+/**
+ * What the input compiles to per target, keyed as the export keys it: the states, the @media bands, the device it is laid out on,
+ * and its state machine: each assignment's values, the initial one and the setter transitions (indices into `assignments`).
+ */
+export type MarklessCompiledTarget = Pick<ExportTarget, 'states' | 'bands' | 'viewport' | 'dpr' | 'initial' | 'next'> & { readonly assignments: readonly Readonly<Record<string, unknown>>[] };
 
 /** The targets the input compiles to, compiled as marklessStyleExport compiles it with these font files in this font mode. */
 export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned'): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
-  const { styles } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode);
+  const { styles, devices } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode);
   const rekey = cellKey(parsed);
   const out: { [T in NativeStyleTarget]?: MarklessCompiledTarget } = {};
   for (const [t, o] of Object.entries(styles.targets) as [NativeStyleTarget, (typeof styles.targets)[NativeStyleTarget]][]) {
@@ -446,6 +453,11 @@ export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: reado
     out[t] = {
       states: o.program.states.map((s) => ({ key: rekey(s.key), domain: s.domain })),
       ...exportBands(o),
+      viewport: devices[t].viewport,
+      dpr: devices[t].dpr,
+      assignments: o.program.assignments.map((a) => Object.fromEntries(Object.entries(valuesOf(a.assignment)).map(([k, v]) => [rekey(k), v]))),
+      initial: o.program.initial,
+      next: o.program.next,
     };
   }
   return out;

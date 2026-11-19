@@ -210,6 +210,30 @@ describe('the export a comparison reads', () => {
     await expect(compareMarklessExport(parseMarklessStyleInput(appText), relabelled)).rejects.toThrow('ios: bands');
   });
 
+  it('refuses a target laid out at another viewport or ratio than the input asks for, since Chrome lays out at the export\'s', async () => {
+    const box = (viewports?: unknown): string => JSON.stringify({ version: 'markless.native-style-input/0', component: 'Full', nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'full' } }], css: '.full { height: 100vh; width: 50vw; }', states: [], ...(viewports === undefined ? {} : { viewports }) });
+    const sheet = { ios: { width: 300, height: 200 }, android: { width: 300, height: 200 } };
+    const page = marklessStyleExport(box(), 'full.json').exported;
+    await expect(compareMarklessExport(parseMarklessStyleInput(box(sheet)), page)).rejects.toThrow('ios: viewport {"width":402,"height":778} at 3x is not the input\'s {"width":300,"height":200} at 3x');
+    const sized = marklessStyleExport(box(sheet), 'full.json').exported;
+    await expect(compareMarklessExport(parseMarklessStyleInput(box()), sized)).rejects.toThrow('ios: viewport {"width":300,"height":200} at 3x is not the input\'s {"width":402,"height":778} at 3x');
+    expect((await compareMarklessExport(parseMarklessStyleInput(box(sheet)), sized)).failed).toBe(0);
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, dpr: 2 })))).rejects.toThrow('ios: viewport {"width":402,"height":778} at 2x is not the input\'s {"width":402,"height":778} at 3x');
+  }, 60_000);
+
+  it('refuses a target whose initial assignment or state transitions are not what the input compiles to', async () => {
+    const liked = ios.assignments.findIndex((a) => a.values['state:liked'] === true);
+    expect(ios.assignments[ios.initial]!.values['state:liked']).toBe(false);
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, initial: liked })))).rejects.toThrow('ios: the initial assignment {"state:liked":true} is not the input\'s {"state:liked":false}');
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, initial: 7 })))).rejects.toThrow('ios: initial 7 is not an assignment');
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, next: t.next.map((row) => row.map((to) => to.map(() => liked))) })))).rejects.toThrow('ios: setting state:liked to false from {"state:liked":false} reaches {"state:liked":true}, where the input reaches {"state:liked":false}');
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, next: [] })))).rejects.toThrow('ios: next is not one row per assignment');
+  });
+
+  it('refuses an export of another component', async () => {
+    await expect(compareMarklessExport(input, { ...full, component: 'Other' })).rejects.toThrow('the export is of Other, not the input\'s ');
+  });
+
   it('reads an export file only when every field the comparison reads is well formed', () => {
     const text = JSON.stringify(full);
     expect(parseNativeStyleExport(text)).toEqual(full);

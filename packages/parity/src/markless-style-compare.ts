@@ -136,11 +136,15 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values, 
 
 
 /**
- * Refuses a target whose states, @media bands and assignments are not exactly what the input compiles to for that target, one
- * assignment per combination of the input's states and bands, since a band or assignment left out would never be compared.
+ * Refuses a target whose device, states, @media bands, assignments or state machine are not exactly what the input compiles to for
+ * that target, one assignment per combination of the input's states and bands, since a band or assignment left out would never be
+ * compared, and Chrome lays out at whatever viewport the target states.
  */
 export function checkCoverage(input: MarklessStyleInput, compiled: MarklessCompiledTarget | undefined, target: string, t: ExportTarget): void {
   if (compiled === undefined) throw new Error(`${target}: the input does not compile to this target`);
+  if (t.viewport.width !== compiled.viewport.width || t.viewport.height !== compiled.viewport.height || t.dpr !== compiled.dpr) {
+    throw new Error(`${target}: viewport ${JSON.stringify({ width: t.viewport.width, height: t.viewport.height })} at ${t.dpr}x is not the input's ${JSON.stringify({ width: compiled.viewport.width, height: compiled.viewport.height })} at ${compiled.dpr}x`);
+  }
   const banded = compiled.bands !== undefined;
   if (JSON.stringify(t.states) !== JSON.stringify(compiled.states)) throw new Error(`${target}: states ${JSON.stringify(t.states)} are not the input's states${banded ? ' and the band' : ''} ${JSON.stringify(compiled.states)}`);
   if (JSON.stringify(t.bands ?? null) !== JSON.stringify(compiled.bands ?? null)) throw new Error(`${target}: bands ${JSON.stringify(t.bands ?? null)} are not the bands the input's @media compiles to ${JSON.stringify(compiled.bands ?? null)}`);
@@ -158,13 +162,37 @@ export function checkCoverage(input: MarklessStyleInput, compiled: MarklessCompi
   extra.push(...t.assignments.map((a) => a.values).filter((v) => !wanted.has(keyOf(v))));
   const missing = want.filter((c) => !seen.has(keyOf(c)));
   if (missing.length > 0 || extra.length > 0) throw new Error(`${target}: the assignments are not one per combination of the input's states${banded ? ' and bands' : ''}: missing ${JSON.stringify(missing)}, extra or repeated ${JSON.stringify(extra)}`);
+  const shown = (values: Values): string => JSON.stringify(Object.fromEntries(keys.map((k) => [k, values[k]])));
+  const at = (i: unknown): Values | undefined => (Number.isInteger(i) ? t.assignments[i as number]?.values : undefined);
+  const initial = at(t.initial);
+  if (initial === undefined) throw new Error(`${target}: initial ${JSON.stringify(t.initial)} is not an assignment`);
+  const compiledInitial = compiled.assignments[compiled.initial] as Values;
+  if (keyOf(initial) !== keyOf(compiledInitial)) throw new Error(`${target}: the initial assignment ${shown(initial)} is not the input's ${shown(compiledInitial)}`);
+  if (!Array.isArray(t.next) || t.next.length !== t.assignments.length) throw new Error(`${target}: next is not one row per assignment`);
+  const compiledIndex = new Map(compiled.assignments.map((v, i) => [keyOf(v), i]));
+  const reached = (i: unknown, of: (i: number) => Values | undefined): string => {
+    if (i === -1) return 'no assignment';
+    const v = Number.isInteger(i) ? of(i as number) : undefined;
+    return v === undefined ? `${JSON.stringify(i ?? null)}, not an assignment` : shown(v);
+  };
+  for (const [i, a] of t.assignments.entries()) {
+    const j = compiledIndex.get(keyOf(a.values)) as number;
+    for (const [s, state] of compiled.states.entries()) {
+      for (const [v, value] of state.domain.entries()) {
+        const got = reached(t.next[i]?.[s]?.[v], at);
+        const wantTo = reached(compiled.next[j]?.[s]?.[v], (k) => compiled.assignments[k]);
+        if (got !== wantTo) throw new Error(`${target}: setting ${state.key} to ${JSON.stringify(value)} from ${shown(a.values)} reaches ${got}, where the input reaches ${wantTo}`);
+      }
+    }
+  }
 }
 
 /**
- * Refuses an export whose targets are not exactly the targets the input compiles to, and a target subset (`only`) naming a target
- * the input does not compile to: only the targets a caller names are left uncompared.
+ * Refuses an export of another component, or whose targets are not exactly the targets the input compiles to, and a target
+ * subset (`only`) naming a target the input does not compile to: only the targets a caller names are left uncompared.
  */
-export function checkTargets(exported: NativeStyleExport, compiled: { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget }, only: readonly string[] | null = null): void {
+export function checkTargets(input: MarklessStyleInput, exported: NativeStyleExport, compiled: { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget }, only: readonly string[] | null = null): void {
+  if (exported.component !== input.component) throw new Error(`the export is of ${exported.component}, not the input's ${input.component}`);
   const targetsOf = (o: object): string[] => Object.entries(o).filter(([, t]) => t !== undefined).map(([k]) => k).sort();
   const want = targetsOf(compiled);
   if (JSON.stringify(targetsOf(exported.targets)) !== JSON.stringify(want)) throw new Error(`the export's targets ${targetsOf(exported.targets).join(', ') || 'none'} are not the targets the input compiles to, ${want.join(', ')}`);
@@ -351,7 +379,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
   const rows: CompareRow[] = [];
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   const compiled = marklessCompiledTargets(input, fonts, mode);
-  checkTargets(exported, compiled, only);
+  checkTargets(input, exported, compiled, only);
   for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, t);
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined || (only !== null && !only.includes(target))) continue;

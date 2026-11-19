@@ -88,7 +88,7 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
   const t = exported.targets[device.target];
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
   const compiled = marklessCompiledTargets(input, fonts, 'system');
-  checkTargets(exported, compiled);
+  checkTargets(input, exported, compiled);
   for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   const results = new Map<number, (m: Measured) => void>();
