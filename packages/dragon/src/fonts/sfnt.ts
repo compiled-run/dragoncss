@@ -66,7 +66,7 @@ export type SfntFont = {
   readonly outlines: 'truetype' | 'cff' | 'cff2' | 'bitmap';
   /** An fvar table is present. */
   readonly variable: boolean;
-  /** The glyph a code point maps to through cmap (format 12 preferred, then 4); 0 when it has none. */
+  /** The glyph a code point maps to through the cmap subtable Chrome uses (readCmap); 0 when it has none. */
   glyphForCodePoint(codePoint: number): number;
   /** The advance width of a glyph in font units (hmtx). */
   advance(glyph: number): number;
@@ -153,7 +153,7 @@ function parse(d: DataView): SfntFont {
   const names = readNames(d, tables.get('name'));
   const outlines = kept.has('glyf') && kept.has('loca') ? 'truetype' : kept.has('CFF2') ? 'cff2' : kept.has('CFF ') ? 'cff' : 'bitmap';
   const variable = tables.has('fvar');
-  const cmap = readCmap(d, tables.get('cmap'));
+  const cmap = readCmap(d, tables.get('cmap'), os2);
   const hmtx = need('hmtx');
   const advance = (glyph: number): number => {
     const i = Math.min(glyph, hhea.numberOfHMetrics - 1);
@@ -257,55 +257,50 @@ function readNames(d: DataView, t: { offset: number; length: number } | undefine
 }
 
 /**
- * cmap: of the subtables Chrome's sanitizer keeps, format 12 (0-3, 0-4, 3-10; the last listed wins, as there), else the first
- * Unicode format 4 (0-0, 0-1, 0-3, 3-1; 3-1 and its 0-0 and 0-1 stand-ins are dropped beside a 3-0), else 3-10-13, else 3-0-4.
+ * cmap as Chrome reads it. OTS keeps the last subtable of each kind in table order (3-0-4; 0-0-4, 0-1-4 and 3-1-4 as one 3-1-4,
+ * written only without a 3-0-4; 0-3-4; 0-3-12, 0-4-12 and 3-10-12 as one 3-10-12; 3-10-13), and HarfBuzz then takes 3-0, else 3-10
+ * (12 before 13), else 3-1, else 0-3. In a 3-0 subtable it retries U+0000..U+00FF at U+F000 up, except where an OS/2 version 0
+ * fsSelection names a font page (OTS keeps only bits 8 and 9 of that byte, so no Arabic page survives to remap).
  */
-function readCmap(d: DataView, t: { offset: number; length: number } | undefined): (cp: number) => number {
+function readCmap(d: DataView, t: { offset: number; length: number } | undefined, os2: Os2 | null): (cp: number) => number {
   if (t === undefined) throw new Malformed('no cmap table');
-  const n = d.getUint16(t.offset + 2);
-  const subtables = Array.from({ length: n }, (_, i) => {
+  const kept = new Map<string, number>();
+  for (let i = 0; i < d.getUint16(t.offset + 2); i++) {
     const r = t.offset + 4 + i * 8;
-    const sub = t.offset + d.getUint32(r + 4);
-    return { platform: d.getUint16(r), encoding: d.getUint16(r + 2), sub, format: d.getUint16(sub) };
-  });
-  const find = (format: number, ...pairs: [number, number][]): number | null =>
-    subtables.find((s) => s.format === format && pairs.some(([p, e]) => s.platform === p && s.encoding === e))?.sub ?? null;
-  const symbol = find(4, [3, 0]);
-  const f12 = subtables.findLast((s) => s.format === 12 && ((s.platform === 0 && (s.encoding === 3 || s.encoding === 4)) || (s.platform === 3 && s.encoding === 10)))?.sub ?? null;
-  const f4 = symbol === null ? find(4, [0, 0], [0, 1], [0, 3], [3, 1]) : find(4, [0, 3]);
-  const f13 = find(13, [3, 10]);
-  if (f12 !== null) {
-    const sub = f12;
-    const groups = d.getUint32(sub + 12);
-    return (cp) => {
-      let lo = 0;
-      let hi = groups - 1;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        const g = sub + 16 + mid * 12;
-        const start = d.getUint32(g);
-        const end = d.getUint32(g + 4);
-        if (cp < start) hi = mid - 1;
-        else if (cp > end) lo = mid + 1;
-        else return d.getUint32(g + 8) + (cp - start);
-      }
-      return 0;
-    };
+    const [p, e, sub] = [d.getUint16(r), d.getUint16(r + 2), t.offset + d.getUint32(r + 4)];
+    const f = d.getUint16(sub);
+    const kind = f === 4 && (p === 0 || p === 3) && (e === 0 || e === 1) ? (p === 3 && e === 0 ? '3-0-4' : '3-1-4')
+      : f === 4 && p === 0 && e === 3 ? '0-3-4'
+      : f === 12 && ((p === 0 && (e === 3 || e === 4)) || (p === 3 && e === 10)) ? '3-10-12'
+      : f === 13 && p === 3 && e === 10 ? '3-10-13'
+      : null;
+    if (kind !== null) kept.set(kind, sub);
   }
-  if (f4 !== null) return format4(d, f4);
-  if (f13 !== null) {
-    const sub = f13;
-    const groups = d.getUint32(sub + 12);
-    return (cp) => {
-      for (let i = 0; i < groups; i++) {
-        const g = sub + 16 + i * 12;
-        if (cp >= d.getUint32(g) && cp <= d.getUint32(g + 4)) return d.getUint32(g + 8);
-      }
-      return 0;
-    };
-  }
-  if (symbol === null) throw new Malformed('no cmap subtable Chrome keeps');
-  return format4(d, symbol);
+  const symbol = kept.get('3-0-4');
+  const best = symbol ?? kept.get('3-10-12') ?? kept.get('3-10-13') ?? kept.get('3-1-4') ?? kept.get('0-3-4');
+  if (best === undefined) throw new Malformed('no cmap subtable Chrome keeps');
+  const lookup = d.getUint16(best) === 4 ? format4(d, best) : groupLookup(d, best, d.getUint16(best) === 13);
+  const fontPage = os2 !== null && os2.version === 0 ? os2.fsSelection & 0x0300 : 0;
+  if (symbol === undefined || fontPage !== 0) return lookup;
+  return (cp) => lookup(cp) || (cp <= 0xff ? lookup(0xf000 + cp) : 0);
+}
+
+/** Format 12 (consecutive glyphs per group) or 13 (one glyph per group); OTS has checked the groups are sorted and disjoint. */
+function groupLookup(d: DataView, sub: number, constant: boolean): (cp: number) => number {
+  const groups = d.getUint32(sub + 12);
+  return (cp) => {
+    let lo = 0;
+    let hi = groups - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const g = sub + 16 + mid * 12;
+      const start = d.getUint32(g);
+      if (cp < start) hi = mid - 1;
+      else if (cp > d.getUint32(g + 4)) lo = mid + 1;
+      else return d.getUint32(g + 8) + (constant ? 0 : cp - start);
+    }
+    return 0;
+  };
 }
 
 function format4(d: DataView, sub: number): (cp: number) => number {
