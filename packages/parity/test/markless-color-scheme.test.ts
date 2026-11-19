@@ -116,6 +116,8 @@ async function againstChrome(text: string, path: string): Promise<{ readonly sch
       const report = await compareMarklessExport(input, exported, undefined, preference, [], 'pinned', [t]);
       expect(report.compared, `${t} prefers ${preference}`).toBeGreaterThan(5);
       expect(report.rows.filter((r) => !r.pass), `${t} prefers ${preference}`).toEqual([]);
+      expect(report.paint.length, `${t} prefers ${preference}`).toBe(3 * x.assignments.length);
+      expect(report.paint.filter((r) => !r.pass), `${t} prefers ${preference}`).toEqual([]);
     }
   }
   return seen;
@@ -158,5 +160,13 @@ describe('the root color-scheme in a Markless export, against Chrome', () => {
     expect(dark.colorScheme).toBe('light');
     expect(dragonColours(dark).color).toEqual({ h: chrome.color['h'], p: chrome.color['p'], a: chrome.color['a'], b: chrome.color['b'] });
     expect(chrome.color['p']).toEqual(BLACK);
+    // The comparison reports the divergence on the dark band's canvas and body rows only; its used scheme is light, as in Chrome.
+    const exported = marklessStyleExport(text, 'un-opted.json').exported;
+    const report = await compareMarklessExport(input, exported, undefined, 'light', [], 'pinned', ['ios']);
+    expect(report.paint.length).toBe(3 * x.assignments.length);
+    expect(report.paint.filter((r) => !r.pass).map((r) => [schemeOf(x.bands, r.values['@env#band'] as number), r.field, r.exported, r.chrome])).toEqual([
+      ['dark', 'canvas', WHITE, DARK_CANVAS],
+      ['dark', 'bodyBackground', null, null],
+    ]);
   }, 120_000);
 });
