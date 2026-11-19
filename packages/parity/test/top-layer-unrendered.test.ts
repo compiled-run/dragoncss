@@ -12,14 +12,16 @@ import { engineBoxes } from '../src/native-host.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
 
 const doc = (body: string): string =>
-  `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.none { display: none; }\ndialog::backdrop { background: rgb(255, 0, 0); }\n</style>\n</head>\n<body data-dragon-id="body">${body}</body>\n</html>\n`;
+  `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\nbody { margin: 0; font-family: Ahem; font-size: 10px; }\n.none { display: none; }\n.contents { display: contents; }\n.bare dialog::backdrop { display: none; }\ndialog::backdrop { background: rgb(255, 0, 0); }\n</style>\n</head>\n<body data-dragon-id="body">${body}</body>\n</html>\n`;
 const DIALOG = (attributes: string): string => `<dialog data-dragon-id="d"${attributes}><p data-dragon-id="t">Hi</p></dialog>`;
-const CASES: readonly { readonly name: string; readonly body: string; readonly shown: boolean }[] = [
+const CASES: readonly { readonly name: string; readonly body: string; readonly shown: boolean; readonly backdrop?: boolean }[] = [
   { name: 'a dialog shown modal', body: DIALOG(''), shown: true },
   { name: 'a dialog inside a display: none element', body: `<div data-dragon-id="w" class="none">${DIALOG('')}</div>`, shown: false },
   { name: 'a dialog inside a hidden element', body: `<div data-dragon-id="w" hidden="">${DIALOG('')}</div>`, shown: false },
   { name: 'a display: none dialog', body: DIALOG(' class="none"'), shown: false },
   { name: 'a hidden dialog', body: DIALOG(' hidden=""'), shown: false },
+  { name: 'a dialog inside a display: contents element', body: `<div data-dragon-id="w" class="contents">${DIALOG('')}</div>`, shown: true },
+  { name: 'a dialog whose ::backdrop is display: none', body: `<div data-dragon-id="w" class="bare">${DIALOG('')}</div>`, shown: true, backdrop: false },
 ];
 
 /** The colour of the CSS pixel at (x, y) of a page screenshot, as "r,g,b". */
@@ -45,7 +47,8 @@ describe('a dialog Chrome does not render, the host presenting the top layer', (
     await browser?.close();
   });
   for (const c of CASES) {
-    it(`${c.name}: ${c.shown ? 'the dialog and its backdrop drawn' : 'neither the dialog nor its backdrop drawn'}, as in Chrome`, async () => {
+    const backdrop = c.backdrop ?? c.shown;
+    it(`${c.name}: ${c.shown ? `the dialog drawn${backdrop ? ' over its backdrop' : ', its backdrop not'}` : 'neither the dialog nor its backdrop drawn'}, as in Chrome`, async () => {
       const html = doc(c.body);
       const page = await browser.newPage({ viewport: ENVIRONMENT.viewport });
       try {
@@ -57,7 +60,7 @@ describe('a dialog Chrome does not render, the host presenting the top layer', (
           return { modal: d.matches(':modal'), boxes: d.getClientRects().length };
         });
         expect(chrome).toEqual({ modal: true, boxes: c.shown ? 1 : 0 });
-        expect(await pixel(page, 1, 1)).toBe(c.shown ? '255,0,0' : '255,255,255');
+        expect(await pixel(page, 1, 1)).toBe(backdrop ? '255,0,0' : '255,255,255');
       } finally {
         await page.close();
       }
@@ -66,9 +69,9 @@ describe('a dialog Chrome does not render, the host presenting the top layer', (
       const p = nativeProgramFor(compiled, [], 'ios');
       if (p.kind !== 'ready') throw new Error(p.reason);
       const boxes = new Set(engineBoxes(p.program, ENVIRONMENT.viewport, 1).map((b) => b.id));
-      expect([boxes.has('d'), boxes.has('d::backdrop')]).toEqual([c.shown, c.shown]);
-      const backdrop = p.program.nodes.find((n) => n.id === 'd::backdrop');
-      expect(backdrop === undefined ? null : backdrop.parent).toBe(c.shown ? 'html' : null);
+      expect([boxes.has('d'), boxes.has('d::backdrop')]).toEqual([c.shown, backdrop]);
+      const node = p.program.nodes.find((n) => n.id === 'd::backdrop');
+      expect(node === undefined ? null : node.parent).toBe(backdrop ? 'html' : null);
     }, 120_000);
   }
 });
