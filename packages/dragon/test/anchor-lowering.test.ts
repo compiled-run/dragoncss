@@ -72,6 +72,11 @@ describe('anchor positioning at build time', () => {
     refused('.p { top: anchor(--k bottom, 1em); }', "an anchor function's fallback 1em is not px, % or 0");
     refused('.p { position-anchor: --k; position-area: top; justify-self: center; }', 'Dragon lowers normal and anchor-center self-alignment on an anchored box');
     refused('.cb { top: anchor(--k bottom, 4px); }', 'an anchor function on a box that is not absolutely positioned takes its fallback');
+    refused('.k { visibility: hidden; } .p { position-anchor: --k; position-area: bottom; }', 'the default anchor k of p is not visible: Chrome hides an anchored box');
+  });
+
+  it("lays out a box anchored inside its containing block's own clip, which Chrome does not count (parity anchor-visibility.test.ts)", () => {
+    expect(errors('.cb { overflow: clip; } .p { position-anchor: --k; position-area: bottom; }')).toEqual({ ios: [], web: [] });
   });
 
   it('refuses position-visibility on every target: Dragon hides no anchored box', () => {
