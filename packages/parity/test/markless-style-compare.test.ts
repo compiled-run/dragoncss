@@ -401,6 +401,20 @@ describe('the page\'s own paint and the font mode', () => {
     expect(failing(await compareMarklessExport(parseMarklessStyleInput(text), wrong))).toHaveLength(1);
   }, 60_000);
 
+  it('reads body\'s background whatever paints over it: body\'s pseudo-elements, and content kept visible by an !important rule', async () => {
+    for (const cover of [
+      'body::before { content: ""; position: absolute; inset: 0; background: blue; }',
+      'body::after { content: ""; position: fixed; inset: 0; background: blue; visibility: visible !important; }',
+      'body .box { background: blue; visibility: visible !important; }',
+    ]) {
+      const text = JSON.stringify({ version: 'markless.native-style-input/0', component: 'Page', nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'box' } }], css: `.box { height: 100px; } html { background: #fefae0; } body { background: #264653; } ${cover}`, states: [] });
+      const page = marklessStyleExport(text, 'page.json').exported;
+      const r = await compareMarklessExport(parseMarklessStyleInput(text), page, undefined, undefined, undefined, undefined, ['ios']);
+      expect(failing(r), cover).toEqual([]);
+      expect(r.paint.filter((x) => x.field === 'bodyBackground').map((x) => x.chrome), cover).toEqual([{ r: 38, g: 70, b: 83, alpha: 255 }]);
+    }
+  }, 60_000);
+
   it('refuses an export without its canvas, body background or colour scheme, naming the field', async () => {
     const { canvas: _canvas, ...noCanvas } = ios.assignments[0]!;
     await expect(compareMarklessExport(input, editIos((a, i) => (i === 0 ? (noCanvas as MarklessExportAssignment) : a)))).rejects.toThrow('ios assignment 0: canvas null is not a colour');
