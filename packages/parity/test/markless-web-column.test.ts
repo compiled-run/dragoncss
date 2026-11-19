@@ -7,7 +7,8 @@ import { launchChrome } from '../src/chrome.ts';
 import { marklessStyleExport, parseMarklessStyleInput, schemeOf } from '../src/markless-style-input.ts';
 import type { MarklessStyleExport } from '../src/markless-style-input.ts';
 import type { WebColumnDevice, WebColumnHost } from '../src/markless-web-column.ts';
-import { PREFERENCE_READS, webColumn, withCleanup } from '../src/markless-web-column.ts';
+import { withCleanup } from '../src/markless-style-compare.ts';
+import { PREFERENCE_READS, webColumn } from '../src/markless-web-column.ts';
 
 const TEXT = JSON.stringify({
   version: 'markless.native-style-input/0',
@@ -140,6 +141,24 @@ describe('the web column sets the device\'s appearance per assignment', () => {
       for (const c of fake.contexts) await c.close();
     }
   }, 120_000);
+
+  it('fails by name when the browser posts a result that is not JSON, and serves nothing for a request that names no assignment', async () => {
+    const fake = fakeDevice(ANDROID, 'no', 0);
+    const statuses: number[] = [];
+    const host: WebColumnHost = {
+      ...fake.host,
+      open: (_device, url) => {
+        const u = new URL(url);
+        void (async () => {
+          statuses.push((await fetch(`${u.origin}/page`)).status, (await fetch(`${u.origin}/favicon.ico`)).status);
+          await fetch(`${u.origin}/result?i=${u.searchParams.get('i')}`, { method: 'POST', body: '{"dpr":' });
+        })();
+      },
+    };
+    await expect(webColumn(input, exported, ANDROID, [], undefined, host)).rejects.toThrow('android: the browser posted assignment 0\'s result as no JSON');
+    expect(statuses).toEqual([404, 404]);
+    expect(fake.appearance()).toBe('no');
+  });
 
   it('withCleanup rethrows the body\'s own error untouched when every step succeeds', async () => {
     const original = new Error('measuring failed');

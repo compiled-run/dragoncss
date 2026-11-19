@@ -474,6 +474,15 @@ describe('the page\'s own paint and the font mode', () => {
       } finally {
         await page.context().close();
       }
+      for (const css of ['html > div { max-height: 10px !important; }', ':root > * { min-height: 999px !important; zoom: 2 !important; }', 'div { box-sizing: border-box !important; padding: 30px !important; }']) {
+        const hostile = await openPage(browser, `<!DOCTYPE html><html><head><style>:root { color-scheme: light dark; } ${css}</style></head><body></body></html>`, { viewport: { width: 300, height: 200 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' });
+        try {
+          const p = await hostile.evaluate(readRootProbe);
+          expect({ vh: p.vh, scheme: usedScheme(p) }, css).toEqual({ vh: 200, scheme: 'light' });
+        } finally {
+          await hostile.context().close();
+        }
+      }
     } finally {
       await browser.close();
     }

@@ -10,7 +10,7 @@ import { collectNodes, nameCollected } from './capture.ts';
 import type { CapturedNode, CollectedElement } from './capture.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { BAND_KEY } from 'dragon';
-import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme } from './markless-style-compare.ts';
+import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme, withCleanup } from './markless-style-compare.ts';
 import type { BoxProblem, CompareRow, DocumentNode, RootProbe } from './markless-style-compare.ts';
 import type { MarklessExportAssignment, MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
 import { checkMarklessExport, marklessCompiledTargets, schemeOf } from './markless-style-input.ts';
@@ -82,35 +82,6 @@ const nightOf = (a: Appearance): 'yes' | 'no' => (a === 'dark' ? 'yes' : 'no');
 export const PREFERENCE_READS = 30;
 const PREFERENCE_READ_MS = 1000;
 
-/**
- * Runs every cleanup step, each whatever the others do, then rethrows: the body's error with every failed step's error in an
- * AggregateError, or the failed steps alone when the body succeeded.
- */
-export async function withCleanup<T>(body: (undo: (name: string, step: () => void | Promise<void>) => void) => Promise<T>): Promise<T> {
-  const steps: { readonly name: string; readonly step: () => void | Promise<void> }[] = [];
-  let failed: { readonly error: unknown } | null = null;
-  let value: T | undefined;
-  try {
-    value = await body((name, step) => steps.push({ name, step }));
-  } catch (error) {
-    failed = { error };
-  }
-  const errors: Error[] = [];
-  for (const { name, step } of steps.reverse()) {
-    try {
-      await step();
-    } catch (e) {
-      errors.push(new Error(`cleanup (${name}) failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e }));
-    }
-  }
-  if (failed !== null) {
-    if (errors.length === 0) throw failed.error;
-    const message = failed.error instanceof Error ? failed.error.message : String(failed.error);
-    throw new AggregateError([failed.error, ...errors], `${message}; and ${errors.map((e) => e.message).join('; ')}`);
-  }
-  if (errors.length > 0) throw new AggregateError(errors, errors.map((e) => e.message).join('; '));
-  return value as T;
-}
 
 const PROBLEM: { readonly [K in BoxProblem]: string } = {
   'no-node': 'has a box in the browser and no node in the export',
@@ -178,10 +149,11 @@ export async function webColumn(input: MarklessStyleInput, given: NativeStyleExp
   checkInputFonts(exported, fonts);
   for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
-  const results = new Map<number, (m: Measured) => void>();
+  const results = new Map<number, (m: Measured | Error) => void>();
   const server = createServer((req, res) => {
     const u = new URL(req.url ?? '/', 'http://127.0.0.1');
-    const i = Number(u.searchParams.get('i'));
+    const raw = u.searchParams.get('i');
+    const i = raw !== null && /^(0|[1-9][0-9]*)$/.test(raw) ? Number(raw) : NaN;
     const assignment = t.assignments[i];
     if (!Number.isInteger(i) || assignment === undefined) {
       res.writeHead(404).end();
@@ -192,7 +164,13 @@ export async function webColumn(input: MarklessStyleInput, given: NativeStyleExp
       req.on('data', (c: Buffer) => (body += c.toString('utf8')));
       req.on('end', () => {
         res.writeHead(200).end('ok');
-        results.get(i)?.(JSON.parse(body) as Measured);
+        let m: Measured | Error;
+        try {
+          m = JSON.parse(body) as Measured;
+        } catch (e) {
+          m = new Error(`${device.target}: the browser posted assignment ${i}'s result as no JSON: ${(e as Error).message}`);
+        }
+        results.get(i)?.(m);
       });
       return;
     }
@@ -228,7 +206,8 @@ export async function webColumn(input: MarklessStyleInput, given: NativeStyleExp
         timer = setTimeout(() => reject(new Error(`${device.target}: the browser did not post assignment ${index} within 90 s`)), 90_000);
         results.set(index, (m) => {
           clearTimeout(timer);
-          resolve(m);
+          if (m instanceof Error) reject(m);
+          else resolve(m);
         });
       });
       try {

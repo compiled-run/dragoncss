@@ -273,8 +273,44 @@ export const collectBackdrops = (ids: string[]): CapturedNode[] => {
   return out;
 };
 
+/**
+ * Runs every cleanup step, each whatever the others do, then rethrows: the body's error with every failed step's error in an
+ * AggregateError, or the failed steps alone when the body succeeded.
+ */
+export async function withCleanup<T>(body: (undo: (name: string, step: () => void | Promise<void>) => void) => Promise<T>): Promise<T> {
+  const steps: { readonly name: string; readonly step: () => void | Promise<void> }[] = [];
+  let failed: { readonly error: unknown } | null = null;
+  let value: T | undefined;
+  try {
+    value = await body((name, step) => steps.push({ name, step }));
+  } catch (error) {
+    failed = { error };
+  }
+  const errors: Error[] = [];
+  for (const { name, step } of steps.reverse()) {
+    try {
+      await step();
+    } catch (e) {
+      errors.push(new Error(`cleanup (${name}) failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e }));
+    }
+  }
+  if (failed !== null) {
+    if (errors.length === 0) throw failed.error;
+    const message = failed.error instanceof Error ? failed.error.message : String(failed.error);
+    throw new AggregateError([failed.error, ...errors], `${message}; and ${errors.map((e) => e.message).join('; ')}`);
+  }
+  if (errors.length > 0) throw new AggregateError(errors, errors.map((e) => e.message).join('; '));
+  return value as T;
+}
+
 /** The backdrop layout as collectBackdrops reads it must be within one layout unit (1/64 CSS px) of Chrome's own border box. */
 const BACKDROP_CHECK_CSS_PX = 1 / 64;
+
+/**
+ * Sets every ::backdrop's transforms aside in the first cascade layer of the document's first sheet, whose !important beats every
+ * author !important rule (css-cascade-5 §6.4), with transitions off so the change applies at once.
+ */
+const UNTRANSFORMED_BACKDROPS = '@layer dragon-untransformed { ::backdrop { transform: none !important; translate: none !important; rotate: none !important; scale: none !important; transition: none !important; } }';
 
 /**
  * Checks collectBackdrops (which the phones' browsers run too) against the border box Chrome laid each ::backdrop out at, read
@@ -282,14 +318,16 @@ const BACKDROP_CHECK_CSS_PX = 1 / 64;
  */
 async function checkBackdrops(page: Page, measured: readonly CapturedNode[]): Promise<void> {
   if (!measured.some((b) => b.hasBox)) return;
-  const sheet = await page.evaluateHandle(() => {
-    const s = document.createElement('style');
-    s.textContent = '::backdrop { transform: none !important; translate: none !important; rotate: none !important; scale: none !important; }';
-    document.head.append(s);
-    return s;
-  });
-  const cdp = await page.context().newCDPSession(page);
-  try {
+  await withCleanup(async (undo) => {
+    const sheet = await page.evaluateHandle((css) => {
+      const s = document.createElement('style');
+      s.textContent = css;
+      document.head.prepend(s);
+      return s;
+    }, UNTRANSFORMED_BACKDROPS);
+    undo('remove the untransformed-backdrop sheet', () => sheet.evaluate((s) => s.remove()));
+    const cdp = await page.context().newCDPSession(page);
+    undo('detach the CDP session', () => cdp.detach());
     type Node = { readonly nodeId: number; readonly attributes?: readonly string[]; readonly children?: readonly Node[]; readonly pseudoElements?: readonly (Node & { readonly pseudoType?: string })[] };
     const { root } = (await cdp.send('DOM.getDocument', { depth: -1, pierce: true })) as { root: Node };
     const found = new Map<string, number>();
@@ -316,10 +354,7 @@ async function checkBackdrops(page: Page, measured: readonly CapturedNode[]): Pr
       const off = (['x', 'y', 'width', 'height'] as const).filter((k) => Math.abs(chrome[k] - b[k]) > BACKDROP_CHECK_CSS_PX);
       if (off.length > 0) throw new Error(`${b.id}: the page reads the box ${JSON.stringify({ x: b.x, y: b.y, width: b.width, height: b.height })}, Chrome lays it out at ${JSON.stringify(chrome)}`);
     }
-  } finally {
-    await cdp.detach();
-    await sheet.evaluate((s) => s.remove());
-  }
+  });
 }
 
 /**
@@ -330,7 +365,8 @@ async function checkBackdrops(page: Page, measured: readonly CapturedNode[]): Pr
 export const readRootProbe = (): RootProbe => {
   const probe = (scheme: string): { readonly color: string; readonly height: number } => {
     const el = document.createElement('div');
-    el.style.cssText = `position:absolute!important;visibility:hidden!important;width:0!important;height:100vh!important;color-scheme:${scheme}!important;color:Canvas!important`;
+    // Inline !important beats every author rule, and all:initial clears every property the probe does not set itself.
+    el.style.cssText = `all:initial!important;position:absolute!important;visibility:hidden!important;width:0!important;height:100vh!important;color-scheme:${scheme}!important;color:Canvas!important`;
     document.documentElement.append(el);
     const cs = getComputedStyle(el);
     const out = { color: cs.color, height: parseFloat(cs.height) };
@@ -362,19 +398,18 @@ export type ChromePagePaint = { readonly canvas: Rgba8; readonly body: Rgba8 | n
  * the canvas at the viewport's top left, body's box below it.
  */
 export async function chromePagePaint(browser: Browser, html: string, input: MarklessStyleInput, t: ExportTarget, values: Values, scheme: 'light' | 'dark'): Promise<ChromePagePaint> {
-  const page = await openPage(browser, html, { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' });
-  let read: { readonly colorScheme: 'light' | 'dark'; readonly html: string; readonly body: string; readonly bodyShows: boolean };
-  try {
+  const read = await withCleanup(async (undo) => {
+    const page = await openPage(browser, html, { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' });
+    undo('close the page', () => page.context().close());
     await page.emulateMedia({ colorScheme: scheme });
     const mismatch = documentMismatch(marklessDocumentTree(input, values), await page.evaluate(readDocumentTree));
     if (mismatch !== null) throw new Error(`Chrome's document is not the input's tree: ${mismatch}`);
     const colorScheme = usedScheme(await page.evaluate(readRootProbe));
-    read = { colorScheme, ...(await page.evaluate(readRootBackgrounds)) };
-  } finally {
-    await page.context().close();
-  }
-  const context = await browser.newContext({ viewport: { width: 2, height: 2 }, deviceScaleFactor: t.dpr });
-  try {
+    return { colorScheme, ...(await page.evaluate(readRootBackgrounds)) };
+  });
+  return withCleanup(async (undo) => {
+    const context = await browser.newContext({ viewport: { width: 2, height: 2 }, deviceScaleFactor: t.dpr });
+    undo('close the probe page', () => context.close());
     const probe = await context.newPage();
     await probe.emulateMedia({ colorScheme: scheme });
     await probe.setContent('<!DOCTYPE html><html><head></head><body></body></html>');
@@ -384,9 +419,7 @@ export async function chromePagePaint(browser: Browser, html: string, input: Mar
       return { r: image.data[0] as number, g: image.data[1] as number, b: image.data[2] as number, alpha: image.data[3] as number };
     };
     return { canvas: await pixel(0, 0), body: read.bodyShows ? await pixel(0, 1) : null, colorScheme: read.colorScheme };
-  } finally {
-    await context.close();
-  }
+  });
 }
 
 /** Runs in the page: html's and body's computed background colours, and whether body's border box shows any of the viewport. */
@@ -523,8 +556,9 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
     // Safari, not Chrome, is the web that draws iOS's system and author faces: Chrome on the Mac rounds their metrics and spaces otherwise.
     if (fontMode === 'system' && target === 'ios' && ((exported.systemFonts ?? []).some((e) => e.ios !== undefined) || exported.fonts.some((f) => f.from === 'input'))) throw new Error(`${input.component}: the iOS target measures its faces as Safari does, so it is compared with Safari on iOS (markless:style-web-column), not Chrome; compare the other targets`);
     if (fontMode === 'system' && target === 'android') checkSystemFonts(exported, 'android', systemFontsFor('android', t.dpr));
-    const browser: Browser = await launchChrome(t.dpr);
-    try {
+    await withCleanup(async (undo) => {
+      const browser: Browser = await launchChrome(t.dpr);
+      undo('close Chrome', () => browser.close());
       for (const [index, assignment] of t.assignments.entries()) {
         const band = assignment.values[BAND_KEY];
         const scheme = typeof band === 'number' ? schemeOf(t.bands, band) : unbanded;
@@ -547,9 +581,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
           rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX });
         }
       }
-    } finally {
-      await browser.close();
-    }
+    });
   }
   return { fontMode, compared: rows.filter((r) => r.maxDeltaDevicePx !== null).length, failed: rows.filter((r) => !r.pass).length + paint.filter((r) => !r.pass).length, rows, paint };
 }
