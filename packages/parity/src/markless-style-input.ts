@@ -493,7 +493,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
-  // Only an element its hidden attribute hides in this assignment (and its contents) is named with no frame; any other missing node fails.
+  // Only an element a hidden attribute (fixed or by state) hides here, and its contents, is named with no frame; any other missing node fails.
   const boxless = (a: ExportAssignment): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
@@ -507,8 +507,8 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     };
     const added = parsed.nodes.flatMap((n): ExportNode[] => {
       if (have.has(n.id)) return [];
-      const hidden = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
-      const own = hidden !== undefined && valueUnder(hidden, values, n.id) !== null;
+      const byState = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
+      const own = n.kind === 'element' && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null));
       if (!own && !none.has(n.parent ?? '')) return [];
       none.add(n.id);
       return [{ id: n.id, parent: parentOf(n.id), kind: n.kind, native: n.kind === 'text' ? 'DragonTextView' : 'DragonBoxView', text: n.kind === 'text' ? shownText(n, values) : null, frame: null, borderWidths: null, writes: [] }];

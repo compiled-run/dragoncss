@@ -6,7 +6,7 @@ import { authoredFontHtml } from '../src/cases.ts';
 import { captureFixture } from '../src/capture.ts';
 import { launchChrome } from '../src/chrome.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from '../src/font-reference.ts';
-import { marklessDocumentHtml } from '../src/markless-style-compare.ts';
+import { compareMarklessExport, marklessDocumentHtml } from '../src/markless-style-compare.ts';
 import { marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import { webColumnRows } from '../src/markless-web-column.ts';
 import { repoPath } from '../src/paths.ts';
@@ -21,6 +21,30 @@ describe('a node with no box in an assignment', () => {
     const css = (v: Record<string, unknown>): string => JSON.stringify({ ...v, css: `${String(v['css'])}\n[role="tabpanel"] { display: none; }` });
     expect(() => marklessStyleExport(css(JSON.parse(TEXT) as Record<string, unknown>), PATH)).toThrow(`the export has no node ${panels[0]}`);
   });
+
+  it('names an element its fixed hidden attribute hides, and what it holds, with no frame, as Chrome gives them no box', async () => {
+    const text = JSON.stringify({
+      version: 'markless.native-style-input/0',
+      component: 'Fixed',
+      nodes: [
+        { kind: 'element', id: 'h0', element: 'div', parent: null, attributes: {} },
+        { kind: 'element', id: 'h1', element: 'p', parent: 'h0', attributes: { hidden: '' } },
+        { kind: 'text', id: 'h1:text0', parent: 'h1', text: 'Gone' },
+        { kind: 'element', id: 'h2', element: 'p', parent: 'h0', attributes: {} },
+        { kind: 'text', id: 'h2:text0', parent: 'h2', text: 'Shown' },
+      ],
+      css: 'p { margin: 0; }',
+      states: [],
+    });
+    const { exported } = marklessStyleExport(text, 'fixed-hidden.json');
+    for (const t of ['ios', 'android'] as const) {
+      const nodes = exported.targets[t]!.assignments[0]!.nodes;
+      expect(nodes.filter((n) => n.frame === null).map((n) => [n.id, n.parent])).toEqual([['h1', 'h0'], ['h1:text0', 'h1']]);
+    }
+    const r = await compareMarklessExport(parseMarklessStyleInput(text), exported);
+    expect(r.rows.filter((x) => !x.pass)).toEqual([]);
+    expect(r.rows.map((x) => x.id)).toEqual(expect.arrayContaining(['h2', 'h2:text0']));
+  }, 60_000);
 
   it('fails the web column on a node the browser draws and the export does not, and the other way', () => {
     const { exported } = marklessStyleExport(TEXT, PATH);
