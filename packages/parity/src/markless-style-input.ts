@@ -4,12 +4,13 @@
 // the span of the input file itself; its CSS is its own source, whole.
 import { createHash } from 'node:crypto';
 import type { ClassSymbol, Condition, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compileNativeStyles, isTreeNodeId, isWhitespaceText, textAddresser, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compileNativeStyles, isTreeNodeId, TREE_SCHEMA_REVISION } from 'dragon';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, exportBands, nativeStyleExport } from './native-style-export.ts';
+import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
 
 export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
 
@@ -135,15 +136,20 @@ export function dragonNodeIds(input: MarklessStyleInput): Map<string, string> {
   return out;
 }
 
-/** Each input text node by the address Dragon gives it, "<element>:text<k>" or "<element>:space<k>", for elements named by elementId. */
-export function textNodesByAddress(input: MarklessStyleInput, elementId: (id: string) => string): Map<string, string> {
-  const out = new Map<string, string>();
+/**
+ * The input's id of a node named by Dragon's address rule (node-ids.ts) under elements named elementId(id): an element's text child
+ * is its input text node, and any other node keeps its suffix after its element's input id ("m0::before" to "component-edge:0::before").
+ */
+export function marklessNodeId(input: MarklessStyleInput, elementId: (id: string) => string): (address: string) => string {
+  const textOf = new Map<string, string>();
+  const elementOf = new Map<string, string>();
   for (const e of input.nodes) {
     if (e.kind !== 'element') continue;
+    elementOf.set(elementId(e.id), e.id);
     const address = textAddresser(elementId(e.id));
-    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id) out.set(address(c.text), c.id);
+    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id) textOf.set(address(c.text), c.id);
   }
-  return out;
+  return (address) => textOf.get(address) ?? rehostAddress(address, (tree) => elementOf.get(tree));
 }
 
 export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, inputPath: string): FrontEndResult {
@@ -289,9 +295,7 @@ export function marklessStyleExport(inputText: string, inputPath: string): { rea
   const { input, styles } = compileMarkless(parsed, inputText, inputPath);
   const raw = nativeStyleExport(styles, parsed.component, inputPath);
   const dragonIds = dragonNodeIds(parsed);
-  const marklessId = new Map(parsed.nodes.filter((n) => n.kind === 'element').map((n): [string, string] => [dragonIds.get(n.id) as string, n.id]));
-  const textOf = textNodesByAddress(parsed, (id) => dragonIds.get(id) as string);
-  const rename = (id: string): string => marklessId.get(id) ?? textOf.get(id) ?? id;
+  const rename = marklessNodeId(parsed, (id) => dragonIds.get(id) as string);
   const exported: NativeStyleExport = {
     ...raw,
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {

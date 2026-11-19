@@ -5,12 +5,13 @@ import type { Browser } from 'playwright';
 import type { NativeStyleTarget } from 'dragon';
 import { BAND_KEY } from 'dragon';
 import { authoredFontHtml } from './cases.ts';
+import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
 import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { MarklessCompiledTarget, MarklessStyleInput } from './markless-style-input.ts';
-import { MARKLESS_DOCUMENT_CSS, marklessCompiledTargets, stateCombinations, textNodesByAddress } from './markless-style-input.ts';
+import { MARKLESS_DOCUMENT_CSS, marklessCompiledTargets, marklessNodeId, stateCombinations } from './markless-style-input.ts';
 import type { ExportTarget, NativeStyleExport } from './native-style-export.ts';
 
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
@@ -84,6 +85,15 @@ export function checkCoverage(input: MarklessStyleInput, compiled: MarklessCompi
   if (missing.length > 0 || extra.length > 0) throw new Error(`${target}: the assignments are not one per combination of the input's states${banded ? ' and bands' : ''}: missing ${JSON.stringify(missing)}, extra or repeated ${JSON.stringify(extra)}`);
 }
 
+/** Chrome's capture of the input's tree as one assignment shows it, on the target's device, in a colour scheme. */
+export function captureMarklessAssignment(browser: Browser, input: MarklessStyleInput, t: ExportTarget, values: Values, scheme: 'light' | 'dark'): Promise<WebCapture> {
+  const fonts = fontReferencePrepare(FONT_REFERENCE_MAP);
+  return captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, values)), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await fonts(page);
+  });
+}
+
 /** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
 export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
 
@@ -91,8 +101,8 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
   const rows: CompareRow[] = [];
   const compiled = marklessCompiledTargets(input);
   for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, t);
-  // Chrome's capture names a text node by Dragon's rule under its element's data-dragon-id; the export, by its input id.
-  const textOf = textNodesByAddress(input, (id) => id);
+  // Chrome's capture names nodes by Dragon's rule under each element's data-dragon-id, its input id, as the export does.
+  const idOf = marklessNodeId(input, (id) => id);
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined) continue;
     const browser: Browser = await launchChrome(t.dpr);
@@ -107,11 +117,10 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
           const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
           return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
         };
-        const fonts = fontReferencePrepare(FONT_REFERENCE_MAP);
-        const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, assignment.values)), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
-          await page.emulateMedia({ colorScheme: scheme });
-          await fonts(page);
-        });
+        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme);
+        const ids = capture.nodes.map((c) => c.id);
+        const twice = ids.filter((id, i) => ids.indexOf(id) !== i);
+        if (twice.length > 0) throw new Error(`Chrome's capture names more than one node ${[...new Set(twice)].join(', ')}: an input id collides with another node's address`);
         const seen = new Set<string>();
         const mismatch = (id: string, problem: string): void => {
           rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: null, pass: false, problem });
@@ -119,7 +128,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
         for (const c of capture.nodes) {
           // The export has no line boxes; a text node's own box is compared.
           if (c.kind === 'line') continue;
-          const id = c.kind === 'text' ? (textOf.get(c.id) ?? c.id) : c.id;
+          const id = idOf(c.id);
           seen.add(id);
           const node = byId.get(id);
           if (!c.hasBox) {

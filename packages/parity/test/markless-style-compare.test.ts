@@ -5,10 +5,11 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BAND_KEY } from 'dragon';
+import { launchChrome } from '../src/chrome.ts';
 import { describe, expect, it } from 'vitest';
-import { compareMarklessExport } from '../src/markless-style-compare.ts';
+import { captureMarklessAssignment, compareMarklessExport } from '../src/markless-style-compare.ts';
 import type { MarklessStyleInput } from '../src/markless-style-input.ts';
-import { marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
+import { marklessNodeId, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import type { ExportTarget, NativeStyleExport } from '../src/native-style-export.ts';
 import { parseNativeStyleExport } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
@@ -89,6 +90,66 @@ describe('text nodes', () => {
     const r = await compareMarklessExport(parseMarklessStyleInput(text), { ...ws, targets: { ios: ws.targets.ios! } });
     expect(r.rows.filter((x) => !x.pass)).toEqual([]);
     expect(r.rows.map((x) => x.id)).toEqual(expect.arrayContaining(['bold', 'gap', 'more', 'tail', 'edge']));
+  }, 60_000);
+});
+
+describe('node ids', () => {
+  const el = (id: string, parent: string | null, element: string, attributes: Record<string, string> = {}) => ({ kind: 'element', id, element, parent, attributes });
+  const tx = (id: string, parent: string, text: string) => ({ kind: 'text', id, parent, text });
+  const inputOf = (nodes: unknown[], css: string): string => JSON.stringify({ version: 'markless.native-style-input/0', component: 'App', nodes, css, states: [] });
+
+  it('names every exported node kind as Chrome\'s capture does, so a correct layout compares clean', async () => {
+    const text = inputOf([
+      el('component-edge:0', null, 'div', { class: 'c' }),
+      tx('lead', 'component-edge:0', 'hi'),
+      el('p0', null, 'p'),
+      tx('collapsed', 'p0', ' '),
+      el('b0', 'p0', 'b'),
+      tx('a', 'b0', 'a'),
+      tx('nbsp', 'p0', '\u00a0'),
+      el('b1', 'p0', 'b'),
+      tx('b', 'b1', 'b'),
+      tx('gap', 'p0', ' '),
+      el('b2', 'p0', 'b'),
+      tx('c', 'b2', 'c'),
+      tx('tail', 'p0', 'tail end'),
+    ], '.c::before { content: ""; display: block; width: 10px; height: 10px; } .c::after { content: "x"; display: block; }');
+    const parsed = parseMarklessStyleInput(text);
+    const all = marklessStyleExport(text, PATH).exported;
+    const t = all.targets.ios!;
+    const exported = t.assignments[0]!.nodes;
+    const kinds = ['component-edge:0', 'component-edge:0::before', 'component-edge:0::after', 'component-edge:0::after:text0', 'component-edge:0:anon0', 'lead', 'nbsp', 'gap', 'tail'];
+    expect(exported.map((n) => n.id)).toEqual(expect.arrayContaining(kinds));
+    expect(exported.map((n) => n.id)).not.toContain('collapsed');
+    const browser = await launchChrome(t.dpr);
+    try {
+      const capture = await captureMarklessAssignment(browser, parsed, t, t.assignments[0]!.values, 'light');
+      const idOf = marklessNodeId(parsed, (id) => id);
+      const chrome = capture.nodes.filter((n) => n.kind !== 'line' && n.hasBox).map((n) => idOf(n.id));
+      // Dragon's anonymous boxes are its own; every other exported node is one Chrome captured, under the same id.
+      expect(exported.filter((n) => n.kind !== 'anonymous').map((n) => n.id).sort()).toEqual([...chrome].sort());
+      // The export has no line boxes; Chrome's are named under the node they split.
+      const named = new Set(capture.nodes.filter((n) => n.kind !== 'line').map((n) => n.id));
+      const lines = capture.nodes.filter((n) => n.kind === 'line');
+      expect(lines.length).toBeGreaterThan(0);
+      for (const l of lines) expect(named.has(l.id.replace(/:line\d+$/, '')), l.id).toBe(true);
+    } finally {
+      await browser.close();
+    }
+    const r = await compareMarklessExport(parsed, { ...all, targets: { ios: t } });
+    expect(r.rows.filter((x) => !x.pass)).toEqual([]);
+    expect(r.rows.map((x) => x.id)).toEqual(expect.arrayContaining(kinds.filter((k) => !k.includes(':anon'))));
+  }, 60_000);
+
+  it('refuses the node kinds the export does not carry: a ::marker in a state program and a <dialog> (its ::backdrop)', () => {
+    expect(() => marklessStyleExport(inputOf([el('u', null, 'ul'), el('li:0', 'u', 'li'), tx('t', 'li:0', 'a')], ''), PATH)).toThrow('::marker');
+    expect(() => marklessStyleExport(inputOf([el('d:0', null, 'dialog', { open: '' })], ''), PATH)).toThrow('<dialog>');
+  });
+
+  it('refuses an input whose ids collide with another node\'s address in Chrome\'s capture', async () => {
+    const text = inputOf([el('a', null, 'div'), tx('t', 'a', 'x'), el('a:text0', null, 'div')], '');
+    const all = marklessStyleExport(text, PATH).exported;
+    await expect(compareMarklessExport(parseMarklessStyleInput(text), { ...all, targets: { ios: all.targets.ios! } })).rejects.toThrow('Chrome\'s capture names more than one node a:text0');
   }, 60_000);
 });
 
