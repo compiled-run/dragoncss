@@ -55,7 +55,7 @@ import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
-import { checkZoom, effectiveZoom } from './zoom.ts';
+import { checkZoom, effectiveZoom, parentZoomOf } from './zoom.ts';
 import { checkFontUnits } from './font-units.ts';
 import { checkIntrinsicSize } from './contain-intrinsic.ts';
 import type { ContainIntrinsicFaults } from '../faults/contain-intrinsic.ts';
@@ -96,7 +96,7 @@ import { checkBackgroundBlend } from './background-blend.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
-import { isTopLayer } from './top-layer.ts';
+import { isTopLayer, topLayerAncestorsOf } from './top-layer.ts';
 import { uaTagOf } from './elements.ts';
 import { isDisabled } from './match.ts';
 import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
@@ -1875,6 +1875,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // chain: el's ancestors, outermost first.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>, button: ResolvedElement | null, parentDisplay: string | null, parentZoom: number, chain: readonly ResolvedElement[]): void => {
     const zoom = effectiveZoom(el, parentZoom);
+    const inheritedZoom = parentZoomOf(el, parentZoom);
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1882,7 +1883,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults, propagated, true);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
-      checkZoom(el, zoom, parentZoom, true, targets, diagnostics, reported);
+      checkZoom(el, zoom, inheritedZoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkIntrinsicSize(el, targets, diagnostics, reported, faults);
       checkMulticol(el, chain, true, targets, diagnostics, reported, faults);
@@ -1894,7 +1895,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
-    const stale = staleInherited(el, staleLh);
+    // A top-layer box inherits from its DOM ancestors, not from the root its box sits in.
+    const up = topLayerAncestorsOf(el);
+    const stale = staleInherited(el, up === undefined ? staleLh : up.reduce<ReadonlySet<Longhand>>((s, a) => staleInherited(a, s), new Set()));
     checkOverflow(el, targets, diagnostics, reported);
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
@@ -1908,7 +1911,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
-    checkZoom(el, zoom, parentZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
+    checkZoom(el, zoom, inheritedZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
     // Font-metric lengths taken from the parent (analysis/font-units.ts).
     checkFontUnits(el, targets, diagnostics, reported);
     // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
