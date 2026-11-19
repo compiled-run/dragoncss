@@ -120,6 +120,26 @@ describe('what native cannot do yet is an error that names it', () => {
     }
   });
 
+  it('an interaction state in a band other than the one the output is resolved in blocks the target', () => {
+    const css = '.chip { width: 80px; height: 20px; } @media (prefers-color-scheme: dark) { .chip:hover { background-color: red; } }';
+    const r = compileNativeStyles({ ...CONFIG, support: 'lanes' }, withCss('ms-toggle', 'chip', css));
+    expect(errors(r)).toEqual([]);
+    expect(r.ok).toBe(false);
+    for (const t of ['ios', 'android'] as const) expect(r.targets[t]).toEqual({ kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` });
+  });
+
+  it('a config with one native target emits a sheet with @media bands without the other target configured', () => {
+    const input = withCss('ms-toggle', 'chip', '.chip { width: 80px; height: 20px; } @media (prefers-color-scheme: dark) { .chip { background-color: red; } }');
+    const both = compileNativeStyles(CONFIG, input);
+    expect(emitted(both, 'ios').bands?.table.bands).toEqual([[false], [true]]);
+    for (const t of ['ios', 'android'] as const) {
+      const only = compileNativeStyles({ ...CONFIG, targets: { [t]: CONFIG.targets[t] } }, input);
+      expect(only.ok, t).toBe(true);
+      expect(Object.keys(only.targets)).toEqual([t]);
+      expect(emitted(only, t).program).toEqual(emitted(both, t).program);
+    }
+  });
+
   it('refuses a config it cannot name generated code for', () => {
     expect(() => compileNativeStyles({ ...CONFIG, name: 'ladder' }, readTreeFixture('ms-box'))).toThrow(/not an identifier starting with an ASCII capital/);
     expect(() => compileNativeStyles({ ...CONFIG, targets: {} }, readTreeFixture('ms-box'))).toThrow(/at least one native target/);

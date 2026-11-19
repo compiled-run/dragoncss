@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { BorderOp, LayoutBox, LU, ScrollRange, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
 import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
-import { borderDevicePx, programAt, programInput } from 'dragon';
+import { borderDevicePx, isScalar, programAt, programInput } from 'dragon';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdge } from '../../layout/src/units.ts';
 import { cssFontSizes } from './ahem-lines.ts';
@@ -307,4 +307,66 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     ...(systemUsed.size === 0 ? {} : { systemFonts: [...systemUsed.values()].sort((a, b) => (String(a['id']) < String(b['id']) ? -1 : 1)) as unknown as SystemFontEntry[] }),
     targets,
   };
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
+/** An export read from a file, with every field a comparison reads checked; anything malformed is refused, naming where. */
+export function parseNativeStyleExport(text: string): NativeStyleExport {
+  const fail = (what: string): never => {
+    throw new Error(`native style export: ${what}`);
+  };
+  const v: unknown = JSON.parse(text);
+  if (!isRecord(v) || v['schema'] !== NATIVE_STYLE_EXPORT_SCHEMA) fail(`not ${NATIVE_STYLE_EXPORT_SCHEMA}`);
+  const o = v as Record<string, unknown>;
+  if (typeof o['component'] !== 'string') fail('component is not a string');
+  if (!Array.isArray(o['fonts']) || !o['fonts'].every((f) => isRecord(f) && typeof f['id'] === 'string' && typeof f['file'] === 'string' && (f['from'] === undefined || f['from'] === 'input'))) fail('fonts is not a list of { id, file, from? "input" }');
+  if (o['systemFonts'] !== undefined) {
+    if (!Array.isArray(o['systemFonts'])) fail('systemFonts is not a list');
+    for (const e of o['systemFonts'] as unknown[]) {
+      if (!isRecord(e) || typeof e['id'] !== 'string') fail(`a systemFonts entry has no id: ${JSON.stringify(e)}`);
+      const entry = e as Record<string, unknown>;
+      const ios = entry['ios'];
+      const face = isRecord(ios) ? ios['face'] : undefined;
+      const faceOk = isRecord(face) && ((face['kind'] === 'system' && isNumber(face['weight']) && ['default', 'serif', 'monospaced'].includes(face['design'] as string)) || (face['kind'] === 'name' && typeof face['postScriptName'] === 'string') || (face['kind'] === 'data' && typeof face['sha256'] === 'string'));
+      if (ios !== undefined && !faceOk) fail(`systemFonts ${String(entry['id'])}: ios is not a Core Text face`);
+      const android = entry['android'];
+      if (android !== undefined && !(isRecord(android) && typeof android['file'] === 'string' && Number.isInteger(android['index']) && typeof android['sha256'] === 'string')) fail(`systemFonts ${String(entry['id'])}: android is not a file, index and sha256`);
+    }
+  }
+  if (!isRecord(o['targets'])) fail('targets is not an object');
+  for (const [t, x] of Object.entries(o['targets'] as Record<string, unknown>)) {
+    if (!(t in EXPORT_DEVICES)) fail(`target ${t} is neither ios nor android`);
+    if (!isRecord(x)) fail(`${t} is not an object`);
+    const target = x as Record<string, unknown>;
+    if (!isNumber(target['dpr']) || target['dpr'] <= 0) fail(`${t}: dpr is not a positive number`);
+    const viewport = target['viewport'];
+    if (!isRecord(viewport) || !isNumber(viewport['width']) || !isNumber(viewport['height']) || viewport['width'] <= 0 || viewport['height'] <= 0) fail(`${t}: viewport is not a positive size`);
+    if (!Array.isArray(target['states']) || !target['states'].every((s) => isRecord(s) && typeof s['key'] === 'string' && Array.isArray(s['domain']))) fail(`${t}: states is not a list of keys and domains`);
+    const bands = target['bands'];
+    if (bands !== undefined) {
+      if (!isRecord(bands) || !Array.isArray(bands['atoms']) || !bands['atoms'].every(isRecord) || !Array.isArray(bands['bands']) || !Array.isArray(bands['conditions'])) fail(`${t}: bands is not atoms, bands and conditions`);
+      const b = bands as { atoms: unknown[]; bands: unknown[]; conditions: unknown[] };
+      if (b.bands.length === 0 || !b.bands.every((r) => Array.isArray(r) && r.length === b.atoms.length && r.every((x) => typeof x === 'boolean'))) fail(`${t}: a band is not one truth value per atom`);
+      if (b.conditions.length !== b.bands.length || !b.conditions.every((c) => typeof c === 'string')) fail(`${t}: conditions are not one string per band`);
+    }
+    if (!Array.isArray(target['assignments'])) fail(`${t}: assignments is not a list`);
+    (target['assignments'] as unknown[]).forEach((a, i) => {
+      if (!isRecord(a) || !isRecord(a['values']) || !Array.isArray(a['nodes'])) fail(`${t}: assignment ${i} is not values and nodes`);
+      const { values, nodes } = a as { values: Record<string, unknown>; nodes: unknown[] };
+      for (const [k, x] of Object.entries(values)) if (!isScalar(x)) fail(`${t}: assignment ${i} gives ${k} a value that is not a scalar`);
+      const ids = new Set<string>();
+      for (const n of nodes) {
+        if (!isRecord(n) || typeof n['id'] !== 'string' || !(n['parent'] === null || typeof n['parent'] === 'string') || typeof n['kind'] !== 'string') fail(`${t}: assignment ${i} has a node without an id, parent and kind: ${JSON.stringify(n)}`);
+        const node = n as Record<string, unknown>;
+        const frame = node['frame'];
+        if (frame !== null && !(isRecord(frame) && (['x', 'y', 'width', 'height'] as const).every((k) => isNumber(frame[k])))) fail(`${t}: assignment ${i} node ${String(node['id'])} has a frame that is not null or x, y, width and height`);
+        if (ids.has(node['id'] as string)) fail(`${t}: assignment ${i} lists node ${String(node['id'])} twice`);
+        ids.add(node['id'] as string);
+      }
+      for (const n of nodes as { id: string; parent: string | null }[]) if (n.parent !== null && !ids.has(n.parent)) fail(`${t}: assignment ${i} node ${n.id} has parent ${n.parent}, which is not one of its nodes`);
+    });
+  }
+  return v as NativeStyleExport;
 }

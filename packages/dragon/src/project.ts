@@ -254,7 +254,7 @@ export type InternalBands = {
 };
 
 /** @internal One case in one band. */
-export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null };
+export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null; readonly partition: InteractionPartition | null };
 
 const records = new WeakMap<object, InternalRecord>();
 
@@ -1829,7 +1829,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         conditions: bands.partition.bands.map((b) => b.condition),
         initial: nativeBand,
         container: containerQueries,
-        cases: bandCases.map((r, k) => r.cases.map((c) => ({ key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? ((loweredByBand[k] as Map<string, LayoutBox>).get(c.key) ?? null) : null }))),
+        cases: bandCases.map((r, k) => r.cases.map((c) => ({ key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? ((loweredByBand[k] as Map<string, LayoutBox>).get(c.key) ?? null) : null, partition: c.partition }))),
       },
       laneOnlyNative,
       focusReachable: focusable,

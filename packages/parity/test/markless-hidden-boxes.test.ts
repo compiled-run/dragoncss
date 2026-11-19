@@ -28,8 +28,8 @@ describe('a node with no box in an assignment', () => {
     const shown = a.nodes.find((n) => panels.includes(n.id) && n.frame !== null)!;
     const hidden = a.nodes.find((n) => panels.includes(n.id) && n.frame === null)!;
     const box = (id: string, hasBox: boolean) => ({ id, kind: 'element' as const, hasBox, x: 0, y: 0, width: 10, height: 10, computed: null });
-    expect(() => webColumnRows('ios', 3, a, [box(hidden.id, true)], 0)).toThrow(`ios assignment 0: ${hidden.id} has a box in the browser and no frame in the export`);
-    expect(() => webColumnRows('ios', 3, a, [box(shown.id, false)], 0)).toThrow(`ios assignment 0: ${shown.id} has a frame in the export and no box in the browser`);
+    expect(() => webColumnRows(input, 'ios', 3, a, [box(hidden.id, true)], 0)).toThrow(`ios assignment 0: ${hidden.id} has a box in the browser and no frame in the export`);
+    expect(() => webColumnRows(input, 'ios', 3, a, [box(shown.id, false)], 0)).toThrow(`ios assignment 0: ${shown.id} has a frame in the export and no box in the browser`);
   });
 
   it("agrees with Chrome on which nodes have a box in every assignment of the tabs input", async () => {
@@ -39,7 +39,7 @@ describe('a node with no box in an assignment', () => {
     try {
       for (const [index, a] of t.assignments.entries()) {
         const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, a.values), new Map()), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], fontReferencePrepare(FONT_REFERENCE_MAP));
-        const rows = webColumnRows('android', t.dpr, a, capture.nodes, index);
+        const rows = webColumnRows(input, 'android', t.dpr, a, capture.nodes, index);
         expect(rows.length).toBeGreaterThan(0);
         expect(rows.filter((r) => !r.pass)).toEqual([]);
       }

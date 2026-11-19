@@ -30,7 +30,7 @@ describe('a Markless <dialog>, which the host shows modal', () => {
       const report = await compareMarklessExport(parseMarklessStyleInput(text), exported);
       for (const t of ['ios', 'android']) {
         const ids = report.rows.filter((r) => r.target === t).map((r) => r.id);
-        expect(ids).toEqual(expect.arrayContaining(['h2', 'h3', 'h3:text0', 'h4', 'h4:text0']));
+        expect(ids).toEqual(expect.arrayContaining(['h2::backdrop', 'h2', 'h3', 'h3:text0', 'h4', 'h4:text0']));
       }
       expect(report.rows.filter((r) => !r.pass)).toEqual([]);
     }, 120_000);
