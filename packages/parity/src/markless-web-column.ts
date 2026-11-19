@@ -11,7 +11,7 @@ import { GATE_DEVICE_PX } from './compare.ts';
 import { marklessDocumentHtml } from './markless-style-compare.ts';
 import type { CompareRow } from './markless-style-compare.ts';
 import type { MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
-import type { NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
 export type WebColumnDevice = { readonly target: 'ios'; readonly udid: string } | { readonly target: 'android'; readonly serial: string };
@@ -47,6 +47,30 @@ function open(device: WebColumnDevice, url: string): void {
 function screenshot(device: WebColumnDevice, file: string): void {
   if (device.target === 'ios') run('xcrun', ['simctl', 'io', device.udid, 'screenshot', file]);
   else execFileSync('sh', ['-c', `adb -s "$1" exec-out screencap -p > "$2"`, 'sh', device.serial, file]);
+}
+
+/** One assignment's rows; a node one side gives a box and the other does not is an error, never skipped. */
+export function webColumnRows(target: WebColumnDevice['target'], dpr: number, assignment: ExportAssignment, measured: readonly CapturedNode[], index: number): WebColumnRow[] {
+  const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
+  const absolute = (id: string): Frame => {
+    const n = byId.get(id);
+    if (n === undefined || n.frame === null) throw new Error(`${id} has no frame`);
+    const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
+    return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
+  };
+  const round = (f: Frame): Frame => ({ x: Number(f.x.toFixed(4)), y: Number(f.y.toFixed(4)), width: Number(f.width.toFixed(4)), height: Number(f.height.toFixed(4)) });
+  const rows: WebColumnRow[] = [];
+  for (const c of measured) {
+    const node = byId.get(c.id);
+    if (c.kind === 'line' || node === undefined) continue;
+    if (c.hasBox !== (node.frame !== null)) throw new Error(`${target} assignment ${index}: ${c.id} ${c.hasBox ? 'has a box in the browser and no frame in the export' : 'has a frame in the export and no box in the browser'}`);
+    if (!c.hasBox) continue;
+    const d = absolute(c.id);
+    const web = { x: c.x * dpr, y: c.y * dpr, width: c.width * dpr, height: c.height * dpr };
+    const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(web[k] - d[k])));
+    rows.push({ target, values: assignment.values, id: c.id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX, web: round(web), dragon: round(d) });
+  }
+  return rows;
 }
 
 /**
@@ -96,22 +120,7 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
       browser = m.userAgent;
       if (Math.abs(m.dpr - t.dpr) > 1e-6 || Math.abs(m.innerWidth - t.viewport.width) > 1) throw new Error(`${device.target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, the export ${t.viewport.width} at ${t.dpr}x; use the export's proof device`);
       if (screenshots !== undefined) screenshot(device, `${screenshots}/${device.target}-web-${index}.png`);
-      const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
-      const absolute = (id: string): Frame => {
-        const n = byId.get(id);
-        if (n === undefined || n.frame === null) throw new Error(`${id} has no frame`);
-        const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
-        return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
-      };
-      for (const c of m.nodes) {
-        const node = byId.get(c.id);
-        if (!c.hasBox || c.kind === 'line' || node === undefined || node.frame === null) continue;
-        const d = absolute(c.id);
-        const web = { x: c.x * t.dpr, y: c.y * t.dpr, width: c.width * t.dpr, height: c.height * t.dpr };
-        const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(web[k] - d[k])));
-        const round = (f: Frame): Frame => ({ x: Number(f.x.toFixed(4)), y: Number(f.y.toFixed(4)), width: Number(f.width.toFixed(4)), height: Number(f.height.toFixed(4)) });
-        rows.push({ target: device.target, values: assignment.values, id: c.id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX, web: round(web), dragon: round(d) });
-      }
+      rows.push(...webColumnRows(device.target, t.dpr, assignment, m.nodes, index));
     }
   } finally {
     if (device.target === 'android') {

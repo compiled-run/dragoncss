@@ -8,8 +8,8 @@ import { captureFixture } from './capture.ts';
 import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
-import type { MarklessFontFile, MarklessFonts, MarklessStyleInput, StateValue } from './markless-style-input.ts';
-import { MARKLESS_BOXLESS_ATTRIBUTE, marklessDocumentCss, schemeOf } from './markless-style-input.ts';
+import type { MarklessFontFile, MarklessFonts, MarklessStyleInput } from './markless-style-input.ts';
+import { MARKLESS_BOXLESS_ATTRIBUTE, marklessDocumentCss, marklessShownModal, schemeOf, valueUnder } from './markless-style-input.ts';
 import type { NativeStyleExport } from './native-style-export.ts';
 import { systemFontReference } from './system-fonts/reference.ts';
 
@@ -18,31 +18,28 @@ type Values = Readonly<Record<string, unknown>>;
 
 const escape = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** The value a by-state list gives under an assignment's values; the input lists one entry per combination. */
-function valueUnder(entries: readonly { readonly when: Readonly<Record<string, StateValue>>; readonly value: string | null }[], values: Values, id: string): string | null {
-  const found = entries.filter((e) => Object.entries(e.when).every(([cell, v]) => values[cell] === v));
-  if (found.length !== 1) throw new Error(`${id}: ${found.length} by-state entries hold for ${JSON.stringify(values)}`);
-  return (found[0] as (typeof entries)[number]).value;
-}
-
-/** The input's tree as one assignment shows it, each element named by its input id (data-dragon-id). */
+/** The input's tree as one assignment shows it, by input id (data-dragon-id); each dialog is opened with showModal(), so without open. */
 export function marklessDocumentHtml(input: MarklessStyleInput, values: Values, fonts: MarklessFonts = 'pinned'): string {
   const children = new Map<string | null, MarklessStyleInput['nodes'][number][]>();
   for (const n of input.nodes) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
+  const modal = input.nodes.filter(marklessShownModal).map((n) => n.id);
   const render = (n: MarklessStyleInput['nodes'][number]): string => {
     if (n.kind === 'text') return escape(n.textByState === undefined ? n.text : (valueUnder(n.textByState, values, n.id) as string));
-    const attributes: [string, string][] = Object.entries(n.attributes).filter(([name]) => name !== 'class');
+    const shown = (name: string): boolean => name !== 'class' && !(name === 'open' && modal.includes(n.id));
+    const attributes: [string, string][] = Object.entries(n.attributes).filter(([name]) => shown(name));
     if (n.boxless === true) attributes.push([MARKLESS_BOXLESS_ATTRIBUTE, '']);
     const cls = n.classByState === undefined ? (n.attributes['class'] ?? null) : valueUnder(n.classByState, values, n.id);
     if (cls !== null) attributes.push(['class', cls]);
     for (const [name, entries] of Object.entries(n.attributesByState ?? {})) {
+      if (!shown(name)) continue;
       const v = valueUnder(entries, values, n.id);
       if (v !== null) attributes.push([name, v]);
     }
     const open = [`<${n.element} data-dragon-id="${escape(n.id)}"`, ...attributes.map(([k, v]) => `${k}="${escape(v)}"`)].join(' ');
     return `${open}>${(children.get(n.id) ?? []).map(render).join('')}</${n.element}>`;
   };
-  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${marklessDocumentCss(input, fonts)}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
+  const show = modal.length === 0 ? '' : `<script>{ const ids = new Set(${JSON.stringify(modal).replace(/</g, '\\u003c')}); for (const e of document.querySelectorAll('[data-dragon-id]')) if (ids.has(e.dataset.dragonId)) e.showModal(); }</script>`;
+  return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${marklessDocumentCss(input, fonts)}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}${show}</body>\n</html>\n`;
 }
 
 
