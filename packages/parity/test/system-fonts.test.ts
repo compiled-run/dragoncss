@@ -2,7 +2,8 @@
 // Core Text helper's output, the export's shape, and the measured advances and line heights against the platform probe numbers in
 // test/system-fonts/ (how each was produced is in its "how" field; the probe sources are in test/system-fonts/probes).
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { TextFont } from '@dragon/layout';
 import { GLYPH_STRIDE, LU_PER_PX } from '@dragon/layout';
@@ -13,10 +14,11 @@ import { GATE_DEVICE_PX } from '../src/compare.ts';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
 import { androidImagePartitions, bytesSource, Ext4, gptPartitions, superPartitions } from '../src/system-fonts/android-image.ts';
 import { ANDROID_SYSTEM_IMAGE, AndroidSystemFiles, androidSystemImagePath } from '../src/system-fonts/android.ts';
-import { coreTextHelper, CoreTextUnavailable } from '../src/system-fonts/coretext.ts';
+import { coreTextHelper, CoreTextUnavailable, iosRuntimeRoot } from '../src/system-fonts/coretext.ts';
 import { parseFontsXml } from '../src/system-fonts/fonts-xml.ts';
 import { systemMeasurer } from '../src/system-fonts/measurer.ts';
 import { matchWeight, systemFontsFor } from '../src/system-fonts/provider.ts';
+import { IOS_ROLE_FACES } from '../src/system-fonts/web-generics.ts';
 
 // The shared toolchain refusal (packages/translate/src/native.ts), loaded by path as pointer-vectors-java.test.ts does.
 const { missingToolchain } = (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as { readonly missingToolchain: (subject: string, missing: string) => string };
@@ -209,6 +211,14 @@ describe('system faces', () => {
     expect([100, 400, 450, 500, 700, 800].map((w) => matchWeight(faces, w)?.weight)).toEqual([300, 400, 400, 400, 900, 900]);
     expect(matchWeight([{ weight: 500 }, { weight: 700 }], 400)?.weight).toBe(500);
   });
+
+  it('draw iOS sans-serif at 100 to 300 in Helvetica-Light, as css-fonts-4 §5.2 picks among Helvetica\'s upright faces', () => {
+    const ps = (w: number): string | undefined => {
+      const f = matchWeight(IOS_ROLE_FACES['sans-serif'], w)?.face;
+      return f?.kind === 'name' ? f.postScriptName : undefined;
+    };
+    expect([100, 200, 300, 400, 500, 600, 700, 900].map(ps)).toEqual(['Helvetica-Light', 'Helvetica-Light', 'Helvetica-Light', 'Helvetica', 'Helvetica', 'Helvetica-Bold', 'Helvetica-Bold', 'Helvetica-Bold']);
+  });
 });
 
 type IosFixture = { readonly fonts: readonly { readonly id: string; readonly weight: number; readonly size: number; readonly postScriptName: string; readonly safariFamilies: readonly string[]; readonly safariLineMetrics: { readonly lineHeight: readonly number[]; readonly inlineBoxHeight: readonly number[] }; readonly lines: readonly { readonly text: string; readonly safariWidth: number; readonly glyphs: readonly number[]; readonly x: readonly number[] }[] }[] };
@@ -228,7 +238,78 @@ const shaped = (g: readonly number[]): { glyphs: number[]; xs: number[]; width: 
   return { glyphs, xs, width: pen / 65536 };
 };
 
+type RuntimeFace = { readonly postScriptName: string; readonly family: string; readonly weight: number; readonly italic: boolean };
+
+/** Every face of every font file under a directory, read from each face's name, head and OS/2 tables. */
+function runtimeFaces(dir: string): RuntimeFace[] {
+  const out: RuntimeFace[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !/\.(ttf|ttc|otf|otc)$/i.test(entry.name)) continue;
+    const fd = openSync(join(entry.parentPath, entry.name), 'r');
+    try {
+      const at = (pos: number, n: number): DataView => {
+        const b = Buffer.alloc(n);
+        if (readSync(fd, b, 0, n, pos) !== n) throw new Error(`${entry.name}: ${n} bytes at ${pos} are past the end of the file`);
+        return new DataView(b.buffer, b.byteOffset, n);
+      };
+      const head = at(0, 12);
+      const offsets = head.getUint32(0) === 0x74746366 ? Array.from({ length: head.getUint32(8) }, (_, i) => at(12 + 4 * i, 4).getUint32(0)) : [0];
+      for (const o of offsets) {
+        const n = at(o + 4, 2).getUint16(0);
+        const records = at(o + 12, n * 16);
+        const tables = new Map<string, { offset: number; length: number }>();
+        for (let i = 0; i < n; i++) tables.set(String.fromCharCode(...[0, 1, 2, 3].map((k) => records.getUint8(i * 16 + k))), { offset: records.getUint32(i * 16 + 8), length: records.getUint32(i * 16 + 12) });
+        const nameT = tables.get('name');
+        const headT = tables.get('head');
+        if (nameT === undefined || headT === undefined) throw new Error(`${entry.name}: a face at ${o} has no name or head table`);
+        const name = at(nameT.offset, nameT.length);
+        const names = new Map<number, string>();
+        for (let i = 0; i < name.getUint16(2); i++) {
+          const [platform, encoding, language, id, length, offset] = [0, 2, 4, 6, 8, 10].map((k) => name.getUint16(6 + 12 * i + k)) as [number, number, number, number, number, number];
+          const bytes = new Uint8Array(name.buffer, name.byteOffset + name.getUint16(4) + offset, length);
+          if (platform === 3 && encoding === 1 && language === 0x409) names.set(id, new TextDecoder('utf-16be').decode(bytes));
+          else if (platform === 1 && encoding === 0 && language === 0 && !names.has(id)) names.set(id, new TextDecoder('latin1').decode(bytes));
+        }
+        const macStyle = at(headT.offset + 44, 2).getUint16(0);
+        const os2T = tables.get('OS/2');
+        const os2 = os2T === undefined ? null : at(os2T.offset, 64);
+        out.push({
+          postScriptName: names.get(6) ?? '',
+          family: names.get(16) ?? names.get(1) ?? '',
+          // A face with no OS/2 table (Courier) has only head.macStyle's bold and italic bits.
+          weight: os2 === null ? (macStyle & 1 ? 700 : 400) : os2.getUint16(4),
+          italic: os2 === null ? (macStyle & 2) !== 0 : (os2.getUint16(62) & 1) !== 0,
+        });
+      }
+    } finally {
+      closeSync(fd);
+    }
+  }
+  return out;
+}
+
 describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulator', () => {
+  it('list every upright face the iOS runtime has in each named role\'s family, at the weight its file declares', () => {
+    let root: string;
+    try {
+      root = iosRuntimeRoot().root;
+    } catch (e) {
+      missingToolchain('system fonts (iOS)', (e as Error).message);
+      return;
+    }
+    const all = runtimeFaces(join(root, 'System/Library/Fonts'));
+    const psOf = (f: (typeof IOS_ROLE_FACES)['serif'][number]): string | null => (f.face.kind === 'name' ? f.face.postScriptName : null);
+    for (const [role, faces] of Object.entries(IOS_ROLE_FACES)) {
+      if (faces.every((f) => psOf(f) === null)) continue;
+      expect(faces.every((f) => psOf(f) !== null && f.style === 'normal'), role).toBe(true);
+      const families = new Set(faces.map((f) => all.find((r) => r.postScriptName === psOf(f))?.family));
+      expect([...families], role).toHaveLength(1);
+      const family = [...families][0] as string;
+      const runtime = all.filter((r) => r.family === family && !r.italic).map((r) => `${r.weight} ${r.postScriptName}`).sort();
+      expect(faces.map((f) => `${f.weight} ${psOf(f)}`).sort(), `${role}: ${family}`).toEqual(runtime);
+    }
+  });
+
   const darwin = process.platform === 'darwin';
   const faces = fixture<IosFixture>('ios-coretext.json').fonts.flatMap((f) => {
     const role = f.safariFamilies.map((s) => ROLE_OF_SAFARI[s]).find((r) => r !== undefined);

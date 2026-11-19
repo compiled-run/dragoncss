@@ -14,12 +14,16 @@ probe numbers the tests read: packages/parity/test/system-fonts/{ios-coretext,an
 | CSS | Safari, iOS 27.2 (simulator, runtime 24B8117) | Chrome 133, Android 36 (emulator image `google_apis` arm64) |
 |---|---|---|
 | `system-ui` | San Francisco (`.SFUI-Regular`, `.SFUI-Bold`), max width delta 3e-5 px | Roboto (`Roboto-Regular.ttf`, variable, wght 400/700) |
-| `sans-serif` | Helvetica, Helvetica-Bold (delta 0) | Roboto |
+| `sans-serif` | Helvetica, Helvetica-Bold (delta 0); weights 100 to 300 pick Helvetica-Light (not measured) | Roboto |
 | `serif` | Times New Roman (delta 0) | Noto Serif (`NotoSerif-Regular.ttf`, `NotoSerif-Bold.ttf`) |
 | `monospace` | Courier, Courier-Bold (delta 0; Courier New ties on widths, its line height does not) | Droid Sans Mono (regular only; bold is synthetic) |
 | no `font-family` | Times New Roman | Noto Serif (Chrome's default, Times New Roman, is aliased to `serif` in fonts.xml). The Android WebView differs: Roboto |
 
-The table is packages/parity/src/system-fonts/web-generics.ts.
+The table is packages/parity/src/system-fonts/web-generics.ts. Only weights 400 and 700 were measured in Safari. For the other
+weights Dragon picks a face the way CSS font matching does (css-fonts-4 §5.2) among the role's faces. For `sans-serif`, `serif`
+and `monospace` those faces are every upright face of the family in the iOS runtime's font files, at the weight each file declares;
+a test reads the runtime's files to check the list. Helvetica has a third upright face, Helvetica-Light (weight 300), so weights
+100 to 300 draw it. Whether Safari draws the same faces at those weights has not been measured.
 
 ## What Dragon reads at build time
 
