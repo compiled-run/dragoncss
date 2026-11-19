@@ -262,7 +262,7 @@ function decodeWoff2(b: Uint8Array, brotli: BrotliDecompress): Uint8Array {
   if ((glyf === undefined) !== (loca === undefined)) bad('the font has only one of glyf and loca');
   if (glyf !== undefined && loca !== undefined) {
     if (glyf.transformed !== loca.transformed) bad('glyf and loca are not both transformed or both untransformed');
-    if (entries.indexOf(loca) < entries.indexOf(glyf)) bad('loca comes before glyf in the table directory');
+    if (glyf.transformed && entries.indexOf(loca) < entries.indexOf(glyf)) bad('the transformed loca comes before glyf in the table directory');
   }
   const tables = new Map(raw);
   if (glyf?.transformed === true && loca !== undefined) {

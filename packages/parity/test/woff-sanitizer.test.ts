@@ -1,6 +1,7 @@
 // Font files Dragon reads at build time, judged against Chrome's font sanitizer: for every mutated WOFF and WOFF2 header, table
-// directory, block layout and transform version, and every mutated sfnt table directory below, Dragon accepts the file
-// (decodeFontFile, then readSfnt) exactly when Chrome loads it (document.fonts.load on a FontFace of its bytes), so native never draws a font the web falls back from, or the reverse.
+// directory, block layout and transform version, every mutated sfnt table directory below, and every table-content rule in
+// font-table-cases.ts and font-cff-cases.ts, Dragon accepts the file (decodeFontFile, then readSfnt) exactly when Chrome loads it
+// (document.fonts.load on a FontFace of its bytes), so native never draws a font the web falls back from, or the reverse.
 import { readFileSync } from 'node:fs';
 import { brotliCompressSync, deflateSync, inflateSync } from 'node:zlib';
 import type { Browser, Page } from 'playwright';
@@ -8,6 +9,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeFontFile } from '../../dragon/src/fonts/woff.ts';
 import { readSfnt } from '../../dragon/src/fonts/sfnt.ts';
 import { launchChrome } from '../src/chrome.ts';
+import { cffCases } from './font-cff-cases.ts';
+import { tableCases } from './font-table-cases.ts';
 import { NODE_BROTLI } from '../src/markless-style-input.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -273,6 +276,13 @@ function cases(): [string, Uint8Array][] {
     out.push([`WOFF: a ${JSON.stringify(tag)} table whose zlib stream is corrupt`, corruptTable(base, tag)]);
   }
   for (const tag of ['GPOS', 'OS/2', 'cmap', 'name', 'post', 'glyf', 'loca', 'prep']) out.push([`WOFF: no ${tag} table`, woffOf(base.filter((t) => t.tag !== tag))]);
+  const headV2 = (base.find((t) => t.tag === 'head') as Table).data.slice();
+  new DataView(headV2.buffer).setUint32(0, 0x00020000);
+  out.push(
+    ['WOFF: head version 2.0', woffOf(base.map((t) => (t.tag === 'head' ? { tag: 'head', data: headV2 } : t)))],
+    ['WOFF: a 64-byte garbage CFF table beside glyf and loca', woffOf([...base, { tag: 'CFF ', data: new Uint8Array(64).fill(1) }])],
+    ['WOFF: a 64-byte garbage fvar table', woffOf([...base, { tag: 'fvar', data: new Uint8Array(64).fill(1) }])],
+  );
 
   const w2 = fixture('Lato-Regular.woff2');
   const hmtx = fixture('Lato-Regular.hmtx.woff2');
@@ -283,6 +293,9 @@ function cases(): [string, Uint8Array][] {
     return out;
   };
   const nulEntries = woff2Entries(nul).map(({ flagAt: _, ...e }) => plain(e));
+  const w2Entries = woff2Entries(w2).map(({ flagAt: _, ...e }) => plain(e));
+  const swapped = (entries: readonly Woff2Entry[], a: string, b: string): Woff2Entry[] =>
+    entries.map((e) => (e.tag === a ? (entries.find((x) => x.tag === b) as Woff2Entry) : e.tag === b ? (entries.find((x) => x.tag === a) as Woff2Entry) : e));
   const nulHmtx = nulEntries.find((e) => e.tag === 'hmtx') as Woff2Entry;
   const hhea = nulEntries.find((e) => e.tag === 'hhea') as Woff2Entry;
   const metrics = new DataView(hhea.data.buffer, hhea.data.byteOffset).getUint16(34);
@@ -315,6 +328,9 @@ function cases(): [string, Uint8Array][] {
     ['WOFF2: glyf and loca at version 2', versioned(nul, { glyf: 2, loca: 2 })],
     ['WOFF2: glyf at version 3, loca at version 1', versioned(nul, { loca: 1 })],
     ['WOFF2: rebuilt from its tables', woff2Of(nulEntries)],
+    ['WOFF2: null-transformed loca before glyf in the directory', woff2Of(swapped(nulEntries, 'glyf', 'loca'))],
+    ['WOFF2: transformed glyf, rebuilt from its tables', woff2Of(w2Entries)],
+    ['WOFF2: transformed loca before glyf in the directory', woff2Of(swapped(w2Entries, 'glyf', 'loca'))],
     ['WOFF2: hmtx transformed over a null-transformed glyf', woff2Of(nulEntries.map((e) => (e.tag === 'hmtx' ? { ...e, version: 1, data: advancesOnly, transformLength: advancesOnly.length } : e)))],
     ['WOFF2: cmap at transform version 1', woff2Of(nulEntries.map((e) => (e.tag === 'cmap' ? { ...e, version: 1, transformLength: e.data.length } : e)))],
     ['WOFF2: an unknown table at transform version 1', woff2Of([...nulEntries, { tag: 'zzzz', data: new Uint8Array(8), version: 1, origLength: 8, transformLength: 8 }])],
@@ -343,6 +359,7 @@ function cases(): [string, Uint8Array][] {
       return longer;
     })()],
   );
+  out.push(...tableCases(ttf, fixture('Lato-Regular.subset.ttf')), ...cffCases(new Uint8Array(readFileSync(repoPath('design/homepage/assets/fonts/dragon-blackletter/DragonBlackletter-Regular.otf'))), ttf));
   for (let k = 1; k <= 4; k++) out.push([`WOFF2: ${k} more stream bytes, the padding after them not zero`, woff2Of([...nulEntries, { tag: 'zzzz', data: new Uint8Array(k).fill(5), version: 0, origLength: k, transformLength: null }], 0x55)]);
   return out;
 }
@@ -362,18 +379,19 @@ describe('Dragon accepts a font file exactly when Chrome loads it', () => {
   it('on every mutation, both ways, and each verdict occurs', async () => {
     const all = cases();
     const results: { name: string; chrome: boolean; dragon: boolean }[] = [];
-    for (const [name, bytes] of all) {
-      const chrome = await page.evaluate(async (b64) => {
+    for (const [index, [name, bytes]] of all.entries()) {
+      const chrome = await page.evaluate(async ([b64, index]) => {
         const raw = atob(b64);
         const bytes = new Uint8Array(raw.length);
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-        const family = `probe-${document.fonts.size}`;
+        const family = `probe-${index}`;
         const face = new FontFace(family, bytes.buffer);
         document.fonts.add(face);
         await document.fonts.load(`16px "${family}"`).catch(() => []);
         await face.loaded.catch(() => null);
+        document.fonts.delete(face);
         return face.status === 'loaded';
-      }, Buffer.from(bytes).toString('base64'));
+      }, [Buffer.from(bytes).toString('base64'), index] as const);
       results.push({ name, chrome, dragon: dragonAccepts(bytes) });
     }
     expect(results.filter((r) => r.chrome !== r.dragon).map((r) => `${r.name}: Chrome ${r.chrome ? 'loads' : 'refuses'} it, Dragon ${r.dragon ? 'accepts' : 'refuses'} it`)).toEqual([]);
