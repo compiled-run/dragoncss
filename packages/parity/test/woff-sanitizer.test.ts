@@ -283,6 +283,9 @@ function cases(): [string, Uint8Array][] {
     return out;
   };
   const nulEntries = woff2Entries(nul).map(({ flagAt: _, ...e }) => plain(e));
+  const w2Entries = woff2Entries(w2).map(({ flagAt: _, ...e }) => plain(e));
+  const swapped = (entries: readonly Woff2Entry[], a: string, b: string): Woff2Entry[] =>
+    entries.map((e) => (e.tag === a ? (entries.find((x) => x.tag === b) as Woff2Entry) : e.tag === b ? (entries.find((x) => x.tag === a) as Woff2Entry) : e));
   const nulHmtx = nulEntries.find((e) => e.tag === 'hmtx') as Woff2Entry;
   const hhea = nulEntries.find((e) => e.tag === 'hhea') as Woff2Entry;
   const metrics = new DataView(hhea.data.buffer, hhea.data.byteOffset).getUint16(34);
@@ -315,6 +318,9 @@ function cases(): [string, Uint8Array][] {
     ['WOFF2: glyf and loca at version 2', versioned(nul, { glyf: 2, loca: 2 })],
     ['WOFF2: glyf at version 3, loca at version 1', versioned(nul, { loca: 1 })],
     ['WOFF2: rebuilt from its tables', woff2Of(nulEntries)],
+    ['WOFF2: null-transformed loca before glyf in the directory', woff2Of(swapped(nulEntries, 'glyf', 'loca'))],
+    ['WOFF2: transformed glyf, rebuilt from its tables', woff2Of(w2Entries)],
+    ['WOFF2: transformed loca before glyf in the directory', woff2Of(swapped(w2Entries, 'glyf', 'loca'))],
     ['WOFF2: hmtx transformed over a null-transformed glyf', woff2Of(nulEntries.map((e) => (e.tag === 'hmtx' ? { ...e, version: 1, data: advancesOnly, transformLength: advancesOnly.length } : e)))],
     ['WOFF2: cmap at transform version 1', woff2Of(nulEntries.map((e) => (e.tag === 'cmap' ? { ...e, version: 1, transformLength: e.data.length } : e)))],
     ['WOFF2: an unknown table at transform version 1', woff2Of([...nulEntries, { tag: 'zzzz', data: new Uint8Array(8), version: 1, origLength: 8, transformLength: 8 }])],
