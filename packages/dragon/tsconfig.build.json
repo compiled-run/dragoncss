@@ -13,5 +13,5 @@
     "paths": { "@dragon/layout": ["../layout/build/index.d.ts"] }
   },
   "include": ["src"],
-  "exclude": ["src/internal.ts"]
+  "exclude": ["src/internal.ts", "src/native-styles.ts"]
 }
