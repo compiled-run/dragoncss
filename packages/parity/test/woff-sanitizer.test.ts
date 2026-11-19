@@ -1,6 +1,6 @@
-// WOFF and WOFF2 files Dragon decodes at build time, judged against Chrome's font sanitizer: for every mutated header, table
-// directory, block layout and transform version below, Dragon accepts the file (decodeFontFile, then readSfnt) exactly when Chrome
-// loads it (document.fonts.load on a FontFace of its bytes), so native never draws a font the web falls back from, or the reverse.
+// Font files Dragon reads at build time, judged against Chrome's font sanitizer: for every mutated WOFF and WOFF2 header, table
+// directory, block layout and transform version, and every mutated sfnt table directory below, Dragon accepts the file
+// (decodeFontFile, then readSfnt) exactly when Chrome loads it (document.fonts.load on a FontFace of its bytes), so native never draws a font the web falls back from, or the reverse.
 import { readFileSync } from 'node:fs';
 import { brotliCompressSync, deflateSync, inflateSync } from 'node:zlib';
 import type { Browser, Page } from 'playwright';
@@ -9,6 +9,7 @@ import { decodeFontFile } from '../../dragon/src/fonts/woff.ts';
 import { readSfnt } from '../../dragon/src/fonts/sfnt.ts';
 import { launchChrome } from '../src/chrome.ts';
 import { NODE_BROTLI } from '../src/markless-style-input.ts';
+import { repoPath } from '../src/paths.ts';
 
 const fixture = (name: string): Uint8Array => new Uint8Array(readFileSync(new URL(`../../dragon/test/fonts/woff/${name}`, import.meta.url)));
 const round4 = (n: number): number => Math.ceil(n / 4) * 4;
@@ -320,11 +321,33 @@ function cases(): [string, Uint8Array][] {
     ['WOFF2: an unknown table listed twice', woff2Of([...nulEntries, { tag: 'zzzz', data: new Uint8Array(8), version: 0, origLength: 8, transformLength: null }, { tag: 'zzzz', data: new Uint8Array(8).fill(1), version: 0, origLength: 8, transformLength: null }])],
     ['WOFF2: an empty unknown table', woff2Of([...nulEntries, { tag: 'zzzz', data: new Uint8Array(0), version: 0, origLength: 0, transformLength: null }])],
   );
+  const ttf = new Uint8Array(readFileSync(repoPath('vendor/fonts/Lato/Lato-Regular.ttf')));
+  const td = new DataView(ttf.buffer, ttf.byteOffset, ttf.byteLength);
+  const records = Array.from({ length: td.getUint16(4) }, (_, i) => 12 + i * 16).map((at) => ({ at, tag: String.fromCharCode(...ttf.subarray(at, at + 4)), offset: td.getUint32(at + 8), length: td.getUint32(at + 12) }));
+  const rec = (tag: string): (typeof records)[number] => records.find((r) => r.tag === tag) as (typeof records)[number];
+  const firstTable = records.reduce((a, r) => (r.offset < a.offset ? r : a));
+  const lastTable = records.reduce((a, r) => (r.offset > a.offset ? r : a));
+  out.push(
+    ['sfnt: Lato Regular as vendored', ttf],
+    ['sfnt: a table 2 bytes off its 4-byte boundary', edit(ttf, (v) => v.setUint32(rec('gasp').at + 8, rec('gasp').offset + 2))],
+    ['sfnt: a table inside the directory', edit(ttf, (v) => v.setUint32(firstTable.at + 8, 12))],
+    ['sfnt: an empty gasp table', edit(ttf, (v) => v.setUint32(rec('gasp').at + 12, 0))],
+    ['sfnt: the last table 4 bytes past the end of the file', edit(ttf, (v) => v.setUint32(lastTable.at + 12, ttf.length - lastTable.offset + 4))],
+    ['sfnt: gasp over the start of another table', edit(ttf, (v) => v.setUint32(rec('gasp').at + 8, rec('post').offset))],
+    ['sfnt: gasp renamed zzzz, an unknown table', edit(ttf, (_, o) => o.set([0x7a, 0x7a, 0x7a, 0x7a], rec('gasp').at))],
+    ['sfnt: OS/2 renamed maxp, so maxp is listed twice and OS/2 is missing', edit(ttf, (_, o) => o.set(o.subarray(rec('maxp').at, rec('maxp').at + 4), rec('OS/2').at))],
+    ['sfnt: every table checksum 0', edit(ttf, (v) => records.forEach((r) => v.setUint32(r.at + 4, 0)))],
+    ['sfnt: 4 bytes after the last table', (() => {
+      const longer = new Uint8Array(ttf.length + 4);
+      longer.set(ttf);
+      return longer;
+    })()],
+  );
   for (let k = 1; k <= 4; k++) out.push([`WOFF2: ${k} more stream bytes, the padding after them not zero`, woff2Of([...nulEntries, { tag: 'zzzz', data: new Uint8Array(k).fill(5), version: 0, origLength: k, transformLength: null }], 0x55)]);
   return out;
 }
 
-describe('Dragon accepts a WOFF or WOFF2 exactly when Chrome loads it', () => {
+describe('Dragon accepts a font file exactly when Chrome loads it', () => {
   let browser: Browser;
   let page: Page;
   beforeAll(async () => {
