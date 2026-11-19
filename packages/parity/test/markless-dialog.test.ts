@@ -72,6 +72,11 @@ describe('a Markless <dialog>, which the host shows modal', () => {
         const capture = await captureMarklessAssignment(browser, parsed, target, {}, 'light');
         expect(capture.nodes.find((n) => n.id === 'h2::backdrop'), css).toMatchObject({ hasBox: true, x, y, width, height });
       }
+      // Chrome draws no backdrop for a dialog that is not laid out.
+      for (const css of [' dialog::backdrop { display: none; }', ' dialog { display: none; }']) {
+        const capture = await captureMarklessAssignment(browser, parseMarklessStyleInput(input({}, css)), { viewport: { width: 300, height: 200 }, dpr: 1 } as ExportTarget, {}, 'light');
+        expect(capture.nodes.find((n) => n.id === 'h2::backdrop'), css).toMatchObject({ hasBox: false });
+      }
       const zoomed = parseMarklessStyleInput(input({}, ' dialog { zoom: 2; } dialog::backdrop { margin: 10px; }'));
       const capture = await captureMarklessAssignment(browser, zoomed, { viewport: { width: 300, height: 200 }, dpr: 1 } as ExportTarget, {}, 'light');
       expect(capture.nodes.find((n) => n.id === 'h2::backdrop')).toMatchObject({ x: 20, y: 20, width: 260, height: 160 });

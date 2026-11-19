@@ -237,7 +237,8 @@ export const collectBackdrops = (ids: string[]): CapturedNode[] => {
       if (!/^-?[0-9.]+(e-?[0-9]+)?px$/.test(v)) throw new Error(`${id}::backdrop: ${p} resolves to ${v}, not a length in px`);
       return parseFloat(v);
     };
-    const hasBox = el.matches(':modal') && cs.display !== 'none';
+    // Chrome draws a backdrop only under a dialog that is laid out.
+    const hasBox = el.matches(':modal') && cs.display !== 'none' && el.getClientRects().length > 0;
     if (!hasBox) {
       out.push({ id: `${id}::backdrop`, kind: 'element', hasBox, x: 0, y: 0, width: 0, height: 0, computed: null });
       continue;
