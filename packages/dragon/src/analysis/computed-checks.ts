@@ -96,6 +96,7 @@ import { checkBackgroundBlend } from './background-blend.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
+import { isTopLayer } from './top-layer.ts';
 import { uaTagOf } from './elements.ts';
 import { isDisabled } from './match.ts';
 import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
@@ -110,7 +111,7 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, isTopLayer, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { parseComputedColor, serializeColor } from '../css/color.ts';

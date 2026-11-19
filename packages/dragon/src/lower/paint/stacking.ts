@@ -20,7 +20,7 @@
 import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, ListMarker } from '@dragon/layout';
 import { markerTextId } from './list-marker.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
-import { isTopLayer } from '../../analysis/resolve.ts';
+import { isTopLayer } from '../../analysis/top-layer.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
 import { elementMaskGradient } from '../../analysis/mask.ts';

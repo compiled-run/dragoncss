@@ -15,6 +15,7 @@ import type { UaDataset, UaKey } from '../ua/datasets.ts';
 import { darkDatasetFor, textFontsOf, uaRows } from '../ua/datasets.ts';
 import { usedColorScheme } from '../css/properties/color-scheme.ts';
 import { blockify } from './blockify.ts';
+import { enterTopLayer } from './top-layer.ts';
 import { adjustLineClampDisplay } from './line-clamp.ts';
 import { cascadeElement } from './cascade.ts';
 import { attachedDeclarations } from './style-attribute.ts';
@@ -632,7 +633,8 @@ function liftTopLayer(root: ResolvedElement): void {
         if (at < 0) throw new Error(`${k.element.address}: a dialog without its ::backdrop box`);
         const backdrop = own.splice(at, 1)[0] as ResolvedElement;
         lifted.push(backdrop, k);
-        topLayer.add(backdrop).add(k);
+        enterTopLayer(backdrop);
+        enterTopLayer(k);
       }
       walk(k);
     }
@@ -640,11 +642,6 @@ function liftTopLayer(root: ResolvedElement): void {
   walk(root);
   (root.children as (ResolvedElement | ResolvedText)[]).push(...lifted);
 }
-
-const topLayer = new WeakSet<ResolvedElement>();
-
-/** Whether liftTopLayer moved the box into the top layer (a modal dialog or its ::backdrop). */
-export const isTopLayer = (el: ResolvedElement): boolean => topLayer.has(el);
 
 const resolvedEnvironments = new WeakMap<ResolvedElement, ResolveEnvironment>();
 
