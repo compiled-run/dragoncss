@@ -59,10 +59,14 @@ export type BrowserSize = { readonly width: number; readonly height: number; rea
  * then the browser lays the page out at the device's own width, and the export's frames are compared as a host draws them on
  * that device (each frame's CSS px, export px / export dpr, at the device's dpr).
  */
-export async function webColumn(input: MarklessStyleInput, exported: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, anySize = false): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
+/** What a phone drew: one assignment's boxes in points (iOS) or dp (Android) from the page's top left, by node id. */
+export type NativeLayout = { readonly assignment: number; readonly boxes: ReadonlyMap<string, Frame> };
+
+export async function webColumn(input: MarklessStyleInput, exported: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, anySize = false, native?: NativeLayout): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
   const t = exported.targets[device.target];
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
+  const inputIds = new Set(input.nodes.map((n) => n.id));
   const results = new Map<number, (m: Measured) => void>();
   const server = createServer((req, res) => {
     const u = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -91,6 +95,7 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
   try {
     if (device.target === 'android') run('adb', ['-s', device.serial, 'reverse', `tcp:${port}`, `tcp:${port}`]);
     for (const [index, assignment] of t.assignments.entries()) {
+      if (native !== undefined && native.assignment !== index) continue;
       const measured = new Promise<Measured>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`${device.target}: the browser did not post assignment ${index} within 90 s`)), 90_000);
         results.set(index, (m) => {
@@ -114,8 +119,12 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
       for (const c of m.nodes) {
         const node = byId.get(c.id);
         if (!c.hasBox || c.kind === 'line' || node === undefined || node.frame === null) continue;
+        // A phone draws the input's nodes; Dragon's html and body place them and have no view of their own.
+        if (native !== undefined && !inputIds.has(c.id)) continue;
         const scale = anySize ? m.dpr / t.dpr : 1;
-        const e = absolute(c.id);
+        const drawn = native?.boxes.get(c.id);
+        if (native !== undefined && drawn === undefined) throw new Error(`${device.target}: the phone drew no box for ${c.id}, which the browser lays out`);
+        const e = drawn === undefined ? absolute(c.id) : { x: drawn.x * t.dpr, y: drawn.y * t.dpr, width: drawn.width * t.dpr, height: drawn.height * t.dpr };
         const d = { x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale };
         const web = { x: c.x * m.dpr, y: c.y * m.dpr, width: c.width * m.dpr, height: c.height * m.dpr };
         const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(web[k] - d[k])));

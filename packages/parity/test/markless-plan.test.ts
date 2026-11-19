@@ -12,7 +12,7 @@ import { repoPath } from '../src/paths.ts';
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
 const { hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { hexBits(s: string): number };
 
-const INPUTS = ['fluid', 'borders-dashed', 'scheme', 'tabs'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
+const INPUTS = ['fluid', 'width-media', 'borders-dashed', 'scheme', 'tabs'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
 /** CSS px width, height and ratio: the proof devices, a small and a large phone, tablets in both orientations. */
 const SIZES: readonly (readonly [number, number, number])[] = [[402, 778, 3], [411, 818, 2.625], [375, 589, 2], [448, 921, 3], [820, 1123, 2], [1280, 744, 2], [863, 360, 2.625]];
 
@@ -66,6 +66,18 @@ describe('the layout plan of a Markless export', () => {
       });
     }
   }
+
+  it('gives a node a band hides no frame there, and its frame where the band shows it', () => {
+    const path = 'examples/markless-styles/input/width-media.native-style-input.json';
+    const t = marklessStyleExport(readFileSync(repoPath(path), 'utf8'), path, undefined, 'system').exported.targets.ios!;
+    const conditions = t.bands!.conditions;
+    const landscape = t.assignments.filter((_, k) => !(conditions[k] as string).endsWith('(not (orientation: landscape))'));
+    const portrait = t.assignments.filter((_, k) => (conditions[k] as string).endsWith('(not (orientation: landscape))'));
+    expect(landscape.length).toBe(5);
+    expect(portrait.length).toBe(5);
+    for (const a of portrait) expect(a.nodes.find((n) => n.id === 'h7')!.frame).toBeNull();
+    for (const a of landscape) expect(a.nodes.find((n) => n.id === 'h7')!.frame).not.toBeNull();
+  });
 
   it('refuses a ratio it holds no text for, and an assignment it does not have, by name', () => {
     const path = INPUTS[0] as string;

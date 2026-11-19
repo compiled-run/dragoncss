@@ -392,19 +392,23 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
   };
   // An element display: none leaves (with everything inside it) has no box in that assignment: the export names it with no frame,
   // so a host hides its view there instead of keeping another assignment's box. Any other missing node is an error.
-  const boxless = (a: ExportAssignment): ExportAssignment => {
+  const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));
     const none = new Set<string>();
     const added = parsed.nodes.flatMap((n): ExportNode[] => {
       if (have.has(n.id)) return [];
-      const own = n.kind === 'element' && n.attributesByState?.['hidden'] !== undefined;
+      // Hidden by its own `hidden` state, or by a style state (a band's display: none) that another assignment does not apply.
+      const own = (n.kind === 'element' && n.attributesByState?.['hidden'] !== undefined) || shown.has(n.id);
       if (!own && !none.has(n.parent ?? '')) return [];
       none.add(n.id);
       return [{ id: n.id, parent: n.parent, kind: n.kind, native: n.kind === 'text' ? 'DragonTextView' : 'DragonBoxView', text: n.kind === 'text' ? n.text : null, frame: null, borderWidths: null, writes: [] }];
     });
     return { ...a, nodes: [...a.nodes, ...added] };
   };
-  for (const x of Object.values(exported.targets)) (x as { assignments: unknown }).assignments = x.assignments.map(boxless);
+  for (const x of Object.values(exported.targets)) {
+    const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
+    (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
+  }
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     const boxless = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'element' && n.boxless === true;
