@@ -9,7 +9,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { Browser, CDPSession } from 'playwright';
 import type { LayoutRect, Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
 import { absoluteRects, layout, LU_PER_PX, mapPoint, paintTransformMatrix, rtEasing, rtInterpolate, transformFunctionsMatrix } from '@dragon/layout';
-import type { CapturedNode } from './capture.ts';
+import type { CapturedNode, CollectedElement, Rect } from './capture.ts';
+import { nameCollected } from './capture.ts';
 import type { AnimCase, FrameDump, FrameStep } from './anim-cases.ts';
 import { animCasesOf, animFixtures, frameScript, runFrameScript, trackedProperties } from './anim-cases.ts';
 import { compareZoomedLayout, GATE_DEVICE_PX } from './compare.ts';
@@ -75,7 +76,7 @@ export async function captureFrames(browser: Browser, c: AnimCase, steps: readon
 }
 
 /** The code that decides a frame run beside its pages: this driver, the frozen page setup, the break reader and the raster rule. */
-const FRAME_CODE = ['packages/parity/src/frame-capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/pixel-reference.ts', 'packages/parity/src/transform-capture.ts'];
+const FRAME_CODE = ['packages/parity/src/frame-capture.ts', 'packages/parity/src/capture.ts', 'packages/parity/src/node-ids.ts', 'packages/dragon/src/analysis/link.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/pixel-reference.ts', 'packages/parity/src/transform-capture.ts'];
 /** Remembered and fresh frame runs of this process (chrome-memo.ts). */
 export const FRAME_MEMO: MemoStats = { hits: 0, misses: 0 };
 
@@ -157,7 +158,7 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
     const shots = new Map<number, Buffer>();
     let cdp: CDPSession | null = null;
     // The page script of one chunk; a replay page (below) runs the same chunks.
-    const play = ({ pageSteps, tracked }: { readonly pageSteps: readonly PageStep[]; readonly tracked: Tracked }): CapturedNode[][] => {
+    const play = ({ pageSteps, tracked }: { readonly pageSteps: readonly PageStep[]; readonly tracked: Tracked }): CollectedElement[][] => {
         const frozen = (): void => {
           if (document.timeline.currentTime !== 0) throw new Error(`document.timeline.currentTime is ${String(document.timeline.currentTime)}, not 0`);
         };
@@ -185,34 +186,27 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
           while (from.childNodes.length > wanted.length) from.removeChild(from.lastChild as Node);
           for (const n of Array.from(from.childNodes)) if (n.nodeType === Node.TEXT_NODE && !wanted.includes(n)) from.removeChild(n);
         };
-        const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
-        const dump = (): CapturedNode[] => {
-          const out: CapturedNode[] = [];
+        const dump = (): CollectedElement[] => {
+          const out: CollectedElement[] = [];
+          const rect = (r: DOMRect): Rect => ({ x: r.x, y: r.y, width: r.width, height: r.height });
           for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
             const id = el.getAttribute('data-dragon-id') as string;
             const r = el.getBoundingClientRect();
             const cs = getComputedStyle(el);
             const computed: Record<string, string> = {};
             for (const t of tracked) if (t.node === id) computed[t.property] = cs.getPropertyValue(t.property);
-            out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed });
-            let k = 0;
-            let spaces = 0;
+            const texts: CollectedElement['texts'][number][] = [];
             for (const child of Array.from(el.childNodes)) {
               if (child.nodeType !== Node.TEXT_NODE) continue;
               const range = document.createRange();
               range.selectNodeContents(child);
-              const rects = Array.from(range.getClientRects());
-              const isBlank = blank((child as Text).data);
-              const textId = isBlank ? `${id}:space${spaces++}` : `${id}:text${k++}`;
-              if (isBlank && rects.length === 0) continue;
-              const t = range.getBoundingClientRect();
-              out.push({ id: textId, kind: 'text', hasBox: rects.length > 0, x: t.x, y: t.y, width: t.width, height: t.height, computed: null });
-              rects.forEach((q, j) => out.push({ id: `${textId}:line${j}`, kind: 'line', hasBox: true, x: q.x, y: q.y, width: q.width, height: q.height, computed: null }));
+              texts.push({ data: (child as Text).data, box: rect(range.getBoundingClientRect()), rects: Array.from(range.getClientRects()).map(rect) });
             }
+            out.push({ node: { id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed }, lines: [], texts });
           }
           return out;
         };
-        const out: CapturedNode[][] = [];
+        const out: CollectedElement[][] = [];
         for (const s of pageSteps) {
           if (s.kind === 'morph') {
             const next = new DOMParser().parseFromString(s.html, 'text/html');
@@ -231,7 +225,7 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
       if (chunk.length === 0) continue;
       const k = dumps.length;
       ran.push(chunk);
-      dumps.push(...await page.evaluate(play, { pageSteps: chunk, tracked }));
+      dumps.push(...(await page.evaluate(play, { pageSteps: chunk, tracked })).map(nameCollected));
       if (pixels === null || dumps.length === k) continue;
       if (dumps.length !== k + 1) throw new Error(`${c.id}: a reference chunk gave ${dumps.length - k} dumps`);
       // ANIM-b2: captureBreakTexts reads the lines on the transform twin, whose transform: none !important would change the page's
@@ -244,7 +238,7 @@ async function runFrames(browser: Browser, c: AnimCase, steps: readonly FrameSte
         const replay = await openFrozenPage(browser, initial, env);
         try {
           let last: CapturedNode[] | undefined;
-          for (const r of ran) last = (await replay.evaluate(play, { pageSteps: r, tracked })).at(-1) ?? last;
+          for (const r of ran) last = (await replay.evaluate(play, { pageSteps: r, tracked })).map(nameCollected).at(-1) ?? last;
           if (JSON.stringify(last) !== JSON.stringify(dumps[k])) throw new Error(`${c.id} sample ${k}: the replay page's dump differs from the capture's`);
           // A transition sits above !important in the cascade, so the twin cannot override one, and the twin's transform: none would
           // start one wherever transform is a transition property. So on the replay page each element's transition-property becomes
