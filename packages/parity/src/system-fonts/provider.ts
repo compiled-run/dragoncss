@@ -146,7 +146,7 @@ export function iosSystemFonts(dpr: number): SystemFonts {
 type HB = {
   createFace(bytes: Uint8Array, index?: number): number;
   faceUpem(face: number): number;
-  createFont(face: number, o: { size: number; weight?: number; width?: number; opticalSizingAuto?: boolean; variations?: readonly { tag: string; value: number }[] }): number;
+  createFont(face: number, o: { size: number; weight?: number; width?: number; slope?: number; opticalSizingAuto?: boolean; variations?: readonly { tag: string; value: number }[] }): number;
   shape(font: number, text: string, offset: number, length: number, o: { script: string; language: string; direction: 'ltr' | 'rtl'; features: readonly { tag: string; value: number; start: number; end: number }[] }): Int32Array;
   glyphExtents(font: number, glyph: number): [number, number, number, number] | undefined;
   glyphUnits(font: number, glyph: number): number;
@@ -180,8 +180,8 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
     let font = fonts.get(key);
     if (font === undefined) {
       const d = descriptorOf(id);
-      const { wght, wdth, ...rest } = d.axes;
-      font = hb.createFont(faces.get(d.sha256) as number, { size, weight: wght ?? 400, width: wdth ?? 100, opticalSizingAuto: false, variations: Object.entries(rest).map(([tag, value]) => ({ tag, value })) });
+      const { wght, wdth, slnt, ...rest } = androidInstance(d.axes, fvarAxes(files.read(`/system/fonts/${d.file}`).bytes, d.index));
+      font = hb.createFont(faces.get(d.sha256) as number, { size, weight: wght ?? 400, width: wdth ?? 100, slope: -(slnt ?? 0), opticalSizingAuto: false, variations: Object.entries(rest).map(([tag, value]) => ({ tag, value })) });
       fonts.set(key, font);
     }
     return font;
@@ -222,8 +222,32 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
   };
 }
 
+/** A variable font's axes (its fvar table), each with its range and default; none for a static font. */
+export type FontAxis = { readonly tag: string; readonly min: number; readonly default: number; readonly max: number };
+export function fvarAxes(bytes: Uint8Array, index: number): FontAxis[] {
+  const fvar = sfntTable(bytes, index, true)('fvar');
+  if (fvar === null) return [];
+  const at = fvar.getUint16(4);
+  const size = fvar.getUint16(10);
+  return Array.from({ length: fvar.getUint16(8) }, (_, i) => {
+    const o = at + i * size;
+    return { tag: tagOf(fvar.getUint32(o)), min: fvar.getInt32(o + 4) / 65536, default: fvar.getInt32(o + 8) / 65536, max: fvar.getInt32(o + 12) / 65536 };
+  });
+}
+
+/**
+ * The value of every axis of an Android system face as androidSystemFonts shapes it: fonts.xml's value, else the HarfBuzz request's
+ * (wght 400, wdth 100, slnt 0) or the axis default, clamped to the axis range.
+ */
+export function androidInstance(axes: Readonly<Record<string, number>>, fvar: readonly FontAxis[]): Record<string, number> {
+  const request: Readonly<Record<string, number>> = { wght: 400, wdth: 100, slnt: 0 };
+  return Object.fromEntries(fvar.map((a) => [a.tag, Math.max(a.min, Math.min(a.max, axes[a.tag] ?? request[a.tag] ?? a.default))]));
+}
+
 /** A table of an sfnt (or of face `index` of a collection) as a DataView over its bytes. */
-function sfntTable(bytes: Uint8Array, index: number): (tag: string) => DataView {
+function sfntTable(bytes: Uint8Array, index: number): (tag: string) => DataView;
+function sfntTable(bytes: Uint8Array, index: number, optional: true): (tag: string) => DataView | null;
+function sfntTable(bytes: Uint8Array, index: number, optional = false): (tag: string) => DataView | null {
   const d = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const isCollection = d.getUint32(0) === 0x74746366;
   const at = isCollection ? d.getUint32(12 + 4 * index) : index === 0 ? 0 : refuse(`face index ${index} of a single font`);
@@ -233,7 +257,7 @@ function sfntTable(bytes: Uint8Array, index: number): (tag: string) => DataView 
       const o = at + 12 + i * 16;
       if (String.fromCharCode(d.getUint8(o), d.getUint8(o + 1), d.getUint8(o + 2), d.getUint8(o + 3)) === tag) return new DataView(bytes.buffer, bytes.byteOffset + d.getUint32(o + 8), d.getUint32(o + 12));
     }
-    return refuse(`the font has no ${tag} table`);
+    return optional ? null : refuse(`the font has no ${tag} table`);
   };
 }
 

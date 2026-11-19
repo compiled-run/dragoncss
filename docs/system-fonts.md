@@ -87,7 +87,10 @@ iOS `kind: "system"` is `UIFont.systemFont(ofSize:weight:)` at that `UIFont.Weig
   reads) or root used colour scheme is not the export's.
 - **Chrome on the Mac** (`markless:style-compare`): the font mode is the export's `fontMode` (`--fonts`, when given, must match
   it). For Android, each system face's file must be the one the image's fonts.xml resolves for it, and Chrome loads those files as
-  web fonts. Chrome on the Mac
+  web fonts. Each face's `@font-face` sets `font-variation-settings` to every axis of the instance the provider shapes (fonts.xml's
+  values, else wght 400, wdth 100, slnt 0 or the axis default): Chrome sets `wght` and `wdth` from the text's weight and stretch but
+  never `ital`, so without it Roboto's italic faces draw upright (`The quick brown fox jumps` at 40 px: 479.06 px against 465.47 px).
+  packages/parity/test/system-fonts-reference.test.ts checks every face the provider resolves from the image. Chrome on the Mac
   does not draw iOS's system faces as Safari does (other line metric rounding, Helvetica and Times metric adjustments, San
   Francisco without Core Text's tracking), so an iOS target with system faces is refused there and compared with Safari instead.
 
