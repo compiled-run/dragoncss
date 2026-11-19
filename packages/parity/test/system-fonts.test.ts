@@ -31,7 +31,7 @@ const u32 = (b: Uint8Array, at: number, v: number): void => new DataView(b.buffe
 const u64 = (b: Uint8Array, at: number, v: number): void => new DataView(b.buffer).setBigUint64(at, BigInt(v), true);
 const sha = (b: Uint8Array): Uint8Array => new Uint8Array(createHash('sha256').update(b).digest());
 
-function ext4Image(file: Uint8Array): Uint8Array {
+function ext4Image(file: Uint8Array, o: { readonly incompat?: number; readonly fileFlags?: number } = {}): Uint8Array {
   const bs = 1024;
   const img = new Uint8Array(64 * bs);
   const sb = 1024;
@@ -43,13 +43,13 @@ function ext4Image(file: Uint8Array): Uint8Array {
   u32(img, sb + 40, 16);
   u16(img, sb + 56, 0xef53);
   u16(img, sb + 88, 128);
-  u32(img, sb + 96, 0x2 | 0x40);
+  u32(img, sb + 96, o.incompat ?? 0x2 | 0x40);
   u32(img, 2 * bs + 8, 5);
-  const inode = (n: number, mode: number, size: number, start: number, blocks: number): void => {
+  const inode = (n: number, mode: number, size: number, start: number, blocks: number, flags = 0x80000): void => {
     const at = 5 * bs + (n - 1) * 128;
     u16(img, at, mode);
     u32(img, at + 4, size);
-    u32(img, at + 0x20, 0x80000);
+    u32(img, at + 0x20, flags);
     u16(img, at + 0x28, 0xf30a);
     u16(img, at + 0x2a, 1);
     u16(img, at + 0x2c, 4);
@@ -74,7 +74,7 @@ function ext4Image(file: Uint8Array): Uint8Array {
   dir(11, [['.', 12], ['..', 2], ['etc', 13]]);
   inode(13, 0x41ed, bs, 12, 1);
   dir(12, [['.', 13], ['..', 12], ['fonts.xml', 14]]);
-  inode(14, 0x81a4, file.length, 20, Math.ceil(file.length / bs));
+  inode(14, 0x81a4, file.length, 20, Math.ceil(file.length / bs), 0x80000 | (o.fileFlags ?? 0));
   img.set(file, 20 * bs);
   return img;
 }
@@ -159,6 +159,12 @@ describe('the Android system image reader', () => {
     sup[4096 + 8192 + 128] = (sup[4096 + 8192 + 128] as number) ^ 1;
     expect(() => superPartitions(bytesSource(sup))).toThrow('tables checksum does not match');
     expect(() => gptPartitions(bytesSource(new Uint8Array(4096)))).toThrow('not a GPT disk');
+  });
+
+  it('refuses ext4 encryption, in the superblock\'s features and on a file\'s inode, rather than return ciphertext', () => {
+    const fs = (o: Parameters<typeof ext4Image>[1]): Ext4 => new Ext4(bytesSource(ext4Image(new TextEncoder().encode(XML), o)), 'test');
+    expect(() => fs({ incompat: 0x2 | 0x40 | 0x10000 })).toThrow('test: ext4 encryption (incompatible feature 0x10000) is not read by Dragon');
+    expect(() => fs({ fileFlags: 0x800 }).readFile('/system/etc/fonts.xml')).toThrow('test: inode 14 is encrypted, which Dragon does not read');
   });
 
   it('reads the SDK\'s own image: fonts.xml, and the Roboto it names for sans-serif', () => {
