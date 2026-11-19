@@ -59,7 +59,51 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][3]['classByState'][0]['when'] = { 'state:other': false }; }))).toThrow('h2: classByState names state:other');
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][1]['parent'] = 'h9'; }))).toThrow('h1: parent h9 is not an earlier element');
     expect(() => parseMarklessStyleInput(edit((v) => { v['states'][0]['domain'] = [0, 1]; }))).toThrow('only boolean states');
+    expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][3]['attributes']['class'] = 'like'; }))).toThrow('h2: class is both a fixed attribute and a class by state');
+    expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][2]['slot'] = 'label'; }))).toThrow('h1:text0 has slot, which the conversion does not read');
+    expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][3]['classByState'][0]['unless'] = {}; }))).toThrow('h2: a classByState entry has unless');
+    expect(() => parseMarklessStyleInput(edit((v) => { v['props'] = []; }))).toThrow('the input has props');
+    expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][3]['id'] = 'body'; v['nodes'][4]['parent'] = 'body'; }))).toThrow('body: html and body are the export\'s own document nodes');
     expect(() => marklessStyleExport(edit((v) => { v['nodes'][3]['classByState'].pop(); }), PATH)).toThrow('h2: classByState has 0 entries');
+  });
+
+  it('maps each text node by Dragon\'s own numbering, whitespace-only text included, under any element id', () => {
+    const v = JSON.parse(TEXT) as Record<string, any>;
+    v['nodes'] = [
+      { kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} },
+      { kind: 'element', id: 'p0', element: 'p', parent: 'h0', attributes: {} },
+      { kind: 'text', id: 'p0:space0', parent: 'p0', text: ' ' },
+      { kind: 'element', id: 'b0', element: 'b', parent: 'p0', attributes: {} },
+      { kind: 'text', id: 'b0:text0', parent: 'b0', text: 'bold' },
+      { kind: 'text', id: 'p0:space1', parent: 'p0', text: ' ' },
+      { kind: 'element', id: 'b1', element: 'b', parent: 'p0', attributes: {} },
+      { kind: 'text', id: 'b1:text0', parent: 'b1', text: 'more' },
+      { kind: 'text', id: 'p0:text0', parent: 'p0', text: 'tail' },
+      { kind: 'element', id: 'component-edge:0', element: 'div', parent: 'h0', attributes: {} },
+      { kind: 'text', id: 'component-edge:0:space0', parent: 'component-edge:0', text: ' ' },
+      { kind: 'text', id: 'component-edge:0:text0', parent: 'component-edge:0', text: 'edge' },
+      // The names the conversion gives Dragon's text and component nodes are input ids like any other.
+      { kind: 'element', id: 'm1', element: 'div', parent: 'h0', attributes: {} },
+      { kind: 'text', id: 't2', parent: 'm1', text: 'b' },
+      { kind: 'element', id: 'm0', element: 'div', parent: 'h0', attributes: {} },
+      { kind: 'element', id: 't1', element: 'div', parent: 'h0', attributes: {} },
+    ];
+    v['css'] = '';
+    v['states'] = [];
+    const { exported } = marklessStyleExport(JSON.stringify(v), PATH);
+    for (const x of Object.values(exported.targets)) for (const a of x.assignments) {
+      const ids = a.nodes.map((n) => n.id);
+      expect(new Set(ids).size, 'no id twice').toBe(ids.length);
+      const byId = new Map(a.nodes.map((n) => [n.id, n]));
+      for (const n of v['nodes'] as { id: string; kind: string; text?: string }[]) {
+        // Leading white space collapses away, and Dragon drops its node, as Chrome generates no box for it.
+        if (n.id === 'p0:space0' || n.id === 'component-edge:0:space0') {
+          expect(byId.has(n.id), n.id).toBe(false);
+          continue;
+        }
+        expect([byId.get(n.id)?.kind, byId.get(n.id)?.text], n.id).toEqual([n.kind, n.text ?? null]);
+      }
+    }
   });
 
   it('a CSS error is a refusal naming the declaration, not an export without it', () => {
