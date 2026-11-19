@@ -5,31 +5,33 @@ import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { authoredFontHtml } from './cases.ts';
-import { collectNodes } from './capture.ts';
-import type { CapturedNode } from './capture.ts';
+import type { NativeStyleTarget } from 'dragon';
+import { collectNodes, nameCollected } from './capture.ts';
+import type { CapturedNode, CollectedElement } from './capture.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
-import { marklessDocumentHtml } from './markless-style-compare.ts';
-import type { CompareRow } from './markless-style-compare.ts';
+import { checkCoverage, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree } from './markless-style-compare.ts';
+import type { BoxProblem, CompareRow, DocumentNode } from './markless-style-compare.ts';
 import type { MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
+import { marklessCompiledTargets } from './markless-style-input.ts';
 import type { ExportAssignment, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
 export type WebColumnDevice = { readonly target: 'ios'; readonly udid: string } | { readonly target: 'android'; readonly serial: string };
 
 /** A compared box: the gate's row, with both frames in device px from the page's top left. */
-export type WebColumnRow = CompareRow & { readonly web: Frame; readonly dragon: Frame };
+export type WebColumnRow = CompareRow & { readonly maxDeltaDevicePx: number; readonly web: Frame; readonly dragon: Frame };
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-type Measured = { readonly dpr: number; readonly innerWidth: number; readonly innerHeight: number; readonly vh: number; readonly layoutWidth: number; readonly nodes: readonly CapturedNode[]; readonly userAgent: string };
+type Measured = { readonly dpr: number; readonly innerWidth: number; readonly innerHeight: number; readonly vh: number; readonly layoutWidth: number; readonly elements: readonly CollectedElement[]; readonly backdrops: readonly CapturedNode[]; readonly tree: DocumentNode; readonly userAgent: string };
 
 const run = (cmd: string, args: readonly string[]): string => execFileSync(cmd, [...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
-/** The page of one assignment: the comparison's document with system fonts, and a script that posts every box back. */
+/** The page of one assignment: the comparison's document with system fonts, and a script in its head that posts the tree and every box back. */
 function pageOf(input: MarklessStyleInput, values: Readonly<Record<string, unknown>>, files: ReadonlyMap<string, Uint8Array>, post: string, width: number | null): string {
   const html = authoredFontHtml(marklessDocumentHtml(input, values, 'system'), files);
   // The export lays out at whole CSS px (a Pixel 7 is 411.43 wide); the root box takes that width so both lay out the same line length.
   const viewport = `<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="format-detection" content="telephone=no, date=no, address=no, email=no"><style>:where(html){-webkit-text-size-adjust:100%;text-size-adjust:100%${width === null ? '' : `;width:${width}px`}}</style>`;
-  const script = `<script>addEventListener('load',()=>document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const nodes=(${collectNodes.toString()})([]);const probe=document.createElement('div');probe.style.cssText='position:absolute;top:0;left:0;width:0;height:100vh';document.body.appendChild(probe);const vh=probe.getBoundingClientRect().height;probe.remove();fetch(${JSON.stringify(post)},{method:'POST',body:JSON.stringify({dpr:devicePixelRatio,innerWidth,innerHeight,vh,layoutWidth:document.documentElement.clientWidth,userAgent:navigator.userAgent,nodes})});}))));</script>`;
-  return html.replace('<head>', `<head>\n${viewport}`).replace('</body>', `${script}</body>`);
+  const script = `<script>addEventListener('load',()=>document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const tree=(${readDocumentTree.toString()})();const elements=(${collectNodes.toString()})([]);const backdrops=(${collectBackdrops.toString()})(${JSON.stringify(modalIds(input)).replace(/</g, '\\u003c')});const probe=document.createElement('div');probe.style.cssText='position:absolute;top:0;left:0;width:0;height:100vh';document.body.appendChild(probe);const vh=probe.getBoundingClientRect().height;probe.remove();fetch(${JSON.stringify(post)},{method:'POST',body:JSON.stringify({dpr:devicePixelRatio,innerWidth,innerHeight,vh,layoutWidth:document.documentElement.clientWidth,userAgent:navigator.userAgent,tree,elements,backdrops})});}))));</script>`;
+  return html.replace('<head>', `<head>${viewport}${script}`);
 }
 
 /** Opens a URL in the device's browser; Chrome starts with its first-run screens off (a debug-app command line). */
@@ -63,8 +65,19 @@ export type NativeLayout = { readonly assignment: number; readonly boxes: Readon
  */
 export type WebColumnView = { readonly browserDpr: number; readonly anySize: boolean; readonly phone?: { readonly boxes: ReadonlyMap<string, Frame>; readonly ids: ReadonlySet<string> } };
 
-/** One assignment's rows; a node one side gives a box and the other does not is an error, never skipped. */
-export function webColumnRows(target: WebColumnDevice['target'], dpr: number, assignment: ExportAssignment, measured: readonly CapturedNode[], index: number, view: WebColumnView = { browserDpr: dpr, anySize: false }): WebColumnRow[] {
+const PROBLEM: { readonly [K in BoxProblem]: string } = {
+  'no-node': 'has a box in the browser and no node in the export',
+  'no-frame': 'has a box in the browser and no frame in the export',
+  'no-box': 'has a frame in the export and no box in the browser',
+  unseen: 'has a frame in the export and no box in the browser\'s page',
+  anonymous: 'is an anonymous box whose nodes are not all in the browser\'s page',
+};
+
+/**
+ * One assignment's rows; a node one side gives a box and the other does not is an error, never skipped. The browser's boxes are
+ * paired with the export's nodes by the export's naming rule (pairBoxes) whether the export's frames or a phone's boxes are compared.
+ */
+export function webColumnRows(input: MarklessStyleInput, target: WebColumnDevice['target'], dpr: number, assignment: ExportAssignment, measured: readonly CapturedNode[], index: number, view: WebColumnView = { browserDpr: dpr, anySize: false }): WebColumnRow[] {
   const where = `${target} assignment ${index}`;
   const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
   const absolute = (id: string): Frame => {
@@ -75,32 +88,28 @@ export function webColumnRows(target: WebColumnDevice['target'], dpr: number, as
   };
   const round = (f: Frame): Frame => ({ x: Number(f.x.toFixed(4)), y: Number(f.y.toFixed(4)), width: Number(f.width.toFixed(4)), height: Number(f.height.toFixed(4)) });
   const scale = view.anySize ? view.browserDpr / dpr : 1;
+  const { pairs, problems } = pairBoxes(input, assignment, measured);
+  const first = problems[0];
+  if (first !== undefined) throw new Error(`${where}: ${first.id} ${PROBLEM[first.kind]}${problems.length > 1 ? ` (and ${problems.length - 1} more)` : ''}`);
   const phone = view.phone;
   if (phone !== undefined) {
-    const boxed = new Set(measured.filter((c) => c.hasBox && c.kind !== 'line').map((c) => c.id));
+    const boxed = new Set(pairs.map((p) => p.id));
     for (const [id, f] of phone.boxes) if (phone.ids.has(id) && !boxed.has(id) && (f.width > 0 || f.height > 0)) throw new Error(`${where}: the phone drew a box for ${id}, which the browser does not lay out`);
   }
   const rows: WebColumnRow[] = [];
-  for (const c of measured) {
-    if (c.kind === 'line') continue;
+  for (const { id, c } of pairs) {
     let e: Frame;
     if (phone !== undefined) {
       // A phone draws the input's nodes; Dragon's html and body place them and have no view of their own.
-      if (!c.hasBox || !phone.ids.has(c.id)) continue;
-      const drawn = phone.boxes.get(c.id);
-      if (drawn === undefined) throw new Error(`${where}: the phone drew no box for ${c.id}, which the browser lays out`);
+      if (!phone.ids.has(id)) continue;
+      const drawn = phone.boxes.get(id);
+      if (drawn === undefined) throw new Error(`${where}: the phone drew no box for ${id}, which the browser lays out`);
       e = { x: drawn.x * dpr, y: drawn.y * dpr, width: drawn.width * dpr, height: drawn.height * dpr };
-    } else {
-      const node = byId.get(c.id);
-      if (node === undefined) continue;
-      if (c.hasBox !== (node.frame !== null)) throw new Error(`${where}: ${c.id} ${c.hasBox ? 'has a box in the browser and no frame in the export' : 'has a frame in the export and no box in the browser'}`);
-      if (!c.hasBox) continue;
-      e = absolute(c.id);
-    }
+    } else e = absolute(id);
     const d = { x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale };
     const web = { x: c.x * view.browserDpr, y: c.y * view.browserDpr, width: c.width * view.browserDpr, height: c.height * view.browserDpr };
     const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(web[k] - d[k])));
-    rows.push({ target, values: assignment.values, id: c.id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX, web: round(web), dragon: round(d) });
+    rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX, web: round(web), dragon: round(d) });
   }
   return rows;
 }
@@ -114,8 +123,12 @@ export function webColumnRows(target: WebColumnDevice['target'], dpr: number, as
 export async function webColumn(input: MarklessStyleInput, exported: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, anySize = false, native?: NativeLayout): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
   const t = exported.targets[device.target];
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
+  const compiled = marklessCompiledTargets(input, fonts, 'system');
+  checkTargets(exported, compiled);
+  for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   const inputIds = new Set(input.nodes.map((n) => n.id));
+  if (native !== undefined && t.assignments[native.assignment] === undefined) throw new Error(`the phone drew assignment ${native.assignment}, which the export's ${device.target} target does not have`);
   const results = new Map<number, (m: Measured) => void>();
   const server = createServer((req, res) => {
     const u = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -158,7 +171,9 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
       size = { width: anySize ? m.layoutWidth : m.innerWidth, height: m.innerHeight, vh: m.vh, dpr: m.dpr };
       if (!anySize && (Math.abs(m.dpr - t.dpr) > 1e-6 || Math.abs(m.innerWidth - t.viewport.width) > 1)) throw new Error(`${device.target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, the export ${t.viewport.width} at ${t.dpr}x; use the export's proof device`);
       if (screenshots !== undefined) screenshot(device, `${screenshots}/${device.target}-web-${index}.png`);
-      rows.push(...webColumnRows(device.target, t.dpr, assignment, m.nodes, index, { browserDpr: m.dpr, anySize, ...(native === undefined ? {} : { phone: { boxes: native.boxes, ids: inputIds } }) }));
+      const mismatch = documentMismatch(marklessDocumentTree(input, assignment.values), m.tree);
+      if (mismatch !== null) throw new Error(`${device.target} assignment ${index}: the browser's document is not the input's tree: ${mismatch}`);
+      rows.push(...webColumnRows(input, device.target, t.dpr, assignment, [...nameCollected(m.elements), ...m.backdrops], index, { browserDpr: m.dpr, anySize, ...(native === undefined ? {} : { phone: { boxes: native.boxes, ids: inputIds } }) }));
     }
   } finally {
     if (device.target === 'android') {

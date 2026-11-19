@@ -7,6 +7,7 @@ import { isAbsolute, posix, relative } from 'node:path';
 import type { CssNode } from 'css-tree';
 import type { AtRuleContext, ElementNode, FrontEndResult, Origin, SourceFile, SourceRef, TreeNode } from 'dragon';
 import { collectFontFaces, parseStylesheet, preprocessInput, TREE_SCHEMA_REVISION } from 'dragon';
+import { isWhitespaceText } from './node-ids.ts';
 import { repoPath } from './paths.ts';
 
 export const PROJECT_ID = 'dragon-parity';
@@ -162,8 +163,6 @@ export function compiledFixtureHtml(html: string, css: string, classOf: Readonly
   return out + html.slice(at);
 }
 
-const isBlankText = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
-
 /** A src url() of an accepted @font-face rule that names a vendored font: the specifier, its asset id, and where it is written. */
 export type FontFaceUrl = { readonly specifier: string; readonly id: string; readonly spans: readonly { readonly start: number; readonly end: number }[] };
 
@@ -277,7 +276,7 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
       if ('tag' in c) {
         if (c.tag === 'head') continue;
         children.push(convert(c));
-      } else if (!isBlankText(c.text)) {
+      } else if (!isWhitespaceText(c.text)) {
         children.push({ kind: 'text', id: `${id}-text${k++}`, text: c.text, origin: origin(c.start, c.end) });
       }
     }

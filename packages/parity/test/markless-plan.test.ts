@@ -48,8 +48,8 @@ describe('the layout plan of a Markless export', () => {
         for (const t of ['ios', 'android'] as const) {
           const x = exported.targets[t]!;
           if (!PLAN_DENSITIES[t].includes(dpr)) continue;
-          const names = new Map(x.planNames ?? []);
           x.assignments.forEach((a, k) => {
+            const names = new Map(x.planNames?.[k] ?? []);
             const out = deviceLayout(x.plan!, k, width, height, dpr);
             expect(out[0]).toBe('ok');
             const page = decode(out[1]);

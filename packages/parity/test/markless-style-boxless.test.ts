@@ -56,5 +56,6 @@ describe("a sheet's content beside boxless markup ancestors", () => {
     };
     expect(() => marklessStyleExport(bad((n) => { n['boxless'] = false; }), PATH)).toThrow('h0: boxless is true or absent');
     expect(() => marklessStyleExport(bad((n) => { n['attributes'] = { 'data-markless-boxless': '' }; }), PATH)).toThrow("data-markless-boxless is Dragon's own attribute");
+    expect(() => marklessStyleExport(bad((n) => { n['attributesByState'] = { 'data-markless-boxless': [] }; }), PATH)).toThrow("data-markless-boxless is Dragon's own attribute");
   });
 });
