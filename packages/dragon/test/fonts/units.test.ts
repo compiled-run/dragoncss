@@ -21,17 +21,6 @@ const digestOf = (rs: readonly FontFaceResult[], faults = { ...withFault('remote
   if (!m.ok) throw new Error('no manifest');
   return sha256Hex(canonicalJson(manifestDigestInput(m.manifest)));
 };
-/** A copy of a font with one table tag renamed (the table stays; only its tag changes). */
-function renameTable(bytes: Uint8Array, from: string, to: string): Uint8Array {
-  const out = new Uint8Array(bytes);
-  const d = new DataView(out.buffer);
-  for (let i = 0; i < d.getUint16(4); i++) {
-    const r = 12 + i * 16;
-    if (String.fromCharCode(...out.subarray(r, r + 4)) === from) for (let k = 0; k < 4; k++) out[r + k] = to.charCodeAt(k);
-  }
-  return out;
-}
-
 describe('sfnt', () => {
   it('reads every vendored font as static TrueType with its postScriptName', () => {
     for (const f of ['Inter/Inter-Light.ttf', 'Inter/Inter-Regular.ttf', 'Roboto/Roboto-Regular.ttf', 'NotoSans/NotoSans-Regular.ttf', 'NotoSansMono/NotoSansMono-Regular.ttf']) {
@@ -49,8 +38,9 @@ describe('sfnt', () => {
   });
 
   it('refuses metrics of variable fonts and glyph bounds of CFF outlines', () => {
-    const variable = readSfnt(renameTable(REGULAR, 'gasp', 'fvar'));
-    const cff = readSfnt(renameTable(REGULAR, 'glyf', 'CFF '));
+    // Fonts Chrome loads: a table renamed fvar or CFF would be one its sanitizer or typeface refuses (woff-sanitizer.test.ts).
+    const variable = readSfnt(new Uint8Array(readFileSync(new URL('../../../../docs/research/text-spike/fonts/Inter-VF.ttf', import.meta.url))));
+    const cff = readSfnt(new Uint8Array(readFileSync(new URL('../../../../design/homepage/assets/fonts/dragon-blackletter/DragonBlackletter-Regular.otf', import.meta.url))));
     if (!variable.ok || !cff.ok) throw new Error('unreadable');
     expect(faceMetrics(variable.font, 16, 1)).toEqual({ ok: false, refusal: { kind: 'variable-font' } });
     expect(cff.font.outlines).toBe('cff');
@@ -193,6 +183,8 @@ describe('family case folding', () => {
 describe('fonts module boundary', () => {
   it('has no node: imports (it runs in the compiler core)', () => {
     const dir = new URL('../../src/fonts/', import.meta.url);
-    for (const f of readdirSync(dir)) expect(readFileSync(new URL(f, dir), 'utf8')).not.toMatch(/from ['"]node:|import\(['"]node:/);
+    const files = readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.ts'));
+    expect(files).toContain('ots/sanitize.ts');
+    for (const f of files) expect(readFileSync(new URL(f, dir), 'utf8')).not.toMatch(/from ['"]node:|import\(['"]node:/);
   });
 });
