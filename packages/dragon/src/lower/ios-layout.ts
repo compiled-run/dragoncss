@@ -804,7 +804,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
 function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
   const el = c as ResolvedElement;
-  if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l.faults, l.ua, l.rootFontSize, l.images, null, l.zoom, l.mode);
+  if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l, null);
   const box = lowerBox(el, l, null);
   // An inline-level control waits for RF-INL (analysis/computed-checks.ts checkButton refuses it).
   if (box.kind !== 'box') throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out (RF-INL)`);
@@ -850,6 +850,20 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   }
 }
 
+/** css-anchor-position-1: records the element's anchor facts (lower/anchor-layout.ts); its own style lowers anchor values as auto or normal. */
+function withAnchorFacts(given: ResolvedElement, l: Lowerer): ResolvedElement {
+  if (!usesAnchors(given)) return given;
+  try {
+    l.anchors.set(given.element.address, anchorFactsOf(given));
+  } catch (e) {
+    if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
+    throw e;
+  }
+  const position = (given.props.get('position') as ResolvedValue).value;
+  const abspos = position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed');
+  return { ...given, props: new Map([...given.props].map(([p, v]) => [p, { ...v, value: anchorNeutralValue(p, v.value, abspos) }])) };
+}
+
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
 
 /**
@@ -857,9 +871,11 @@ const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', '
  * overflow clip (the UA's img and iframe rule) clips only its own content, so the engine takes it as visible; its children are
  * fallback content, which a replaced element never renders.
  */
-function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals, gridParent: GridContainer | null, parentZoom: readonly number[], mode: LowerMode): ReplacedLeaf {
+function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): ReplacedLeaf {
+  const { faults, ua, rootFontSize, images, mode } = l;
+  const el = withAnchorFacts(given, l);
   const id = el.element.address;
-  const zoom = zoomChain(el, parentZoom);
+  const zoom = zoomChain(el, l.zoom);
   if (zoomProduct(zoom) !== 1) throw new LoweringError(id, 'zoom', `<${el.element.tag}> ${id} is replaced content at zoom ${zoomProduct(zoom)}, whose natural size native does not zoom yet (ZOOM)`);
   const raw: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const get: Get = (p) => {
@@ -929,19 +945,7 @@ const INLINE_IGNORES = {
  */
 function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox | ControlBox {
   const id = given.element.address;
-  // css-anchor-position-1: an anchor function or anchor-center lowers as auto or normal here; lower/anchor-layout.ts reads it.
-  let el = given;
-  if (usesAnchors(given)) {
-    try {
-      l.anchors.set(id, anchorFactsOf(given));
-    } catch (e) {
-      if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
-      throw e;
-    }
-    const position = (given.props.get('position') as ResolvedValue).value;
-    const abspos = position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed');
-    el = { ...given, props: new Map([...given.props].map(([p, v]) => [p, { ...v, value: anchorNeutralValue(p, v.value, abspos) }])) };
-  }
+  const el = withAnchorFacts(given, l);
   const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);
@@ -973,7 +977,7 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   for (const c of kids) {
     if (!isInlineLevel(c)) {
       flush();
-      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images, grid, zoom, l.mode) : lowerBox(c as ResolvedElement, lc, grid));
+      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, lc, grid) : lowerBox(c as ResolvedElement, lc, grid));
     } else if (wrap) {
       if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
       run.push(c);

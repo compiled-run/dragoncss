@@ -186,7 +186,7 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
     const named = (name: string): string | null => {
       const t = target(n, name);
       if (t === null) return null;
-      if (t.box.style.display === 'inline') throw new AnchorLoweringError(f.id, 'anchor-name', `the anchor ${t.box.id} of ${f.id} is an inline box, whose fragments' bounding rectangle Dragon does not lay out yet`);
+      if (t.box.kind !== 'replaced' && t.box.style.display === 'inline') throw new AnchorLoweringError(f.id, 'anchor-name', `the anchor ${t.box.id} of ${f.id} is an inline box, whose fragments' bounding rectangle Dragon does not lay out yet`);
       return t.box.id;
     };
     const def = f.positionAnchor === null ? null : named(f.positionAnchor);
