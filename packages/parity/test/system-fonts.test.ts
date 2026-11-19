@@ -1,8 +1,9 @@
 // System fonts on Markless native targets (docs/system-fonts.md): the Android image reader and fonts.xml, CSS weight matching, the
 // Core Text helper's output, the export's shape, and the measured advances and line heights against the platform probe numbers in
 // test/system-fonts/ (how each was produced is in its "how" field; the probe sources are in test/system-fonts/probes).
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { TextFont } from '@dragon/layout';
@@ -19,6 +20,7 @@ import { parseFontsXml } from '../src/system-fonts/fonts-xml.ts';
 import { systemMeasurer } from '../src/system-fonts/measurer.ts';
 import { matchWeight, systemFontsFor } from '../src/system-fonts/provider.ts';
 import { IOS_ROLE_FACES } from '../src/system-fonts/web-generics.ts';
+import { scratch } from './scratch.ts';
 
 // The shared toolchain refusal (packages/translate/src/native.ts), loaded by path as pointer-vectors-java.test.ts does.
 const { missingToolchain } = (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as { readonly missingToolchain: (subject: string, missing: string) => string };
@@ -413,6 +415,36 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
     }
     console.log(`Android: Dragon's widths against Chrome's, largest gap ${chromeGap.toFixed(4)} device px; run advances against Paint.getRunAdvance (Minikin, word by word), largest gap ${paintGap.toFixed(4)} device px`);
   });
+});
+
+describe('the probe scripts', () => {
+  const tmp = scratch();
+  // Every device tool is a stub that records its call, so a probe that went past its harness check would leave a trace, not boot a phone.
+  const run = (script: string, harness: string | null): { status: number | null; stderr: string; called: string } => {
+    const dir = tmp.dir();
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    for (const tool of ['xcrun', 'adb', 'emulator', 'node']) {
+      writeFileSync(join(bin, tool), `#!/bin/bash\necho "${tool} $*" >> "${dir}/called"\n`);
+      chmodSync(join(bin, tool), 0o755);
+    }
+    const env = { PATH: `${bin}:/usr/bin:/bin`, HOME: dir, ANDROID_HOME: dir, ...(harness === null ? {} : { SYSFONT_HARNESS: harness }) };
+    const r = spawnSync('bash', [new URL(`./system-fonts/probes/${script}`, import.meta.url).pathname], { env, encoding: 'utf8', timeout: 20_000 });
+    return { status: r.status, stderr: r.stderr, called: existsSync(join(dir, 'called')) ? readFileSync(join(dir, 'called'), 'utf8') : '' };
+  };
+
+  for (const [script, missing] of [['ios.sh', 'scripts/server.mjs'], ['android.sh', 'scripts/server.mjs']] as const) {
+    it(`${script} refuses by name, before touching a device, without the measuring harness`, () => {
+      const unset = run(script, null);
+      expect(unset.status).toBe(2);
+      expect(unset.stderr).toContain(`${script}: SYSFONT_HARNESS is not set`);
+      expect(unset.called).toBe('');
+      const empty = run(script, tmp.dir());
+      expect(empty.status).toBe(2);
+      expect(empty.stderr).toContain(`has no ${missing}`);
+      expect(empty.called).toBe('');
+    });
+  }
 });
 
 function androidSystemImagePathOrNull(): string | null {

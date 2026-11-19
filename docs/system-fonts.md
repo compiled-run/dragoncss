@@ -14,7 +14,7 @@ probe numbers the tests read: packages/parity/test/system-fonts/{ios-coretext,an
 What is committed differs by platform. android-paint.json keeps Chrome's and the WebView's own element widths and line heights.
 ios-coretext.json keeps Safari's line heights and which generics Safari matched to each face, but not Safari's element widths: the
 iOS width deltas in the table below were computed by the probe run against Safari widths that were not committed, so nothing in
-the repo shows them.
+the repo shows them. The recorded values cannot be measured again from this repo yet ("Probes" below).
 
 | CSS | Safari, iOS 27.2 (simulator, runtime 24B8117) | Chrome 133, Android 36 (emulator image `google_apis` arm64) |
 |---|---|---|
@@ -86,6 +86,19 @@ iOS `kind: "system"` is `UIFont.systemFont(ofSize:weight:)` at that `UIFont.Weig
 - **Chrome on the Mac** (`markless:style-compare`): for Android, Chrome loads the image's font files as web fonts. Chrome on the Mac
   does not draw iOS's system faces as Safari does (other line metric rounding, Helvetica and Times metric adjustments, San
   Francisco without Core Text's tracking), so an iOS target with system faces is refused there and compared with Safari instead.
+
+## Probes
+
+packages/parity/test/system-fonts/probes holds what the 2026-11-18 run used that is in the repo: the Core Text probe
+(coretext-probe.swift), the Android probe app's source (android/), and the scripts that drove the simulator and the emulator
+(ios.sh, android.sh). The rest of that run's harness was kept in /tmp/sysfont-measure and is not in the repo: the server that
+served the measuring page and stored what the browsers posted (scripts/server.mjs), the measuring page itself, the scripts that
+cut the fixtures from the raw output (fixture-ios.mjs, fixture-android.mjs), the build of the Android probe APK, and the
+comparisons match-ios.json and match-android.json. The fixtures' `how` fields describe them, but not closely enough to rebuild
+them faithfully, so they have not been rewritten. Until they are, ios.sh and android.sh stop with a named error before touching a
+device unless `SYSFONT_HARNESS` names a directory with that harness. ios.sh now compiles the committed coretext-probe.swift with
+the recorded `swiftc` command rather than taking a compiled probe from the harness. Neither script has been run on a device since
+these changes.
 
 ## Licence
 
