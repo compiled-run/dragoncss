@@ -76,6 +76,10 @@ export function webColumnRows(target: WebColumnDevice['target'], dpr: number, as
   const round = (f: Frame): Frame => ({ x: Number(f.x.toFixed(4)), y: Number(f.y.toFixed(4)), width: Number(f.width.toFixed(4)), height: Number(f.height.toFixed(4)) });
   const scale = view.anySize ? view.browserDpr / dpr : 1;
   const phone = view.phone;
+  if (phone !== undefined) {
+    const boxed = new Set(measured.filter((c) => c.hasBox && c.kind !== 'line').map((c) => c.id));
+    for (const [id, f] of phone.boxes) if (phone.ids.has(id) && !boxed.has(id) && (f.width > 0 || f.height > 0)) throw new Error(`${where}: the phone drew a box for ${id}, which the browser does not lay out`);
+  }
   const rows: WebColumnRow[] = [];
   for (const c of measured) {
     if (c.kind === 'line') continue;
