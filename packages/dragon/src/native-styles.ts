@@ -3,9 +3,9 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { compiledCases, interactionPartitionOf, nativeBandProgram, nativeBands, nativeProgramFor } from './internal.ts';
+import { compiledCases, interactionPartitionIn, nativeBandProgramFor, nativeBands } from './internal.ts';
 import type { rtBand } from '@dragon/layout';
-import { BandProgramError } from './lower/band-program.ts';
+import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
 import type { NativeBackend } from './lower/native-program.ts';
 import type { StateProgram } from './lower/state-program.ts';
 import { deriveStateProgram, StateProgramError } from './lower/state-program.ts';
@@ -95,17 +95,20 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   if (record === undefined) throw new Error('compileNativeStyles: the compile result carries no internal record');
   if (record.animation !== null && record.animation.features.length > 0) return { kind: 'blocked', reason: `the ${t} output has transitions or animations, which this entry point does not emit yet` };
   const backend = BACKEND[t];
+  const bands = nativeBands(compiled);
+  const count = bands === null ? 1 : bands.table.bands.length;
   const cases = [];
   for (const c of compiledCases(compiled)) {
-    const partition = interactionPartitionOf(compiled, c.assignment);
-    if (partition !== null && partition.states.length > 0) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
-    const p = nativeProgramFor(compiled, c.assignment, t);
-    if (p.kind === 'blocked') return { kind: 'blocked', reason: p.reason };
-    cases.push({ assignment: c.assignment, isInitial: c.isInitial, program: p.program });
+    for (let band = 0; band < count; band++) {
+      const partition = interactionPartitionIn(compiled, c.assignment, band);
+      if (partition !== null && partition.states.length > 0) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
+      const p = nativeBandProgramFor(compiled, c.assignment, band, t);
+      if (p.kind === 'blocked') return { kind: 'blocked', reason: p.reason };
+      cases.push({ assignment: c.assignment, isInitial: c.isInitial, band, program: p.program });
+    }
   }
   try {
-    const bands = nativeBands(compiled);
-    const program = bands === null ? deriveStateProgram(backend, cases) : nativeBandProgram(compiled, backend);
+    const program = bands === null ? deriveStateProgram(backend, cases) : bandStateProgram(backend, cases, count, bands.initial);
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
