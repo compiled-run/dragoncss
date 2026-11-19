@@ -1,13 +1,14 @@
 // The Chrome comparison of an export with system faces: Chrome on the Mac draws each target's system faces with the same font
 // files the export measured. Android's files (from the SDK image) load as web fonts; iOS's named faces load with local() from the
-// Mac's own copies, and system-ui stays Chrome's system-ui (the Mac's San Francisco, whose Core Text widths equal iOS's).
+// Mac's own copies, and system-ui stays Chrome's system-ui (the Mac's San Francisco, whose Core Text widths equal iOS's). An Android
+// face pins every variation axis to the instance the provider shapes; iOS's named faces are static and system-ui takes only a weight.
 import type { Page } from 'playwright';
 import type { NativeStyleTarget, SystemFaceRole } from 'dragon';
 import { fontDataUrl } from '../font-reference.ts';
 import { applyFontReference } from '../font-reference.ts';
 import type { SystemFontEntry } from '../native-style-export.ts';
 import { AndroidSystemFiles } from './android.ts';
-import { systemRequestOf } from './provider.ts';
+import { androidInstance, fvarAxes, systemRequestOf } from './provider.ts';
 
 const quote = (s: string): string => `"${s.replace(/["\\]/g, (c) => `\\${c}`)}"`;
 
@@ -26,7 +27,9 @@ export function systemFontReference(target: NativeStyleTarget, entries: readonly
       const file = files().read(`/system/fonts/${d.file}`);
       if (file.sha256 !== d.sha256) throw new Error(`${e.id}: /system/fonts/${d.file} is ${file.sha256} now, the export measured ${d.sha256}`);
       if (d.index !== 0) throw new Error(`${e.id}: face ${d.index} of a collection, which Chrome's @font-face cannot name`);
-      rules.push(`@font-face{${descriptors};src:url("${fontDataUrl(file.bytes)}")}`);
+      // Chrome sets wght and wdth from the text's weight and stretch but never ital, so every axis is pinned to the shaped instance.
+      const axes = Object.entries(androidInstance(d.axes, fvarAxes(file.bytes, d.index))).map(([tag, v]) => `${quote(tag)} ${v}`).join(',');
+      rules.push(`@font-face{${descriptors}${axes === '' ? '' : `;font-variation-settings:${axes}`};src:url("${fontDataUrl(file.bytes)}")}`);
     } else {
       const d = e.ios;
       if (d === undefined) throw new Error(`${e.id} has no iOS face`);

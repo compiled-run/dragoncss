@@ -4,6 +4,7 @@
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Declaration, Rule } from '../css/stylesheet.ts';
 import { parseStyleAttribute } from '../css/stylesheet.ts';
+import { isRevertLayer, rollsBack } from './layers.ts';
 import type { AttributeBinding, ComponentDefinition, Diagnostic, ElementNode, Span, TreeNode } from '../types.ts';
 import type { LinkedElement } from './link.ts';
 
@@ -34,6 +35,15 @@ function parsed(attribute: AttributeBinding, element: ElementNode, text: string)
     const declarations: Declaration[] = [];
     for (const d of all) {
       const ruleRead = d.animation !== undefined || d.longhands.some((lh) => RULE_READ.has(lh.property)) || RULE_READ.has(d.property);
+      // css-cascade-5 §6.4: a style attribute is a layer above the unlayered rules, so its revert-layer never acts as revert.
+      if (!ruleRead && isRevertLayer(d) && !rollsBack(d)) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', {
+          origin: authored(at),
+          message: `attribute style on ${element.id} is not supported: its ${d.alias ?? d.property} declaration holds revert-layer, which Dragon rolls back only as a plain value that is not !important, not reached through var(), and not on a custom property`,
+          manual: `Move ${d.alias ?? d.property}: ${d.text} into a stylesheet rule that selects ${element.id}.`,
+        }));
+        continue;
+      }
       if (!ruleRead) {
         declarations.push(d);
         continue;

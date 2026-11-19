@@ -63,6 +63,8 @@ describe('a Markless <dialog>, which the host shows modal', () => {
       ['min-width: 500px; margin: 10px', [10, 10, 500, 180]],
       ['zoom: 2; margin: 10px', [20, 20, 260, 160]],
       ['transform: translateX(20px); margin: 10px', [10, 10, 280, 180]],
+      ['transform: translateX(20px) !important; rotate: 10deg !important; margin: 10px', [10, 10, 280, 180]],
+      ['transition: transform 10s, scale 10s; transform: translateX(20px); scale: 2; margin: 10px', [10, 10, 280, 180]],
     ];
     const browser = await launchChrome(1);
     try {
