@@ -357,6 +357,17 @@ describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulato
         const s = shaped(sys.shaper.shape(id, f.size, l.text, 0, l.text.length, 'Latn', false, 'en-US', []));
         expect(s.glyphs, `${where} ${l.text}`).toEqual(l.glyphs);
         expect(Math.abs(s.width - l.spaceRuleWidth), `${where} ${l.text}`).toBeLessThan(1e-3);
+        // Core Text's own x under the space rule: from each space on, shifted by the font's space advance less Core Text's.
+        const space = shaped(sys.shaper.shape(id, f.size, ' ', 0, 1, 'Latn', false, 'en-US', []));
+        let shift = 0;
+        const ruled = l.x.map((x, k) => {
+          const at = x + shift;
+          if (l.glyphs[k] === space.glyphs[0]) shift += space.width - ((l.x[k + 1] as number) - x);
+          return at;
+        });
+        expect(s.xs.length, `${where} ${l.text}`).toBe(l.x.length);
+        // The widths' tolerance: Dragon's shaper sums 16.16 fixed-point advances where Core Text sums doubles.
+        s.xs.forEach((x, k) => expect(Math.abs(x - (ruled[k] as number)), `${where} ${l.text}: glyph ${k} at ${x}, Core Text's under the space rule ${ruled[k]}`).toBeLessThan(1e-3));
         const w = m.measure(l.text, font(id, f.size));
         expect(w.ok && Math.abs(w.measure.width / LU_PER_PX - l.spaceRuleWidth) <= 1 / 64, `${where} ${l.text}: the engine's width`).toBe(true);
       }
@@ -380,7 +391,7 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
   const a = fixture<AndroidFixture>('android-paint.json');
   const ROLE: Readonly<Record<string, 'sans-serif' | 'serif' | 'monospace'>> = { default: 'sans-serif', serif: 'serif', monospace: 'monospace' };
 
-  it('gives Paint\'s glyphs, and Chrome\'s widths within the device gate and its line heights', () => {
+  it('gives Paint\'s glyphs and its x within each word, and Chrome\'s widths within the device gate and its line heights', () => {
     if (!existsSync(androidSystemImagePathOrNull() ?? '')) {
       missingToolchain('system fonts (Android)', `no SDK system image ${JSON.stringify(ANDROID_SYSTEM_IMAGE)}`);
       return;
@@ -388,6 +399,7 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
     const sys = systemFontsFor('android', a.how.density);
     let paintGap = 0;
     let chromeGap = 0;
+    let wordGap = 0;
     for (const e of a.entries) {
       const role = ROLE[e.id] as 'sans-serif' | 'serif' | 'monospace';
       const id = systemFaceId(role, e.weight, 'normal') as string;
@@ -404,6 +416,24 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
         const s = shaped(sys.shaper.shape(id, e.devicePx, l.text, 0, l.text.length, 'Latn', false, 'en-US', []));
         expect(s.glyphs, `${where} ${l.text}`).toEqual(l.glyphIds);
         paintGap = Math.max(paintGap, Math.abs(s.width - l.runAdvance));
+        // Paint's x, word by word from each word's first glyph: Minikin shapes each word on its own, so across a space its x is not
+        // what Chrome (and Dragon) draw (AVATAR Type office differs by 1.9 device px there), whose run width the Chrome check below
+        // holds. Within a word, the device gate the widths are held to.
+        const spaceGlyph = shaped(sys.shaper.shape(id, e.devicePx, ' ', 0, 1, 'Latn', false, 'en-US', [])).glyphs[0];
+        expect(s.xs.length, `${where} ${l.text}`).toBe(l.x.length);
+        let start = 0;
+        let checked = 0;
+        s.xs.forEach((x, k) => {
+          if (s.glyphs[k] === spaceGlyph) {
+            start = k + 1;
+            return;
+          }
+          const gap = Math.abs(x - (s.xs[start] as number) - ((l.x[k] as number) - (l.x[start] as number)));
+          wordGap = Math.max(wordGap, gap);
+          expect(gap, `${where} ${l.text}: glyph ${k} at ${x}, ${k - start} advances into its word`).toBeLessThanOrEqual(GATE_DEVICE_PX);
+          checked++;
+        });
+        expect(checked, `${where} ${l.text}`).toBe(s.glyphs.filter((g) => g !== spaceGlyph).length);
         const chrome = a.entries.find((x) => x === e)!.blinkWidthsCss.find((b) => b.text === l.text)?.chrome;
         const css = chrome === undefined ? undefined : Object.values(chrome)[0];
         if (css === undefined) continue;
@@ -413,7 +443,7 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
         expect(gap <= GATE_DEVICE_PX, `${where} ${l.text}: Chrome's width ${css * a.how.density}, Dragon's ${w.ok ? w.measure.width / LU_PER_PX : w.reason}`).toBe(true);
       }
     }
-    console.log(`Android: Dragon's widths against Chrome's, largest gap ${chromeGap.toFixed(4)} device px; run advances against Paint.getRunAdvance (Minikin, word by word), largest gap ${paintGap.toFixed(4)} device px`);
+    console.log(`Android: Dragon's widths against Chrome's, largest gap ${chromeGap.toFixed(4)} device px; run advances against Paint.getRunAdvance (Minikin, word by word), largest gap ${paintGap.toFixed(4)} device px; glyph x within a word against Paint's, largest gap ${wordGap.toFixed(4)} device px`);
   });
 });
 
