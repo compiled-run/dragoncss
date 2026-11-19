@@ -57,7 +57,8 @@ function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
   throw new Error(`no colour scheme reaches band ${band}`);
 }
 
-export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number; readonly pass: boolean };
+/** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
+export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
 
 export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
@@ -80,18 +81,43 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
           await page.emulateMedia({ colorScheme: scheme });
           await fonts(page);
         });
+        const seen = new Set<string>();
+        const mismatch = (id: string, problem: string): void => {
+          rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: null, pass: false, problem });
+        };
         for (const c of capture.nodes) {
+          // The export has no line boxes; a text node's own box is compared.
+          if (c.kind === 'line') continue;
+          seen.add(c.id);
           const node = byId.get(c.id);
-          if (!c.hasBox || c.kind === 'line' || node === undefined || node.frame === null) continue;
+          if (!c.hasBox) {
+            if (node !== undefined && node.frame !== null) mismatch(c.id, 'Chrome generates no box but the export has a frame');
+            continue;
+          }
+          if (node === undefined && c.svg !== undefined) continue;
+          if (node === undefined || node.frame === null) {
+            mismatch(c.id, node === undefined ? 'Chrome has a box but the export has no node' : 'Chrome has a box but the export has no frame');
+            continue;
+          }
           const d = absolute(c.id);
           const chrome = { x: c.x * t.dpr, y: c.y * t.dpr, width: c.width * t.dpr, height: c.height * t.dpr };
           const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(chrome[k] - d[k])));
           rows.push({ target, values: assignment.values, id: c.id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX });
+        }
+        for (const n of assignment.nodes) {
+          if (seen.has(n.id) || n.frame === null) continue;
+          if (n.kind !== 'anonymous') {
+            mismatch(n.id, 'the export has a framed node Chrome does not have');
+            continue;
+          }
+          // An anonymous box only Dragon has passes only when it holds at least one node and Chrome has every one of them.
+          const inside = assignment.nodes.filter((x) => x.parent === n.id);
+          if (inside.length === 0 || inside.some((x) => !seen.has(x.id))) mismatch(n.id, 'anonymous box whose nodes are not all Chrome nodes');
         }
       }
     } finally {
       await browser.close();
     }
   }
-  return { compared: rows.length, failed: rows.filter((r) => !r.pass).length, rows };
+  return { compared: rows.filter((r) => r.maxDeltaDevicePx !== null).length, failed: rows.filter((r) => !r.pass).length, rows };
 }
