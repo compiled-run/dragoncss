@@ -497,20 +497,24 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
   const boxless = (a: ExportAssignment): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
-    const none = new Set<string>();
+    const hiddenHere = new Set<string>();
+    const named = new Set<string>();
     const inputParent = new Map(parsed.nodes.map((n) => [n.id, n.parent]));
     // Its parent in the export: the nearest ancestor the export has (a boxless one has no node), else body.
     const parentOf = (id: string): string => {
       let p = inputParent.get(id) ?? null;
-      while (p !== null && !have.has(p) && !none.has(p)) p = inputParent.get(p) ?? null;
+      while (p !== null && !have.has(p) && !named.has(p)) p = inputParent.get(p) ?? null;
       return p ?? 'body';
     };
     const added = parsed.nodes.flatMap((n): ExportNode[] => {
       if (have.has(n.id)) return [];
       const byState = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
-      const own = n.kind === 'element' && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null));
-      if (!own && !none.has(n.parent ?? '')) return [];
-      none.add(n.id);
+      // The boxless rule's display: contents !important beats hidden's UA display: none, so a boxless element hides nothing.
+      const own = n.kind === 'element' && n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null));
+      if (!own && !hiddenHere.has(n.parent ?? '')) return [];
+      hiddenHere.add(n.id);
+      if (n.kind === 'element' && n.boxless === true) return [];
+      named.add(n.id);
       return [{ id: n.id, parent: parentOf(n.id), kind: n.kind, native: n.kind === 'text' ? 'DragonTextView' : 'DragonBoxView', text: n.kind === 'text' ? shownText(n, values) : null, frame: null, borderWidths: null, writes: [] }];
     });
     return { ...a, nodes: [...a.nodes, ...added] };
