@@ -2,13 +2,18 @@
 // (harness.ts runMarklessLayout). Per assignment its engine input variant, dashed borders and scroll containers; per ratio the text
 // shaping the build measured, recorded at every root width a phone in PLAN_WIDTHS can have, so the device never shapes text.
 // The text is recorded at one viewport height: a page whose text changes with the height is refused.
+import { pathToFileURL } from 'node:url';
 import type { FontData, FontLengths, FontMetrics, LayoutInput, TextMeasurer } from '@dragon/layout';
 import { layout } from '@dragon/layout';
 import type { NativeStyleTarget, StateProgram } from 'dragon';
 import { programAt } from 'dragon';
+import { repoPath } from './paths.ts';
 import type { MeasurerRecorder } from './system-fonts/measurer.ts';
 import { systemFaceData, systemMeasurer } from './system-fonts/measurer.ts';
 import type { SystemFonts } from './system-fonts/provider.ts';
+
+// The harness is loaded by path at run time, as cli/paint-vectors.ts does: it is written in the translator subset, outside this package.
+const harness = (await import(pathToFileURL(repoPath('packages/translate/harness/harness.ts')).href)) as { checkMarklessPlan(line: string): string };
 
 export const MARKLESS_PLAN_VERSION = 'dragon.markless-plan/1';
 
@@ -103,7 +108,7 @@ function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFon
 /**
  * The plan of one target. `system(dpr)` is the target's system fonts at a ratio; `bundled` the face ids the measurer reads from
  * bundled files; `height` the height every recorded layout uses. A page whose text at PLAN_HEIGHTS' heights is not the text
- * recorded at `height` is refused.
+ * recorded at `height` is refused, and so is a plan the device's reader (harness.ts checkMarklessPlan) cannot read all of, by field.
  */
 export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number): MarklessPlan {
   const densities = PLAN_DENSITIES[t].map((dpr) => recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height));
@@ -121,5 +126,8 @@ export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dp
     }
     return { variant: (sp.deltas[i] as { readonly variant: number }).variant, dashed, scroll };
   });
-  return { version: MARKLESS_PLAN_VERSION, faces: [...faces].map(([id, data]) => ({ id, data })), densities, variants: sp.variants, assignments };
+  const plan: MarklessPlan = { version: MARKLESS_PLAN_VERSION, faces: [...faces].map(([id, data]) => ({ id, data })), densities, variants: sp.variants, assignments };
+  const read = JSON.parse(harness.checkMarklessPlan(JSON.stringify(plan))) as readonly unknown[];
+  if (read[0] !== 'ok') throw new Error(`${t}: the device cannot read this page's layout plan: ${read[0] === 'harness-error' ? String(read[1]) : 'its reader threw'}`);
+  return plan;
 }

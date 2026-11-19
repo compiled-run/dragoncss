@@ -983,7 +983,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const p = (k: string): string => `${path}.${k}`;
   return {
     display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'], p('display')) as Display,
-    position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
+    position: lit(f('position'), ['static', 'relative', 'absolute', 'fixed', 'sticky'], p('position')) as Position,
     float: lit(f('float'), ['none', 'left', 'right'], p('float')) as Float,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -3487,6 +3487,79 @@ function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]):
   return `${out}]]`;
 }
 
+type PlanVariant = { readonly rootFontSize: number; readonly root: LayoutBox };
+type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean> };
+
+function planObj(v: JsonValue): JsonObj {
+  const plan = obj(v, ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
+  if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
+  return plan;
+}
+
+function planFaces(plan: JsonObj): Map<string, FontData> {
+  const faces = new Map<string, FontData>();
+  arr(field(plan, 'faces', '$.plan'), '$.plan.faces').forEach((f, i) => {
+    const at = `$.plan.faces[${i}]`;
+    const fo = obj(f, ['id', 'data'], at);
+    faces.set(str(field(fo, 'id', at), `${at}.id`), fontData(field(fo, 'data', at), `${at}.data`));
+  });
+  return faces;
+}
+
+function planVariant(plan: JsonObj, vi: number): PlanVariant {
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  if (!Number.isInteger(vi) || vi < 0 || vi >= variants.length) fail(`$.plan.variants: ${vi} is not a variant`);
+  const at = `$.plan.variants[${vi}]`;
+  const vo = obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], at);
+  const rootValue = field(vo, 'root', at);
+  if (rootValue.kind !== 'obj' || kindOf(rootValue, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
+  return { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(rootValue, `${at}.root`) };
+}
+
+function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
+  const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
+  if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`$.assignment: ${k} is not an assignment of the plan`);
+  const path = `$.plan.assignments[${k}]`;
+  const ao = obj(assignments[k] as JsonValue, ['variant', 'dashed', 'scroll'], path);
+  const variant = numField(ao, 'variant', path);
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  if (!Number.isInteger(variant) || variant < 0 || variant >= variants.length) fail(`${path}.variant: ${variant} is not a variant`);
+  const dashed = new Map<string, PlanDashed>();
+  arr(field(ao, 'dashed', path), `${path}.dashed`).forEach((d, i) => {
+    const at = `${path}.dashed[${i}]`;
+    const a = arr(d, at);
+    if (a.length !== 3) fail(`${at}: expected 3 fields`);
+    const styles: string[] = [];
+    for (const s of arr(a[1] as JsonValue, `${at}[1]`)) styles.push(str(s, `${at}[1]`));
+    dashed.set(str(a[0] as JsonValue, `${at}[0]`), { id: str(a[0] as JsonValue, `${at}[0]`), styles, colors: numbers(a[2] as JsonValue, `${at}[2]`) });
+  });
+  const scrollers = new Map<string, boolean>();
+  for (const s of arr(field(ao, 'scroll', path), `${path}.scroll`)) scrollers.set(str(s, `${path}.scroll`), true);
+  return { variant, dashed, scrollers };
+}
+
+/**
+ * Every part of a Markless plan read as runMarklessLayout reads it on the device: ["ok"], or ["harness-error", detail] naming the
+ * first part the device could not read. The build runs it on every plan it writes.
+ */
+export function checkMarklessPlan(line: string): string {
+  try {
+    const plan = planObj(parseJson(line));
+    planFaces(plan);
+    arr(field(plan, 'densities', '$.plan'), '$.plan.densities').forEach((d, i) => {
+      planDensity(d, `$.plan.densities[${i}]`);
+    });
+    const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+    for (let vi = 0; vi < variants.length; vi++) planVariant(plan, vi);
+    const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
+    for (let k = 0; k < assignments.length; k++) planAssignment(plan, k);
+    return '["ok"]';
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
 /**
  * One Markless layout: {"assignment", "dpr", "viewport": {width, height}, "safeArea": {top, right, bottom, left}, "plan"}. The
  * result is ["ok", pageScroll, nodes] with every number as its bit pattern: pageScroll [minX, maxX, minY, maxY] or ["undecided",
@@ -3496,15 +3569,9 @@ function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]):
 export function runMarklessLayout(line: string): string {
   try {
     const o = obj(parseJson(line), ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'], '$');
-    const plan = obj(field(o, 'plan', '$'), ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
-    if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
+    const plan = planObj(field(o, 'plan', '$'));
     const dpr = numField(o, 'dpr', '$');
-    const faces = new Map<string, FontData>();
-    arr(field(plan, 'faces', '$.plan'), '$.plan.faces').forEach((f, i) => {
-      const at = `$.plan.faces[${i}]`;
-      const fo = obj(f, ['id', 'data'], at);
-      faces.set(str(field(fo, 'id', at), `${at}.id`), fontData(field(fo, 'data', at), `${at}.data`));
-    });
+    const faces = planFaces(plan);
     let density: PlanDensity | null = null;
     arr(field(plan, 'densities', '$.plan'), '$.plan.densities').forEach((d, i) => {
       const at = `$.plan.densities[${i}]`;
@@ -3512,16 +3579,8 @@ export function runMarklessLayout(line: string): string {
     });
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density);
-    const k = numField(o, 'assignment', '$');
-    const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
-    if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`$.assignment: ${k} is not an assignment of the plan`);
-    const ao = obj(assignments[k] as JsonValue, ['variant', 'dashed', 'scroll'], `$.plan.assignments[${k}]`);
-    const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
-    const vi = numField(ao, 'variant', '$.plan.assignment');
-    if (!Number.isInteger(vi) || vi < 0 || vi >= variants.length) fail(`$.plan.assignments[${k}].variant: ${vi} is not a variant`);
-    const vo = obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], `$.plan.variants[${vi}]`);
-    const rootValue = field(vo, 'root', '$.plan.variant');
-    if (rootValue.kind !== 'obj' || kindOf(rootValue, '$.plan.variant.root') !== 'box') return fail('$.plan.variant.root: expected a box');
+    const parts = planAssignment(plan, numField(o, 'assignment', '$'));
+    const variant = planVariant(plan, parts.variant);
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
     const input: LayoutInput = {
@@ -3529,20 +3588,11 @@ export function runMarklessLayout(line: string): string {
       devicePixelRatio: dpr,
       viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
       safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
-      rootFontSize: numField(vo, 'rootFontSize', '$.plan.variant'),
-      root: decodeBox(rootValue, '$.plan.variant.root'),
+      rootFontSize: variant.rootFontSize,
+      root: variant.root,
     };
-    const dashed = new Map<string, PlanDashed>();
-    arr(field(ao, 'dashed', '$.plan.assignment'), '$.plan.assignment.dashed').forEach((d, i) => {
-      const at = `$.plan.assignment.dashed[${i}]`;
-      const a = arr(d, at);
-      if (a.length !== 3) fail(`${at}: expected 3 fields`);
-      const styles: string[] = [];
-      for (const s of arr(a[1] as JsonValue, `${at}[1]`)) styles.push(str(s, `${at}[1]`));
-      dashed.set(str(a[0] as JsonValue, `${at}[0]`), { id: str(a[0] as JsonValue, `${at}[0]`), styles, colors: numbers(a[2] as JsonValue, `${at}[2]`) });
-    });
-    const scrollers = new Map<string, boolean>();
-    for (const s of arr(field(ao, 'scroll', '$.plan.assignment'), '$.plan.assignment.scroll')) scrollers.set(str(s, '$.plan.assignment.scroll'), true);
+    const dashed = parts.dashed;
+    const scrollers = parts.scrollers;
 
     const r = layout(input, measurer);
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);

@@ -10,10 +10,20 @@ import type { ExportNode } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
 
 // The translate harness is loaded by path at run time, as text-latin-engine.test.ts does.
-const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
+const { checkMarklessPlan, runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string };
 const { hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { hexBits(s: string): number };
 
 const INPUTS = ['fluid', 'width-media', 'borders-dashed', 'scheme', 'tabs'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
+const FLUID = 'examples/markless-styles/input/fluid.native-style-input.json';
+/** Pages whose plan carries every position the engine lays out: fluid.json with a sticky bar, and with a fixed bar. */
+const POSITIONED: readonly (readonly [string, string])[] = [
+  ['sticky', '.bar { position: sticky; top: 0; }'],
+  ['fixed', '.bar { position: fixed; top: 8px; left: 4px; }'],
+];
+const withCss = (css: string): string => {
+  const input = JSON.parse(readFileSync(repoPath(FLUID), 'utf8')) as { css: string };
+  return JSON.stringify({ ...input, css: `${input.css}\n${css}` });
+};
 /** CSS px width, height and ratio: the proof devices, a small and a large phone, tablets in both orientations. */
 const SIZES: readonly (readonly [number, number, number])[] = [[402, 778, 3], [411, 818, 2.625], [375, 589, 2], [448, 921, 3], [820, 1123, 2], [1280, 744, 2], [863, 360, 2.625]];
 
@@ -39,10 +49,11 @@ function exportGeometry(n: ExportNode): unknown[] {
 }
 
 describe('the layout plan of a Markless export', () => {
-  for (const path of INPUTS) {
-    const text = readFileSync(repoPath(path), 'utf8');
+  const pages: (readonly [string, string, string])[] = INPUTS.map((path) => [path.split('/').pop() as string, path, readFileSync(repoPath(path), 'utf8')]);
+  for (const [name, css] of POSITIONED) pages.push([`fluid with a ${name} bar`, FLUID, withCss(css)]);
+  for (const [name, path, text] of pages) {
     for (const [width, height, dpr] of SIZES) {
-      it(`${path.split('/').pop()} at ${width} x ${height} and ${dpr}x lays out on the device as the export does`, () => {
+      it(`${name} at ${width} x ${height} and ${dpr}x lays out on the device as the export does`, () => {
         const at = { viewport: { width, height }, dpr };
         const exported = marklessStyleExport(text, path, undefined, 'system', { ios: at, android: at }, true).exported;
         let compared = 0;
@@ -100,6 +111,20 @@ describe('the layout plan of a Markless export', () => {
     expect(deviceLayout(plan, 0, 402, 778, 3)[0]).toBe('ok');
     const without: MarklessPlan = { ...plan, densities: plan.densities.map((d) => ({ ...d, metrics: [] })) };
     expect(deviceLayout(without, 0, 402, 778, 3)).toEqual(['harness-error', expect.stringMatching(/^the plan holds no metrics of /)]);
+  });
+
+  it('reads every part of a plan the build writes, so a style value the device cannot read is refused at build time, by name', () => {
+    for (const [name, css] of POSITIONED) {
+      const plan = marklessStyleExport(withCss(css), FLUID, undefined, 'system', undefined, true).exported.targets.ios!.plan!;
+      expect(JSON.stringify(plan.variants), name).toContain(`"position":"${name}"`);
+      expect(checkMarklessPlan(JSON.stringify(plan)), name).toBe('["ok"]');
+    }
+    const plan = marklessStyleExport(readFileSync(repoPath(INPUTS[1] as string), 'utf8'), INPUTS[1] as string, undefined, 'system', undefined, true).exported.targets.ios!.plan!;
+    expect(plan.variants.length).toBeGreaterThan(1);
+    const last = plan.variants.length - 1;
+    const unread = JSON.parse(JSON.stringify(plan)) as { variants: { root: { style: { position: string } } }[] };
+    (unread.variants[last] as { root: { style: { position: string } } }).root.style.position = 'running';
+    expect(JSON.parse(checkMarklessPlan(JSON.stringify(unread)))).toEqual(['harness-error', `$.plan.variants[${last}].root.style.position: unexpected running`]);
   });
 
   it('records every root width a phone from 320 to 1400 css px can have, in whole device and whole css px', () => {
