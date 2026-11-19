@@ -602,11 +602,12 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
   return resolved;
 }
 
-/** css-position-4 §3 (Blink StyleAdjuster): a rendered top-layer box's position static, relative or sticky computes to absolute. */
+/** css-position-4 §3 (Blink StyleAdjuster): a rendered top-layer box is absolute or fixed, and display: contents computes to block. */
 function placeInTopLayer(props: Map<Longhand, ResolvedValue>): void {
-  const display = (props.get('display') as ResolvedValue).value;
+  const display = props.get('display') as ResolvedValue;
   const position = props.get('position') as ResolvedValue;
-  if (display.kind === 'keyword' && display.value === 'none') return;
+  if (display.value.kind === 'keyword' && display.value.value === 'none') return;
+  if (display.value.kind === 'keyword' && display.value.value === 'contents') props.set('display', { ...display, value: { kind: 'keyword', value: 'block' } });
   if (position.value.kind === 'keyword' && ['static', 'relative', 'sticky'].includes(position.value.value)) props.set('position', { ...position, value: { kind: 'keyword', value: 'absolute' } });
 }
 

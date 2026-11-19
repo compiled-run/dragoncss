@@ -54,6 +54,12 @@ describe('the position of a top-layer box', () => {
     expect(b.get('d::backdrop')).toEqual([0, 0, 400, 300]);
   });
 
+  it('display: contents on the dialog and its ::backdrop computes to block, as in Chrome', () => {
+    const b = boxes(`body { margin: 0; } .d { display: contents; inset: 0 auto auto 0; ${box} } .d::backdrop { display: contents; }`);
+    expect(b.get('d')).toEqual([0, 0, 50, 20]);
+    expect(b.get('d::backdrop')).toEqual([0, 0, 400, 300]);
+  });
+
   it('refuses by name a top-layer box Dragon would place against a positioned root, where Chrome uses the initial containing block', () => {
     // Chrome: the dialog at (0, 0); Dragon would put it at the root's padding box, 50px down.
     for (const pos of ['static', 'absolute']) {
