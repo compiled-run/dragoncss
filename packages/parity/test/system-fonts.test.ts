@@ -229,8 +229,8 @@ describe('system faces', () => {
   });
 });
 
-type IosFixture = { readonly fonts: readonly { readonly id: string; readonly weight: number; readonly size: number; readonly postScriptName: string; readonly safariFamilies: readonly string[]; readonly safariLineMetrics: { readonly lineHeight: readonly number[]; readonly inlineBoxHeight: readonly number[] }; readonly lines: readonly { readonly text: string; readonly spaceRuleWidth: number; readonly glyphs: readonly number[]; readonly x: readonly number[] }[] }[] };
-type AndroidFixture = { readonly how: { readonly density: number }; readonly entries: readonly { readonly id: string; readonly weight: number; readonly cssPx: number; readonly devicePx: number; readonly chromeFamilies: readonly string[]; readonly blinkWidthsCss: readonly { readonly text: string; readonly chrome: Readonly<Record<string, number>> }[]; readonly blinkLineHeightCss: number; readonly linear: { readonly lines: readonly { readonly text: string; readonly runAdvance: number; readonly glyphIds: readonly number[]; readonly x: readonly number[] }[] } }[] };
+type IosFixture = { readonly fonts: readonly { readonly id: string; readonly weight: number; readonly size: number; readonly postScriptName: string; readonly safariFamilies: readonly string[]; readonly ascent: number; readonly descent: number; readonly leading: number; readonly safariLineMetrics: { readonly lineHeight: readonly number[]; readonly inlineBoxHeight: readonly number[]; readonly canvasFontBoundingBoxAscent: number; readonly canvasFontBoundingBoxDescent: number }; readonly lines: readonly { readonly text: string; readonly spaceRuleWidth: number; readonly glyphs: readonly number[]; readonly x: readonly number[] }[] }[] };
+type AndroidFixture = { readonly how: { readonly density: number }; readonly entries: readonly { readonly id: string; readonly weight: number; readonly cssPx: number; readonly devicePx: number; readonly chromeFamilies: readonly string[]; readonly font: { readonly file: string; readonly axes: readonly string[] }; readonly blinkWidthsCss: readonly { readonly text: string; readonly chrome: Readonly<Record<string, number>>; readonly webview: Readonly<Record<string, number>> }[]; readonly blinkLineHeightCss: number; readonly linear: { readonly fontMetrics: { readonly ascent: number; readonly descent: number; readonly leading: number }; readonly lines: readonly { readonly text: string; readonly runAdvance: number; readonly glyphIds: readonly number[]; readonly x: readonly number[] }[] } }[] };
 
 const ROLE_OF_SAFARI: Readonly<Record<string, 'system-ui' | 'sans-serif' | 'serif' | 'monospace'>> = { 'system-ui': 'system-ui', 'sans-serif': 'sans-serif', serif: 'serif', monospace: 'monospace' };
 const font = (family: string, size: number): TextFont => ({ family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }) as unknown as TextFont;
@@ -351,6 +351,12 @@ describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulato
       const m = systemMeasurer(sys, { font: { family: id } }, [], 1);
       const metrics = m.metrics(font(id, f.size));
       const where = `${f.postScriptName} ${f.size}`;
+      // Core Text's own metrics as the build Mac reads them, against the simulator's, at the widths' tolerance.
+      const data = sys.fontData(id);
+      const px = (units: number): number => (units * f.size) / data.unitsPerEm;
+      expect([px(data.ascent) - f.ascent, px(data.descent) - f.descent, px(data.lineGap) - f.leading].every((d) => Math.abs(d) < 1e-3), `${where}: Core Text's ascent, descent and leading`).toBe(true);
+      // Safari's canvas font bounding box is the line box's ascent and descent.
+      expect([metrics.ascent / LU_PER_PX, metrics.descent / LU_PER_PX], where).toEqual([f.safariLineMetrics.canvasFontBoundingBoxAscent, f.safariLineMetrics.canvasFontBoundingBoxDescent]);
       expect((metrics.ascent + metrics.descent + metrics.lineGap) / LU_PER_PX, where).toBe(f.safariLineMetrics.lineHeight[0]);
       expect((metrics.ascent + metrics.descent) / LU_PER_PX, where).toBe(f.safariLineMetrics.inlineBoxHeight[0]);
       for (const l of f.lines) {
@@ -410,6 +416,17 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
       }
       const m = systemMeasurer(sys, { font: { family: id } }, [], a.how.density);
       const where = `${e.id} ${e.weight} ${e.cssPx}`;
+      // The font file and instance Paint draws (it lists the axes it sets on the file; Dragon's instance sets those and more).
+      const descriptor = sys.descriptor(id) as { readonly file: string; readonly axes: Readonly<Record<string, number>> };
+      expect(`/system/fonts/${descriptor.file}`, where).toBe(e.font.file);
+      for (const axis of e.font.axes) {
+        const [tag, value] = axis.split('=') as [string, string];
+        expect(descriptor.axes[tag], `${where} ${tag}`).toBe(Number(value));
+      }
+      const data = sys.fontData(id);
+      const px = (units: number): number => (units * e.devicePx) / data.unitsPerEm;
+      const paint = e.linear.fontMetrics;
+      expect([-px(data.ascent) - paint.ascent, px(data.descent) - paint.descent, px(data.lineGap) - paint.leading].every((d) => Math.abs(d) < 1e-3), `${where}: Paint's ascent, descent and leading`).toBe(true);
       const metrics = m.metrics(font(id, e.devicePx));
       expect(Math.abs((metrics.ascent + metrics.descent + metrics.lineGap) / LU_PER_PX - e.blinkLineHeightCss * a.how.density), where).toBeLessThan(1e-3);
       for (const l of e.linear.lines) {
@@ -434,13 +451,15 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
           checked++;
         });
         expect(checked, `${where} ${l.text}`).toBe(s.glyphs.filter((g) => g !== spaceGlyph).length);
-        const chrome = a.entries.find((x) => x === e)!.blinkWidthsCss.find((b) => b.text === l.text)?.chrome;
-        const css = chrome === undefined ? undefined : Object.values(chrome)[0];
+        const blink = a.entries.find((x) => x === e)!.blinkWidthsCss.find((b) => b.text === l.text);
+        const css = blink === undefined ? undefined : Object.values(blink.chrome)[0];
         if (css === undefined) continue;
         const w = m.measure(l.text, font(id, e.devicePx));
         const gap = w.ok ? Math.abs(w.measure.width / LU_PER_PX - css * a.how.density) : Infinity;
         chromeGap = Math.max(chromeGap, gap);
         expect(gap <= GATE_DEVICE_PX, `${where} ${l.text}: Chrome's width ${css * a.how.density}, Dragon's ${w.ok ? w.measure.width / LU_PER_PX : w.reason}`).toBe(true);
+        const webview = Object.values((blink as { readonly webview: Readonly<Record<string, number>> }).webview)[0];
+        expect(webview !== undefined && w.ok && Math.abs(w.measure.width / LU_PER_PX - webview * a.how.density) <= GATE_DEVICE_PX, `${where} ${l.text}: WebView's width ${webview}`).toBe(true);
       }
     }
     console.log(`Android: Dragon's widths against Chrome's, largest gap ${chromeGap.toFixed(4)} device px; run advances against Paint.getRunAdvance (Minikin, word by word), largest gap ${paintGap.toFixed(4)} device px; glyph x within a word against Paint's, largest gap ${wordGap.toFixed(4)} device px`);
