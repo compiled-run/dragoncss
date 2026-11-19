@@ -442,6 +442,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     // Blink LayoutTheme::AdjustStyle: an appearance other than none makes an inline or table display inline-block or block.
     props.set('display', appearanceDisplay(props.get('display') as ResolvedValue, props.get('appearance') as ResolvedValue));
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
+    if (pseudo === 'backdrop' || (pseudo === null && part === null && el.tag === 'dialog')) placeInTopLayer(props);
     blockify(props, parent === null ? null : parent.props, faults);
     adjustLineClampDisplay(props);
     computeOverflowPair(props);
@@ -601,6 +602,14 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
   return resolved;
 }
 
+/** css-position-4 §3 (Blink StyleAdjuster): a rendered top-layer box's position static, relative or sticky computes to absolute. */
+function placeInTopLayer(props: Map<Longhand, ResolvedValue>): void {
+  const display = (props.get('display') as ResolvedValue).value;
+  const position = props.get('position') as ResolvedValue;
+  if (display.kind === 'keyword' && display.value === 'none') return;
+  if (position.value.kind === 'keyword' && ['static', 'relative', 'sticky'].includes(position.value.value)) props.set('position', { ...position, value: { kind: 'keyword', value: 'absolute' } });
+}
+
 /**
  * css-position-4 §3: a <dialog> shown modal leaves its place for the top layer, which is laid out against the initial containing
  * block and painted after the root's contents: each dialog becomes one of the root's last children, after its ::backdrop box, in
@@ -622,6 +631,7 @@ function liftTopLayer(root: ResolvedElement): void {
         if (at < 0) throw new Error(`${k.element.address}: a dialog without its ::backdrop box`);
         const backdrop = own.splice(at, 1)[0] as ResolvedElement;
         lifted.push(backdrop, k);
+        topLayer.add(backdrop).add(k);
       }
       walk(k);
     }
@@ -629,6 +639,11 @@ function liftTopLayer(root: ResolvedElement): void {
   walk(root);
   (root.children as (ResolvedElement | ResolvedText)[]).push(...lifted);
 }
+
+const topLayer = new WeakSet<ResolvedElement>();
+
+/** Whether liftTopLayer moved the box into the top layer (a modal dialog or its ::backdrop). */
+export const isTopLayer = (el: ResolvedElement): boolean => topLayer.has(el);
 
 const resolvedEnvironments = new WeakMap<ResolvedElement, ResolveEnvironment>();
 

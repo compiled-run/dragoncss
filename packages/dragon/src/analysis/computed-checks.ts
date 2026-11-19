@@ -65,7 +65,7 @@ import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkImageRendering, checkPixelatedTransformed } from './image-rendering.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
-import { paintContained } from './containment.ts';
+import { containsDescendants, paintContained } from './containment.ts';
 import { checkContainment } from './containment-checks.ts';
 import type { MulticolFaults } from '../faults/multicol.ts';
 import { MULTICOL_FAULTS } from '../faults/multicol.ts';
@@ -110,7 +110,7 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, isTopLayer, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { parseComputedColor, serializeColor } from '../css/color.ts';
@@ -997,6 +997,33 @@ function checkFixedContainingBlocks(root: ResolvedElement, propagated: ResolvedE
     for (const c of el.children) if (c.kind === 'element') walk(c, filtered ? el : holder, scrolls ? el : scroller);
   };
   walk(root, null, null);
+}
+
+// css-position-4 §3: the engine has no initial containing block for a top-layer box, which Chrome places against it.
+function checkTopLayer(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const positioned = keywordOf(root.props.get('position') as ResolvedValue) !== 'static' || containsDescendants(root);
+  for (const el of root.children) {
+    if (el.kind !== 'element' || !isTopLayer(el) || displayKeyword(el) === 'none') continue;
+    const v = el.props.get('position') as ResolvedValue;
+    const pos = keywordOf(v);
+    const auto = (p: Longhand): boolean => keywordOf(el.props.get(p) as ResolvedValue) === 'auto';
+    const axes = [auto('left') && auto('right') ? 'left and right' : null, auto('top') && auto('bottom') ? 'top and bottom' : null].filter((a) => a !== null);
+    const area = keywordOf(el.props.get('position-area') as ResolvedValue) !== 'none';
+    const messages = [
+      ...(pos === 'absolute' && positioned ? [`the top-layer box ${el.element.address} is position: absolute while the root ${root.element.address} is positioned or contained: Chrome places it against the initial containing block, Dragon would place it against the root's padding box`] : []),
+      ...(axes.length > 0 && !area ? [`${axes.join(', and ')} are auto on the top-layer box ${el.element.address}: Chrome places it at the initial containing block's start corner, Dragon would place it after the root's contents`] : []),
+    ];
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const message of messages) {
+      for (const t of native) {
+        const id = `${t}|top-layer|${message}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Give the top-layer box position: fixed and insets that are not auto, as the UA style does.', basis: 'computed-value' }));
+      }
+    }
+  }
 }
 
 // POSX-s (css-position-3 §3.4): the engine offsets a sticky box after layout against the viewport at scroll offset 0, inside its
@@ -1959,6 +1986,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkFixedContainingBlocks(root, propagated, targets, diagnostics, reported);
   // POSX-s: sticky boxes the engine does not offset (checkSticky).
   checkSticky(root, propagated, targets, diagnostics, reported);
+  checkTopLayer(root, targets, diagnostics, reported);
   // SIZE-KW: stretch heights the engine does not fill (checkStretchHeights).
   checkStretchHeights(root, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
