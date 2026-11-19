@@ -247,7 +247,7 @@ export function layoutAbsolute(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, st
   // css-sizing-3 §3.2: min-content, max-content and fit-content are the content's block size, which the contents decide as auto does.
   const heightBasis: HeightBasis = { kind: 'definite', value: cb.height };
   let forced: LU | null = null;
-  if (s.height.kind === 'auto' && bothBlockInsets && !ratioSetsAbsoluteHeight(box)) {
+  if (s.height.kind === 'auto' && bothBlockInsets && !ratioSetsAbsoluteHeight(box, inlineAxis.insetStart !== null && inlineAxis.insetEnd !== null)) {
     forced = max(constrain(sub(axisAvailable(blockAxis), add(mt.value, mb.value)), blockMinMaxWith(box, heightBasis, vbp, ctx.faults, NO_STRETCH)), vbp);
   }
   const contentHeight = s.height.kind === 'min-content' || s.height.kind === 'max-content' || s.height.kind === 'fit-content';

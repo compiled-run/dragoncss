@@ -26,6 +26,7 @@ import {
 import type { Ctx } from './block.ts';
 import { layoutContents } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { hasAspectRatio, ratioAbsoluteInlineSize, ratioSetsAbsoluteHeight } from './ratio.ts';
 import type { AbsoluteResult, ContainingBlock } from './position.ts';
 import { unsupported } from './unsupported.ts';
 
@@ -337,10 +338,15 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
   // Width (absolute_utils.cc ComputeOofInlineDimensions): specified, stretched with normal alignment between two insets, or fit-content.
   const xAvailable = sub(sub(xAxis.size, xm.start), xm.end);
   const xMarginSum = add(xAxis.marginStart.value, xAxis.marginEnd.value);
+  const yAvailable = sub(sub(yAxis.size, ym.start), ym.end);
+  const xStretch = !xm.hasAutoInset && xAxis.align === 'normal';
+  const yStretch = !ym.hasAutoInset && yAxis.align === 'normal';
   const specified = resolveInlineLengthWith(lengthWidth(box.id, s.width), regionWidth, ctx.faults);
   let width: LU;
   if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
-  else if (!xm.hasAutoInset && xAxis.align === 'normal') width = sub(xAvailable, xMarginSum);
+  // css-sizing-4 §5.1 (ratio.ts): an auto width may come through the ratio from a height or a stretched block size.
+  else if (hasAspectRatio(s)) width = ratioAbsoluteInlineSize(ctx, box, regionWidth, xStretch ? sub(xAvailable, xMarginSum) : null, sub(xAvailable, xMarginSum), yStretch ? sub(yAvailable, add(mt.value, mb.value)) : null);
+  else if (xStretch) width = sub(xAvailable, xMarginSum);
   else {
     const minContent = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
     const maxContent = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
@@ -350,9 +356,8 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
   width = max(constrain(width, inlineMinMaxOf(box.id, s, regionWidth, hbp, ctx.faults)), hbp);
 
   // Height (ComputeOofBlockDimensions): auto stretches between two insets with normal alignment; otherwise the contents decide.
-  const yAvailable = sub(sub(yAxis.size, ym.start), ym.end);
   let forced: LU | null = null;
-  if (s.height.kind === 'auto' && !ym.hasAutoInset && yAxis.align === 'normal') {
+  if (s.height.kind === 'auto' && yStretch && !ratioSetsAbsoluteHeight(box, xStretch)) {
     forced = max(constrain(sub(yAvailable, add(mt.value, mb.value)), blockMinMaxWith(styled, { kind: 'definite', value: regionHeight }, vbp, ctx.faults, NO_STRETCH)), vbp);
   }
   const r = layoutContents(ctx, styled, {
