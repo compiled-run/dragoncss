@@ -43,6 +43,8 @@ export type AnchorFacts = {
   readonly sizes: { readonly [P in Size]: CssValue };
   readonly justifySelf: string;
   readonly alignSelf: string;
+  /** Whether its computed visibility is visible (position-visibility: anchors-visible hides a box anchored to an invisible one). */
+  readonly visible: boolean;
 };
 
 const valueOf = (el: ResolvedElement, p: Longhand): CssValue => (el.props.get(p) as ResolvedValue).value;
@@ -81,6 +83,7 @@ export function anchorFactsOf(el: ResolvedElement): AnchorFacts {
     sizes: { width: valueOf(el, 'width'), height: valueOf(el, 'height'), 'min-width': valueOf(el, 'min-width'), 'min-height': valueOf(el, 'min-height'), 'max-width': valueOf(el, 'max-width'), 'max-height': valueOf(el, 'max-height') },
     justifySelf: keyword(valueOf(el, 'justify-self')),
     alignSelf: keyword(valueOf(el, 'align-self')),
+    visible: keyword(valueOf(el, 'visibility')) === 'visible',
   };
 }
 
@@ -115,6 +118,8 @@ function containingBlockOf(n: Node): Node | null {
   if (n.box.style.position === 'absolute') while (at !== null && !containsAbsolute(at.box.style)) at = at.parent;
   return at;
 }
+
+const clipsOverflow = (s: LayoutStyle): boolean => s.overflowX !== 'visible' || s.overflowY !== 'visible' || s.containPaint;
 
 const isAncestor = (a: Node, of: Node): boolean => {
   for (let at = of.parent; at !== null; at = at.parent) if (at === a) return true;
@@ -190,6 +195,7 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
       return t.box.id;
     };
     const def = f.positionAnchor === null ? null : named(f.positionAnchor);
+    if (def !== null) hiddenByAnchor(f.id, byId.get(def) as Node, cb, facts);
     const base = baseOption(f, s, def, named, rtl);
     const options: AnchorOption[] = [base];
     for (const entry of f.fallbacks) {
@@ -207,6 +213,19 @@ export function lowerAnchors(root: LayoutBox, facts: ReadonlyMap<string, AnchorF
     return { ...box, style: a === undefined ? box.style : { ...box.style, anchor: a }, children };
   };
   return rewrite(root);
+}
+
+/**
+ * css-anchor-position-1 position-visibility: anchors-visible (the initial value) hides an anchored box whose default anchor is
+ * invisible or clipped by a box between it and the anchored box's containing block, which needs the laid-out geometry, so either
+ * is refused. Chrome 145 counts overflow other than visible on either axis and paint containment as clipping, not the containing
+ * block's own clip or the viewport's.
+ */
+function hiddenByAnchor(id: string, anchor: Node, cb: Node | null, facts: ReadonlyMap<string, AnchorFacts>): void {
+  const why = 'Chrome hides an anchored box whose default anchor is invisible or clipped out of view (position-visibility: anchors-visible, css-anchor-position-1), which Dragon does not model yet';
+  if (facts.get(anchor.box.id)?.visible === false) throw new AnchorLoweringError(id, 'position-anchor', `the default anchor ${anchor.box.id} of ${id} is not visible: ${why}`);
+  for (let at = anchor.parent; at !== null && at !== cb; at = at.parent)
+    if (clipsOverflow(at.box.style)) throw new AnchorLoweringError(id, 'position-anchor', `the default anchor ${anchor.box.id} of ${id} is inside ${at.box.id}, which clips its overflow inside ${id}'s containing block: ${why}`);
 }
 
 /** The args of a function value, split at top-level commas. */

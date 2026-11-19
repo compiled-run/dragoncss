@@ -32,13 +32,13 @@ const device: WebColumnDevice = ios !== undefined ? { target: 'ios', udid: ios }
 type Dump = { readonly viewport: { readonly width: number; readonly height: number }; readonly scale: number; readonly assignment: number; readonly nodes: readonly (readonly [string, number, number, number, number])[] };
 const dump = JSON.parse(readFileSync(dumpPath, 'utf8')) as Dump;
 const okNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-if (!okNumber(dump.scale) || !okNumber(dump.assignment) || !okNumber(dump.viewport?.width) || !Array.isArray(dump.nodes)) throw new Error(`${dumpPath}: not a layout dump`);
+if (!okNumber(dump.scale) || !okNumber(dump.assignment) || !okNumber(dump.viewport?.width) || !okNumber(dump.viewport?.height) || !Array.isArray(dump.nodes)) throw new Error(`${dumpPath}: not a layout dump`);
 const boxes = new Map(dump.nodes.map((n) => {
   if (!Array.isArray(n) || n.length !== 5 || typeof n[0] !== 'string' || !n.slice(1).every(okNumber)) throw new Error(`${dumpPath}: ${JSON.stringify(n)} is not [id, x, y, width, height]`);
   return [n[0], { x: n[1], y: n[2], width: n[3], height: n[4] }] as const;
 }));
 const exported = marklessStyleExport(text, inputPath, read, 'system').exported;
-const report = await webColumn(input, exported, device, marklessFontFiles(input, read), undefined, true, { assignment: dump.assignment, boxes });
+const report = await webColumn(input, exported, device, marklessFontFiles(input, read), undefined, { kind: 'native', layout: { assignment: dump.assignment, viewport: dump.viewport, scale: dump.scale, boxes } });
 if (Math.abs(report.size.dpr - dump.scale) > 1e-6) throw new Error(`the browser draws at ${report.size.dpr}x, the phone at ${dump.scale}x`);
 if (Math.abs(report.size.width - dump.viewport.width) > 1e-6) throw new Error(`the browser lays the page out ${report.size.width} CSS px wide, the phone ${dump.viewport.width}`);
 writeFileSync(reportPath, `${JSON.stringify({ gateDevicePx: GATE_DEVICE_PX, target: device.target, browser: report.browser, size: report.size, phone: { viewport: dump.viewport, scale: dump.scale, assignment: dump.assignment }, compared: report.compared, failed: report.failed, rows: report.rows }, null, 1)}\n`);

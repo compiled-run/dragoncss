@@ -23,7 +23,7 @@ import { appearanceDisplay, blockifyRoot, computeFontStyleLonghands, computeGrid
 import { BACKDROP_TAG, MARKER_TAG, uaTagOf } from './elements.ts';
 import { generatedElement, generatedText, generatedTextNode, hostRefusal } from './generated.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
-import { svgHintDeclaration } from './elements/svg.ts';
+import { isSvgShapeTag, SVG_TAG, svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
 import { isRangeType } from './elements/controls.ts';
 import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
@@ -605,7 +605,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
  * css-position-4 §3: a <dialog> shown modal leaves its place for the top layer, which is laid out against the initial containing
  * block and painted after the root's contents: each dialog becomes one of the root's last children, after its ::backdrop box, in
  * document order (the order a page opening them top to bottom gives). Their values were computed in place, inheriting from their
- * DOM parents, as Chrome computes them.
+ * DOM parents, as Chrome computes them. A dialog that is display: none, or inside a display: none element, stays in place.
  */
 function liftTopLayer(root: ResolvedElement): void {
   const lifted: ResolvedElement[] = [];
@@ -613,7 +613,7 @@ function liftTopLayer(root: ResolvedElement): void {
     const kids = el.children as (ResolvedElement | ResolvedText)[];
     for (let i = 0; i < kids.length; i++) {
       const k = kids[i] as ResolvedElement | ResolvedText;
-      if (k.kind !== 'element') continue;
+      if (k.kind !== 'element' || displayOf(k) === 'none') continue;
       if (k.element.tag === 'dialog') {
         kids.splice(i, 1);
         i--;
@@ -764,10 +764,11 @@ function applyDeclaredUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>,
 /**
  * HTML §15.3.1: the UA rule `[hidden]:not([hidden=until-found i]) { display: none }`. An author display declaration beats it, as
  * any author rule beats a UA rule; `hidden="until-found"` is refused before resolving (project.ts, the content-visibility it needs).
+ * The rule sits in the HTML namespace's UA sheet, so an <svg> or an SVG shape with hidden is drawn as in Chrome.
  */
 function applyHidden(el: LinkedElement, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>): void {
   const hidden = el.attributes.get('hidden');
-  if (hidden === undefined || hidden.toLowerCase() === 'until-found' || !defaulted.has('display')) return;
+  if (hidden === undefined || el.tag === SVG_TAG || isSvgShapeTag(el.tag) || hidden.toLowerCase() === 'until-found' || !defaulted.has('display')) return;
   const none = { span: null, declaration: null, declared: null, losing: [] } as const;
   props.set('display', { ...none, ...props.get('display'), value: { kind: 'keyword', value: 'none' }, origin: 'user-agent' });
 }

@@ -1,8 +1,10 @@
 // System fonts on Markless native targets (docs/system-fonts.md): the Android image reader and fonts.xml, CSS weight matching, the
 // Core Text helper's output, the export's shape, and the measured advances and line heights against the platform probe numbers in
 // test/system-fonts/ (how each was produced is in its "how" field; the probe sources are in test/system-fonts/probes).
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { TextFont } from '@dragon/layout';
 import { GLYPH_STRIDE, LU_PER_PX } from '@dragon/layout';
@@ -13,10 +15,12 @@ import { GATE_DEVICE_PX } from '../src/compare.ts';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
 import { androidImagePartitions, bytesSource, Ext4, gptPartitions, superPartitions } from '../src/system-fonts/android-image.ts';
 import { ANDROID_SYSTEM_IMAGE, AndroidSystemFiles, androidSystemImagePath } from '../src/system-fonts/android.ts';
-import { coreTextHelper, CoreTextUnavailable } from '../src/system-fonts/coretext.ts';
+import { coreTextHelper, CoreTextUnavailable, iosRuntimeRoot } from '../src/system-fonts/coretext.ts';
 import { parseFontsXml } from '../src/system-fonts/fonts-xml.ts';
 import { systemMeasurer } from '../src/system-fonts/measurer.ts';
 import { matchWeight, systemFontsFor } from '../src/system-fonts/provider.ts';
+import { IOS_ROLE_FACES } from '../src/system-fonts/web-generics.ts';
+import { scratch } from './scratch.ts';
 
 // The shared toolchain refusal (packages/translate/src/native.ts), loaded by path as pointer-vectors-java.test.ts does.
 const { missingToolchain } = (await import(pathToFileURL(repoPath('packages/translate/src/native.ts')).href)) as { readonly missingToolchain: (subject: string, missing: string) => string };
@@ -29,7 +33,7 @@ const u32 = (b: Uint8Array, at: number, v: number): void => new DataView(b.buffe
 const u64 = (b: Uint8Array, at: number, v: number): void => new DataView(b.buffer).setBigUint64(at, BigInt(v), true);
 const sha = (b: Uint8Array): Uint8Array => new Uint8Array(createHash('sha256').update(b).digest());
 
-function ext4Image(file: Uint8Array): Uint8Array {
+function ext4Image(file: Uint8Array, o: { readonly incompat?: number; readonly fileFlags?: number } = {}): Uint8Array {
   const bs = 1024;
   const img = new Uint8Array(64 * bs);
   const sb = 1024;
@@ -41,13 +45,13 @@ function ext4Image(file: Uint8Array): Uint8Array {
   u32(img, sb + 40, 16);
   u16(img, sb + 56, 0xef53);
   u16(img, sb + 88, 128);
-  u32(img, sb + 96, 0x2 | 0x40);
+  u32(img, sb + 96, o.incompat ?? 0x2 | 0x40);
   u32(img, 2 * bs + 8, 5);
-  const inode = (n: number, mode: number, size: number, start: number, blocks: number): void => {
+  const inode = (n: number, mode: number, size: number, start: number, blocks: number, flags = 0x80000): void => {
     const at = 5 * bs + (n - 1) * 128;
     u16(img, at, mode);
     u32(img, at + 4, size);
-    u32(img, at + 0x20, 0x80000);
+    u32(img, at + 0x20, flags);
     u16(img, at + 0x28, 0xf30a);
     u16(img, at + 0x2a, 1);
     u16(img, at + 0x2c, 4);
@@ -72,7 +76,7 @@ function ext4Image(file: Uint8Array): Uint8Array {
   dir(11, [['.', 12], ['..', 2], ['etc', 13]]);
   inode(13, 0x41ed, bs, 12, 1);
   dir(12, [['.', 13], ['..', 12], ['fonts.xml', 14]]);
-  inode(14, 0x81a4, file.length, 20, Math.ceil(file.length / bs));
+  inode(14, 0x81a4, file.length, 20, Math.ceil(file.length / bs), 0x80000 | (o.fileFlags ?? 0));
   img.set(file, 20 * bs);
   return img;
 }
@@ -159,6 +163,12 @@ describe('the Android system image reader', () => {
     expect(() => gptPartitions(bytesSource(new Uint8Array(4096)))).toThrow('not a GPT disk');
   });
 
+  it('refuses ext4 encryption, in the superblock\'s features and on a file\'s inode, rather than return ciphertext', () => {
+    const fs = (o: Parameters<typeof ext4Image>[1]): Ext4 => new Ext4(bytesSource(ext4Image(new TextEncoder().encode(XML), o)), 'test');
+    expect(() => fs({ incompat: 0x2 | 0x40 | 0x10000 })).toThrow('test: ext4 encryption (incompatible feature 0x10000) is not read by Dragon');
+    expect(() => fs({ fileFlags: 0x800 }).readFile('/system/etc/fonts.xml')).toThrow('test: inode 14 is encrypted, which Dragon does not read');
+  });
+
   it('reads the SDK\'s own image: fonts.xml, and the Roboto it names for sans-serif', () => {
     let path: string;
     try {
@@ -209,9 +219,17 @@ describe('system faces', () => {
     expect([100, 400, 450, 500, 700, 800].map((w) => matchWeight(faces, w)?.weight)).toEqual([300, 400, 400, 400, 900, 900]);
     expect(matchWeight([{ weight: 500 }, { weight: 700 }], 400)?.weight).toBe(500);
   });
+
+  it('draw iOS sans-serif at 100 to 300 in Helvetica-Light, as css-fonts-4 §5.2 picks among Helvetica\'s upright faces', () => {
+    const ps = (w: number): string | undefined => {
+      const f = matchWeight(IOS_ROLE_FACES['sans-serif'], w)?.face;
+      return f?.kind === 'name' ? f.postScriptName : undefined;
+    };
+    expect([100, 200, 300, 400, 500, 600, 700, 900].map(ps)).toEqual(['Helvetica-Light', 'Helvetica-Light', 'Helvetica-Light', 'Helvetica', 'Helvetica', 'Helvetica-Bold', 'Helvetica-Bold', 'Helvetica-Bold']);
+  });
 });
 
-type IosFixture = { readonly fonts: readonly { readonly id: string; readonly weight: number; readonly size: number; readonly postScriptName: string; readonly safariFamilies: readonly string[]; readonly safariLineMetrics: { readonly lineHeight: readonly number[]; readonly inlineBoxHeight: readonly number[] }; readonly lines: readonly { readonly text: string; readonly safariWidth: number; readonly glyphs: readonly number[]; readonly x: readonly number[] }[] }[] };
+type IosFixture = { readonly fonts: readonly { readonly id: string; readonly weight: number; readonly size: number; readonly postScriptName: string; readonly safariFamilies: readonly string[]; readonly safariLineMetrics: { readonly lineHeight: readonly number[]; readonly inlineBoxHeight: readonly number[] }; readonly lines: readonly { readonly text: string; readonly spaceRuleWidth: number; readonly glyphs: readonly number[]; readonly x: readonly number[] }[] }[] };
 type AndroidFixture = { readonly how: { readonly density: number }; readonly entries: readonly { readonly id: string; readonly weight: number; readonly cssPx: number; readonly devicePx: number; readonly chromeFamilies: readonly string[]; readonly blinkWidthsCss: readonly { readonly text: string; readonly chrome: Readonly<Record<string, number>> }[]; readonly blinkLineHeightCss: number; readonly linear: { readonly lines: readonly { readonly text: string; readonly runAdvance: number; readonly glyphIds: readonly number[]; readonly x: readonly number[] }[] } }[] };
 
 const ROLE_OF_SAFARI: Readonly<Record<string, 'system-ui' | 'sans-serif' | 'serif' | 'monospace'>> = { 'system-ui': 'system-ui', 'sans-serif': 'sans-serif', serif: 'serif', monospace: 'monospace' };
@@ -228,7 +246,78 @@ const shaped = (g: readonly number[]): { glyphs: number[]; xs: number[]; width: 
   return { glyphs, xs, width: pen / 65536 };
 };
 
+type RuntimeFace = { readonly postScriptName: string; readonly family: string; readonly weight: number; readonly italic: boolean };
+
+/** Every face of every font file under a directory, read from each face's name, head and OS/2 tables. */
+function runtimeFaces(dir: string): RuntimeFace[] {
+  const out: RuntimeFace[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !/\.(ttf|ttc|otf|otc)$/i.test(entry.name)) continue;
+    const fd = openSync(join(entry.parentPath, entry.name), 'r');
+    try {
+      const at = (pos: number, n: number): DataView => {
+        const b = Buffer.alloc(n);
+        if (readSync(fd, b, 0, n, pos) !== n) throw new Error(`${entry.name}: ${n} bytes at ${pos} are past the end of the file`);
+        return new DataView(b.buffer, b.byteOffset, n);
+      };
+      const head = at(0, 12);
+      const offsets = head.getUint32(0) === 0x74746366 ? Array.from({ length: head.getUint32(8) }, (_, i) => at(12 + 4 * i, 4).getUint32(0)) : [0];
+      for (const o of offsets) {
+        const n = at(o + 4, 2).getUint16(0);
+        const records = at(o + 12, n * 16);
+        const tables = new Map<string, { offset: number; length: number }>();
+        for (let i = 0; i < n; i++) tables.set(String.fromCharCode(...[0, 1, 2, 3].map((k) => records.getUint8(i * 16 + k))), { offset: records.getUint32(i * 16 + 8), length: records.getUint32(i * 16 + 12) });
+        const nameT = tables.get('name');
+        const headT = tables.get('head');
+        if (nameT === undefined || headT === undefined) throw new Error(`${entry.name}: a face at ${o} has no name or head table`);
+        const name = at(nameT.offset, nameT.length);
+        const names = new Map<number, string>();
+        for (let i = 0; i < name.getUint16(2); i++) {
+          const [platform, encoding, language, id, length, offset] = [0, 2, 4, 6, 8, 10].map((k) => name.getUint16(6 + 12 * i + k)) as [number, number, number, number, number, number];
+          const bytes = new Uint8Array(name.buffer, name.byteOffset + name.getUint16(4) + offset, length);
+          if (platform === 3 && encoding === 1 && language === 0x409) names.set(id, new TextDecoder('utf-16be').decode(bytes));
+          else if (platform === 1 && encoding === 0 && language === 0 && !names.has(id)) names.set(id, new TextDecoder('latin1').decode(bytes));
+        }
+        const macStyle = at(headT.offset + 44, 2).getUint16(0);
+        const os2T = tables.get('OS/2');
+        const os2 = os2T === undefined ? null : at(os2T.offset, 64);
+        out.push({
+          postScriptName: names.get(6) ?? '',
+          family: names.get(16) ?? names.get(1) ?? '',
+          // A face with no OS/2 table (Courier) has only head.macStyle's bold and italic bits.
+          weight: os2 === null ? (macStyle & 1 ? 700 : 400) : os2.getUint16(4),
+          italic: os2 === null ? (macStyle & 2) !== 0 : (os2.getUint16(62) & 1) !== 0,
+        });
+      }
+    } finally {
+      closeSync(fd);
+    }
+  }
+  return out;
+}
+
 describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulator', () => {
+  it('list every upright face the iOS runtime has in each named role\'s family, at the weight its file declares', () => {
+    let root: string;
+    try {
+      root = iosRuntimeRoot().root;
+    } catch (e) {
+      missingToolchain('system fonts (iOS)', (e as Error).message);
+      return;
+    }
+    const all = runtimeFaces(join(root, 'System/Library/Fonts'));
+    const psOf = (f: (typeof IOS_ROLE_FACES)['serif'][number]): string | null => (f.face.kind === 'name' ? f.face.postScriptName : null);
+    for (const [role, faces] of Object.entries(IOS_ROLE_FACES)) {
+      if (faces.every((f) => psOf(f) === null)) continue;
+      expect(faces.every((f) => psOf(f) !== null && f.style === 'normal'), role).toBe(true);
+      const families = new Set(faces.map((f) => all.find((r) => r.postScriptName === psOf(f))?.family));
+      expect([...families], role).toHaveLength(1);
+      const family = [...families][0] as string;
+      const runtime = all.filter((r) => r.family === family && !r.italic).map((r) => `${r.weight} ${r.postScriptName}`).sort();
+      expect(faces.map((f) => `${f.weight} ${psOf(f)}`).sort(), `${role}: ${family}`).toEqual(runtime);
+    }
+  });
+
   const darwin = process.platform === 'darwin';
   const faces = fixture<IosFixture>('ios-coretext.json').fonts.flatMap((f) => {
     const role = f.safariFamilies.map((s) => ROLE_OF_SAFARI[s]).find((r) => r !== undefined);
@@ -250,7 +339,8 @@ describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulato
     }
   });
 
-  it('gives the simulator\'s glyphs and positions, Safari\'s widths and Safari\'s line heights', () => {
+  // spaceRuleWidth is Core Text's width with each space at the font's own space advance, not a Safari measurement (the fixture's how.spaceRuleWidth).
+  it('gives the simulator\'s glyphs and positions, the space rule\'s widths and Safari\'s line heights', () => {
     if (!darwin) {
       missingToolchain('system fonts (iOS)', 'Core Text runs on macOS only');
       return;
@@ -266,10 +356,9 @@ describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulato
       for (const l of f.lines) {
         const s = shaped(sys.shaper.shape(id, f.size, l.text, 0, l.text.length, 'Latn', false, 'en-US', []));
         expect(s.glyphs, `${where} ${l.text}`).toEqual(l.glyphs);
-        // The simulator's x are Core Text's; Dragon's drop kerning Core Text puts on a space, as Safari does.
-        expect(Math.abs(s.width - l.safariWidth), `${where} ${l.text}`).toBeLessThan(1e-3);
+        expect(Math.abs(s.width - l.spaceRuleWidth), `${where} ${l.text}`).toBeLessThan(1e-3);
         const w = m.measure(l.text, font(id, f.size));
-        expect(w.ok && Math.abs(w.measure.width / LU_PER_PX - l.safariWidth) <= 1 / 64, `${where} ${l.text}: the engine's width`).toBe(true);
+        expect(w.ok && Math.abs(w.measure.width / LU_PER_PX - l.spaceRuleWidth) <= 1 / 64, `${where} ${l.text}: the engine's width`).toBe(true);
       }
     }
   });
@@ -326,6 +415,36 @@ describe('Android system faces against Chrome and Paint on the Android 36 emulat
     }
     console.log(`Android: Dragon's widths against Chrome's, largest gap ${chromeGap.toFixed(4)} device px; run advances against Paint.getRunAdvance (Minikin, word by word), largest gap ${paintGap.toFixed(4)} device px`);
   });
+});
+
+describe('the probe scripts', () => {
+  const tmp = scratch();
+  // Every device tool is a stub that records its call, so a probe that went past its harness check would leave a trace, not boot a phone.
+  const run = (script: string, harness: string | null): { status: number | null; stderr: string; called: string } => {
+    const dir = tmp.dir();
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    for (const tool of ['xcrun', 'adb', 'emulator', 'node']) {
+      writeFileSync(join(bin, tool), `#!/bin/bash\necho "${tool} $*" >> "${dir}/called"\n`);
+      chmodSync(join(bin, tool), 0o755);
+    }
+    const env = { PATH: `${bin}:/usr/bin:/bin`, HOME: dir, ANDROID_HOME: dir, ...(harness === null ? {} : { SYSFONT_HARNESS: harness }) };
+    const r = spawnSync('bash', [new URL(`./system-fonts/probes/${script}`, import.meta.url).pathname], { env, encoding: 'utf8', timeout: 20_000 });
+    return { status: r.status, stderr: r.stderr, called: existsSync(join(dir, 'called')) ? readFileSync(join(dir, 'called'), 'utf8') : '' };
+  };
+
+  for (const [script, missing] of [['ios.sh', 'scripts/server.mjs'], ['android.sh', 'scripts/server.mjs']] as const) {
+    it(`${script} refuses by name, before touching a device, without the measuring harness`, () => {
+      const unset = run(script, null);
+      expect(unset.status).toBe(2);
+      expect(unset.stderr).toContain(`${script}: SYSFONT_HARNESS is not set`);
+      expect(unset.called).toBe('');
+      const empty = run(script, tmp.dir());
+      expect(empty.status).toBe(2);
+      expect(empty.stderr).toContain(`has no ${missing}`);
+      expect(empty.called).toBe('');
+    });
+  }
 });
 
 function androidSystemImagePathOrNull(): string | null {

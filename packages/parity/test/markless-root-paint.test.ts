@@ -65,6 +65,28 @@ describe('the page background a Markless export gives the hosts', () => {
       }
     });
 
+  // Dark pages: Chrome blends the root background into its rgb(18, 18, 18) base rounding to nearest, then draws body's box with Skia.
+  const dark = [
+    'html { background: rgba(0, 100, 255, 0.3); }',
+    'html { background: rgba(52, 0, 0, 0.01); }',
+    'html { background: rgba(201, 77, 140, 0.66); }',
+    'html { background: rgba(9, 250, 33, 0.95); }',
+    'body { background: rgba(0, 100, 255, 0.3); }',
+    'body { background: rgba(128, 128, 0, 0.5); }',
+    'html { background: rgba(0, 0, 64, 0.3); }\nbody { background: rgba(128, 128, 0, 0.05); }',
+    'html { background: rgb(64, 0, 64); }\nbody { background: rgba(128, 0, 0, 0.05); }',
+  ].map((css) => `:root { color-scheme: dark; }\n${css}`);
+  for (const css of dark)
+    it(`paints what Chrome paints on its dark base: ${css.replaceAll('\n', ' ')}`, async () => {
+      const chrome = await chromePixels(css);
+      for (const t of ['ios', 'android'] as const) {
+        const a = dragonPaint(css, t);
+        expect(a.colorScheme, t).toBe('dark');
+        expect(a.canvas, t).toEqual(chrome.canvas);
+        expect(a.bodyBackground ?? a.canvas, t).toEqual(chrome.body);
+      }
+    });
+
   it('gives body no colour of its own when its background is the canvas', () => {
     expect(dragonPaint('body { background: #123456; }', 'ios').bodyBackground).toBeNull();
     expect(dragonPaint('html { background: #fefae0; }', 'ios').bodyBackground).toBeNull();

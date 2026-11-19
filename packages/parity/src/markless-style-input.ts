@@ -12,7 +12,7 @@ import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
-import { EXPORT_DEVICES, exportBands, nativeStyleExport } from './native-style-export.ts';
+import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
 import { systemFontsFor } from './system-fonts/provider.ts';
 
@@ -409,11 +409,18 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   } as unknown as FrontEndResult;
 }
 
+/** The devices an export is asked to be laid out at instead of the input's own (a phone's own size and ratio). */
+export type MarklessAtSize = { readonly [T in NativeStyleTarget]: ExportDevice };
+
+/** The device each target lays the input out on: `at` when it was asked for, else the export devices at the input's viewports when it gives them. */
+export const marklessDevices = (parsed: MarklessStyleInput, at?: MarklessAtSize): { readonly [T in NativeStyleTarget]: ExportDevice } =>
+  at !== undefined ? at : parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
+
 /** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
-function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: { readonly [T in NativeStyleTarget]: ExportDevice }): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
+function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
-  const devices = at !== undefined ? at : parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
+  const devices = marklessDevices(parsed, at);
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
@@ -432,12 +439,15 @@ function cellKey(parsed: MarklessStyleInput): (key: string) => string {
   };
 }
 
-/** What the input compiles to per target, keyed as the export keys it: the states and the @media bands. */
-export type MarklessCompiledTarget = Pick<ExportTarget, 'states' | 'bands'>;
+/**
+ * What the input compiles to per target, keyed as the export keys it: the states, the @media bands, the device it is laid out on,
+ * and its state machine: each assignment's values, the initial one and the setter transitions (indices into `assignments`).
+ */
+export type MarklessCompiledTarget = Pick<ExportTarget, 'states' | 'bands' | 'viewport' | 'dpr' | 'initial' | 'next'> & { readonly assignments: readonly Readonly<Record<string, unknown>>[] };
 
-/** The targets the input compiles to, compiled as marklessStyleExport compiles it with these font files in this font mode. */
-export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned'): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
-  const { styles } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode);
+/** The targets the input compiles to, compiled as marklessStyleExport compiles it with these font files in this font mode (and `at`). */
+export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned', at?: MarklessAtSize): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
+  const { styles, devices } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode, at);
   const rekey = cellKey(parsed);
   const out: { [T in NativeStyleTarget]?: MarklessCompiledTarget } = {};
   for (const [t, o] of Object.entries(styles.targets) as [NativeStyleTarget, (typeof styles.targets)[NativeStyleTarget]][]) {
@@ -446,6 +456,11 @@ export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: reado
     out[t] = {
       states: o.program.states.map((s) => ({ key: rekey(s.key), domain: s.domain })),
       ...exportBands(o),
+      viewport: devices[t].viewport,
+      dpr: devices[t].dpr,
+      assignments: o.program.assignments.map((a) => Object.fromEntries(Object.entries(valuesOf(a.assignment)).map(([k, v]) => [rekey(k), v]))),
+      initial: o.program.initial,
+      next: o.program.next,
     };
   }
   return out;
@@ -457,7 +472,7 @@ export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: reado
  * `decoded`: the sfnt of each WOFF or WOFF2 author font, by its path relative to the input (DECODED_FONTS_DIR), which the export
  * lists with `from: 'input'` and the caller writes there.
  */
-export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned', at?: { readonly [T in NativeStyleTarget]: ExportDevice }, plan = false): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned', at?: MarklessAtSize, plan = false): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const parsed = parseMarklessStyleInput(inputText);
   if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
@@ -487,8 +502,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
-  // Named with no frame: an element its hidden attribute hides in this assignment, one a style state (a band's display: none) hides
-  // here and another assignment shows, and their contents. Any other missing node fails.
+  // Named with no frame: an element a hidden attribute (fixed or by state) or a style state another assignment shows it in hides here, and its contents.
   const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
@@ -502,8 +516,8 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     };
     const added = parsed.nodes.flatMap((n): ExportNode[] => {
       if (have.has(n.id)) return [];
-      const hidden = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
-      const own = (hidden !== undefined && valueUnder(hidden, values, n.id) !== null) || (n.kind === 'element' && shown.has(n.id));
+      const byState = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
+      const own = n.kind === 'element' && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id));
       if (!own && !none.has(n.parent ?? '')) return [];
       none.add(n.id);
       return [{ id: n.id, parent: parentOf(n.id), kind: n.kind, native: n.kind === 'text' ? 'DragonTextView' : 'DragonBoxView', text: n.kind === 'text' ? shownText(n, values) : null, frame: null, borderWidths: null, writes: [] }];
@@ -540,7 +554,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
-  return { input, exported: { ...exported, targets }, decoded };
+  return { input, exported: { ...exported, fontMode: mode, targets }, decoded };
 }
 
 type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 };
@@ -551,9 +565,28 @@ type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgb
  * scheme, whose UA colours the nodes' writes already carry.
  */
 export type MarklessExportAssignment = ExportAssignment & { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null; readonly colorScheme: 'light' | 'dark' };
+/** `fontMode`: how the export resolved fonts, which the comparisons draw Chrome's text with. */
 export type MarklessStyleExport = Omit<NativeStyleExport, 'targets'> & {
+  readonly fontMode: MarklessFonts;
   readonly targets: { readonly [T in NativeStyleTarget]?: Omit<ExportTarget, 'assignments'> & { readonly assignments: readonly MarklessExportAssignment[] } };
 };
+
+const isRgba8 = (v: unknown): v is Rgba8 => isRecord(v) && Object.keys(v).sort().join() === 'alpha,b,g,r' && ['r', 'g', 'b', 'alpha'].every((k) => Number.isInteger(v[k]) && (v[k] as number) >= 0 && (v[k] as number) <= 255);
+
+/** Refuses, naming the field, an export without the font mode and each assignment's canvas, body background and colour scheme. */
+export function checkMarklessExport(exported: NativeStyleExport): MarklessStyleExport {
+  const o = exported as unknown as Record<string, unknown>;
+  if (o['fontMode'] !== 'system' && o['fontMode'] !== 'pinned') throw new Error(`the export's fontMode ${JSON.stringify(o['fontMode'] ?? null)} is neither system nor pinned`);
+  for (const [t, x] of Object.entries(exported.targets)) {
+    for (const [i, a] of (x?.assignments ?? []).entries()) {
+      const p = a as unknown as Record<string, unknown>;
+      if (!isRgba8(p['canvas'])) throw new Error(`${t} assignment ${i}: canvas ${JSON.stringify(p['canvas'] ?? null)} is not a colour`);
+      if (p['bodyBackground'] !== null && !isRgba8(p['bodyBackground'])) throw new Error(`${t} assignment ${i}: bodyBackground ${JSON.stringify(p['bodyBackground'])} is not a colour or null`);
+      if (p['colorScheme'] !== 'light' && p['colorScheme'] !== 'dark') throw new Error(`${t} assignment ${i}: colorScheme ${JSON.stringify(p['colorScheme'] ?? null)} is neither light nor dark`);
+    }
+  }
+  return exported as unknown as MarklessStyleExport;
+}
 
 const backgroundOf = (nodes: readonly ExportNode[], id: string): Rgba8 => {
   const color = nodes.find((n) => n.id === id)?.writes.find((w) => w['kind'] === 'background-color')?.['color'];
@@ -601,6 +634,15 @@ const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
 };
 
 /**
+ * The root background blended into the opaque base colour, as Chrome combines them into one fill: each channel
+ * (base·(255 − a) + colour·a) / 255 rounded to nearest, Chrome 145's pixel for 744 measured colours over both bases (alpha 0.01 to 0.99).
+ */
+const onBase = (base: Rgba8, src: Rgba8): Rgba8 => {
+  const mix = (d: number, s: number): number => Math.round((d * (255 - src.alpha) + s * src.alpha) / 255);
+  return { r: mix(base.r, src.r), g: mix(base.g, src.g), b: mix(base.b, src.b), alpha: 255 };
+};
+
+/**
  * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's (propagated, so body's box paints
  * none), drawn over the base background of a top-level page, Chrome's Canvas colour in the root's used scheme (white, or
  * rgb(18, 18, 18) under dark). When html has its own background, body keeps its own for its box, which lies on the canvas; that
@@ -614,7 +656,7 @@ function rootPaint(nodes: readonly ExportNode[], where: string, band: 'light' | 
   // Owner ruling: a light page keeps the white base in a dark band, where Chrome 145 uses rgb(18, 18, 18), so see-through is refused there.
   const seeThrough = (html.alpha === 0 ? body : html).alpha;
   if (used.colorScheme === 'light' && band !== 'light' && seeThrough !== 0 && seeThrough !== 255) fail(`${where}: the page background is see-through in a ${band === 'dark' ? 'dark-mode band' : 'band of another media feature'}, where Chrome's base colour under it is not known to be white`);
-  if (html.alpha === 0) return { canvas: over(used.canvas, body), bodyBackground: null };
-  const canvas = over(used.canvas, html);
+  if (html.alpha === 0) return { canvas: onBase(used.canvas, body), bodyBackground: null };
+  const canvas = onBase(used.canvas, html);
   return { canvas, bodyBackground: body.alpha === 0 ? null : over(canvas, body) };
 }

@@ -11,15 +11,24 @@ Measured 2026-11-18 by element widths of 6 strings at 12, 16, 17, 24 and 28 px, 
 simulator) and Paint (Android emulator) widths of candidate fonts. Probe sources: packages/parity/test/system-fonts/probes; the
 probe numbers the tests read: packages/parity/test/system-fonts/{ios-coretext,android-paint}.json.
 
+What is committed differs by platform. android-paint.json keeps Chrome's and the WebView's own element widths and line heights.
+ios-coretext.json keeps Safari's line heights and which generics Safari matched to each face, but not Safari's element widths: the
+iOS width deltas in the table below were computed by the probe run against Safari widths that were not committed, so nothing in
+the repo shows them. The recorded values cannot be measured again from this repo yet ("Probes" below).
+
 | CSS | Safari, iOS 27.2 (simulator, runtime 24B8117) | Chrome 133, Android 36 (emulator image `google_apis` arm64) |
 |---|---|---|
 | `system-ui` | San Francisco (`.SFUI-Regular`, `.SFUI-Bold`), max width delta 3e-5 px | Roboto (`Roboto-Regular.ttf`, variable, wght 400/700) |
-| `sans-serif` | Helvetica, Helvetica-Bold (delta 0) | Roboto |
+| `sans-serif` | Helvetica, Helvetica-Bold (delta 0); weights 100 to 300 pick Helvetica-Light (not measured) | Roboto |
 | `serif` | Times New Roman (delta 0) | Noto Serif (`NotoSerif-Regular.ttf`, `NotoSerif-Bold.ttf`) |
 | `monospace` | Courier, Courier-Bold (delta 0; Courier New ties on widths, its line height does not) | Droid Sans Mono (regular only; bold is synthetic) |
 | no `font-family` | Times New Roman | Noto Serif (Chrome's default, Times New Roman, is aliased to `serif` in fonts.xml). The Android WebView differs: Roboto |
 
-The table is packages/parity/src/system-fonts/web-generics.ts.
+The table is packages/parity/src/system-fonts/web-generics.ts. Only weights 400 and 700 were measured in Safari. For the other
+weights Dragon picks a face the way CSS font matching does (css-fonts-4 §5.2) among the role's faces. For `sans-serif`, `serif`
+and `monospace` those faces are every upright face of the family in the iOS runtime's font files, at the weight each file declares;
+a test reads the runtime's files to check the list. Helvetica has a third upright face, Helvetica-Light (weight 300), so weights
+100 to 300 draw it. Whether Safari draws the same faces at those weights has not been measured.
 
 ## What Dragon reads at build time
 
@@ -37,8 +46,12 @@ The table is packages/parity/src/system-fonts/web-generics.ts.
 
 ## Safari's rules Dragon follows on iOS
 
-- **Spaces**: WebKit gives a space the font's own space advance, dropping kerning Core Text puts on the space glyph (Times New Roman
-  and Helvetica regular otherwise differ by up to 0.506 px).
+- **Spaces**: a space gets the font's own space advance, dropping kerning Core Text puts on the space glyph (Times New Roman and
+  Helvetica regular otherwise differ by up to 0.506 px). The tests check Dragon against this rule (`spaceRuleWidth` in
+  ios-coretext.json, computed from Core Text), not against Safari. The Safari widths of Times New Roman and Helvetica the rule was
+  derived from are not committed. The one committed Safari width the rule changes is an author font's: Lato Regular at 18 px,
+  "Lato for the body, regular weight", 257.193 CSS px in Safari (packages/parity/test/markless-web-font.test.ts), which is the
+  rule's width; Core Text's own line width is 256.824.
 - **Size**: Safari shapes at the CSS size and scales by the device ratio; San Francisco's optical size and tracking follow the size,
   so Dragon shapes at the CSS size too.
 - **Line metrics**: ascent, descent and leading are each Core Text's value rounded up in CSS px; Helvetica's ascent also gains
@@ -69,10 +82,29 @@ iOS `kind: "system"` is `UIFont.systemFont(ofSize:weight:)` at that `UIFont.Weig
 ## Comparisons
 
 - **Safari and Chrome on the phones** (`pnpm run markless:style-web-column`): the export's frames against the boxes the phone's own
-  browser lays the same document out at, in device px.
-- **Chrome on the Mac** (`markless:style-compare`): for Android, Chrome loads the image's font files as web fonts. Chrome on the Mac
+  browser lays the same document out at, in device px. It compares only an export whose `fontMode` is `system`, and refuses a
+  browser whose ratio, width, height (100vh and the viewport's height), colour-scheme preference (the one each assignment's band
+  reads) or root used colour scheme is not the export's. `markless:any-size` and `markless:native-check` check the size each
+  compares at: an export laid out at the device's own size against that size, a phone's layout dump against the phone's viewport
+  and ratio; frames scaled from the proof device to the browser's size are checked for the preference and used scheme only.
+- **Chrome on the Mac** (`markless:style-compare`): the font mode is the export's `fontMode` (`--fonts`, when given, must match
+  it). For Android, each system face's file must be the one the image's fonts.xml resolves for it, and Chrome loads those files as
+  web fonts. Chrome on the Mac
   does not draw iOS's system faces as Safari does (other line metric rounding, Helvetica and Times metric adjustments, San
   Francisco without Core Text's tracking), so an iOS target with system faces is refused there and compared with Safari instead.
+
+## Probes
+
+packages/parity/test/system-fonts/probes holds what the 2026-11-18 run used that is in the repo: the Core Text probe
+(coretext-probe.swift), the Android probe app's source (android/), and the scripts that drove the simulator and the emulator
+(ios.sh, android.sh). The rest of that run's harness was kept in /tmp/sysfont-measure and is not in the repo: the server that
+served the measuring page and stored what the browsers posted (scripts/server.mjs), the measuring page itself, the scripts that
+cut the fixtures from the raw output (fixture-ios.mjs, fixture-android.mjs), the build of the Android probe APK, and the
+comparisons match-ios.json and match-android.json. The fixtures' `how` fields describe them, but not closely enough to rebuild
+them faithfully, so they have not been rewritten. Until they are, ios.sh and android.sh stop with a named error before touching a
+device unless `SYSFONT_HARNESS` names a directory with that harness. ios.sh now compiles the committed coretext-probe.swift with
+the recorded `swiftc` command rather than taking a compiled probe from the harness. Neither script has been run on a device since
+these changes.
 
 ## Licence
 

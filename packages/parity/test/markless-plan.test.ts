@@ -2,7 +2,8 @@
 // gives exactly the geometry the export computes at build time, at the proof devices and at other sizes and ratios.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { marklessStyleExport } from '../src/markless-style-input.ts';
+import { checkMarklessExport, marklessStyleExport } from '../src/markless-style-input.ts';
+import { paintRows } from '../src/markless-style-compare.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
 import { PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
@@ -107,5 +108,23 @@ describe('the layout plan of a Markless export', () => {
     expect(w).toContain(411);
     expect(w).toContain(1080 / 2.625);
     expect(w[w.length - 1]).toBe(1400);
+  });
+
+  it('keeps the font mode and each assignment\'s canvas, body background and colour scheme beside the plan, for the paint checks', () => {
+    const path = 'examples/markless-styles/input/scheme.native-style-input.json';
+    const at = { viewport: { width: 412, height: 870 }, dpr: 2.625 };
+    for (const exported of [marklessStyleExport(readFileSync(repoPath(path), 'utf8'), path, undefined, 'system', undefined, true).exported, marklessStyleExport(readFileSync(repoPath(path), 'utf8'), path, undefined, 'system', { ios: at, android: at }, true).exported]) {
+      const checked = checkMarklessExport(exported);
+      expect(checked.fontMode).toBe('system');
+      for (const t of ['ios', 'android'] as const) {
+        const x = checked.targets[t]!;
+        expect(x.plan).toBeDefined();
+        expect(x.planNames?.length).toBe(x.assignments.length);
+        for (const a of x.assignments) {
+          const rows = paintRows(t, a, { canvas: a.canvas, body: a.bodyBackground, colorScheme: a.colorScheme });
+          expect(rows.map((r) => [r.field, r.pass])).toEqual([['canvas', true], ['bodyBackground', true], ['colorScheme', true]]);
+        }
+      }
+    }
   });
 });

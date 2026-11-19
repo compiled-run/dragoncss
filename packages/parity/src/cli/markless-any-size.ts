@@ -40,12 +40,13 @@ const summary = (rows: readonly WebColumnRow[]) => ({
   worstDevicePx: rows.reduce((m, r) => Math.max(m, r.maxDeltaDevicePx), 0),
 });
 
-const fixed = await webColumn(input, marklessStyleExport(text, inputPath, read, 'system').exported, device, fonts, shotDir, true);
+const fixed = await webColumn(input, marklessStyleExport(text, inputPath, read, 'system').exported, device, fonts, shotDir, { kind: 'scaled' });
 // The width the browser lays the page out at: on a Pixel 7 Chrome lays out 412 CSS px, though 1080 px / 2.625 is 411.43.
 // The height is the browser's 100vh (Safari's and Chrome's large viewport, toolbars hidden), not its visible height.
 const size = { width: fixed.size.width, height: fixed.size.vh };
 const at = { viewport: size, dpr: fixed.size.dpr };
-const atSize = await webColumn(input, marklessStyleExport(text, inputPath, read, 'system', { ios: at, android: at }).exported, device, fonts);
+const both = { ios: at, android: at };
+const atSize = await webColumn(input, marklessStyleExport(text, inputPath, read, 'system', both).exported, device, fonts, undefined, { kind: 'proof', at: both });
 writeFileSync(reportPath, `${JSON.stringify({ gateDevicePx: GATE_DEVICE_PX, target: device.target, browser: fixed.browser, size: fixed.size, fixed: { ...summary(fixed.rows), rows: fixed.rows }, atSize: { ...summary(atSize.rows), rows: atSize.rows } }, null, 1)}\n`);
 const line = (name: string, rows: readonly WebColumnRow[]): string => {
   const s = summary(rows);

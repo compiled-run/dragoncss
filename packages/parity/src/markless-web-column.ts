@@ -9,11 +9,12 @@ import type { NativeStyleTarget } from 'dragon';
 import { collectNodes, nameCollected } from './capture.ts';
 import type { CapturedNode, CollectedElement } from './capture.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
-import { checkCoverage, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree } from './markless-style-compare.ts';
-import type { BoxProblem, CompareRow, DocumentNode } from './markless-style-compare.ts';
-import type { MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
-import { marklessCompiledTargets } from './markless-style-input.ts';
-import type { ExportAssignment, NativeStyleExport } from './native-style-export.ts';
+import { BAND_KEY } from 'dragon';
+import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme } from './markless-style-compare.ts';
+import type { BoxProblem, CompareRow, DocumentNode, RootProbe } from './markless-style-compare.ts';
+import type { MarklessAtSize, MarklessExportAssignment, MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
+import { checkMarklessExport, marklessCompiledTargets, schemeOf } from './markless-style-input.ts';
+import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
 export type WebColumnDevice = { readonly target: 'ios'; readonly udid: string } | { readonly target: 'android'; readonly serial: string };
@@ -21,7 +22,7 @@ export type WebColumnDevice = { readonly target: 'ios'; readonly udid: string } 
 /** A compared box: the gate's row, with both frames in device px from the page's top left. */
 export type WebColumnRow = CompareRow & { readonly maxDeltaDevicePx: number; readonly web: Frame; readonly dragon: Frame };
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-type Measured = { readonly dpr: number; readonly innerWidth: number; readonly innerHeight: number; readonly vh: number; readonly layoutWidth: number; readonly elements: readonly CollectedElement[]; readonly backdrops: readonly CapturedNode[]; readonly tree: DocumentNode; readonly userAgent: string };
+type Measured = { readonly dpr: number; readonly innerWidth: number; readonly layoutWidth: number; readonly elements: readonly CollectedElement[]; readonly backdrops: readonly CapturedNode[]; readonly tree: DocumentNode; readonly probe: RootProbe; readonly userAgent: string };
 
 const run = (cmd: string, args: readonly string[]): string => execFileSync(cmd, [...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
@@ -30,7 +31,7 @@ function pageOf(input: MarklessStyleInput, values: Readonly<Record<string, unkno
   const html = authoredFontHtml(marklessDocumentHtml(input, values, 'system'), files);
   // The export lays out at whole CSS px (a Pixel 7 is 411.43 wide); the root box takes that width so both lay out the same line length.
   const viewport = `<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="format-detection" content="telephone=no, date=no, address=no, email=no"><style>:where(html){-webkit-text-size-adjust:100%;text-size-adjust:100%${width === null ? '' : `;width:${width}px`}}</style>`;
-  const script = `<script>addEventListener('load',()=>document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const tree=(${readDocumentTree.toString()})();const elements=(${collectNodes.toString()})([]);const backdrops=(${collectBackdrops.toString()})(${JSON.stringify(modalIds(input)).replace(/</g, '\\u003c')});const probe=document.createElement('div');probe.style.cssText='position:absolute;top:0;left:0;width:0;height:100vh';document.body.appendChild(probe);const vh=probe.getBoundingClientRect().height;probe.remove();fetch(${JSON.stringify(post)},{method:'POST',body:JSON.stringify({dpr:devicePixelRatio,innerWidth,innerHeight,vh,layoutWidth:document.documentElement.clientWidth,userAgent:navigator.userAgent,tree,elements,backdrops})});}))));</script>`;
+  const script = `<script>addEventListener('load',()=>document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const tree=(${readDocumentTree.toString()})();const elements=(${collectNodes.toString()})([]);const backdrops=(${collectBackdrops.toString()})(${JSON.stringify(modalIds(input)).replace(/</g, '\\u003c')});const probe=(${readRootProbe.toString()})();fetch(${JSON.stringify(post)},{method:'POST',body:JSON.stringify({dpr:devicePixelRatio,innerWidth,layoutWidth:document.documentElement.clientWidth,userAgent:navigator.userAgent,tree,elements,backdrops,probe})});}))));</script>`;
   return html.replace('<head>', `<head>${viewport}${script}`);
 }
 
@@ -55,8 +56,18 @@ function screenshot(device: WebColumnDevice, file: string): void {
 /** The browser's own layout size: whole CSS px wide and tall, at its device pixel ratio. */
 export type BrowserSize = { readonly width: number; readonly height: number; readonly vh: number; readonly dpr: number };
 
-/** What a phone drew: one assignment's boxes in points (iOS) or dp (Android) from the page's top left, by node id. */
-export type NativeLayout = { readonly assignment: number; readonly boxes: ReadonlyMap<string, Frame> };
+/** What a phone drew: one assignment's boxes in points (iOS) or dp (Android) from the page's top left, by node id, at its viewport in CSS px and its ratio. */
+export type NativeLayout = { readonly assignment: number; readonly viewport: { readonly width: number; readonly height: number }; readonly scale: number; readonly boxes: ReadonlyMap<string, Frame> };
+
+/**
+ * The size the browser must lay the page out at. `proof`: the export's viewport and ratio, which `at` names when the export was laid
+ * out at a phone's own size (marklessStyleExport's `at`) instead of the input's. `scaled`: the device's own size, the export's
+ * proof-device frames scaled to it. `native`: the size a phone drew `layout` at, its boxes in place of the export's frames.
+ */
+export type WebColumnSize = { readonly kind: 'proof'; readonly at?: MarklessAtSize } | { readonly kind: 'scaled' } | { readonly kind: 'native'; readonly layout: NativeLayout };
+
+/** A size the compared boxes were laid out at: `by` names who laid them out, `fix` what to do when the browser's page is another size. */
+export type LaidOutAt = { readonly viewport: { readonly width: number; readonly height: number }; readonly dpr: number; readonly by: string; readonly fix: string };
 
 /**
  * How one assignment's browser boxes are compared: `browserDpr` is the browser's ratio; with `anySize` the browser laid the page out
@@ -72,6 +83,25 @@ const PROBLEM: { readonly [K in BoxProblem]: string } = {
   unseen: 'has a frame in the export and no box in the browser\'s page',
   anonymous: 'is an anonymous box whose nodes are not all in the browser\'s page',
 };
+
+/**
+ * Refuses a browser whose page is not the one compared with for this assignment: another ratio, width or height (100vh and the
+ * viewport's height, which vh units, percentage heights and a modal dialog read) than `laid` (the export's own, unless given; null
+ * when the compared frames are scaled to the browser's size), the other colour-scheme preference from the one the assignment's band
+ * reads, or a root used colour scheme other than the export's.
+ */
+export function checkBrowserPage(target: WebColumnDevice['target'], t: Pick<ExportTarget, 'viewport' | 'dpr' | 'bands'>, assignment: MarklessExportAssignment, m: Pick<Measured, 'dpr' | 'innerWidth' | 'probe'>, index: number, laid: LaidOutAt | null = { viewport: t.viewport, dpr: t.dpr, by: 'the export', fix: "use the export's proof device" }): void {
+  if (laid !== null) {
+    if (Math.abs(m.dpr - laid.dpr) > 1e-6 || Math.abs(m.innerWidth - laid.viewport.width) > 1) throw new Error(`${target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, ${laid.by} ${laid.viewport.width} at ${laid.dpr}x; ${laid.fix}`);
+    const { vh, viewportHeight, innerHeight } = m.probe;
+    if (Math.abs(vh - laid.viewport.height) > 1 || Math.abs(viewportHeight - laid.viewport.height) > 1) throw new Error(`${target}: the browser lays out 100vh at ${vh} and its viewport at ${viewportHeight} CSS px tall (innerHeight ${innerHeight}), ${laid.by} at ${laid.viewport.height}; ${laid.fix}`);
+  }
+  const band = assignment.values[BAND_KEY];
+  const want = typeof band === 'number' ? schemeOf(t.bands, band) : 'light';
+  if (m.probe.prefersDark !== (want === 'dark')) throw new Error(`${target} assignment ${index}: the browser prefers ${m.probe.prefersDark ? 'dark' : 'light'}, and this assignment is laid out for ${want}; set the device's appearance to ${want}`);
+  const used = usedScheme(m.probe);
+  if (used !== assignment.colorScheme) throw new Error(`${target} assignment ${index}: the browser's root uses the ${used} colour scheme, the export's colorScheme is ${assignment.colorScheme}`);
+}
 
 /**
  * One assignment's rows; a node one side gives a box and the other does not is an error, never skipped. The browser's boxes are
@@ -116,19 +146,29 @@ export function webColumnRows(input: MarklessStyleInput, target: WebColumnDevice
 
 /**
  * Measures every assignment of the export's target on the device and compares its frames. The page is served on 127.0.0.1
- * (an emulator reaches it through adb reverse). The device must show the export's viewport width in CSS px, unless `anySize`:
- * then the browser lays the page out at the device's own width, and the export's frames are compared as a host draws them on
- * that device (each frame's CSS px, export px / export dpr, at the device's dpr).
+ * (an emulator reaches it through adb reverse). The device must show the page at the size `size` names (WebColumnSize), and the
+ * colour-scheme preference each assignment's band reads. Scaled, the export's frames are compared as a host draws them on the
+ * device (each frame's CSS px, export px / export dpr, at the device's dpr).
  */
-export async function webColumn(input: MarklessStyleInput, exported: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, anySize = false, native?: NativeLayout): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
+export async function webColumn(input: MarklessStyleInput, given: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, size: WebColumnSize = { kind: 'proof' }): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
+  const exported = checkMarklessExport(given);
+  if (exported.fontMode !== 'system') throw new Error(`the export resolved fonts as ${exported.fontMode}; the web column measures the phone's own system fonts, so it compares only an export with system fonts`);
   const t = exported.targets[device.target];
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
-  const compiled = marklessCompiledTargets(input, fonts, 'system');
-  checkTargets(exported, compiled);
+  const at = size.kind === 'proof' ? size.at : undefined;
+  const compiled = marklessCompiledTargets(input, fonts, 'system', at);
+  checkTargets(input, exported, compiled);
+  checkInputFonts(exported, fonts);
   for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   const inputIds = new Set(input.nodes.map((n) => n.id));
+  const native = size.kind === 'native' ? size.layout : undefined;
+  const anySize = size.kind !== 'proof';
   if (native !== undefined && t.assignments[native.assignment] === undefined) throw new Error(`the phone drew assignment ${native.assignment}, which the export's ${device.target} target does not have`);
+  const laid: LaidOutAt | null | undefined = size.kind === 'scaled' ? null
+    : native !== undefined ? { viewport: native.viewport, dpr: native.scale, by: 'the phone', fix: 'measure on the device the phone drew on' }
+    : at !== undefined ? { viewport: t.viewport, dpr: t.dpr, by: 'the export laid out at size', fix: "lay the export out at this device's own size" }
+    : undefined;
   const results = new Map<number, (m: Measured) => void>();
   const server = createServer((req, res) => {
     const u = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -153,7 +193,7 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
   const port = (server.address() as AddressInfo).port;
   const rows: WebColumnRow[] = [];
   let browser = '';
-  let size: BrowserSize = { width: 0, height: 0, vh: 0, dpr: 0 };
+  let browserSize: BrowserSize = { width: 0, height: 0, vh: 0, dpr: 0 };
   try {
     if (device.target === 'android') run('adb', ['-s', device.serial, 'reverse', `tcp:${port}`, `tcp:${port}`]);
     for (const [index, assignment] of t.assignments.entries()) {
@@ -168,8 +208,8 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
       open(device, `http://127.0.0.1:${port}/page?i=${index}&n=${Date.now()}`);
       const m = await measured;
       browser = m.userAgent;
-      size = { width: anySize ? m.layoutWidth : m.innerWidth, height: m.innerHeight, vh: m.vh, dpr: m.dpr };
-      if (!anySize && (Math.abs(m.dpr - t.dpr) > 1e-6 || Math.abs(m.innerWidth - t.viewport.width) > 1)) throw new Error(`${device.target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, the export ${t.viewport.width} at ${t.dpr}x; use the export's proof device`);
+      browserSize = { width: anySize ? m.layoutWidth : m.innerWidth, height: m.probe.innerHeight, vh: m.probe.vh, dpr: m.dpr };
+      checkBrowserPage(device.target, t, assignment, m, index, laid);
       if (screenshots !== undefined) screenshot(device, `${screenshots}/${device.target}-web-${index}.png`);
       const mismatch = documentMismatch(marklessDocumentTree(input, assignment.values), m.tree);
       if (mismatch !== null) throw new Error(`${device.target} assignment ${index}: the browser's document is not the input's tree: ${mismatch}`);
@@ -183,5 +223,5 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
     server.closeAllConnections();
     server.close();
   }
-  return { browser, size, compared: rows.length, failed: rows.filter((r) => !r.pass).length, rows };
+  return { browser, size: browserSize, compared: rows.length, failed: rows.filter((r) => !r.pass).length, rows };
 }

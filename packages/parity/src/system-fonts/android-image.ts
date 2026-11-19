@@ -163,7 +163,10 @@ function concat(pieces: readonly ByteSource[], what: string): ByteSource {
 const EXT4_MAGIC = 0xef53;
 const INCOMPAT_64BIT = 0x80;
 const INCOMPAT_EXTENTS = 0x40;
-const INCOMPAT_SUPPORTED = 0x2 | INCOMPAT_EXTENTS | INCOMPAT_64BIT | 0x200 | 0x10000 | 0x8000;
+const INCOMPAT_ENCRYPT = 0x10000;
+// Inline data (0x8000) is refused per inode in contents(), so an image that uses it only for files Dragon does not read still opens.
+const INCOMPAT_SUPPORTED = 0x2 | INCOMPAT_EXTENTS | INCOMPAT_64BIT | 0x200 | 0x8000;
+const ENCRYPT_FL = 0x800;
 const EXTENTS_FL = 0x80000;
 const INLINE_DATA_FL = 0x10000000;
 const EXTENT_MAGIC = 0xf30a;
@@ -196,6 +199,7 @@ export class Ext4 {
     const sb = view(src.read(1024, 1024));
     if (sb.getUint16(56, true) !== EXT4_MAGIC) fail(`${what}: not an ext4 file system`);
     const incompat = sb.getUint32(96, true);
+    if ((incompat & INCOMPAT_ENCRYPT) !== 0) fail(`${what}: ext4 encryption (incompatible feature 0x${INCOMPAT_ENCRYPT.toString(16)}) is not read by Dragon`);
     const unknown = incompat & ~INCOMPAT_SUPPORTED;
     if (unknown !== 0) fail(`${what}: ext4 incompatible features 0x${unknown.toString(16)} are not read by Dragon`);
     this.blockSize = 1024 << sb.getUint32(24, true);
@@ -222,6 +226,7 @@ export class Ext4 {
 
   /** The inode's bytes, its whole size; a sparse or unwritten extent reads as zeros. */
   contents(ino: Ext4Inode): Uint8Array {
+    if ((ino.flags & ENCRYPT_FL) !== 0) fail(`${this.what}: inode ${ino.number} is encrypted, which Dragon does not read`);
     if (ino.kind === 'symlink' && ino.size < 60 && (ino.flags & EXTENTS_FL) === 0) return ino.block.slice(0, ino.size);
     if ((ino.flags & INLINE_DATA_FL) !== 0) fail(`${this.what}: inode ${ino.number} keeps its data inline, which Dragon does not read`);
     if ((ino.flags & EXTENTS_FL) === 0) fail(`${this.what}: inode ${ino.number} uses block maps, not extents, which Dragon does not read`);
