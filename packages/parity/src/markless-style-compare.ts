@@ -188,12 +188,16 @@ export async function captureMarklessAssignment(browser: Browser, input: Markles
     const mismatch = documentMismatch(marklessDocumentTree(input, values), await page.evaluate(readDocumentTree));
     if (mismatch !== null) throw new Error(`Chrome's document is not the input's tree: ${mismatch}`);
     backdrops = await page.evaluate(collectBackdrops, modalIds(input));
+    await checkBackdrops(page, backdrops);
     if (screenshot !== undefined) await page.screenshot({ path: screenshot, fullPage: true });
   });
   return { ...capture, nodes: [...capture.nodes, ...backdrops] };
 }
 
-/** Runs in the page (so it closes over nothing): each shown dialog's ::backdrop box as "<id>::backdrop", from its resolved values. */
+/**
+ * Runs in the page (so it closes over nothing): each shown dialog's ::backdrop border box as "<id>::backdrop", untransformed as
+ * every captured frame is, from its resolved position, margins, size, padding, borders, box-sizing and zoom.
+ */
 export const collectBackdrops = (ids: string[]): CapturedNode[] => {
   const out: CapturedNode[] = [];
   for (const el of Array.from(document.querySelectorAll('dialog[data-dragon-id]'))) {
@@ -206,10 +210,77 @@ export const collectBackdrops = (ids: string[]): CapturedNode[] => {
       return parseFloat(v);
     };
     const hasBox = el.matches(':modal') && cs.display !== 'none';
-    out.push({ id: `${id}::backdrop`, kind: 'element', hasBox, x: hasBox ? px('left') : 0, y: hasBox ? px('top') : 0, width: hasBox ? px('width') : 0, height: hasBox ? px('height') : 0, computed: null });
+    if (!hasBox) {
+      out.push({ id: `${id}::backdrop`, kind: 'element', hasBox, x: 0, y: 0, width: 0, height: 0, computed: null });
+      continue;
+    }
+    // Resolved lengths are in the backdrop's own unzoomed px; it inherits its effective zoom from the dialog.
+    let zoom = parseFloat(cs.zoom || '1');
+    for (let a: Element | null = el; a !== null; a = a.parentElement) zoom *= parseFloat(getComputedStyle(a).zoom || '1');
+    const contentBox = cs.boxSizing !== 'border-box';
+    const extra = (a: string, b: string): number => (contentBox ? px(`padding-${a}`) + px(`padding-${b}`) + px(`border-${a}-width`) + px(`border-${b}-width`) : 0);
+    out.push({
+      id: `${id}::backdrop`,
+      kind: 'element',
+      hasBox,
+      x: (px('left') + px('margin-left')) * zoom,
+      y: (px('top') + px('margin-top')) * zoom,
+      width: (px('width') + extra('left', 'right')) * zoom,
+      height: (px('height') + extra('top', 'bottom')) * zoom,
+      computed: null,
+    });
   }
   return out;
 };
+
+/** The backdrop layout as collectBackdrops reads it must be within one layout unit (1/64 CSS px) of Chrome's own border box. */
+const BACKDROP_CHECK_CSS_PX = 1 / 64;
+
+/**
+ * Checks collectBackdrops (which the phones' browsers run too) against the border box Chrome laid each ::backdrop out at, read
+ * through CDP with transforms set aside, as every captured frame is untransformed.
+ */
+async function checkBackdrops(page: Page, measured: readonly CapturedNode[]): Promise<void> {
+  if (!measured.some((b) => b.hasBox)) return;
+  const sheet = await page.evaluateHandle(() => {
+    const s = document.createElement('style');
+    s.textContent = '::backdrop { transform: none !important; translate: none !important; rotate: none !important; scale: none !important; }';
+    document.head.append(s);
+    return s;
+  });
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    type Node = { readonly nodeId: number; readonly attributes?: readonly string[]; readonly children?: readonly Node[]; readonly pseudoElements?: readonly (Node & { readonly pseudoType?: string })[] };
+    const { root } = (await cdp.send('DOM.getDocument', { depth: -1, pierce: true })) as { root: Node };
+    const found = new Map<string, number>();
+    const walk = (n: Node): void => {
+      const attrs = n.attributes ?? [];
+      const at = attrs.indexOf('data-dragon-id');
+      const backdrop = n.pseudoElements?.find((p) => p.pseudoType === 'backdrop');
+      if (at >= 0 && at % 2 === 0 && backdrop !== undefined) found.set(attrs[at + 1] as string, backdrop.nodeId);
+      for (const c of n.children ?? []) walk(c);
+    };
+    walk(root);
+    for (const b of measured) {
+      const id = b.id.slice(0, -'::backdrop'.length);
+      const nodeId = found.get(id);
+      if (!b.hasBox) {
+        if (nodeId !== undefined) throw new Error(`${b.id}: Chrome lays out a backdrop the page reads as having no box`);
+        continue;
+      }
+      if (nodeId === undefined) throw new Error(`${b.id}: Chrome lays out no backdrop box for a dialog the page reads as shown`);
+      const { model } = (await cdp.send('DOM.getBoxModel', { nodeId })) as { model: { border: number[] } };
+      const xs = model.border.filter((_, i) => i % 2 === 0);
+      const ys = model.border.filter((_, i) => i % 2 === 1);
+      const chrome = { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+      const off = (['x', 'y', 'width', 'height'] as const).filter((k) => Math.abs(chrome[k] - b[k]) > BACKDROP_CHECK_CSS_PX);
+      if (off.length > 0) throw new Error(`${b.id}: the page reads the box ${JSON.stringify({ x: b.x, y: b.y, width: b.width, height: b.height })}, Chrome lays it out at ${JSON.stringify(chrome)}`);
+    }
+  } finally {
+    await cdp.detach();
+    await sheet.evaluate((s) => s.remove());
+  }
+}
 
 /** Why a node has a box on only one side. */
 export type BoxProblem = 'no-node' | 'no-frame' | 'no-box' | 'unseen' | 'anonymous';
