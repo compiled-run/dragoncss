@@ -108,12 +108,16 @@ function parse(d: DataView): SfntFont {
     if (offset + length > d.byteLength) throw new Malformed(`table ${tag(d, rec)} runs past the end of the file`);
     tables.set(tag(d, rec), { offset, length });
   }
+  // Chrome 145's sanitizer refuses a font without any of these (measured: a WOFF of Lato without each table).
+  for (const t of ['cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'post']) if (!tables.has(t)) throw new Malformed(`no ${t} table`);
+  if (!tables.has('CFF ') && !tables.has('CFF2') && !(tables.has('glyf') && tables.has('loca'))) throw new Malformed('no glyf and loca, CFF or CFF2 table');
   const need = (name: string): number => {
     const t = tables.get(name);
     if (t === undefined) throw new Malformed(`no ${name} table`);
     return t.offset;
   };
   const h = need('head');
+  if (d.getUint32(h + 12) !== 0x5f0f3cf5) throw new Malformed('the head magicNumber is not 0x5F0F3CF5');
   const head: Head = {
     unitsPerEm: d.getUint16(h + 18),
     xMin: d.getInt16(h + 36),

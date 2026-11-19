@@ -40,7 +40,39 @@ class Collection extends Error {}
 
 type Table = { readonly tag: string; readonly data: Uint8Array };
 
-/** WOFF 1.0 §5-6: each table stored, or zlib-compressed when compLength < origLength. */
+// Chrome 145's font sanitizer (OTS) refuses a font that would decompress to more than this (measured: a WOFF2 totalSfntSize, and
+// the summed origLength of a WOFF's compressed tables).
+const MAX_DECOMPRESSED = 128 * 1024 * 1024;
+
+// The tables Chrome 145's sanitizer reads; it drops every other table without inflating it (measured: a WOFF table of each tag
+// whose zlib stream is corrupt fails the font only for these).
+const SANITIZED_TABLES: ReadonlySet<string> = new Set([
+  'BASE', 'CBDT', 'CBLC', 'CFF ', 'CFF2', 'COLR', 'CPAL', 'GDEF', 'GPOS', 'GSUB', 'HVAR', 'LTSH', 'MATH', 'MVAR', 'OS/2', 'STAT', 'VDMX',
+  'VORG', 'VVAR', 'avar', 'cmap', 'cvar', 'cvt ', 'fpgm', 'fvar', 'gasp', 'glyf', 'gvar', 'hdmx', 'head', 'hhea', 'hmtx', 'kern', 'loca',
+  'maxp', 'name', 'post', 'prep', 'sbix', 'vhea', 'vmtx',
+]);
+
+const round4 = (n: number): number => Math.ceil(n / 4) * 4;
+
+/**
+ * The block after the font data (§3 and WOFF 1.0 §3): the metadata then the private data block, each present only when its offset
+ * is not zero, each at the 4-byte-rounded end of the one before it, with the file ending at the rounded end of the last block.
+ */
+function checkBlocks(d: DataView, length: number, fontDataEnd: number, meta: number, priv: number): void {
+  let end = round4(fontDataEnd);
+  if (end > length) bad('the font data runs past the end of the file');
+  for (const [what, at] of [['metadata', meta], ['private data', priv]] as const) {
+    const offset = d.getUint32(at);
+    const size = d.getUint32(at + 4);
+    if (offset === 0) continue;
+    if (offset >= length || length - offset < size) bad(`the ${what} block runs past the end of the file`);
+    if (offset !== end) bad(`the ${what} block does not follow the previous block`);
+    end = round4(offset + size);
+  }
+  if (end !== round4(length)) bad('the file has data after its last block');
+}
+
+/** WOFF 1.0 §4-6, judged as Chrome 145's sanitizer judges it: each table stored, or zlib-compressed when compLength < origLength. */
 function decodeWoff(b: Uint8Array): Uint8Array {
   if (b.length < 44) bad('shorter than a WOFF header');
   const d = view(b);
@@ -48,31 +80,52 @@ function decodeWoff(b: Uint8Array): Uint8Array {
   if (flavor === 0x74746366) throw new Collection();
   if (d.getUint32(8) !== b.length) bad(`the header length ${d.getUint32(8)} is not the file length ${b.length}`);
   const numTables = d.getUint16(12);
+  if (numTables === 0) bad('the header lists no tables');
   if (d.getUint16(14) !== 0) bad('the reserved field is not zero');
-  if (44 + numTables * 20 > b.length) bad('the table directory runs past the end of the file');
-  const tables: Table[] = [];
-  for (let i = 0; i < numTables; i++) {
+  const dataStart = 44 + numTables * 20;
+  if (dataStart > b.length) bad('the table directory runs past the end of the file');
+  const entries = Array.from({ length: numTables }, (_, i) => {
     const e = 44 + i * 20;
-    const tag = tagAt(b, e);
-    const offset = d.getUint32(e + 4);
-    const compLength = d.getUint32(e + 8);
-    const origLength = d.getUint32(e + 12);
+    return { tag: tagAt(b, e), offset: d.getUint32(e + 4), compLength: d.getUint32(e + 8), origLength: d.getUint32(e + 12) };
+  });
+  const sfntSize = entries.reduce((n, e) => n + round4(e.origLength), 12 + 16 * numTables);
+  if (d.getUint32(16) !== sfntSize) bad(`the header totalSfntSize ${d.getUint32(16)} is not the ${sfntSize} bytes its tables make`);
+  const first = entries.reduce((a, e) => (e.offset < a.offset ? e : a));
+  if (first.offset !== dataStart) bad(`the first table, ${first.tag}, starts at ${first.offset}, not right after the table directory at ${dataStart}`);
+  const last = entries.reduce((a, e) => (e.offset > a.offset ? e : a));
+  if (last.offset >= b.length || b.length - last.offset < last.compLength) bad(`table ${last.tag} runs past the end of the file`);
+  checkBlocks(d, b.length, last.offset + last.compLength, 24, 36);
+  let inflated = 0;
+  for (const { tag, offset, compLength, origLength } of entries) {
     if (offset % 4 !== 0) bad(`table ${tag} does not start on a 4-byte boundary`);
-    if (offset + compLength > b.length) bad(`table ${tag} runs past the end of the file`);
+    if (offset < dataStart || offset >= b.length) bad(`table ${tag} starts outside the table data`);
+    if (compLength === 0) bad(`table ${tag} is empty`);
     if (compLength > origLength) bad(`table ${tag} has compLength ${compLength} greater than origLength ${origLength}`);
+    if (compLength < origLength) inflated += origLength;
+    if (round4(offset + compLength) > b.length) bad(`table ${tag} runs past the end of the file`);
+  }
+  if (inflated > MAX_DECOMPRESSED) bad(`the compressed tables inflate to ${inflated} bytes, more than Chrome's ${MAX_DECOMPRESSED}`);
+  const bounds = entries.flatMap((e) => [[e.offset, 1], [e.offset + e.compLength, 0]] as const).sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  let open = 0;
+  for (const [, starts] of bounds) if ((open += starts === 1 ? 1 : -1) > 1) bad('two tables overlap');
+  // A tag listed twice takes its last entry, as Chrome's sanitizer does.
+  const byTag = new Map(entries.map((e) => [e.tag, e] as const));
+  const tables: Table[] = [];
+  for (const { tag, offset, compLength, origLength } of byTag.values()) {
     const stored = b.subarray(offset, offset + compLength);
-    let data: Uint8Array;
+    let data: Uint8Array | null;
     if (compLength === origLength) data = stored;
     else {
       try {
         data = zlibInflate(stored, origLength);
       } catch (e) {
-        return bad(`table ${tag}: ${(e as Error).message}`);
+        if (SANITIZED_TABLES.has(tag)) bad(`table ${tag}: ${(e as Error).message}`);
+        data = null;
       }
     }
-    if (data.length !== origLength) bad(`table ${tag} decompresses to ${data.length} bytes, not origLength ${origLength}`);
-    if (tables.some((t) => t.tag === tag)) bad(`table ${tag} is listed twice`);
-    tables.push({ tag, data });
+    if (data !== null && data.length !== origLength && SANITIZED_TABLES.has(tag)) bad(`table ${tag} decompresses to ${data.length} bytes, not origLength ${origLength}`);
+    // Chrome drops a table its sanitizer does not know without inflating it, so such a table that does not inflate is left out.
+    if (data !== null && data.length === origLength) tables.push({ tag, data });
   }
   return buildSfnt(flavor, tables);
 }
@@ -159,15 +212,13 @@ function decodeWoff2(b: Uint8Array, brotli: BrotliDecompress): Uint8Array {
   const length = header.u32();
   if (length !== b.length) bad(`the header length ${length} is not the file length ${b.length}`);
   const numTables = header.u16();
+  if (numTables === 0) bad('the header lists no tables');
   header.u16();
-  header.u32();
+  // Chrome sizes its output buffer from totalSfntSize, which it requires to be at least the file length and at most its limit.
+  const totalSfntSize = header.u32();
+  if (totalSfntSize < b.length) bad(`the header totalSfntSize ${totalSfntSize} is less than the file length ${b.length}`);
+  if (totalSfntSize > MAX_DECOMPRESSED) bad(`the header totalSfntSize ${totalSfntSize} is more than Chrome's ${MAX_DECOMPRESSED}`);
   const totalCompressedSize = header.u32();
-  header.u32();
-  const metaOffset = header.u32();
-  const metaLength = header.u32();
-  header.u32();
-  const privOffset = header.u32();
-  const privLength = header.u32();
   const dir = new Stream(b.subarray(48), 'table directory');
   const entries: Entry[] = [];
   for (let i = 0; i < numTables; i++) {
@@ -176,31 +227,21 @@ function decodeWoff2(b: Uint8Array, brotli: BrotliDecompress): Uint8Array {
     const tag = index === 63 ? tagAt(dir.bytes(4), 0) : (KNOWN_TAGS[index] as string);
     const version = flags >> 6;
     const origLength = dir.base128();
+    // As Chrome's decoder reads them: glyf and loca are transformed at version 0 and null-transformed at any other; hmtx is
+    // transformed at any version but 0; any other table at a version but 0 has a transform no decoder knows.
     let transformed: boolean;
-    if (tag === 'glyf' || tag === 'loca') {
-      if (version !== 0 && version !== 3) bad(`table ${tag} has the unknown transform version ${version}`);
-      transformed = version === 0;
-    } else if (tag === 'hmtx') {
-      if (version > 1) bad(`table hmtx has the unknown transform version ${version}`);
-      transformed = version === 1;
-    } else if (version !== 0) return bad(`table ${tag} has the unknown transform version ${version}`);
+    if (tag === 'glyf' || tag === 'loca') transformed = version === 0;
+    else if (tag === 'hmtx') transformed = version !== 0;
+    else if (version !== 0) return bad(`table ${tag} has the unknown transform version ${version}`);
     else transformed = false;
     const lengthInStream = transformed ? dir.base128() : origLength;
     if (entries.some((e) => e.tag === tag)) bad(`table ${tag} is listed twice`);
+    if (origLength === 0) bad(`table ${tag} is empty`);
     entries.push({ tag, origLength, transformed, length: lengthInStream });
   }
   const dataStart = 48 + dir.offset;
   const dataEnd = dataStart + totalCompressedSize;
-  if (dataEnd > b.length) bad('the compressed font data runs past the end of the file');
-  // §3: the blocks follow each other, each optional one 4-byte aligned, with nothing after the last.
-  let end = dataEnd;
-  for (const [what, offset, size] of [['metadata', metaOffset, metaLength], ['private data', privOffset, privLength]] as const) {
-    if (offset === 0 && size === 0) continue;
-    if (offset !== ((end + 3) & ~3) || b.subarray(end, offset).some((x) => x !== 0)) bad(`the ${what} block does not follow the previous block`);
-    if (offset + size > b.length) bad(`the ${what} block runs past the end of the file`);
-    end = offset + size;
-  }
-  if (end > b.length || b.length - end > 3 || b.subarray(end).some((x) => x !== 0)) bad('the file has data after its last block');
+  checkBlocks(view(b), b.length, dataEnd, 28, 40);
   const total = entries.reduce((n, e) => n + e.length, 0);
   let stream: Uint8Array;
   try {
@@ -234,6 +275,8 @@ function decodeWoff2(b: Uint8Array, brotli: BrotliDecompress): Uint8Array {
     if (head === undefined || head.length < 54) bad('no head table');
     if (view(head as Uint8Array).getInt16(50) !== rebuilt.indexFormat) bad('the glyf indexFormat does not match head indexToLocFormat');
   }
+  // §5.4 rebuilds the side bearings from the glyph bounds the glyf transform carries, so Chrome refuses it without that transform.
+  if (entry('hmtx')?.transformed === true && glyf?.transformed !== true) bad('hmtx is transformed but glyf is not');
   if (entry('hmtx')?.transformed === true) tables.set('hmtx', reconstructHmtx(raw.get('hmtx') as Uint8Array, tables));
   return buildSfnt(flavor, [...tables].map(([tag, data]) => ({ tag, data })));
 }
