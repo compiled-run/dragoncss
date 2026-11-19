@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { LinkedElement } from '../src/analysis/link.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree } from '../src/analysis/resolve.ts';
+import { rankLayers } from '../src/analysis/layers.ts';
 import { parseStyleAttribute, parseStylesheet } from '../src/css/stylesheet.ts';
 import { NO_FAULTS } from '../src/faults.ts';
 import { createProject } from '../src/index.ts';
@@ -26,7 +27,9 @@ const el = (id: string, classes: string[], style: string | null, children: Linke
 
 function resolved(css: string, targets: LinkedElement[]): ResolvedElement[] {
   const diagnostics: Diagnostic[] = [];
-  const rules = parseStylesheet(css, { source: SRC, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics);
+  const layers: string[] = [];
+  const parsed = parseStylesheet(css, { source: SRC, start: 0, end: css.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, diagnostics, [], [], [], [], NO_FAULTS, layers);
+  const rules = rankLayers(parsed, layers, NO_FAULTS, diagnostics);
   expect(diagnostics).toEqual([]);
   const root = resolveTree(el('html', [], null, [el('body', [], null, targets, 'body')], 'html'), rules, NO_FAULTS, { direction: 'ltr', rootFont: 'ahem', ua: referenceDataset() });
   return (root.children[0] as ResolvedElement).children as ResolvedElement[];
@@ -54,6 +57,16 @@ describe('the style attribute in the cascade', () => {
     const [h] = resolved('.f { --w: 7px; } .k { width: var(--w); }', [el('h', ['f'], '--w: 9px; height: var(--w)', [el('k', ['k'], null)])]);
     expect(value(h as ResolvedElement, 'height')).toBe('9px');
     expect(value((h as ResolvedElement).children[0] as ResolvedElement, 'width')).toBe('9px');
+  });
+
+  it('rolls revert-layer back to the unlayered rules first, then to the layers below them, as Chrome 145 does', () => {
+    // Chrome: 50px, red, blue, blue, and margin-left 50px.
+    expect(value(resolved('div { width: 50px; }', [el('a', [], 'width: revert-layer')])[0] as ResolvedElement, 'width')).toBe('50px');
+    const color = (css: string): string => value(resolved(css, [el('a', [], 'color: revert-layer')])[0] as ResolvedElement, 'color');
+    expect(color('@layer l { div { color: blue; } } div { color: red; }')).toBe(value(resolved('div { color: red; }', [el('a', [], null)])[0] as ResolvedElement, 'color'));
+    expect(color('@layer l { div { color: blue; } }')).toBe(value(resolved('div { color: blue; }', [el('a', [], null)])[0] as ResolvedElement, 'color'));
+    expect(color('@layer l { div { color: blue; } } div { color: revert-layer; }')).toBe(color('@layer l { div { color: blue; } }'));
+    expect(value(resolved('div { margin-left: 50px; }', [el('a', [], 'margin: revert-layer')])[0] as ResolvedElement, 'margin-left')).toBe('50px');
   });
 
   it('maps a flow-relative declaration to the physical side of the element direction, with no stylesheet rule using one', () => {
@@ -106,7 +119,7 @@ describe('a compiled style attribute', () => {
   });
 
   it('refuses what Dragon reads from stylesheet rules only, by name, at the attribute', () => {
-    for (const [style, what] of [['transition: width 1s', 'transition'], ['direction: rtl', 'direction'], ['animation: none', 'animation']] as const) {
+    for (const [style, what] of [['transition: width 1s', 'transition'], ['direction: rtl', 'direction'], ['animation: none', 'animation'], ['width: revert-layer !important', 'width'], ['width: var(--u, revert-layer)', 'width'], ['--w: revert-layer', '--w']] as const) {
       const c = project.compile(withStyle([{ when: always, value: style }]));
       const refusal = c.diagnostics.find((d) => d.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE');
       expect(refusal?.message, style).toContain(`its ${what} declaration`);
