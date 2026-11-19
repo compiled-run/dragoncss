@@ -88,6 +88,11 @@ describe('an author web font in a Markless style input', () => {
     const report = await compareMarklessExport(parsed, exported, undefined, 'light', fonts);
     expect(report.compared).toBe(18);
     expect(report.rows.filter((r) => !r.pass)).toEqual([]);
+    // The hosts load the faces the export lists, so a face that is not one of the input's files is refused, not compared.
+    const swapped = { ...exported, fonts: exported.fonts.map((f, i) => (i === 0 ? { ...f, file: 'fonts/Other.ttf' } : f)) };
+    await expect(compareMarklessExport(parsed, swapped, undefined, 'light', fonts)).rejects.toThrow(`the export lists the face ${exported.fonts[0]!.id} from the input as fonts/Other.ttf, which is not one of the input's font files`);
+    const other = { ...exported, fonts: exported.fonts.map((f, i) => (i === 0 ? { ...f, id: 'sha256:0' } : f)) };
+    await expect(compareMarklessExport(parsed, other, undefined, 'light', fonts)).rejects.toThrow('the export lists the face sha256:0 from the input as');
   });
 
   it('skips a named family that is not provided, with a warning naming it, and lays out as the family after it alone, matching Chrome', async () => {

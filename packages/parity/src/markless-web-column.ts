@@ -9,7 +9,7 @@ import type { NativeStyleTarget } from 'dragon';
 import { collectNodes, nameCollected } from './capture.ts';
 import type { CapturedNode, CollectedElement } from './capture.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
-import { checkCoverage, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree } from './markless-style-compare.ts';
+import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree } from './markless-style-compare.ts';
 import type { BoxProblem, CompareRow, DocumentNode } from './markless-style-compare.ts';
 import type { MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
 import { marklessCompiledTargets } from './markless-style-input.ts';
@@ -89,6 +89,7 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
   const compiled = marklessCompiledTargets(input, fonts, 'system');
   checkTargets(input, exported, compiled);
+  checkInputFonts(exported, fonts);
   for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   const results = new Map<number, (m: Measured) => void>();

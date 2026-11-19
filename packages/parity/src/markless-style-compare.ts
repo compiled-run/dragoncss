@@ -200,6 +200,14 @@ export function checkTargets(input: MarklessStyleInput, exported: NativeStyleExp
   if (unknown.length > 0 || only?.length === 0) throw new Error(`the targets to compare, ${only?.join(', ') || 'none'}, are not a set of the targets the input compiles to, ${want.join(', ')}`);
 }
 
+/** Refuses an export that lists a face from the input that is not one of the input's font files, by id and file, which the hosts load. */
+export function checkInputFonts(exported: NativeStyleExport, fonts: readonly MarklessFontFile[]): void {
+  for (const f of exported.fonts) {
+    if (f.from !== 'input') continue;
+    if (!fonts.some((x) => x.id === f.id && x.sfntFile === f.file)) throw new Error(`the export lists the face ${f.id} from the input as ${f.file}, which is not one of the input's font files`);
+  }
+}
+
 /** How Chrome draws an assignment's text: the export's font mode, its author font files by url, and the faces to load. */
 export type MarklessChromeFonts = { readonly mode: MarklessFonts; readonly files: ReadonlyMap<string, Uint8Array>; readonly prepare: (page: Page) => Promise<void> };
 
@@ -381,6 +389,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, exported:
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   const compiled = marklessCompiledTargets(input, fonts, mode);
   checkTargets(input, exported, compiled, only);
+  checkInputFonts(exported, fonts);
   for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, t);
   for (const [target, t] of Object.entries(exported.targets)) {
     if (t === undefined || (only !== null && !only.includes(target))) continue;
