@@ -2,15 +2,16 @@
 // viewport and ratio, under the device lanes' gate: classes and attributes as each assignment's states set them, and the colour
 // scheme its @media band reads. Usage: pnpm run markless:style-compare -- <input.json> <export.json> <report.json>
 import type { Browser } from 'playwright';
+import type { NativeStyleTarget } from 'dragon';
 import { BAND_KEY } from 'dragon';
 import { authoredFontHtml } from './cases.ts';
 import { captureFixture } from './capture.ts';
 import { launchChrome } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
-import type { MarklessStyleInput } from './markless-style-input.ts';
-import { MARKLESS_DOCUMENT_CSS, stateCombinations, textNodesByAddress } from './markless-style-input.ts';
-import type { NativeStyleExport } from './native-style-export.ts';
+import type { MarklessCompiledTarget, MarklessStyleInput } from './markless-style-input.ts';
+import { MARKLESS_DOCUMENT_CSS, marklessCompiledTargets, stateCombinations, textNodesByAddress } from './markless-style-input.ts';
+import type { ExportTarget, NativeStyleExport } from './native-style-export.ts';
 
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 type Values = Readonly<Record<string, unknown>>;
@@ -43,7 +44,7 @@ export function marklessDocumentHtml(input: MarklessStyleInput, values: Values):
   return `<!DOCTYPE html>\n<html data-dragon-id="html">\n<head>\n<style>\n${MARKLESS_DOCUMENT_CSS}\n${input.css}\n</style>\n</head>\n<body data-dragon-id="body">${(children.get(null) ?? []).map(render).join('')}</body>\n</html>\n`;
 }
 
-type Bands = NonNullable<NativeStyleExport['targets']['ios']>['bands'];
+type Bands = ExportTarget['bands'];
 
 /** The colour scheme whose readings make a band's atoms true; a band no scheme reaches, or another feature, is refused. */
 function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
@@ -59,15 +60,16 @@ function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
 }
 
 /**
- * Refuses a target whose assignments are not exactly one per combination of the input's states and the export's bands, with
- * states naming those cells (and the band) in that order, since an assignment left out would never be compared.
+ * Refuses a target whose states, @media bands and assignments are not exactly what the input compiles to for that target, one
+ * assignment per combination of the input's states and bands, since a band or assignment left out would never be compared.
  */
-export function checkCoverage(input: MarklessStyleInput, target: string, t: NonNullable<NativeStyleExport['targets']['ios']>): void {
-  const bands = t.bands === undefined ? null : t.bands.bands.map((_, i) => i);
-  const keys = [...input.states.map((s) => s.cell), ...(bands === null ? [] : [BAND_KEY])];
-  const want = stateCombinations(input).flatMap((c) => (bands === null ? [c] : bands.map((b): Values => ({ ...c, [BAND_KEY]: b }))));
-  const domains = [...input.states.map((s) => s.domain), ...(bands === null ? [] : [bands])];
-  if (JSON.stringify(t.states) !== JSON.stringify(keys.map((key, i) => ({ key, domain: domains[i] })))) throw new Error(`${target}: states ${JSON.stringify(t.states)} are not the input's states${bands === null ? '' : ' and the band'}`);
+export function checkCoverage(input: MarklessStyleInput, compiled: MarklessCompiledTarget | undefined, target: string, t: ExportTarget): void {
+  if (compiled === undefined) throw new Error(`${target}: the input does not compile to this target`);
+  const banded = compiled.bands !== undefined;
+  if (JSON.stringify(t.states) !== JSON.stringify(compiled.states)) throw new Error(`${target}: states ${JSON.stringify(t.states)} are not the input's states${banded ? ' and the band' : ''} ${JSON.stringify(compiled.states)}`);
+  if (JSON.stringify(t.bands ?? null) !== JSON.stringify(compiled.bands ?? null)) throw new Error(`${target}: bands ${JSON.stringify(t.bands ?? null)} are not the bands the input's @media compiles to ${JSON.stringify(compiled.bands ?? null)}`);
+  const keys = compiled.states.map((s) => s.key);
+  const want = stateCombinations(input).flatMap((c) => (compiled.bands === undefined ? [c] : compiled.bands.bands.map((_, b): Values => ({ ...c, [BAND_KEY]: b }))));
   const keyOf = (values: Values): string => JSON.stringify(keys.map((k) => values[k]));
   const seen = new Set<string>();
   const extra: Values[] = [];
@@ -79,7 +81,7 @@ export function checkCoverage(input: MarklessStyleInput, target: string, t: NonN
   const wanted = new Set(want.map(keyOf));
   extra.push(...t.assignments.map((a) => a.values).filter((v) => !wanted.has(keyOf(v))));
   const missing = want.filter((c) => !seen.has(keyOf(c)));
-  if (missing.length > 0 || extra.length > 0) throw new Error(`${target}: the assignments are not one per combination of the input's states${bands === null ? '' : ' and bands'}: missing ${JSON.stringify(missing)}, extra or repeated ${JSON.stringify(extra)}`);
+  if (missing.length > 0 || extra.length > 0) throw new Error(`${target}: the assignments are not one per combination of the input's states${banded ? ' and bands' : ''}: missing ${JSON.stringify(missing)}, extra or repeated ${JSON.stringify(extra)}`);
 }
 
 /** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
@@ -87,7 +89,8 @@ export type CompareRow = { readonly target: string; readonly values: Values; rea
 
 export async function compareMarklessExport(input: MarklessStyleInput, exported: NativeStyleExport): Promise<{ readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[] }> {
   const rows: CompareRow[] = [];
-  for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, target, t);
+  const compiled = marklessCompiledTargets(input);
+  for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, t);
   // Chrome's capture names a text node by Dragon's rule under its element's data-dragon-id; the export, by its input id.
   const textOf = textNodesByAddress(input, (id) => id);
   for (const [target, t] of Object.entries(exported.targets)) {

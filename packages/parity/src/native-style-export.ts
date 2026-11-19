@@ -90,6 +90,10 @@ function boxStyles(root: LayoutBox): Map<string, LayoutBox['style']> {
 
 const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
+/** A target's bands as the export writes them; absent for a sheet without @media. */
+export const exportBands = (o: { readonly bands: { readonly table: { readonly atoms: readonly unknown[]; readonly bands: readonly (readonly boolean[])[] }; readonly conditions: readonly string[] } | null }): Pick<ExportTarget, 'bands'> =>
+  o.bands === null ? {} : { bands: { atoms: o.bands.table.atoms, bands: o.bands.table.bands, conditions: o.bands.conditions } };
+
 /** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. */
 export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES): NativeStyleExport {
   if (!styles.ok) throw new Error(`${component}: no export: ${Object.entries(styles.targets).map(([t, o]) => `${t} ${o.kind === 'blocked' ? o.reason : 'emitted'}`).join('; ')}`);
@@ -122,7 +126,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...(o.bands === null ? {} : { bands: { atoms: o.bands.table.atoms, bands: o.bands.table.bands, conditions: o.bands.conditions } }) };
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o) };
   }
   const files = vendoredFaces();
   return {

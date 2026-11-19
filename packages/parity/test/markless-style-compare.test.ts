@@ -32,7 +32,8 @@ describe('compareMarklessExport', () => {
 
   it('fails a box only Chrome or only the export has', async () => {
     // Chrome lays out no box for h2 or its text; the export drops h1:text0, gives h3:text0 no frame and adds a node Chrome lacks.
-    const hidden: MarklessStyleInput = { ...input, nodes: input.nodes.map((n) => (n.kind === 'element' && n.id === 'h2' ? { ...n, attributes: { ...n.attributes, style: 'display: none' } } : n)) };
+    // Only Chrome's document carries data-dragon-id, so the input still compiles to the export's states and bands.
+    const hidden: MarklessStyleInput = { ...input, css: `${input.css}\nbutton[data-dragon-id="h2"] { display: none; }` };
     const edited: NativeStyleExport = {
       ...exported,
       targets: {
@@ -109,6 +110,23 @@ describe('the export a comparison reads', () => {
     const t = app.targets.ios!;
     const dropped: NativeStyleExport = { ...app, targets: { ios: { ...t, assignments: t.assignments.filter((a) => a.values[BAND_KEY] !== 1) } } };
     await expect(compareMarklessExport(parseMarklessStyleInput(appText), dropped)).rejects.toThrow(`and bands: missing [{"state:on":false,"${BAND_KEY}":1},{"state:on":true,"${BAND_KEY}":1}]`);
+  });
+
+  it('refuses an export without the bands the input\'s @media compiles to, so the dark band is never left uncompared', async () => {
+    const appPath = 'examples/markless-styles/input/app-settings.native-style-input.json';
+    const appText = readFileSync(repoPath(appPath), 'utf8');
+    const app = marklessStyleExport(appText, appPath).exported;
+    const { bands: _bands, ...t } = app.targets.ios!;
+    const lightOnly: ExportTarget = {
+      ...t,
+      states: t.states.filter((s) => s.key !== BAND_KEY),
+      assignments: t.assignments.filter((a) => a.values[BAND_KEY] === 0).map((a) => ({ ...a, values: Object.fromEntries(Object.entries(a.values).filter(([k]) => k !== BAND_KEY)) })),
+    };
+    const parsed = parseNativeStyleExport(JSON.stringify({ ...app, targets: { ios: lightOnly } }));
+    await expect(compareMarklessExport(parseMarklessStyleInput(appText), parsed)).rejects.toThrow('ios: states');
+    const ios0 = app.targets.ios!;
+    const relabelled: NativeStyleExport = { ...app, targets: { ios: { ...ios0, bands: { ...ios0.bands!, conditions: ios0.bands!.conditions.map(() => 'all') } } } };
+    await expect(compareMarklessExport(parseMarklessStyleInput(appText), relabelled)).rejects.toThrow('ios: bands');
   });
 
   it('reads an export file only when every field the comparison reads is well formed', () => {
