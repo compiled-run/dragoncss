@@ -1,16 +1,16 @@
-// aspect-ratio on an anchored box (css-sizing-4 §5.1 with css-anchor-position-1): its auto width comes through the ratio from its
-// height, and its auto height from its width, as Chrome 145 sizes them (Blink ComputeOofInlineDimensions). Each expected rect was
-// read from the pinned Chrome on the same CSS: a 200x100 relative containing block, a 20x10 anchor 50px in.
+// The size of an anchored box (css-anchor-position-1 with css-sizing-3 and -4): aspect-ratio, sizing keywords and anchor-size(), as
+// Chrome 145 sizes them (Blink ComputeOofInlineDimensions). Each expected rect was read from the pinned Chrome on the same CSS: a
+// 200x100 relative containing block and a 20x10 anchor 50px in, the anchored box holding "XX XXX" in 10px Ahem where it has text.
 import { describe, expect, it } from 'vitest';
 import { layout, measurerFor, REFERENCE_PLATFORM } from '@dragon/layout';
 import { createProjectWith, nativeProgramFor, NO_FAULTS, programInput } from '../src/internal.ts';
-import { div, inputFor } from './helpers.ts';
+import { div, inputFor, text } from './helpers.ts';
 
-const BASE = 'body { margin: 0; } .cb { position: relative; width: 200px; height: 100px; } .a { anchor-name: --a; width: 20px; height: 10px; margin-left: 50px; } .b { position: absolute; position-anchor: --a; }';
+const BASE = 'body { margin: 0; font-family: Ahem; font-size: 10px; } .cb { position: relative; width: 200px; height: 100px; } .a { anchor-name: --a; width: 20px; height: 10px; margin-left: 50px; } .b { position: absolute; position-anchor: --a; }';
 
 /** The anchored box's border box in CSS px from its containing block. */
-function anchored(css: string): number[] {
-  const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`${BASE} ${css}`, (r) => [div(r, 'cb', ['cb'], [div(r, 'a', ['a']), div(r, 'b', ['b'])])]));
+function anchored(css: string, withText = false): number[] {
+  const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(`${BASE} ${css}`, (r) => [div(r, 'cb', ['cb'], [div(r, 'a', ['a']), div(r, 'b', ['b'], withText ? [text(r, 'bt', 'XX XXX')] : [])])]));
   expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message)).toEqual([]);
   const p = nativeProgramFor(c, [], 'ios');
   if (p.kind !== 'ready') throw new Error(p.reason);
@@ -39,4 +39,16 @@ describe('aspect-ratio on an anchored box', () => {
     ['anchor-center alignment', 'position-area: right; height: 20px; aspect-ratio: 2; justify-self: anchor-center;', [70, 0, 40, 20]],
   ];
   for (const [name, css, chrome] of cases) it(`${name}, as Chrome`, () => expect(anchored(`.b { ${css} }`)).toEqual(chrome));
+});
+
+describe('sizing keywords and anchor-size() on an anchored box with text', () => {
+  const cases: [string, string, number[]][] = [
+    ['width: max-content', 'position-area: bottom span-all; width: max-content;', [30, 10, 60, 10]],
+    ['width: min-content', 'position-area: bottom span-all; width: min-content;', [45, 10, 30, 20]],
+    ['width: fit-content', 'position-area: bottom span-all; width: fit-content;', [30, 10, 60, 10]],
+    ['width: stretch', 'position-area: bottom; width: stretch;', [0, 10, 200, 10]],
+    ['height: fit-content', 'position-area: bottom; height: fit-content; width: 30px;', [45, 10, 30, 20]],
+    ['a height from anchor-size() gives the width through the ratio, raised to the min-content width', 'position-area: bottom; height: anchor-size(height); aspect-ratio: 2;', [45, 10, 30, 10]],
+  ];
+  for (const [name, css, chrome] of cases) it(`${name}, as Chrome`, () => expect(anchored(`.b { ${css} }`, true)).toEqual(chrome));
 });
