@@ -603,6 +603,15 @@ const over = (dst: Rgba8, src: Rgba8): Rgba8 => {
 };
 
 /**
+ * The root background blended into the opaque base colour, as Chrome combines them into one fill: each channel
+ * (base·(255 − a) + colour·a) / 255 rounded to nearest, Chrome 145's pixel for 744 measured colours over both bases (alpha 0.01 to 0.99).
+ */
+const onBase = (base: Rgba8, src: Rgba8): Rgba8 => {
+  const mix = (d: number, s: number): number => Math.round((d * (255 - src.alpha) + s * src.alpha) / 255);
+  return { r: mix(base.r, src.r), g: mix(base.g, src.g), b: mix(base.b, src.b), alpha: 255 };
+};
+
+/**
  * The canvas colour Chrome paints (css-backgrounds-3 §2.11.2): html's background, else body's (propagated, so body's box paints
  * none), drawn over the base background of a top-level page, Chrome's Canvas colour in the root's used scheme (white, or
  * rgb(18, 18, 18) under dark). When html has its own background, body keeps its own for its box, which lies on the canvas; that
@@ -616,7 +625,7 @@ function rootPaint(nodes: readonly ExportNode[], where: string, band: 'light' | 
   // Owner ruling: a light page keeps the white base in a dark band, where Chrome 145 uses rgb(18, 18, 18), so see-through is refused there.
   const seeThrough = (html.alpha === 0 ? body : html).alpha;
   if (used.colorScheme === 'light' && band !== 'light' && seeThrough !== 0 && seeThrough !== 255) fail(`${where}: the page background is see-through in a ${band === 'dark' ? 'dark-mode band' : 'band of another media feature'}, where Chrome's base colour under it is not known to be white`);
-  if (html.alpha === 0) return { canvas: over(used.canvas, body), bodyBackground: null };
-  const canvas = over(used.canvas, html);
+  if (html.alpha === 0) return { canvas: onBase(used.canvas, body), bodyBackground: null };
+  const canvas = onBase(used.canvas, html);
   return { canvas, bodyBackground: body.alpha === 0 ? null : over(canvas, body) };
 }
