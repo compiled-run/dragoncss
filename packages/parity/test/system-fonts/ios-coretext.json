@@ -7,9 +7,9 @@
 "date": "2026-11-18",
 "probe": "/tmp/sysfont-measure/scripts/probe.swift, compiled with `xcrun --sdk iphonesimulator swiftc -target arm64-apple-ios27.0-simulator probe.swift -o probe`, run with `xcrun simctl spawn 889BBE57-16AD-46D3-9BA6-7420070E069A probe` (raw output /tmp/sysfont-measure/out/coretext-ios-sim.json); this fixture extracted by /tmp/sysfont-measure/scripts/fixture-ios.mjs",
 "method": "CTLineCreateWithAttributedString(NSAttributedString(string, [kCTFontAttributeName: font])) with default kerning/ligatures; width = CTLineGetTypographicBounds; glyphs = CTRunGetGlyphs, x = CTRunGetPositions(.x), advances = CTRunGetAdvances, stringIndices = CTRunGetStringIndices. Sizes in points == CSS px.",
-"safariWidthRule": "Safari width (getBoundingClientRect) == CTLine width after replacing the advance of every space glyph with the font's nominal space advance (the width of a CTLine of \" \" alone): kerning stored on a space glyph (pair space+next) is dropped, kerning on the glyph before a space is kept. For the system font, New York, SF Mono, Courier and Helvetica-Bold this changes nothing on these strings; for Times New Roman and Helvetica regular it does (\"safariWidth\" below). Max |safariWidth - measured Safari| over all 6 strings x 5 sizes x 2 weights is in match-ios.json (0 to 3e-5 px).",
+"spaceRuleWidth": "Not a Safari measurement: derived from Core Text. It is the CTLine width after replacing the advance of every space glyph with the font's nominal space advance (the width of a CTLine of \" \" alone), so kerning stored on a space glyph (pair space+next) is dropped and kerning on the glyph before a space is kept. For the system font, New York, SF Mono, Courier and Helvetica-Bold this changes nothing on these strings; for Times New Roman and Helvetica regular it does. The 2026-11-18 probe run compared the rule with Safari's getBoundingClientRect widths of 6 strings x 5 sizes x weights 400 and 700 and recorded a largest gap of 3e-5 px in match-ios.json, which is not in the repo. The one committed Safari width the rule changes is in packages/parity/test/markless-web-font.test.ts: Lato Regular (an author font) at 18 px, \"Lato for the body, regular weight\", 771.579 device px at 3x (257.193 CSS px), which is the rule's width; Core Text's own line width is 256.824.",
 "safariLineRule": "ascent=ceil(CTFontGetAscent) [+ ceil(0.15*(ascent+descent)) for Helvetica only]; descent=ceil(CTFontGetDescent); inline box=ascent+descent; line-height normal=ascent+descent+ceil(CTFontGetLeading)",
-"trimmed": "committed with only the fields the test reads: per face and size, its Core Text names and metrics, Safari line metrics, and per string the glyph ids, x positions and the Safari width"
+"trimmed": "committed with only the fields the test reads: per face and size, its Core Text names and metrics, Safari line metrics, and per string the glyph ids, x positions and the space-rule width"
 },
 "fonts": [
 {
@@ -37,7 +37,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 97.125,
+"spaceRuleWidth": 97.125,
 "glyphs": [
 112,
 588,
@@ -75,7 +75,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 142.9453125,
+"spaceRuleWidth": 142.9453125,
 "glyphs": [
 304,
 588,
@@ -133,7 +133,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 252.36328125,
+"spaceRuleWidth": 252.36328125,
 "glyphs": [
 261,
 722,
@@ -227,7 +227,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 110.87109375,
+"spaceRuleWidth": 110.87109375,
 "glyphs": [
 19,
 301,
@@ -296,7 +296,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 124.8125,
+"spaceRuleWidth": 124.8125,
 "glyphs": [
 112,
 588,
@@ -334,7 +334,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 182.78125,
+"spaceRuleWidth": 182.78125,
 "glyphs": [
 304,
 588,
@@ -392,7 +392,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 323.046875,
+"spaceRuleWidth": 323.046875,
 "glyphs": [
 261,
 722,
@@ -486,7 +486,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 142.203125,
+"spaceRuleWidth": 142.203125,
 "glyphs": [
 19,
 301,
@@ -555,7 +555,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 131.119140625,
+"spaceRuleWidth": 131.119140625,
 "glyphs": [
 112,
 588,
@@ -593,7 +593,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 191.71484375,
+"spaceRuleWidth": 191.71484375,
 "glyphs": [
 304,
 588,
@@ -651,7 +651,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 338.9541015625,
+"spaceRuleWidth": 338.9541015625,
 "glyphs": [
 261,
 722,
@@ -745,7 +745,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 149.2978515625,
+"spaceRuleWidth": 149.2978515625,
 "glyphs": [
 19,
 301,
@@ -814,7 +814,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 177.4230616092682,
+"spaceRuleWidth": 177.4230616092682,
 "glyphs": [
 112,
 588,
@@ -852,7 +852,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 257.5996356010437,
+"spaceRuleWidth": 257.5996356010437,
 "glyphs": [
 304,
 588,
@@ -910,7 +910,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 455.2556827068329,
+"spaceRuleWidth": 455.2556827068329,
 "glyphs": [
 261,
 722,
@@ -1004,7 +1004,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 201.51150941848755,
+"spaceRuleWidth": 201.51150941848755,
 "glyphs": [
 19,
 301,
@@ -1073,7 +1073,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 206.869140625,
+"spaceRuleWidth": 206.869140625,
 "glyphs": [
 112,
 588,
@@ -1111,7 +1111,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 300.26171875,
+"spaceRuleWidth": 300.26171875,
 "glyphs": [
 304,
 588,
@@ -1169,7 +1169,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 530.455078125,
+"spaceRuleWidth": 530.455078125,
 "glyphs": [
 261,
 722,
@@ -1263,7 +1263,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 234.9375,
+"spaceRuleWidth": 234.9375,
 "glyphs": [
 19,
 301,
@@ -1332,7 +1332,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 104.82421875,
+"spaceRuleWidth": 104.82421875,
 "glyphs": [
 112,
 588,
@@ -1370,7 +1370,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 153.1640625,
+"spaceRuleWidth": 153.1640625,
 "glyphs": [
 304,
 588,
@@ -1428,7 +1428,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 267.3193359375,
+"spaceRuleWidth": 267.3193359375,
 "glyphs": [
 261,
 722,
@@ -1522,7 +1522,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 118.79296875,
+"spaceRuleWidth": 118.79296875,
 "glyphs": [
 19,
 301,
@@ -1591,7 +1591,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 135.078125,
+"spaceRuleWidth": 135.078125,
 "glyphs": [
 112,
 588,
@@ -1629,7 +1629,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 196.40625,
+"spaceRuleWidth": 196.40625,
 "glyphs": [
 304,
 588,
@@ -1687,7 +1687,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 342.98828125,
+"spaceRuleWidth": 342.98828125,
 "glyphs": [
 261,
 722,
@@ -1781,7 +1781,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 152.765625,
+"spaceRuleWidth": 152.765625,
 "glyphs": [
 19,
 301,
@@ -1850,7 +1850,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 142.0263671875,
+"spaceRuleWidth": 142.0263671875,
 "glyphs": [
 112,
 588,
@@ -1888,7 +1888,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 206.19140625,
+"spaceRuleWidth": 206.19140625,
 "glyphs": [
 304,
 588,
@@ -1946,7 +1946,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 360.141845703125,
+"spaceRuleWidth": 360.141845703125,
 "glyphs": [
 261,
 722,
@@ -2040,7 +2040,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 160.5205078125,
+"spaceRuleWidth": 160.5205078125,
 "glyphs": [
 19,
 301,
@@ -2109,7 +2109,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 194.35078561306,
+"spaceRuleWidth": 194.35078561306,
 "glyphs": [
 112,
 588,
@@ -2147,7 +2147,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 280.3909903764725,
+"spaceRuleWidth": 280.3909903764725,
 "glyphs": [
 304,
 588,
@@ -2205,7 +2205,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 491.6061362028122,
+"spaceRuleWidth": 491.6061362028122,
 "glyphs": [
 261,
 722,
@@ -2299,7 +2299,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 218.8366059064865,
+"spaceRuleWidth": 218.8366059064865,
 "glyphs": [
 19,
 301,
@@ -2368,7 +2368,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 227.0146484375,
+"spaceRuleWidth": 227.0146484375,
 "glyphs": [
 112,
 588,
@@ -2406,7 +2406,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 327.4619140625,
+"spaceRuleWidth": 327.4619140625,
 "glyphs": [
 304,
 588,
@@ -2464,7 +2464,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 574.533203125,
+"spaceRuleWidth": 574.533203125,
 "glyphs": [
 261,
 722,
@@ -2558,7 +2558,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 255.5341796875,
+"spaceRuleWidth": 255.5341796875,
 "glyphs": [
 19,
 301,
@@ -2626,7 +2626,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 99.357421875,
+"spaceRuleWidth": 99.357421875,
 "glyphs": [
 89,
 783,
@@ -2664,7 +2664,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 142.4296875,
+"spaceRuleWidth": 142.4296875,
 "glyphs": [
 251,
 783,
@@ -2722,7 +2722,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 253.3828125,
+"spaceRuleWidth": 253.3828125,
 "glyphs": [
 209,
 893,
@@ -2816,7 +2816,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 111.55078125,
+"spaceRuleWidth": 111.55078125,
 "glyphs": [
 4,
 248,
@@ -2884,7 +2884,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 129.80533981323242,
+"spaceRuleWidth": 129.80533981323242,
 "glyphs": [
 89,
 783,
@@ -2922,7 +2922,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 185.6356701850891,
+"spaceRuleWidth": 185.6356701850891,
 "glyphs": [
 251,
 783,
@@ -2980,7 +2980,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 330.5188698768616,
+"spaceRuleWidth": 330.5188698768616,
 "glyphs": [
 209,
 893,
@@ -3074,7 +3074,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 145.55256366729736,
+"spaceRuleWidth": 145.55256366729736,
 "glyphs": [
 4,
 248,
@@ -3142,7 +3142,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 137.20897960662842,
+"spaceRuleWidth": 137.20897960662842,
 "glyphs": [
 89,
 783,
@@ -3180,7 +3180,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 196.10402977466583,
+"spaceRuleWidth": 196.10402977466583,
 "glyphs": [
 251,
 783,
@@ -3238,7 +3238,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 349.2314840555191,
+"spaceRuleWidth": 349.2314840555191,
 "glyphs": [
 209,
 893,
@@ -3332,7 +3332,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 153.8048393726349,
+"spaceRuleWidth": 153.8048393726349,
 "glyphs": [
 4,
 248,
@@ -3400,7 +3400,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 189.3566379547119,
+"spaceRuleWidth": 189.3566379547119,
 "glyphs": [
 89,
 783,
@@ -3438,7 +3438,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 270.03303694725037,
+"spaceRuleWidth": 270.03303694725037,
 "glyphs": [
 251,
 783,
@@ -3496,7 +3496,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 481.3514621257782,
+"spaceRuleWidth": 481.3514621257782,
 "glyphs": [
 209,
 893,
@@ -3590,7 +3590,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 211.97218465805054,
+"spaceRuleWidth": 211.97218465805054,
 "glyphs": [
 4,
 248,
@@ -3658,7 +3658,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 219.34745025634766,
+"spaceRuleWidth": 219.34745025634766,
 "glyphs": [
 89,
 783,
@@ -3696,7 +3696,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 312.68817806243896,
+"spaceRuleWidth": 312.68817806243896,
 "glyphs": [
 251,
 783,
@@ -3754,7 +3754,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 557.5639295578003,
+"spaceRuleWidth": 557.5639295578003,
 "glyphs": [
 209,
 893,
@@ -3848,7 +3848,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 245.45294761657715,
+"spaceRuleWidth": 245.45294761657715,
 "glyphs": [
 4,
 248,
@@ -3916,7 +3916,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 109.2744140625,
+"spaceRuleWidth": 109.2744140625,
 "glyphs": [
 89,
 783,
@@ -3954,7 +3954,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 156.6416015625,
+"spaceRuleWidth": 156.6416015625,
 "glyphs": [
 251,
 783,
@@ -4012,7 +4012,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 276.4775390625,
+"spaceRuleWidth": 276.4775390625,
 "glyphs": [
 209,
 893,
@@ -4106,7 +4106,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 119.6044921875,
+"spaceRuleWidth": 119.6044921875,
 "glyphs": [
 4,
 248,
@@ -4174,7 +4174,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 143.16964292526245,
+"spaceRuleWidth": 143.16964292526245,
 "glyphs": [
 89,
 783,
@@ -4212,7 +4212,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 204.77226090431213,
+"spaceRuleWidth": 204.77226090431213,
 "glyphs": [
 251,
 783,
@@ -4270,7 +4270,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 361.6085469722748,
+"spaceRuleWidth": 361.6085469722748,
 "glyphs": [
 209,
 893,
@@ -4364,7 +4364,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 156.47605323791504,
+"spaceRuleWidth": 156.47605323791504,
 "glyphs": [
 4,
 248,
@@ -4432,7 +4432,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 151.4461144208908,
+"spaceRuleWidth": 151.4461144208908,
 "glyphs": [
 89,
 783,
@@ -4470,7 +4470,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 216.4863458275795,
+"spaceRuleWidth": 216.4863458275795,
 "glyphs": [
 251,
 783,
@@ -4528,7 +4528,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 382.3429488539696,
+"spaceRuleWidth": 382.3429488539696,
 "glyphs": [
 209,
 893,
@@ -4622,7 +4622,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 165.4601616859436,
+"spaceRuleWidth": 165.4601616859436,
 "glyphs": [
 4,
 248,
@@ -4690,7 +4690,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 209.79221177101135,
+"spaceRuleWidth": 209.79221177101135,
 "glyphs": [
 89,
 783,
@@ -4728,7 +4728,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 299.25265395641327,
+"spaceRuleWidth": 299.25265395641327,
 "glyphs": [
 251,
 783,
@@ -4786,7 +4786,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 528.8010674715042,
+"spaceRuleWidth": 528.8010674715042,
 "glyphs": [
 209,
 893,
@@ -4880,7 +4880,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 228.86620616912842,
+"spaceRuleWidth": 228.86620616912842,
 "glyphs": [
 4,
 248,
@@ -4948,7 +4948,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 243.3950433731079,
+"spaceRuleWidth": 243.3950433731079,
 "glyphs": [
 89,
 783,
@@ -4986,7 +4986,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 347.0503497123718,
+"spaceRuleWidth": 347.0503497123718,
 "glyphs": [
 251,
 783,
@@ -5044,7 +5044,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 613.3535008430481,
+"spaceRuleWidth": 613.3535008430481,
 "glyphs": [
 209,
 893,
@@ -5138,7 +5138,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 265.4321098327637,
+"spaceRuleWidth": 265.4321098327637,
 "glyphs": [
 4,
 248,
@@ -5206,7 +5206,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 111.26953125,
+"spaceRuleWidth": 111.26953125,
 "glyphs": [
 90,
 487,
@@ -5244,7 +5244,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 185.44921875,
+"spaceRuleWidth": 185.44921875,
 "glyphs": [
 254,
 487,
@@ -5302,7 +5302,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 318.97265625,
+"spaceRuleWidth": 318.97265625,
 "glyphs": [
 211,
 573,
@@ -5396,7 +5396,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 133.5234375,
+"spaceRuleWidth": 133.5234375,
 "glyphs": [
 4,
 251,
@@ -5464,7 +5464,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 148.359375,
+"spaceRuleWidth": 148.359375,
 "glyphs": [
 90,
 487,
@@ -5502,7 +5502,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 247.265625,
+"spaceRuleWidth": 247.265625,
 "glyphs": [
 254,
 487,
@@ -5560,7 +5560,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 425.296875,
+"spaceRuleWidth": 425.296875,
 "glyphs": [
 211,
 573,
@@ -5654,7 +5654,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 178.03125,
+"spaceRuleWidth": 178.03125,
 "glyphs": [
 4,
 251,
@@ -5722,7 +5722,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 157.6318359375,
+"spaceRuleWidth": 157.6318359375,
 "glyphs": [
 90,
 487,
@@ -5760,7 +5760,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 262.7197265625,
+"spaceRuleWidth": 262.7197265625,
 "glyphs": [
 254,
 487,
@@ -5818,7 +5818,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 451.8779296875,
+"spaceRuleWidth": 451.8779296875,
 "glyphs": [
 211,
 573,
@@ -5912,7 +5912,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 189.158203125,
+"spaceRuleWidth": 189.158203125,
 "glyphs": [
 4,
 251,
@@ -5980,7 +5980,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 222.5390625,
+"spaceRuleWidth": 222.5390625,
 "glyphs": [
 90,
 487,
@@ -6018,7 +6018,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 370.8984375,
+"spaceRuleWidth": 370.8984375,
 "glyphs": [
 254,
 487,
@@ -6076,7 +6076,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 637.9453125,
+"spaceRuleWidth": 637.9453125,
 "glyphs": [
 211,
 573,
@@ -6170,7 +6170,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 267.046875,
+"spaceRuleWidth": 267.046875,
 "glyphs": [
 4,
 251,
@@ -6238,7 +6238,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 259.62890625,
+"spaceRuleWidth": 259.62890625,
 "glyphs": [
 90,
 487,
@@ -6276,7 +6276,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 432.71484375,
+"spaceRuleWidth": 432.71484375,
 "glyphs": [
 254,
 487,
@@ -6334,7 +6334,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 744.26953125,
+"spaceRuleWidth": 744.26953125,
 "glyphs": [
 211,
 573,
@@ -6428,7 +6428,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 311.5546875,
+"spaceRuleWidth": 311.5546875,
 "glyphs": [
 4,
 251,
@@ -6496,7 +6496,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 111.26953125,
+"spaceRuleWidth": 111.26953125,
 "glyphs": [
 90,
 487,
@@ -6534,7 +6534,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 185.44921875,
+"spaceRuleWidth": 185.44921875,
 "glyphs": [
 254,
 487,
@@ -6592,7 +6592,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 318.97265625,
+"spaceRuleWidth": 318.97265625,
 "glyphs": [
 211,
 573,
@@ -6686,7 +6686,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 133.5234375,
+"spaceRuleWidth": 133.5234375,
 "glyphs": [
 4,
 251,
@@ -6754,7 +6754,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 148.359375,
+"spaceRuleWidth": 148.359375,
 "glyphs": [
 90,
 487,
@@ -6792,7 +6792,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 247.265625,
+"spaceRuleWidth": 247.265625,
 "glyphs": [
 254,
 487,
@@ -6850,7 +6850,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 425.296875,
+"spaceRuleWidth": 425.296875,
 "glyphs": [
 211,
 573,
@@ -6944,7 +6944,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 178.03125,
+"spaceRuleWidth": 178.03125,
 "glyphs": [
 4,
 251,
@@ -7012,7 +7012,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 157.6318359375,
+"spaceRuleWidth": 157.6318359375,
 "glyphs": [
 90,
 487,
@@ -7050,7 +7050,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 262.7197265625,
+"spaceRuleWidth": 262.7197265625,
 "glyphs": [
 254,
 487,
@@ -7108,7 +7108,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 451.8779296875,
+"spaceRuleWidth": 451.8779296875,
 "glyphs": [
 211,
 573,
@@ -7202,7 +7202,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 189.158203125,
+"spaceRuleWidth": 189.158203125,
 "glyphs": [
 4,
 251,
@@ -7270,7 +7270,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 222.5390625,
+"spaceRuleWidth": 222.5390625,
 "glyphs": [
 90,
 487,
@@ -7308,7 +7308,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 370.8984375,
+"spaceRuleWidth": 370.8984375,
 "glyphs": [
 254,
 487,
@@ -7366,7 +7366,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 637.9453125,
+"spaceRuleWidth": 637.9453125,
 "glyphs": [
 211,
 573,
@@ -7460,7 +7460,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 267.046875,
+"spaceRuleWidth": 267.046875,
 "glyphs": [
 4,
 251,
@@ -7528,7 +7528,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 259.62890625,
+"spaceRuleWidth": 259.62890625,
 "glyphs": [
 90,
 487,
@@ -7566,7 +7566,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 432.71484375,
+"spaceRuleWidth": 432.71484375,
 "glyphs": [
 254,
 487,
@@ -7624,7 +7624,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 744.26953125,
+"spaceRuleWidth": 744.26953125,
 "glyphs": [
 211,
 573,
@@ -7718,7 +7718,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 311.5546875,
+"spaceRuleWidth": 311.5546875,
 "glyphs": [
 4,
 251,
@@ -7787,7 +7787,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 83.765625,
+"spaceRuleWidth": 83.765625,
 "glyphs": [
 43,
 68,
@@ -7825,7 +7825,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 122.115234375,
+"spaceRuleWidth": 122.115234375,
 "glyphs": [
 58,
 68,
@@ -7883,7 +7883,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 219.28125,
+"spaceRuleWidth": 219.28125,
 "glyphs": [
 55,
 75,
@@ -7977,7 +7977,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 102.193359375,
+"spaceRuleWidth": 102.193359375,
 "glyphs": [
 36,
 57,
@@ -8046,7 +8046,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 111.6875,
+"spaceRuleWidth": 111.6875,
 "glyphs": [
 43,
 68,
@@ -8084,7 +8084,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 162.8203125,
+"spaceRuleWidth": 162.8203125,
 "glyphs": [
 58,
 68,
@@ -8142,7 +8142,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 292.375,
+"spaceRuleWidth": 292.375,
 "glyphs": [
 55,
 75,
@@ -8236,7 +8236,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 136.2578125,
+"spaceRuleWidth": 136.2578125,
 "glyphs": [
 36,
 57,
@@ -8305,7 +8305,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 118.66796875,
+"spaceRuleWidth": 118.66796875,
 "glyphs": [
 43,
 68,
@@ -8343,7 +8343,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 172.99658203125,
+"spaceRuleWidth": 172.99658203125,
 "glyphs": [
 58,
 68,
@@ -8401,7 +8401,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 310.6484375,
+"spaceRuleWidth": 310.6484375,
 "glyphs": [
 55,
 75,
@@ -8495,7 +8495,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 144.77392578125,
+"spaceRuleWidth": 144.77392578125,
 "glyphs": [
 36,
 57,
@@ -8564,7 +8564,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 167.53125,
+"spaceRuleWidth": 167.53125,
 "glyphs": [
 43,
 68,
@@ -8602,7 +8602,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 244.23046875,
+"spaceRuleWidth": 244.23046875,
 "glyphs": [
 58,
 68,
@@ -8660,7 +8660,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 438.5625,
+"spaceRuleWidth": 438.5625,
 "glyphs": [
 55,
 75,
@@ -8754,7 +8754,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 204.38671875,
+"spaceRuleWidth": 204.38671875,
 "glyphs": [
 36,
 57,
@@ -8823,7 +8823,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 195.453125,
+"spaceRuleWidth": 195.453125,
 "glyphs": [
 43,
 68,
@@ -8861,7 +8861,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 284.935546875,
+"spaceRuleWidth": 284.935546875,
 "glyphs": [
 58,
 68,
@@ -8919,7 +8919,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 511.65625,
+"spaceRuleWidth": 511.65625,
 "glyphs": [
 55,
 75,
@@ -9013,7 +9013,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 238.451171875,
+"spaceRuleWidth": 238.451171875,
 "glyphs": [
 36,
 57,
@@ -9082,7 +9082,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 90,
+"spaceRuleWidth": 90,
 "glyphs": [
 43,
 68,
@@ -9120,7 +9120,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 130.6875,
+"spaceRuleWidth": 130.6875,
 "glyphs": [
 58,
 68,
@@ -9178,7 +9178,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 231.580078125,
+"spaceRuleWidth": 231.580078125,
 "glyphs": [
 55,
 75,
@@ -9272,7 +9272,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 105.55078125,
+"spaceRuleWidth": 105.55078125,
 "glyphs": [
 36,
 57,
@@ -9341,7 +9341,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 120,
+"spaceRuleWidth": 120,
 "glyphs": [
 43,
 68,
@@ -9379,7 +9379,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 174.25,
+"spaceRuleWidth": 174.25,
 "glyphs": [
 58,
 68,
@@ -9437,7 +9437,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 308.7734375,
+"spaceRuleWidth": 308.7734375,
 "glyphs": [
 55,
 75,
@@ -9531,7 +9531,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 140.734375,
+"spaceRuleWidth": 140.734375,
 "glyphs": [
 36,
 57,
@@ -9600,7 +9600,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 127.5,
+"spaceRuleWidth": 127.5,
 "glyphs": [
 43,
 68,
@@ -9638,7 +9638,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 185.140625,
+"spaceRuleWidth": 185.140625,
 "glyphs": [
 58,
 68,
@@ -9696,7 +9696,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 328.07177734375,
+"spaceRuleWidth": 328.07177734375,
 "glyphs": [
 55,
 75,
@@ -9790,7 +9790,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 149.5302734375,
+"spaceRuleWidth": 149.5302734375,
 "glyphs": [
 36,
 57,
@@ -9859,7 +9859,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 180,
+"spaceRuleWidth": 180,
 "glyphs": [
 43,
 68,
@@ -9897,7 +9897,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 261.375,
+"spaceRuleWidth": 261.375,
 "glyphs": [
 58,
 68,
@@ -9955,7 +9955,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 463.16015625,
+"spaceRuleWidth": 463.16015625,
 "glyphs": [
 55,
 75,
@@ -10049,7 +10049,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 211.1015625,
+"spaceRuleWidth": 211.1015625,
 "glyphs": [
 36,
 57,
@@ -10118,7 +10118,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 210,
+"spaceRuleWidth": 210,
 "glyphs": [
 43,
 68,
@@ -10156,7 +10156,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 304.9375,
+"spaceRuleWidth": 304.9375,
 "glyphs": [
 58,
 68,
@@ -10214,7 +10214,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 540.353515625,
+"spaceRuleWidth": 540.353515625,
 "glyphs": [
 55,
 75,
@@ -10308,7 +10308,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 246.28515625,
+"spaceRuleWidth": 246.28515625,
 "glyphs": [
 36,
 57,
@@ -10376,7 +10376,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 108.017578125,
+"spaceRuleWidth": 108.017578125,
 "glyphs": [
 43,
 68,
@@ -10414,7 +10414,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 180.029296875,
+"spaceRuleWidth": 180.029296875,
 "glyphs": [
 58,
 68,
@@ -10472,7 +10472,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 309.650390625,
+"spaceRuleWidth": 309.650390625,
 "glyphs": [
 55,
 75,
@@ -10566,7 +10566,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 129.62109375,
+"spaceRuleWidth": 129.62109375,
 "glyphs": [
 36,
 57,
@@ -10634,7 +10634,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 144.0234375,
+"spaceRuleWidth": 144.0234375,
 "glyphs": [
 43,
 68,
@@ -10672,7 +10672,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 240.0390625,
+"spaceRuleWidth": 240.0390625,
 "glyphs": [
 58,
 68,
@@ -10730,7 +10730,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 412.8671875,
+"spaceRuleWidth": 412.8671875,
 "glyphs": [
 55,
 75,
@@ -10824,7 +10824,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 172.828125,
+"spaceRuleWidth": 172.828125,
 "glyphs": [
 36,
 57,
@@ -10892,7 +10892,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 153.02490234375,
+"spaceRuleWidth": 153.02490234375,
 "glyphs": [
 43,
 68,
@@ -10930,7 +10930,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 255.04150390625,
+"spaceRuleWidth": 255.04150390625,
 "glyphs": [
 58,
 68,
@@ -10988,7 +10988,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 438.67138671875,
+"spaceRuleWidth": 438.67138671875,
 "glyphs": [
 55,
 75,
@@ -11082,7 +11082,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 183.6298828125,
+"spaceRuleWidth": 183.6298828125,
 "glyphs": [
 36,
 57,
@@ -11150,7 +11150,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 216.03515625,
+"spaceRuleWidth": 216.03515625,
 "glyphs": [
 43,
 68,
@@ -11188,7 +11188,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 360.05859375,
+"spaceRuleWidth": 360.05859375,
 "glyphs": [
 58,
 68,
@@ -11246,7 +11246,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 619.30078125,
+"spaceRuleWidth": 619.30078125,
 "glyphs": [
 55,
 75,
@@ -11340,7 +11340,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 259.2421875,
+"spaceRuleWidth": 259.2421875,
 "glyphs": [
 36,
 57,
@@ -11408,7 +11408,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 252.041015625,
+"spaceRuleWidth": 252.041015625,
 "glyphs": [
 43,
 68,
@@ -11446,7 +11446,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 420.068359375,
+"spaceRuleWidth": 420.068359375,
 "glyphs": [
 58,
 68,
@@ -11504,7 +11504,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 722.517578125,
+"spaceRuleWidth": 722.517578125,
 "glyphs": [
 55,
 75,
@@ -11598,7 +11598,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 302.44921875,
+"spaceRuleWidth": 302.44921875,
 "glyphs": [
 36,
 57,
@@ -11666,7 +11666,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 108.017578125,
+"spaceRuleWidth": 108.017578125,
 "glyphs": [
 43,
 68,
@@ -11704,7 +11704,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 180.029296875,
+"spaceRuleWidth": 180.029296875,
 "glyphs": [
 58,
 68,
@@ -11762,7 +11762,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 309.650390625,
+"spaceRuleWidth": 309.650390625,
 "glyphs": [
 55,
 75,
@@ -11856,7 +11856,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 129.62109375,
+"spaceRuleWidth": 129.62109375,
 "glyphs": [
 36,
 57,
@@ -11924,7 +11924,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 144.0234375,
+"spaceRuleWidth": 144.0234375,
 "glyphs": [
 43,
 68,
@@ -11962,7 +11962,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 240.0390625,
+"spaceRuleWidth": 240.0390625,
 "glyphs": [
 58,
 68,
@@ -12020,7 +12020,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 412.8671875,
+"spaceRuleWidth": 412.8671875,
 "glyphs": [
 55,
 75,
@@ -12114,7 +12114,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 172.828125,
+"spaceRuleWidth": 172.828125,
 "glyphs": [
 36,
 57,
@@ -12182,7 +12182,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 153.02490234375,
+"spaceRuleWidth": 153.02490234375,
 "glyphs": [
 43,
 68,
@@ -12220,7 +12220,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 255.04150390625,
+"spaceRuleWidth": 255.04150390625,
 "glyphs": [
 58,
 68,
@@ -12278,7 +12278,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 438.67138671875,
+"spaceRuleWidth": 438.67138671875,
 "glyphs": [
 55,
 75,
@@ -12372,7 +12372,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 183.6298828125,
+"spaceRuleWidth": 183.6298828125,
 "glyphs": [
 36,
 57,
@@ -12440,7 +12440,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 216.03515625,
+"spaceRuleWidth": 216.03515625,
 "glyphs": [
 43,
 68,
@@ -12478,7 +12478,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 360.05859375,
+"spaceRuleWidth": 360.05859375,
 "glyphs": [
 58,
 68,
@@ -12536,7 +12536,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 619.30078125,
+"spaceRuleWidth": 619.30078125,
 "glyphs": [
 55,
 75,
@@ -12630,7 +12630,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 259.2421875,
+"spaceRuleWidth": 259.2421875,
 "glyphs": [
 36,
 57,
@@ -12698,7 +12698,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 252.041015625,
+"spaceRuleWidth": 252.041015625,
 "glyphs": [
 43,
 68,
@@ -12736,7 +12736,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 420.068359375,
+"spaceRuleWidth": 420.068359375,
 "glyphs": [
 58,
 68,
@@ -12794,7 +12794,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 722.517578125,
+"spaceRuleWidth": 722.517578125,
 "glyphs": [
 55,
 75,
@@ -12888,7 +12888,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 302.44921875,
+"spaceRuleWidth": 302.44921875,
 "glyphs": [
 36,
 57,
@@ -12956,7 +12956,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 90.708984375,
+"spaceRuleWidth": 90.708984375,
 "glyphs": [
 43,
 68,
@@ -12994,7 +12994,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 134.291015625,
+"spaceRuleWidth": 134.291015625,
 "glyphs": [
 58,
 68,
@@ -13050,7 +13050,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 237.451171875,
+"spaceRuleWidth": 237.451171875,
 "glyphs": [
 55,
 75,
@@ -13144,7 +13144,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 105.84375,
+"spaceRuleWidth": 105.84375,
 "glyphs": [
 36,
 57,
@@ -13210,7 +13210,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 120.9453125,
+"spaceRuleWidth": 120.9453125,
 "glyphs": [
 43,
 68,
@@ -13248,7 +13248,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 179.0546875,
+"spaceRuleWidth": 179.0546875,
 "glyphs": [
 58,
 68,
@@ -13304,7 +13304,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 316.6015625,
+"spaceRuleWidth": 316.6015625,
 "glyphs": [
 55,
 75,
@@ -13398,7 +13398,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 141.125,
+"spaceRuleWidth": 141.125,
 "glyphs": [
 36,
 57,
@@ -13464,7 +13464,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 128.50439453125,
+"spaceRuleWidth": 128.50439453125,
 "glyphs": [
 43,
 68,
@@ -13502,7 +13502,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 190.24560546875,
+"spaceRuleWidth": 190.24560546875,
 "glyphs": [
 58,
 68,
@@ -13558,7 +13558,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 336.38916015625,
+"spaceRuleWidth": 336.38916015625,
 "glyphs": [
 55,
 75,
@@ -13652,7 +13652,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 149.9453125,
+"spaceRuleWidth": 149.9453125,
 "glyphs": [
 36,
 57,
@@ -13718,7 +13718,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 181.41796875,
+"spaceRuleWidth": 181.41796875,
 "glyphs": [
 43,
 68,
@@ -13756,7 +13756,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 268.58203125,
+"spaceRuleWidth": 268.58203125,
 "glyphs": [
 58,
 68,
@@ -13812,7 +13812,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 474.90234375,
+"spaceRuleWidth": 474.90234375,
 "glyphs": [
 55,
 75,
@@ -13906,7 +13906,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 211.6875,
+"spaceRuleWidth": 211.6875,
 "glyphs": [
 36,
 57,
@@ -13972,7 +13972,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 211.654296875,
+"spaceRuleWidth": 211.654296875,
 "glyphs": [
 43,
 68,
@@ -14010,7 +14010,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 313.345703125,
+"spaceRuleWidth": 313.345703125,
 "glyphs": [
 58,
 68,
@@ -14066,7 +14066,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 554.052734375,
+"spaceRuleWidth": 554.052734375,
 "glyphs": [
 55,
 75,
@@ -14160,7 +14160,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 246.96875,
+"spaceRuleWidth": 246.96875,
 "glyphs": [
 36,
 57,
@@ -14226,7 +14226,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 98.677734375,
+"spaceRuleWidth": 98.677734375,
 "glyphs": [
 43,
 68,
@@ -14264,7 +14264,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 144.919921875,
+"spaceRuleWidth": 144.919921875,
 "glyphs": [
 58,
 68,
@@ -14320,7 +14320,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 256.69921875,
+"spaceRuleWidth": 256.69921875,
 "glyphs": [
 55,
 75,
@@ -14414,7 +14414,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 112.25390625,
+"spaceRuleWidth": 112.25390625,
 "glyphs": [
 36,
 57,
@@ -14480,7 +14480,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 131.5703125,
+"spaceRuleWidth": 131.5703125,
 "glyphs": [
 43,
 68,
@@ -14518,7 +14518,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 193.2265625,
+"spaceRuleWidth": 193.2265625,
 "glyphs": [
 58,
 68,
@@ -14574,7 +14574,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 342.265625,
+"spaceRuleWidth": 342.265625,
 "glyphs": [
 55,
 75,
@@ -14668,7 +14668,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 149.671875,
+"spaceRuleWidth": 149.671875,
 "glyphs": [
 36,
 57,
@@ -14734,7 +14734,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 139.79345703125,
+"spaceRuleWidth": 139.79345703125,
 "glyphs": [
 43,
 68,
@@ -14772,7 +14772,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 205.30322265625,
+"spaceRuleWidth": 205.30322265625,
 "glyphs": [
 58,
 68,
@@ -14828,7 +14828,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 363.6572265625,
+"spaceRuleWidth": 363.6572265625,
 "glyphs": [
 55,
 75,
@@ -14922,7 +14922,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 159.0263671875,
+"spaceRuleWidth": 159.0263671875,
 "glyphs": [
 36,
 57,
@@ -14988,7 +14988,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 197.35546875,
+"spaceRuleWidth": 197.35546875,
 "glyphs": [
 43,
 68,
@@ -15026,7 +15026,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 289.83984375,
+"spaceRuleWidth": 289.83984375,
 "glyphs": [
 58,
 68,
@@ -15082,7 +15082,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 513.3984375,
+"spaceRuleWidth": 513.3984375,
 "glyphs": [
 55,
 75,
@@ -15176,7 +15176,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 224.5078125,
+"spaceRuleWidth": 224.5078125,
 "glyphs": [
 36,
 57,
@@ -15242,7 +15242,7 @@
 "lines": [
 {
 "text": "Hamburgefonstiv",
-"safariWidth": 230.248046875,
+"spaceRuleWidth": 230.248046875,
 "glyphs": [
 43,
 68,
@@ -15280,7 +15280,7 @@
 },
 {
 "text": "Waffles, quays and fjords",
-"safariWidth": 338.146484375,
+"spaceRuleWidth": 338.146484375,
 "glyphs": [
 58,
 68,
@@ -15336,7 +15336,7 @@
 },
 {
 "text": "The quick brown fox jumps over the lazy dog",
-"safariWidth": 598.96484375,
+"spaceRuleWidth": 598.96484375,
 "glyphs": [
 55,
 75,
@@ -15430,7 +15430,7 @@
 },
 {
 "text": "AVATAR Type office",
-"safariWidth": 261.92578125,
+"spaceRuleWidth": 261.92578125,
 "glyphs": [
 36,
 57,

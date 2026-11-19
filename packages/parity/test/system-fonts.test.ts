@@ -227,7 +227,7 @@ describe('system faces', () => {
   });
 });
 
-type IosFixture = { readonly fonts: readonly { readonly id: string; readonly weight: number; readonly size: number; readonly postScriptName: string; readonly safariFamilies: readonly string[]; readonly safariLineMetrics: { readonly lineHeight: readonly number[]; readonly inlineBoxHeight: readonly number[] }; readonly lines: readonly { readonly text: string; readonly safariWidth: number; readonly glyphs: readonly number[]; readonly x: readonly number[] }[] }[] };
+type IosFixture = { readonly fonts: readonly { readonly id: string; readonly weight: number; readonly size: number; readonly postScriptName: string; readonly safariFamilies: readonly string[]; readonly safariLineMetrics: { readonly lineHeight: readonly number[]; readonly inlineBoxHeight: readonly number[] }; readonly lines: readonly { readonly text: string; readonly spaceRuleWidth: number; readonly glyphs: readonly number[]; readonly x: readonly number[] }[] }[] };
 type AndroidFixture = { readonly how: { readonly density: number }; readonly entries: readonly { readonly id: string; readonly weight: number; readonly cssPx: number; readonly devicePx: number; readonly chromeFamilies: readonly string[]; readonly blinkWidthsCss: readonly { readonly text: string; readonly chrome: Readonly<Record<string, number>> }[]; readonly blinkLineHeightCss: number; readonly linear: { readonly lines: readonly { readonly text: string; readonly runAdvance: number; readonly glyphIds: readonly number[]; readonly x: readonly number[] }[] } }[] };
 
 const ROLE_OF_SAFARI: Readonly<Record<string, 'system-ui' | 'sans-serif' | 'serif' | 'monospace'>> = { 'system-ui': 'system-ui', 'sans-serif': 'sans-serif', serif: 'serif', monospace: 'monospace' };
@@ -337,7 +337,8 @@ describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulato
     }
   });
 
-  it('gives the simulator\'s glyphs and positions, Safari\'s widths and Safari\'s line heights', () => {
+  // spaceRuleWidth is Core Text's width with each space at the font's own space advance, not a Safari measurement (the fixture's how.spaceRuleWidth).
+  it('gives the simulator\'s glyphs and positions, the space rule\'s widths and Safari\'s line heights', () => {
     if (!darwin) {
       missingToolchain('system fonts (iOS)', 'Core Text runs on macOS only');
       return;
@@ -353,10 +354,9 @@ describe('iOS system faces against Safari and Core Text in the iOS 27.2 simulato
       for (const l of f.lines) {
         const s = shaped(sys.shaper.shape(id, f.size, l.text, 0, l.text.length, 'Latn', false, 'en-US', []));
         expect(s.glyphs, `${where} ${l.text}`).toEqual(l.glyphs);
-        // The simulator's x are Core Text's; Dragon's drop kerning Core Text puts on a space, as Safari does.
-        expect(Math.abs(s.width - l.safariWidth), `${where} ${l.text}`).toBeLessThan(1e-3);
+        expect(Math.abs(s.width - l.spaceRuleWidth), `${where} ${l.text}`).toBeLessThan(1e-3);
         const w = m.measure(l.text, font(id, f.size));
-        expect(w.ok && Math.abs(w.measure.width / LU_PER_PX - l.safariWidth) <= 1 / 64, `${where} ${l.text}: the engine's width`).toBe(true);
+        expect(w.ok && Math.abs(w.measure.width / LU_PER_PX - l.spaceRuleWidth) <= 1 / 64, `${where} ${l.text}: the engine's width`).toBe(true);
       }
     }
   });

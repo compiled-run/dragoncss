@@ -11,6 +11,11 @@ Measured 2026-11-18 by element widths of 6 strings at 12, 16, 17, 24 and 28 px, 
 simulator) and Paint (Android emulator) widths of candidate fonts. Probe sources: packages/parity/test/system-fonts/probes; the
 probe numbers the tests read: packages/parity/test/system-fonts/{ios-coretext,android-paint}.json.
 
+What is committed differs by platform. android-paint.json keeps Chrome's and the WebView's own element widths and line heights.
+ios-coretext.json keeps Safari's line heights and which generics Safari matched to each face, but not Safari's element widths: the
+iOS width deltas in the table below were computed by the probe run against Safari widths that were not committed, so nothing in
+the repo shows them.
+
 | CSS | Safari, iOS 27.2 (simulator, runtime 24B8117) | Chrome 133, Android 36 (emulator image `google_apis` arm64) |
 |---|---|---|
 | `system-ui` | San Francisco (`.SFUI-Regular`, `.SFUI-Bold`), max width delta 3e-5 px | Roboto (`Roboto-Regular.ttf`, variable, wght 400/700) |
@@ -41,8 +46,12 @@ a test reads the runtime's files to check the list. Helvetica has a third uprigh
 
 ## Safari's rules Dragon follows on iOS
 
-- **Spaces**: WebKit gives a space the font's own space advance, dropping kerning Core Text puts on the space glyph (Times New Roman
-  and Helvetica regular otherwise differ by up to 0.506 px).
+- **Spaces**: a space gets the font's own space advance, dropping kerning Core Text puts on the space glyph (Times New Roman and
+  Helvetica regular otherwise differ by up to 0.506 px). The tests check Dragon against this rule (`spaceRuleWidth` in
+  ios-coretext.json, computed from Core Text), not against Safari. The Safari widths of Times New Roman and Helvetica the rule was
+  derived from are not committed. The one committed Safari width the rule changes is an author font's: Lato Regular at 18 px,
+  "Lato for the body, regular weight", 257.193 CSS px in Safari (packages/parity/test/markless-web-font.test.ts), which is the
+  rule's width; Core Text's own line width is 256.824.
 - **Size**: Safari shapes at the CSS size and scales by the device ratio; San Francisco's optical size and tracking follow the size,
   so Dragon shapes at the CSS size too.
 - **Line metrics**: ascent, descent and leading are each Core Text's value rounded up in CSS px; Helvetica's ascent also gains

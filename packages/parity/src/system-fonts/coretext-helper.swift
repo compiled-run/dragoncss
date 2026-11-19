@@ -107,8 +107,8 @@ func describe(_ spec: [String: Any], _ size: Double) throws -> [String: Any] {
 }
 
 /// text[start, end) shaped by Core Text with the whole text as context (one typesetter, one line of the range), as HarfBuzz's
-/// output: glyph id, UTF-16 cluster, x and y advance, x and y offset in 16.16, flags 0. As WebKit does, a space's advance is the
-/// font's own space advance, dropping kerning Core Text put on the space (measured against Safari, docs/system-fonts.md). A run
+/// output: glyph id, UTF-16 cluster, x and y advance, x and y offset in 16.16, flags 0. A space's advance is the font's own
+/// space advance, dropping kerning Core Text put on the space (docs/system-fonts.md "Spaces" says what Safari evidence backs it). A run
 /// Core Text draws in another font (fallback) is refused, naming the font.
 func shape(_ r: [String: Any]) throws -> [String: Any] {
 	guard let spec = r["face"] as? [String: Any], let size = r["size"] as? Double, let text = r["text"] as? String,
