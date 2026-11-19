@@ -90,6 +90,16 @@ export const marklessDocumentCss = (input: MarklessStyleInput, fonts: MarklessFo
   return input.nodes.some((n) => n.kind === 'element' && n.boxless === true) ? `${base}\n${BOXLESS_CSS}` : base;
 };
 
+/** The host shows every <dialog> with showModal(): the export lays it out shown (topLayer 'host'), and the reference document too. */
+export const marklessShownModal = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'element' && n.element === 'dialog';
+
+/** The value a by-state list gives under an assignment's values (keyed by cell); the input lists one entry per combination. */
+export function valueUnder(entries: readonly { readonly when: Readonly<Record<string, StateValue>>; readonly value: string | null }[], values: Readonly<Record<string, unknown>>, id: string): string | null {
+  const found = entries.filter((e) => Object.entries(e.when).every(([cell, v]) => values[cell] === v));
+  if (found.length !== 1) throw new Error(`${id}: ${found.length} by-state entries hold for ${JSON.stringify(values)}`);
+  return (found[0] as (typeof entries)[number]).value;
+}
+
 const fail = (what: string): never => {
   throw new Error(`markless style input: ${what}`);
 };
@@ -296,8 +306,7 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
       classes,
       attributes: [
         ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
-        // The host shows a <dialog> with showModal(), which sets open: the export lays it out shown (topLayer 'host').
-        ...(n.element === 'dialog' && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
+        ...(marklessShownModal(n) && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         ...(n.boxless === true ? [{ name: MARKLESS_BOXLESS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
@@ -390,15 +399,25 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
       ...(x.plan === undefined ? {} : { planNames: [...new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)))].filter((id) => rename(id) !== id).map((id) => [id, rename(id)] as const) }),
     }])),
   };
-  // An element display: none leaves (with everything inside it) has no box in that assignment: the export names it with no frame,
-  // so a host hides its view there instead of keeping another assignment's box. Any other missing node is an error.
+  // Dragon keys a state "<instance>#s<k>"; the hosts know the cell.
+  const cellOf = new Map(parsed.states.map((s, k) => [`s${k}`, s.cell]));
+  const rekey = (key: string): string => {
+    if (key === BAND_KEY) return key;
+    const state = key.slice(key.lastIndexOf('#') + 1);
+    const cell = cellOf.get(state);
+    if (cell === undefined) fail(`Dragon's state ${key} is not one of the input's`);
+    return cell as string;
+  };
+  // Named with no frame: an element its hidden attribute hides in this assignment, one a style state (a band's display: none) hides
+  // here and another assignment shows, and their contents. Any other missing node fails.
   const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));
+    const values = Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
     const none = new Set<string>();
     const added = parsed.nodes.flatMap((n): ExportNode[] => {
       if (have.has(n.id)) return [];
-      // Hidden by its own `hidden` state, or by a style state (a band's display: none) that another assignment does not apply.
-      const own = (n.kind === 'element' && n.attributesByState?.['hidden'] !== undefined) || shown.has(n.id);
+      const hidden = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
+      const own = (hidden !== undefined && valueUnder(hidden, values, n.id) !== null) || shown.has(n.id);
       if (!own && !none.has(n.parent ?? '')) return [];
       none.add(n.id);
       return [{ id: n.id, parent: n.parent, kind: n.kind, native: n.kind === 'text' ? 'DragonTextView' : 'DragonBoxView', text: n.kind === 'text' ? n.text : null, frame: null, borderWidths: null, writes: [] }];
@@ -417,15 +436,6 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id)).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
-  // Dragon keys a state "<instance>#s<k>"; the hosts know the cell.
-  const cellOf = new Map(parsed.states.map((s, k) => [`s${k}`, s.cell]));
-  const rekey = (key: string): string => {
-    if (key === BAND_KEY) return key;
-    const state = key.slice(key.lastIndexOf('#') + 1);
-    const cell = cellOf.get(state);
-    if (cell === undefined) fail(`Dragon's state ${key} is not one of the input's`);
-    return cell as string;
-  };
   const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
     const out = styles.targets[t as NativeStyleTarget];
     if (out?.kind !== 'emitted' || out.schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment`);

@@ -11,7 +11,7 @@ import { GATE_DEVICE_PX } from './compare.ts';
 import { marklessDocumentHtml } from './markless-style-compare.ts';
 import type { CompareRow } from './markless-style-compare.ts';
 import type { MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
-import type { NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
 export type WebColumnDevice = { readonly target: 'ios'; readonly udid: string } | { readonly target: 'android'; readonly serial: string };
@@ -53,15 +53,60 @@ function screenshot(device: WebColumnDevice, file: string): void {
 /** The browser's own layout size: whole CSS px wide and tall, at its device pixel ratio. */
 export type BrowserSize = { readonly width: number; readonly height: number; readonly vh: number; readonly dpr: number };
 
+/** What a phone drew: one assignment's boxes in points (iOS) or dp (Android) from the page's top left, by node id. */
+export type NativeLayout = { readonly assignment: number; readonly boxes: ReadonlyMap<string, Frame> };
+
+/**
+ * How one assignment's browser boxes are compared: `browserDpr` is the browser's ratio; with `anySize` the browser laid the page out
+ * at its own width and the export's frames are scaled to it; with `phone` the boxes a phone drew for the input's nodes (`ids`)
+ * stand in for the export's frames.
+ */
+export type WebColumnView = { readonly browserDpr: number; readonly anySize: boolean; readonly phone?: { readonly boxes: ReadonlyMap<string, Frame>; readonly ids: ReadonlySet<string> } };
+
+/** One assignment's rows; a node one side gives a box and the other does not is an error, never skipped. */
+export function webColumnRows(target: WebColumnDevice['target'], dpr: number, assignment: ExportAssignment, measured: readonly CapturedNode[], index: number, view: WebColumnView = { browserDpr: dpr, anySize: false }): WebColumnRow[] {
+  const where = `${target} assignment ${index}`;
+  const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
+  const absolute = (id: string): Frame => {
+    const n = byId.get(id);
+    if (n === undefined || n.frame === null) throw new Error(`${id} has no frame`);
+    const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
+    return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
+  };
+  const round = (f: Frame): Frame => ({ x: Number(f.x.toFixed(4)), y: Number(f.y.toFixed(4)), width: Number(f.width.toFixed(4)), height: Number(f.height.toFixed(4)) });
+  const scale = view.anySize ? view.browserDpr / dpr : 1;
+  const phone = view.phone;
+  const rows: WebColumnRow[] = [];
+  for (const c of measured) {
+    if (c.kind === 'line') continue;
+    let e: Frame;
+    if (phone !== undefined) {
+      // A phone draws the input's nodes; Dragon's html and body place them and have no view of their own.
+      if (!c.hasBox || !phone.ids.has(c.id)) continue;
+      const drawn = phone.boxes.get(c.id);
+      if (drawn === undefined) throw new Error(`${where}: the phone drew no box for ${c.id}, which the browser lays out`);
+      e = { x: drawn.x * dpr, y: drawn.y * dpr, width: drawn.width * dpr, height: drawn.height * dpr };
+    } else {
+      const node = byId.get(c.id);
+      if (node === undefined) continue;
+      if (c.hasBox !== (node.frame !== null)) throw new Error(`${where}: ${c.id} ${c.hasBox ? 'has a box in the browser and no frame in the export' : 'has a frame in the export and no box in the browser'}`);
+      if (!c.hasBox) continue;
+      e = absolute(c.id);
+    }
+    const d = { x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale };
+    const web = { x: c.x * view.browserDpr, y: c.y * view.browserDpr, width: c.width * view.browserDpr, height: c.height * view.browserDpr };
+    const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(web[k] - d[k])));
+    rows.push({ target, values: assignment.values, id: c.id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX, web: round(web), dragon: round(d) });
+  }
+  return rows;
+}
+
 /**
  * Measures every assignment of the export's target on the device and compares its frames. The page is served on 127.0.0.1
  * (an emulator reaches it through adb reverse). The device must show the export's viewport width in CSS px, unless `anySize`:
  * then the browser lays the page out at the device's own width, and the export's frames are compared as a host draws them on
  * that device (each frame's CSS px, export px / export dpr, at the device's dpr).
  */
-/** What a phone drew: one assignment's boxes in points (iOS) or dp (Android) from the page's top left, by node id. */
-export type NativeLayout = { readonly assignment: number; readonly boxes: ReadonlyMap<string, Frame> };
-
 export async function webColumn(input: MarklessStyleInput, exported: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, anySize = false, native?: NativeLayout): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
   const t = exported.targets[device.target];
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
@@ -109,28 +154,7 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
       size = { width: anySize ? m.layoutWidth : m.innerWidth, height: m.innerHeight, vh: m.vh, dpr: m.dpr };
       if (!anySize && (Math.abs(m.dpr - t.dpr) > 1e-6 || Math.abs(m.innerWidth - t.viewport.width) > 1)) throw new Error(`${device.target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, the export ${t.viewport.width} at ${t.dpr}x; use the export's proof device`);
       if (screenshots !== undefined) screenshot(device, `${screenshots}/${device.target}-web-${index}.png`);
-      const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
-      const absolute = (id: string): Frame => {
-        const n = byId.get(id);
-        if (n === undefined || n.frame === null) throw new Error(`${id} has no frame`);
-        const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
-        return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
-      };
-      for (const c of m.nodes) {
-        const node = byId.get(c.id);
-        if (!c.hasBox || c.kind === 'line' || node === undefined || node.frame === null) continue;
-        // A phone draws the input's nodes; Dragon's html and body place them and have no view of their own.
-        if (native !== undefined && !inputIds.has(c.id)) continue;
-        const scale = anySize ? m.dpr / t.dpr : 1;
-        const drawn = native?.boxes.get(c.id);
-        if (native !== undefined && drawn === undefined) throw new Error(`${device.target}: the phone drew no box for ${c.id}, which the browser lays out`);
-        const e = drawn === undefined ? absolute(c.id) : { x: drawn.x * t.dpr, y: drawn.y * t.dpr, width: drawn.width * t.dpr, height: drawn.height * t.dpr };
-        const d = { x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale };
-        const web = { x: c.x * m.dpr, y: c.y * m.dpr, width: c.width * m.dpr, height: c.height * m.dpr };
-        const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(web[k] - d[k])));
-        const round = (f: Frame): Frame => ({ x: Number(f.x.toFixed(4)), y: Number(f.y.toFixed(4)), width: Number(f.width.toFixed(4)), height: Number(f.height.toFixed(4)) });
-        rows.push({ target: device.target, values: assignment.values, id: c.id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX, web: round(web), dragon: round(d) });
-      }
+      rows.push(...webColumnRows(device.target, t.dpr, assignment, m.nodes, index, { browserDpr: m.dpr, anySize, ...(native === undefined ? {} : { phone: { boxes: native.boxes, ids: inputIds } }) }));
     }
   } finally {
     if (device.target === 'android') {
