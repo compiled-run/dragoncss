@@ -371,7 +371,8 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
     forced = max(constrain(sub(yAvailable, add(mt.value, mb.value)), blockMinMaxWith(styled, { kind: 'definite', value: regionHeight }, vbp, ctx.faults, NO_STRETCH)), vbp);
   }
   const contentHeight = s.height.kind === 'min-content' || s.height.kind === 'max-content' || s.height.kind === 'fit-content';
-  const r = layoutContents(ctx, contentHeight ? { ...styled, style: { ...s, height: { kind: 'auto' } } } : styled, {
+  const contents: LayoutBox = contentHeight ? { ...styled, style: { ...s, height: { kind: 'auto' } } } : styled;
+  const r = layoutContents(ctx, contents, {
     cbInline: regionWidth,
     borderBoxWidth: width,
     forcedBorderBoxHeight: forced,
