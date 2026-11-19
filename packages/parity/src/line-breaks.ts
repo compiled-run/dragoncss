@@ -16,7 +16,8 @@ import type { NativeDump } from './native-dump.ts';
 import { breakLineGroups } from './dump-line-groups.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
-import { captureGeneratedTexts, pseudoId } from './pseudo-capture.ts';
+import { generatedTextId, isWhitespaceText, pseudoId, textAddresser } from './node-ids.ts';
+import { captureGeneratedTexts } from './pseudo-capture.ts';
 import type { GeneratedText } from './pseudo-capture.ts';
 import { applyTransformTwin } from './transform-capture.ts';
 
@@ -245,12 +246,9 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
   // PNT2: text in a transformed box is read on the transform twin, so each line keeps its untransformed rect.
   await applyTransformTwin(page, []);
   const real = await page.evaluate(() => {
-    const out: { id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
-    const isBlank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
+    const out: { parent: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
     for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
       const id = el.getAttribute('data-dragon-id') as string;
-      let k = 0;
-      let spaces = 0;
       for (const child of Array.from(el.childNodes)) {
         if (child.nodeType !== Node.TEXT_NODE) continue;
         const t = child as Text;
@@ -262,9 +260,6 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
           if (last !== undefined && Math.abs(last.y - r.y) < 0.001 && Math.abs(last.height - r.height) < 0.001) continue;
           lines.push(r);
         }
-        const blankNode = isBlank(t.data);
-        const textId = blankNode ? `${id}:space${spaces++}` : `${id}:text${k++}`;
-        if (blankNode && lines.length === 0) continue;
         const units: number[] = [];
         const blank: number[] = [];
         let lastLine = 0;
@@ -299,13 +294,20 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
           if (pick.width === 0) blank.push(i);
         }
         const transform = getComputedStyle(el).textTransform;
-        out.push(transform === 'none' ? { id: textId, data: t.data, lines: lines.length, units, blank } : { id: textId, data: t.data, lines: lines.length, units, blank, transform });
+        out.push(transform === 'none' ? { parent: id, data: t.data, lines: lines.length, units, blank } : { parent: id, data: t.data, lines: lines.length, units, blank, transform });
       }
     }
     return out;
   });
+  const addressers = new Map<string, (text: string) => string>();
+  const named = real.flatMap(({ parent, ...t }): ChromeBreakText[] => {
+    const address = addressers.get(parent) ?? textAddresser(parent);
+    addressers.set(parent, address);
+    const id = address(t.data);
+    return isWhitespaceText(t.data) && t.lines === 0 ? [] : [{ id, ...t }];
+  });
   // GEN-a R9: generated text has no DOM node for a Range; its lines are the snapshot text boxes (pseudo-capture.ts).
-  return [...real, ...(await captureGeneratedTexts(page)).map(generatedBreakText)];
+  return [...named, ...(await captureGeneratedTexts(page)).map(generatedBreakText)];
 }
 
 /** A generated text's breaks from its snapshot text boxes: each unit a box covers is on that box's line; a zero-width box is blank. */
@@ -319,7 +321,7 @@ export function generatedBreakText(t: GeneratedText): ChromeBreakText {
       if (b.rect[2] === 0) blank.push(i);
     }
   });
-  return { id: `${pseudoId(t.host, t.type)}:text0`, data: t.text, lines: t.boxes.length, units, blank };
+  return { id: generatedTextId(pseudoId(t.host, t.type)), data: t.text, lines: t.boxes.length, units, blank };
 }
 
 const WHITE = /[ \t\n\r\f]/;

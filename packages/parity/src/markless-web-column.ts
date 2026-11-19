@@ -5,12 +5,14 @@ import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { authoredFontHtml } from './cases.ts';
-import { collectNodes } from './capture.ts';
-import type { CapturedNode } from './capture.ts';
+import type { NativeStyleTarget } from 'dragon';
+import { collectNodes, nameCollected } from './capture.ts';
+import type { CapturedNode, CollectedElement } from './capture.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
-import { checkCoverage, collectBackdrops, marklessDocumentHtml, modalIds, pairBoxes } from './markless-style-compare.ts';
-import type { BoxProblem, CompareRow } from './markless-style-compare.ts';
+import { checkCoverage, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree } from './markless-style-compare.ts';
+import type { BoxProblem, CompareRow, DocumentNode } from './markless-style-compare.ts';
 import type { MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
+import { marklessCompiledTargets } from './markless-style-input.ts';
 import type { ExportAssignment, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
@@ -19,17 +21,17 @@ export type WebColumnDevice = { readonly target: 'ios'; readonly udid: string } 
 /** A compared box: the gate's row, with both frames in device px from the page's top left. */
 export type WebColumnRow = CompareRow & { readonly web: Frame; readonly dragon: Frame };
 type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
-type Measured = { readonly dpr: number; readonly innerWidth: number; readonly nodes: readonly CapturedNode[]; readonly userAgent: string };
+type Measured = { readonly dpr: number; readonly innerWidth: number; readonly elements: readonly CollectedElement[]; readonly backdrops: readonly CapturedNode[]; readonly tree: DocumentNode; readonly userAgent: string };
 
 const run = (cmd: string, args: readonly string[]): string => execFileSync(cmd, [...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
-/** The page of one assignment: the comparison's document with system fonts, and a script that posts every box back. */
+/** The page of one assignment: the comparison's document with system fonts, and a script in its head that posts the tree and every box back. */
 function pageOf(input: MarklessStyleInput, values: Readonly<Record<string, unknown>>, files: ReadonlyMap<string, Uint8Array>, post: string, width: number): string {
   const html = authoredFontHtml(marklessDocumentHtml(input, values, 'system'), files);
   // The export lays out at whole CSS px (a Pixel 7 is 411.43 wide); the root box takes that width so both lay out the same line length.
   const viewport = `<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="format-detection" content="telephone=no, date=no, address=no, email=no"><style>:where(html){-webkit-text-size-adjust:100%;text-size-adjust:100%;width:${width}px}</style>`;
-  const script = `<script>addEventListener('load',()=>document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const nodes=[...(${collectNodes.toString()})([]),...(${collectBackdrops.toString()})(${JSON.stringify(modalIds(input)).replace(/</g, '\\u003c')})];fetch(${JSON.stringify(post)},{method:'POST',body:JSON.stringify({dpr:devicePixelRatio,innerWidth,userAgent:navigator.userAgent,nodes})});}))));</script>`;
-  return html.replace('<head>', `<head>\n${viewport}`).replace('</body>', `${script}</body>`);
+  const script = `<script>addEventListener('load',()=>document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const tree=(${readDocumentTree.toString()})();const elements=(${collectNodes.toString()})([]);const backdrops=(${collectBackdrops.toString()})(${JSON.stringify(modalIds(input)).replace(/</g, '\\u003c')});fetch(${JSON.stringify(post)},{method:'POST',body:JSON.stringify({dpr:devicePixelRatio,innerWidth,userAgent:navigator.userAgent,tree,elements,backdrops})});}))));</script>`;
+  return html.replace('<head>', `<head>${viewport}${script}`);
 }
 
 /** Opens a URL in the device's browser; Chrome starts with its first-run screens off (a debug-app command line). */
@@ -85,7 +87,9 @@ export function webColumnRows(input: MarklessStyleInput, target: WebColumnDevice
 export async function webColumn(input: MarklessStyleInput, exported: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string): Promise<{ readonly browser: string; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
   const t = exported.targets[device.target];
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
-  checkCoverage(input, device.target, t);
+  const compiled = marklessCompiledTargets(input, fonts, 'system');
+  checkTargets(exported, compiled);
+  for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
   const results = new Map<number, (m: Measured) => void>();
   const server = createServer((req, res) => {
@@ -126,7 +130,9 @@ export async function webColumn(input: MarklessStyleInput, exported: NativeStyle
       browser = m.userAgent;
       if (Math.abs(m.dpr - t.dpr) > 1e-6 || Math.abs(m.innerWidth - t.viewport.width) > 1) throw new Error(`${device.target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, the export ${t.viewport.width} at ${t.dpr}x; use the export's proof device`);
       if (screenshots !== undefined) screenshot(device, `${screenshots}/${device.target}-web-${index}.png`);
-      rows.push(...webColumnRows(input, device.target, t.dpr, assignment, m.nodes, index));
+      const mismatch = documentMismatch(marklessDocumentTree(input, assignment.values), m.tree);
+      if (mismatch !== null) throw new Error(`${device.target} assignment ${index}: the browser's document is not the input's tree: ${mismatch}`);
+      rows.push(...webColumnRows(input, device.target, t.dpr, assignment, [...nameCollected(m.elements), ...m.backdrops], index));
     }
   } finally {
     if (device.target === 'android') {

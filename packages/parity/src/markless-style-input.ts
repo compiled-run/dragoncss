@@ -5,14 +5,15 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
-import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, isWhitespaceText, textAddresser, TREE_SCHEMA_REVISION } from 'dragon';
+import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
+import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, TREE_SCHEMA_REVISION } from 'dragon';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
-import { EXPORT_DEVICES, nativeStyleExport } from './native-style-export.ts';
+import { EXPORT_DEVICES, exportBands, nativeStyleExport } from './native-style-export.ts';
+import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
 import { systemFontsFor } from './system-fonts/provider.ts';
 
 export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
@@ -199,6 +200,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         for (const [name, byState] of Object.entries(attributesByState as Record<string, unknown>)) {
           if (name === 'class' || !/^[a-z][a-z0-9-]*$/.test(name)) fail(`${id}: attributesByState names ${JSON.stringify(name)}, which is not a non-class attribute name`);
           if (name in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${name} is both a fixed attribute and an attribute by state`);
+          if (name === MARKLESS_BOXLESS_ATTRIBUTE) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
           checkByState(`attributesByState.${name}`, byState);
         }
       }
@@ -260,17 +262,20 @@ export const shownText = (n: Extract<MarklessStyleInput['nodes'][number], { kind
   n.textByState === undefined ? n.text : (valueUnder(n.textByState, values, n.id) as string);
 
 /**
- * Each input text node by the address Dragon gives it in one assignment (values keyed by cell), "<element>:text<k>" or
- * "<element>:space<k>", for elements named by elementId.
+ * The input's id of a node named by Dragon's address rule (node-ids.ts) under elements named elementId(id), in one assignment
+ * (values keyed by cell): an element's text child is its input text node by the text it shows there, and any other node keeps its
+ * suffix after its element's input id ("m0::backdrop" to "component-edge:0::backdrop").
  */
-export function textNodesByAddress(input: MarklessStyleInput, elementId: (id: string) => string, values: Readonly<Record<string, unknown>>): Map<string, string> {
-  const out = new Map<string, string>();
+export function marklessNodeId(input: MarklessStyleInput, elementId: (id: string) => string, values: Readonly<Record<string, unknown>>): (address: string) => string {
+  const textOf = new Map<string, string>();
+  const elementOf = new Map<string, string>();
   for (const e of input.nodes) {
     if (e.kind !== 'element') continue;
+    elementOf.set(elementId(e.id), e.id);
     const address = textAddresser(elementId(e.id));
-    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id) out.set(address(shownText(c, values)), c.id);
+    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id) textOf.set(address(shownText(c, values)), c.id);
   }
-  return out;
+  return (address) => textOf.get(address) ?? rehostAddress(address, (tree) => elementOf.get(tree));
 }
 
 export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned'): FrontEndResult {
@@ -404,6 +409,48 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   } as unknown as FrontEndResult;
 }
 
+/** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
+function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: typeof EXPORT_DEVICES } {
+  const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
+  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
+  const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const styles = compileNativeStyles(config, input);
+  const errors = styles.diagnostics.filter((d) => d.severity === 'error');
+  if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
+  return { input, styles, devices };
+}
+
+/** Dragon keys a state "<instance>#s<k>"; the hosts know the cell. */
+function cellKey(parsed: MarklessStyleInput): (key: string) => string {
+  const cellOf = new Map(parsed.states.map((s, k) => [`s${k}`, s.cell]));
+  return (key) => {
+    if (key === BAND_KEY) return key;
+    const cell = cellOf.get(key.slice(key.lastIndexOf('#') + 1));
+    if (cell === undefined) fail(`Dragon's state ${key} is not one of the input's`);
+    return cell as string;
+  };
+}
+
+/** What the input compiles to per target, keyed as the export keys it: the states and the @media bands. */
+export type MarklessCompiledTarget = Pick<ExportTarget, 'states' | 'bands'>;
+
+/** The targets the input compiles to, compiled as marklessStyleExport compiles it with these font files in this font mode. */
+export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned'): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
+  const { styles } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode);
+  const rekey = cellKey(parsed);
+  const out: { [T in NativeStyleTarget]?: MarklessCompiledTarget } = {};
+  for (const [t, o] of Object.entries(styles.targets) as [NativeStyleTarget, (typeof styles.targets)[NativeStyleTarget]][]) {
+    if (o === undefined) continue;
+    if (o.kind !== 'emitted') return fail(`${t} is blocked: ${o.reason}`);
+    out[t] = {
+      states: o.program.states.map((s) => ({ key: rekey(s.key), domain: s.domain })),
+      ...exportBands(o),
+    };
+  }
+  return out;
+}
+
 /**
  * The input compiled as the device lanes compile (support 'lanes'), exported with the cells' own keys: with system fonts each
  * target measures its platform's own fonts at build time; pinned, the stated reference's font map.
@@ -414,31 +461,13 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
   const parsed = parseMarklessStyleInput(inputText);
   if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
-  const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
-  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
-  const devices = parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
-  const styles = compileNativeStyles(config, input);
-  const errors = styles.diagnostics.filter((d) => d.severity === 'error');
-  if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
+  const { input, styles, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode);
   const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null);
-  // Dragon keys a state "<instance>#s<k>"; the hosts know the cell.
-  const cellOf = new Map(parsed.states.map((s, k) => [`s${k}`, s.cell]));
-  const rekey = (key: string): string => {
-    if (key === BAND_KEY) return key;
-    const state = key.slice(key.lastIndexOf('#') + 1);
-    const cell = cellOf.get(state);
-    if (cell === undefined) fail(`Dragon's state ${key} is not one of the input's`);
-    return cell as string;
-  };
+  const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
   const dragonIds = dragonNodeIds(parsed);
-  const marklessId = new Map(parsed.nodes.filter((n) => n.kind === 'element').map((n): [string, string] => [dragonIds.get(n.id) as string, n.id]));
-  // A <dialog>'s ::backdrop box is named after its dialog: "<input id>::backdrop".
-  const backdropOf = new Map([...marklessId].map(([d, m]): [string, string] => [`${d}::backdrop`, `${m}::backdrop`]));
   const renamed = (a: ExportAssignment): ExportAssignment => {
-    const textOf = textNodesByAddress(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
-    const rename = (id: string): string => marklessId.get(id) ?? textOf.get(id) ?? backdropOf.get(id) ?? id;
+    const rename = marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
     return { ...a, nodes: a.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) };
   };
   const exported: NativeStyleExport = {
@@ -494,7 +523,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
       states: x.states.map((s) => ({ ...s, key: rekey(s.key) })),
       assignments: x.assignments.map((a, i) => ({
         ...a,
-        values: Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v])),
+        values: cellValues(a),
         colorScheme: (schemes[i] as UsedScheme).colorScheme,
         ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
       })),

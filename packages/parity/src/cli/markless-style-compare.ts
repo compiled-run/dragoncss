@@ -1,5 +1,5 @@
 // pnpm run markless:style-compare -- <native-style-input.json> <native-style.json> <report.json>: the export's frames against
-// Chrome's boxes per assignment (packages/parity/src/markless-style-compare.ts). Exits 1 when a box is outside the gate or only one side has it, or the export is malformed or leaves out a state.
+// Chrome's boxes per assignment (packages/parity/src/markless-style-compare.ts). Exits 1 when a box is outside the gate or only one side has it, or the export is malformed or leaves out a target or a state.
 // `--screenshots <dir>` also saves Chrome's rendering of each assignment there. With system fonts (the default, as the export
 // command), Chrome draws Android's system faces from the SDK image's files; iOS's are compared with Safari (markless:style-web-column).
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

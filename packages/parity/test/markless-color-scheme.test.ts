@@ -113,7 +113,7 @@ async function againstChrome(text: string, path: string): Promise<{ readonly sch
       }
     }
     for (const preference of x.bands === undefined ? (['light', 'dark'] as const) : (['light'] as const)) {
-      const report = await compareMarklessExport(input, { ...exported, targets: { [t]: x } }, undefined, preference);
+      const report = await compareMarklessExport(input, exported, undefined, preference, [], 'pinned', [t]);
       expect(report.compared, `${t} prefers ${preference}`).toBeGreaterThan(5);
       expect(report.rows.filter((r) => !r.pass), `${t} prefers ${preference}`).toEqual([]);
     }

@@ -1,7 +1,8 @@
 // A <dialog> in a Markless style input: the host shows it with showModal(), so the export lays it out shown, and Chrome's
 // reference document shows it the same way, so the dialog and its contents are compared, open attribute or not.
 import { describe, expect, it } from 'vitest';
-import { compareMarklessExport, marklessDocumentHtml } from '../src/markless-style-compare.ts';
+import type { DocumentNode } from '../src/markless-style-compare.ts';
+import { compareMarklessExport, marklessBodyTree, marklessDocumentHtml, marklessDocumentTree } from '../src/markless-style-compare.ts';
 import { marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 
 const input = (dialogAttributes: Record<string, string>) => JSON.stringify({
@@ -36,9 +37,11 @@ describe('a Markless <dialog>, which the host shows modal', () => {
     }, 120_000);
   }
 
-  it('leaves the open attribute off the reference dialog, which showModal() opens', () => {
-    const html = marklessDocumentHtml(parseMarklessStyleInput(input({ open: '' })), {});
-    expect(html).toContain('<dialog data-dragon-id="h2" class="box">');
-    expect(html).toContain('e.showModal()');
+  it('builds the reference dialog without its open attribute, and expects the open="" that showModal() adds', () => {
+    const parsed = parseMarklessStyleInput(input({ open: '' }));
+    const dialog = (nodes: readonly DocumentNode[]): DocumentNode | undefined => nodes.flatMap((n) => ('text' in n ? [] : n.attributes[0]?.[1] === 'h2' ? [n] : [dialog(n.children)].filter((d) => d !== undefined)))[0];
+    expect(dialog(marklessBodyTree(parsed, {}))).toMatchObject({ element: 'dialog', attributes: [['data-dragon-id', 'h2'], ['class', 'box']] });
+    expect(dialog([marklessDocumentTree(parsed, {})])).toMatchObject({ element: 'dialog', attributes: [['data-dragon-id', 'h2'], ['class', 'box'], ['open', '']] });
+    expect(marklessDocumentHtml(parsed, {})).toContain('d.showModal()');
   });
 });
