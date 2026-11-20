@@ -4,7 +4,7 @@
 // directions. The unfaulted runs pass.
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutStyle } from '@dragon/layout';
+import type { ControlBox, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutStyle } from '@dragon/layout';
 import { NO_ENGINE_FAULTS } from '@dragon/layout';
 import { NO_FAULTS } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
@@ -37,7 +37,7 @@ const STYLE = {
 describe('compare.ts: an anonymous box holding only atomic inlines', () => {
   const font = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true } as const;
   const atomic = (id: string): LayoutBox => ({ kind: 'box', id, boxType: 'element', style: { ...STYLE, display: 'inline-block' }, strut: null, marker: null, children: [] });
-  const input = (kids: readonly LayoutBox[]): LayoutInput => ({
+  const input = (kids: readonly (LayoutBox | ControlBox)[]): LayoutInput => ({
     viewport: { width: 400, height: 300 }, devicePixelRatio: 1, viewportUnits: { small: { width: 400, height: 300 }, large: { width: 400, height: 300 }, dynamic: { width: 400, height: 300 } },
     safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: 16,
     root: { kind: 'box', id: 'r', boxType: 'element', style: STYLE, strut: null, marker: null, children: [{ kind: 'box', id: 'r:anon0', boxType: 'anonymous', style: STYLE, strut: { font, lineHeight: { kind: 'normal' } }, marker: null, children: kids }] },
@@ -58,6 +58,13 @@ describe('compare.ts: an anonymous box holding only atomic inlines', () => {
     const c = compareLayout(capture(['r', 'a']), absolute(['a', 'b']), input([atomic('a'), atomic('b')]), ENVIRONMENT);
     expect(c.problems).toContain('r:anon0: anonymous box whose text lines are not all compared with Chrome (b)');
     expect(c.pass).toBe(false);
+  });
+  it('counts an inline-block button (RF-INL) as an atomic inline it holds', () => {
+    const button: ControlBox = { kind: 'control', id: 'b', boxType: 'element', style: { ...STYLE, display: 'inline-block' }, control: { kind: 'button-block' }, strut: null, children: [] };
+    const c = compareLayout(capture(['r', 'b']), absolute(['b']), input([button]), ENVIRONMENT);
+    expect(c.problems).toEqual([]);
+    expect(c.anonymous).toEqual([{ id: 'r:anon0', lines: ['b'] }]);
+    expect(compareLayout(capture(['r']), absolute(['b']), input([button]), ENVIRONMENT).problems).toContain('r:anon0: anonymous box whose text lines are not all compared with Chrome (b)');
   });
   it('fails when it holds no text line and no atomic inline', () => {
     const c = compareLayout(capture(['r']), absolute([]), input([]), ENVIRONMENT);

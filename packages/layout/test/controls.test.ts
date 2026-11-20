@@ -382,7 +382,45 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(range({}, [{ ...box('track', { display: 'flex' }), children: [thumb] }]))).toEqual(['$.root.children[0].children[0].children[0].control a slider thumb is a block-flow child: its parent is a block container']);
     expect(codes(range({}, [thumb]))).toEqual(['$.root.children[0].children[0].control a slider thumb is a block-flow child: its parent is a block container']);
     const button = control('b', { kind: 'button-block' }, { display: 'flex' });
-    expect(codes({ ...range({}, []), root: { ...box('root', {}), children: [button] } })).toEqual(['$.root.children[0].style.display a block button control is a block container']);
+    expect(codes({ ...range({}, []), root: { ...box('root', {}), children: [button] } })).toEqual(['$.root.children[0].style.display a block button control is a block container: display block, or inline-block among inline content']);
+  });
+
+  it('RF-INL: an inline-block button is an atomic inline that centres its contents, and its baseline moves with them', () => {
+    const env = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1 };
+    const line = (b: LayoutBox | ControlBox): LayoutInput => ({ ...env, root: box('root', { width: px(300) }, [text('a', 'XX '), b, text('c', ' XX')]) });
+    const button = control('b', { kind: 'button-block' }, { display: 'inline-block', height: px(40) }, [text('b:text0', 'YY')]);
+    expect(codes(line(button))).toEqual([]);
+    const r = layout(line(button), ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(JSON.stringify(r));
+    const abs = absoluteRects(r.boxes);
+    const y = (id: string): number => (abs.get(id) as LayoutRect).y / 64;
+    // block_layout_algorithm_utils.cc:185-203: the 10px line moves down by (40 - 10) / 2; its baseline (8px) with it, to 23px, so
+    // the button's top sits on the root's first line and that line is 40px tall.
+    expect([y('b'), y('b:text0:line0'), y('a:line0'), (abs.get('root') as LayoutRect).height / 64]).toEqual([0, 15, 15, 40]);
+    // A plain inline-block keeps its line at its top, and its baseline at 8px.
+    const plain = layout(line(box('b', { display: 'inline-block', height: px(40) }, [text('b:text0', 'YY')])), ahemMeasurer);
+    if (plain.kind !== 'ok') throw new Error(JSON.stringify(plain));
+    const pabs = absoluteRects(plain.boxes);
+    expect([(pabs.get('b') as LayoutRect).y / 64, (pabs.get('b:text0:line0') as LayoutRect).y / 64, (pabs.get('a:line0') as LayoutRect).y / 64]).toEqual([0, 0, 0]);
+    // With no line box, the baseline is synthesized at the content box's bottom (html_button_element.cc:76-80, kContentBox): a 14px
+    // border box with 2px borders and 1px paddings puts it 11px down, 3px above its bottom, so the 8px text ascent sits 3px down.
+    const empty = control('b', { kind: 'button-block' }, { display: 'inline-block', height: px(14), boxSizing: 'border-box', borderTopWidth: px(2), borderBottomWidth: px(2), paddingTop: px(1), paddingBottom: px(1) });
+    const e = layout(line(empty), ahemMeasurer);
+    if (e.kind !== 'ok') throw new Error(JSON.stringify(e));
+    const eabs = absoluteRects(e.boxes);
+    expect([(eabs.get('b') as LayoutRect).y / 64, (eabs.get('a:line0') as LayoutRect).y / 64, (eabs.get('root') as LayoutRect).height / 64]).toEqual([0, 3, 14]);
+    // A scroll container button clamps its last baseline to [0, its border-box height] (logical_box_fragment.h:61-70): a 6px
+    // overflow: hidden button's 8px line baseline becomes 6px, so its top sits 2px down; a visible one keeps 8px, at the top.
+    const clipped = (overflow: 'hidden' | 'visible'): number => {
+      const b = control('b', { kind: 'button-block' }, { display: 'inline-block', height: px(6), overflowX: overflow, overflowY: overflow }, [text('b:text0', 'YY')]);
+      const o = layout(line(b), ahemMeasurer);
+      if (o.kind !== 'ok') throw new Error(JSON.stringify(o));
+      return (absoluteRects(o.boxes).get('b') as LayoutRect).y / 64;
+    };
+    expect([clipped('hidden'), clipped('visible')]).toEqual([2, 0]);
+    // Only a button control is inline-level: a range among inline content stays refused.
+    const inlineRange = control('r', { kind: 'range', defaultInlineSize: 129 }, { display: 'inline-block' });
+    expect(codes(line(inlineRange))).not.toEqual([]);
   });
 
   it('a control holds inline content with a strut as a box does, and is laid out as a block-flow or flex child (FORM-a with INL1a)', () => {

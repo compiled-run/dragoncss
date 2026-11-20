@@ -6,6 +6,7 @@ import type { SourceRef } from '../src/types.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 type Body = (r: SourceRef) => ReturnType<typeof div>[];
+type Kids = NonNullable<Parameters<typeof div>[3]>;
 
 const BODY = 'body { font-family: Ahem; font-size: 10px; } ';
 const BUTTON = '.b { display: block; appearance: none; font-family: Ahem; font-size: 10px; border: 2px solid #036; padding: 1px 6px; } ';
@@ -57,6 +58,18 @@ describe('FORM-a controls', () => {
     expect(refused('.p { color: red; } .b { color: revert; }')).toContainEqual(expect.stringMatching(/resolves color: revert to .*which Chrome's user-agent button rule resets/));
     expect(refused('.p { color: red; } .b { color: revert-layer; }')).toContainEqual(expect.stringMatching(/resolves color: revert-layer/));
     expect(refused('.p { font-style: normal; font-variant-caps: normal; } .b { color: revert; }')).toEqual([]);
+  });
+
+  it('refuses an inline-flex button with no flex item, looking through display: contents and past display: none (RF-INL)', () => {
+    const flexButton = (kids: (r: SourceRef) => Kids) => (r: SourceRef) => [div(r, 'p', ['p'], [text(r, 'pt', 'XX '), { ...div(r, 'b', ['b', 'f'], kids(r)), tag: 'button' }])];
+    const css = `${BODY}${BUTTON}.f { display: inline-flex; width: 20px; height: 20px; } .c { display: contents; } .n { display: none; } `;
+    const refused = (kids: (r: SourceRef) => Kids): boolean =>
+      errors(compile(css, flexButton(kids), NATIVE).diagnostics).some((e) => e.includes('display: inline-flex on the empty <button>'));
+    expect(refused(() => [])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c']), tag: 'span' }])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c'], [{ ...div(r, 'n', ['n'], [text(r, 'nt', 'YY')]), tag: 'span' }]), tag: 'span' }])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c'], [text(r, 'st', 'YY')]), tag: 'span' }])).toBe(false);
+    expect(refused((r) => [text(r, 'bt', 'YY')])).toBe(false);
   });
 
   it('refuses on native a control that scrolls, or a scrolling box inside one, and keeps them on web', () => {

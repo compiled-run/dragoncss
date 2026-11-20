@@ -4,5 +4,7 @@ export const CONTROLS_OUT: readonly string[] = [
   'controls-button-block', 'controls-button-block-rtl', 'controls-button-flex', 'controls-button-flex-rtl', 'controls-button-demo',
   'controls-button-demo-rtl', 'controls-button-type', 'controls-button-type-rtl', 'controls-appearance-display', 'controls-appearance-display-rtl',
   'controls-range-block', 'controls-range-block-rtl', 'controls-range-flex', 'controls-range-flex-rtl',
+  // RF-INL's controls-button-inline holds inline-block buttons, which hitRefusal names as controls before as atomic inlines.
+  'controls-button-inline', 'controls-button-inline-rtl',
 ];
 export const CONTROLS_REASON = /^(?:hit test: )?\S+ is a form control, which the hit table does not model yet \(FORM-a; Chrome retargets its parts to the control, no Chrome hit capture\)$/;

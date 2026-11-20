@@ -1674,8 +1674,10 @@ const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] 
 
 /**
  * FORM-a A3: a button is laid out as a block container that centres its contents, or as the flex container its display says,
- * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
- * display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control font (R13).
+ * and painted as CSS boxes. RF-INL: an inline-block or inline-flex button is the same box as an atomic inline (Chrome's UA
+ * display for a button is inline-block). Refused: a button the platform theme paints (R11, FORM-b); an inline or inline-grid one;
+ * any other display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control
+ * font (R13).
  */
 function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const tag = el.element.tag;
@@ -1688,10 +1690,14 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);
-  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
-    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block (or flex) on <${tag}> ${address}, or make it a flex item.`);
-  } else if (d !== 'block' && d !== 'flex') {
-    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a button; only block and flex buttons are laid out`, `Set display: block (or flex) on <${tag}> ${address}.`);
+  if (d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control that RF-INL does not lay out yet (only inline-block and inline-flex buttons are)`, `Set display: inline-block (or block or flex) on <${tag}> ${address}.`);
+  } else if (d === 'inline-flex' && !boxKids(el).some((c) => (c.kind === 'element' ? displayKeyword(c) !== 'none' : c.text.trim() !== ''))) {
+    // A flex container with no item (its box children, through display: contents, less display: none ones and white space) has no baseline, and Chrome synthesizes a button's at its content box (html_button_element.cc:76-80),
+    // where the engine's plain inline-flex box takes its margin box.
+    refuse(display, 'inline', `display: inline-flex on the empty <${tag}> ${address} synthesizes its baseline at its content box, which Dragon does not lay out for a flex button`, `Use display: inline-block on <${tag}> ${address}, or give it content.`);
+  } else if (d !== 'block' && d !== 'flex' && d !== 'inline-block' && d !== 'inline-flex') {
+    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a button; only block, flex, inline-block and inline-flex buttons are laid out`, `Set display: block (or flex) on <${tag}> ${address}.`);
   }
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);

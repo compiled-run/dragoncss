@@ -48,12 +48,12 @@ function dragonEdges(r: LayoutRect): { px: Edges; raw: Edges } {
   };
 }
 
-/** Each anonymous box's text leaf ids and its atomic inline children's ids (INL2a: inline-block and inline-flex boxes). */
+/** Each anonymous box's text leaf ids and its atomic inline children's ids (INL2a: inline-block and inline-flex boxes and buttons). */
 function anonymousBoxes(input: LayoutInput): Map<string, { readonly leaves: readonly string[]; readonly atomics: readonly string[] }> {
   const out = new Map<string, { readonly leaves: readonly string[]; readonly atomics: readonly string[] }>();
   const walk = (b: LayoutBox | ControlBox): void => {
     if (b.boxType === 'anonymous') {
-      const atomics = b.children.filter((c): c is LayoutBox => c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex')).map((c) => c.id);
+      const atomics = b.children.filter((c): c is LayoutBox | ControlBox => (c.kind === 'box' || c.kind === 'control') && (c.style.display === 'inline-block' || c.style.display === 'inline-flex')).map((c) => c.id);
       out.set(b.id, { leaves: b.children.filter((c) => c.kind === 'text').map((c) => c.id), atomics });
     }
     // A form control's contents hold anonymous boxes too (a button's text wrapper).
