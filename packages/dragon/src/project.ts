@@ -912,7 +912,6 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
     // BG2-t: a no-repeat gradient layer away from the start edge, refused natively unless its tile provably starts inside the box.
     checkGradientPhase(resolved, targets, diagnostics, refused, options.faults);
-    // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.

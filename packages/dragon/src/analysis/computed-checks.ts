@@ -508,7 +508,7 @@ function checkContentsText(el: ResolvedElement, layoutParent: ResolvedElement | 
 // CSS2 §9.2.1.1, §9.4.2 and css-text-4 §5.1: what the inline formatting core does not lay out, refused for every target at the
 // element: a block-level box inside an inline box (block-in-inline), an inline box on the empty line after a context's last <br>,
 // and runs with different text-wrap-mode in one formatting context.
-function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, realFaceAt: (address: string) => boolean, ua: UaDataset): void {
+function checkInline(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
   if (isInlineBox(el) || isContents(el)) return;
   const refuse = (at: ResolvedElement, what: string, message: string, manual: string): void => refuseFor(targets, at, what, message, manual);
   const refuseFor = (on: readonly string[], at: ResolvedElement, what: string, message: string, manual: string, origin: Origin = at.element.node.origin): void => {
@@ -527,7 +527,7 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     if (c.kind !== 'element' || !isBlockInInline(c) || !besideInline) continue;
     refuse(c, 'block-in-inline-beside', `the inline box <${c.element.tag}> ${c.element.address} holds block-level boxes beside the text or inline content of ${el.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon does not lay out yet (package BII)`, `Wrap the text beside ${c.element.address} in its own block, or make ${c.element.address} a block.`);
   }
-  // INL2c: an atomic inline inside an inline box, or beside text in a real face (Blink's LineBreaker for it is not ported).
+  // INL2c: an atomic inline inside an inline box.
   const unproven = (at: ResolvedElement, what: string, message: string, manual: string): void => {
     for (const t of targets) {
       const id = `${t}|atomic-${what}|${at.element.address}`;
@@ -546,13 +546,6 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
     refuse(child, 'block-in-inline', `<${child.element.tag}> ${child.element.address} is block-level inside the inline box <${box.element.tag}> ${box.element.address} (CSS2 §9.2.1.1 block-in-inline), which Dragon lays out only when the inline box holds nothing but block-level boxes and has no box of its own (here ${why ?? 'it does'}; package BII)`, `Move <${child.element.tag}> ${child.element.address} out of <${box.element.tag}> ${box.element.address}, or make ${box.element.address} a block.`);
   });
   for (const run of runs) {
-    const realText = run.find((it) => it.kind === 'text' && realFaceAt(it.text.node.address));
-    if (realText !== undefined && realText.kind === 'text') {
-      for (const it of run) {
-        if (it.kind !== 'atomic') continue;
-        unproven(it.el, 'beside-shaped-text', `${displayKeyword(it.el)} <${it.el.element.tag}> ${it.el.element.address} shares an inline formatting context of ${el.element.address} with text ${realText.text.node.address} in a real face; atomic inlines are proven only beside Ahem text (INL2c)`, `Put the text beside ${it.el.element.address} in its own block, or make ${it.el.element.address} a block.`);
-      }
-    }
     const lastBr = run.map((it) => it.kind).lastIndexOf('br');
     if (lastBr >= 0) {
       const after = run.slice(lastBr + 1);
@@ -1897,17 +1890,17 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here && el.element.tag === 'button') {
       checkButton(el, parentDisplay, targets, diagnostics, reported);
-      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+      checkInline(el, targets, diagnostics, reported, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
       checkRange(el, parentDisplay, targets, diagnostics, reported);
-      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+      checkInline(el, targets, diagnostics, reported, environmentOf(root).ua);
     } else if (!here && rangePartOf(el) !== undefined) {
       checkRangePart(el, targets, diagnostics, reported);
-      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+      checkInline(el, targets, diagnostics, reported, environmentOf(root).ua);
     } else if (!here) {
       checkInlineLevel(el, targets, diagnostics, reported);
       checkViewportFont(el, stale, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+      checkInline(el, targets, diagnostics, reported, environmentOf(root).ua);
       checkTextOverflow(el, propagated, targets, diagnostics, reported);
       checkTextIndent(el, targets, diagnostics, reported);
       checkTextWrapStyle(el, layoutParent, ancestorsOf(el), zoom, targets, diagnostics, reported, shapedAt);

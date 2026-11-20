@@ -136,7 +136,7 @@ describe('INL2c refusals (computed-checks.ts)', () => {
   });
 });
 
-describe('an atomic inline beside real-font text (INL2c)', () => {
+describe('an atomic inline beside real-font text', () => {
   const vendor = (file: string): Uint8Array => new Uint8Array(readFileSync(new URL(`../../../vendor/fonts/${file}`, import.meta.url)));
   const LATO = vendor('Lato/Lato-Regular.ttf');
   const MAP: FontMap = { generics: {}, families: { Lato: { mode: 'pinned', family: 'Lato', faces: [{ src: 'fonts/Lato-Regular.ttf', weight: '400' }] } } } as unknown as FontMap;
@@ -147,14 +147,14 @@ describe('an atomic inline beside real-font text (INL2c)', () => {
   const compile = (css: string, tree: (r: SourceRef) => TreeNode[]) =>
     createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} }, fonts: MAP }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(withLato(inputFor(css, tree)));
   const tree = (r: SourceRef) => [el(r, 'd', 'div', [], [text(r, 't0', 'Ab '), el(r, 'a', 'span', ['ib'])])];
-  it('is DRAGON_UNPROVEN_CONTEXT on every target at the atomic; the same with Ahem text is accepted', () => {
-    const lato = compile('body { font-family: Lato; font-size: 10px; } .ib { display: inline-block; width: 10px; }', tree);
-    expect(lato.diagnostics.filter((d) => d.message.includes('INL2c')).map((d) => `${d.code} ${String(d.target)} ${d.message.split(' shares ')[0]}`)).toEqual([
-      'DRAGON_UNPROVEN_CONTEXT ios inline-block <span> a',
-      'DRAGON_UNPROVEN_CONTEXT web inline-block <span> a',
-    ]);
-    const ahem = compile('body { font-family: Ahem; font-size: 10px; } .ib { display: inline-block; width: 10px; }', tree);
-    expect(ahem.diagnostics.filter((d) => d.message.includes('INL2c'))).toEqual([]);
+  // The engine's real-font LineBreaker places atomic inlines (layout shaping.ts handleAtomic), so the INL2c refusal beside a real face is gone.
+  it('compiles beside Lato text as beside Ahem text, with no INL2c diagnostic, and lowers the atomic among the Lato text', () => {
+    for (const family of ['Lato', 'Ahem']) {
+      const c = compile(`body { font-family: ${family}; font-size: 10px; } .ib { display: inline-block; width: 10px; }`, tree);
+      expect(c.diagnostics.map((d) => d.message), family).toEqual([]);
+      const p = iosLayoutProjection(c, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' }, []);
+      expect(p.kind, family).toBe('ready');
+    }
   });
 });
 
