@@ -2544,7 +2544,7 @@
         {"case":"interaction-focus~fx1f3cf7176ecf","width":1200,"height":900,"sha256":"956f35152fcf5a4c56614b0023bab6721126de2ff005f6848b08247ea793af28"},
         {"case":"interaction-focus~fx504fb92901bd","width":1200,"height":900,"sha256":"1b51437d84e654c7f62b22520d8b2eddf6f7b752455417a938344af2f0558caf"},
         {"case":"interaction-focus~fx1f3cf7176ecf-rtl","width":1200,"height":900,"sha256":"6ede493ca1e794d95ca95332e64219aa10270a3df96e86439d11fe1a6f99871c"},
-        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1200,"height":900,"sha256":"411ebff10d995958a84fc3b0e9bcccc709f632da6da139c30b9378715e049c85"},
+        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1200,"height":900,"sha256":"ce091e99436a328807b4f720417bed790ee380d0d0408e627a781d26a33478bd"},
         {"case":"interaction-combo~fx57871c980ee7","width":1200,"height":900,"sha256":"13f86b80fc895dff3afda860c306829a52696ff062a06f39cfc16c8289623900"},
         {"case":"interaction-combo~fx57871c980ee7-rtl","width":1200,"height":900,"sha256":"46b605b5009913d33bfaba959ffc9a440bfe54124bcf28a80efb123a6df33322"}
       ]
@@ -3817,7 +3817,7 @@
         {"case":"interaction-focus~fx1f3cf7176ecf","width":1050,"height":788,"sha256":"9c6420ce9454f5b0db6395cecf84bf3deb44dae56f7d5a1da4c562b06cfabf71"},
         {"case":"interaction-focus~fx504fb92901bd","width":1050,"height":788,"sha256":"2506eda31b1513ec77a79cee4284905081c784700be08fd831ffb89ce44a38b9"},
         {"case":"interaction-focus~fx1f3cf7176ecf-rtl","width":1050,"height":788,"sha256":"c496b946abe75c01d561c1e4d6add2be14d4edc91aece740c929f9040ea21d4f"},
-        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1050,"height":788,"sha256":"78e2fa55ca1f99409100f15df5cafc121d393dbe71ec3c4d6efb2d49d64a006a"},
+        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1050,"height":788,"sha256":"9a60c3fdbb3c549042925f50b03e7b47a59b35602796610fdb20786c251e6afd"},
         {"case":"interaction-combo~fx57871c980ee7","width":1050,"height":788,"sha256":"06efbcecd554d5e7849d3f0e2c95f6991557dbe8e01f8e118110e566e80fb16a"},
         {"case":"interaction-combo~fx57871c980ee7-rtl","width":1050,"height":788,"sha256":"f8531a54f2531c61e41fe03f358102a15c89c98e59ced21406ba5b559800d897"}
       ]
