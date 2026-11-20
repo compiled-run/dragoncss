@@ -1479,8 +1479,7 @@ function checkReplaced(el: ResolvedElement, targets: readonly string[], diagnost
 }
 
 /**
- * SVG-a1: an <svg> with a viewBox and an auto width or height is sized from the viewBox ratio and the available width, which the
- * engine does not do for a replaced box without a natural size yet (package SVG-ratio). A shape's geometry comes from its
+ * SVG-a1: an <svg> with a viewBox is a replaced box with the viewBox's natural ratio (lower/ios-layout.ts). A shape's geometry comes from its
  * attributes only: a CSS width, height or transform on it, which Chrome would apply as a geometry property, is refused, and so is
  * a percentage stroke-width, stroke-dasharray or stroke-dashoffset (relative to the viewport diagonal).
  */
@@ -1513,10 +1512,6 @@ function checkSvg(el: ResolvedElement, targets: readonly string[], diagnostics: 
     if (why !== null) refuse(p, v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), `${p}: ${valueToString(v.value)} on <${tag}> ${el.element.address} is unsupported: ${why}`, `Give ${p} in px or as numbers.`);
   }
   if (tag === 'svg') {
-    const auto = (['width', 'height'] as const).filter((p) => keywordOf(el.props.get(p) as ResolvedValue) === 'auto');
-    if (el.element.attributes.has('viewBox') && auto.length > 0) {
-      refuse('ratio', el.element.node.origin, `<svg> ${el.element.address} has a viewBox and ${auto.join(' and ')} auto: sizing from the viewBox ratio is not built yet (package SVG-ratio)`, `Give <svg> ${el.element.address} a width and a height, as attributes or in CSS.`);
-    }
     // SVG-a2: native clips the shapes to the svg's box (emit/paint/image.ts), as Chrome does at the UA's overflow: hidden only.
     for (const p of ['overflow-x', 'overflow-y'] as const) {
       const v = el.props.get(p) as ResolvedValue;
