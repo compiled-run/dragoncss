@@ -12,6 +12,7 @@ import { zlibInflate } from './inflate.ts';
 import { decodePng, parsePng, pngColourRefusal, pngRawSize } from './png.ts';
 import type { PngFacts } from './png.ts';
 import { sniffImage } from './sniff.ts';
+import { svgSizing } from './svg.ts';
 import type { ImageFormat } from './sniff.ts';
 
 /** The follow-up packages a refused image names (T045 R3, and the REPL-0 ruling for BMP, ICO and SVG). */
@@ -139,7 +140,7 @@ export function resolveImageSource(src: string, assets: ImageAssetMap, read: (pa
   return { kind: 'mapped', path, type: typeOfPath(path), bytes: read(path) };
 }
 
-/** The PNG or JPEG header of the bytes, by magic bytes; null for any other format or a header that does not parse. */
+/** The PNG, JPEG, GIF or sized SVG header of the bytes; null for any other format or a header that does not parse. */
 export function readImageHeader(bytes: Uint8Array, declaredType: string | null): ImageHeader | null {
   const format = sniffImage(bytes, declaredType);
   if (format === 'png') {
@@ -155,6 +156,10 @@ export function readImageHeader(bytes: Uint8Array, declaredType: string | null):
     const width = (bytes[6] as number) | ((bytes[7] as number) << 8);
     const height = (bytes[8] as number) | ((bytes[9] as number) << 8);
     return width > 0 && height > 0 ? { format: 'gif', facts: { width, height } } : null;
+  }
+  if (format === 'svg') {
+    const sizing = svgSizing(bytes);
+    return sizing.ok ? { format: 'svg', facts: sizing.size } : null;
   }
   return null;
 }
@@ -194,6 +199,10 @@ export function imageRefusal(bytes: Uint8Array, declaredType: string | null): Im
   if (format === 'jpeg') {
     const j = parseJpeg(bytes);
     return j.ok ? { package: 'REPL-j', reason: 'JPEG decodes differ per platform; REPL-j transcodes at build time' } : { package: null, reason: `the JPEG does not parse: ${j.reason}` };
+  }
+  if (format === 'svg') {
+    const sizing = svgSizing(bytes);
+    if (!sizing.ok) return { package: null, reason: sizing.reason };
   }
   return { package: OTHER_FORMATS[format], reason: `${format} is not decoded in REPL-a` };
 }

@@ -38,7 +38,7 @@ export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from '.
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES, syntheticBoldStroke } from './fonts/synthetic-bold.ts';
-export { sniffImage } from './images/index.ts';
+export { sniffImage, typeOfPath } from './images/index.ts';
 export { SYSTEM_FACE_ROLES, SYSTEM_FACE_WEIGHTS, SYSTEM_FACES, isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
 export type { SystemFaceRequest, SystemFaceRole, SystemFaceWeight } from './fonts/system-faces.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';

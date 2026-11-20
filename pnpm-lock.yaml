@@ -23,6 +23,9 @@ importers:
 
   packages/dragon:
     dependencies:
+      '@xmldom/xmldom':
+        specifier: 0.9.12
+        version: 0.9.12
       css-tree:
         specifier: 3.2.1
         version: 3.2.1
@@ -241,6 +244,10 @@ packages:
     resolution: {integrity: sha512-VQygoDH6OptDhYib3Uxo2e1uftOv2Tx9yddzUyAXOmsLquyrV46w5VzXla2kPAIK70+Lo56NzzrltKMqiBrrLg==}
     peerDependencies:
       css-tree: ^3.2.1
+
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
 
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
@@ -655,6 +662,8 @@ snapshots:
   '@webref/css@8.7.5(css-tree@3.2.1)':
     dependencies:
       css-tree: 3.2.1
+
+  '@xmldom/xmldom@0.9.12': {}
 
   assertion-error@2.0.1: {}
 

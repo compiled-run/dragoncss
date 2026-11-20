@@ -4,7 +4,7 @@
 import { join } from 'node:path';
 import type { Browser, Page } from 'playwright';
 import type { NativeStyleTarget } from 'dragon';
-import { BAND_KEY, sniffImage } from 'dragon';
+import { BAND_KEY, sniffImage, typeOfPath } from 'dragon';
 import { authoredFontHtml } from './cases.ts';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
@@ -535,17 +535,17 @@ export type CompareRow = { readonly target: string; readonly values: Values; rea
 /** The input as Chrome loads it: each `<img src>` that is one of the input's image files becomes a data: URL of the file's bytes. */
 export function withImageDataUrls(input: MarklessStyleInput, images: readonly MarklessImageFile[]): MarklessStyleInput {
   if (images.length === 0) return input;
-  const bytes = new Map(images.map((i) => [i.src, i.bytes]));
+  const files = new Map(images.map((i) => [i.src, i]));
   const dataUrl = (src: string): string => {
-    const b = bytes.get(src) as Uint8Array;
-    const format = sniffImage(b, null);
+    const { bytes: b, file } = files.get(src) as MarklessImageFile;
+    const format = sniffImage(b, typeOfPath(file));
     if (format === null) throw new Error(`the image file for ${src} is not an image Chrome decodes`);
     return `data:${format === 'svg' ? 'image/svg+xml' : `image/${format}`};base64,${Buffer.from(b).toString('base64')}`;
   };
   return {
     ...input,
     nodes: input.nodes.map((n) =>
-      n.kind === 'element' && n.element === 'img' && n.attributes['src'] !== undefined && bytes.has(n.attributes['src'])
+      n.kind === 'element' && n.element === 'img' && n.attributes['src'] !== undefined && files.has(n.attributes['src'])
         ? { ...n, attributes: { ...n.attributes, src: dataUrl(n.attributes['src']) } }
         : n,
     ),
