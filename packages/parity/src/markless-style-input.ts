@@ -462,7 +462,8 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
   const devices = marklessDevices(parsed, at);
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', imagePaint: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}), ...(images.length > 0 ? { images: marklessImageMap(images) } : {}) };
   const styles = compileNativeStyles(config, input);
-  const errors = styles.diagnostics.filter((d) => d.severity === 'error');
+  // The export carries the native targets only: an error that blocks Dragon's web output alone (a :visited rule) does not stop it.
+  const errors = styles.diagnostics.filter((d) => d.severity === 'error' && d.target !== 'web');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
   return { input, styles, devices };
 }
