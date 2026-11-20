@@ -108,7 +108,7 @@ The proof harness calls Dragon from a sibling checkout with the style input the 
 pnpm --silent --dir "${DRAGON_DIR:-$HOME/wt/dragon/native-dragon-styles}" run markless:style-export -- native-style-input.json native-style.json
 ```
 
-Relative paths are the caller's. It exits 0 and writes `dragon.native-style-export/1` (above). Otherwise it exits 1 with every reason on stderr: the input is malformed, the CSS does not compile (each error with its code, target and message), or a node of the input is missing from the export. Usage errors exit 2. Markless needs no package dependency on Dragon for this.
+Relative paths are the caller's. It exits 0 and writes `dragon.native-style-export/1` (above). Otherwise it exits 1 with every reason on stderr: the input is malformed, the CSS does not compile for iOS or Android (each error with its code, target and message; an error that blocks only Dragon's own web output, such as a `:link` or `:visited` rule, does not stop the export, which carries the native targets alone, where every link is unvisited as in a fresh Chrome profile), or a node of the input is missing from the export. Usage errors exit 2. Markless needs no package dependency on Dragon for this.
 
 What it does with the input (`packages/parity/src/markless-style-input.ts`):
 
