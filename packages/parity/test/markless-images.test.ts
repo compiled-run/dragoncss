@@ -5,6 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { compareMarklessExport } from '../src/markless-style-compare.ts';
 import { marklessImageFiles, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 
+// The device's layout function (harness.ts runMarklessLayout, translated to Swift and Kotlin), loaded by path as markless-plan.test.ts does.
+const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
+const { hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { hexBits(s: string): number };
+
 const FILES: Record<string, Uint8Array> = {
   // A PNG 96 by 48.
   'static/badge.png': new Uint8Array(readFileSync(new URL('./markless-images/badge.png', import.meta.url))),
@@ -103,6 +107,20 @@ describe('images on a styled Markless page', () => {
     const report = await compareMarklessExport(parsed, exported, undefined, 'light', [], null, null, marklessImageFiles(parsed, read));
     expect(report.rows.filter((r) => !r.pass)).toEqual([]);
     expect(report.compared).toBeGreaterThan(0);
+  });
+
+  it("lays out every <img> on the device from the export's layout plan as the export does, an SVG with only a ratio or one size among them", () => {
+    const at = { viewport: { width: 402, height: 778 }, dpr: 3 };
+    const { exported } = marklessStyleExport(input(IMAGES), 'gallery.json', read, 'system', { ios: at, android: at }, true);
+    const x = exported.targets.ios!;
+    const out = JSON.parse(runMarklessLayout(`{"assignment":0,"dpr":3,"viewport":{"width":402,"height":778},"safeArea":{"top":0,"right":0,"bottom":0,"left":0},"plan":${JSON.stringify(x.plan)}}`)) as unknown[];
+    expect(out[0]).toBe('ok');
+    const names = new Map(x.planNames?.[0] ?? []);
+    const frames = new Map((out[2] as unknown[][]).map((n) => [names.get(n[0] as string) ?? (n[0] as string), (n[1] as string[]).map(hexBits)]));
+    const ids = new Set(Array.from({ length: 15 }, (_, i) => `h${i + 1}`));
+    const imgs = x.assignments[0]!.nodes.filter((n) => ids.has(n.id));
+    expect(imgs.length).toBe(15);
+    for (const n of imgs) expect(frames.get(n.id), n.id).toEqual([n.frame!.x, n.frame!.y, n.frame!.width, n.frame!.height]);
   });
 
   it('refuses an image entry that is not { src, file } of a relative path, one listed twice, and an input that names files with no reader', () => {
