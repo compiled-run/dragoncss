@@ -8,6 +8,7 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'html', 'body', 'div',
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
   'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd',
+  'form',
   'span', 'a', 'label',
   'br',
   ...REPLACED_TAGS,
