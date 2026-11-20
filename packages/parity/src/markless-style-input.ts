@@ -7,8 +7,10 @@ import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, TREE_SCHEMA_REVISION } from 'dragon';
+import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
+import { PLAN_HEIGHTS } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
@@ -409,15 +411,18 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
   } as unknown as FrontEndResult;
 }
 
-/** The device each target lays the input out on: the export devices, at the input's viewports when it gives them. */
-export const marklessDevices = (parsed: MarklessStyleInput): { readonly [T in NativeStyleTarget]: ExportDevice } =>
-  parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
+/** The devices an export is asked to be laid out at instead of the input's own (a phone's own size and ratio). */
+export type MarklessAtSize = { readonly [T in NativeStyleTarget]: ExportDevice };
+
+/** The device each target lays the input out on: `at` when it was asked for, else the export devices at the input's viewports when it gives them. */
+export const marklessDevices = (parsed: MarklessStyleInput, at?: MarklessAtSize): { readonly [T in NativeStyleTarget]: ExportDevice } =>
+  at !== undefined ? at : parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
 
 /** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
-function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: typeof EXPORT_DEVICES } {
+function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
-  const devices = marklessDevices(parsed);
+  const devices = marklessDevices(parsed, at);
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const styles = compileNativeStyles(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
@@ -442,9 +447,9 @@ function cellKey(parsed: MarklessStyleInput): (key: string) => string {
  */
 export type MarklessCompiledTarget = Pick<ExportTarget, 'states' | 'bands' | 'viewport' | 'dpr' | 'initial' | 'next'> & { readonly assignments: readonly Readonly<Record<string, unknown>>[] };
 
-/** The targets the input compiles to, compiled as marklessStyleExport compiles it with these font files in this font mode. */
-export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned'): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
-  const { styles, devices } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode);
+/** The targets the input compiles to, compiled as marklessStyleExport compiles it with these font files in this font mode (and `at`). */
+export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned', at?: MarklessAtSize): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
+  const { styles, devices } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode, at);
   const rekey = cellKey(parsed);
   const out: { [T in NativeStyleTarget]?: MarklessCompiledTarget } = {};
   for (const [t, o] of Object.entries(styles.targets) as [NativeStyleTarget, (typeof styles.targets)[NativeStyleTarget]][]) {
@@ -469,17 +474,50 @@ export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: reado
  * `decoded`: the sfnt of each WOFF or WOFF2 author font, by its path relative to the input (DECODED_FONTS_DIR), which the export
  * lists with `from: 'input'` and the caller writes there.
  */
-export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned'): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned', at?: MarklessAtSize, plan = false): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const parsed = parseMarklessStyleInput(inputText);
   if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
-  const { input, styles, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode);
-  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null);
+  return exportMarkless(parsed, inputText, inputPath, fonts, mode, at, plan);
+}
+
+/**
+ * What makes a target's page depend on the viewport's height, each named: an @media feature that reads it, and each node whose
+ * frame differs when the page is laid out at `width` and each of `heights` and PLAN_HEIGHTS' (vh units, percentage heights that
+ * resolve against the viewport, text sized by the height). Empty when the page depends on the width alone.
+ */
+export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[], mode: MarklessFonts, t: NativeStyleTarget, width: number, dpr: number, heights: readonly number[]): string[] {
+  const text = JSON.stringify(parsed);
+  const path = `${parsed.component}.native-style-input.json`;
+  const out = new Set<string>();
+  const o = compileMarkless(parsed, text, path, fonts, mode).styles.targets[t];
+  for (const a of o?.kind === 'emitted' ? o.bands?.table.atoms ?? [] : []) if (HEIGHT_FEATURES.has(a.feature)) out.add(`@media (${a.feature})`);
+  const laidOut = [...new Set([...heights, PLAN_HEIGHTS.min, PLAN_HEIGHTS.max])].map((height) => {
+    const device = { viewport: { width, height }, dpr };
+    const x = exportMarkless(parsed, text, path, fonts, mode, { ios: device, android: device }, false).exported.targets[t];
+    if (x === undefined) return fail(`the export has no ${t} target`);
+    return x.assignments.map((a) => new Map(a.nodes.map((n) => [n.id, JSON.stringify(n.frame)])));
+  });
+  const [first, ...rest] = laidOut;
+  for (const other of rest) for (const [i, nodes] of (first ?? []).entries()) {
+    const there = other[i];
+    for (const [id, frame] of nodes) if (there?.get(id) !== frame) out.add(`node ${id}`);
+  }
+  return [...out];
+}
+
+/** The media features whose value changes with the viewport's height. */
+const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
+
+function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+  const { input, styles, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
+  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
   const dragonIds = dragonNodeIds(parsed);
+  const renameIn = (a: ExportAssignment): ((id: string) => string) => marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
   const renamed = (a: ExportAssignment): ExportAssignment => {
-    const rename = marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
+    const rename = renameIn(a);
     return { ...a, nodes: a.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) };
   };
   const exported: NativeStyleExport = {
@@ -487,14 +525,19 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
       ...x,
       assignments: x.assignments.map(renamed),
+      // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
+      ...(x.plan === undefined ? {} : { planNames: x.assignments.map((a) => {
+        const rename = renameIn(a);
+        return a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
+      }) }),
     }])),
   };
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
-  // Only an element a hidden attribute (fixed or by state) hides here, and its contents, is named with no frame; any other missing node fails.
-  const boxless = (a: ExportAssignment): ExportAssignment => {
+  // Named with no frame: an element a hidden attribute (fixed or by state) or a style state another assignment shows it in hides here, and its contents.
+  const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
     const hiddenHere = new Set<string>();
@@ -510,7 +553,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
       if (have.has(n.id)) return [];
       const byState = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
       // The boxless rule's display: contents !important beats hidden's UA display: none, so a boxless element hides nothing.
-      const own = n.kind === 'element' && n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null));
+      const own = n.kind === 'element' && n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id));
       if (!own && !hiddenHere.has(n.parent ?? '')) return [];
       hiddenHere.add(n.id);
       if (n.kind === 'element' && n.boxless === true) return [];
@@ -519,7 +562,10 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     });
     return { ...a, nodes: [...a.nodes, ...added] };
   };
-  for (const x of Object.values(exported.targets)) (x as { assignments: unknown }).assignments = x.assignments.map(boxless);
+  for (const x of Object.values(exported.targets)) {
+    const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
+    (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
+  }
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
