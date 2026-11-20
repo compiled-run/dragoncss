@@ -1474,7 +1474,7 @@ fun harness_decodeText(o: JsonObj, path: String): TextLeaf {
 }
 
 // ts: packages/translate/harness/harness.ts:1065
-fun harness_naturalSizeValue(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, path: String): U_NaturalSizeValue_image_NaturalSizeValue_none {
+fun harness_naturalSizeValue(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, path: String): U_NaturalSizeValue_height_NaturalSizeValue_image_NaturalSizeValue_none_NaturalSizeValue_ratio_NaturalSizeValue_width {
   val k: String = harness_kindOf(v, path)
   // ts: packages/translate/harness/harness.ts:1067
   if (jsStrEq(k, "none")) {

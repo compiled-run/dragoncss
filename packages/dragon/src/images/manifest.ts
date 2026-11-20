@@ -12,7 +12,7 @@ import { zlibInflate } from './inflate.ts';
 import { decodePng, parsePng, pngColourRefusal, pngRawSize } from './png.ts';
 import type { PngFacts } from './png.ts';
 import { sniffImage } from './sniff.ts';
-import { svgSizing } from './svg.ts';
+import { svgSize, svgSizing } from './svg.ts';
 import type { ImageFormat } from './sniff.ts';
 
 /** The follow-up packages a refused image names (T045 R3, and the REPL-0 ruling for BMP, ICO and SVG). */
@@ -158,8 +158,8 @@ export function readImageHeader(bytes: Uint8Array, declaredType: string | null):
     return width > 0 && height > 0 ? { format: 'gif', facts: { width, height } } : null;
   }
   if (format === 'svg') {
-    const sizing = svgSizing(bytes);
-    return sizing.ok ? { format: 'svg', facts: sizing.size } : null;
+    const size = svgSize(svgSizing(bytes));
+    return size === null ? null : { format: 'svg', facts: size };
   }
   return null;
 }

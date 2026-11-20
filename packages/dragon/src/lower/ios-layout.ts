@@ -892,15 +892,15 @@ function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridConta
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
   if (el.element.tag === 'img') {
     const src = el.element.attributes.get('src');
-    const size = src === undefined ? undefined : images.get(src);
-    if (size === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);
-    natural = { kind: 'image', width: size.width, height: size.height };
+    const read = src === undefined ? undefined : images.get(src);
+    if (read === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);
+    natural = read;
   } else if (el.element.tag === 'video' && videoLoads(el)) {
     // MEDIA-EL: Chrome sizes a video it loads by its stream (videos/compile.ts reads the src into the same map); one without a src,
     // or with preload none, keeps the default object size.
     const size = images.get(el.element.attributes.get('src') as string);
-    if (size === undefined) throw new LoweringError(id, 'src', `<video> ${id} has no stream the build read`);
-    natural = { kind: 'image', width: size.width, height: size.height };
+    if (size?.kind !== 'image') throw new LoweringError(id, 'src', `<video> ${id} has no stream the build read`);
+    natural = size;
   }
   const position = raw('object-position');
   if (position.kind !== 'position') return fail(id, 'object-position', position, '<position>');

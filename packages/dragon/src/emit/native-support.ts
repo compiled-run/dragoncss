@@ -3292,9 +3292,16 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
   };
   const styleOf = (st: import('@dragon/layout').LayoutStyle): string => `LayoutStyle(${STYLE_FIELDS.map((f) => fieldValue(st, f)).join(', ')})`;
-  // A replaced leaf (input.ts ReplacedLeaf): its natural size is NaturalSizeValue_image or NaturalSizeValue_none.
+  // A replaced leaf (input.ts ReplacedLeaf): its natural size is one of the NaturalSizeValue variants.
+  const naturalOf = (n: import('@dragon/layout').NaturalSizeValue): string => {
+    if (n.kind === 'image') return `NaturalSizeValue_image(${str('image')}, ${doubleLit(n.width)}, ${doubleLit(n.height)})`;
+    if (n.kind === 'ratio') return `NaturalSizeValue_ratio(${str('ratio')}, ${doubleLit(n.ratioWidth)}, ${doubleLit(n.ratioHeight)})`;
+    if (n.kind === 'width') return `NaturalSizeValue_width(${str('width')}, ${doubleLit(n.width)})`;
+    if (n.kind === 'height') return `NaturalSizeValue_height(${str('height')}, ${doubleLit(n.height)})`;
+    return `NaturalSizeValue_none(${str('none')})`;
+  };
   const replaced = (c: import('@dragon/layout').ReplacedLeaf): string => {
-    const natural = c.natural.kind === 'image' ? `NaturalSizeValue_image(${str('image')}, ${doubleLit(c.natural.width)}, ${doubleLit(c.natural.height)})` : `NaturalSizeValue_none(${str('none')})`;
+    const natural = naturalOf(c.natural);
     return `ReplacedLeaf(${str('replaced')}, ${str(c.id)}, ${styleOf(c.style)}, ${natural}, ${doubleLit(c.defaultWidth)}, ${doubleLit(c.defaultHeight)}, ${str(c.objectFit)}, ${engineValue(lang, c.objectPositionX)}, ${engineValue(lang, c.objectPositionY)})`;
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);

@@ -3698,7 +3698,7 @@ func harness_decodeText(_ o: JsonObj, _ path: JsString) throws -> TextLeaf {
 }
 
 // ts: packages/translate/harness/harness.ts:1065
-func harness_naturalSizeValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, _ path: JsString) throws -> any U_NaturalSizeValue_image_NaturalSizeValue_none {
+func harness_naturalSizeValue(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, _ path: JsString) throws -> any U_NaturalSizeValue_height_NaturalSizeValue_image_NaturalSizeValue_none_NaturalSizeValue_ratio_NaturalSizeValue_width {
   let k: JsString = try harness_kindOf(v, path)
   // ts: packages/translate/harness/harness.ts:1067
   if (k == HS.s_none) {

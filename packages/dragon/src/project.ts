@@ -1550,7 +1550,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri), options.hostImages);
       // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
       const videos = compileVideos(roots, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
-      images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
+      images = { ...read, naturals: new Map([...read.naturals, ...[...videos.naturals].map(([src, size]) => [src, { kind: 'image', width: size.width, height: size.height }] as const)]), bytes: new Map([...read.bytes, ...videos.bytes]) };
       // T065 ANIM-b1: transitions and animations over the native band's cases, gated per target like every other value.
       animation = analyzeAnimations({ cases, rules: [...(bandRules[nativeBand] as Set<Rule>)], allRules: rules, keyframes: keyframesRules, faults: options.faults, knownProperty: isKnownProperty }, diagnostics);
       // MQ-R1: native runs every band, so every other band's analysis reports too (each diagnostic once).
