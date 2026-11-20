@@ -7654,7 +7654,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5882-5886|font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@5882-5886|font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "android",
@@ -7666,14 +7666,14 @@
     "column": 13,
     "text": "2rem"
    },
-   "message": "font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "message": "font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5882-5886|font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@5882-5886|font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "ios",
@@ -7685,14 +7685,14 @@
     "column": 13,
     "text": "2rem"
    },
-   "message": "font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "message": "font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5882-5886|font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@5882-5886|font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
    "code": "DRAGON_UNPROVEN_CONTEXT",
    "severity": "error",
    "target": "web",
@@ -7704,7 +7704,7 @@
     "column": 13,
     "text": "2rem"
    },
-   "message": "font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
+   "message": "font-size:<length-rem> on page/player-call/play-icon:text0 is used in the text-as-anonymous-flex-item/row/ltr context, which is not proven (proven: text-in-block/ltr, text-in-block/rtl, text-in-flex-item/column/ltr, text-in-flex-item/row/ltr, text-in-flex-item/row/rtl); font-size values proven in text-as-anonymous-flex-item/row/ltr: <length-px> or inherit",
    "viaRelated": false,
    "passes": [
     "C-context"

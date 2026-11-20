@@ -7,7 +7,7 @@ import type { RadiusLengthValue } from '../../lower/paint/radius.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
 
-const lengthLit = (backend: 'swift' | 'kotlin', l: RadiusLengthValue): string => {
+export const radiusLengthLit = (backend: 'swift' | 'kotlin', l: RadiusLengthValue): string => {
   if (!Number.isFinite(l.value) || l.value < 0) throw new Error(`radius component ${l.value} is not a finite non-negative number`);
   const n = String(l.value);
   return `RadiusLength(${l.percent ? 'true' : 'false'}, ${/[.eE]/.test(n) ? n : `${n}.0`})`;
@@ -261,8 +261,8 @@ export const RADIUS_EMITTER: PaintEmitter<'border-radius', 'radius-square'> = {
   name: 'radius',
   kinds: ['border-radius'],
   lines: {
-    uikit: (v, _n, w) => [`  dragonSetRadii(${v}, [${w.lengths.map((l) => lengthLit('swift', l)).join(', ')}])`],
-    'android-views': (v, _n, w) => [`  dragonSetRadii(${v}, arrayOf(${w.lengths.map((l) => lengthLit('kotlin', l)).join(', ')}))`],
+    uikit: (v, _n, w) => [`  dragonSetRadii(${v}, [${w.lengths.map((l) => radiusLengthLit('swift', l)).join(', ')}])`],
+    'android-views': (v, _n, w) => [`  dragonSetRadii(${v}, arrayOf(${w.lengths.map((l) => radiusLengthLit('kotlin', l)).join(', ')}))`],
   },
   applied: (engine, _backend, w, dpr, g) => {
     const [bt, br, bb, bl] = g.border;

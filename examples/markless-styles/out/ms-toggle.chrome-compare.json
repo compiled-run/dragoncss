@@ -1,0 +1,391 @@
+{
+ "gateDevicePx": 1,
+ "targets": {
+  "ios": {
+   "viewport": {
+    "width": 402,
+    "height": 778
+   },
+   "dpr": 3,
+   "assignments": [
+    {
+     "values": {
+      "doc/app/chip#selected": false
+     },
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 102
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 102
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 102
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 102
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/list",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 102
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 102
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/chip",
+       "chrome": {
+        "x": 12,
+        "y": 12,
+        "width": 282,
+        "height": 78
+       },
+       "dragon": {
+        "x": 12,
+        "y": 12,
+        "width": 282,
+        "height": 78
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/dot",
+       "chrome": {
+        "x": 33,
+        "y": 21,
+        "width": 24,
+        "height": 24
+       },
+       "dragon": {
+        "x": 33,
+        "y": 21,
+        "width": 24,
+        "height": 24
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    },
+    {
+     "values": {
+      "doc/app/chip#selected": true
+     },
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 120
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 120
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 120
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 120
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/list",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 120
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 120
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/chip",
+       "chrome": {
+        "x": 12,
+        "y": 12,
+        "width": 312,
+        "height": 96
+       },
+       "dragon": {
+        "x": 12,
+        "y": 12,
+        "width": 312,
+        "height": 96
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/dot",
+       "chrome": {
+        "x": 48,
+        "y": 30,
+        "width": 48,
+        "height": 24
+       },
+       "dragon": {
+        "x": 48,
+        "y": 30,
+        "width": 48,
+        "height": 24
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    }
+   ]
+  },
+  "android": {
+   "viewport": {
+    "width": 411,
+    "height": 818
+   },
+   "dpr": 2.625,
+   "assignments": [
+    {
+     "values": {
+      "doc/app/chip#selected": false
+     },
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 88.00000476837158
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 88
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 88.00000476837158
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 88
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/list",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 88.00000476837158
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 88
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/chip",
+       "chrome": {
+        "x": 10.5,
+        "y": 10.5,
+        "width": 245.50000476837158,
+        "height": 66.99999976158142
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 10.5,
+        "width": 245.5,
+        "height": 67
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/dot",
+       "chrome": {
+        "x": 28.24999988079071,
+        "y": 17.74999988079071,
+        "width": 21,
+        "height": 21
+       },
+       "dragon": {
+        "x": 28.25,
+        "y": 17.75,
+        "width": 21,
+        "height": 21
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    },
+    {
+     "values": {
+      "doc/app/chip#selected": true
+     },
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 104.50000190734863
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 104.5
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 104.50000190734863
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 104.5
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/list",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 104.50000190734863
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 104.5
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/chip",
+       "chrome": {
+        "x": 10.5,
+        "y": 10.5,
+        "width": 272.50000190734863,
+        "height": 83.50000190734863
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 10.5,
+        "width": 272.5,
+        "height": 83.5
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/chip/dot",
+       "chrome": {
+        "x": 41.750000953674316,
+        "y": 26.000000953674316,
+        "width": 42,
+        "height": 21
+       },
+       "dragon": {
+        "x": 41.75,
+        "y": 26,
+        "width": 42,
+        "height": 21
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    }
+   ]
+  }
+ }
+}
