@@ -9,8 +9,11 @@ import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar
 import { borderDevicePx, isScalar, programAt, programInput } from 'dragon';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { markerSymbolPaint } from '../../layout/src/paint-marker.ts';
+import { columnAlpha, decorationRects, NO_DECORATION_FAULTS } from '../../layout/src/text-decoration.ts';
+import type { DecorationFont, DecorationLength } from '../../layout/src/text-decoration.ts';
+import type { FontSpec, InlineChild } from '@dragon/layout';
 import type { ListMarker, LayoutRect } from '@dragon/layout';
-import { clampedInput, NO_GRID_FAULTS, snapEdges, zoomInput } from '@dragon/layout';
+import { clampedInput, NO_GRID_FAULTS, resolvedInput, snapEdges, zoomInput } from '@dragon/layout';
 import { snapEdge } from '../../layout/src/units.ts';
 import { cssFontSizes } from './ahem-lines.ts';
 import type { EngineText } from './line-breaks.ts';
@@ -64,6 +67,12 @@ export type ExportNode = {
    * the list-marker write's colour.
    */
   readonly markerPaint?: { readonly rect: readonly [number, number, number, number]; readonly coverage: readonly number[] };
+  /**
+   * Only on a decorated text node: its decorations as Dragon's own native views draw them (emit/paint/text-decoration.ts), one rect
+   * per line and decoration: the first column and top in device px from the node's snapped edges, the columns and rows, whether it
+   * paints beneath the text (under and overlines), the colour and each column's alpha (Skia's antifilldot8 coverage of the colour's).
+   */
+  readonly decorations?: readonly { readonly x: number; readonly top: number; readonly columns: number; readonly rows: number; readonly before: boolean; readonly color: readonly [number, number, number]; readonly alphas: readonly number[] }[];
   /** Only on a node with a scroll-container write: the offset range its scroll view scrolls over. */
   readonly scrollRange?: ScrollOffsets;
   /** Only on a text node with a frame: its lines as Dragon's native text views draw them (DragonLineSpec), glyph for glyph. */
@@ -155,6 +164,72 @@ type Write = { readonly kind: string };
  * The border operations of a box with a visible dashed or dotted side, as Dragon's native paint computes them from the box's
  * absolute snapped edges and its whole device px widths. Dragon's compile refuses such a side on a rounded box (PNT1b).
  */
+type DecorationEntry = { readonly text: string; readonly box: string | null; readonly lines: readonly ('underline' | 'overline' | 'line-through')[]; readonly color: { readonly r: number; readonly g: number; readonly b: number; readonly alpha: number }; readonly thickness: { readonly kind: string; readonly value?: number }; readonly underlineOffset: { readonly kind: string; readonly value?: number }; readonly style: string; readonly skipInk: boolean };
+
+/** Each decorated text's decorations by its id, as the device's plan layout gives them (harness.ts planDecorationRects). */
+function textDecorations(input: ReturnType<typeof programInput>, measurer: TextMeasurer, boxes: readonly LayoutRect[], texts: readonly EngineText[], nodes: NativeProgram['nodes'], dpr: number): Map<string, NonNullable<ExportNode['decorations']>> {
+  const byText = new Map<string, DecorationEntry[]>();
+  for (const n of nodes) for (const w of n.writes as readonly Write[]) {
+    if (w.kind !== 'text-decoration') continue;
+    for (const e of (w as Write & { readonly entries: readonly DecorationEntry[] }).entries) byText.set(e.text, [...(byText.get(e.text) ?? []), e]);
+  }
+  const out = new Map<string, NonNullable<ExportNode['decorations']>>();
+  if (byText.size === 0) return out;
+  const zoomed = clampedInput(resolvedInput(input, measurer, NO_ENGINE_FAULTS), boxes, measurer);
+  const struts = new Map<string, FontSpec>();
+  const inlineFonts = new Map<string, FontSpec>();
+  const walkInline = (c: InlineChild): void => {
+    if (c.kind !== 'inline') return;
+    inlineFonts.set(c.id, c.font);
+    for (const k of c.children) walkInline(k);
+  };
+  const walk = (b: LayoutBox): void => {
+    if (b.strut !== null) struts.set(b.id, b.strut.font);
+    for (const c of b.children) {
+      if (c.kind === 'box') walk(c);
+      else if (c.kind !== 'replaced' && c.kind !== 'control') walkInline(c);
+    }
+  };
+  walk(zoomed.root);
+  const snapped = new Map(snapEdges(boxes).map((e, i) => [(boxes[i] as LayoutRect).id, e] as const));
+  const metricsOf = (f: { readonly family: string; readonly size: number }): DecorationFont => {
+    const a = measurer.metrics({ family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).ascent / LU_PER_PX;
+    return { floatAscent: a, ascent: a, size: f.size, underlineThickness: f.size / 10 };
+  };
+  const length = (l: DecorationEntry['thickness']): DecorationLength => (l.kind === 'px' ? { kind: 'px', value: (l.value as number) * dpr } : l.kind === 'percent' ? { kind: 'percent', value: l.value as number } : { kind: 'auto' });
+  for (const t of texts) {
+    const list = byText.get(t.id);
+    const e = snapped.get(t.id);
+    if (list === undefined || e === undefined) continue;
+    const textFont = metricsOf(t.textFont);
+    const rects: NonNullable<ExportNode['decorations']>[number][] = [];
+    for (const d of list) {
+      const spec = d.box === null ? struts.get(t.container) : inlineFonts.get(d.box);
+      if (spec === undefined) throw new Error(`${t.id}: no font for its decorating box`);
+      const font = metricsOf(spec);
+      for (const line of t.lines) {
+        const textTop = line.rect.y / LU_PER_PX;
+        const baseline = textTop + textFont.ascent;
+        for (const r of decorationRects({ lines: d.lines, thickness: length(d.thickness), underlineOffset: length(d.underlineOffset), font, textFont, left: line.rect.x / LU_PER_PX, width: line.rect.width / LU_PER_PX, textTop, decoratingTop: baseline - font.ascent, double: d.style === 'double' }, NO_DECORATION_FAULTS)) {
+          if (d.skipInk && r.line !== 'line-through') throw new Error(`${t.id}: skip-ink auto clips an ${r.line} around glyph ink, which a Markless host does not draw`);
+          const left = r.left - e.left;
+          const right = r.right - e.left;
+          const x0 = Math.floor(left);
+          const columns = Math.ceil(right) - x0;
+          const alphas: number[] = [];
+          for (let x = 0; x < columns; x++) {
+            const cov = columnAlpha(x, left - x0, right - x0, r.height);
+            alphas.push(cov <= 0 ? 0 : cov >= 256 ? d.color.alpha : Math.floor((d.color.alpha * (cov + 1)) / 256));
+          }
+          rects.push({ x: x0, top: r.top - e.top, columns, rows: r.height, before: r.beforeText, color: [d.color.r, d.color.g, d.color.b], alphas });
+        }
+      }
+    }
+    out.set(t.id, rects);
+  }
+  return out;
+}
+
 /** Each symbol list marker's paint by its box id, as the device's plan layout gives it (harness.ts planMarkerPaints). */
 function markerPaints(input: ReturnType<typeof programInput>, measurer: TextMeasurer, boxes: readonly LayoutRect[], dpr: number): Map<string, NonNullable<ExportNode['markerPaint']>> {
   const zoomed = clampedInput(zoomInput(input, NO_ENGINE_FAULTS), boxes, measurer);
@@ -293,7 +368,9 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       const input = programInput(program, d.viewport, d.dpr);
       const texts = new Map([...cssFontSizes(input.root)].map(([id, f]) => [id, f.text] as const));
       const origins = new Map([...absolute].map(([id, r]) => [id, { x: px(r.x), y: px(r.y) }] as const));
-      const lines = textLines(engineTextLines(input, measurer()), texts, origins, measurer());
+      const engineTexts = engineTextLines(input, measurer());
+      const lines = textLines(engineTexts, texts, origins, measurer());
+      const decorated = textDecorations(input, measurer(), laid, engineTexts, program.nodes, d.dpr);
       const markers = markerPaints(input, measurer(), laid, d.dpr);
       const nodes = program.nodes.map((n): ExportNode => {
         const box = boxes.get(n.id);
@@ -321,6 +398,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           ...(scrolls && range !== undefined ? { scrollRange: range } : {}),
           ...(own === undefined ? {} : { lines: own }),
           ...(markers.has(n.id) ? { markerPaint: markers.get(n.id) as NonNullable<ExportNode['markerPaint']> } : {}),
+          ...(decorated.has(n.id) ? { decorations: decorated.get(n.id) as NonNullable<ExportNode['decorations']> } : {}),
         };
       });
       if ('undecided' in scroll.page) undecided.add(`${t}: ${scroll.page.undecided}`);

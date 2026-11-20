@@ -37,6 +37,11 @@ export type PlanAssignment = {
   /** Each box with border-styles and border-colors writes: [id, styles, rgba per side]. */
   readonly dashed: readonly (readonly unknown[])[];
   readonly scroll: readonly string[];
+  /**
+   * Each decorated text's decorations (text-decoration writes): [text, box or null, lines, rgba, thickness, offset, double,
+   * skipInk], a length [kind, value] with px in css px.
+   */
+  readonly decorations: readonly (readonly unknown[])[];
 };
 export type MarklessPlan = {
   readonly version: typeof MARKLESS_PLAN_VERSION;
@@ -117,14 +122,22 @@ export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dp
     const program = programAt(sp, i);
     const dashed: (readonly unknown[])[] = [];
     const scroll: string[] = [];
+    const decorations: (readonly unknown[])[] = [];
     for (const n of program.nodes) {
       const writes = n.writes as readonly Write[];
       const styles = writes.find((w) => w.kind === 'border-styles')?.['styles'] as readonly string[] | undefined;
       const colors = writes.find((w) => w.kind === 'border-colors')?.['colors'] as readonly { r: number; g: number; b: number; alpha: number }[] | undefined;
       if (styles !== undefined && colors !== undefined) dashed.push([n.id, styles, colors.flatMap((c) => [c.r, c.g, c.b, c.alpha])]);
       if (writes.some((w) => w.kind === 'scroll-container')) scroll.push(n.id);
+      for (const w of writes) {
+        if (w.kind !== 'text-decoration') continue;
+        const length = (l: { readonly kind: string; readonly value?: number }): readonly unknown[] => [l.kind, l.value ?? 0];
+        for (const e of w['entries'] as readonly { readonly text: string; readonly box: string | null; readonly lines: readonly string[]; readonly color: { r: number; g: number; b: number; alpha: number }; readonly thickness: { kind: string; value?: number }; readonly underlineOffset: { kind: string; value?: number }; readonly style: string; readonly skipInk: boolean }[]) {
+          decorations.push([e.text, e.box, e.lines, [e.color.r, e.color.g, e.color.b, e.color.alpha], length(e.thickness), length(e.underlineOffset), e.style === 'double', e.skipInk]);
+        }
+      }
     }
-    return { variant: (sp.deltas[i] as { readonly variant: number }).variant, dashed, scroll };
+    return { variant: (sp.deltas[i] as { readonly variant: number }).variant, dashed, scroll, decorations };
   });
   const plan: MarklessPlan = { version: MARKLESS_PLAN_VERSION, faces: [...faces].map(([id, data]) => ({ id, data })), densities, variants: sp.variants, assignments };
   const read = JSON.parse(harness.checkMarklessPlan(JSON.stringify(plan))) as readonly unknown[];

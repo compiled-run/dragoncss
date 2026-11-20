@@ -185,6 +185,8 @@ import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature
 import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import { markerSymbolPaint, symbolCoverage } from '../../layout/src/paint-marker.ts';
+import { columnAlpha, decorationRects } from '../../layout/src/text-decoration.ts';
+import type { DecorationFaults, DecorationFont, DecorationLength, DecorationRect } from '../../layout/src/text-decoration.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
@@ -3230,7 +3232,15 @@ function planStyles(b: LayoutBox, out: Map<string, LayoutStyle>): void {
     if (c.kind === 'box') planStyles(c, out);
     else if (c.kind === 'control') planStyles(controlAsBox(c), out);
     else if (c.kind === 'replaced') out.set(c.id, c.style);
+    else planInlineStyles(c, out);
   }
+}
+
+/** An inline box's style and its nested inline boxes', whose border widths the export gives as it gives a block box's. */
+function planInlineStyles(c: InlineChild, out: Map<string, LayoutStyle>): void {
+  if (c.kind !== 'inline') return;
+  out.set(c.id, c.style);
+  for (const k of c.children) planInlineStyles(k, out);
 }
 
 /** Every text leaf's text by id, and each text marker's, of the unzoomed input (ahem-lines.ts cssFontSizes). */
@@ -3502,6 +3512,90 @@ function planMarkerPaints(input: LayoutInput, measurer: TextMeasurer, boxes: rea
   return out;
 }
 
+/**
+ * Each decorated text's decorations by its id, as Dragon's own native views draw them (emit/paint/text-decoration.ts over the
+ * translated decorationRects, as decoration-capture.ts predictDecorations takes its inputs): per rect [x0, top, columns, rows,
+ * before (1 for an under or overline, painted beneath the text), r, g, b, [alpha per column]], in device px from the text box's
+ * snapped edges, each column's alpha Skia's antifilldot8 coverage (columnAlpha) of the colour's.
+ */
+function planDecorationRects(input: LayoutInput, measurer: TextMeasurer, boxes: readonly LayoutRect[], texts: readonly PlanText[], decorations: Map<string, PlanDecoration[]>, dpr: number): Map<string, string> {
+  const out = new Map<string, string>();
+  const zoomed = clampedInput(resolvedInput(input, measurer, NO_ENGINE_FAULTS), boxes, measurer);
+  const struts = new Map<string, FontSpec>();
+  const inlineFonts = new Map<string, FontSpec>();
+  const containerOf = new Map<string, string>();
+  const walkInline = (c: InlineChild, container: string): void => {
+    if (c.kind === 'text') containerOf.set(c.id, container);
+    else if (c.kind === 'inline') {
+      inlineFonts.set(c.id, c.font);
+      for (const k of c.children) walkInline(k, container);
+    }
+  };
+  const walk = (b: LayoutBox): void => {
+    if (b.strut !== null) struts.set(b.id, b.strut.font);
+    for (const c of b.children) {
+      if (c.kind === 'box') walk(c);
+      else if (c.kind === 'control') walk(controlAsBox(c));
+      else if (c.kind !== 'replaced') walkInline(c, b.id);
+    }
+  };
+  walk(zoomed.root);
+  const snappedList = snapEdges(boxes);
+  const snapped = new Map<string, SnappedRect>();
+  boxes.forEach((b, i) => {
+    snapped.set(b.id, snappedList[i] as SnappedRect);
+  });
+  const metricsOf = (f: FontSpec): DecorationFont => {
+    const a = measurer.metrics({ family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).ascent / LU_PER_PX;
+    return { floatAscent: a, ascent: a, size: f.size, underlineThickness: f.size / 10 };
+  };
+  const deviceLength = (l: DecorationLength): DecorationLength => (l.kind === 'px' ? { kind: 'px', value: l.value * dpr } : l);
+  const faults: DecorationFaults = {
+    autoThicknessFromFont: false, gapWithFixedOffset: false, offsetNotRounded: false, snapFloorNotHalf: false,
+    thicknessRoundedNotFloored: false, lineThroughFromBaseline: false, decoratingBoxFontIgnored: false, underlineAfterText: false,
+    skipInkUndilated: false, doubleOffsetWithoutGap: false,
+  };
+  for (const t of texts) {
+    const list = decorations.get(t.id);
+    if (list === undefined) continue;
+    const container = containerOf.get(t.id);
+    const e = snapped.get(t.id);
+    if (container === undefined || e === undefined) return fail(`${t.id}: a decorated text with no container or box`);
+    const textMetrics = measurer.metrics(t.textFont).ascent / LU_PER_PX;
+    const textFont: DecorationFont = { floatAscent: textMetrics, ascent: textMetrics, size: t.textFont.size, underlineThickness: t.textFont.size / 10 };
+    let rects = '';
+    for (const d of list) {
+      // A block's decoration uses its text's line's root inline box (the container's strut); an inline box's, its own font.
+      const spec = d.box === null ? struts.get(container) : inlineFonts.get(d.box);
+      if (spec === undefined) return fail(`${t.id}: no font for its decorating box`);
+      const font = metricsOf(spec);
+      for (const line of t.lines) {
+        const textTop = line.rect.y / LU_PER_PX;
+        const baseline = textTop + textFont.ascent;
+        const found: DecorationRect[] = decorationRects({ lines: d.lines, thickness: deviceLength(d.thickness), underlineOffset: deviceLength(d.offset), font, textFont, left: line.rect.x / LU_PER_PX, width: line.rect.width / LU_PER_PX, textTop, decoratingTop: baseline - font.ascent, double: d.double }, faults);
+        for (const r of found) {
+          if (d.skipInk && r.line !== 'line-through') return fail(`${t.id}: skip-ink auto clips an ${r.line} around glyph ink, which the device does not draw`);
+          const left = r.left - e.left;
+          const right = r.right - e.left;
+          const x0 = Math.floor(left);
+          const columns = Math.ceil(right) - x0;
+          let alphas = '';
+          for (let x = 0; x < columns; x++) {
+            if (x > 0) alphas += ',';
+            const cov = columnAlpha(x, left - x0, right - x0, r.height);
+            const alpha = d.color[3] as number;
+            alphas += h(cov <= 0 ? 0 : cov >= 256 ? alpha : Math.floor((alpha * (cov + 1)) / 256));
+          }
+          if (rects !== '') rects += ',';
+          rects += `[${h(x0)},${h(r.top - e.top)},${h(columns)},${h(r.height)},${r.beforeText ? 1 : 0},${h(d.color[0] as number)},${h(d.color[1] as number)},${h(d.color[2] as number)},[${alphas}]]`;
+        }
+      }
+    }
+    out.set(t.id, `[${rects}]`);
+  }
+  return out;
+}
+
 /** A box's marker paint for the plan layout's output, or null. */
 function markerPaintOf(paints: Map<string, string>, id: string): string {
   const p = paints.get(id);
@@ -3531,7 +3625,18 @@ function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]):
 }
 
 type PlanVariant = { readonly rootFontSize: number; readonly root: LayoutBox };
-type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean> };
+type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly decorations: Map<string, PlanDecoration[]> };
+
+/** One decoration of a text (a text-decoration write's entry), its lengths in css px. */
+type PlanDecoration = {
+  readonly box: string | null;
+  readonly lines: ('underline' | 'overline' | 'line-through')[];
+  readonly color: readonly number[];
+  readonly thickness: DecorationLength;
+  readonly offset: DecorationLength;
+  readonly double: boolean;
+  readonly skipInk: boolean;
+};
 
 function planObj(v: JsonValue): JsonObj {
   const plan = obj(v, ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
@@ -3563,7 +3668,7 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
   if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`$.assignment: ${k} is not an assignment of the plan`);
   const path = `$.plan.assignments[${k}]`;
-  const ao = obj(assignments[k] as JsonValue, ['variant', 'dashed', 'scroll'], path);
+  const ao = obj(assignments[k] as JsonValue, ['variant', 'dashed', 'scroll', 'decorations'], path);
   const variant = numField(ao, 'variant', path);
   const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
   if (!Number.isInteger(variant) || variant < 0 || variant >= variants.length) fail(`${path}.variant: ${variant} is not a variant`);
@@ -3578,7 +3683,39 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   });
   const scrollers = new Map<string, boolean>();
   for (const s of arr(field(ao, 'scroll', path), `${path}.scroll`)) scrollers.set(str(s, `${path}.scroll`), true);
-  return { variant, dashed, scrollers };
+  const decorations = new Map<string, PlanDecoration[]>();
+  arr(field(ao, 'decorations', path), `${path}.decorations`).forEach((d, i) => {
+    const at = `${path}.decorations[${i}]`;
+    const a = arr(d, at);
+    if (a.length !== 8) fail(`${at}: expected 8 fields`);
+    const text = str(a[0] as JsonValue, `${at}[0]`);
+    const boxValue = a[1] as JsonValue;
+    const lines: ('underline' | 'overline' | 'line-through')[] = [];
+    for (const l of arr(a[2] as JsonValue, `${at}[2]`)) {
+      const name = str(l, `${at}[2]`);
+      if (name === 'underline' || name === 'overline' || name === 'line-through') lines.push(name);
+      else fail(`${at}[2]: ${name} is not a decoration line`);
+    }
+    const color = numbers(a[3] as JsonValue, `${at}[3]`);
+    if (color.length !== 4) fail(`${at}[3]: expected r, g, b and alpha`);
+    const list = decorations.get(text);
+    const entry: PlanDecoration = { box: boxValue.kind === 'null' ? null : str(boxValue, `${at}[1]`), lines, color, thickness: planDecorationLength(a[4] as JsonValue, `${at}[4]`), offset: planDecorationLength(a[5] as JsonValue, `${at}[5]`), double: bool(a[6] as JsonValue, `${at}[6]`), skipInk: bool(a[7] as JsonValue, `${at}[7]`) };
+    if (list === undefined) decorations.set(text, [entry]);
+    else list.push(entry);
+  });
+  return { variant, dashed, scrollers, decorations };
+}
+
+/** A decoration length [kind, value]: auto, px in css px, or a percentage. */
+function planDecorationLength(v: JsonValue, path: string): DecorationLength {
+  const a = arr(v, path);
+  if (a.length !== 2) return fail(`${path}: expected kind and value`);
+  const kind = str(a[0] as JsonValue, `${path}[0]`);
+  const value = num(a[1] as JsonValue, `${path}[1]`);
+  if (kind === 'auto') return { kind: 'auto' };
+  if (kind === 'px') return { kind: 'px', value };
+  if (kind === 'percent') return { kind: 'percent', value };
+  return fail(`${path}[0]: ${kind} is not auto, px or percent`);
 }
 
 /**
@@ -3651,7 +3788,9 @@ export function runMarklessLayout(line: string): string {
     const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
     planDeviceBorders(zoomed.root, zoomed.devicePixelRatio, deviceBorders);
     const lines = new Map<string, string>();
-    for (const t of planTextLines(input, measurer, boxes)) {
+    const textLines = planTextLines(input, measurer, boxes);
+    const decorated = planDecorationRects(input, measurer, boxes, textLines, parts.decorations, dpr);
+    for (const t of textLines) {
       const text = texts.get(t.id);
       const at = abs.get(t.id);
       if (text !== undefined && at !== undefined) lines.set(t.id, planLines(t, text, at, measurer));
@@ -3685,7 +3824,7 @@ export function runMarklessLayout(line: string): string {
       const dev = deviceBorders.get(b.id);
       const ops = d === undefined || dev === undefined ? '' : planDashed(d, rect, dev);
       const range = rangeOf.get(b.id);
-      out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'},${markerPaintOf(markerPaints, b.id)}]`;
+      out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'},${markerPaintOf(markerPaints, b.id)},${markerPaintOf(decorated, b.id)}]`;
     }
     return `${out}]]`;
   } catch (e) {
