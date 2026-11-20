@@ -154,7 +154,7 @@ describe('grid family: parse and expand', () => {
       ['grid-template-columns', 'repeat(auto-fill, 10px) repeat(min(2, 3), 5%)', 'min(2, 3)'],
       ['grid-row-start', 'calc(1 + 1)', 'calc(1 + 1)'],
       ['grid-area', '1 / span max(1, 2)', 'max(1, 2)'],
-      ['grid-template-columns', '10svw', '10svw'],
+      ['grid-template-columns', '10lh', '10lh'],
       ['grid-template-columns', 'round(10px, 3px)', 'round(10px, 3px)'],
     ] as const) {
       const { declaration, diagnostics, span } = declare(p, v);

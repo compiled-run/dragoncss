@@ -8,14 +8,15 @@ import { asciiLower } from './escapes.ts';
  * How a registered length converts to px (css-values-4 §6):
  * - absolute: value * pxPer, the fixed ratio of §6.2 (Blink's kCssPixelsPer* constants, in double);
  * - font-relative: value * the element's computed font-size (em), or the root element's (rem), §6.1.1;
- * - viewport: resolved by the engine's environment pass against the device viewport (§6.1.2, R6); vi and vb are width and height;
+ * - viewport: resolved by the engine's environment pass against the device viewport (§6.1.2, R6); vi and vb are width and height,
+ *   and size says which viewport it reads (§6.1.2.1: the sv, lv and dv prefixes; plain vw, vh, vi, vb, vmin and vmax read the large one);
  * - refused: no build-time conversion exists; reason says why, fix what to write instead.
  */
 export type UnitConversion =
   | { readonly kind: 'canonical' }
   | { readonly kind: 'absolute'; readonly pxPer: number }
   | { readonly kind: 'font-relative'; readonly base: 'em' | 'rem' }
-  | { readonly kind: 'viewport'; readonly axis: 'width' | 'height' | 'min' | 'max' }
+  | { readonly kind: 'viewport'; readonly axis: 'width' | 'height' | 'min' | 'max'; readonly size: 'small' | 'large' | 'dynamic' }
   | { readonly kind: 'refused'; readonly reason: string; readonly fix: string };
 
 /** One registered unit: its lowercased name, its dimension, the value-type part of its feature key, and its conversion. */
@@ -36,8 +37,8 @@ const PX_PER_PC = PX_PER_IN / 6;
 const FONT_METRIC_REASON = 'it is measured from the primary font at its rendered size, which Chrome rounds to 0.01px after device zoom, so no single build-time px value is exact at every pixel ratio';
 const FONT_METRIC_FIX = 'Use em, rem or px.';
 const LINE_HEIGHT_REASON = 'it is the used line height, which the layout engine rounds to 1/64 px (and takes from font metrics for line-height: normal), so it needs the engine value-model package';
-const SIZED_VIEWPORT_REASON = 'small, large and dynamic viewport units need the viewport inputs of the value-model package V2 (notes/T012-v2-spec.md)';
-const SIZED_VIEWPORT_FIX = 'Use vw, vh, vi, vb, vmin or vmax.';
+// css-values-4 §6.1.2: the axis each viewport unit suffix reads; the compiler maps vi and vb to width and height (horizontal writing mode).
+const VIEWPORT_AXES = [['w', 'width'], ['h', 'height'], ['i', 'width'], ['b', 'height'], ['min', 'min'], ['max', 'max']] as const;
 // CQ: cqw and cqi are refused here, so every paint parser that reads the registry refuses them, and the generic length parse and
 // css/math.ts admit them (LAYOUT_CONTAINER_UNITS); analysis/container-rules.ts resolves them against the query container per band.
 const CONTAINER_REASON = 'a container query unit is supported in layout lengths only (width, height, margins, padding, insets and the like), where Dragon resolves it against the query container';
@@ -58,14 +59,8 @@ export const UNITS: readonly UnitEntry[] = [
   length('rem', { kind: 'font-relative', base: 'rem' }),
   ...['ex', 'rex', 'ch', 'rch', 'cap', 'rcap', 'ic', 'ric'].map((u) => length(u, refused(FONT_METRIC_REASON, FONT_METRIC_FIX))),
   ...['lh', 'rlh'].map((u) => length(u, refused(LINE_HEIGHT_REASON, FONT_METRIC_FIX))),
-  length('vw', { kind: 'viewport', axis: 'width' }),
-  length('vh', { kind: 'viewport', axis: 'height' }),
-  length('vi', { kind: 'viewport', axis: 'width' }),
-  length('vb', { kind: 'viewport', axis: 'height' }),
-  length('vmin', { kind: 'viewport', axis: 'min' }),
-  length('vmax', { kind: 'viewport', axis: 'max' }),
-  ...['svw', 'svh', 'svi', 'svb', 'svmin', 'svmax', 'lvw', 'lvh', 'lvi', 'lvb', 'lvmin', 'lvmax', 'dvw', 'dvh', 'dvi', 'dvb', 'dvmin', 'dvmax']
-    .map((u) => length(u, refused(SIZED_VIEWPORT_REASON, SIZED_VIEWPORT_FIX))),
+  ...(['', 's', 'l', 'd'] as const).flatMap((prefix) => VIEWPORT_AXES.map(([a, axis]) =>
+    length(`${prefix}v${a}`, { kind: 'viewport', axis, size: prefix === 's' ? 'small' : prefix === 'd' ? 'dynamic' : 'large' }))),
   ...['cqw', 'cqh', 'cqi', 'cqb', 'cqmin', 'cqmax'].map((u) => length(u, u === 'cqw' || u === 'cqi' ? refused(CONTAINER_REASON, 'Use %, px, em or rem.') : refused(CONTAINER_BLOCK_REASON, 'Use cqw or cqi, or %, px, em or rem.'))),
 ];
 
@@ -114,6 +109,16 @@ const FONT_METRIC_PROPERTY_REASON = 'Dragon resolves ex, ch and cap from the ele
 export function unitRefusalIn(unit: string, longhands: readonly string[]): { readonly reason: string; readonly fix: string } | null {
   if (!FONT_METRIC_LAYOUT_UNITS.has(unit)) return unitRefusal(unit);
   return longhands.length > 0 && longhands.every((p) => FONT_METRIC_LAYOUT_LONGHANDS.has(p) || p === 'flex-grow' || p === 'flex-shrink') ? null : { reason: FONT_METRIC_PROPERTY_REASON, fix: FONT_METRIC_FIX };
+}
+
+/**
+ * A viewport-unit length as the engine's viewport leaf (layout input.ts ViewportLength), or null for any other unit. The native
+ * hosts give the small, large and dynamic viewports the size of the view (emit/native-support.ts environmentArgs), as Chrome does
+ * where no browser UI collapses (css-values-4 §6.1.2.1).
+ */
+export function viewportLeaf(unit: string, value: number): { readonly kind: 'viewport'; readonly value: number; readonly axis: 'width' | 'height' | 'min' | 'max'; readonly size: 'small' | 'large' | 'dynamic' } | null {
+  const c = unitEntry(unit)?.conversion;
+  return c?.kind === 'viewport' ? { kind: 'viewport', value, axis: c.axis, size: c.size } : null;
 }
 
 /** The refusal of a registered unit with no build-time conversion, or null. */

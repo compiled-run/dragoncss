@@ -1078,6 +1078,64 @@ function checkStretchHeights(root: ResolvedElement, targets: readonly string[], 
   walk(root, false, isFlex(root));
 }
 
+const INTRINSIC_BLOCK_KEYWORDS: ReadonlySet<string> = new Set(['min-content', 'max-content', 'fit-content']);
+
+/**
+ * css-sizing-3 §3.2: a height, min-height or max-height of min-content, max-content or fit-content is the box's content height. In
+ * block flow that is its auto height (Chrome 145, values-intrinsic-heights), so native lowers them to auto and none
+ * (lower/ios-layout.ts blockSize). Refused on ios and android where that is not the same layout: on a flex or grid item or an
+ * absolutely positioned box (which auto stretches, and the keyword does not), on a replaced box or beside aspect-ratio (whose
+ * content height the ratio gives), and as a min-height or max-height that clamps a height which is not auto, or a min-height
+ * beside a max-height length, which the content height would override.
+ */
+function checkIntrinsicHeights(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const kw = (el: ResolvedElement, p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
+  const content = (el: ResolvedElement, p: Longhand): boolean => INTRINSIC_BLOCK_KEYWORDS.has(kw(el, p));
+  const refuse = (el: ResolvedElement, props: readonly Longhand[], what: string, where: string, manual: string): void => {
+    for (const p of props) {
+      if (!content(el, p)) continue;
+      const v = el.props.get(p) as ResolvedValue;
+      const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+      for (const t of targets) {
+        const id = `${t}|intrinsic-height-${what}-${p}|${JSON.stringify(origin)}|${el.element.address}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message: `${p}: ${kw(el, p)} on ${el.element.address} ${where} is not supported yet on native (css-sizing-3 §3.2)`, manual, basis: 'computed-value' }));
+      }
+    }
+  };
+  const check = (el: ResolvedElement, item: string | null): void => {
+    if (!RATIO_BLOCK_SIZES.some((p) => content(el, p))) return;
+    const at = el.element.address;
+    const manual = `Use auto, a length or a percentage on ${at}.`;
+    if (item !== null) return refuse(el, RATIO_BLOCK_SIZES, 'item', `on a ${item} item, where auto stretches and the content height does not`, manual);
+    if (['absolute', 'fixed'].includes(kw(el, 'position'))) return refuse(el, RATIO_BLOCK_SIZES, 'out-of-flow', `on an absolutely positioned box, where auto fills its insets and the content height does not`, manual);
+    if (isReplacedTag(el.element.tag)) return refuse(el, RATIO_BLOCK_SIZES, 'replaced', `on the replaced <${el.element.tag}>`, manual);
+    if (kw(el, 'aspect-ratio') !== 'auto') return refuse(el, RATIO_BLOCK_SIZES, 'ratio', 'beside aspect-ratio', manual);
+    const height = kw(el, 'height');
+    if (height !== 'auto' && !content(el, 'height')) refuse(el, ['min-height', 'max-height'], 'clamp', 'that clamps a height other than auto to the content height', `Set height: auto on ${at}, or use a length.`);
+    else if (!content(el, 'max-height') && kw(el, 'max-height') !== 'none') refuse(el, ['min-height'], 'over-max', 'beside a max-height, which the content height would override', `Remove max-height from ${at}, or use a length for min-height.`);
+  };
+  const isFlex = (el: ResolvedElement): string | null => {
+    const d = displayKeyword(el);
+    return d === 'flex' || d === 'inline-flex' ? 'flex' : d === 'grid' || d === 'inline-grid' ? 'grid' : null;
+  };
+  const walk = (el: ResolvedElement, item: string | null): void => {
+    for (const c of el.children) {
+      if (c.kind !== 'element' || displayKeyword(c) === 'none') continue;
+      // css-display-3 §2.5: display: contents puts c's children in its place, as el's children.
+      if (displayKeyword(c) === 'contents') {
+        walk(c, item);
+        continue;
+      }
+      check(c, ['absolute', 'fixed'].includes(kw(c, 'position')) ? null : item);
+      walk(c, isFlex(c));
+    }
+  };
+  if (displayKeyword(root) !== 'none') check(root, null);
+  walk(root, isFlex(root));
+}
+
 /** css-sizing-3 §3.2 and css-sizing-4 §3.1: the inline-size keywords the engine resolves only on a block-level box without a ratio. */
 const SIZE_KEYWORDS: ReadonlySet<string> = new Set(['min-content', 'max-content', 'fit-content', 'stretch']);
 const INLINE_SIZES: readonly Longhand[] = ['width', 'min-width', 'max-width'];
@@ -1957,6 +2015,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkSticky(root, propagated, targets, diagnostics, reported);
   // SIZE-KW: stretch heights the engine does not fill (checkStretchHeights).
   checkStretchHeights(root, targets, diagnostics, reported);
+  // SIZE-KW: min-content, max-content and fit-content heights native lays out as auto only in block flow (checkIntrinsicHeights).
+  checkIntrinsicHeights(root, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);
   // PNT2: transforms where they would change layout or paint beyond the box (analysis/paint-values/transform.ts).
   checkTransformContexts(root, targets, diagnostics, reported);

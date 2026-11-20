@@ -9,6 +9,7 @@ import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, GridL
 import { list } from '../css/ast.ts';
 import { fontUnitsIn, lowerLengthCalc, mathContextFor, parseMath, V1_MATH_FUNCTIONS } from '../css/math.ts';
 import { decodeName, serializeIdentifier } from '../css/escapes.ts';
+import { viewportLeaf } from '../css/units.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
 import { valueToString } from '../analysis/resolve.ts';
@@ -48,16 +49,14 @@ const refuse = (p: Longhand, v: CssValue | string, why: string): never => {
   throw new GridLoweringError(p, `${p}: ${typeof v === 'string' ? v : valueToString(v)} has no grid layout mapping: ${why}`);
 };
 
-const VIEWPORT_AXIS: { readonly [unit: string]: 'width' | 'height' | 'min' | 'max' } = { vw: 'width', vi: 'width', vh: 'height', vb: 'height', vmin: 'min', vmax: 'max' };
-
 /**
  * A track size's math function or viewport length as a non-negative calculation (Blink parses a <track-breadth> with
  * ValueRange::kNonNegative), which the engine's environment pass resolves. Its em and rem are px already (computeGridLengths).
  */
 function trackCalc(p: Longhand, n: CssNode): LengthCalc | null {
   if (n.type === 'Dimension') {
-    const axis = VIEWPORT_AXIS[String(n['unit']).toLowerCase()];
-    return axis === undefined ? null : { kind: 'calc', expr: { kind: 'viewport', value: Number(n['value']), axis, size: 'large' }, range: 'non-negative' };
+    const viewport = viewportLeaf(String(n['unit']).toLowerCase(), Number(n['value']));
+    return viewport === null ? null : { kind: 'calc', expr: viewport, range: 'non-negative' };
   }
   if (n.type !== 'Function' || !V1_MATH_FUNCTIONS.has(String(n['name']).toLowerCase())) return null;
   const context = mathContextFor(p);

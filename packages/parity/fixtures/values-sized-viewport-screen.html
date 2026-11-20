@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.screen { display: flex; flex-direction: column; min-height: 100dvh; background-color: #eee; }
+.bar { height: 44px; background-color: #36c; }
+.main { flex-grow: 1; background-color: #fff; }
+.hero { height: calc(40svh - 44px); background-color: #c93; }
+.tabs { height: 49px; background-color: #333; }
+.sheet { position: fixed; left: 0; bottom: 0; width: 100svw; max-height: 50dvh; height: 300px; background-color: #6a6; }
+.grid { display: grid; grid-template-columns: 20svw 1fr; grid-template-rows: 5dvh 10px; width: 300px; background-color: #ddd; }
+.grid > .i { height: 3svh; background-color: #a3c; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="screen" class="screen"><div data-dragon-id="bar" class="bar"></div><div data-dragon-id="main" class="main"><div data-dragon-id="hero" class="hero"></div><div data-dragon-id="grid" class="grid"><div data-dragon-id="i" class="i"></div><div data-dragon-id="j" class="i"></div></div></div><div data-dragon-id="tabs" class="tabs"></div></div>
+<div data-dragon-id="sheet" class="sheet"></div>
+</body>
+</html>

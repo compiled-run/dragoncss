@@ -15,6 +15,10 @@ export const SIZING_KEYWORDS: readonly FixtureSpec[] = [
   // inside a root of definite height.
   both('sizing-stretch-height'),
   both('sizing-stretch-height-body'),
+  // height, min-height and max-height of min-content, max-content and fit-content on boxes in block flow, where each is the
+  // box's auto height: text, padding and border-box, margins collapsing through and past it, a float, an inline-block, a relative
+  // offset, a scroll container, a flex container and a percentage child.
+  both('sizing-keywords-height'),
   reject('reject-stretch-height-flex-item', 'DRAGON_UNSUPPORTED_VALUE', 'stretch', 'height: stretch on s inside a flex item'),
   reject('reject-sizing-keyword-flex-item', 'DRAGON_UNPROVEN_CONTEXT', 'min-content', 'width:min-content on i is used in the flex-row'),
 ];

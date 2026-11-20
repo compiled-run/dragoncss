@@ -8,6 +8,10 @@ export const VALUES: readonly FixtureSpec[] = [
   both('values-calc-width-px-percent'),
   both('values-calc-width-vw-em'),
   both('values-viewport-units'),
+  // css-values-4 §6.1.2.1: the small, large and dynamic viewport units, which the native hosts resolve against the view's size
+  // as Chrome does where no browser UI collapses; the screen case is the min-height: 100dvh app screen with a fixed sheet.
+  both('values-sized-viewport-units'),
+  both('values-sized-viewport-screen'),
   both('values-calc-percent-order'),
   both('values-calc-sum-order'),
   both('values-calc-nonneg-clamp'),
@@ -42,7 +46,6 @@ export const VALUES: readonly FixtureSpec[] = [
   both('values-order-calc-round'),
   both('values-length-saturation'),
   reject('values-reject-env', 'DRAGON_UNSUPPORTED_VALUE', 'env(safe-area-max-inset-top)', 'width: env(safe-area-max-inset-top) is unsupported: env(safe-area-max-inset-top) follows the browser'),
-  reject('values-reject-sized-viewport', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px + 5svh)', 'height: calc(10px + 5svh) /* svh is a small, large or dynamic viewport unit'),
   reject('values-reject-font-metric', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 3ex)', 'height: calc(1px + 3ex) /* ex is measured from the primary font'),
   reject('values-reject-line-height-unit', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 2lh)', 'height: calc(1px + 2lh) /* lh is the used line height'),
   reject('values-reject-typed-arithmetic', 'DRAGON_UNSUPPORTED_VALUE', 'calc(10px * 2px / 1px)', 'width: calc(10px*2px/1px) /* it multiplies two lengths, which is typed arithmetic'),
