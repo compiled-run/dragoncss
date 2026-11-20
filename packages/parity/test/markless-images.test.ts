@@ -137,6 +137,15 @@ describe('images on a styled Markless page', () => {
     expect(() => marklessStyleExport(covered, 'gallery.json', read)).toThrow('object-fit: cover; the host draws the picture filling its box (object-fit: fill)');
   });
 
+  it('refuses padding on an <img> or <svg> the host draws, which it would draw over the padding', () => {
+    const padded = input(IMAGES).replace('.thumb { width: 60px; }', '.thumb { width: 60px; padding: 2px; }');
+    expect(() => marklessStyleExport(padded, 'gallery.json', read)).toThrow('padding-top on <img> h4 is not supported when the host draws it');
+    const svg = JSON.parse(input(IMAGES)) as { nodes: unknown[]; css: string };
+    svg.nodes.push({ kind: 'element', id: 's1', element: 'svg', parent: 'h0', attributes: { viewBox: '0 0 4 2', class: 'mark' } }, { kind: 'element', id: 's2', element: 'rect', parent: 's1', attributes: { width: '4', height: '2' }, boxless: true });
+    expect(() => marklessStyleExport(JSON.stringify({ ...svg, css: `${svg.css}.mark { display: block; width: 40px; padding-left: 3px; }` }), 'gallery.json', read)).toThrow('padding-left on <svg> s1 is not supported when the host draws it');
+    expect(() => marklessStyleExport(JSON.stringify({ ...svg, css: `${svg.css}.mark { display: block; width: 40px; }` }), 'gallery.json', read)).not.toThrow();
+  });
+
   it('refuses an <img> whose src no image entry reads, naming it', () => {
     expect(() => marklessStyleExport(input([IMAGES[0]!, IMAGES[2]!]), 'gallery.json', read)).toThrow('/@markless-asset/lib/turned.jpg');
   });
