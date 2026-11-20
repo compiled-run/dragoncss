@@ -53,13 +53,13 @@ describe('styled elements inside @if arms', () => {
     expect(new Set(report.rows.map((r) => JSON.stringify([r.values[details], r.values[late], r.values[step]]))).size).toBe(12);
   });
 
-  it('refuses an arm of no branch, an arm a branch does not have, a node outside its parent arm, a malformed domain and rows', () => {
+  it('refuses an arm of no branch, an arm a branch does not have, a node outside its parent arm, a malformed domain and a row of no list', () => {
     const at = (text: string): number => input.nodes.findIndex((n) => n.kind === 'element' && n.id === byText(text));
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][at('Packed')]['arm'] = { branch: 'nowhere', index: 0 }; }))).toThrow('arm names nowhere, which is not an earlier branch');
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][at('Packed')]['arm'] = { branch: step, index: 7 }; }))).toThrow(`${step} has no arm 7`);
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][at('Running late')]['arm'] = { branch: step, index: 0 }; }))).toThrow(`is in arm 0 of ${details}, and it is not`);
     expect(() => parseMarklessStyleInput(edit((v) => { v['branches'][2]['domain'] = ['1', '0']; }))).toThrow('a domain is its arms "0", "1", … in order');
     expect(() => parseMarklessStyleInput(edit((v) => { v['branches'][2]['initial'] = 'none'; }))).toThrow('initial "none" is not in its domain');
-    expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][at('Packed')]['row'] = 'list'; }))).toThrow('styles inside @for rows are not supported yet');
+    expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][at('Packed')]['row'] = 'list'; }))).toThrow('row "list" is not a repeat');
   });
 });
