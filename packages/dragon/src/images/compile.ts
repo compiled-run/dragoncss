@@ -112,7 +112,7 @@ const shown = (src: string): string => (src.length > 64 ? `${src.slice(0, 48)}â€
  * per element and problem. assets: the snapshot's asset bytes by id. sourceText: a source's text by uri, to point a url()
  * diagnostic at its token. An images entry naming an asset the snapshot lacks is DRAGON_CONFIG_INVALID.
  */
-export function compileImages(roots: readonly ResolvedElement[], images: ImageAssetMap | undefined, assets: ReadonlyMap<string, Uint8Array>, diagnostics: Diagnostic[], sourceText: (uri: string) => string | undefined = () => undefined): CompiledImages {
+export function compileImages(roots: readonly ResolvedElement[], images: ImageAssetMap | undefined, assets: ReadonlyMap<string, Uint8Array>, diagnostics: Diagnostic[], sourceText: (uri: string) => string | undefined = () => undefined, hostImages = false): CompiledImages {
   const map = images ?? {};
   const uses = imgUses(roots, sourceText);
   const missing = Object.entries(map).filter(([, id]) => !assets.has(id));
@@ -164,6 +164,20 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
       continue;
     }
     const e = entries.get(u.src) as ImageEntry;
+    // The host draws an <img>'s picture from the file (hostImages): Dragon needs only its natural size, and draws nothing of it.
+    if (hostImages && u.kind === 'img') {
+      if (e.naturalSize === null) {
+        report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where}: ${e.refusal?.reason ?? 'its natural size is not read'}`);
+        continue;
+      }
+      const fit = u.el.props.get('object-fit')?.value;
+      if (fit !== undefined && !(fit.kind === 'keyword' && fit.value === 'fill')) {
+        report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where}: object-fit: ${fit.kind === 'keyword' ? fit.value : fit.kind}; the host draws the picture filling its box (object-fit: fill)`);
+        continue;
+      }
+      naturals.set(u.src, e.naturalSize);
+      continue;
+    }
     if (e.refusal !== null) {
       report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where}: ${e.refusal.reason}${e.refusal.package === null ? '' : ` (the ${e.refusal.package} package)`}`);
       continue;

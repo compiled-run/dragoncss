@@ -233,6 +233,8 @@ export type InternalRecord = {
   readonly focusReachable: boolean;
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
+  /** The host draws each <img>'s picture (InternalOptions.hostImages): the native paint writes no image content for an <img>. */
+  readonly hostImages: boolean;
   /** TXT-W: the synthetic bold and oblique plants, which the native lowering reads (native-program.ts textPaint). */
   readonly textPlants: TextPlants;
 };
@@ -309,6 +311,11 @@ export type InternalOptions = {
   readonly hostTopLayer?: boolean;
   /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
   readonly hostCanvas?: boolean;
+  /**
+   * The host draws each <img>'s picture itself from the file's bytes (a Markless host): Dragon sizes the element from the file's
+   * natural size and paints no image content, so a format REPL-a does not decode is laid out rather than refused.
+   */
+  readonly hostImages?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -333,6 +340,7 @@ type Resolved = {
   readonly interactionLanes: boolean;
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
+  readonly hostImages: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -1539,7 +1547,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
       const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
       const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])));
-      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
+      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri), options.hostImages);
       // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
       const videos = compileVideos(roots, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
       images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
@@ -1834,6 +1842,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       laneOnlyNative,
       focusReachable: focusable,
       images: images === null ? new Map() : images.bytes,
+      hostImages: options.hostImages,
       textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
       cases: cases.map((c) => ({
         key: c.key,
@@ -1976,6 +1985,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     interactionLanes: options.interactionLanes === true,
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
+    hostImages: options.hostImages === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,
