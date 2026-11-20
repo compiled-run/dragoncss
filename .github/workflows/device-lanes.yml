@@ -214,7 +214,8 @@ jobs:
         # A plant dispatch runs on the plant device's runner only (device-run.ts PLANT_DEVICES). Every part of every device in its
         # own job: cases and anim of each device, and the vectors lane of dragon-smoke.
         include: ${{ fromJSON(inputs.plant && '[{"device":"dragon-smoke","parts":"plant"}]' || '[{"device":"dragon-320","parts":"cases"},{"device":"dragon-320","parts":"anim"},{"device":"dragon-smoke","parts":"cases"},{"device":"dragon-smoke","parts":"anim"},{"device":"dragon-smoke","parts":"vectors"},{"device":"dragon-480","parts":"cases"},{"device":"dragon-480","parts":"anim"}]') }}
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest is Ubuntu 26.04, which Playwright 1.58.2 has no Chromium for, so the band oracle's install fails.
+    runs-on: ubuntu-24.04
     # As the iOS jobs': above setup, build and boot plus the longest launch limit.
     timeout-minutes: 75
     env:
