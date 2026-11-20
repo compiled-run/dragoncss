@@ -95,4 +95,17 @@ describe('viewports in a Markless style input', () => {
     expect(() => check({ prefersDark: true }, null)).toThrow('android assignment 0: the browser prefers dark, and this assignment is laid out for light');
     expect(() => check({ canvas: 'rgb(18, 18, 18)' }, null)).toThrow('android assignment 0: the browser\'s root uses the dark colour scheme, the export\'s colorScheme is light');
   });
+
+  it('compares a width band only on the phone that drew it, and refuses it at the export\'s size', () => {
+    const t = sheet.targets.android!;
+    const width = { feature: 'width', comparisons: [{ op: 'ge', value: 600, num: 0, den: 0 }], keyword: 'none' };
+    const banded = { ...t, bands: { atoms: [width], bands: [[false], [true]], conditions: ['(min-width: 600px)'] } };
+    const a = { ...t.assignments[0]!, values: { ...t.assignments[0]!.values, '@env#band': 1 } };
+    const probe: RootProbe = { vh: 371, viewportHeight: 371, innerHeight: 371, prefersDark: false, canvas: 'rgb(255, 255, 255)', lightCanvas: 'rgb(255, 255, 255)', darkCanvas: 'rgb(18, 18, 18)' };
+    const phone = { viewport: { width: 412, height: 818 }, dpr: t.dpr, by: 'the phone', fix: 'measure on the device the phone drew on', widthOnly: true };
+    const check = (laid: Parameters<typeof checkBrowserPage>[5], innerWidth: number): void => checkBrowserPage('android', banded, a, { dpr: t.dpr, innerWidth, probe }, 0, laid);
+    expect(() => check(phone, 412)).not.toThrow();
+    expect(() => check(undefined, 411.43)).toThrow('the comparison reads prefers-color-scheme only, not width');
+    expect(() => check(null, 300)).toThrow('the comparison reads prefers-color-scheme only, not width');
+  });
 });

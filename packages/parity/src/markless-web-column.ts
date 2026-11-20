@@ -13,7 +13,7 @@ import { BAND_KEY } from 'dragon';
 import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme, withCleanup } from './markless-style-compare.ts';
 import type { BoxProblem, CompareRow, DocumentNode, RootProbe } from './markless-style-compare.ts';
 import type { MarklessAtSize, MarklessExportAssignment, MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
-import { checkMarklessExport, marklessCompiledTargets, marklessHeightDependence, schemeOfSchemeAtoms } from './markless-style-input.ts';
+import { checkMarklessExport, marklessCompiledTargets, marklessHeightDependence, schemeOf, schemeOfSchemeAtoms } from './markless-style-input.ts';
 import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
@@ -131,16 +131,20 @@ export function checkBrowserPage(target: WebColumnDevice['target'], t: Pick<Expo
     const { vh, viewportHeight, innerHeight } = m.probe;
     if (laid.widthOnly !== true && (Math.abs(vh - laid.viewport.height) > 1 || Math.abs(viewportHeight - laid.viewport.height) > 1)) throw new Error(`${target}: the browser lays out 100vh at ${vh} and its viewport at ${viewportHeight} CSS px tall (innerHeight ${innerHeight}), ${laid.by} at ${laid.viewport.height}; ${laid.fix}`);
   }
-  const want = wantScheme(t, assignment);
+  const want = wantScheme(t, assignment, laid?.widthOnly === true);
   if (m.probe.prefersDark !== (want === 'dark')) throw new Error(`${target} assignment ${index}: the browser prefers ${m.probe.prefersDark ? 'dark' : 'light'}, and this assignment is laid out for ${want}; set the device's appearance to ${want}`);
   const used = usedScheme(m.probe);
   if (used !== assignment.colorScheme) throw new Error(`${target} assignment ${index}: the browser's root uses the ${used} colour scheme, the export's colorScheme is ${assignment.colorScheme}`);
 }
 
-/** The colour-scheme preference an assignment's band reads: light for an unbanded export. */
-function wantScheme(t: Pick<ExportTarget, 'bands'>, assignment: MarklessExportAssignment): Appearance {
+/**
+ * The colour-scheme preference an assignment's band reads: light for an unbanded export. On the phone's own layout (`widthOnly`) the
+ * band is the one the phone drew at the browser's width, so only its scheme atoms are read; at the export's size a band of any other
+ * feature is refused, since nothing makes the browser apply it.
+ */
+function wantScheme(t: Pick<ExportTarget, 'bands'>, assignment: MarklessExportAssignment, phoneBand: boolean): Appearance {
   const band = assignment.values[BAND_KEY];
-  return typeof band === 'number' ? schemeOfSchemeAtoms(t.bands, band) : 'light';
+  return typeof band !== 'number' ? 'light' : phoneBand ? schemeOfSchemeAtoms(t.bands, band) : schemeOf(t.bands, band);
 }
 
 /**
@@ -287,7 +291,7 @@ export async function webColumn(input: MarklessStyleInput, given: NativeStyleExp
     };
     for (const [index, assignment] of t.assignments.entries()) {
       if (native !== undefined && native.assignment !== index) continue;
-      const want = wantScheme(t, assignment);
+      const want = wantScheme(t, assignment, native !== undefined);
       const value = device.target === 'ios' ? want : nightOf(want);
       const switched = current !== value;
       if (switched) {
