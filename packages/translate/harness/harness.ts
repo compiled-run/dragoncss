@@ -1072,6 +1072,12 @@ function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
     const o = obj(v, ['kind', 'width', 'height'], path);
     return { kind: 'image', width: numField(o, 'width', path), height: numField(o, 'height', path) };
   }
+  if (k === 'ratio') {
+    const o = obj(v, ['kind', 'ratioWidth', 'ratioHeight'], path);
+    return { kind: 'ratio', ratioWidth: numField(o, 'ratioWidth', path), ratioHeight: numField(o, 'ratioHeight', path) };
+  }
+  if (k === 'width') return { kind: 'width', width: numField(obj(v, ['kind', 'width'], path), 'width', path) };
+  if (k === 'height') return { kind: 'height', height: numField(obj(v, ['kind', 'height'], path), 'height', path) };
   return fail(`${path}: unknown kind ${k}`);
 }
 

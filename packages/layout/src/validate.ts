@@ -254,7 +254,7 @@ export const replacedLeafSchema = obj({
   kind: lit('replaced'),
   id: str,
   style: styleSchema,
-  natural: tagged({ image: { width: num(0), height: num(0) }, none: {} }),
+  natural: tagged({ image: { width: num(0), height: num(0) }, ratio: { ratioWidth: positive, ratioHeight: positive }, width: { width: num(0) }, height: { height: num(0) }, none: {} }),
   defaultWidth: num(0),
   defaultHeight: num(0),
   objectFit: lit('fill', 'contain', 'cover', 'none', 'scale-down'),

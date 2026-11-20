@@ -476,15 +476,19 @@ describe('SVG natural size', () => {
   const sized = (svg: string) => svgSizing(new TextEncoder().encode(svg));
   const NS = 'xmlns="http://www.w3.org/2000/svg"';
   it('takes width and height in px or unitless, or one of them with the viewBox ratio', () => {
-    expect(sized(`<svg ${NS} width="40" height="20px"/>`)).toEqual({ ok: true, size: { width: 40, height: 20 } });
-    expect(sized(`<svg ${NS} width=" 30 " viewBox="0 0 30 60"/>`)).toEqual({ ok: true, size: { width: 30, height: 60 } });
-    expect(sized(`<svg ${NS} height="10" viewBox="5,5 40,10"/>`)).toEqual({ ok: true, size: { width: 40, height: 10 } });
+    expect(sized(`<svg ${NS} width="40" height="20px"/>`)).toEqual({ ok: true, natural: { kind: 'image', width: 40, height: 20 } });
+    expect(sized(`<svg ${NS} width=" 30 " viewBox="0 0 30 60"/>`)).toEqual({ ok: true, natural: { kind: 'image', width: 30, height: 60 } });
+    expect(sized(`<svg ${NS} height="10" viewBox="5,5 40,10"/>`)).toEqual({ ok: true, natural: { kind: 'image', width: 40, height: 10 } });
   });
-  it('treats a percentage or auto as no size, and refuses what Dragon cannot lay out or read', () => {
-    expect(sized(`<svg ${NS} width="100%" height="50%" viewBox="0 0 2 1"/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('only a natural ratio') });
-    expect(sized(`<svg ${NS} width="40" height="auto"/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('one size and no viewBox') });
-    expect(sized(`<svg ${NS}/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('no natural size') });
-    expect(sized(`<svg ${NS} width="2em" height="1em"/>`)).toMatchObject({ ok: false, reason: 'the root <svg> width="2em" is not a px length' });
+  it('gives only a ratio, only one size, or nothing when the root gives no more; a percentage or auto is no size', () => {
+    expect(sized(`<svg ${NS} width="100%" height="50%" viewBox="0 0 2 1"/>`)).toEqual({ ok: true, natural: { kind: 'ratio', ratioWidth: 2, ratioHeight: 1 } });
+    expect(sized(`<svg ${NS} width="40" height="auto"/>`)).toEqual({ ok: true, natural: { kind: 'width', width: 40 } });
+    expect(sized(`<svg ${NS} height="-4" width="x%" />`)).toEqual({ ok: true, natural: { kind: 'none' } });
+    expect(sized(`<svg ${NS} height="30" viewBox="0 0 0 10"/>`)).toEqual({ ok: true, natural: { kind: 'height', height: 30 } });
+    expect(sized(`<svg ${NS}/>`)).toEqual({ ok: true, natural: { kind: 'none' } });
+  });
+  it('refuses what it cannot read, and a file Chrome shows as no image', () => {
+    expect(sized(`<svg ${NS} width="2em" height="1em"/>`)).toEqual({ ok: false, reason: 'the root <svg> width="2em" is not a px length' });
     expect(sized(`<svg ${NS} width="0" height="10"/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('is 0') });
     expect(sized(`<svg ${NS} width="40" height="20">`)).toEqual({ ok: false, reason: 'the SVG file is not well-formed XML' });
     expect(sized('<svg width="40" height="20"/>')).toMatchObject({ ok: false, reason: expect.stringContaining('SVG namespace') });

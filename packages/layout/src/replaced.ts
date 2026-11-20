@@ -237,6 +237,9 @@ export function blockFlowSpace(cbInline: LU, cbBlock: LU | null, inlineMargins: 
 export function naturalSizingOf(leaf: ReplacedLeaf): NaturalSizing {
   const n = leaf.natural;
   if (n.kind === 'none') return { width: null, height: null, ratio: null };
+  if (n.kind === 'ratio') return { width: null, height: null, ratio: { width: fromCssPx(n.ratioWidth), height: fromCssPx(n.ratioHeight) } };
+  if (n.kind === 'width') return { width: fromCssPx(n.width), height: null, ratio: null };
+  if (n.kind === 'height') return { width: null, height: fromCssPx(n.height), ratio: null };
   const w = fromCssPx(n.width);
   const h = fromCssPx(n.height);
   return { width: w, height: h, ratio: w > 0 && h > 0 ? { width: w, height: h } : null };

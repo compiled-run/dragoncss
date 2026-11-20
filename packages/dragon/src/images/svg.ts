@@ -1,6 +1,6 @@
-// An SVG file's natural size, as Chrome takes it for an <img>: the root <svg>'s width and height, one of them with the viewBox
-// ratio giving the other. Dragon's layout takes a natural size with both dimensions, so a file with only a ratio, or one size and
-// no ratio, is refused rather than laid out as a different box.
+// An SVG file's natural dimensions, as Chrome takes them for an <img>: the root <svg>'s width and height, one of them with the
+// viewBox ratio giving the other, only the ratio, only one size, or none.
+import type { NaturalSizeValue } from '@dragon/layout';
 import { DOMParser } from '@xmldom/xmldom';
 import type { Element } from '@xmldom/xmldom';
 import type { NaturalSize } from './natural-size.ts';
@@ -8,7 +8,10 @@ import type { NaturalSize } from './natural-size.ts';
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const UTF8 = new (globalThis as unknown as { TextDecoder: new () => { decode(bytes: Uint8Array): string } }).TextDecoder();
 
-export type SvgSizing = { readonly ok: true; readonly size: NaturalSize } | { readonly ok: false; readonly reason: string };
+export type SvgSizing = { readonly ok: true; readonly natural: NaturalSizeValue } | { readonly ok: false; readonly reason: string };
+
+/** The natural size when the file gives both dimensions; null when it gives less. */
+export const svgSize = (sizing: SvgSizing): NaturalSize | null => (sizing.ok && sizing.natural.kind === 'image' ? { width: sizing.natural.width, height: sizing.natural.height } : null);
 
 type Length = { readonly kind: 'px'; readonly value: number } | { readonly kind: 'auto' } | { readonly kind: 'refused'; readonly reason: string };
 
@@ -25,16 +28,16 @@ function lengthOf(name: string, raw: string | null): Length {
   return { kind: 'px', value };
 }
 
-/** The viewBox ratio (width over height); null for a missing or invalid viewBox, or one with a non-positive size. */
-function viewBoxRatio(raw: string | null): number | null {
+/** The viewBox size; null for a missing or invalid viewBox, or one with a non-positive size. */
+function viewBoxSize(raw: string | null): NaturalSize | null {
   if (raw === null) return null;
   const parts = raw.trim().split(/[\s,]+/u).map(Number);
   if (parts.length !== 4 || parts.some((p) => !Number.isFinite(p))) return null;
-  const [, , w, h] = parts as [number, number, number, number];
-  return w > 0 && h > 0 ? w / h : null;
+  const [, , width, height] = parts as [number, number, number, number];
+  return width > 0 && height > 0 ? { width, height } : null;
 }
 
-/** The natural size of an SVG file's bytes. */
+/** The natural dimensions of an SVG file's bytes. */
 export function svgSizing(bytes: Uint8Array): SvgSizing {
   let root: Element | null;
   try {
@@ -52,10 +55,10 @@ export function svgSizing(bytes: Uint8Array): SvgSizing {
   const height = lengthOf('height', root.getAttribute('height'));
   if (width.kind === 'refused') return { ok: false, reason: width.reason };
   if (height.kind === 'refused') return { ok: false, reason: height.reason };
-  const ratio = viewBoxRatio(root.getAttribute('viewBox'));
-  if (width.kind === 'px' && height.kind === 'px') return { ok: true, size: { width: width.value, height: height.value } };
-  if (width.kind === 'px' && ratio !== null) return { ok: true, size: { width: width.value, height: width.value / ratio } };
-  if (height.kind === 'px' && ratio !== null) return { ok: true, size: { width: height.value * ratio, height: height.value } };
-  if (width.kind === 'px' || height.kind === 'px') return { ok: false, reason: 'the root <svg> gives one size and no viewBox, so the other dimension is the default object size with no ratio, which Dragon does not lay out' };
-  return { ok: false, reason: ratio === null ? 'the root <svg> gives no width, height or viewBox, so the image has no natural size, which Dragon does not lay out' : 'the root <svg> gives a viewBox but no width or height, so the image has only a natural ratio, which Dragon does not lay out' };
+  const box = viewBoxSize(root.getAttribute('viewBox'));
+  const natural = (n: NaturalSizeValue): SvgSizing => ({ ok: true, natural: n });
+  if (width.kind === 'px' && height.kind === 'px') return natural({ kind: 'image', width: width.value, height: height.value });
+  if (width.kind === 'px') return natural(box === null ? { kind: 'width', width: width.value } : { kind: 'image', width: width.value, height: (width.value * box.height) / box.width });
+  if (height.kind === 'px') return natural(box === null ? { kind: 'height', height: height.value } : { kind: 'image', width: (height.value * box.width) / box.height, height: height.value });
+  return natural(box === null ? { kind: 'none' } : { kind: 'ratio', ratioWidth: box.width, ratioHeight: box.height });
 }

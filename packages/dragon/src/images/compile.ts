@@ -12,6 +12,8 @@ import type { Diagnostic, Origin, Span } from '../types.ts';
 import { buildImageManifest, manifestDigestInput, resolveImageSource } from './manifest.ts';
 import type { ImageAssetMap, ImageEntry } from './manifest.ts';
 import type { NaturalSize } from './natural-size.ts';
+import { svgSizing } from './svg.ts';
+import type { NaturalSizeValue } from '@dragon/layout';
 
 /** The images option is a plain object of src to snapshot asset id; null when it is well formed, else why not. */
 export function imageMapProblem(v: unknown): string | null {
@@ -20,8 +22,8 @@ export function imageMapProblem(v: unknown): string | null {
   return null;
 }
 
-/** The natural size of each drawable image src. */
-export type ImageNaturals = ReadonlyMap<string, NaturalSize>;
+/** The natural dimensions of each drawable image src. */
+export type ImageNaturals = ReadonlyMap<string, NaturalSizeValue>;
 
 export type CompiledImages = {
   readonly naturals: ImageNaturals;
@@ -137,7 +139,8 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
     reported.add(id);
     diagnostics.push(diagnostic(code, { origin, message, ...(manual === undefined ? {} : { manual }) }));
   };
-  const naturals = new Map<string, NaturalSize>();
+  const naturals = new Map<string, NaturalSizeValue>();
+  const sized = (size: NaturalSize): NaturalSizeValue => ({ kind: 'image', width: size.width, height: size.height });
   const bytes = new Map<string, Uint8Array>();
   const webUrls = new Map<string, string>();
   for (const u of uses) {
@@ -166,7 +169,11 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
     const e = entries.get(u.src) as ImageEntry;
     // The host draws an <img>'s picture from the file (hostImages): Dragon needs only its natural size, and draws nothing of it.
     if (hostImages && u.kind === 'img') {
-      if (e.naturalSize === null) {
+      // An SVG file may give less than a natural size: only a ratio, one dimension, or nothing.
+      const resolved = e.format === 'svg' ? resolveImageSource(u.src, usable, read) : null;
+      const svg = resolved !== null && (resolved.kind === 'data' || resolved.kind === 'mapped') ? svgSizing(resolved.bytes) : null;
+      const natural = svg?.ok === true ? svg.natural : e.naturalSize === null ? null : sized(e.naturalSize);
+      if (natural === null) {
         report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where}: ${e.refusal?.reason ?? 'its natural size is not read'}`);
         continue;
       }
@@ -175,7 +182,7 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
         report(u, 'DRAGON_UNSUPPORTED_IMAGE', `${where}: object-fit: ${fit.kind === 'keyword' ? fit.value : fit.kind}; the host draws the picture filling its box (object-fit: fill)`);
         continue;
       }
-      naturals.set(u.src, e.naturalSize);
+      naturals.set(u.src, natural);
       continue;
     }
     if (e.refusal !== null) {
@@ -183,7 +190,7 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
       continue;
     }
     if (e.naturalSize === null) throw new Error(`${where}: an accepted image has no natural size`);
-    naturals.set(u.src, e.naturalSize);
+    naturals.set(u.src, sized(e.naturalSize));
     const resolved = resolveImageSource(u.src, usable, read);
     if (resolved.kind !== 'data' && resolved.kind !== 'mapped') throw new Error(`${where}: an accepted src no longer resolves`);
     bytes.set(u.src, resolved.bytes);

@@ -287,7 +287,12 @@ function resolveMarker(m: ListMarker, env: Env): ListMarker {
 function resolveReplaced(r: ReplacedLeaf, parent: Env): ReplacedLeaf {
   const env = atElement(parent, r.id, r.style);
   const z = env.zoom;
-  const natural: ReplacedLeaf['natural'] = r.natural.kind === 'image' ? { kind: 'image', width: zoomCssPx(r.natural.width, z), height: zoomCssPx(r.natural.height, z) } : { kind: 'none' };
+  const n = r.natural;
+  const natural: ReplacedLeaf['natural'] =
+    n.kind === 'image' ? { kind: 'image', width: zoomCssPx(n.width, z), height: zoomCssPx(n.height, z) }
+    : n.kind === 'width' ? { kind: 'width', width: zoomCssPx(n.width, z) }
+    : n.kind === 'height' ? { kind: 'height', height: zoomCssPx(n.height, z) }
+    : n;
   const position = (v: ReplacedLeaf['objectPositionX']): ReplacedLeaf['objectPositionX'] => (v.kind === 'px' ? lengthPx(v, z) : v);
   return {
     kind: 'replaced',

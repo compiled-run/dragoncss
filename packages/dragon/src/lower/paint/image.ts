@@ -137,8 +137,8 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth, cap: sh.cap, join: sh.join, miterLimit: sh.miterLimit, fillRule: sh.fillRule, dashes: sh.dashes, dashPhase: svgDashPhase(sh.dashes, sh.dashOffset), strokeFirst: sh.strokeFirst, nonScalingStroke: sh.nonScalingStroke })) }];
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
-    if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
     if (hostImages) return [];
+    if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
     const src = el.element.attributes.get('src');
     const bytes = src === undefined ? undefined : images.get(src);
     if (bytes === undefined) throw new ProgramError(`${box.id}: no image bytes for its src`);
