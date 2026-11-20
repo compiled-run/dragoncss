@@ -51,12 +51,13 @@ function throughCanvas(rgba: Uint8Array): Uint8Array {
 }
 
 describe('natural size (R4)', () => {
-  it('the header natural size equals Chrome naturalWidth/naturalHeight for every PNG and JPEG of the corpus', () => {
+  it('the header natural size equals Chrome naturalWidth/naturalHeight for every PNG, JPEG and GIF of the corpus', () => {
     const r = compareNaturalSizes(natural, corpus);
     expect(r.mismatches).toEqual([]);
     const readable = natural.images.filter((i) => readImageHeader(corpus(i.file), i.type) !== null);
     expect(r.compared).toBe(readable.length);
-    expect(r.compared).toBe(64);
+    // 64 PNGs and JPEGs, and the corpus's GIF, whose logical screen is its natural size.
+    expect(r.compared).toBe(65);
   });
   it.each(Object.keys(IMAGE_PLANTS) as ImagePlant[])('plant %s breaks at least one pair', (plant) => {
     expect(compareNaturalSizes(natural, corpus, faultsOfPlant(plant)).mismatches.length).toBeGreaterThan(0);

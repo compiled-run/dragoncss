@@ -150,6 +150,12 @@ export function readImageHeader(bytes: Uint8Array, declaredType: string | null):
     const j = parseJpeg(bytes);
     return j.ok ? { format: 'jpeg', facts: j.facts } : null;
   }
+  // GIF87a/89a: the logical screen's width and height, little-endian, after the signature (GIF89a §18).
+  if (format === 'gif' && bytes.length >= 10) {
+    const width = (bytes[6] as number) | ((bytes[7] as number) << 8);
+    const height = (bytes[8] as number) | ((bytes[9] as number) << 8);
+    return width > 0 && height > 0 ? { format: 'gif', facts: { width, height } } : null;
+  }
   return null;
 }
 

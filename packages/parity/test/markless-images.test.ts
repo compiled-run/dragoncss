@@ -10,6 +10,8 @@ const FILES: Record<string, Uint8Array> = {
   'static/badge.png': new Uint8Array(readFileSync(new URL('./markless-images/badge.png', import.meta.url))),
   // A JPEG stored 200 by 120 with EXIF orientation 6: Chrome draws it turned, 120 by 200.
   'lib/turned.jpg': new Uint8Array(readFileSync(new URL('./markless-images/turned.jpg', import.meta.url))),
+  // A GIF87a whose logical screen is 30 by 10 (made with sips from a PNG).
+  'static/strip.gif': new Uint8Array(readFileSync(new URL('./markless-images/strip.gif', import.meta.url))),
 };
 const read = (file: string): Uint8Array => {
   const bytes = FILES[file];
@@ -32,6 +34,8 @@ const input = (images?: readonly { src: string; file: string }[]): string =>
       { kind: 'element', id: 'h2', element: 'img', parent: 'h0', attributes: { src: '/static/badge.png', alt: 'Wide badge', class: 'half' } },
       { kind: 'element', id: 'h3', element: 'img', parent: 'h0', attributes: { src: '/@markless-asset/lib/turned.jpg', alt: 'Turned photo' } },
       { kind: 'element', id: 'h4', element: 'img', parent: 'h0', attributes: { src: '/@markless-asset/lib/turned.jpg', alt: 'Small photo', class: 'thumb' } },
+      { kind: 'element', id: 'h5', element: 'img', parent: 'h0', attributes: { src: '/static/strip.gif', alt: 'Strip' } },
+      { kind: 'element', id: 'h6', element: 'img', parent: 'h0', attributes: { src: '/static/strip.gif', alt: 'Wide strip', class: 'thumb' } },
     ],
     css: CSS,
     states: [],
@@ -41,10 +45,11 @@ const input = (images?: readonly { src: string; file: string }[]): string =>
 const IMAGES = [
   { src: '/static/badge.png', file: 'static/badge.png' },
   { src: '/@markless-asset/lib/turned.jpg', file: 'lib/turned.jpg' },
+  { src: '/static/strip.gif', file: 'static/strip.gif' },
 ];
 
 describe('images on a styled Markless page', () => {
-  it('sizes each <img> from its file as Chrome does (natural size, a CSS width with the ratio, EXIF orientation), within 1 device px', async () => {
+  it('sizes each <img> from its file as Chrome does (natural size, a CSS width with the ratio, EXIF orientation, a GIF), within 1 device px', async () => {
     const text = input(IMAGES);
     const { exported } = marklessStyleExport(text, 'gallery.json', read);
     for (const t of ['ios', 'android'] as const) {
@@ -54,6 +59,9 @@ describe('images on a styled Markless page', () => {
       expect(frames.get('h1'), t).toMatchObject({ width: 96 * dpr, height: 48 * dpr });
       expect(frames.get('h3'), t).toMatchObject({ width: 120 * dpr, height: 200 * dpr });
       expect(frames.get('h4'), t).toMatchObject({ width: 60 * dpr, height: 100 * dpr });
+      // A GIF, which Dragon's own paint does not decode, is laid out from its logical screen for the host to draw.
+      expect(frames.get('h5'), t).toMatchObject({ width: 30 * dpr, height: 10 * dpr });
+      expect(frames.get('h6'), t).toMatchObject({ width: 60 * dpr, height: 20 * dpr });
     }
     const parsed = parseMarklessStyleInput(text);
     const report = await compareMarklessExport(parsed, exported, undefined, 'light', [], null, null, marklessImageFiles(parsed, read));
@@ -76,6 +84,6 @@ describe('images on a styled Markless page', () => {
   });
 
   it('refuses an <img> whose src no image entry reads, naming it', () => {
-    expect(() => marklessStyleExport(input([IMAGES[0]!]), 'gallery.json', read)).toThrow('/@markless-asset/lib/turned.jpg');
+    expect(() => marklessStyleExport(input([IMAGES[0]!, IMAGES[2]!]), 'gallery.json', read)).toThrow('/@markless-asset/lib/turned.jpg');
   });
 });
