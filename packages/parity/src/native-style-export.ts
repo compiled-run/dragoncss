@@ -8,6 +8,9 @@ import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DA
 import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
 import { borderDevicePx, isScalar, programAt, programInput } from 'dragon';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
+import { markerSymbolPaint } from '../../layout/src/paint-marker.ts';
+import type { ListMarker, LayoutRect } from '@dragon/layout';
+import { clampedInput, NO_GRID_FAULTS, snapEdges, zoomInput } from '@dragon/layout';
 import { snapEdge } from '../../layout/src/units.ts';
 import { cssFontSizes } from './ahem-lines.ts';
 import type { EngineText } from './line-breaks.ts';
@@ -55,6 +58,12 @@ export type ExportNode = {
    * right, bottom, left) in whole device px.
    */
   readonly borderOps?: { readonly origin: { readonly x: number; readonly y: number }; readonly size: { readonly width: number; readonly height: number }; readonly widths: readonly number[]; readonly ops: readonly BorderOp[] };
+  /**
+   * Only on a symbol list marker's box: its symbol as Dragon's own native paint draws it (paint-marker.ts markerSymbolPaint), the rect
+   * in device px from the box's snapped edges and the coverage of each of its device pixels, row by row, which the host tints with
+   * the list-marker write's colour.
+   */
+  readonly markerPaint?: { readonly rect: readonly [number, number, number, number]; readonly coverage: readonly number[] };
   /** Only on a node with a scroll-container write: the offset range its scroll view scrolls over. */
   readonly scrollRange?: ScrollOffsets;
   /** Only on a text node with a frame: its lines as Dragon's native text views draw them (DragonLineSpec), glyph for glyph. */
@@ -146,6 +155,30 @@ type Write = { readonly kind: string };
  * The border operations of a box with a visible dashed or dotted side, as Dragon's native paint computes them from the box's
  * absolute snapped edges and its whole device px widths. Dragon's compile refuses such a side on a rounded box (PNT1b).
  */
+/** Each symbol list marker's paint by its box id, as the device's plan layout gives it (harness.ts planMarkerPaints). */
+function markerPaints(input: ReturnType<typeof programInput>, measurer: TextMeasurer, boxes: readonly LayoutRect[], dpr: number): Map<string, NonNullable<ExportNode['markerPaint']>> {
+  const zoomed = clampedInput(zoomInput(input, NO_ENGINE_FAULTS), boxes, measurer);
+  const markers = new Map<string, ListMarker>();
+  const walk = (b: LayoutBox): void => {
+    if (b.marker !== null && b.marker.kind === 'symbol') markers.set(b.marker.id, b.marker);
+    for (const c of b.children) if (c.kind === 'box') walk(c);
+  };
+  walk(zoomed.root);
+  const out = new Map<string, NonNullable<ExportNode['markerPaint']>>();
+  if (markers.size === 0) return out;
+  const abs = absoluteRects(boxes);
+  const snapped = snapEdges(boxes);
+  boxes.forEach((b, i) => {
+    const m = markers.get(b.id);
+    const a = abs.get(b.id);
+    const e = snapped[i];
+    if (m === undefined || a === undefined || e === undefined) return;
+    const mp = markerSymbolPaint({ measurer, devicePixelRatio: dpr, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, m, a.x, a.y);
+    out.set(b.id, { rect: [mp.left - e.left, mp.top - e.top, mp.right - mp.left, mp.bottom - mp.top], coverage: [...mp.coverage] });
+  });
+  return out;
+}
+
 function dashedBorder(id: string, writes: readonly Write[], rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | undefined, widths: readonly number[] | undefined): Pick<ExportNode, 'borderOps'> {
   const field = (kind: string, key: string): unknown => (writes.find((w) => w.kind === kind) as Readonly<Record<string, unknown>> | undefined)?.[key];
   const styles = field('border-styles', 'styles') as readonly string[] | undefined;
@@ -261,6 +294,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       const texts = new Map([...cssFontSizes(input.root)].map(([id, f]) => [id, f.text] as const));
       const origins = new Map([...absolute].map(([id, r]) => [id, { x: px(r.x), y: px(r.y) }] as const));
       const lines = textLines(engineTextLines(input, measurer()), texts, origins, measurer());
+      const markers = markerPaints(input, measurer(), laid, d.dpr);
       const nodes = program.nodes.map((n): ExportNode => {
         const box = boxes.get(n.id);
         const s = style.get(n.id);
@@ -286,6 +320,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           ...dashedBorder(n.id, n.writes, absolute.get(n.id), deviceBorders.get(n.id)),
           ...(scrolls && range !== undefined ? { scrollRange: range } : {}),
           ...(own === undefined ? {} : { lines: own }),
+          ...(markers.has(n.id) ? { markerPaint: markers.get(n.id) as NonNullable<ExportNode['markerPaint']> } : {}),
         };
       });
       if ('undecided' in scroll.page) undecided.add(`${t}: ${scroll.page.undecided}`);

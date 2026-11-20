@@ -1,0 +1,74 @@
+{
+	"version": "markless.native-style-input/0",
+	"component": "Lists",
+	"nodes": [
+		{
+			"kind": "element",
+			"id": "h0",
+			"element": "main",
+			"parent": null,
+			"attributes": {
+				"class": "page"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h1",
+			"element": "ul",
+			"parent": "h0",
+			"attributes": {}
+		},
+		{
+			"kind": "element",
+			"id": "h2",
+			"element": "li",
+			"parent": "h1",
+			"attributes": {}
+		},
+		{
+			"kind": "text",
+			"id": "t2",
+			"parent": "h2",
+			"text": "First item"
+		},
+		{
+			"kind": "element",
+			"id": "h3",
+			"element": "li",
+			"parent": "h1",
+			"attributes": {
+				"class": "red"
+			}
+		},
+		{
+			"kind": "text",
+			"id": "t3",
+			"parent": "h3",
+			"text": "Second item, which is long enough to wrap onto another line on a narrow phone"
+		},
+		{
+			"kind": "element",
+			"id": "h6",
+			"element": "ul",
+			"parent": "h0",
+			"attributes": {
+				"class": "squares"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h7",
+			"element": "li",
+			"parent": "h6",
+			"attributes": {}
+		},
+		{
+			"kind": "text",
+			"id": "t7",
+			"parent": "h7",
+			"text": "Square item"
+		}
+	],
+	"css": ".page { padding: 16px; font-size: 18px; } .red { color: rgb(200, 30, 30); } .squares { list-style: square; }",
+	"states": []
+}
