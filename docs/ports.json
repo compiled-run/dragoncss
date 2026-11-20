@@ -6,7 +6,8 @@
   "sources": {
     "chromium": "https://chromium.googlesource.com/chromium/src/+/refs/tags/145.0.7632.6/{path}?format=TEXT",
     "skia": "https://skia.googlesource.com/skia/+/2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23/{path without third_party/skia/}?format=TEXT",
-    "v8": "https://chromium.googlesource.com/v8/v8/+/4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c/{path without v8/}?format=TEXT"
+    "v8": "https://chromium.googlesource.com/v8/v8/+/4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c/{path without v8/}?format=TEXT",
+    "ots": "https://chromium.googlesource.com/external/github.com/khaledhosny/ots/+/46bea9879127d0ff1c6601b078e2ce98e83fcd33/{path without third_party/ots/src/}?format=TEXT"
   },
   "entries": [
     {
@@ -4694,6 +4695,37 @@
         { "file": "packages/dragon/src/lower/paint/clip-label.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/test/paint-clip-rect.test.ts", "symbol": null, "use": "reference" }
       ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/web_font_decoder.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2009 Google Inc. All rights reserved.",
+      "fileSha256": "0740eb0a18a3675fc0d1a520b0d9946af7c25b1e825497233853693fcd29be70",
+      "headerSha256": "7711ee8ba98830558349c7b287468c26354d910078a8f3531e02bfac59ca808d",
+      "ranges": [
+        { "lines": "116-170", "symbol": "BlinkOTSContext::GetTableAction", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/sanitize.ts", "symbol": "PASSED_THROUGH", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/ots.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. Its header defers to the OTS LICENSE file (BSD 3-Clause), whose notice is kept in packages/dragon/src/fonts/ots/sanitize.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "1aab2dd50dd0c7a47a7955e77178fd20c812631bfcbd749b174a9ad81fd680c0",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "111-165", "symbol": "supported_tables", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/sanitize.ts", "symbol": "CHECKS", "use": "port" }
+      ]
     }
   ],
   "notChrome": [
@@ -4813,6 +4845,7 @@
     "kinnunen-bsd-2": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR\nCONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\nEXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\nPROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY\nOF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "adobe-bsd-2": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1. Redistributions of source code must retain the above\n   copyright notice, this list of conditions and the following\n   disclaimer.\n2. Redistributions in binary form must reproduce the above\n   copyright notice, this list of conditions and the following\n   disclaimer in the documentation and/or other materials\n   provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS\nFOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,\nINDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)\nHOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,\nSTRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\nARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED\nOF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "rapidhash-bsd-2": "rapidhash - Very fast, high quality, platform-independent hashing algorithm.\n\nBased on 'wyhash', by Wang Yi <godspeed_china@yeah.net>\n\nBSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\n     notice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\n     copyright notice, this list of conditions and the following disclaimer\n     in the documentation and/or other materials provided with the\n     distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nYou can contact the author at:\n  - rapidhash source repository: https://github.com/Nicoshev/rapidhash\n",
+    "ots-bsd": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\nnotice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\ncopyright notice, this list of conditions and the following disclaimer\nin the documentation and/or other materials provided with the\ndistribution.\n   * Neither the name of Google Inc. nor the names of its\ncontributors may be used to endorse or promote products derived from\nthis software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "fdlibm-sun": "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.\n\nDeveloped at SunSoft, a Sun Microsystems, Inc. business.\nPermission to use, copy, modify, and distribute this\nsoftware is freely granted, provided that this notice\nis preserved.\n"
   }
 }
