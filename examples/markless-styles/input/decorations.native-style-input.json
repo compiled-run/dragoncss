@@ -1,0 +1,106 @@
+{
+	"version": "markless.native-style-input/0",
+	"component": "Decorations",
+	"nodes": [
+		{
+			"kind": "element",
+			"id": "h0",
+			"element": "main",
+			"parent": null,
+			"attributes": {
+				"class": "page"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h1",
+			"element": "p",
+			"parent": "h0",
+			"attributes": {
+				"class": "done"
+			}
+		},
+		{
+			"kind": "text",
+			"id": "t1",
+			"parent": "h1",
+			"text": "Buy milk and eggs for the week"
+		},
+		{
+			"kind": "element",
+			"id": "h2",
+			"element": "p",
+			"parent": "h0",
+			"attributes": {
+				"class": "done red"
+			}
+		},
+		{
+			"kind": "text",
+			"id": "t2",
+			"parent": "h2",
+			"text": "Struck in red, long enough to wrap onto a second line on a narrow phone screen"
+		},
+		{
+			"kind": "element",
+			"id": "h3",
+			"element": "p",
+			"parent": "h0",
+			"attributes": {}
+		},
+		{
+			"kind": "element",
+			"id": "h4",
+			"element": "a",
+			"parent": "h3",
+			"attributes": {
+				"href": "/next"
+			}
+		},
+		{
+			"kind": "text",
+			"id": "t4",
+			"parent": "h4",
+			"text": "Next page"
+		},
+		{
+			"kind": "element",
+			"id": "h5",
+			"element": "p",
+			"parent": "h0",
+			"attributes": {}
+		},
+		{
+			"kind": "element",
+			"id": "h6",
+			"element": "span",
+			"parent": "h5",
+			"attributes": {
+				"class": "under"
+			}
+		},
+		{
+			"kind": "text",
+			"id": "t6",
+			"parent": "h6",
+			"text": "underlined words"
+		},
+		{
+			"kind": "element",
+			"id": "h7",
+			"element": "p",
+			"parent": "h0",
+			"attributes": {
+				"class": "over"
+			}
+		},
+		{
+			"kind": "text",
+			"id": "t7",
+			"parent": "h7",
+			"text": "Overlined"
+		}
+	],
+	"css": ".page { padding: 16px; font-size: 18px; } .done { text-decoration: line-through; } .red { text-decoration-color: rgb(200, 30, 30); } a { text-decoration-skip-ink: none; color: rgb(0, 80, 200); } .under { text-decoration: underline; text-decoration-skip-ink: none; } .over { text-decoration: overline; text-decoration-skip-ink: none; }",
+	"states": []
+}

@@ -13,7 +13,7 @@ import { repoPath } from '../src/paths.ts';
 const { checkMarklessPlan, runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string };
 const { hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { hexBits(s: string): number };
 
-const INPUTS = ['fluid', 'width-media', 'borders-dashed', 'scheme', 'tabs', 'lists'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
+const INPUTS = ['fluid', 'width-media', 'borders-dashed', 'scheme', 'tabs', 'lists', 'decorations'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
 const FLUID = 'examples/markless-styles/input/fluid.native-style-input.json';
 /** Pages whose plan carries every position the engine lays out: fluid.json with a sticky bar, and with a fixed bar. */
 const POSITIONED: readonly (readonly [string, string])[] = [
@@ -46,6 +46,7 @@ function exportGeometry(n: ExportNode): unknown[] {
     ops === undefined ? null : [[ops.origin.x, ops.origin.y], [ops.size.width, ops.size.height], ops.widths, ops.ops.map((o) => [o.op, o.side, o.alpha, o.antialias, o.points])],
     r === undefined ? null : [r.minX, r.maxX, r.minY, r.maxY],
     n.markerPaint === undefined ? null : [...n.markerPaint.rect, [...n.markerPaint.coverage]],
+    n.decorations === undefined ? null : n.decorations.map((r) => [r.x, r.top, r.columns, r.rows, r.before ? 1 : 0, ...r.color, [...r.alphas]]),
   ];
 }
 
