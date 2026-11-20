@@ -13,7 +13,7 @@ import { BAND_KEY } from 'dragon';
 import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme, withCleanup } from './markless-style-compare.ts';
 import type { BoxProblem, CompareRow, DocumentNode, RootProbe } from './markless-style-compare.ts';
 import type { MarklessAtSize, MarklessExportAssignment, MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
-import { checkMarklessExport, marklessCompiledTargets, marklessHeightDependence, schemeOf } from './markless-style-input.ts';
+import { checkMarklessExport, marklessCompiledTargets, marklessHeightDependence, schemeOfSchemeAtoms } from './markless-style-input.ts';
 import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 
 /** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
@@ -140,7 +140,7 @@ export function checkBrowserPage(target: WebColumnDevice['target'], t: Pick<Expo
 /** The colour-scheme preference an assignment's band reads: light for an unbanded export. */
 function wantScheme(t: Pick<ExportTarget, 'bands'>, assignment: MarklessExportAssignment): Appearance {
   const band = assignment.values[BAND_KEY];
-  return typeof band === 'number' ? schemeOf(t.bands, band) : 'light';
+  return typeof band === 'number' ? schemeOfSchemeAtoms(t.bands, band) : 'light';
 }
 
 /**

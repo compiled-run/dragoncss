@@ -658,6 +658,24 @@ export function schemeOf(bands: Bands, band: number): 'light' | 'dark' {
   throw new Error(`no colour scheme reaches band ${band}`);
 }
 
+/**
+ * The colour scheme a band's prefers-color-scheme atoms read, light when it reads none: its other atoms are the page's size, which a
+ * phone's own layout supplies, so only the scheme is set on the device.
+ */
+export function schemeOfSchemeAtoms(bands: Bands, band: number): 'light' | 'dark' {
+  const want = bands?.bands[band];
+  if (bands === undefined || want === undefined) throw new Error(`no band ${band}`);
+  const atoms = bands.atoms.flatMap((a, i) => {
+    const atom = a as { feature: string; comparisons: readonly unknown[]; keyword: string };
+    if (atom.feature !== 'prefers-color-scheme') return [];
+    if (atom.comparisons.length > 0) throw new Error('a prefers-color-scheme atom with a comparison');
+    return [{ keyword: atom.keyword, i }];
+  });
+  if (atoms.length === 0) return 'light';
+  for (const scheme of ['light', 'dark'] as const) if (atoms.every(({ keyword, i }) => (keyword === 'any' || (keyword === 'dark') === (scheme === 'dark')) === want[i])) return scheme;
+  throw new Error(`no colour scheme reaches band ${band}`);
+}
+
 /** The colour scheme an assignment's band reads, or null for a band of another media feature. */
 function bandScheme(bands: Bands, band: unknown): 'light' | 'dark' | null {
   if (typeof band !== 'number') return 'light';
