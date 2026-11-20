@@ -2596,7 +2596,7 @@
         {"case":"interaction-focus~fx1f3cf7176ecf","width":1200,"height":900,"sha256":"956f35152fcf5a4c56614b0023bab6721126de2ff005f6848b08247ea793af28"},
         {"case":"interaction-focus~fx504fb92901bd","width":1200,"height":900,"sha256":"1b51437d84e654c7f62b22520d8b2eddf6f7b752455417a938344af2f0558caf"},
         {"case":"interaction-focus~fx1f3cf7176ecf-rtl","width":1200,"height":900,"sha256":"6ede493ca1e794d95ca95332e64219aa10270a3df96e86439d11fe1a6f99871c"},
-        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1200,"height":900,"sha256":"ce091e99436a328807b4f720417bed790ee380d0d0408e627a781d26a33478bd"},
+        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1200,"height":900,"sha256":"411ebff10d995958a84fc3b0e9bcccc709f632da6da139c30b9378715e049c85"},
         {"case":"interaction-combo~fx57871c980ee7","width":1200,"height":900,"sha256":"13f86b80fc895dff3afda860c306829a52696ff062a06f39cfc16c8289623900"},
         {"case":"interaction-combo~fx57871c980ee7-rtl","width":1200,"height":900,"sha256":"46b605b5009913d33bfaba959ffc9a440bfe54124bcf28a80efb123a6df33322"}
       ]
