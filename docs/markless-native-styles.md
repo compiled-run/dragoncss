@@ -154,7 +154,7 @@ Support is not restated here. It lives in the support profiles (`packages/dragon
 | Flex | `ms-flex` | flex row and column, `gap`, `align-items`, `justify-content` |
 | Toggle | `ms-toggle` | a class switched by a component state at run time, with rounded corners in both states |
 | Press | `ms-press` | `:active` on a pressable element and on its descendant |
-| Disabled | `reject-ms-button-disabled`; `examples/markless-styles/input/disabled.native-style-input.json` | `:disabled` and `:enabled` follow the `disabled` attribute's state (the fixture stays refused for its `:active` on a button); a disabled button reads Chrome's captured `button[disabled]` UA row (`packages/parity/test/markless-disabled.test.ts`: colours and frames against Chrome) |
+| Disabled | `ms-button-disabled`; `examples/markless-styles/input/disabled.native-style-input.json` | `:disabled` and `:enabled` follow the `disabled` attribute's state (`:active` on a button stays refused on native, `packages/parity/test/markless-native-styles.test.ts`); a disabled button reads Chrome's captured `button[disabled]` UA row (`packages/parity/test/markless-disabled.test.ts`: colours and frames against Chrome) |
 
 The checks that prove each step are the parity comparison (`packages/parity/test/parity.test.ts` over the committed Chrome captures) and the device lanes: `device-frames`, `device-applied`, `device-lines` and `device-pixels` for each case, and `device-states` for the toggle's run-time switch. Per-case failures are listed in `packages/parity/out/device-failures-<target>.json`.
 
