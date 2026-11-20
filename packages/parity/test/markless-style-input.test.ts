@@ -38,6 +38,21 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
     }
   });
 
+  it('gives each assignment the canvas colour Chrome paints: html\'s background, else body\'s, else white', () => {
+    const canvases = (css: string, t: 'ios' | 'android' = 'ios'): unknown[] => marklessStyleExport(edit((v) => { v['css'] += css; }), PATH).exported.targets[t]?.assignments.map((a) => a.canvas) ?? [];
+    const white = { r: 255, g: 255, b: 255, alpha: 255 };
+    const navy = { r: 18, g: 52, b: 86, alpha: 255 };
+    expect(canvases('')).toEqual([white, white]);
+    expect(canvases('\nbody { background: #123456; }')).toEqual([navy, navy]);
+    expect(canvases('\nhtml { background-color: #123456; }', 'android')).toEqual([navy, navy]);
+    const dark = marklessStyleExport(edit((v) => { v['css'] += '\nbody { background: #ffffff; }\n@media (prefers-color-scheme: dark) { body { background: #123456; } }'; }), PATH).exported.targets.ios;
+    const bands = dark?.assignments.map((a) => a.values['@env#band']) ?? [];
+    expect(new Set(bands)).toEqual(new Set([0, 1]));
+    expect(dark?.assignments.map((a) => a.canvas)).toEqual(bands.map((b) => (b === 0 ? white : navy)));
+    expect(() => canvases('\nhtml { background: #123456; }\nbody { background: #ffffff; }')).toThrow('body has its own background under html\'s');
+    expect(() => canvases('\nbody { background: rgba(0, 0, 0, 0.5); }')).toThrow('the canvas background is translucent');
+  });
+
   it('refuses an input it cannot convert faithfully, naming why', () => {
     expect(() => parseMarklessStyleInput(edit((v) => { v['version'] = 'markless.native-style-input/9'; }))).toThrow('not markless.native-style-input/0');
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][2]['arm'] = { branch: 'b0', arm: 'then' }; }))).toThrow('h1:text0: styles inside @if arms');
