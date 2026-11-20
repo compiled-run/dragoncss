@@ -76,7 +76,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   }
   // ts: packages/layout/src/float.ts:76
   if try (ratio_hasAspectRatio(s) && (s.width.kind == S.s_auto)) {
-    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s689, jsConcat(S.s600, (node as! LayoutBox).id))
+    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s690, jsConcat(S.s601, (node as! LayoutBox).id))
   }
   let width: Double = try float_floatWidth(ctx, (node as! LayoutBox), cbInline, units_add(marginLeft, marginRight))
   let r: ContentsResult = try block_layoutContents(ctx, (node as! LayoutBox), ContentsArgs(cbInline, width, nil, false, basis, true, units_ZERO, box_NO_STRETCH))
@@ -184,7 +184,7 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<B
         if (inner != nil) {
           // ts: packages/layout/src/float.ts:147
           if (kb.style.position != S.s_static) {
-            try unsupported_unsupported(S.s_float, kb.id, S.s313, jsConcat(S.s1126, kb.style.position, S.s27, kb.id, S.s69))
+            try unsupported_unsupported(S.s_float, kb.id, S.s313, jsConcat(S.s1128, kb.style.position, S.s27, kb.id, S.s69))
           }
           try b = units_add(jsUnwrap(p).y, jsUnwrap(inner))
         }
