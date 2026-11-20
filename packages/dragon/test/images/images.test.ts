@@ -7,6 +7,7 @@ import {
   parseDataUrl, parseJpeg, parsePng, readImageHeader, sniffImage, typeOfPath,
 } from '../../src/images/index.ts';
 import type { ImagePlant, NaturalCapture } from '../../src/images/index.ts';
+import { svgSizing } from '../../src/images/svg.ts';
 
 const here = (p: string): URL => new URL(p, import.meta.url);
 const json = <T>(name: string): T => JSON.parse(readFileSync(here(`./chrome-145/${name}`), 'utf8')) as T;
@@ -57,7 +58,7 @@ describe('natural size (R4)', () => {
     const readable = natural.images.filter((i) => readImageHeader(corpus(i.file), i.type) !== null);
     expect(r.compared).toBe(readable.length);
     // 64 PNGs and JPEGs, and the corpus's GIF, whose logical screen is its natural size.
-    expect(r.compared).toBe(65);
+    expect(r.compared).toBe(66);
   });
   it.each(Object.keys(IMAGE_PLANTS) as ImagePlant[])('plant %s breaks at least one pair', (plant) => {
     expect(compareNaturalSizes(natural, corpus, faultsOfPlant(plant)).mismatches.length).toBeGreaterThan(0);
@@ -468,5 +469,24 @@ describe('zlibInflate and the PNG decode refusal (Macroscope 4169579864: CRC-val
       if (!f.endsWith('.png') || imageRefusal(corpus(f), 'image/png') !== null) continue;
       expect(() => decodePng(corpus(f), (d) => new Uint8Array(inflateSync(d))), f).not.toThrow();
     }
+  });
+});
+
+describe('SVG natural size', () => {
+  const sized = (svg: string) => svgSizing(new TextEncoder().encode(svg));
+  const NS = 'xmlns="http://www.w3.org/2000/svg"';
+  it('takes width and height in px or unitless, or one of them with the viewBox ratio', () => {
+    expect(sized(`<svg ${NS} width="40" height="20px"/>`)).toEqual({ ok: true, size: { width: 40, height: 20 } });
+    expect(sized(`<svg ${NS} width=" 30 " viewBox="0 0 30 60"/>`)).toEqual({ ok: true, size: { width: 30, height: 60 } });
+    expect(sized(`<svg ${NS} height="10" viewBox="5,5 40,10"/>`)).toEqual({ ok: true, size: { width: 40, height: 10 } });
+  });
+  it('treats a percentage or auto as no size, and refuses what Dragon cannot lay out or read', () => {
+    expect(sized(`<svg ${NS} width="100%" height="50%" viewBox="0 0 2 1"/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('only a natural ratio') });
+    expect(sized(`<svg ${NS} width="40" height="auto"/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('one size and no viewBox') });
+    expect(sized(`<svg ${NS}/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('no natural size') });
+    expect(sized(`<svg ${NS} width="2em" height="1em"/>`)).toMatchObject({ ok: false, reason: 'the root <svg> width="2em" is not a px length' });
+    expect(sized(`<svg ${NS} width="0" height="10"/>`)).toMatchObject({ ok: false, reason: expect.stringContaining('is 0') });
+    expect(sized(`<svg ${NS} width="40" height="20">`)).toEqual({ ok: false, reason: 'the SVG file is not well-formed XML' });
+    expect(sized('<svg width="40" height="20"/>')).toMatchObject({ ok: false, reason: expect.stringContaining('SVG namespace') });
   });
 });
