@@ -10,8 +10,8 @@ public func controls_controlAsBox(_ c: ControlBox) throws -> LayoutBox {
 }
 
 // ts: packages/layout/src/controls.ts:34
-public func controls_controlOf(_ box: any U_ControlBox_LayoutBox) throws -> (any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb)? {
-  return ((box.kind == S.s_control) ? ((box as! ControlBox).control as (any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb)?) : (nil as (any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb)?))
+public func controls_controlOf(_ box: any U_ControlBox_LayoutBox) throws -> (any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb)? {
+  return ((box.kind == S.s_control) ? ((box as! ControlBox).control as (any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb)?) : (nil as (any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb)?))
 }
 
 // ts: packages/layout/src/controls.ts:39

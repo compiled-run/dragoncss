@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "5a0cc898ff50adfb73e0b1aa54ac244655a07cd26616fc80a23e7e36a50815ad",
+ "compiler": "6daa133dcac8bb2cdbbb2f9fd3abe29bc2b1e1bb88853c26286d38b4e38b9348",
  "component": "Box",
  "source": "packages/parity/fixtures/ms-box",
  "warnings": [],
