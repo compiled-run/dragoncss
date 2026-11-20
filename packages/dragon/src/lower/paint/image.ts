@@ -127,7 +127,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
     },
   },
   css: { 'replaced-image': ['object-fit', 'object-position', 'image-rendering'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'd'] },
-  lower: ({ box, el, images, transformMoves }) => {
+  lower: ({ box, el, images, hostImages, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
       // A shape Chrome renders nothing for (svgShapeEmpty) is not drawn: a zero-size rect's closed outline would stroke as a line.
@@ -138,6 +138,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
+    if (hostImages) return [];
     const src = el.element.attributes.get('src');
     const bytes = src === undefined ? undefined : images.get(src);
     if (bytes === undefined) throw new ProgramError(`${box.id}: no image bytes for its src`);

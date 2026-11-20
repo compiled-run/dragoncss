@@ -12,6 +12,7 @@ import { deriveStateProgram, StateProgramError } from './lower/state-program.ts'
 import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { createProjectWith, internalRecord } from './project.ts';
 import type { BrotliDecompress } from './fonts/woff.ts';
+import type { ImageAssetMap } from './images/manifest.ts';
 import type { Rgba8 } from './css/color.ts';
 import type { ArtifactState, Compiled, Diagnostic, FontMap, FrontEndResult, GeneratedFile } from './types.ts';
 
@@ -26,6 +27,11 @@ export type NativeStylesConfig = {
   /** The native targets to compile; each is checked, and one target's error blocks only that target's output. */
   readonly targets: { readonly ios?: { readonly minimum: string }; readonly android?: { readonly minSdk: number } };
   readonly fonts?: FontMap;
+  /**
+   * The image map (docs/api.md): each `<img src>` the component shows that is not a data: URL, to the snapshot asset holding its
+   * bytes. Dragon sizes the element from the file's natural size and lists its bytes for the native image paint.
+   */
+  readonly images?: ImageAssetMap;
   /** The host's Brotli decoder for WOFF2 @font-face sources (Node: zlib.brotliDecompressSync); without one a WOFF2 is refused. */
   readonly brotliDecompress?: BrotliDecompress;
   /** The CSS size the component's root starts at, before the view it mounts in reports its own size. */
@@ -46,6 +52,12 @@ export type NativeStylesConfig = {
    * root whose color-scheme picks dark is drawn with Chrome's dark UA colours. Absent: a root color-scheme that can be dark is refused.
    */
   readonly canvas?: 'host';
+  /**
+   * 'host': the host draws each <img>'s picture itself from the file's bytes (a Markless host). Dragon sizes the <img> from the file's
+   * natural size and writes no image content for it, so a JPEG or GIF is laid out rather than refused; an object-fit other than fill
+   * is refused, as the host draws the picture filling its box.
+   */
+  readonly imagePaint?: 'host';
   /**
    * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
    * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
@@ -106,13 +118,14 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
   const support = config.support ?? 'enforced';
   if (support !== 'enforced' && support !== 'lanes') throw new Error(`compileNativeStyles: support ${JSON.stringify(support)} is neither 'enforced' nor 'lanes'`);
   const project = createProjectWith(
-    { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }) },
+    { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }), ...(config.images === undefined ? {} : { images: config.images }) },
     {
       ...(support === 'enforced'
         ? { faults: NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
         : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
       ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
+      ...(config.imagePaint === 'host' ? { hostImages: true } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
     },
