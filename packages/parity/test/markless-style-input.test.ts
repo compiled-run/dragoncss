@@ -3,7 +3,7 @@
 // attributes rung, its ids reach the export unchanged, and a class that follows a state switches the writes between assignments.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
+import { marklessStyleExport, parseMarklessStyleInput, schemeOf, schemeOfSchemeAtoms } from '../src/markless-style-input.ts';
 import { NATIVE_STYLE_EXPORT_SCHEMA, parseNativeStyleExport } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -196,5 +196,22 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
       expect([page?.minX, page?.maxX, page?.minY], t).toEqual([0, 0, 0]);
       expect(Math.abs((page?.maxY ?? NaN) - ((html?.height ?? 0) - (x?.viewport.height ?? 0) * (x?.dpr ?? 0))), t).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe('schemeOfSchemeAtoms', () => {
+  const width = { feature: 'width', comparisons: [{ op: 'ge', value: 600, num: 0, den: 0 }], keyword: 'none' };
+  const dark = { feature: 'prefers-color-scheme', comparisons: [], keyword: 'dark' };
+  it('reads only the colour scheme of a band that also reads the width', () => {
+    const bands = { atoms: [width, dark], bands: [[false, false], [true, false], [false, true], [true, true]], conditions: [] };
+    expect([0, 1, 2, 3].map((band) => schemeOfSchemeAtoms(bands, band))).toEqual(['light', 'light', 'dark', 'dark']);
+    expect(() => schemeOf(bands, 1)).toThrow(/reads prefers-color-scheme only, not width/);
+  });
+  it('is light for a band of width alone', () => {
+    expect(schemeOfSchemeAtoms({ atoms: [width], bands: [[false], [true]], conditions: [] }, 1)).toBe('light');
+  });
+  it('refuses a band no colour scheme reaches', () => {
+    const light = { feature: 'prefers-color-scheme', comparisons: [], keyword: 'light' };
+    expect(() => schemeOfSchemeAtoms({ atoms: [dark, light], bands: [[true, true]], conditions: [] }, 0)).toThrow(/no colour scheme reaches band 0/);
   });
 });
