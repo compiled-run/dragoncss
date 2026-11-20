@@ -268,9 +268,9 @@ describe('the svg model in a compile', () => {
     expect(blocked(enforced('rect { fill: rgba(255, 0, 0, 0.5); }', []))).toEqual([]);
     expect(blocked(enforced('rect { fill: rgb(1, 2, 3); stroke: rgb(4, 5, 6); stroke-width: 2; }', []))).toEqual([]);
   });
-  it('refuses a viewBox without a size (SVG-ratio), CSS geometry on a shape, a paint server in CSS and a percentage stroke-width', () => {
+  it('compiles a viewBox without a size (sized from its ratio); refuses CSS geometry on a shape, a paint server in CSS and a percentage stroke-width', () => {
     const ratio = svgTree('', (_r, o) => [shape(o, 'p', 'path', [['d', 'M0 0 H1']])], [['viewBox', '0 0 24 24']]);
-    expect(errors(compile(ratio, true)).filter((m) => m.includes('SVG-ratio')).length).toBe(3);
+    expect(errors(compile(ratio, true))).toEqual([]);
     const css = svgTree('rect { width: 5px; } circle { fill: url(#a); stroke-width: 10%; stroke: red; }', (_r, o) => [shape(o, 'r', 'rect', [['width', '4'], ['height', '4']]), shape(o, 'c', 'circle', [['r', '4']])]);
     const e = errors(compile(css, true));
     expect(e.some((m) => m.includes('width: 5px on <rect> r is not supported'))).toBe(true);

@@ -73,6 +73,7 @@ import { rangePartOf } from '../analysis/resolve.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
+import { viewBoxOf } from '../analysis/elements/svg.ts';
 import { appliedContainment } from '../analysis/containment.ts';
 import { INTRINSIC_AUTO_TYPE } from '../css/properties/containment.ts';
 import type { Containment } from '../css/properties/containment.ts';
@@ -895,6 +896,10 @@ function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridConta
     const read = src === undefined ? undefined : images.get(src);
     if (read === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);
     natural = read;
+  } else if (el.element.tag === 'svg') {
+    // An inline <svg>'s width and height are CSS (presentation attributes), so its only natural dimension is the viewBox ratio.
+    const box = viewBoxOf(el.element.attributes);
+    if (box !== null) natural = { kind: 'ratio', ratioWidth: box.width, ratioHeight: box.height };
   } else if (el.element.tag === 'video' && videoLoads(el)) {
     // MEDIA-EL: Chrome sizes a video it loads by its stream (videos/compile.ts reads the src into the same map); one without a src,
     // or with preload none, keeps the default object size.

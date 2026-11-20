@@ -7,6 +7,7 @@ import { parse } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { imageItem, unfoldedLength, valueItems } from '../analysis/paint-values/gradient.ts';
 import type { ResolvedElement } from '../analysis/resolve.ts';
+import type { ResolvedValue } from '../analysis/computed.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Origin, Span } from '../types.ts';
 import { buildImageManifest, manifestDigestInput, resolveImageSource } from './manifest.ts';
@@ -201,6 +202,7 @@ export function compileImages(roots: readonly ResolvedElement[], images: ImageAs
   }
   const used = [...entries.values()].sort((a, b) => (a.src < b.src ? -1 : a.src > b.src ? 1 : 0));
   const digestInput = used.length === 0 && images === undefined ? null : { map: Object.fromEntries(Object.entries(map).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))), manifest: manifestDigestInput({ version: 1, images: used }) };
+  if (hostImages) refuseHostPadding(roots, diagnostics);
   return { naturals, bytes, webUrls, digestInput };
 }
 
@@ -219,4 +221,29 @@ export function base64Encode(bytes: Uint8Array): string {
     out += i + 2 < bytes.length ? (B64[n & 63] as string) : '=';
   }
   return out;
+}
+
+/**
+ * The host draws an <img>'s picture and an <svg>'s shapes in the element's box less its borders: the export carries no padding, so
+ * a padded one is refused rather than drawn over its padding.
+ */
+function refuseHostPadding(roots: readonly ResolvedElement[], diagnostics: Diagnostic[]): void {
+  const seen = new Set<string>();
+  const zero = (v: ResolvedValue['value']): boolean => (v.kind === 'length' || v.kind === 'percentage' || v.kind === 'number') && v.value === 0;
+  const walk = (el: ResolvedElement): void => {
+    const tag = el.element.tag;
+    if ((tag === 'img' || tag === 'svg') && !seen.has(el.element.address)) {
+      const padded = (['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const).find((p) => {
+        const v = el.props.get(p);
+        return v !== undefined && !zero(v.value);
+      });
+      if (padded !== undefined) {
+        seen.add(el.element.address);
+        const v = el.props.get(padded) as ResolvedValue;
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan), message: `${padded} on <${tag}> ${el.element.address} is not supported when the host draws it: the host fills the box less its borders`, manual: `Pad a wrapper element instead of <${tag}> ${el.element.address}.` }));
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  for (const r of roots) walk(r);
 }
