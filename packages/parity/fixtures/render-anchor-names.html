@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 60px; height: 30px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.n { anchor-name: --card; anchor-scope: all; timeline-scope: --strip; interpolate-size: allow-keywords; }
+.N { ANCHOR-NAME: --a, --B; ANCHOR-SCOPE: --a; TIMELINE-SCOPE: --x,--y; INTERPOLATE-SIZE: Allow-Keywords; }
+.e { anchor-name: --\61 b; timeline-scope: --; }
+.i { anchor-name: inherit; anchor-scope: inherit; timeline-scope: inherit; }
+.abs { position: absolute; left: 100px; top: 120px; width: 40px; height: 20px; background-color: #4a8a3a; }
+.row { display: flex; width: 180px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="box n">XX XX</div>
+<div data-dragon-id="s2" class="box N"><div data-dragon-id="s2c" class="i">XXX</div></div>
+<div data-dragon-id="s3" class="box e">XX</div>
+<div data-dragon-id="a1" class="abs n">X</div>
+<div data-dragon-id="row" class="row n"><div data-dragon-id="ra" class="box N">XX XX</div><div data-dragon-id="rb" class="box e">XX</div></div>
+</body>
+</html>

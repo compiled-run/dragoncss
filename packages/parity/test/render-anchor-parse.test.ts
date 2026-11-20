@@ -1,7 +1,7 @@
 // image-rendering, the anchor positioning longhands and the svg-extra, view-transition and animation-extra longhands parse against Chrome 145 (scripts/gen-css-grammar.ts
 // SYNTAX_OVERRIDES, css/properties/initial-only.ts; the SVG-inert-b longhands, css/properties/svg.ts, take every value and are not
-// here): Dragon drops no value Chrome keeps, and every value Dragon accepts as initial
-// computes in Chrome to the initial values of the longhands it sets, as Dragon's own longhands do. Every other value is kept and then
+// here): Dragon drops no value Chrome keeps, and every value Dragon accepts as initial, or as a <dashed-ident> list (anchor-name,
+// anchor-scope, timeline-scope), computes in Chrome to the values of the longhands it sets, as Dragon's own longhands do. Every other value is kept and then
 // refused (analysis/scroll-containment.ts), so only the accepted values' computed values are compared. image-rendering parses its
 // three Chrome 145 keywords (properties/image-rendering.ts) and drops the rest, each of which Chrome must drop too. Each planted
 // reading must be caught.
@@ -13,6 +13,7 @@ import { IMAGE_RENDERING_LONGHANDS } from '../../dragon/src/css/properties/image
 import { SVG_EXTRA_LONGHANDS } from '../../dragon/src/css/properties/svg-extra.ts';
 import { VIEW_TRANSITION_LONGHANDS } from '../../dragon/src/css/properties/view-transition.ts';
 import { ANIMATION_EXTRA_LONGHANDS } from '../../dragon/src/css/properties/animation-extra.ts';
+import { DASHED_IDENT_LIST_TYPE } from '../../dragon/src/css/properties/initial-only.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
 
 const SOURCE = { uri: 'dragon-source://test/render-anchor.css', revision: 'r1', hash: 'sha256:0' };
@@ -30,14 +31,15 @@ function item(name: string, v: string): Item {
   const code = diagnostics[0]?.code ?? null;
   const longhands = rules[0]?.declarations[0]?.longhands ?? [];
   if (code === null && (longhands.length === 0 || !longhands.every((l) => LONGHANDS.includes(l.property)))) throw new Error(`${name}: ${v}: accepted without the family's longhands`);
-  const accepted = code === null && longhands.every((l) => l.value.kind !== 'other');
+  // A <dashed-ident> list is accepted as written (anchor-name, anchor-scope, timeline-scope), so it is judged as an accepted value.
+  const accepted = code === null && longhands.every((l) => l.value.kind !== 'other' || l.value.type === DASHED_IDENT_LIST_TYPE);
   return { name, v, code, longhands: accepted ? longhands.map((l) => [l.property, valueToString(l.value)] as const) : null };
 }
 
 const VALUES: { readonly [name: string]: readonly string[] } = {
   'image-rendering': ['auto', 'AUTO', 'smooth', 'high-quality', 'pixelated', 'PIXELATED', 'crisp-edges', '-moz-crisp-edges', 'optimizeSpeed', 'optimizeQuality', '-webkit-optimize-contrast', '-WEBKIT-Optimize-Contrast', 'auto auto', 'none'],
-  'anchor-name': ['none', 'NONE', '--a', '--a, --b', 'none, --a', 'a', 'none none'],
-  'anchor-scope': ['none', 'None', 'all', '--a', '--a, --b', 'none --a'],
+  'anchor-name': ['none', 'NONE', '--a', '--a, --b', '--A', '--', '--\\61', 'none, --a', 'a', 'none none', '--a --b', '--a,'],
+  'anchor-scope': ['none', 'None', 'all', 'ALL', '--a', '--a, --b', 'none --a', 'all, --a'],
   'position-anchor': ['none', 'NONE', 'normal', 'auto', '--a', 'match-parent', 'none none'],
   'position-area': ['none', 'NONE', 'top', 'top left', 'span-all', 'center', 'none none'],
   'position-try-order': ['normal', 'NORMAL', 'most-width', 'most-height', 'most-block-size', 'most-inline-size', 'none'],
@@ -54,13 +56,13 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   'view-transition-class': ['none', 'None', 'a', 'a b', 'none a'],
   'view-transition-group': ['normal', 'NORMAL', 'contain', 'nearest', 'card', 'none'],
   'interpolate-size': ['numeric-only', 'NUMERIC-ONLY', 'allow-keywords', 'auto', 'none'],
-  'timeline-scope': ['none', 'NONE', 'all', '--t', '--a, --b', 'none --a'],
+  'timeline-scope': ['none', 'NONE', 'all', '--t', '--a, --b', '--', 'none --a', 't'],
 };
 
-/** How many of VALUES Dragon accepts as initial (pinned so a parser change that accepts more or fewer is seen). */
-const ACCEPTED = 56;
+/** How many of VALUES Dragon accepts as initial or, for a <dashed-ident> list, as written (pinned so a parser change that accepts more or fewer is seen). */
+const ACCEPTED = 69;
 /** How many of VALUES Dragon drops, as Chrome 145 does (pinned likewise). */
-const DROPPED = 22;
+const DROPPED = 32;
 
 function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
   return items.flatMap((it, i) => {
@@ -86,6 +88,9 @@ describe('image-rendering, anchor positioning and svg-extra: Chrome 145 parsing'
       { name: 'tryFallbackReadAsInitial', items: [{ name: 'position-try', v: 'flip-block', code: null, longhands: [['position-try-order', 'normal'], ['position-try-fallbacks', 'none']] }] },
       { name: 'shiftReadAsInitial', items: [{ name: 'baseline-shift', v: '2px', code: null, longhands: [['baseline-shift', '0px']] }] },
       { name: 'viewNameReadAsInitial', items: [{ name: 'view-transition-name', v: 'card', code: null, longhands: [['view-transition-name', 'none']] }] },
+      { name: 'nameListDropped', items: [{ name: 'anchor-name', v: '--a, --b', code: 'DRAGON_CSS_INVALID_VALUE', longhands: null }] },
+      { name: 'nameListTruncated', items: [{ name: 'timeline-scope', v: '--a, --b', code: null, longhands: [['timeline-scope', '--a']] }] },
+      { name: 'scopeAllAccepted', items: [{ name: 'timeline-scope', v: 'all', code: null, longhands: [['timeline-scope', 'all']] }] },
       { name: 'keywordsReadAsInitial', items: [{ name: 'interpolate-size', v: 'allow-keywords', code: null, longhands: [['interpolate-size', 'numeric-only']] }] },
       { name: 'zeroPercentReadAsInitial', items: [{ name: 'baseline-shift', v: '0%', code: null, longhands: [['baseline-shift', '0px']] }] },
       { name: 'lengthCalcReadAsInitial', items: [{ name: 'baseline-shift', v: 'calc(1px)', code: null, longhands: [['baseline-shift', '0px']] }] },
