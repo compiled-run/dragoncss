@@ -1,6 +1,5 @@
 // MEDIA-EL: <video> on web, iOS and Android. The natural size Chrome 145 reads from an MP4's H.264 stream (videos/mp4.ts), the src
-// rules (videos/compile.ts, iOS and Android refusing a stream until a lane proves its first frame), the attribute and hint rules,
-// and the emission of the platform player. The streams (ffmpeg 6.1 libx264, one frame) are a 64x48 Baseline stream and a 66x50 High
+// rules (videos/compile.ts), the attribute and hint rules, and the lowering and emission of the platform player. The streams (ffmpeg 6.1 libx264, one frame) are a 64x48 Baseline stream and a 66x50 High
 // stream whose SPS crops 80x64 macroblocks; Chrome 145 gives them those sizes, and the patched ones the sizes the cases name.
 import { describe, expect, it } from 'vitest';
 import { presentationalHints } from '../src/analysis/elements/replaced.ts';
@@ -8,9 +7,10 @@ import { attributeRefusal } from '../src/attributes.ts';
 import { streamLit } from '../src/emit/paint/foreign-view.ts';
 import { emitNativeSupport } from '../src/emit/native-support.ts';
 import type { ElementNode } from '../src/internal.ts';
-import { createProjectWith, nativePrograms, NO_FAULTS } from '../src/internal.ts';
+import type { ProfileRow, SupportProfile } from '../src/internal.ts';
+import { COMMITTED_PROFILES, createProjectWith, emitAndroidViewsCases, emitUikitCases, nativePrograms, NO_FAULTS, VIDEO_CONTEXT, VIDEO_STREAM_FEATURE } from '../src/internal.ts';
 import { parseMp4, parseSps } from '../src/videos/mp4.ts';
-import { NATIVE_FRAME_UNPROVEN, readVideoSource } from '../src/videos/compile.ts';
+import { readVideoSource } from '../src/videos/compile.ts';
 import { always, div, inputFor } from './helpers.ts';
 
 const B64_64X48 = [
@@ -90,8 +90,8 @@ class SpsWriter {
   }
 }
 
-/** An SPS of the given profile, macroblock counts, frame cropping and VUI aspect ratio (null: no VUI). */
-function sps(o: { profile: number; mbs: [number, number]; crop?: [number, number, number, number]; frameMbsOnly?: boolean; sar?: [number, number] | number | null; scaling?: boolean }): Uint8Array {
+/** An SPS of the given profile, macroblock counts, frame cropping, VUI aspect ratio and video signal type (neither: no VUI). */
+function sps(o: { profile: number; mbs: [number, number]; crop?: [number, number, number, number]; frameMbsOnly?: boolean; sar?: [number, number] | number | null; scaling?: boolean; signal?: { fullRange: boolean; colour: boolean } }): Uint8Array {
   const w = new SpsWriter().u(8, o.profile).u(8, 0).u(8, 30).ue(0);
   if (o.profile === 100) {
     w.ue(1).ue(0).ue(0).u(1, 0).u(1, o.scaling === true ? 1 : 0);
@@ -106,16 +106,24 @@ function sps(o: { profile: number; mbs: [number, number]; crop?: [number, number
   w.u(1, 1);
   if (o.crop === undefined) w.u(1, 0);
   else w.u(1, 1).ue(o.crop[0]).ue(o.crop[1]).ue(o.crop[2]).ue(o.crop[3]);
+  if ((o.sar === undefined || o.sar === null) && o.signal === undefined) return w.u(1, 0).nal();
+  w.u(1, 1);
   if (o.sar === undefined || o.sar === null) w.u(1, 0);
-  else if (typeof o.sar === 'number') w.u(1, 1).u(1, 1).u(8, o.sar);
-  else w.u(1, 1).u(1, 1).u(8, 255).u(16, o.sar[0]).u(16, o.sar[1]);
-  return w.nal();
+  else if (typeof o.sar === 'number') w.u(1, 1).u(8, o.sar);
+  else w.u(1, 1).u(8, 255).u(16, o.sar[0]).u(16, o.sar[1]);
+  w.u(1, 0); // overscan_info_present_flag
+  // video_signal_type_present_flag: video_format 5 (unspecified), the range, and BT.709 primaries, transfer and matrix.
+  if (o.signal === undefined) w.u(1, 0);
+  else w.u(1, 1).u(3, 5).u(1, o.signal.fullRange ? 1 : 0).u(1, o.signal.colour ? 1 : 0);
+  if (o.signal?.colour === true) w.u(8, 1).u(8, 1).u(8, 1);
+  // chroma_loc_info, timing_info, nal_hrd, vcl_hrd, pic_struct and bitstream_restriction flags.
+  return w.u(6, 0).nal();
 }
 
 describe('MEDIA-EL: an MP4 natural size as Chrome 145 reads it', () => {
   it('reads the sample entry size, which the H.264 stream (its SPS frame cropping included) agrees with', () => {
-    expect(parseMp4(bytes(B64_64X48))).toEqual({ ok: true, facts: { width: 64, height: 48, profile: 66 } });
-    expect(parseMp4(bytes(B64_66X50))).toEqual({ ok: true, facts: { width: 66, height: 50, profile: 100 } });
+    expect(parseMp4(bytes(B64_64X48))).toEqual({ ok: true, facts: { width: 64, height: 48, profile: 66, untagged: null } });
+    expect(parseMp4(bytes(B64_66X50))).toEqual({ ok: true, facts: { width: 66, height: 50, profile: 100, untagged: null } });
   });
 
   it('ignores the tkhd width and height, as Chrome does, and refuses a sample entry size the stream does not have', () => {
@@ -179,6 +187,18 @@ describe('MEDIA-EL: an MP4 natural size as Chrome 145 reads it', () => {
     // Table E-1: 17 to 254 are reserved, so no sample aspect ratio is known.
     for (const idc of [17, 254]) expect(() => parseSps(sps({ profile: 66, mbs: [4, 3], sar: idc })), String(idc)).toThrow(`its aspect_ratio_idc ${idc} is reserved`);
   });
+
+  it('reads the VUI video signal type: the range and whether the stream names its colour', () => {
+    expect(parseSps(sps({ profile: 66, mbs: [4, 3] }))).toMatchObject({ fullRange: false, colourDescription: false });
+    expect(parseSps(sps({ profile: 66, mbs: [4, 3], sar: 1, signal: { fullRange: true, colour: false } }))).toMatchObject({ sar: [1, 1], fullRange: true, colourDescription: false });
+    expect(parseSps(sps({ profile: 100, mbs: [5, 4], signal: { fullRange: false, colour: true } }))).toMatchObject({ sar: null, fullRange: false, colourDescription: true });
+  });
+
+  it('marks a stream with a colour box as not one the device lanes play (MEDIA-EL slice 2: limited range, no colour tags)', () => {
+    // The sample entry's btrt box renamed colr.
+    const colr = patched(B64_64X48, (b) => b.set([0x63, 0x6f, 0x6c, 0x72], at(b, 'btrt')));
+    expect(parseMp4(colr)).toEqual({ ok: true, facts: { width: 64, height: 48, profile: 66, untagged: 'its sample entry has a colour box (colr)' } });
+  });
 });
 
 describe('MEDIA-EL: the video src', () => {
@@ -221,14 +241,37 @@ describe('MEDIA-EL: the platform player', () => {
     return p.programs;
   };
 
-  it('refuses a stream on iOS and Android until a lane proves the first frame, and keeps web ready', () => {
-    const c = compile({ src: SRC_64 });
-    expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => [d.code, d.target, d.message])).toEqual(['ios', 'android'].map((t) => [
-      'DRAGON_UNSUPPORTED_ATTRIBUTE', t, `attribute src on v is not supported on ${t}: ${NATIVE_FRAME_UNPROVEN}`,
-    ]));
-    expect(c.outputs.web.kind).toBe('ready');
-    expect(c.outputs.ios.kind).toBe('blocked');
-    expect(c.outputs.android.kind).toBe('blocked');
+  it('lowers a stream to a video-view write with its bytes and natural size, and emits dragonSetVideoView with them', () => {
+    const p = programs({ src: SRC_64 });
+    for (const b of ['uikit', 'android-views'] as const) {
+      expect(p[b].nodes.find((n) => n.id === 'v')?.writes.find((w) => w.kind === 'video-view'), b).toEqual({ kind: 'video-view', data: B64_64X48, width: 64, height: 48, key: 'dragonVideoView', technique: 'native-property', detail: expect.any(String), css: ['object-fit', 'object-position'] });
+    }
+    const one = { id: 'video', fixture: 'video', direction: 'ltr' as const, compilerDigest: 'd', viewport: { width: 400, height: 300 }, expectedDigests: [] };
+    expect(emitUikitCases([{ ...one, program: p.uikit }]).map((f) => f.text).join('\n')).toMatch(new RegExp(`dragonSetVideoView\\(v\\d+, "${B64_64X48.replace(/[+/]/g, '\\$&')}"\\)`));
+    expect(emitAndroidViewsCases([{ ...one, program: p['android-views'] }]).map((f) => f.text).join('\n')).toMatch(new RegExp(`dragonSetVideoView\\(v\\d+, "${B64_64X48.replace(/[+/]/g, '\\$&')}"\\)`));
+  });
+
+  it('mounts a player on iOS and Android only where the profile proves the video row, and keeps web ready (MEDIA-EL slice 2)', () => {
+    const row: ProfileRow = { feature: VIDEO_STREAM_FEATURE, context: VIDEO_CONTEXT, status: 'caveat', proofs: [{ aspect: 'layout', lane: 'device-pixels', valueSubset: 'video[src]', context: VIDEO_CONTEXT, cases: ['replaced-video-frame', 'replaced-video-frame-rtl'] }] };
+    const withRow = (p: SupportProfile): SupportProfile => ({ ...p, rows: [...p.rows.filter((r) => r.feature !== VIDEO_STREAM_FEATURE), row] });
+    const enforced = (src: string, proven: boolean, preload?: string) => createProjectWith({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, {
+      faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr',
+      supportProfiles: proven ? { web: COMMITTED_PROFILES.web, ios: withRow(COMMITTED_PROFILES.ios), android: withRow(COMMITTED_PROFILES.android) } : COMMITTED_PROFILES,
+    }).compile(inputFor(css, (r) => [video(r, 'v', preload === undefined ? { src } : { src, preload })]));
+    const unproven = enforced(SRC_64, false);
+    expect(unproven.diagnostics.filter((d) => d.severity === 'error').map((d) => [d.target, d.profile?.feature])).toEqual([['ios', VIDEO_STREAM_FEATURE], ['android', VIDEO_STREAM_FEATURE]]);
+    expect([unproven.outputs.web.kind, unproven.outputs.ios.kind, unproven.outputs.android.kind]).toEqual(['ready', 'blocked', 'blocked']);
+    const proven = enforced(SRC_64, true);
+    expect(proven.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    // Not blocked: each native output is what the same project gives a video with no stream (the committed native lanes verdict).
+    const none = enforced(SRC_64, true, 'none').outputs;
+    expect([proven.outputs.web.kind, proven.outputs.ios.kind, proven.outputs.android.kind]).toEqual(['ready', none.ios.kind, none.android.kind]);
+    expect(proven.outputs.ios.kind).not.toBe('blocked');
+    // A stream the lanes do not play (here a colour box) stays refused on native with the row.
+    const colr = patched(B64_64X48, (b) => b.set([0x63, 0x6f, 0x6c, 0x72], at(b, 'btrt')));
+    const tagged = enforced(`data:video/mp4;base64,${Buffer.from(colr).toString('base64')}`, true);
+    expect(tagged.diagnostics.filter((d) => d.severity === 'error').map((d) => [d.target, d.message])).toEqual(['ios', 'android'].map((t) => [t, `attribute src on v is not supported on ${t}: its sample entry has a colour box (colr); the device lanes prove limited-range streams with no colour tags only`]));
+    expect(tagged.outputs.web.kind).toBe('ready');
   });
 
   it('gives a video without a stream no player: no src, or preload none (ASCII case-insensitive) with any src', () => {
@@ -253,15 +296,19 @@ describe('MEDIA-EL: the platform player', () => {
     expect(() => streamLit('a"b', 'uikit')).toThrow('video data is not base64');
   });
 
-  it('opens the stream in a production build: only a lane host clears dragonVideoViewLoadsStream', () => {
+  it('opens the stream unless planted, removes the iOS temporary file with its view, reads the Android stream from memory and releases its surface', () => {
     const swift = emitNativeSupport('uikit').map((f) => f.text).join('\n');
     const kotlin = emitNativeSupport('android-views').map((f) => f.text).join('\n');
-    expect(swift.match(/dragonVideoViewLoadsStream\s*=/g)).toEqual(['dragonVideoViewLoadsStream =']);
-    expect(kotlin.match(/dragonVideoViewLoadsStream\s*=/g)).toEqual(['dragonVideoViewLoadsStream =']);
-    expect(swift).toContain('\npublic var dragonVideoViewLoadsStream = true\n');
-    expect(kotlin).toContain('\nvar dragonVideoViewLoadsStream = true\n');
+    expect(swift).toContain('\npublic let dragonVideoPlantUnloaded = false\n');
+    expect(kotlin).toContain('\nconst val DRAGON_VIDEO_PLANT_UNLOADED = false\n');
     expect(swift).toContain('video.playerLayer.videoGravity = .resize');
     expect(swift).toContain('video.playerLayer.player = AVPlayer(url: url)');
-    expect(kotlin).toContain('player.setDataSource(file.path)');
+    expect(swift).toContain('if let f = dragonStreamFile { try? FileManager.default.removeItem(at: f) }');
+    expect(kotlin).toContain('player.setDataSource(DragonVideoStream(bytes))');
+    expect(kotlin).not.toMatch(/createTempFile|cacheDir/);
+    expect(kotlin).toContain('host.dragonSurface?.release()');
+    // A capture waits on dragonVideoFramesPending: AVPlayerLayer.isReadyForDisplay, a frame drawn into the TextureView.
+    expect(swift).toContain('!video.playerLayer.isReadyForDisplay');
+    expect(kotlin).toContain('host.dragonFrameShown = true');
   });
 });
