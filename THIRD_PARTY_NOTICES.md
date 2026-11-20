@@ -633,7 +633,31 @@ You can contact the author at:
 
 ## OTS (OpenType Sanitizer): BSD 3-Clause (ots-bsd)
 
+- `third_party/ots/src/src/cff_charstring.cc`: Copyright (c) 2010-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/cff.cc`: Copyright (c) 2012-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/cmap.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/cvt.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/fpgm.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/gasp.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/glyf.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/hdmx.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/head.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/hhea.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/kern.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/loca.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/ltsh.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/math.cc`: Copyright (c) 2014-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/maxp.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/metrics.cc`: Copyright (c) 2011-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/name.cc`: Copyright (c) 2011-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/os2.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
 - `third_party/ots/src/src/ots.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/ots.h`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/post.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/prep.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/vdmx.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/vhea.cc`: Copyright (c) 2011-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/vorg.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
 
 ```
 Redistribution and use in source and binary forms, with or without

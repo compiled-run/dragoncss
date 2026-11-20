@@ -1,6 +1,6 @@
 // Chrome 145 loads a web font only when OTS accepts it: Blink passes some tables through, drops those OTS does not know, checks the rest.
 //
-// This directory ports OTS (third_party/ots/src, at the revision Chrome 145 pins) under this notice:
+// The table lists are ported from OTS's src/ots.cc (third_party/ots/src, at the revision Chrome 145 pins), under this notice:
 //
 //   Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
 //
