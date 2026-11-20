@@ -2,12 +2,17 @@
 // and size to their content in block flow, as flex items, and as flex containers, in both directions; the button type changing
 // nothing; Chrome's appearance display adjustment (an li with appearance: auto is a block, with no marker). The rejects name what
 // A3 refuses: a themed button (FORM-b), an inline-level one (RF-INL), the UA control font, an absolutely positioned button, an
-// auto-width flex button in block flow, and an inline element that appearance makes inline-block.
+// auto-width flex button in block flow, and an inline element that appearance makes inline-block. A fieldset lays out its rendered
+// legend in its block-start border (HTML §15.3.13); the rejects name the legend cutout paint, a non-block fieldset and the UA groove.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
 export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-button-block'),
+  both('fieldset-legend'),
+  reject('reject-fieldset-legend-border', 'DRAGON_UNSUPPORTED_VALUE', '2px', 'the top border of <fieldset> f with the rendered legend <legend> l'),
+  reject('reject-fieldset-display', 'DRAGON_UNSUPPORTED_VALUE', 'flex', 'display: flex on <fieldset> f is not laid out yet'),
+  reject('reject-ua-fieldset-groove', 'DRAGON_UNSUPPORTED_VALUE', '<fieldset data-dragon-id="f"></fieldset>', 'border-top-style, border-right-style, border-bottom-style, border-left-style: groove'),
   both('controls-button-flex'),
   both('controls-button-demo'),
   both('controls-button-type'),

@@ -263,7 +263,7 @@ export const replacedLeafSchema = obj({
 });
 
 /** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
-export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {} });
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, fieldset: {}, legend: {} });
 
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
@@ -621,6 +621,15 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   const children = childrenOf(value, path, errors);
   if (children === null) return;
   children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || isControl));
+  const controlKind = isControl && isRecord(value['control']) ? value['control']['kind'] : null;
+  // The rendered legend is the one first in-flow legend of its fieldset (block.ts layoutFieldset).
+  let legends = 0;
+  children.forEach((child: unknown, i: number) => {
+    if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'legend') return;
+    legends++;
+    if (controlKind !== 'fieldset') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a legend control is the rendered legend of a fieldset control: its parent is one' });
+    else if (legends > 1) errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a fieldset control has at most one rendered legend' });
+  });
   // Only a block container's flow moves a slider thumb by its value (block.ts layoutBlockFlow); in a flex track it would sit at 0.
   children.forEach((child: unknown, i: number) => {
     if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'slider-thumb') return;
@@ -808,6 +817,8 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
   };
   if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
   if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
+  if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['display'] !== 'block') bad('style.display', `a ${control['kind']} control is a block container`);
+  if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['float'] !== 'none') bad('style.float', `a ${control['kind']} control is in flow`);
   if (control['kind'] === 'slider-thumb' && typeof control['ratio'] === 'number' && control['ratio'] > 1) bad('control.ratio', 'a slider thumb ratio is at most 1');
   if (style['position'] === 'absolute') bad('style.position', 'an absolutely positioned form control is not supported');
   const ratio = style['aspectRatio'];
