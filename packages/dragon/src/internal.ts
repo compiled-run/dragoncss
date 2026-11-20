@@ -62,7 +62,8 @@ export type { CatalogueEntry } from './diagnostics/catalogue.ts';
 export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';
 export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
-export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
+export { MAX_STATE_ASSIGNMENTS, assignmentKey, isWhitespaceText, textAddresser } from './analysis/link.ts';
+export { isScalar, isTreeNodeId } from './analysis/input.ts';
 export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
 export { applyTextTransform } from './analysis/text-transform.ts';
 export type { TextTransform } from './analysis/text-transform.ts';
@@ -500,25 +501,59 @@ export function nativeBandOfViewport(compiled: object, viewport: { readonly widt
   return partitionBandAt(record.bands.partition, viewport, undefined, device)?.index ?? null;
 }
 
+/** One case in one band, or why there is none; the targets' check is the caller's. */
+function bandCaseOf(record: NonNullable<ReturnType<typeof internalRecord>>, assignment: Assignment, band: number): { readonly nativeLowered: import('@dragon/layout').LayoutBox; readonly resolved: ResolvedElement } | string {
+  const cases = record.bands?.cases[band];
+  if (cases === undefined) return `no band ${band} (the compile has ${record.bands?.cases.length ?? 1})`;
+  const key = keyOfAssignment(assignment);
+  const c = cases.find((x) => x.key === key);
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}`;
+  if (c.nativeLowered === null || c.resolved === null) return `the case has no native lowering in band ${band}`;
+  return { nativeLowered: c.nativeLowered, resolved: c.resolved };
+}
+
 /** Both native backends' programs of one case in one band (nativePrograms for the per-case programs' own band). */
 export function nativeBandPrograms(compiled: object, assignment: Assignment, band: number): NativePrograms {
   const record = internalRecord(compiled);
   if (record === undefined) return { kind: 'blocked', reason: 'not a compiled result from this package' };
   if (record.bands === null) return band === 0 ? nativePrograms(compiled, assignment) : { kind: 'blocked', reason: `the compile has no @media bands, so no band ${band}` };
-  const cases = record.bands.cases[band];
-  if (cases === undefined) return { kind: 'blocked', reason: `no band ${band} (the compile has ${record.bands.cases.length})` };
+  if (record.bands.cases[band] === undefined) return { kind: 'blocked', reason: `no band ${band} (the compile has ${record.bands.cases.length})` };
   const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
   for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
-  const key = keyOfAssignment(assignment);
-  const c = cases.find((x) => x.key === key);
-  if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
-  if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
+  const c = bandCaseOf(record, assignment, band);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
   try {
     return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
   }
+}
+
+/** One native backend's program of one case in one band: ready when the result checks that backend's target, whatever the other's. */
+export function nativeBandProgramFor(compiled: object, assignment: Assignment, band: number, target: 'ios' | 'android'): { readonly kind: 'ready'; readonly program: NativeProgram } | { readonly kind: 'blocked'; readonly reason: string } {
+  const record = internalRecord(compiled);
+  if (record === undefined) return { kind: 'blocked', reason: 'not a compiled result from this package' };
+  if (record.bands === null) return band === 0 ? nativeProgramFor(compiled, assignment, target) : { kind: 'blocked', reason: `the compile has no @media bands, so no band ${band}` };
+  const state = ((compiled as { targets?: Record<string, string> }).targets ?? {})[target];
+  if (state !== 'checked') return { kind: 'blocked', reason: `the ${target} target is ${state === undefined ? 'not configured' : state}` };
+  const c = bandCaseOf(record, assignment, band);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  try {
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+  } catch (e) {
+    if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+    throw e;
+  }
+}
+
+/** The interaction partition of one case in one band (interactionPartitionOf for the per-case programs' own band); null when it did not resolve. */
+export function interactionPartitionIn(compiled: object, assignment: Assignment, band: number): InteractionPartition | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  if (record.bands === null) return band === 0 ? interactionPartitionOf(compiled, assignment) : null;
+  const key = keyOfAssignment(assignment);
+  return record.bands.cases[band]?.find((x) => x.key === key)?.partition ?? null;
 }
 
 /**

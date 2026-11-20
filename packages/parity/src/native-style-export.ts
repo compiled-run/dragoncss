@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { LayoutBox } from '@dragon/layout';
 import { LU_PER_PX, resolveBorder } from '@dragon/layout';
 import type { Assignment, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
-import { programAt } from 'dragon';
+import { isScalar, programAt } from 'dragon';
 import { engineBoxes } from './native-host.ts';
 import { repoPath } from './paths.ts';
 
@@ -44,6 +44,11 @@ export type ExportTarget = {
   readonly assignments: readonly ExportAssignment[];
   /** next[a][s][v]: the assignment reached from a by setting state s to its v-th domain value, or -1. */
   readonly next: readonly (readonly (readonly number[])[])[];
+  /**
+   * Only for a sheet with @media: each atom is one media feature the host evaluates on the device, each band the truth vector of
+   * every atom (in band order), each condition the band's media text. The state `@env#band` (domain 0..n-1) selects the band.
+   */
+  readonly bands?: { readonly atoms: readonly unknown[]; readonly bands: readonly (readonly boolean[])[]; readonly conditions: readonly string[] };
 };
 export type NativeStyleExport = {
   readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;
@@ -85,6 +90,10 @@ function boxStyles(root: LayoutBox): Map<string, LayoutBox['style']> {
 
 const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
+/** A target's bands as the export writes them; absent for a sheet without @media. */
+export const exportBands = (o: { readonly bands: { readonly table: { readonly atoms: readonly unknown[]; readonly bands: readonly (readonly boolean[])[] }; readonly conditions: readonly string[] } | null }): Pick<ExportTarget, 'bands'> =>
+  o.bands === null ? {} : { bands: { atoms: o.bands.table.atoms, bands: o.bands.table.bands, conditions: o.bands.conditions } };
+
 /** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. */
 export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES): NativeStyleExport {
   if (!styles.ok) throw new Error(`${component}: no export: ${Object.entries(styles.targets).map(([t, o]) => `${t} ${o.kind === 'blocked' ? o.reason : 'emitted'}`).join('; ')}`);
@@ -117,7 +126,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next };
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o) };
   }
   const files = vendoredFaces();
   return {
@@ -134,4 +143,52 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     }),
     targets,
   };
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
+/** An export read from a file, with every field a comparison reads checked; anything malformed is refused, naming where. */
+export function parseNativeStyleExport(text: string): NativeStyleExport {
+  const fail = (what: string): never => {
+    throw new Error(`native style export: ${what}`);
+  };
+  const v: unknown = JSON.parse(text);
+  if (!isRecord(v) || v['schema'] !== NATIVE_STYLE_EXPORT_SCHEMA) fail(`not ${NATIVE_STYLE_EXPORT_SCHEMA}`);
+  const o = v as Record<string, unknown>;
+  if (typeof o['component'] !== 'string') fail('component is not a string');
+  if (!isRecord(o['targets'])) fail('targets is not an object');
+  for (const [t, x] of Object.entries(o['targets'] as Record<string, unknown>)) {
+    if (!(t in EXPORT_DEVICES)) fail(`target ${t} is neither ios nor android`);
+    if (!isRecord(x)) fail(`${t} is not an object`);
+    const target = x as Record<string, unknown>;
+    if (!isNumber(target['dpr']) || target['dpr'] <= 0) fail(`${t}: dpr is not a positive number`);
+    const viewport = target['viewport'];
+    if (!isRecord(viewport) || !isNumber(viewport['width']) || !isNumber(viewport['height']) || viewport['width'] <= 0 || viewport['height'] <= 0) fail(`${t}: viewport is not a positive size`);
+    if (!Array.isArray(target['states']) || !target['states'].every((s) => isRecord(s) && typeof s['key'] === 'string' && Array.isArray(s['domain']))) fail(`${t}: states is not a list of keys and domains`);
+    const bands = target['bands'];
+    if (bands !== undefined) {
+      if (!isRecord(bands) || !Array.isArray(bands['atoms']) || !bands['atoms'].every(isRecord) || !Array.isArray(bands['bands']) || !Array.isArray(bands['conditions'])) fail(`${t}: bands is not atoms, bands and conditions`);
+      const b = bands as { atoms: unknown[]; bands: unknown[]; conditions: unknown[] };
+      if (b.bands.length === 0 || !b.bands.every((r) => Array.isArray(r) && r.length === b.atoms.length && r.every((x) => typeof x === 'boolean'))) fail(`${t}: a band is not one truth value per atom`);
+      if (b.conditions.length !== b.bands.length || !b.conditions.every((c) => typeof c === 'string')) fail(`${t}: conditions are not one string per band`);
+    }
+    if (!Array.isArray(target['assignments'])) fail(`${t}: assignments is not a list`);
+    (target['assignments'] as unknown[]).forEach((a, i) => {
+      if (!isRecord(a) || !isRecord(a['values']) || !Array.isArray(a['nodes'])) fail(`${t}: assignment ${i} is not values and nodes`);
+      const { values, nodes } = a as { values: Record<string, unknown>; nodes: unknown[] };
+      for (const [k, x] of Object.entries(values)) if (!isScalar(x)) fail(`${t}: assignment ${i} gives ${k} a value that is not a scalar`);
+      const ids = new Set<string>();
+      for (const n of nodes) {
+        if (!isRecord(n) || typeof n['id'] !== 'string' || !(n['parent'] === null || typeof n['parent'] === 'string') || typeof n['kind'] !== 'string') fail(`${t}: assignment ${i} has a node without an id, parent and kind: ${JSON.stringify(n)}`);
+        const node = n as Record<string, unknown>;
+        const frame = node['frame'];
+        if (frame !== null && !(isRecord(frame) && (['x', 'y', 'width', 'height'] as const).every((k) => isNumber(frame[k])))) fail(`${t}: assignment ${i} node ${String(node['id'])} has a frame that is not null or x, y, width and height`);
+        if (ids.has(node['id'] as string)) fail(`${t}: assignment ${i} lists node ${String(node['id'])} twice`);
+        ids.add(node['id'] as string);
+      }
+      for (const n of nodes as { id: string; parent: string | null }[]) if (n.parent !== null && !ids.has(n.parent)) fail(`${t}: assignment ${i} node ${n.id} has parent ${n.parent}, which is not one of its nodes`);
+    });
+  }
+  return v as NativeStyleExport;
 }

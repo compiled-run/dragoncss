@@ -3,7 +3,9 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { compiledCases, interactionPartitionOf, nativeProgramFor } from './internal.ts';
+import { compiledCases, interactionPartitionIn, nativeBandProgramFor, nativeBands } from './internal.ts';
+import type { rtBand } from '@dragon/layout';
+import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
 import type { NativeBackend } from './lower/native-program.ts';
 import type { StateProgram } from './lower/state-program.ts';
 import { deriveStateProgram, StateProgramError } from './lower/state-program.ts';
@@ -42,6 +44,11 @@ export type NativeStyleOutput = {
   readonly files: readonly GeneratedFile[];
   /** Whether the target's committed device lanes all pass: only 'ready' is a shipping output (docs/api.md §2.2). */
   readonly readiness: ArtifactState;
+  /**
+   * The sheet's @media bands, or null without @media: each atom is one media feature the device evaluates, each band the truth
+   * vector of every atom; the program's env#band state selects one, so a band change is a setter like any other.
+   */
+  readonly bands: { readonly table: rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null;
 };
 
 export type NativeStyleBlocked = { readonly kind: 'blocked'; readonly reason: string };
@@ -87,25 +94,28 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   const record = internalRecord(compiled);
   if (record === undefined) throw new Error('compileNativeStyles: the compile result carries no internal record');
   if (record.animation !== null && record.animation.features.length > 0) return { kind: 'blocked', reason: `the ${t} output has transitions or animations, which this entry point does not emit yet` };
-  if (record.bands !== null) return { kind: 'blocked', reason: `the ${t} output has @media bands, which this entry point does not emit yet` };
   const backend = BACKEND[t];
+  const bands = nativeBands(compiled);
+  const count = bands === null ? 1 : bands.table.bands.length;
   const cases = [];
   for (const c of compiledCases(compiled)) {
-    const partition = interactionPartitionOf(compiled, c.assignment);
-    if (partition !== null && partition.states.length > 0) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
-    const p = nativeProgramFor(compiled, c.assignment, t);
-    if (p.kind === 'blocked') return { kind: 'blocked', reason: p.reason };
-    cases.push({ assignment: c.assignment, isInitial: c.isInitial, program: p.program });
+    for (let band = 0; band < count; band++) {
+      const partition = interactionPartitionIn(compiled, c.assignment, band);
+      if (partition !== null && partition.states.length > 0) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
+      const p = nativeBandProgramFor(compiled, c.assignment, band, t);
+      if (p.kind === 'blocked') return { kind: 'blocked', reason: p.reason };
+      cases.push({ assignment: c.assignment, isInitial: c.isInitial, band, program: p.program });
+    }
   }
   try {
-    const program = deriveStateProgram(backend, cases);
-    const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [] };
+    const program = bands === null ? deriveStateProgram(backend, cases) : bandStateProgram(backend, cases, count, bands.initial);
+    const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
     if (file === undefined) throw new Error(`compileNativeStyles: the ${backend} state emitter wrote no ${path}`);
-    return { kind: 'emitted', backend, program, files: [file], readiness: compiled.outputs[t] };
+    return { kind: 'emitted', backend, program, files: [file], readiness: compiled.outputs[t], bands };
   } catch (e) {
-    if (e instanceof StateProgramError || e instanceof StateEmitError) return { kind: 'blocked', reason: e.message };
+    if (e instanceof StateProgramError || e instanceof StateEmitError || e instanceof BandProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
   }
 }
