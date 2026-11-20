@@ -133,5 +133,26 @@
     }
    ]
   }
- ]
+ ],
+ "expected": {
+  "freeStates": [
+   {
+    "instance": "doc/app/button",
+    "state": "disabled",
+    "domain": [
+     false,
+     true
+    ]
+   }
+  ],
+  "cases": 2,
+  "initial": [
+   {
+    "instance": "doc/app/button",
+    "state": "disabled",
+    "value": false
+   }
+  ],
+  "textTopology": []
+ }
 }

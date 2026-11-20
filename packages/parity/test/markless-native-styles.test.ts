@@ -86,11 +86,11 @@ describe('what native cannot do yet is an error that names it', () => {
     for (const t of ['ios', 'android']) expect(errors(r)).toContain(`DRAGON_UNSUPPORTED_SELECTOR [${t}] :active is not supported on ${t}: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)`);
   });
 
-  it(':disabled compiles as the disabled attribute\'s state; the fixture stays refused for its :active on a button', () => {
-    const r = compileNativeStyles(CONFIG, readTreeFixture('reject-ms-button-disabled'));
+  it(':disabled compiles as the disabled attribute\'s state; :active on a button is refused on native', () => {
+    expect(errors(compileNativeStyles(CONFIG, readTreeFixture('ms-button-disabled')))).toEqual([]);
+    const r = compileNativeStyles(CONFIG, withCss('ms-button-disabled', 'button', '.button { display: block; font: inherit; width: 90px; height: 24px; padding: 2px 8px; border: 2px solid #135; background-color: #48c; } .button:active { background-color: #236; }'));
     expect(r.ok).toBe(false);
-    expect(errors(r).filter((e) => e.includes(':disabled') || e.includes('attribute disabled'))).toEqual([]);
-    expect(errors(r).some((e) => e.includes(':active'))).toBe(true);
+    expect(errors(r)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :active is not supported on ${t}: no passing device proof of selector:pseudo-class(:active) in interaction/mouse, selector:pseudo-class(:active) in interaction/touch (support profile m1-s5)`));
   });
 
   it('a family fallback list on native is refused, naming font-family; an unmapped family is refused everywhere', () => {

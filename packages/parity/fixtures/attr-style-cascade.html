@@ -12,7 +12,7 @@ div#b.t.t.t { width: 40px; }
 .d { width: 60px !important; }
 @layer base { .e { width: 70px; } .e2 { width: 75px !important; } }
 .f { --w: 80px; }
-.g { margin-left: 4px; }
+.g-start { margin-left: 4px; }
 .h > .t { height: 6px; }
 </style>
 </head>
@@ -25,7 +25,7 @@ div#b.t.t.t { width: 40px; }
 <div data-dragon-id="e2" class="t e2" style="width: 32px !important"></div>
 <div data-dragon-id="f1" class="t f" style="width: var(--w)"></div>
 <div data-dragon-id="f2" class="t" style="--w: 26px; width: var(--w)"></div>
-<div data-dragon-id="g1" class="t g" style="margin-inline-start: 12px; width: 27px"></div>
+<div data-dragon-id="g1" class="t g-start" style="margin-inline-start: 12px; width: 27px"></div>
 <div data-dragon-id="g2" class="t" style="margin: 2px 3px 4px 5px; width: 28px; width: 29px"></div>
 <div data-dragon-id="h1" class="h" style="--h: 2px; padding-top: var(--h)"><div data-dragon-id="h2" class="t" style="height: calc(var(--h) * 4)"></div></div>
 <div data-dragon-id="i1" class="t" style="width: 31px; background-color: rgb(40, 90, 200)"></div>
