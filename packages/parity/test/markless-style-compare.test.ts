@@ -9,8 +9,8 @@ import { launchChrome, openPage } from '../src/chrome.ts';
 import { describe, expect, it } from 'vitest';
 import { authoredFontHtml } from '../src/cases.ts';
 import type { DocumentNode } from '../src/markless-style-compare.ts';
-import { captureMarklessAssignment, compareMarklessExport, documentMismatch, marklessDocumentHtml, readDocumentTree } from '../src/markless-style-compare.ts';
-import type { MarklessStyleInput } from '../src/markless-style-input.ts';
+import { captureMarklessAssignment, checkSystemFonts, compareMarklessExport, documentMismatch, marklessDocumentHtml, readDocumentTree, readRootProbe, usedScheme } from '../src/markless-style-compare.ts';
+import type { MarklessExportAssignment, MarklessStyleExport, MarklessStyleInput } from '../src/markless-style-input.ts';
 import { MARKLESS_DOCUMENT_CSS, marklessNodeId, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import type { ExportTarget, NativeStyleExport } from '../src/native-style-export.ts';
 import { EXPORT_DEVICES, parseNativeStyleExport } from '../src/native-style-export.ts';
@@ -122,7 +122,7 @@ describe('node ids', () => {
     const browser = await launchChrome(t.dpr);
     try {
       const capture = await captureMarklessAssignment(browser, parsed, t, t.assignments[0]!.values, 'light');
-      const idOf = marklessNodeId(parsed, (id) => id);
+      const idOf = marklessNodeId(parsed, (id) => id, t.assignments[0]!.values);
       const chrome = capture.nodes.filter((n) => n.kind !== 'line' && n.hasBox).map((n) => idOf(n.id));
       // Dragon's anonymous boxes are its own; every other exported node is one Chrome captured, under the same id.
       expect(exported.filter((n) => n.kind !== 'anonymous').map((n) => n.id).sort()).toEqual([...chrome].sort());
@@ -139,15 +139,20 @@ describe('node ids', () => {
     expect(r.rows.map((x) => x.id)).toEqual(expect.arrayContaining(kinds.filter((k) => !k.includes(':anon'))));
   }, 60_000);
 
-  it('refuses the node kinds the export does not carry: a ::marker in a state program and a <dialog> (its ::backdrop)', () => {
-    expect(() => marklessStyleExport(inputOf([el('u', null, 'ul'), el('li:0', 'u', 'li'), tx('t', 'li:0', 'a')], ''), PATH)).toThrow('::marker');
-    expect(() => marklessStyleExport(inputOf([el('d:0', null, 'dialog', { open: '' })], ''), PATH)).toThrow('<dialog>');
-  });
+  it('names a list item\'s ::marker as Chrome\'s capture does, so it compares clean', async () => {
+    const text = inputOf([el('u', null, 'ul'), el('li:0', 'u', 'li'), tx('t', 'li:0', 'a')], '');
+    const all = marklessStyleExport(text, PATH).exported;
+    // li:0 is not a tree id, so Dragon names it m<k>; its marker is renamed back to the input id with its suffix kept.
+    expect(all.targets.ios!.assignments[0]!.nodes.map((n) => n.id)).toContain('li:0::marker');
+    const r = await compareMarklessExport(parseMarklessStyleInput(text), all);
+    expect(r.rows.filter((x) => !x.pass)).toEqual([]);
+    expect(r.rows.filter((x) => x.id === 'li:0::marker').map((x) => x.target).sort()).toEqual(['android', 'ios']);
+  }, 60_000);
 
   it('refuses an input whose ids collide with another node\'s address in Chrome\'s capture', async () => {
     const text = inputOf([el('a', null, 'div'), tx('t', 'a', 'x'), el('a:text0', null, 'div')], '');
     const all = marklessStyleExport(text, PATH).exported;
-    await expect(compareMarklessExport(parseMarklessStyleInput(text), all)).rejects.toThrow('Chrome\'s capture names more than one node a:text0');
+    await expect(compareMarklessExport(parseMarklessStyleInput(text), all)).rejects.toThrow('the browser\'s capture names more than one node a:text0');
   }, 60_000);
 });
 
@@ -160,6 +165,16 @@ describe('the export a comparison reads', () => {
     await expect(compareMarklessExport(input, parsed)).rejects.toThrow('the export\'s targets ios are not the targets the input compiles to, android, ios');
     await expect(compareMarklessExport(input, { ...full, targets: {} })).rejects.toThrow('the export\'s targets none are not');
   });
+
+  it('compares only the targets a caller names, from an export that still holds every target the input compiles to', async () => {
+    const { ios: _ios, ...androidOnly } = full.targets;
+    await expect(compareMarklessExport(input, { ...full, targets: androidOnly }, undefined, 'light', [], 'pinned', ['android'])).rejects.toThrow('the export\'s targets android are not the targets the input compiles to, android, ios');
+    await expect(compareMarklessExport(input, full, undefined, 'light', [], 'pinned', ['andriod'])).rejects.toThrow('the targets to compare, andriod, are not a set of the targets the input compiles to');
+    await expect(compareMarklessExport(input, full, undefined, 'light', [], 'pinned', [])).rejects.toThrow('the targets to compare, none, are not');
+    const r = await compareMarklessExport(input, full, undefined, 'light', [], 'pinned', ['android']);
+    expect(new Set(r.rows.map((x) => x.target))).toEqual(new Set(['android']));
+    expect(r.failed).toBe(0);
+  }, 60_000);
 
   it('refuses a target whose assignments are not one per combination of the input\'s states', async () => {
     await expect(compareMarklessExport(input, withIos((t) => ({ ...t, assignments: [] })))).rejects.toThrow('ios: the assignments are not one per combination of the input\'s states: missing [{"state:liked":false},{"state:liked":true}], extra or repeated []');
@@ -195,6 +210,30 @@ describe('the export a comparison reads', () => {
     await expect(compareMarklessExport(parseMarklessStyleInput(appText), relabelled)).rejects.toThrow('ios: bands');
   });
 
+  it('refuses a target laid out at another viewport or ratio than the input asks for, since Chrome lays out at the export\'s', async () => {
+    const box = (viewports?: unknown): string => JSON.stringify({ version: 'markless.native-style-input/0', component: 'Full', nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'full' } }], css: '.full { height: 100vh; width: 50vw; }', states: [], ...(viewports === undefined ? {} : { viewports }) });
+    const sheet = { ios: { width: 300, height: 200 }, android: { width: 300, height: 200 } };
+    const page = marklessStyleExport(box(), 'full.json').exported;
+    await expect(compareMarklessExport(parseMarklessStyleInput(box(sheet)), page)).rejects.toThrow('ios: viewport {"width":402,"height":778} at 3x is not the input\'s {"width":300,"height":200} at 3x');
+    const sized = marklessStyleExport(box(sheet), 'full.json').exported;
+    await expect(compareMarklessExport(parseMarklessStyleInput(box()), sized)).rejects.toThrow('ios: viewport {"width":300,"height":200} at 3x is not the input\'s {"width":402,"height":778} at 3x');
+    expect((await compareMarklessExport(parseMarklessStyleInput(box(sheet)), sized)).failed).toBe(0);
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, dpr: 2 })))).rejects.toThrow('ios: viewport {"width":402,"height":778} at 2x is not the input\'s {"width":402,"height":778} at 3x');
+  }, 60_000);
+
+  it('refuses a target whose initial assignment or state transitions are not what the input compiles to', async () => {
+    const liked = ios.assignments.findIndex((a) => a.values['state:liked'] === true);
+    expect(ios.assignments[ios.initial]!.values['state:liked']).toBe(false);
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, initial: liked })))).rejects.toThrow('ios: the initial assignment {"state:liked":true} is not the input\'s {"state:liked":false}');
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, initial: 7 })))).rejects.toThrow('ios: initial 7 is not an assignment');
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, next: t.next.map((row) => row.map((to) => to.map(() => liked))) })))).rejects.toThrow('ios: setting state:liked to false from {"state:liked":false} reaches {"state:liked":true}, where the input reaches {"state:liked":false}');
+    await expect(compareMarklessExport(input, withIos((t) => ({ ...t, next: [] })))).rejects.toThrow('ios: next is not one row per assignment');
+  });
+
+  it('refuses an export of another component', async () => {
+    await expect(compareMarklessExport(input, { ...full, component: 'Other' })).rejects.toThrow('the export is of Other, not the input\'s ');
+  });
+
   it('reads an export file only when every field the comparison reads is well formed', () => {
     const text = JSON.stringify(full);
     expect(parseNativeStyleExport(text)).toEqual(full);
@@ -210,6 +249,9 @@ describe('the export a comparison reads', () => {
     expect(() => parseNativeStyleExport(edit((v) => { v['targets']['ios']['assignments'][1]['nodes'].push(v['targets']['ios']['assignments'][1]['nodes'][3]); }))).toThrow('ios: assignment 1 lists node h1 twice');
     expect(() => parseNativeStyleExport(edit((v) => { v['targets']['ios']['assignments'][0]['nodes'][3]['parent'] = 'h9'; }))).toThrow('ios: assignment 0 node h1 has parent h9');
     expect(() => parseNativeStyleExport(edit((v) => { v['targets']['android']['dpr'] = '3'; }))).toThrow('android: dpr is not a positive number');
+    expect(() => parseNativeStyleExport(edit((v) => { v['fonts'] = [{ id: 'x', file: 'x.ttf', from: 'app' }]; }))).toThrow('fonts is not a list of { id, file, from? "input" }');
+    expect(() => parseNativeStyleExport(edit((v) => { v['systemFonts'] = [{ id: 'x', android: { file: 'Roboto.ttf', index: '0', sha256: 'a' } }]; }))).toThrow('systemFonts x: android is not a file, index and sha256');
+    expect(() => parseNativeStyleExport(edit((v) => { v['systemFonts'] = [{ id: 'x', ios: { face: { kind: 'name' } } }]; }))).toThrow('systemFonts x: ios is not a Core Text face');
   });
 
   it('the CLI exits 1 naming the problem for an export that leaves out a state', () => {
@@ -256,7 +298,7 @@ describe('the document Chrome lays out', () => {
     const browser = await launchChrome(device.dpr);
     try {
       const capture = await captureMarklessAssignment(browser, parsed, { ...ios, ...device }, {}, 'light');
-      const idOf = marklessNodeId(parsed, (id) => id);
+      const idOf = marklessNodeId(parsed, (id) => id, {});
       const texts = capture.nodes.filter((n) => n.kind === 'text').map((n) => [n.id, idOf(n.id), n.width > 0] as const);
       expect(texts).toEqual([['h0:text0', 'a', true], ['h0:text1', 'b', true]]);
     } finally {
@@ -324,4 +366,125 @@ describe('the document Chrome lays out', () => {
     expect(marklessDocumentHtml(parsed([el('h0', null, 'div')], '.a { content: "</styles"; }'), {})).toContain('</styles');
     expect(() => marklessDocumentHtml(parsed([el('h0', null, 'div', { 'data-dragon-id': 'x' })]), {})).toThrow('h0: data-dragon-id is the comparison\'s own attribute');
   });
+});
+
+describe('the page\'s own paint and the font mode', () => {
+  type Edit = (a: MarklessExportAssignment, i: number) => MarklessExportAssignment;
+  const editIos = (f: Edit): MarklessStyleExport => ({ ...full, targets: { ...full.targets, ios: { ...ios, assignments: ios.assignments.map(f) } } });
+  const failing = (r: Awaited<ReturnType<typeof compareMarklessExport>>): string[] => r.paint.filter((x) => !x.pass).map((x) => `${x.target} ${JSON.stringify(x.values)} ${x.field}: ${JSON.stringify(x.exported)} where Chrome has ${JSON.stringify(x.chrome)}`);
+
+  it('compares each assignment\'s canvas, body background and colour scheme with Chrome\'s, failing any difference', async () => {
+    const r = await compareMarklessExport(input, full, undefined, 'light', [], null, ['ios']);
+    expect(r.paint.map((x) => x.field)).toEqual(ios.assignments.flatMap(() => ['canvas', 'bodyBackground', 'colorScheme']));
+    expect(failing(r)).toEqual([]);
+    expect(r.failed).toBe(0);
+    const white = { r: 255, g: 255, b: 255, alpha: 255 };
+    const off = { r: 254, g: 255, b: 255, alpha: 255 };
+    const edited = editIos((a, i) => (i === 0 ? { ...a, canvas: off, bodyBackground: white } : { ...a, colorScheme: 'dark', bodyBackground: off }));
+    const e = await compareMarklessExport(input, edited, undefined, 'light', [], null, ['ios']);
+    expect(failing(e)).toEqual([
+      `ios {"state:liked":false} canvas: ${JSON.stringify(off)} where Chrome has ${JSON.stringify(white)}`,
+      `ios {"state:liked":true} bodyBackground: ${JSON.stringify(off)} where Chrome has null`,
+      'ios {"state:liked":true} colorScheme: "dark" where Chrome has "light"',
+    ]);
+    expect(e.failed).toBe(3);
+  }, 60_000);
+
+  it('reads a dark page\'s canvas and body box from Chrome\'s pixels', async () => {
+    const text = JSON.stringify({ version: 'markless.native-style-input/0', component: 'Page', nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'box' } }], css: ':root { color-scheme: dark; } .box { height: 100px; } html { background: rgba(0, 0, 64, 0.3); } body { background: rgba(128, 128, 0, 0.05); }', states: [] });
+    const page = marklessStyleExport(text, 'page.json').exported;
+    const r = await compareMarklessExport(parseMarklessStyleInput(text), page);
+    expect(failing(r)).toEqual([]);
+    expect(r.paint.filter((x) => x.field === 'colorScheme').map((x) => x.chrome)).toEqual(['dark', 'dark']);
+    expect(r.paint.filter((x) => x.field === 'bodyBackground').every((x) => x.chrome !== null && x.chrome !== 'body shows no area')).toBe(true);
+    const wrong: MarklessStyleExport = { ...page, targets: { ...page.targets, android: { ...page.targets.android!, assignments: page.targets.android!.assignments.map((a) => ({ ...a, bodyBackground: a.canvas })) } } };
+    expect(failing(await compareMarklessExport(parseMarklessStyleInput(text), wrong))).toHaveLength(1);
+  }, 60_000);
+
+  it('reads body\'s background whatever paints over it: body\'s pseudo-elements, and content kept visible by an !important rule', async () => {
+    for (const cover of [
+      'body::before { content: ""; position: absolute; inset: 0; background: blue; }',
+      'body::after { content: ""; position: fixed; inset: 0; background: blue; visibility: visible !important; }',
+      'body .box { background: blue; visibility: visible !important; }',
+    ]) {
+      const text = JSON.stringify({ version: 'markless.native-style-input/0', component: 'Page', nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'box' } }], css: `.box { height: 100px; } html { background: #fefae0; } body { background: #264653; } ${cover}`, states: [] });
+      const page = marklessStyleExport(text, 'page.json').exported;
+      const r = await compareMarklessExport(parseMarklessStyleInput(text), page, undefined, undefined, undefined, undefined, ['ios']);
+      expect(failing(r), cover).toEqual([]);
+      expect(r.paint.filter((x) => x.field === 'bodyBackground').map((x) => x.chrome), cover).toEqual([{ r: 38, g: 70, b: 83, alpha: 255 }]);
+    }
+  }, 60_000);
+
+  it('refuses an export without its canvas, body background or colour scheme, naming the field', async () => {
+    const { canvas: _canvas, ...noCanvas } = ios.assignments[0]!;
+    await expect(compareMarklessExport(input, editIos((a, i) => (i === 0 ? (noCanvas as MarklessExportAssignment) : a)))).rejects.toThrow('ios assignment 0: canvas null is not a colour');
+    await expect(compareMarklessExport(input, editIos((a) => ({ ...a, canvas: { r: 0, g: 0, b: 256, alpha: 255 } })))).rejects.toThrow('ios assignment 0: canvas {"r":0,"g":0,"b":256,"alpha":255} is not a colour');
+    await expect(compareMarklessExport(input, editIos((a) => ({ ...a, bodyBackground: 'red' as never })))).rejects.toThrow('ios assignment 0: bodyBackground "red" is not a colour or null');
+    await expect(compareMarklessExport(input, editIos((a) => ({ ...a, colorScheme: 'grey' as never })))).rejects.toThrow('ios assignment 0: colorScheme "grey" is neither light nor dark');
+  });
+
+  it('takes the font mode from the export, and refuses a caller\'s mode that is not the export\'s', async () => {
+    expect(full.fontMode).toBe('pinned');
+    await expect(compareMarklessExport(input, full, undefined, 'light', [], 'system')).rejects.toThrow('the export resolved fonts as pinned, not the system the comparison was asked for');
+    const { fontMode: _mode, ...unmarked } = full;
+    await expect(compareMarklessExport(input, unmarked as NativeStyleExport)).rejects.toThrow('the export\'s fontMode null is neither system nor pinned');
+    expect((await compareMarklessExport(input, full, undefined, 'light', [], null, ['android'])).fontMode).toBe('pinned');
+  }, 60_000);
+
+  it('the CLI refuses --fonts that is not the export\'s font mode', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'markless-style-compare-'));
+    try {
+      const exportPath = join(dir, 'export.json');
+      writeFileSync(exportPath, JSON.stringify(full));
+      const r = spawnSync(process.execPath, ['--conditions=dragon-internal', repoPath('packages/parity/src/cli/markless-style-compare.ts'), repoPath(PATH), exportPath, join(dir, 'report.json'), '--fonts', 'system'], { encoding: 'utf8' });
+      expect(r.stderr).toContain('the export resolved fonts as pinned, not the system the comparison was asked for');
+      expect(r.status).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses system faces that are not the ones the input\'s compile resolves', () => {
+    const face = 'system:default:400';
+    const resolved = { platform: 'android' as const, file: 'NotoSerif-Regular.ttf', index: 0, axes: {}, sha256: 'abc' };
+    const provider = { descriptor: () => resolved };
+    const t = full.targets.android!;
+    const drawn = (systemFonts: NativeStyleExport['systemFonts']): NativeStyleExport => ({
+      ...full,
+      ...(systemFonts === undefined ? {} : { systemFonts }),
+      targets: { ...full.targets, android: { ...t, assignments: t.assignments.map((a) => ({ ...a, nodes: a.nodes.map((n) => (n.id === 'h1:text0' ? { ...n, writes: [...n.writes.filter((w) => w['kind'] !== 'font'), { kind: 'font', font: { family: face, size: 16 } }] } : n)) })) } },
+    });
+    const { platform: _p, ...android } = resolved;
+    expect(() => checkSystemFonts(drawn([{ id: face, android }]), 'android', provider)).not.toThrow();
+    expect(() => checkSystemFonts(drawn(undefined), 'android', provider)).toThrow(`android: the export draws text in the system face ${face} and lists no android font for it`);
+    expect(() => checkSystemFonts(drawn([{ id: face, android: { ...android, file: 'Roboto-Regular.ttf' } }]), 'android', provider)).toThrow(`android: the export lists {"file":"Roboto-Regular.ttf","index":0,"axes":{},"sha256":"abc"} for the system face ${face}, where the input's compile resolves`);
+  });
+
+  it('reads the viewport\'s height, 100vh and the root\'s used colour scheme from the page', async () => {
+    const browser = await launchChrome(1);
+    try {
+      const page = await openPage(browser, '<!DOCTYPE html><html><head><style>:root { color-scheme: light dark; } body { height: 50vh; }</style></head><body></body></html>', { viewport: { width: 300, height: 200 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' });
+      try {
+        const light = await page.evaluate(readRootProbe);
+        expect({ vh: light.vh, viewportHeight: light.viewportHeight, prefersDark: light.prefersDark, scheme: usedScheme(light) }).toEqual({ vh: 200, viewportHeight: 200, prefersDark: false, scheme: 'light' });
+        await page.emulateMedia({ colorScheme: 'dark' });
+        const dark = await page.evaluate(readRootProbe);
+        expect({ prefersDark: dark.prefersDark, scheme: usedScheme(dark) }).toEqual({ prefersDark: true, scheme: 'dark' });
+        expect(await page.evaluate(() => document.documentElement.childElementCount)).toBe(2);
+      } finally {
+        await page.context().close();
+      }
+      for (const css of ['html > div { max-height: 10px !important; }', ':root > * { min-height: 999px !important; zoom: 2 !important; }', 'div { box-sizing: border-box !important; padding: 30px !important; }']) {
+        const hostile = await openPage(browser, `<!DOCTYPE html><html><head><style>:root { color-scheme: light dark; } ${css}</style></head><body></body></html>`, { viewport: { width: 300, height: 200 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' });
+        try {
+          const p = await hostile.evaluate(readRootProbe);
+          expect({ vh: p.vh, scheme: usedScheme(p) }, css).toEqual({ vh: 200, scheme: 'light' });
+        } finally {
+          await hostile.context().close();
+        }
+      }
+    } finally {
+      await browser.close();
+    }
+  }, 60_000);
 });

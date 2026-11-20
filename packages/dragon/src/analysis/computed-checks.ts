@@ -55,7 +55,7 @@ import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
-import { checkZoom, effectiveZoom } from './zoom.ts';
+import { checkZoom, effectiveZoom, parentZoomOf } from './zoom.ts';
 import { checkFontUnits } from './font-units.ts';
 import { checkIntrinsicSize } from './contain-intrinsic.ts';
 import type { ContainIntrinsicFaults } from '../faults/contain-intrinsic.ts';
@@ -65,7 +65,7 @@ import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkImageRendering, checkPixelatedTransformed } from './image-rendering.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
-import { paintContained } from './containment.ts';
+import { containsDescendants, paintContained } from './containment.ts';
 import { checkContainment } from './containment-checks.ts';
 import type { MulticolFaults } from '../faults/multicol.ts';
 import { MULTICOL_FAULTS } from '../faults/multicol.ts';
@@ -96,7 +96,9 @@ import { checkBackgroundBlend } from './background-blend.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
+import { isTopLayer, topLayerAncestorsOf } from './top-layer.ts';
 import { uaTagOf } from './elements.ts';
+import { isDisabled } from './match.ts';
 import { buttonAppearance, isControlTag, isRangeType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
@@ -111,7 +113,8 @@ import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts'
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, valueToString } from './resolve.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
-import { serializeColor } from '../css/color.ts';
+import type { Rgba8 } from '../css/color.ts';
+import { parseComputedColor, serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
 import { glyphFill, usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
@@ -997,6 +1000,33 @@ function checkFixedContainingBlocks(root: ResolvedElement, propagated: ResolvedE
   walk(root, null, null);
 }
 
+// css-position-4 §3: the engine has no initial containing block for a top-layer box, which Chrome places against it.
+function checkTopLayer(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const positioned = keywordOf(root.props.get('position') as ResolvedValue) !== 'static' || containsDescendants(root);
+  for (const el of root.children) {
+    if (el.kind !== 'element' || !isTopLayer(el) || displayKeyword(el) === 'none') continue;
+    const v = el.props.get('position') as ResolvedValue;
+    const pos = keywordOf(v);
+    const auto = (p: Longhand): boolean => keywordOf(el.props.get(p) as ResolvedValue) === 'auto';
+    const axes = [auto('left') && auto('right') ? 'left and right' : null, auto('top') && auto('bottom') ? 'top and bottom' : null].filter((a) => a !== null);
+    const area = keywordOf(el.props.get('position-area') as ResolvedValue) !== 'none';
+    const messages = [
+      ...(pos === 'absolute' && positioned ? [`the top-layer box ${el.element.address} is position: absolute while the root ${root.element.address} is positioned or contained: Chrome places it against the initial containing block, Dragon would place it against the root's padding box`] : []),
+      ...(axes.length > 0 && !area ? [`${axes.join(', and ')} are auto on the top-layer box ${el.element.address}: Chrome places it at the initial containing block's start corner, Dragon would place it after the root's contents`] : []),
+    ];
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const message of messages) {
+      for (const t of native) {
+        const id = `${t}|top-layer|${message}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Give the top-layer box position: fixed and insets that are not auto, as the UA style does.', basis: 'computed-value' }));
+      }
+    }
+  }
+}
+
 // POSX-s (css-position-3 §3.4): the engine offsets a sticky box after layout against the viewport at scroll offset 0, inside its
 // parent's content box (packages/layout/src/layout.ts stickyOffset). It refuses a sticky root, an inline-level sticky box (placed by
 // a line box), a sticky box inside another, and a percentage padding on the parent (its containing block): refused here on every
@@ -1229,7 +1259,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const declared = size.origin === 'author' ? size.declared : null;
     const relative = declared !== null && (declared.kind === 'percentage' || isPercentFontSizeMath(declared) || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
-    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'))).contexts;
+    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'), isDisabled([...ancestors.map((a) => a.element), el.element]))).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -1654,9 +1684,9 @@ function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refus
   refuse(null, 'grid-item', `<${tag}> ${el.element.address} is a grid item, and a form control as a grid item is not supported yet`, `Wrap <${tag}> ${el.element.address} in a div, which becomes the grid item.`);
 }
 
-/** The text longhands Chrome's UA button rule resets (html.css), with whether a computed value equals the reset. */
-const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
-  ['color', (v) => v.kind === 'color' && v.value.r === 0 && v.value.g === 0 && v.value.b === 0 && v.value.alpha === 255],
+/** The text longhands Chrome's UA button rule resets (html.css), with whether a computed value equals the reset; color's is ButtonText. */
+const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue, buttonText: Rgba8) => boolean])[] = [
+  ['color', (v, t) => v.kind === 'color' && v.value.r === t.r && v.value.g === t.g && v.value.b === t.b && v.value.alpha === t.alpha],
   ['line-height', (v) => v.kind === 'keyword' && v.value === 'normal'],
   ['font-weight', (v) => (v.kind === 'number' && v.value === 400) || (v.kind === 'keyword' && v.value === 'normal')],
   ['letter-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
@@ -1677,7 +1707,7 @@ const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] 
  * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
  * display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control font (R13).
  */
-function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
   const tag = el.element.tag;
   const address = el.element.address;
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
@@ -1709,12 +1739,14 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   noteStaticOnNative(el, targets, diagnostics, reported);
   refuseScrollInControl(el, el, targets, diagnostics, reported);
   // The UA reset rows are not captured yet (#78's inherited-reset capture), so a button inheriting anything but the reset is refused.
+  const buttonText = parseComputedColor(ua.systemColors['ButtonText'] ?? '');
+  if (buttonText === null) throw new Error(`the ${ua.platform} UA dataset has no ButtonText colour`);
   for (const [p, isReset] of BUTTON_RESETS) {
     const v = el.props.get(p) as ResolvedValue;
     // revert and revert-layer roll back to the UA rule Dragon lacks, so Dragon resolves them to the inherited value too.
     const reverted = v.declared !== null && v.declared.kind === 'keyword' && (v.declared.value === 'revert' || v.declared.value === 'revert-layer');
     if ((v.origin !== 'inherited' || v.declaration !== null) && !reverted) continue;
-    if (isReset(v.value)) continue;
+    if (isReset(v.value, buttonText)) continue;
     const how = reverted ? `resolves ${p}: ${valueToString(v.declared as CssValue)} to ${valueToString(v.value)}` : `inherits ${p}: ${valueToString(v.value)}`;
     refuse(v, `reset-${p}`, `<${tag}> ${address} ${how}, which Chrome's user-agent button rule resets; Dragon does not model that reset yet`, `Set ${p} on <${tag}> ${address} to a value (inherit is fine).`);
   }
@@ -1843,6 +1875,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // chain: el's ancestors, outermost first.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>, button: ResolvedElement | null, parentDisplay: string | null, parentZoom: number, chain: readonly ResolvedElement[]): void => {
     const zoom = effectiveZoom(el, parentZoom);
+    const inheritedZoom = parentZoomOf(el, parentZoom);
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1850,19 +1883,21 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults, propagated, true);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
-      checkZoom(el, zoom, parentZoom, true, targets, diagnostics, reported);
+      checkZoom(el, zoom, inheritedZoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkIntrinsicSize(el, targets, diagnostics, reported, faults);
       checkMulticol(el, chain, true, targets, diagnostics, reported, faults);
       checkMotion(el, targets, diagnostics, reported, faults);
-      checkColorScheme(el, false, targets, diagnostics, reported);
+      checkColorScheme(el, root, targets, diagnostics, reported);
       // A refusal reached through var() (an arc in d, say) is reported on shapes too; the profile pass stays with boxes.
       checkSubstitution(el, targets, diagnostics, reported, null, fonts);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
-    const stale = staleInherited(el, staleLh);
+    // A top-layer box inherits from its DOM ancestors, not from the root its box sits in.
+    const up = topLayerAncestorsOf(el);
+    const stale = staleInherited(el, up === undefined ? staleLh : up.reduce<ReadonlySet<Longhand>>((s, a) => staleInherited(a, s), new Set()));
     checkOverflow(el, targets, diagnostics, reported);
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
@@ -1876,7 +1911,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
-    checkZoom(el, zoom, parentZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
+    checkZoom(el, zoom, inheritedZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
     // Font-metric lengths taken from the parent (analysis/font-units.ts).
     checkFontUnits(el, targets, diagnostics, reported);
     // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
@@ -1889,14 +1924,14 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkMotion(el, targets, diagnostics, reported, faults);
     // field-sizing: content on a replaced element (analysis/field-sizing.ts).
     checkFieldSizing(el, targets, diagnostics, reported, faults);
-    if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
+    if (!here) checkColorScheme(el, root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here && el.element.tag === 'button') {
-      checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkButton(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
       checkRange(el, parentDisplay, targets, diagnostics, reported);
@@ -1955,6 +1990,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkFixedContainingBlocks(root, propagated, targets, diagnostics, reported);
   // POSX-s: sticky boxes the engine does not offset (checkSticky).
   checkSticky(root, propagated, targets, diagnostics, reported);
+  checkTopLayer(root, targets, diagnostics, reported);
   // SIZE-KW: stretch heights the engine does not fill (checkStretchHeights).
   checkStretchHeights(root, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);

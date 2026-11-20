@@ -40,6 +40,21 @@ function perfectDump(target: NativeTarget, dpr: number, n: NativeCase, ref: Case
 }
 
 const LANE_OF: { readonly [C in NamedCheck]: readonly [DeviceCheckLane, FailureKind] } = { a: ['device-frames', 'frame-chrome'], b: ['device-applied', 'applied'], c: ['device-pixels', 'pixel'], d: ['device-frames', 'frame-engine'], breaks: ['device-lines', 'break-mismatch'] };
+const LINE_LANE_OF: { readonly [C in NamedCheck]?: readonly [DeviceCheckLane, FailureKind] } = { a: ['device-lines', 'line-chrome'], d: ['device-lines', 'line-engine'] };
+
+/** Which halves of the frame checks a planted fault moved: a node's frame (or the node itself) and a line box's frame. */
+function movedParts(before: NativeDump, after: NativeDump): { readonly nodes: boolean; readonly lines: boolean } {
+  const same = (x: { frame: unknown; deviceEdges: unknown }, y: { frame: unknown; deviceEdges: unknown }): boolean => JSON.stringify([x.frame, x.deviceEdges]) === JSON.stringify([y.frame, y.deviceEdges]);
+  const planted = new Map(after.nodes.map((x) => [x.id, x]));
+  let nodes = false;
+  let lines = false;
+  for (const x of before.nodes) {
+    const y = planted.get(x.id);
+    if (y === undefined || !same(x, y)) nodes = true;
+    if (y !== undefined && x.lines.some((l, j) => y.lines[j] !== undefined && !same(l, y.lines[j] as typeof l))) lines = true;
+  }
+  return { nodes, lines };
+}
 
 describe.each([['ios', 3], ['android', 2.625], ['android', 2]] as const)('device checks on %s at DPR %s', (target, dpr) => {
   const all = relabelledReferenceDumps(target, dpr);
@@ -76,9 +91,12 @@ describe.each([['ios', 3], ['android', 2.625], ['android', 2]] as const)('device
       const planted = plantDumpFault(fault, dump, { engine: ref.engine, passingSamples: clean.passingSamples });
       if (planted === null) continue;
       applicable++;
-      const [lane, kind] = LANE_OF[FAULT_CHECK[fault]];
+      const check = FAULT_CHECK[fault];
+      const moved = movedParts(dump, planted);
+      const lineLane = LINE_LANE_OF[check];
+      const expected = [...(moved.nodes || !moved.lines || lineLane === undefined ? [LANE_OF[check]] : []), ...(moved.lines && lineLane !== undefined ? [lineLane] : [])];
       const got = evaluateCase(target, n, dpr, planted, ref).failures;
-      expect(got.some((f) => f.lane === lane && f.kind === kind), `${fault} on ${n.case.id}: ${JSON.stringify(got.slice(0, 3))}`).toBe(true);
+      for (const [lane, kind] of expected) expect(got.some((f) => f.lane === lane && f.kind === kind), `${fault} on ${n.case.id} (${lane} ${kind}): ${JSON.stringify(got.slice(0, 3))}`).toBe(true);
     }
     expect(applicable).toBeGreaterThan(0);
   });

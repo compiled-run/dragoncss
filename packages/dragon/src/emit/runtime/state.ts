@@ -15,6 +15,7 @@ import { BAND_KEY } from '../../lower/band-program.ts';
 import { doubleLit, inputFunctions, liveEnvironmentArgs, stringLit } from '../native-support.ts';
 import { animTablesLit } from './anim.ts';
 import { radiusLengthLit } from '../paint/radius.ts';
+import { clipPathInsets } from '../paint/clip.ts';
 import { bandTableLit } from './media.ts';
 
 export const STATE_RUNTIME_VERSION = 'dragon.runtime-state/1';
@@ -102,6 +103,8 @@ public enum DragonStateWrite {
   case borderStyles([String])
   case borderColors([DragonRGBA8])
   case clip
+  case clipPath([Double])
+  case clipText
   case paintOrder(String, Int, Int)
   case radii([RadiusLength])
   case text(String, String, DragonRGBA8)
@@ -281,6 +284,8 @@ public final class DragonStateMachine {
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = dragonAnimatedSides(animator, n.id, c)
         case .clip: v.dragonEnableClip()
+        case .clipPath(let insets): dragonSetClipPath(v, insets)
+        case .clipText: dragonClipText(v)
         case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
         case .radii(let lengths): dragonSetRadii(v, lengths)
         case .text, .syntheticBold: fatalError("dragon: box \(n.id) holds a text write")
@@ -508,6 +513,8 @@ sealed class DragonStateWrite {
   class BorderStyles(val s: Array<String>) : DragonStateWrite()
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
+  class ClipPath(val insets: DoubleArray) : DragonStateWrite()
+  object ClipText : DragonStateWrite()
   class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
   class Radii(val lengths: Array<RadiusLength>) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
@@ -690,6 +697,8 @@ class DragonStateMachine(
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = dragonAnimatedSides(animator, n.id, w.c)
           is DragonStateWrite.Clip -> v.dragonEnableClip()
+          is DragonStateWrite.ClipPath -> dragonSetClipPath(v, w.insets)
+          is DragonStateWrite.ClipText -> dragonClipText(v)
           is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
           is DragonStateWrite.Radii -> dragonSetRadii(v, w.lengths)
           is DragonStateWrite.Text, is DragonStateWrite.SyntheticBold -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
@@ -1025,10 +1034,16 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       case 'clip-rect-label':
         // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.
         throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
-      case 'clip-path-inset':
-      case 'clip-path-shape':
+      case 'clip-path-inset': {
+        const insets = clipPathInsets(w.edges).map(doubleLit);
+        writes.push(lang === 'swift' ? `.clipPath([${insets.join(', ')}])` : `DragonStateWrite.ClipPath(doubleArrayOf(${insets.join(', ')}))`);
+        break;
+      }
       case 'clip-text':
-        // MASK-CLIP: a state record holds no clip-path write; the clip is drawn on the static program only.
+        writes.push(lang === 'swift' ? '.clipText' : 'DragonStateWrite.ClipText');
+        break;
+      case 'clip-path-shape':
+        // MASK-CLIP: a state record holds no clip-path shape write; the shape is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a clip-path in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'mask-layer':
         // MASK-CLIP: a state record holds no mask write; the gradient mask is drawn on the static program only.

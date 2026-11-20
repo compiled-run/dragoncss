@@ -33,6 +33,8 @@ const ELEMENT_TAGS = TAGS.filter((t) => t !== 'html' && t !== 'dragon-unstyled')
 /** Element keys outside the element table, each an element with the attributes its UA rules key on. */
 const KEY_SPECS = {
   button: { tag: 'button', attrs: { type: 'button' } },
+  // A disabled button: html.css's :disabled rules (color, background-color, border-color), which Dragon applies on a disabled one.
+  'button[disabled]': { tag: 'button', attrs: { type: 'button', disabled: '' } },
   input: { tag: 'input', attrs: {} },
   'input[type=range]': { tag: 'input', attrs: { type: 'range' } },
   a: { tag: 'a', attrs: {} },

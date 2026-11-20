@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "f20be40abf6d96c2514cae0092c3cde387a53384672e65a9c061e1e77e478d5e",
+ "compiler": "28972a7f83ce65c722a3b5486635d72227d1623a60fb4730082c3539abed34ba",
  "component": "Text",
  "source": "packages/parity/fixtures/ms-text",
  "warnings": [],
@@ -28,6 +28,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -378,6 +384,34 @@
          ],
          "key": "syntheticBold"
         }
+       ],
+       "lines": [
+        {
+         "top": -6,
+         "baseline": 48,
+         "runs": [
+          {
+           "face": "Ahem",
+           "size": 60,
+           "glyphs": [
+            58,
+            58,
+            3,
+            58,
+            58,
+            58
+           ],
+           "xs": [
+            0,
+            60,
+            120,
+            180,
+            240,
+            300
+           ]
+          }
+         ]
+        }
        ]
       },
       {
@@ -491,6 +525,34 @@
           "alpha": 255
          },
          "key": "foregroundColor"
+        }
+       ],
+       "lines": [
+        {
+         "top": -6,
+         "baseline": 29,
+         "runs": [
+          {
+           "face": "Ahem",
+           "size": 36,
+           "glyphs": [
+            58,
+            58,
+            58,
+            58,
+            3,
+            58
+           ],
+           "xs": [
+            0,
+            36,
+            72,
+            108,
+            144,
+            180
+           ]
+          }
+         ]
         }
        ]
       },
@@ -606,6 +668,34 @@
          },
          "key": "foregroundColor"
         }
+       ],
+       "lines": [
+        {
+         "top": -6,
+         "baseline": 29,
+         "runs": [
+          {
+           "face": "Ahem",
+           "size": 36,
+           "glyphs": [
+            58,
+            58,
+            58,
+            3,
+            58,
+            58
+           ],
+           "xs": [
+            0,
+            36,
+            72,
+            108,
+            144,
+            180
+           ]
+          }
+         ]
+        }
        ]
       }
      ]
@@ -631,6 +721,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -981,6 +1077,34 @@
          ],
          "key": "syntheticBold"
         }
+       ],
+       "lines": [
+        {
+         "top": -4.5,
+         "baseline": 42.5,
+         "runs": [
+          {
+           "face": "Ahem",
+           "size": 52.5,
+           "glyphs": [
+            58,
+            58,
+            3,
+            58,
+            58,
+            58
+           ],
+           "xs": [
+            0,
+            52.5,
+            105,
+            157.5,
+            210,
+            262.5
+           ]
+          }
+         ]
+        }
        ]
       },
       {
@@ -1095,6 +1219,34 @@
          },
          "key": "textPaint.color"
         }
+       ],
+       "lines": [
+        {
+         "top": -4.5,
+         "baseline": 25.5,
+         "runs": [
+          {
+           "face": "Ahem",
+           "size": 31.5,
+           "glyphs": [
+            58,
+            58,
+            58,
+            58,
+            3,
+            58
+           ],
+           "xs": [
+            0,
+            31.5,
+            63,
+            94.5,
+            126,
+            157.5
+           ]
+          }
+         ]
+        }
        ]
       },
       {
@@ -1208,6 +1360,34 @@
           "alpha": 255
          },
          "key": "textPaint.color"
+        }
+       ],
+       "lines": [
+        {
+         "top": -4.5,
+         "baseline": 25.5,
+         "runs": [
+          {
+           "face": "Ahem",
+           "size": 31.5,
+           "glyphs": [
+            58,
+            58,
+            58,
+            3,
+            58,
+            58
+           ],
+           "xs": [
+            0,
+            31.5,
+            63,
+            94.5,
+            126,
+            157.5
+           ]
+          }
+         ]
         }
        ]
       }

@@ -34,6 +34,7 @@ import type {
   MarginValue,
   Overflow,
   MaxBlockSizeValue,
+  MinBlockSizeValue,
   MaxInlineSizeValue,
   MaxSizeValue,
   PaddingValue,
@@ -80,6 +81,8 @@ import type { ImageNaturals } from '../images/compile.ts';
 import type { GridContainer } from './grid-layout.ts';
 import { ANONYMOUS_GRID_ITEM, GridLoweringError, lowerGridContainer, lowerGridItem, lowerOutOfFlowGridItem } from './grid-layout.ts';
 import { isBlockInInline } from '../analysis/block-in-inline.ts';
+import type { AnchorFacts } from './anchor-layout.ts';
+import { AnchorLoweringError, anchorFactsOf, anchorNeutralValue, lowerAnchors, usesAnchors } from './anchor-layout.ts';
 
 export class LoweringError extends Error {
   readonly nodeId: string;
@@ -211,6 +214,15 @@ function maxInlineSize(id: string, get: Get, p: Longhand, l: Lowering): MaxInlin
 // css-sizing-4 §3.1: height, min-height and max-height also take stretch; the engine reads it on a block-level box in block flow
 // and refuses it elsewhere.
 function blockSize(id: string, get: Get, p: Longhand, l: Lowering): BlockSizeValue {
+  const v = get(p);
+  if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
+  // css-sizing-3 §3.2: height also takes min-content, max-content and fit-content; the engine reads them on an absolutely
+  // positioned box and refuses them elsewhere.
+  if (p === 'height' && v.kind === 'keyword' && (v.value === 'min-content' || v.value === 'max-content' || v.value === 'fit-content')) return { kind: v.value };
+  return size(id, get, p, l);
+}
+
+function minBlockSize(id: string, get: Get, p: Longhand, l: Lowering): MinBlockSizeValue {
   const v = get(p);
   if (v.kind === 'keyword' && v.value === 'stretch') return { kind: 'stretch' };
   return size(id, get, p, l);
@@ -499,6 +511,12 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
   const authoredBoxSizing = keyword<BoxSizing>(id, get, 'box-sizing', ['content-box', 'border-box']);
   const boxSizing: BoxSizing = faults.swapBoxSizing ? (authoredBoxSizing === 'content-box' ? 'border-box' : 'content-box') : authoredBoxSizing;
   const display = displayOfStyle(id, get, lineClamp);
+  // css-sizing-3 §3.2: the engine reads a min-content, max-content or fit-content height on an absolutely positioned box only.
+  const heightValue = get('height');
+  const positionValue = get('position');
+  if (heightValue.kind === 'keyword' && ['min-content', 'max-content', 'fit-content'].includes(heightValue.value) && !(positionValue.kind === 'keyword' && (positionValue.value === 'absolute' || positionValue.value === 'fixed'))) {
+    throw new LoweringError(id, 'height', `height: ${heightValue.value} on ${id}, which is not absolutely positioned, is not laid out (css-sizing-3 §3.2)`);
+  }
   return {
     display,
     position: keyword<Position>(id, get, 'position', ['static', 'relative', 'absolute', 'fixed', 'sticky']),
@@ -514,7 +532,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     width: inlineSize(id, get, 'width', l),
     height: blockSize(id, get, 'height', l),
     minWidth: inlineSize(id, get, 'min-width', l),
-    minHeight: blockSize(id, get, 'min-height', l),
+    minHeight: minBlockSize(id, get, 'min-height', l),
     maxWidth: maxInlineSize(id, get, 'max-width', l),
     maxHeight: maxBlockSize(id, get, 'max-height', l),
     marginTop: margin(id, get, 'margin-top', l),
@@ -563,6 +581,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     textBoxTrim: textBoxTrim(get, display),
     grid: null,
     gridItem: null,
+    anchor: null,
     zoom,
   };
 }
@@ -741,7 +760,7 @@ const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind ===
  * propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. zoom is the zoom chain of the
  * element whose content is being lowered: the one its text and anonymous boxes take, and the parent chain of its children.
  */
-type Lowerer = { readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[] };
+type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[] };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -766,6 +785,15 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   }
   // An inline box is never a grid item (a grid blockifies its children, analysis/blockify.ts), so last baseline stays refused on it.
   const inner: Lowerer = { ...l, zoom };
+  // css-anchor-position-1: its anchor names are recorded, so a lookup that would find it is refused (lower/anchor-layout.ts).
+  if (usesAnchors(c)) {
+    try {
+      l.anchors.set(id, anchorFactsOf(c));
+    } catch (e) {
+      if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
+      throw e;
+    }
+  }
   return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE, zoom, l.mode), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, inner)) };
 }
 
@@ -776,7 +804,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
 function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
   const el = c as ResolvedElement;
-  if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l.faults, l.ua, l.rootFontSize, l.images, null, l.zoom, l.mode);
+  if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l, null);
   const box = lowerBox(el, l, null);
   // An inline-level control waits for RF-INL (analysis/computed-checks.ts checkButton refuses it).
   if (box.kind !== 'box') throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out (RF-INL)`);
@@ -811,9 +839,29 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   if (isControlTag(root.element.tag)) throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} is a form control`);
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
   const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
-  const box = lowerBox(root, { faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [] }, null);
+  const anchors = new Map<string, AnchorFacts>();
+  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [] }, null);
   if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
-  return box;
+  try {
+    return lowerAnchors(box, anchors);
+  } catch (e) {
+    if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
+    throw e;
+  }
+}
+
+/** css-anchor-position-1: records the element's anchor facts (lower/anchor-layout.ts); its own style lowers anchor values as auto or normal. */
+function withAnchorFacts(given: ResolvedElement, l: Lowerer): ResolvedElement {
+  if (!usesAnchors(given)) return given;
+  try {
+    l.anchors.set(given.element.address, anchorFactsOf(given));
+  } catch (e) {
+    if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
+    throw e;
+  }
+  const position = (given.props.get('position') as ResolvedValue).value;
+  const abspos = position.kind === 'keyword' && (position.value === 'absolute' || position.value === 'fixed');
+  return { ...given, props: new Map([...given.props].map(([p, v]) => [p, { ...v, value: anchorNeutralValue(p, v.value, abspos) }])) };
 }
 
 const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', 'scale-down'];
@@ -823,9 +871,11 @@ const OBJECT_FITS: readonly ObjectFit[] = ['fill', 'contain', 'cover', 'none', '
  * overflow clip (the UA's img and iframe rule) clips only its own content, so the engine takes it as visible; its children are
  * fallback content, which a replaced element never renders.
  */
-function lowerReplaced(el: ResolvedElement, faults: CompilerFaults, ua: UaDataset, rootFontSize: number | null, images: ImageNaturals, gridParent: GridContainer | null, parentZoom: readonly number[], mode: LowerMode): ReplacedLeaf {
+function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): ReplacedLeaf {
+  const { faults, ua, rootFontSize, images, mode } = l;
+  const el = withAnchorFacts(given, l);
   const id = el.element.address;
-  const zoom = zoomChain(el, parentZoom);
+  const zoom = zoomChain(el, l.zoom);
   if (zoomProduct(zoom) !== 1) throw new LoweringError(id, 'zoom', `<${el.element.tag}> ${id} is replaced content at zoom ${zoomProduct(zoom)}, whose natural size native does not zoom yet (ZOOM)`);
   const raw: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const get: Get = (p) => {
@@ -893,8 +943,9 @@ const INLINE_IGNORES = {
  * none children are omitted, so they never split a run. The engine never creates boxes. A flex or grid item is blockified
  * (css-display-3 §2.7), so an inline-level element in one is lowered as a box, never an inline box.
  */
-function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox | ControlBox {
-  const id = el.element.address;
+function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox | ControlBox {
+  const id = given.element.address;
+  const el = withAnchorFacts(given, l);
   const kids = boxChildren(el);
   const get: Get = (p) => (el.props.get(p) as ResolvedValue).value;
   const display = displayOf(el);
@@ -926,7 +977,7 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
   for (const c of kids) {
     if (!isInlineLevel(c)) {
       flush();
-      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, l.faults, l.ua, l.rootFontSize, l.images, grid, zoom, l.mode) : lowerBox(c as ResolvedElement, lc, grid));
+      children.push(isReplacedTag((c as ResolvedElement).element.tag) ? lowerReplaced(c as ResolvedElement, lc, grid) : lowerBox(c as ResolvedElement, lc, grid));
     } else if (wrap) {
       if (l.faults.inlineWrapperPerElement && c.kind === 'element') flush();
       run.push(c);

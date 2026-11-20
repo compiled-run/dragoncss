@@ -166,6 +166,7 @@
     "textBoxTrim": null,
     "grid": null,
     "gridItem": null,
+    "anchor": null,
     "zoom": []
    },
    "strut": null,
@@ -309,6 +310,7 @@
       "textBoxTrim": null,
       "grid": null,
       "gridItem": null,
+      "anchor": null,
       "zoom": []
      },
      "strut": null,
@@ -543,6 +545,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -697,6 +700,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -852,6 +856,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1012,6 +1017,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1168,6 +1174,7 @@
            },
            "justifySelf": "center"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1326,6 +1333,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1485,6 +1493,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1643,6 +1652,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1801,6 +1811,7 @@
            },
            "justifySelf": "end"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1958,6 +1969,7 @@
            },
            "justifySelf": "start"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2118,6 +2130,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2273,6 +2286,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2461,6 +2475,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -2619,6 +2634,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2778,6 +2794,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2937,6 +2954,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3149,6 +3167,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -3306,6 +3325,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3465,6 +3485,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3622,6 +3643,7 @@
            },
            "justifySelf": "end"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3770,6 +3792,7 @@
         "textBoxTrim": null,
         "grid": null,
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -3966,6 +3989,7 @@
            "justifyItems": "center"
           },
           "gridItem": null,
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -4120,6 +4144,7 @@
              },
              "justifySelf": "auto"
             },
+            "anchor": null,
             "zoom": []
            },
            "strut": null,
@@ -4276,6 +4301,7 @@
              },
              "justifySelf": "auto"
             },
+            "anchor": null,
             "zoom": []
            },
            "strut": null,
@@ -4432,6 +4458,7 @@
              },
              "justifySelf": "end"
             },
+            "anchor": null,
             "zoom": []
            },
            "strut": null,
@@ -4589,6 +4616,7 @@
              },
              "justifySelf": "start"
             },
+            "anchor": null,
             "zoom": []
            },
            "strut": null,

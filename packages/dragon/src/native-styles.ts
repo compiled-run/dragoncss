@@ -3,7 +3,7 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { compiledCases, interactionPartitionIn, nativeBandProgramFor, nativeBands } from './internal.ts';
+import { BAND_STATE, compiledCases, ENV_INSTANCE, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
 import type { rtBand } from '@dragon/layout';
 import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
 import type { NativeBackend } from './lower/native-program.ts';
@@ -11,6 +11,8 @@ import type { StateProgram } from './lower/state-program.ts';
 import { deriveStateProgram, StateProgramError } from './lower/state-program.ts';
 import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { createProjectWith, internalRecord } from './project.ts';
+import type { BrotliDecompress } from './fonts/woff.ts';
+import type { Rgba8 } from './css/color.ts';
 import type { ArtifactState, Compiled, Diagnostic, FontMap, FrontEndResult, GeneratedFile } from './types.ts';
 
 export const NATIVE_STYLES_VERSION = 'dragon.native-styles/1';
@@ -24,6 +26,8 @@ export type NativeStylesConfig = {
   /** The native targets to compile; each is checked, and one target's error blocks only that target's output. */
   readonly targets: { readonly ios?: { readonly minimum: string }; readonly android?: { readonly minSdk: number } };
   readonly fonts?: FontMap;
+  /** The host's Brotli decoder for WOFF2 @font-face sources (Node: zlib.brotliDecompressSync); without one a WOFF2 is refused. */
+  readonly brotliDecompress?: BrotliDecompress;
   /** The CSS size the component's root starts at, before the view it mounts in reports its own size. */
   readonly viewport: { readonly width: number; readonly height: number };
   /**
@@ -32,6 +36,28 @@ export type NativeStylesConfig = {
    * states), to produce the output a device proof runs; its readiness is never 'ready'.
    */
   readonly support?: 'enforced' | 'lanes';
+  /**
+   * 'host': the host presents the top layer itself, so every <dialog> is laid out as shown with showModal(): in the top layer, a
+   * child of the root box with its frame against the viewport, after its ::backdrop box. Absent: <dialog> is refused.
+   */
+  readonly topLayer?: 'host';
+  /**
+   * 'host': the host paints the canvas behind the page in each assignment's used colour scheme (NativeStyleOutput.schemes), so a
+   * root whose color-scheme picks dark is drawn with Chrome's dark UA colours. Absent: a root color-scheme that can be dark is refused.
+   */
+  readonly canvas?: 'host';
+  /**
+   * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
+   * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
+   * block the target.
+   */
+  readonly output?: 'program-and-sources' | 'program';
+  /**
+   * 'measured': the font map's platform generics (system-ui, sans-serif, serif, monospace) and a font-family left at its initial
+   * value resolve to system faces (fonts/system-faces.ts), each the platform's own font, measured per target at build time by the
+   * caller's export; nothing is bundled. Only with support 'lanes'. Absent: native refuses them.
+   */
+  readonly systemFonts?: 'measured';
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -40,7 +66,7 @@ export type NativeStyleOutput = {
   readonly backend: NativeBackend;
   /** Every reachable state assignment's styles: the initial one in full, each other one as a delta, plus the setter transitions. */
   readonly program: StateProgram;
-  /** The generated source: the state machine and a typed setter per state (UIKit Swift, or Android Views Kotlin). */
+  /** The generated source: the state machine and a typed setter per state (UIKit Swift, or Android Views Kotlin); empty for output 'program'. */
   readonly files: readonly GeneratedFile[];
   /** Whether the target's committed device lanes all pass: only 'ready' is a shipping output (docs/api.md §2.2). */
   readonly readiness: ArtifactState;
@@ -49,6 +75,8 @@ export type NativeStyleOutput = {
    * vector of every atom; the program's env#band state selects one, so a band change is a setter like any other.
    */
   readonly bands: { readonly table: rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null;
+  /** Per program assignment: the root's used colour scheme there (css-color-adjust-1 §2.1) and Chrome's Canvas colour in it. */
+  readonly schemes: readonly { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 }[];
 };
 
 export type NativeStyleBlocked = { readonly kind: 'blocked'; readonly reason: string };
@@ -79,17 +107,28 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
   if (support !== 'enforced' && support !== 'lanes') throw new Error(`compileNativeStyles: support ${JSON.stringify(support)} is neither 'enforced' nor 'lanes'`);
   const project = createProjectWith(
     { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }) },
-    support === 'enforced'
-      ? { faults: NO_FAULTS, profiles: 'enforce', direction: 'ltr', nativeLanes: NATIVE_LANES }
-      : { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true },
+    {
+      ...(support === 'enforced'
+        ? { faults: NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
+        : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
+      ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
+      ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
+      ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
+      ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
+    },
   );
+  if (config.systemFonts !== undefined && (config.systemFonts !== 'measured' || support !== 'lanes')) throw new Error(`compileNativeStyles: systemFonts ${JSON.stringify(config.systemFonts)} is 'measured', with support 'lanes'`);
+  if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);
+  if (config.canvas !== undefined && config.canvas !== 'host') throw new Error(`compileNativeStyles: canvas ${JSON.stringify(config.canvas)} is not 'host'`);
+  const output = config.output ?? 'program-and-sources';
+  if (output !== 'program-and-sources' && output !== 'program') throw new Error(`compileNativeStyles: output ${JSON.stringify(output)} is neither 'program-and-sources' nor 'program'`);
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
   const out: { [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked } = {};
-  for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport);
+  for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport, output === 'program-and-sources');
   return { ok: targets.every((t) => out[t]?.kind === 'emitted'), digest: compiled.digest, diagnostics: compiled.diagnostics, targets: out };
 }
 
-function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport']): NativeStyleOutput | NativeStyleBlocked {
+function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean): NativeStyleOutput | NativeStyleBlocked {
   if (compiled.targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} compile has errors; see the diagnostics` };
   const record = internalRecord(compiled);
   if (record === undefined) throw new Error('compileNativeStyles: the compile result carries no internal record');
@@ -109,11 +148,19 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   }
   try {
     const program = bands === null ? deriveStateProgram(backend, cases) : bandStateProgram(backend, cases, count, bands.initial);
+    const schemes = program.assignments.map(({ assignment }) => {
+      const isBand = (x: (typeof assignment)[number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
+      const band = assignment.find(isBand)?.value ?? 0;
+      const s = usedSchemeOf(compiled, assignment.filter((x) => !isBand(x)), band as number);
+      if (typeof s === 'string') throw new Error(`compileNativeStyles: ${s}`);
+      return s;
+    });
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
     if (file === undefined) throw new Error(`compileNativeStyles: the ${backend} state emitter wrote no ${path}`);
-    return { kind: 'emitted', backend, program, files: [file], readiness: compiled.outputs[t], bands };
+    return { kind: 'emitted', backend, program, files: [file], readiness: compiled.outputs[t], bands, schemes };
   } catch (e) {
     if (e instanceof StateProgramError || e instanceof StateEmitError || e instanceof BandProgramError) return { kind: 'blocked', reason: e.message };
     throw e;

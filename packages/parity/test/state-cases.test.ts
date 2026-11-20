@@ -14,15 +14,15 @@ describe('the state programs of every tree fixture with states', () => {
   it('covers the tree fixtures with free states, both directions, within the 64-assignment table', () => {
     const groups = stateGroups();
     // Derived-count pins: 14 tree fixtures with free states, each in ltr and rtl (MQ-R1 added mqr-state-band, and its runtime slice
-    // mqr-rotate, device-env's fixture: 2 assignments per direction; the markless-styles ladder added ms-toggle, 2 per direction).
+    // mqr-rotate, device-env's fixture: 2 assignments per direction; the markless-styles ladder added ms-toggle and ms-button-disabled, 2 per direction each).
     expect(groups.map((g) => g.id)).toEqual([
       'tree-switch-two-instances', 'tree-switch-two-instances-rtl', 'tree-correlated-state', 'tree-correlated-state-rtl', 'tree-controlled-aliases', 'tree-controlled-aliases-rtl',
       'tree-branch-arms', 'tree-branch-arms-rtl', 'tree-slot-projection', 'tree-slot-projection-rtl', 'tree-nested-instances', 'tree-nested-instances-rtl',
       'tree-attribute-equality', 'tree-attribute-equality-rtl', 'tree-projected-text', 'tree-projected-text-rtl', 'tree-position-toggle', 'tree-position-toggle-rtl',
-      'tree-selectors-state', 'tree-selectors-state-rtl', 'tree-var-state', 'tree-var-state-rtl', 'ms-toggle', 'ms-toggle-rtl', 'mqr-state-band', 'mqr-state-band-rtl',
+      'tree-selectors-state', 'tree-selectors-state-rtl', 'tree-var-state', 'tree-var-state-rtl', 'ms-toggle', 'ms-toggle-rtl', 'ms-button-disabled', 'ms-button-disabled-rtl', 'mqr-state-band', 'mqr-state-band-rtl',
       'mqr-rotate', 'mqr-rotate-rtl',
     ]);
-    expect(groups.reduce((n, g) => n + g.cases.length, 0)).toBe(138);
+    expect(groups.reduce((n, g) => n + g.cases.length, 0)).toBe(142);
     for (const g of groups) expect(g.cases.length).toBeLessThanOrEqual(64);
   });
 
@@ -34,9 +34,9 @@ describe('the state programs of every tree fixture with states', () => {
   it('equals every per-case program, and every script ends on its end assignment at every device DPR', () => {
     const r = checkStates();
     expect(r.failures).toEqual([]);
-    expect({ groups: r.groups, assignments: r.assignments, scripts: r.scripts }).toEqual({ groups: 28, assignments: 276, scripts: 276 });
-    // Per backend: 138 delta comparisons, and 138 scripts at ios 2 and 3 or android 2, 2.625 and 3.
-    expect(r.compared).toBe(138 + 138 * deviceDprs('ios').length + 138 + 138 * deviceDprs('android').length);
+    expect({ groups: r.groups, assignments: r.assignments, scripts: r.scripts }).toEqual({ groups: 30, assignments: 284, scripts: 284 });
+    // Per backend: 142 delta comparisons, and 142 scripts at ios 2 and 3 or android 2, 2.625 and 3.
+    expect(r.compared).toBe(142 + 142 * deviceDprs('ios').length + 142 + 142 * deviceDprs('android').length);
   });
 
   it('derives A to B to A scripts with a virtual-clock frame between the legs', () => {
@@ -131,7 +131,7 @@ describe('the host apps carry the case scripts', () => {
       expect(main).toContain(target === 'ios' ? '    tree = mount.tree' : '      tree = mount.tree');
       expect(main).toContain('is both a layout case and a case script');
       expect(main).not.toContain('merging(dragonStateCaseTable)');
-      expect(emits.reduce((n, e) => n + e.scripts.length, 0)).toBe(138);
+      expect(emits.reduce((n, e) => n + e.scripts.length, 0)).toBe(142);
     }
   });
 

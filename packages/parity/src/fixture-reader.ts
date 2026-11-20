@@ -146,7 +146,8 @@ export function compiledFixtureHtml(html: string, css: string, classOf: Readonly
     if (id !== undefined) {
       const cls = classOf.get(id);
       if (cls === undefined) throw new Error(`no generated class for ${id}`);
-      const attrs = [...el.attrs.entries()].filter(([k]) => k !== 'class').map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join('');
+      // Dragon's class carries the style attribute's declarations too (css-style-attr), so the compiled markup drops both.
+      const attrs = [...el.attrs.entries()].filter(([k]) => k !== 'class' && k !== 'style').map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join('');
       edits.push({ start: el.start, end: el.openEnd, text: `<${el.tag}${attrs} class="${cls}"${el.selfClosing ? '/' : ''}>` });
     }
     for (const c of el.children) if ('tag' in c) visit(c);
@@ -202,7 +203,7 @@ function* descendants(node: CssNode): Generator<CssNode> {
  * (parseStylesheet, then collectFontFaces, so comments, escapes, case and nesting are read as Dragon reads them), that resolve to a
  * vendored font (vendoredFontId), in order and once each. spans: each url() token that spells the specifier, in css offsets.
  */
-export function fontFaceUrls(css: string): FontFaceUrl[] {
+export function fontFaceUrls(css: string, idOf: (specifier: string) => string | null = vendoredFontId): FontFaceUrl[] {
   const ref: SourceRef = { uri: 'dragon-source://dragon-parity/font-scan.css', revision: 'fixture', hash: 'sha256:0' };
   const contexts: AtRuleContext[] = [];
   parseStylesheet(css, { source: ref, start: 0, end: css.length }, { id: 'font-scan', owner: DOCUMENT_ID, scope: 'document' }, 0, [], [], contexts);
@@ -214,7 +215,7 @@ export function fontFaceUrls(css: string): FontFaceUrl[] {
   const urlNodes = contexts.flatMap((c) => [...descendants(c.node)].filter((n) => n.type === 'Url'));
   const out: FontFaceUrl[] = [];
   for (const specifier of specifiers) {
-    const id = vendoredFontId(specifier);
+    const id = idOf(specifier);
     if (id === null) continue;
     const spans = urlNodes.flatMap((n) => (n.type === 'Url' && n.value === specifier && n.loc !== undefined && n.loc !== null ? [{ start: n.loc.start.offset, end: n.loc.end.offset }] : []));
     if (spans.length === 0) throw new Error(`the compiler reads the @font-face src ${specifier}, but no url() token spells it`);

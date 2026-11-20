@@ -1,0 +1,245 @@
+// The web column of a Markless export with system fonts: every frame of every assignment against the boxes the phone's own browser
+// lays the same element tree out at (Safari in an iOS simulator, Chrome on an Android emulator), under the device lanes' gate.
+// Chrome on the Mac stands in for neither phone's system fonts on iOS (markless-style-compare.ts), so the phones measure it.
+import { execFileSync } from 'node:child_process';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { authoredFontHtml } from './cases.ts';
+import type { NativeStyleTarget } from 'dragon';
+import { collectNodes, nameCollected } from './capture.ts';
+import type { CapturedNode, CollectedElement } from './capture.ts';
+import { GATE_DEVICE_PX } from './compare.ts';
+import { BAND_KEY } from 'dragon';
+import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme, withCleanup } from './markless-style-compare.ts';
+import type { BoxProblem, CompareRow, DocumentNode, RootProbe } from './markless-style-compare.ts';
+import type { MarklessExportAssignment, MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
+import { checkMarklessExport, marklessCompiledTargets, schemeOf } from './markless-style-input.ts';
+import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+
+/** A phone whose browser measures the page: an iOS simulator by UDID (Safari), or an Android emulator by adb serial (Chrome). */
+export type WebColumnDevice = { readonly target: 'ios'; readonly udid: string } | { readonly target: 'android'; readonly serial: string };
+
+/** A compared box: the gate's row, with both frames in device px from the page's top left. */
+export type WebColumnRow = CompareRow & { readonly web: Frame; readonly dragon: Frame };
+type Frame = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+type Measured = { readonly dpr: number; readonly innerWidth: number; readonly elements: readonly CollectedElement[]; readonly backdrops: readonly CapturedNode[]; readonly tree: DocumentNode; readonly probe: RootProbe; readonly userAgent: string };
+
+/** How the web column reaches the device: a command's stdout, opening a URL in its browser, a screenshot, and waiting. */
+export type WebColumnHost = {
+  readonly run: (cmd: string, args: readonly string[]) => string;
+  readonly open: (device: WebColumnDevice, url: string) => void;
+  readonly screenshot: (device: WebColumnDevice, file: string) => void;
+  readonly wait: (ms: number) => Promise<void>;
+};
+const run = (cmd: string, args: readonly string[]): string => execFileSync(cmd, [...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+/** The page of one assignment: the comparison's document with system fonts, and a script in its head that posts the tree and every box back. */
+function pageOf(input: MarklessStyleInput, values: Readonly<Record<string, unknown>>, files: ReadonlyMap<string, Uint8Array>, post: string, width: number): string {
+  const html = authoredFontHtml(marklessDocumentHtml(input, values, 'system'), files);
+  // The export lays out at whole CSS px (a Pixel 7 is 411.43 wide); the root box takes that width so both lay out the same line length.
+  const viewport = `<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="format-detection" content="telephone=no, date=no, address=no, email=no"><style>:where(html){-webkit-text-size-adjust:100%;text-size-adjust:100%;width:${width}px}</style>`;
+  const script = `<script>addEventListener('load',()=>document.fonts.ready.then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const tree=(${readDocumentTree.toString()})();const elements=(${collectNodes.toString()})([]);const backdrops=(${collectBackdrops.toString()})(${JSON.stringify(modalIds(input)).replace(/</g, '\\u003c')});const probe=(${readRootProbe.toString()})();fetch(${JSON.stringify(post)},{method:'POST',body:JSON.stringify({dpr:devicePixelRatio,innerWidth,userAgent:navigator.userAgent,tree,elements,backdrops,probe})});}))));</script>`;
+  return html.replace('<head>', `<head>${viewport}${script}`);
+}
+
+/** Opens a URL in the device's browser (Android's Chrome starts with the command line webColumn writes). */
+function open(device: WebColumnDevice, url: string): void {
+  if (device.target === 'ios') run('xcrun', ['simctl', 'openurl', device.udid, url]);
+  else run('adb', ['-s', device.serial, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', `'${url}'`, 'com.android.chrome']);
+}
+
+function screenshot(device: WebColumnDevice, file: string): void {
+  if (device.target === 'ios') run('xcrun', ['simctl', 'io', device.udid, 'screenshot', file]);
+  else execFileSync('sh', ['-c', `adb -s "$1" exec-out screencap -p > "$2"`, 'sh', device.serial, file]);
+}
+
+const DEVICE_HOST: WebColumnHost = { run, open, screenshot, wait: (ms) => new Promise((r) => setTimeout(r, ms)) };
+
+type Appearance = 'light' | 'dark';
+/** The device's appearance setting as it reads back: iOS's light or dark, Android's night mode (yes, no, auto or custom). */
+type DeviceAppearance = { readonly target: 'ios'; readonly value: Appearance } | { readonly target: 'android'; readonly value: 'yes' | 'no' | 'auto' | 'custom' };
+
+function readAppearance(host: WebColumnHost, device: WebColumnDevice): DeviceAppearance {
+  if (device.target === 'ios') {
+    const out = host.run('xcrun', ['simctl', 'ui', device.udid, 'appearance']).trim();
+    if (out !== 'light' && out !== 'dark') throw new Error(`ios: the simulator's appearance reads ${JSON.stringify(out)}, neither light nor dark`);
+    return { target: 'ios', value: out };
+  }
+  const out = host.run('adb', ['-s', device.serial, 'shell', 'cmd', 'uimode', 'night']).trim();
+  const m = /^Night mode: (yes|no|auto|custom)$/.exec(out);
+  if (m === null) throw new Error(`android: the emulator's night mode reads ${JSON.stringify(out)}, not "Night mode: yes|no|auto|custom"`);
+  return { target: 'android', value: m[1] as 'yes' | 'no' | 'auto' | 'custom' };
+}
+
+function setAppearance(host: WebColumnHost, device: WebColumnDevice, value: DeviceAppearance['value']): void {
+  if (device.target === 'ios') host.run('xcrun', ['simctl', 'ui', device.udid, 'appearance', value]);
+  else host.run('adb', ['-s', device.serial, 'shell', 'cmd', 'uimode', 'night', value]);
+}
+
+const nightOf = (a: Appearance): 'yes' | 'no' => (a === 'dark' ? 'yes' : 'no');
+
+/** How many times the page is read after the device's appearance changes, a second apart, before the browser's preference must have followed. */
+export const PREFERENCE_READS = 30;
+const PREFERENCE_READ_MS = 1000;
+
+
+const PROBLEM: { readonly [K in BoxProblem]: string } = {
+  'no-node': 'has a box in the browser and no node in the export',
+  'no-frame': 'has a box in the browser and no frame in the export',
+  'no-box': 'has a frame in the export and no box in the browser',
+  unseen: 'has a frame in the export and no box in the browser\'s page',
+  anonymous: 'is an anonymous box whose nodes are not all in the browser\'s page',
+};
+
+/**
+ * Refuses a browser whose page is not the one the export laid out for this assignment: another ratio, width or height (100vh and
+ * the viewport's height, which vh units, percentage heights and a modal dialog read), the other colour-scheme preference from the
+ * one the assignment's band reads, or a root used colour scheme other than the export's.
+ */
+export function checkBrowserPage(target: WebColumnDevice['target'], t: Pick<ExportTarget, 'viewport' | 'dpr' | 'bands'>, assignment: MarklessExportAssignment, m: Pick<Measured, 'dpr' | 'innerWidth' | 'probe'>, index: number): void {
+  if (Math.abs(m.dpr - t.dpr) > 1e-6 || Math.abs(m.innerWidth - t.viewport.width) > 1) throw new Error(`${target}: the browser lays out ${m.innerWidth} CSS px at ${m.dpr}x, the export ${t.viewport.width} at ${t.dpr}x; use the export's proof device`);
+  const { vh, viewportHeight, innerHeight } = m.probe;
+  if (Math.abs(vh - t.viewport.height) > 1 || Math.abs(viewportHeight - t.viewport.height) > 1) throw new Error(`${target}: the browser lays out 100vh at ${vh} and its viewport at ${viewportHeight} CSS px tall (innerHeight ${innerHeight}), the export at ${t.viewport.height}; use the export's proof device`);
+  const want = wantScheme(t, assignment);
+  if (m.probe.prefersDark !== (want === 'dark')) throw new Error(`${target} assignment ${index}: the browser prefers ${m.probe.prefersDark ? 'dark' : 'light'}, and this assignment is laid out for ${want}; set the device's appearance to ${want}`);
+  const used = usedScheme(m.probe);
+  if (used !== assignment.colorScheme) throw new Error(`${target} assignment ${index}: the browser's root uses the ${used} colour scheme, the export's colorScheme is ${assignment.colorScheme}`);
+}
+
+/** The colour-scheme preference an assignment's band reads: light for an unbanded export. */
+function wantScheme(t: Pick<ExportTarget, 'bands'>, assignment: MarklessExportAssignment): Appearance {
+  const band = assignment.values[BAND_KEY];
+  return typeof band === 'number' ? schemeOf(t.bands, band) : 'light';
+}
+
+/** One assignment's rows; a node one side gives a box and the other does not is an error, never skipped. */
+export function webColumnRows(input: MarklessStyleInput, target: WebColumnDevice['target'], dpr: number, assignment: ExportAssignment, measured: readonly CapturedNode[], index: number): WebColumnRow[] {
+  const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
+  const absolute = (id: string): Frame => {
+    const n = byId.get(id);
+    if (n === undefined || n.frame === null) throw new Error(`${id} has no frame`);
+    const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
+    return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
+  };
+  const round = (f: Frame): Frame => ({ x: Number(f.x.toFixed(4)), y: Number(f.y.toFixed(4)), width: Number(f.width.toFixed(4)), height: Number(f.height.toFixed(4)) });
+  const { pairs, problems } = pairBoxes(input, assignment, measured);
+  const first = problems[0];
+  if (first !== undefined) throw new Error(`${target} assignment ${index}: ${first.id} ${PROBLEM[first.kind]}${problems.length > 1 ? ` (and ${problems.length - 1} more)` : ''}`);
+  return pairs.map(({ id, c }) => {
+    const d = absolute(id);
+    const web = { x: c.x * dpr, y: c.y * dpr, width: c.width * dpr, height: c.height * dpr };
+    const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(web[k] - d[k])));
+    return { target, values: assignment.values, id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX, web: round(web), dragon: round(d) };
+  });
+}
+
+/**
+ * Measures every assignment of the export's target on the device and compares its frames. The page is served on 127.0.0.1
+ * (an emulator reaches it through adb reverse). The device must show the export's viewport in CSS px. Before each assignment the
+ * device's appearance is set to the colour scheme its band reads, and the page is read again until the browser prefers it; every
+ * device change is undone afterwards, also on failure.
+ */
+export async function webColumn(input: MarklessStyleInput, given: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, host: WebColumnHost = DEVICE_HOST): Promise<{ readonly browser: string; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
+  const exported = checkMarklessExport(given);
+  if (exported.fontMode !== 'system') throw new Error(`the export resolved fonts as ${exported.fontMode}; the web column measures the phone's own system fonts, so it compares only an export with system fonts`);
+  const t = exported.targets[device.target];
+  if (t === undefined) throw new Error(`the export has no ${device.target} target`);
+  const compiled = marklessCompiledTargets(input, fonts, 'system');
+  checkTargets(input, exported, compiled);
+  checkInputFonts(exported, fonts);
+  for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
+  const files = new Map(fonts.map((f) => [f.url, f.bytes]));
+  const results = new Map<number, (m: Measured | Error) => void>();
+  const server = createServer((req, res) => {
+    const u = new URL(req.url ?? '/', 'http://127.0.0.1');
+    const raw = u.searchParams.get('i');
+    const i = raw !== null && /^(0|[1-9][0-9]*)$/.test(raw) ? Number(raw) : NaN;
+    const assignment = t.assignments[i];
+    if (!Number.isInteger(i) || assignment === undefined) {
+      res.writeHead(404).end();
+      return;
+    }
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (c: Buffer) => (body += c.toString('utf8')));
+      req.on('end', () => {
+        res.writeHead(200).end('ok');
+        let m: Measured | Error;
+        try {
+          m = JSON.parse(body) as Measured;
+        } catch (e) {
+          m = new Error(`${device.target}: the browser posted assignment ${i}'s result as no JSON: ${(e as Error).message}`);
+        }
+        results.get(i)?.(m);
+      });
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(pageOf(input, assignment.values, files, `/result?i=${i}`, t.viewport.width));
+  });
+  const rows: WebColumnRow[] = [];
+  let browser = '';
+  await withCleanup(async (undo) => {
+    await new Promise<void>((r, reject) => server.once('error', reject).listen(0, '127.0.0.1', r));
+    undo('close the page server', () => {
+      server.closeAllConnections();
+      server.close();
+    });
+    const port = (server.address() as AddressInfo).port;
+    if (device.target === 'android') {
+      const adb = (...args: string[]): string => host.run('adb', ['-s', device.serial, ...args]);
+      undo('remove Chrome\'s command line', () => void adb('shell', 'rm', '-f', '/data/local/tmp/chrome-command-line'));
+      adb('shell', 'echo "_ --disable-fre --no-default-browser-check --no-first-run" > /data/local/tmp/chrome-command-line');
+      const debugApp = adb('shell', 'settings', 'get', 'global', 'debug_app').trim();
+      undo('restore the debug app', () => void (debugApp === 'null' || debugApp === '' ? adb('shell', 'am', 'clear-debug-app') : adb('shell', 'am', 'set-debug-app', '--persistent', debugApp)));
+      adb('shell', 'am', 'set-debug-app', '--persistent', 'com.android.chrome');
+      adb('reverse', `tcp:${port}`, `tcp:${port}`);
+      undo('remove the adb reverse', () => void adb('reverse', '--remove', `tcp:${port}`));
+    }
+    const original = readAppearance(host, device);
+    let current: DeviceAppearance['value'] = original.value;
+    undo('restore the device\'s appearance', () => {
+      if (current !== original.value) setAppearance(host, device, original.value);
+    });
+    const measure = (index: number): Promise<Measured> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const measured = new Promise<Measured>((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${device.target}: the browser did not post assignment ${index} within 90 s`)), 90_000);
+        results.set(index, (m) => {
+          clearTimeout(timer);
+          if (m instanceof Error) reject(m);
+          else resolve(m);
+        });
+      });
+      try {
+        host.open(device, `http://127.0.0.1:${port}/page?i=${index}&n=${Date.now()}`);
+      } catch (e) {
+        clearTimeout(timer);
+        results.delete(index);
+        throw e;
+      }
+      return measured;
+    };
+    for (const [index, assignment] of t.assignments.entries()) {
+      const want = wantScheme(t, assignment);
+      const value = device.target === 'ios' ? want : nightOf(want);
+      const switched = current !== value;
+      if (switched) {
+        current = value;
+        setAppearance(host, device, value);
+      }
+      let m = await measure(index);
+      for (let read = 1; switched && m.probe.prefersDark !== (want === 'dark'); read++) {
+        if (read >= PREFERENCE_READS) throw new Error(`${device.target} assignment ${index}: the browser still prefers ${m.probe.prefersDark ? 'dark' : 'light'} ${read} reads after the device's appearance was set to ${want}`);
+        await host.wait(PREFERENCE_READ_MS);
+        m = await measure(index);
+      }
+      browser = m.userAgent;
+      checkBrowserPage(device.target, t, assignment, m, index);
+      if (screenshots !== undefined) host.screenshot(device, `${screenshots}/${device.target}-web-${index}.png`);
+      const mismatch = documentMismatch(marklessDocumentTree(input, assignment.values), m.tree);
+      if (mismatch !== null) throw new Error(`${device.target} assignment ${index}: the browser's document is not the input's tree: ${mismatch}`);
+      rows.push(...webColumnRows(input, device.target, t.dpr, assignment, [...nameCollected(m.elements), ...m.backdrops], index));
+    }
+  });
+  return { browser, compared: rows.length, failed: rows.filter((r) => !r.pass).length, rows };
+}

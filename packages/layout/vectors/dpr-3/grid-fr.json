@@ -166,6 +166,7 @@
     "textBoxTrim": null,
     "grid": null,
     "gridItem": null,
+    "anchor": null,
     "zoom": []
    },
    "strut": null,
@@ -309,6 +310,7 @@
       "textBoxTrim": null,
       "grid": null,
       "gridItem": null,
+      "anchor": null,
       "zoom": []
      },
      "strut": null,
@@ -517,6 +519,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -671,6 +674,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -826,6 +830,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -981,6 +986,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1168,6 +1174,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -1322,6 +1329,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1477,6 +1485,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1632,6 +1641,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1787,6 +1797,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1942,6 +1953,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2097,6 +2109,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2252,6 +2265,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2471,6 +2485,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -2625,6 +2640,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2780,6 +2796,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2935,6 +2952,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3090,6 +3108,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3245,6 +3264,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3400,6 +3420,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3599,6 +3620,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -3753,6 +3775,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3908,6 +3931,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -4111,6 +4135,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -4265,6 +4290,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -4420,6 +4446,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -4625,6 +4652,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -4779,6 +4807,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -4977,6 +5006,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -5220,6 +5250,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -5374,6 +5405,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -5528,6 +5560,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -5727,6 +5760,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -5926,6 +5960,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -6079,6 +6114,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -6277,6 +6313,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -6521,6 +6558,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -6675,6 +6713,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -6829,6 +6868,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -7084,6 +7124,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -7237,6 +7278,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -7436,6 +7478,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -7590,6 +7633,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {

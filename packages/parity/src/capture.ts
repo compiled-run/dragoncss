@@ -50,7 +50,7 @@ export type CollectedElement = {
 };
 
 /** Runs in the page: every data-dragon-id element's box and computed values, and its line fragments and text children. */
-const collectNodes = (props: string[]): CollectedElement[] => {
+export const collectNodes = (props: string[]): CollectedElement[] => {
   const out: CollectedElement[] = [];
   const rect = (r: DOMRect): Rect => ({ x: r.x, y: r.y, width: r.width, height: r.height });
   // Runs in the page (page.evaluate), so it closes over nothing: the elements Chrome lays out as LayoutReplaced.

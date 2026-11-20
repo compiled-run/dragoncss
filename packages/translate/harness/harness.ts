@@ -2,6 +2,12 @@
 // each result is one line with every double as its IEEE bit pattern, so TypeScript and native runs compare byte for byte.
 import type { EngineFaults } from '../../layout/src/block.ts';
 import type {
+  AnchorEdge,
+  AnchorOption,
+  AnchorSizeRef,
+  AnchorStyle,
+  AreaTrack,
+  PositionArea,
   AlignContent,
   AspectRatioValue,
   AlignItems,
@@ -707,7 +713,7 @@ const STYLE_KEYS: readonly string[] = [
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
   'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
-  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'zoom',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'anchor', 'zoom',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -882,6 +888,79 @@ function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
   };
 }
 
+const AREA_TRACKS: readonly string[] = ['start', 'center', 'end'];
+const ANCHOR_OPTION_KEYS: readonly string[] = [
+  'area', 'top', 'right', 'bottom', 'left', 'topAnchor', 'rightAnchor', 'bottomAnchor', 'leftAnchor', 'marginTop', 'marginRight', 'marginBottom',
+  'marginLeft', 'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'widthAnchor', 'heightAnchor', 'minWidthAnchor',
+  'minHeightAnchor', 'maxWidthAnchor', 'maxHeightAnchor', 'justifySelf', 'alignSelf',
+];
+
+function decodeArea(v: JsonValue, path: string): PositionArea | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['rowStart', 'rowEnd', 'columnStart', 'columnEnd'], path);
+  const t = (k: string): AreaTrack => lit(field(o, k, path), AREA_TRACKS, `${path}.${k}`) as AreaTrack;
+  return { rowStart: t('rowStart'), rowEnd: t('rowEnd'), columnStart: t('columnStart'), columnEnd: t('columnEnd') };
+}
+
+function decodeAnchorEdge(v: JsonValue, path: string): AnchorEdge | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['anchor', 'fraction'], path);
+  return { anchor: str(field(o, 'anchor', path), `${path}.anchor`), fraction: numField(o, 'fraction', path) };
+}
+
+function decodeAnchorSize(v: JsonValue, path: string): AnchorSizeRef | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['anchor', 'axis'], path);
+  const axis = lit(field(o, 'axis', path), ['width', 'height'], `${path}.axis`) === 'width' ? 'width' : 'height';
+  return { anchor: str(field(o, 'anchor', path), `${path}.anchor`), axis };
+}
+
+function decodeAnchorOption(v: JsonValue, path: string): AnchorOption {
+  const o = obj(v, ANCHOR_OPTION_KEYS, path);
+  const f = (k: string): JsonValue => field(o, k, path);
+  const p = (k: string): string => `${path}.${k}`;
+  const self = (k: string): 'normal' | 'anchor-center' => (lit(f(k), ['normal', 'anchor-center'], p(k)) === 'anchor-center' ? 'anchor-center' : 'normal');
+  return {
+    area: decodeArea(f('area'), p('area')),
+    top: sizeValue(f('top'), p('top')) as InsetValue,
+    right: sizeValue(f('right'), p('right')) as InsetValue,
+    bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
+    left: sizeValue(f('left'), p('left')) as InsetValue,
+    topAnchor: decodeAnchorEdge(f('topAnchor'), p('topAnchor')),
+    rightAnchor: decodeAnchorEdge(f('rightAnchor'), p('rightAnchor')),
+    bottomAnchor: decodeAnchorEdge(f('bottomAnchor'), p('bottomAnchor')),
+    leftAnchor: decodeAnchorEdge(f('leftAnchor'), p('leftAnchor')),
+    marginTop: sizeValue(f('marginTop'), p('marginTop')) as MarginValue,
+    marginRight: sizeValue(f('marginRight'), p('marginRight')) as MarginValue,
+    marginBottom: sizeValue(f('marginBottom'), p('marginBottom')) as MarginValue,
+    marginLeft: sizeValue(f('marginLeft'), p('marginLeft')) as MarginValue,
+    width: inlineSizeValue(f('width'), p('width')),
+    height: blockSizeValue(f('height'), p('height')),
+    minWidth: inlineSizeValue(f('minWidth'), p('minWidth')),
+    minHeight: blockSizeValue(f('minHeight'), p('minHeight')) as MinBlockSizeValue,
+    maxWidth: maxInlineSizeValue(f('maxWidth'), p('maxWidth')),
+    maxHeight: maxBlockSizeValue(f('maxHeight'), p('maxHeight')),
+    widthAnchor: decodeAnchorSize(f('widthAnchor'), p('widthAnchor')),
+    heightAnchor: decodeAnchorSize(f('heightAnchor'), p('heightAnchor')),
+    minWidthAnchor: decodeAnchorSize(f('minWidthAnchor'), p('minWidthAnchor')),
+    minHeightAnchor: decodeAnchorSize(f('minHeightAnchor'), p('minHeightAnchor')),
+    maxWidthAnchor: decodeAnchorSize(f('maxWidthAnchor'), p('maxWidthAnchor')),
+    maxHeightAnchor: decodeAnchorSize(f('maxHeightAnchor'), p('maxHeightAnchor')),
+    justifySelf: self('justifySelf'),
+    alignSelf: self('alignSelf'),
+  };
+}
+
+function decodeAnchor(v: JsonValue, path: string): AnchorStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['anchor', 'options', 'order'], path);
+  const a = field(o, 'anchor', path);
+  const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => decodeAnchorOption(x, `${path}.options[${i}]`));
+  if (options.length === 0) return fail(`${path}.options: an anchored box has at least its base option`);
+  const order = lit(field(o, 'order', path), ['normal', 'most-width', 'most-height'], `${path}.order`);
+  return { anchor: a.kind === 'null' ? null : str(a, `${path}.anchor`), options, order: order === 'most-width' ? 'most-width' : order === 'most-height' ? 'most-height' : 'normal' };
+}
+
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'last baseline', 'start', 'end', 'self-start', 'self-end'];
 
 function decodeStyle(v: JsonValue, path: string): LayoutStyle {
@@ -946,6 +1025,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     textBoxTrim: decodeTextBoxTrim(f('textBoxTrim'), p('textBoxTrim')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
+    anchor: decodeAnchor(f('anchor'), p('anchor')),
     zoom: numbers(f('zoom'), p('zoom')),
   };
 }
@@ -1411,7 +1491,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
       const d = faceOf(font.family).data;
       const size = platformFontSize(font.size);
       const round = (units: number): LU => (sf.metricRoundingSwapped ? roundFontMetricHalfUpToWholePx(fontMetricPx(size, d.unitsPerEm, units)) : roundCoreTextMetricToWholePx(units, d.unitsPerEm, size));
-      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap) };
+      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap), normalGapAbove: ZERO };
     },
     measure(text: string, font: TextFont): MeasureResult {
       const r = itemFor(text, font);

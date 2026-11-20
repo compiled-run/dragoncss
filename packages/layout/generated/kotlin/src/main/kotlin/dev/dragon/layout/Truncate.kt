@@ -61,11 +61,11 @@ fun truncate_codePoints(text: String, start: Double, end: Double): String {
   var k: Double = 0.0
   // ts: packages/layout/src/truncate.ts:49
   run {
-    val _a369 = jsCodePoints(text)
-    var _i369 = 0
-    while (_i369 < _a369.size) {
-      val ch: String = _a369[_i369]
-      _i369++
+    val _a377 = jsCodePoints(text)
+    var _i377 = 0
+    while (_i377 < _a377.size) {
+      val ch: String = _a377[_i377]
+      _i377++
       // ts: packages/layout/src/truncate.ts:50
       if (((k >= start) && (k < end))) {
         out += ch
@@ -118,18 +118,18 @@ fun truncate_offsetToFit(ctx: Ctx, nodeId: String, s: TruncSource, shaped: Boole
   var clusterEnd: Double = 0.0
   // ts: packages/layout/src/truncate.ts:85
   run {
-    val _a370 = result.runs
-    var _i370 = 0
-    while (_i370 < _a370.size) {
-      val run: ShapingRun = _a370[_i370]
-      _i370++
+    val _a378 = result.runs
+    var _i378 = 0
+    while (_i378 < _a378.size) {
+      val run: ShapingRun = _a378[_i378]
+      _i378++
       // ts: packages/layout/src/truncate.ts:86
       run {
-        val _a371 = run.glyphs
-        var _i371 = 0
-        while (_i371 < _a371.size) {
-          val g: ShapingGlyph = _a371[_i371]
-          _i371++
+        val _a379 = run.glyphs
+        var _i379 = 0
+        while (_i379 < _a379.size) {
+          val g: ShapingGlyph = _a379[_i379]
+          _i379++
           val at: Double = (run.start + g.ci)
           // ts: packages/layout/src/truncate.ts:88
           if (((at < s.start) || (at >= s.end))) {
@@ -204,25 +204,25 @@ fun truncate_truncateLine(ctx: Ctx, nodeId: String, available: Double, lineFont:
   // ts: packages/layout/src/truncate.ts:139
   run {
     var i: Double = (jsLength(children) - 1.0)
-    loop42@ while ((i >= 0.0)) {
-      loop42_body@ do {
+    loop44@ while ((i >= 0.0)) {
+      loop44_body@ do {
         val c: TruncSource = jsUnwrap(jsAt(children, i))
         val first: Boolean = (i == 0.0)
         var space: Double = units_sub(available, c.x)
         // ts: packages/layout/src/truncate.ts:143
         if ((space <= 0.0)) {
-          break@loop42_body
+          break@loop44_body
         }
         space = units_sub(space, e.width)
         // ts: packages/layout/src/truncate.ts:145
         if ((space >= c.width)) {
           ellipsized = i
           x = units_add(c.x, c.width)
-          break@loop42
+          break@loop44
         }
         // ts: packages/layout/src/truncate.ts:151
         if (((space <= 0.0) && (!first))) {
-          break@loop42_body
+          break@loop44_body
         }
         val length: Double = (c.end - c.start)
         val fit: Fit = truncate_offsetToFit(ctx, nodeId, c, shaped, space)
@@ -231,7 +231,7 @@ fun truncate_truncateLine(ctx: Ctx, nodeId: String, available: Double, lineFont:
         if (((n == 0.0) || (n == length))) {
           // ts: packages/layout/src/truncate.ts:156
           if ((!first)) {
-            break@loop42_body
+            break@loop44_body
           }
           n = (if ((n == 0.0)) 1.0 else (length - 1.0))
         }
@@ -239,7 +239,7 @@ fun truncate_truncateLine(ctx: Ctx, nodeId: String, available: Double, lineFont:
         count = n
         cutWidth = (if ((n == fit.count)) fit.width else truncate_truncatedWidth(ctx, nodeId, c, shaped, n))
         x = units_add(c.x, cutWidth)
-        break@loop42
+        break@loop44
       } while (false)
       i -= 1.0
     }

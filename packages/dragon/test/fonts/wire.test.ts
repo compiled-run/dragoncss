@@ -10,6 +10,7 @@ import {
   collectFontFaces, familySupport, FONT_WIRE_PROBLEM_KINDS, pinnedFacesOf, projectFonts, webFontOutput,
 } from '../../src/fonts/wire.ts';
 import type { FamilyFeatureKey, FontWireProblem, SnapshotAsset } from '../../src/fonts/wire.ts';
+import { isSkippedFamily } from '../../src/fonts/wire.ts';
 import { atRules, capture, resolveFonts, vendorBytes } from './compare.ts';
 
 const SRC = { uri: 'file:///wire.css', revision: 'r1', hash: 'h1' };
@@ -193,10 +194,12 @@ describe('familySupport', () => {
       ['"Mine"', 'font-family:<declared>'],
       ['serif', 'font-family:<platform>'],
       ['Mine, serif', 'font-family:<platform>'],
-      ["'Nope', sans-serif", 'font-family:<unmapped>'],
+      ["'Nope', sans-serif", 'font-family:<pinned>'],
       ['Nope', 'font-family:<unmapped>'],
       ['cursive', 'font-family:<unmapped>'],
-      ['Mine, Nope, serif', 'font-family:<unmapped>'],
+      ['Nope, cursive', 'font-family:<unmapped>'],
+      ['Mine, Nope, serif', 'font-family:<platform>'],
+      ['Mine, cursive', 'font-family:<unmapped>'],
       ['"sans-serif"', 'font-family:<unmapped>'],
     ];
     const got = cases.map(([text]) => {
@@ -236,7 +239,9 @@ describe('familySupport', () => {
         expect(r.chrome[0]?.isCustomFont, r.family).toBe(true);
         expect(psOf(used.family), r.family).toContain(r.chrome[0]?.postScriptName);
       } else expect(r.chrome.every((f) => !f.isCustomFont), r.family).toBe(true);
-      expect(s.key).toBe(s.resolutions.some((x) => x.kind === 'unmapped-family') ? 'font-family:<unmapped>' : 'font-family:<pinned>');
+      // A first family Chrome skipped (Unknown, "sans-serif" quoted) is skipped by Dragon too, so it never makes the value unmapped.
+      expect(s.resolutions.some((x) => isSkippedFamily(x, s.resolutions)), r.family).toBe(s.resolutions[0]?.kind === 'unmapped-family');
+      expect(s.key).toBe(s.resolutions.some((x) => x.kind === 'unmapped-family' && !isSkippedFamily(x, s.resolutions)) ? 'font-family:<unmapped>' : 'font-family:<pinned>');
     }
   });
 

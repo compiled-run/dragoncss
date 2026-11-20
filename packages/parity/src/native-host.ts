@@ -141,10 +141,10 @@ export function engineCases(): readonly EngineCase[] {
 /**
  * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the FontData of every face the apps bundle
  * (Ahem and the real faces, native-shim.ts shimFaces) and the WASM HarfBuzz, as each app's bridge composes it over its own shim. A
- * fresh measurer per call: its shaped items are cached per layout.
+ * fresh measurer per call: its shaped items are cached per layout. `extra`: faces an app bundles beside those, registered (registerFace).
  */
-export function referenceMeasurer(): TextMeasurer {
-  return deviceShapedMeasurer(new Map(shimFaces().map((f) => [f.id, fontDataOf(f.id)] as const)), hostShaper);
+export function referenceMeasurer(extra: readonly string[] = []): TextMeasurer {
+  return deviceShapedMeasurer(new Map([...shimFaces().map((f) => f.id), ...extra].map((id) => [id, fontDataOf(id)] as const)), hostShaper);
 }
 
 /**
@@ -217,9 +217,9 @@ function computeEmitCases(target: NativeTarget): EmitCase[] {
 }
 
 /** The TS engine's boxes for a program at a DPR (check (d)'s reference). */
-export function engineBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): readonly LayoutRect[] {
+export function engineBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, measurer: TextMeasurer = referenceMeasurer()): readonly LayoutRect[] {
   const input: LayoutInput = programInput(p, viewport, dpr);
-  const out = layout(input, referenceMeasurer());
+  const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
   return out.boxes;
 }

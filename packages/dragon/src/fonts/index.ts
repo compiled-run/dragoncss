@@ -1,5 +1,6 @@
 // The fonts module's barrel. Not wired into compile() yet: T005b adds the exports to internal.ts and the hooks.
 export * from './sfnt.ts';
+export * from './woff.ts';
 export * from './font-face.ts';
 export * from './family-list.ts';
 export * from './selection.ts';

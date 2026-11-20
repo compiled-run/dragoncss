@@ -616,7 +616,7 @@ function buildItem(
 function columnIntrinsicBlockSize(ctx: Ctx, box: LayoutBox | ControlBox, cbInline: LU, borderBoxWidth: LU, heightBasis: HeightBasis, vbp: LU): LU {
   // Blink resolves the children's percentage and stretch heights against the set height, which an auto-height measurement cannot
   // reproduce.
-  const pct = (v: LayoutStyle['flexBasis'] | LayoutStyle['maxHeight']): boolean => v.kind === 'stretch' || (v.kind !== 'auto' && v.kind !== 'none' && v.kind !== 'content' && hasPercent(v));
+  const pct = (v: LayoutStyle['flexBasis'] | LayoutStyle['maxHeight'] | LayoutStyle['height']): boolean => v.kind === 'stretch' || ((v.kind === 'percent' || v.kind === 'calc') && hasPercent(v));
   const columnFlex = box.style.display === 'flex' && (box.style.flexDirection === 'column' || box.style.flexDirection === 'column-reverse');
   for (const k of box.children) {
     if (k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || isOutOfFlow(ctx, k)) continue;

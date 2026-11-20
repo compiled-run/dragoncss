@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "36c6c8d4ca8f6812b504d32e3e5685a584ba63e8255286841768e2ff4da9bec8",
+ "compiler": "45630b074d01f6b45e57672ec2e6eb6bcc2e44c5b585353c0c10e2fcd15498f9",
  "component": "Flex",
  "source": "packages/parity/fixtures/ms-flex",
  "warnings": [],
@@ -23,6 +23,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
@@ -797,6 +803,12 @@
    "assignments": [
     {
      "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
      "nodes": [
       {
        "id": "html",
