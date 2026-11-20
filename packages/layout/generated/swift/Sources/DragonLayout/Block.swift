@@ -431,7 +431,7 @@ public func block_layoutOwnContents(_ ctx: Ctx, _ node: any U_ControlBox_LayoutB
   let s: LayoutStyle = box.style
   // ts: packages/layout/src/block.ts:412
   if ((s.containSize == S.s_size) && ((s.display != S.s_block) || (!s.containLayout))) {
-    try unsupported_unsupported(S.s_size_containment, box.id, S.s670, jsConcat(S.s1058, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s223), S.s195))
+    try unsupported_unsupported(S.s_size_containment, box.id, S.s671, jsConcat(S.s1060, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s223), S.s195))
   }
   try position_checkOutOfFlowSiblings(ctx, box)
   // ts: packages/layout/src/block.ts:416
@@ -522,7 +522,7 @@ public func block_blockLevelInlineSize(_ ctx: Ctx, _ node: any U_ControlBox_Layo
     }
     // ts: packages/layout/src/block.ts:573
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s689, jsConcat(k, S.s176))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s690, jsConcat(k, S.s176))
     }
     // ts: packages/layout/src/block.ts:575
     if (k == S.s_stretch) {
@@ -643,7 +643,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/block.ts:741
   if ((box.style.multicol != nil) && (((box.strut == nil) && (jsLength(kids) > 0.0)) || (a.marker != nil))) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s681, jsConcat(S.s1141, box.id, S.s3, ((a.marker != nil) ? S.s839 : S.s807), S.s213))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s682, jsConcat(S.s1143, box.id, S.s3, ((a.marker != nil) ? S.s841 : S.s809), S.s213))
   }
   // ts: packages/layout/src/block.ts:744
   if (box.strut != nil) {
@@ -665,7 +665,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   }
   // ts: packages/layout/src/block.ts:757
   if ((box.style.textBoxTrim != nil) && (jsLength(kids) > 0.0)) {
-    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s680, jsConcat(S.s1110, box.id, S.s211))
+    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s681, jsConcat(S.s1112, box.id, S.s211))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Box_Placed> = JsArray<Box_Placed>([])
@@ -732,7 +732,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
           try inline = block_blockLevelInlineSize(ctx, (kid as! any U_ControlBox_LayoutBox), a.contentWidth, direction, container)
           // ts: packages/layout/src/block.ts:823
           if ((clampLeft > 0.0) && ((kid as! any U_ControlBox_LayoutBox).kind == S.s_control)) {
-            try unsupported_unsupported(S.s_line_clamp, (kid as! ControlBox).id, S.s684, jsConcat((kid as! ControlBox).id, S.s75, box.id, S.s87))
+            try unsupported_unsupported(S.s_line_clamp, (kid as! ControlBox).id, S.s685, jsConcat((kid as! ControlBox).id, S.s75, box.id, S.s87))
           }
           let clamp: ClampedChild? = try (((clampLeft > 0.0) && ((kid as! any U_ControlBox_LayoutBox).kind == S.s_box)) ? (lineClamp_clampChild(ctx, box, (kid as! LayoutBox), inline.borderBoxWidth, a.contentWidth, clampLeft, jsSlice(kids, (k + 1.0))) as ClampedChild?) : (nil as ClampedChild?))
           // ts: packages/layout/src/block.ts:825

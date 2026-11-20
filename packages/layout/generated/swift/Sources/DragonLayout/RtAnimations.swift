@@ -136,7 +136,7 @@ public func rtAnimations_updateAnimations(_ running: JsArray<RunningAnimation>, 
         let e: AnimationEntry? = jsAt(entries, i)
         // ts: packages/layout/src/rt-animations.ts:80
         if (e == nil) {
-          throw JsError(message: jsConcat(S.s590, jsNumberToString(i), S.s151))
+          throw JsError(message: jsConcat(S.s591, jsNumberToString(i), S.s151))
         }
         // ts: packages/layout/src/rt-animations.ts:81
         if try ((jsUnwrap(e).name == S.s_none) || (!jsUnwrap(e).hasKeyframes)) {
@@ -343,7 +343,7 @@ public func rtAnimations_stateAt(_ states: JsArray<AnimationState>, _ i: Double)
   let s: AnimationState? = (jsIsInteger(i) ? (jsAt(states, i) as AnimationState?) : (nil as AnimationState?))
   // ts: packages/layout/src/rt-animations.ts:200
   if (s == nil) {
-    throw JsError(message: jsConcat(S.s591, jsNumberToString(i), S.s125, jsNumberToString(jsLength(states)), S.s167))
+    throw JsError(message: jsConcat(S.s592, jsNumberToString(i), S.s125, jsNumberToString(jsLength(states)), S.s167))
   }
   return try jsUnwrap(s)
 }
