@@ -184,7 +184,7 @@ import { backgroundRow, fma64, gradientDesc, gradientFaults, hypotF32, planBackg
 import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature, BandKeyword, BandOp, BandTable } from '../../layout/src/rt-band.ts';
 import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
-import { symbolCoverage } from '../../layout/src/paint-marker.ts';
+import { markerSymbolPaint, symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
@@ -3471,6 +3471,43 @@ function planLines(t: PlanText, text: string, at: LayoutRect, m: TextMeasurer): 
   return `${out}]`;
 }
 
+/**
+ * Each symbol list marker's paint by its box id: [left, top, width, height] in device px from the marker box's snapped edges, then its
+ * coverage bytes (paint-marker.ts markerSymbolPaint over the zoomed marker, as the native tree paints it).
+ */
+function planMarkerPaints(input: LayoutInput, measurer: TextMeasurer, boxes: readonly LayoutRect[], abs: Map<string, LayoutRect>, dpr: number): Map<string, string> {
+  const zoomed = clampedInput(zoomInput(input, NO_ENGINE_FAULTS), boxes, measurer);
+  const markers = new Map<string, ListMarker>();
+  const walk = (b: LayoutBox): void => {
+    if (b.marker !== null && b.marker.kind === 'symbol') markers.set(b.marker.id, b.marker);
+    for (const c of b.children) if (c.kind === 'box') walk(c);
+  };
+  walk(zoomed.root);
+  const out = new Map<string, string>();
+  const snapped = snapEdges(boxes);
+  const ctx: Ctx = { measurer, devicePixelRatio: dpr, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  boxes.forEach((b, i) => {
+    const m = markers.get(b.id);
+    const a = abs.get(b.id);
+    if (m === undefined || a === undefined) return;
+    const e = snapped[i] as SnappedRect;
+    const mp = markerSymbolPaint(ctx, m, a.x, a.y);
+    let coverage = '';
+    for (let k = 0; k < mp.coverage.length; k++) {
+      if (k > 0) coverage += ',';
+      coverage += h(mp.coverage[k] as number);
+    }
+    out.set(b.id, `[${h(mp.left - e.left)},${h(mp.top - e.top)},${h(mp.right - mp.left)},${h(mp.bottom - mp.top)},[${coverage}]]`);
+  });
+  return out;
+}
+
+/** A box's marker paint for the plan layout's output, or null. */
+function markerPaintOf(paints: Map<string, string>, id: string): string {
+  const p = paints.get(id);
+  return p === undefined ? 'null' : p;
+}
+
 /** A dashed or dotted box's border operations (native-style-export.ts dashedBorder), or the empty string. */
 function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]): string {
   let dashed = false;
@@ -3604,6 +3641,8 @@ export function runMarklessLayout(line: string): string {
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
+    // GEN-c: each symbol marker's paint (paint-marker.ts) at its box's absolute LU origin, from the box's snapped device-px edges.
+    const markerPaints = planMarkerPaints(input, measurer, boxes, abs, dpr);
     const styles = new Map<string, LayoutStyle>();
     planStyles(input.root, styles);
     const texts = new Map<string, string>();
@@ -3646,7 +3685,7 @@ export function runMarklessLayout(line: string): string {
       const dev = deviceBorders.get(b.id);
       const ops = d === undefined || dev === undefined ? '' : planDashed(d, rect, dev);
       const range = rangeOf.get(b.id);
-      out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
+      out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'},${markerPaintOf(markerPaints, b.id)}]`;
     }
     return `${out}]]`;
   } catch (e) {
