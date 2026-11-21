@@ -592,7 +592,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0
          },
          "strut": null,
          "children": [
@@ -931,7 +932,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0
          },
          "strut": null,
          "children": [
@@ -1270,7 +1272,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0
          },
          "strut": null,
          "children": [
@@ -1609,7 +1612,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0
          },
          "strut": null,
          "children": [
