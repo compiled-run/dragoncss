@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, parseStylesheet, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -599,15 +599,15 @@ export const marklessDevices = (parsed: MarklessStyleInput, at?: MarklessAtSize)
   at !== undefined ? at : parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
 
 /** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
-function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
+function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly compiled: object; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
-  const styles = compileNativeStyles(config, input);
+  const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
-  return { input, styles, devices };
+  return { input, styles, compiled, devices };
 }
 
 /** Dragon keys a state "<instance>#s<k>"; the hosts know the cell. */
@@ -690,7 +690,7 @@ export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: read
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
-  const { input, styles, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
+  const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
   const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
@@ -758,7 +758,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
-  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, fonts, mode, at);
+  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
   const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
     const out = styles.targets[t as NativeStyleTarget];
     if (out?.kind !== 'emitted' || out.schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment`);
@@ -792,7 +792,8 @@ function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, 
   });
 }
 
-type ParsedSelector = ReturnType<typeof parseStylesheet>[number]['selectors'][number];
+type ParsedRule = ReturnType<typeof parseStylesheet>[number];
+type ParsedSelector = ParsedRule['selectors'][number];
 type ParsedCompound = ParsedSelector['parts'][number]['compound'];
 type InputElement = Extract<MarklessStyleInput['nodes'][number], { readonly kind: 'element' }>;
 
@@ -813,7 +814,7 @@ function mayMatch(c: ParsedCompound, n: InputElement): boolean {
  * (:first-child, :nth-child() and the rest, :only-child, or + and ~ beside it): those children are the rows and their siblings,
  * whose positions a phone's copies of the template do not see, at any row count.
  */
-function checkRowPositions(parsed: MarklessStyleInput): void {
+function checkRowPositions(parsed: MarklessStyleInput, rules: readonly ParsedRule[]): void {
   const parents = new Set((parsed.repeats ?? []).map((r) => r.parent));
   const children = parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && parents.has(n.parent));
   const reaches = (c: ParsedCompound): string[] => children.filter((n) => mayMatch(c, n)).map((n) => n.id);
@@ -831,12 +832,57 @@ function checkRowPositions(parsed: MarklessStyleInput): void {
       }),
     ]);
   };
-  const ref = { uri: `dragon-source://${PROJECT_ID}/markless/${parsed.component}/component.css`, revision: 'markless', hash: 'sha256:0' };
-  const rules = parseStylesheet(parsed.css, { source: ref, start: 0, end: parsed.css.length }, { id: 'component', owner: DOCUMENT_ID, scope: 'document' }, 0, []);
   for (const rule of rules) {
     if (rule.declarations.length === 0) continue;
     const ids = [...new Set(rule.selectors.filter((sel) => !sel.dropped).flatMap((sel) => positional(sel, null)))];
     if (ids.length > 0) fail(`a selector tests where ${ids.join(', ')} sits among a list's rows (:first-child, :nth-child(), :only-child, + or ~); a style that depends on a row's position is not supported yet`);
+  }
+}
+
+/** The input's sheet as Dragon parses it. */
+function inputRules(parsed: MarklessStyleInput): ParsedRule[] {
+  const ref = { uri: `dragon-source://${PROJECT_ID}/markless/${parsed.component}/component.css`, revision: 'markless', hash: 'sha256:0' };
+  return parseStylesheet(parsed.css, { source: ref, start: 0, end: parsed.css.length }, { id: 'component', owner: DOCUMENT_ID, scope: 'document' }, 0, []);
+}
+
+/** Whether a compound may match the document's own html or body, which hold no classes or ids. */
+const mayMatchDocument = (c: ParsedCompound, tag: 'html' | 'body'): boolean => (c.tag === null || c.tag === tag) && c.classes.length === 0 && c.ids.length === 0;
+
+/**
+ * Refuses a selector that tests whether a list holds rows, which a phone's 0 rows and the build's one template answer differently:
+ * :empty on a list's parent, or :has() on a list's parent or an ancestor of it whose argument may match an element of a row.
+ */
+function checkRowCount(parsed: MarklessStyleInput, rules: readonly ParsedRule[]): void {
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n] as const));
+  const holders = new Set<string | null>();
+  const above = new Set<string | null>();
+  for (const r of parsed.repeats ?? []) {
+    holders.add(r.parent);
+    for (let at: string | null = r.parent; ; at = byId.get(at)?.parent ?? null) {
+      above.add(at);
+      if (at === null) break;
+    }
+  }
+  const elementsIn = (ids: ReadonlySet<string | null>): InputElement[] => parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && ids.has(n.id));
+  const reaches = (c: ParsedCompound, ids: ReadonlySet<string | null>): string[] => [...elementsIn(ids).filter((n) => mayMatch(c, n)).map((n) => n.id), ...(ids.has(null) && mayMatchDocument(c, 'body') ? ['body'] : []), ...(ids === above && mayMatchDocument(c, 'html') ? ['html'] : [])];
+  const rowElements = parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && n.row !== undefined);
+  const counted = (sel: ParsedSelector, host: ParsedCompound | null): string[] => {
+    const at = (j: number): ParsedCompound => (j === 0 && host !== null ? host : (sel.parts[j] as ParsedSelector['parts'][number]).compound);
+    return sel.parts.flatMap((p, i) => p.compound.pseudos.flatMap((ps) => {
+      if (ps.kind === 'empty') return reaches(at(i), holders);
+      if (ps.kind === 'nth') return (ps.of ?? []).flatMap((s) => counted(s, at(i)));
+      if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => counted(s, at(i)));
+      if (ps.kind === 'has') {
+        const row = ps.selectors.some((s) => s.parts.some((q) => rowElements.some((n) => mayMatch(q.compound, n))));
+        return [...(row ? reaches(at(i), above) : []), ...ps.selectors.flatMap((s) => counted(s, null))];
+      }
+      return [];
+    }));
+  };
+  for (const rule of rules) {
+    if (rule.declarations.length === 0) continue;
+    const ids = [...new Set(rule.selectors.filter((sel) => !sel.dropped).flatMap((sel) => counted(sel, null)))];
+    if (ids.length > 0) fail(`a selector tests whether a list holds rows from ${ids.join(', ')} (:empty, or :has() reaching a row); a style that depends on how many rows a list has is not supported yet`);
   }
 }
 
@@ -850,10 +896,22 @@ function rowStateCombinations(parsed: MarklessStyleInput, repeat: string): Recor
  * row's own state must change only its own row. Refuses a selector that tests a row's position (checkRowPositions), and a style
  * that follows another row: the page compiled with each list's rows written out at each combination of their own states, each
  * twice, must style each row as the template at those states. Refuses a node outside the rows whose style follows a row's own
- * state (`:has()`).
+ * state (`:has()`), a style that follows how many rows a list holds (checkRowCount), and a row's text that the build transforms.
  */
-function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: NativeStyleExport, mainStyles: NativeStyles, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
-  checkRowPositions(parsed);
+function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: NativeStyleExport, mainStyles: NativeStyles, compiled: object, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
+  const rules = inputRules(parsed);
+  checkRowPositions(parsed, rules);
+  const mainIds = dragonNodeIds(parsed);
+  // The build lays out a text transformed (resolve.ts transformRun); a phone gets a row's text as typed.
+  for (const c of compiledCases(compiled)) {
+    const transforms = resolvedTextTransforms(compiled, c.assignment);
+    if (transforms === null) return fail(`a case of ${parsed.component} did not resolve`);
+    for (const n of parsed.nodes) {
+      if (n.kind !== 'text' || n.row === undefined) continue;
+      const transform = transforms.get(mainIds.get(n.parent) as string);
+      if (transform !== undefined && transform !== 'none') fail(`${n.id}: a row's text with text-transform: ${transform} is not supported yet; a phone lays out the text it is given`);
+    }
+  }
   const rowStates = new Set(parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell));
   for (const [t, x] of Object.entries(exported.targets)) {
     const byKey = new Map<string, ExportAssignment>();
@@ -878,7 +936,6 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
   }));
   const written = marklessWithRows(parsed, rowsOf);
   const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at).styles;
-  const mainIds = dragonNodeIds(parsed);
   const writtenIds = dragonNodeIds(written);
   const mainKey = cellKey(parsed);
   const writtenKey = cellKey(written);
@@ -927,6 +984,7 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
       }
     }
   }
+  checkRowCount(parsed, rules);
 }
 
 type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 };

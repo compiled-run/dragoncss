@@ -3607,10 +3607,11 @@ function isPhaseOneSpace(c: string): boolean {
 }
 
 /**
- * A row's text as the build's phase I (resolve.ts) leaves it in a leaf of `mode`. In a collapsing leaf each run of white space
- * inside the text is one space; what phase I does at a text's edges and beside U+200B depends on the text around it, so it is refused.
+ * A row's text as the build's phase I (resolve.ts) leaves it in a leaf of `mode`, '' when the build drops the leaf. In a collapsing
+ * leaf each run of white space inside the text is one space; the white space at its edges is removed when the leaf is `alone` in its
+ * box (collapseInlineContext over that one text), and refused beside other inline content, where the result depends on it.
  */
-function rowText(text: string, mode: string, at: string): string {
+function rowText(text: string, mode: string, at: string, alone: boolean): string {
   if (mode === 'preserve-breaks') return fail(`${at}: the leaf is white-space-collapse: preserve-breaks (white-space: pre-line), whose white space a phone does not process as the build does`);
   if (mode !== 'collapse') return text;
   let out = '';
@@ -3619,7 +3620,8 @@ function rowText(text: string, mode: string, at: string): string {
   let before = '';
   for (const c of text) {
     if (isPhaseOneSpace(c)) {
-      if (out === '') fail(`${at}: a row's text that begins with white space is not supported`);
+      if (out === '' && !alone) fail(`${at}: a row's text that begins with white space beside other inline content is not supported`);
+      if (out === '') continue;
       space = true;
       if (c === '\n' || c === '\r') segmentBreak = true;
       continue;
@@ -3633,7 +3635,7 @@ function rowText(text: string, mode: string, at: string): string {
     space = false;
     segmentBreak = false;
   }
-  if (out === '' || space) fail(`${at}: a row's text that is empty or ends with white space is not supported`);
+  if ((out === '' || space) && !alone) fail(`${at}: a row's text that is empty or ends with white space beside other inline content is not supported`);
   return out;
 }
 
@@ -3659,14 +3661,26 @@ function boxJson(v: JsonValue, id: string): JsonObj | null {
 /** What the row copies take from their rows' assignments (each copy's dashed borders and scrolling), and the lists placed. */
 type RowSink = { readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly placed: Map<string, boolean> };
 
+/** Whether `v` is a text leaf whose text is empty. */
+function emptyLeaf(v: JsonValue): boolean {
+  if (v.kind !== 'obj') return false;
+  const kind = v.values.get('kind');
+  const text = v.values.get('text');
+  return kind !== undefined && kind.kind === 'str' && kind.text === 'text' && text !== undefined && text.kind === 'str' && text.text === '';
+}
+
 /**
- * A copy of a row's box JSON for `row`: every id suffixed "@<key>", each text leaf named in its texts holding the row's text, and
- * each box's dashed borders and scrolling those of the row's own assignment; `used` gathers the text leaves it filled.
+ * A copy of a row's box JSON for `row`: every id suffixed "@<key>", each text leaf named in its texts holding the row's text (and
+ * dropped when that is empty, as the build drops it), and each box's dashed borders and scrolling those of the row's own
+ * assignment; `used` gathers the text leaves it filled; `alone`: `v` is the children of a box that holds one leaf and nothing else.
  */
-function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, boolean>): JsonValue {
+function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, boolean>, alone: boolean): JsonValue {
   if (v.kind === 'arr') {
     const items: JsonValue[] = [];
-    for (const item of v.items) items.push(rowCopy(item, row, sink, used));
+    for (const item of v.items) {
+      const copy = rowCopy(item, row, sink, used, alone);
+      if (!emptyLeaf(copy)) items.push(copy);
+    }
     return { kind: 'arr', items };
   }
   if (v.kind !== 'obj') return v;
@@ -3684,8 +3698,8 @@ function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, b
     } else if (k === 'text' && kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str' && row.texts.has(id.text)) {
       const mode = v.values.get('whiteSpaceCollapse');
       used.set(id.text, true);
-      values.set(k, { kind: 'str', text: rowText(row.texts.get(id.text) as string, mode !== undefined && mode.kind === 'str' ? mode.text : '', `${row.at}.texts: ${id.text}`) });
-    } else values.set(k, rowCopy(value, row, sink, used));
+      values.set(k, { kind: 'str', text: rowText(row.texts.get(id.text) as string, mode !== undefined && mode.kind === 'str' ? mode.text : '', `${row.at}.texts: ${id.text}`, alone) });
+    } else values.set(k, rowCopy(value, row, sink, used, k === 'children' && kind !== undefined && kind.kind === 'str' && kind.text === 'box' && value.kind === 'arr' && value.items.length === 1));
   }
   return { kind: 'obj', keys: v.keys, values };
 }
@@ -3731,7 +3745,7 @@ function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSi
           for (const tid of list.template) {
             const source = boxJson(row.variant, tid);
             if (source === null) return fail(`$.rows: the variant of row ${row.key} has no box ${tid}`);
-            items.push(rowCopy(source, row, sink, used));
+            items.push(rowCopy(source, row, sink, used, false));
           }
           for (const leaf of row.leaves) if (!used.has(leaf)) fail(`${row.at}.texts: ${leaf} is no text leaf of the row's template`);
         }

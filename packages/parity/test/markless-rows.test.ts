@@ -37,6 +37,14 @@ const ROWS: readonly Row[] = [
   { key: 'c', title: 'Water   the\nplants', pinned: false },
 ];
 
+const EDGE_ROWS: readonly Row[] = [
+  { key: 'a', title: 'Buy milk ', pinned: false },
+  { key: 'b', title: '\n  Call the plumber about the kitchen tap before Friday\t', pinned: true },
+  { key: 'c', title: '', pinned: false },
+  { key: 'd', title: '   ', pinned: true },
+  { key: 'e', title: 'Water the plants', pinned: false },
+];
+
 /** The page as the web renders it with these rows: each row's nodes named "<id>@<key>", its class its item's, its text its own. */
 function writtenOut(rows: readonly Row[]): MarklessStyleInput {
   const nodes: MarklessStyleInput['nodes'][number][] = [];
@@ -130,8 +138,13 @@ describe('styled @for rows', () => {
   }
 
   for (const t of ['ios', 'android'] as const) {
-    it(`lays 3 rows out on the ${t} device exactly as the build lays out the page with those rows written out`, () => {
-      const rows = ROWS;
+    it(`lays 3 rows out on the ${t} device exactly as the build lays out the page with those rows written out`, () => expectAsBuilt(t, ROWS));
+    // A title alone in its box: the build drops the white space at its edges, and drops an empty one.
+    it(`lays rows whose titles have edge white space, or none, out on the ${t} device exactly as the build does`, () => expectAsBuilt(t, EDGE_ROWS));
+  }
+
+  function expectAsBuilt(t: 'ios' | 'android', rows: readonly Row[]): void {
+    {
       const device = deviceBoxes(t, rows);
       const built = marklessStyleExport(JSON.stringify(writtenOut(rows)), PATH, undefined, 'system').exported.targets[t]!;
       const a = built.assignments.find((x) => x.values[branch.id] === '1')!;
@@ -154,7 +167,7 @@ describe('styled @for rows', () => {
       // Every element the page shows: the empty list's message sits in the arm 3 rows hide.
       expect(compared).toBe(elements.filter((id) => (byId.get(id)?.frame ?? null) !== null).length);
       expect(compared).toBeGreaterThanOrEqual(10);
-    });
+    }
   }
 
   const withCss = (css: string): string => JSON.stringify({ ...JSON.parse(TEXT), css: `${input.css}\n${css}` });
@@ -177,6 +190,34 @@ describe('styled @for rows', () => {
 
   it('keeps a position test that reaches no child of a list\'s parent', () => {
     expect(() => marklessStyleExport(withCss('.heading:first-child { margin-top: 0; } .action + .action { margin-top: 4px; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
+  });
+
+  it('refuses edge white space and an empty text beside other inline content, where the build\'s result depends on it', () => {
+    const o = JSON.parse(TEXT) as { nodes: Record<string, unknown>[] };
+    const at = o.nodes.findIndex((n) => n['id'] === titleText);
+    o.nodes.splice(at + 1, 0, { kind: 'element', id: 'h6b', element: 'b', parent: 'h6', attributes: {}, row: repeat.id }, { kind: 'text', id: 'h6b:text0', parent: 'h6b', text: '!', row: repeat.id });
+    const x = marklessStyleExport(JSON.stringify(o), PATH, undefined, 'system', undefined, true).exported.targets.android!;
+    const page = x.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === rowState.initial);
+    const leaf = new Map((x.planNames?.[page] ?? []).map(([d, m]) => [m, d])).get(titleText) ?? titleText;
+    for (const [title, detail] of [[' Groceries', 'begins with white space beside other inline content'], ['Groceries ', 'ends with white space beside other inline content'], ['', 'is empty']] as const) {
+      const out = JSON.parse(rowsLine(x, rowState.initial as string, [{ key: 'a', option: pinnedOption(false), texts: [[leaf, title]] }])) as unknown[];
+      expect(out[0], JSON.stringify(out)).toBe('harness-error');
+      expect(out[1], JSON.stringify(title)).toContain(detail);
+    }
+    expect((JSON.parse(rowsLine(x, rowState.initial as string, [{ key: 'a', option: pinnedOption(false), texts: [[leaf, 'Buy  milk']] }])) as unknown[])[0]).toBe('ok');
+  });
+
+  it('refuses a row\'s text the build transforms, from the computed text-transform', () => {
+    expect(() => marklessStyleExport(withCss('.title.mk-1gmxfth { text-transform: uppercase; }'), PATH, undefined, 'system', undefined, true)).toThrow('text-transform: uppercase is not supported yet');
+    expect(() => marklessStyleExport(withCss('.notes.mk-1gmxfth { text-transform: lowercase; }'), PATH, undefined, 'system', undefined, true)).toThrow('text-transform: lowercase is not supported yet');
+    expect(() => marklessStyleExport(withCss('.heading.mk-1gmxfth { text-transform: uppercase; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
+  });
+
+  it('refuses a style that depends on how many rows a list holds, and keeps a :has() inside a row', () => {
+    for (const css of ['.notes.mk-1gmxfth:has(> .note) { padding: 12px; }', '.notes:empty { display: none; }', '.page:not(:has(.note)) { padding: 0; }', 'main:has(.title) { padding: 30px; }', 'body:has(.note) { margin: 4px; }']) {
+      expect(() => marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true), css).toThrow('a style that depends on how many rows a list has');
+    }
+    expect(() => marklessStyleExport(withCss('.note:has(.title) { gap: 4px; } .page:has(.heading) { padding: 20px; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
   });
 
   it('refuses two lists in one parent by name', () => {
@@ -226,9 +267,6 @@ describe('styled @for rows', () => {
     expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'A']]), { ...one([[leaf, 'B']]), key: 'a' }]))).toContain('row key a is listed twice');
     expect(err(rowsLine(x, rowState.initial as string, [one([['h6:text0-not-a-leaf', 'A']])]))).toContain('is no text leaf of the row\'s template');
     expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'A'], [leaf, 'B']])]))).toContain('is given twice');
-    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, ' Groceries']])]))).toContain('begins with white space');
-    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'Groceries\n']])]))).toContain('ends with white space');
-    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, '']])]))).toContain('is empty');
     expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'a\u200b\nb']])]))).toContain('U+200B');
     expect(err(rowsLine(x, rowState.initial as string, [one([])], (line) => {
       const rows = line['rows'] as Record<string, unknown>[];
