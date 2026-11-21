@@ -91,11 +91,11 @@ fun environment_boxNeedsEnvironment(b: U_ControlBox_LayoutBox, faults: EngineFau
   }
   // ts: packages/layout/src/environment.ts:180
   run {
-    val _a8 = b.children
-    var _i8 = 0
-    while (_i8 < _a8.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a8[_i8]
-      _i8++
+    val _a10 = b.children
+    var _i10 = 0
+    while (_i10 < _a10.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a10[_i10]
+      _i10++
       // ts: packages/layout/src/environment.ts:181
       if ((jsStrEq(c.kind, "box") || jsStrEq((c as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         // ts: packages/layout/src/environment.ts:182
@@ -151,11 +151,11 @@ fun environment_inlineNeedsEnvironment(c: U_InlineBox_LineBreak_TextLeaf, faults
   }
   // ts: packages/layout/src/environment.ts:204
   run {
-    val _a9 = (c as InlineBox).children
-    var _i9 = 0
-    while (_i9 < _a9.size) {
-      val k: U_InlineBox_LineBreak_TextLeaf = _a9[_i9]
-      _i9++
+    val _a11 = (c as InlineBox).children
+    var _i11 = 0
+    while (_i11 < _a11.size) {
+      val k: U_InlineBox_LineBreak_TextLeaf = _a11[_i11]
+      _i11++
       // ts: packages/layout/src/environment.ts:204
       if (environment_inlineNeedsEnvironment(k, faults)) {
         return true
@@ -187,11 +187,11 @@ fun environment_styleNeedsEnvironment(s: LayoutStyle): Boolean {
   val kinds: JsArray<String> = jsArrayOf<String>(s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind, s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind, s.paddingBottom.kind, s.paddingLeft.kind, s.borderTopWidth.kind, s.borderRightWidth.kind, s.borderBottomWidth.kind, s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind, s.textIndent.kind)
   // ts: packages/layout/src/environment.ts:224
   run {
-    val _a10 = kinds
-    var _i10 = 0
-    while (_i10 < _a10.size) {
-      val k: String = _a10[_i10]
-      _i10++
+    val _a12 = kinds
+    var _i12 = 0
+    while (_i12 < _a12.size) {
+      val k: String = _a12[_i12]
+      _i12++
       // ts: packages/layout/src/environment.ts:224
       if (jsStrEq(k, "calc")) {
         return true
@@ -201,11 +201,11 @@ fun environment_styleNeedsEnvironment(s: LayoutStyle): Boolean {
   val lengths: JsArray<U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch> = jsArrayOf<U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch>((s.top as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.right as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.bottom as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.left as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.width as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.height as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.minWidth as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.minHeight as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.maxWidth as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.maxHeight as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginTop as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginRight as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginBottom as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginLeft as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingTop as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingRight as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingBottom as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingLeft as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.flexBasis as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.rowGap as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.columnGap as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.textIndent as U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch))
   // ts: packages/layout/src/environment.ts:229
   run {
-    val _a11 = lengths
-    var _i11 = 0
-    while (_i11 < _a11.size) {
-      val v: U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch = _a11[_i11]
-      _i11++
+    val _a13 = lengths
+    var _i13 = 0
+    while (_i13 < _a13.size) {
+      val v: U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch = _a13[_i13]
+      _i13++
       // ts: packages/layout/src/environment.ts:229
       if ((jsStrEq(v.kind, "px") && (!units_inCssLengthRange((v as Px).value)))) {
         return true
@@ -214,11 +214,11 @@ fun environment_styleNeedsEnvironment(s: LayoutStyle): Boolean {
   }
   // ts: packages/layout/src/environment.ts:230
   run {
-    val _a12 = jsArrayOf<U_NoneValue_Px>(s.containIntrinsicWidth, s.containIntrinsicHeight)
-    var _i12 = 0
-    while (_i12 < _a12.size) {
-      val v: U_NoneValue_Px = _a12[_i12]
-      _i12++
+    val _a14 = jsArrayOf<U_NoneValue_Px>(s.containIntrinsicWidth, s.containIntrinsicHeight)
+    var _i14 = 0
+    while (_i14 < _a14.size) {
+      val v: U_NoneValue_Px = _a14[_i14]
+      _i14++
       // ts: packages/layout/src/environment.ts:230
       if ((jsStrEq(v.kind, "px") && (!units_inCssLengthRange((v as Px).value)))) {
         return true
@@ -234,18 +234,18 @@ fun environment_styleNeedsEnvironment(s: LayoutStyle): Boolean {
   if ((s.anchor != null)) {
     // ts: packages/layout/src/environment.ts:233
     run {
-      val _a13 = jsUnwrap(s.anchor).options
-      var _i13 = 0
-      while (_i13 < _a13.size) {
-        val o: AnchorOption = _a13[_i13]
-        _i13++
+      val _a15 = jsUnwrap(s.anchor).options
+      var _i15 = 0
+      while (_i15 < _a15.size) {
+        val o: AnchorOption = _a15[_i15]
+        _i15++
         // ts: packages/layout/src/environment.ts:233
         run {
-          val _a14 = environment_anchorOptionLengths(o)
-          var _i14 = 0
-          while (_i14 < _a14.size) {
-            val v: U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a14[_i14]
-            _i14++
+          val _a16 = environment_anchorOptionLengths(o)
+          var _i16 = 0
+          while (_i16 < _a16.size) {
+            val v: U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a16[_i16]
+            _i16++
             // ts: packages/layout/src/environment.ts:233
             if ((jsStrEq(v.kind, "calc") || (jsStrEq((v as U_Auto_FitContent_MaxContent_MinContent_NoneValue_Percent_Px_Stretch).kind, "px") && (!units_inCssLengthRange((v as Px).value))))) {
               return true
@@ -285,8 +285,8 @@ fun environment_resolveChildren(children: JsArray<U_ControlBox_InlineBox_LayoutB
 // ts: packages/layout/src/environment.ts:257
 fun environment_resolveControl(b: ControlBox, parent: Env): ControlBox {
   val env: Env = environment_atElement(parent, b.id, b.style)
-  val c: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb = b.control
-  val control: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb = (if (jsStrEq(c.kind, "range")) ControlKind_range("range", controls_zoomTrackLength((c as ControlKind_range).defaultInlineSize, env.zoom)) else ((c as U_ControlKind_buttonBlock_ControlKind_sliderThumb) as U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb))
+  val c: U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb = b.control
+  val control: U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb = (if (jsStrEq(c.kind, "range")) ControlKind_range("range", controls_zoomTrackLength((c as ControlKind_range).defaultInlineSize, env.zoom)) else ((c as U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_sliderThumb) as U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb))
   return ControlBox("control", b.id, b.boxType, environment_resolveStyle(b.style, env), control, environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
 }
 
@@ -481,11 +481,11 @@ fun environment_trackNeedsEnvironment(t: U_TrackSize_breadth_TrackSize_fitConten
 fun environment_tracksNeedEnvironment(ts: JsArray<U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax>): Boolean {
   // ts: packages/layout/src/environment.ts:461
   run {
-    val _a15 = ts
-    var _i15 = 0
-    while (_i15 < _a15.size) {
-      val t: U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a15[_i15]
-      _i15++
+    val _a17 = ts
+    var _i17 = 0
+    while (_i17 < _a17.size) {
+      val t: U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a17[_i17]
+      _i17++
       // ts: packages/layout/src/environment.ts:461
       if (environment_trackNeedsEnvironment(t)) {
         return true
@@ -503,11 +503,11 @@ fun environment_gridNeedsEnvironment(g: GridContainerStyle?): Boolean {
   }
   // ts: packages/layout/src/environment.ts:468
   run {
-    val _a16 = jsUnwrap(g).templateColumns
-    var _i16 = 0
-    while (_i16 < _a16.size) {
-      val r: TrackRepeater = _a16[_i16]
-      _i16++
+    val _a18 = jsUnwrap(g).templateColumns
+    var _i18 = 0
+    while (_i18 < _a18.size) {
+      val r: TrackRepeater = _a18[_i18]
+      _i18++
       // ts: packages/layout/src/environment.ts:468
       if (environment_tracksNeedEnvironment(r.sizes)) {
         return true
@@ -516,11 +516,11 @@ fun environment_gridNeedsEnvironment(g: GridContainerStyle?): Boolean {
   }
   // ts: packages/layout/src/environment.ts:469
   run {
-    val _a17 = jsUnwrap(g).templateRows
-    var _i17 = 0
-    while (_i17 < _a17.size) {
-      val r: TrackRepeater = _a17[_i17]
-      _i17++
+    val _a19 = jsUnwrap(g).templateRows
+    var _i19 = 0
+    while (_i19 < _a19.size) {
+      val r: TrackRepeater = _a19[_i19]
+      _i19++
       // ts: packages/layout/src/environment.ts:469
       if (environment_tracksNeedEnvironment(r.sizes)) {
         return true
@@ -907,11 +907,11 @@ fun environment_leafPx(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_Cal
 fun environment_nanIn(values: JsArray<Double>): Double? {
   // ts: packages/layout/src/environment.ts:726
   run {
-    val _a18 = values
-    var _i18 = 0
-    while (_i18 < _a18.size) {
-      val v: Double = _a18[_i18]
-      _i18++
+    val _a20 = values
+    var _i20 = 0
+    while (_i20 < _a20.size) {
+      val v: Double = _a20[_i20]
+      _i20++
       // ts: packages/layout/src/environment.ts:726
       if ((v).isNaN()) {
         return v
@@ -984,11 +984,11 @@ fun environment_computeDouble(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProd
       var m: Double = jsUnwrap(jsAt(values, 0.0))
       // ts: packages/layout/src/environment.ts:775
       run {
-        val _a19 = values
-        var _i19 = 0
-        while (_i19 < _a19.size) {
-          val v: Double = _a19[_i19]
-          _i19++
+        val _a21 = values
+        var _i21 = 0
+        while (_i21 < _a21.size) {
+          val v: Double = _a21[_i21]
+          _i21++
           m = units_doubleMinStep(m, v)
         }
       }
@@ -1006,11 +1006,11 @@ fun environment_computeDouble(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProd
       var m: Double = jsUnwrap(jsAt(values, 0.0))
       // ts: packages/layout/src/environment.ts:783
       run {
-        val _a20 = values
-        var _i20 = 0
-        while (_i20 < _a20.size) {
-          val v: Double = _a20[_i20]
-          _i20++
+        val _a22 = values
+        var _i22 = 0
+        while (_i22 < _a22.size) {
+          val v: Double = _a22[_i22]
+          _i22++
           m = units_doubleMaxStep(m, v)
         }
       }
@@ -1059,11 +1059,11 @@ fun environment_hasLength(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_
     "sum", "product", "min", "max" -> {
       // ts: packages/layout/src/environment.ts:824
       run {
-        val _a21 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-        var _i21 = 0
-        while (_i21 < _a21.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a21[_i21]
-          _i21++
+        val _a23 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+        var _i23 = 0
+        while (_i23 < _a23.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a23[_i23]
+          _i23++
           // ts: packages/layout/src/environment.ts:824
           if (environment_hasLength(t)) {
             return true
@@ -1261,11 +1261,11 @@ fun environment_toCalcExpression(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcP
       var simple: Boolean = true
       // ts: packages/layout/src/environment.ts:963
       run {
-        val _a22 = terms
-        var _i22 = 0
-        while (_i22 < _a22.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a22[_i22]
-          _i22++
+        val _a24 = terms
+        var _i24 = 0
+        while (_i24 < _a24.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a24[_i24]
+          _i24++
           // ts: packages/layout/src/environment.ts:963
           if ((!environment_isSimplePixels(t))) {
             simple = false
@@ -1415,11 +1415,11 @@ fun environment_calcDependencies(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcP
     "sum", "product", "min", "max" -> {
       // ts: packages/layout/src/environment.ts:1084
       run {
-        val _a23 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-        var _i23 = 0
-        while (_i23 < _a23.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a23[_i23]
-          _i23++
+        val _a25 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+        var _i25 = 0
+        while (_i25 < _a25.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a25[_i25]
+          _i25++
           environment_calcDependencies(t, out)
         }
       }
@@ -1446,11 +1446,11 @@ fun environment_boxDependencies(b: U_ControlBox_LayoutBox, out: DependencyFlags)
   }
   // ts: packages/layout/src/environment.ts:1098
   run {
-    val _a24 = b.children
-    var _i24 = 0
-    while (_i24 < _a24.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a24[_i24]
-      _i24++
+    val _a26 = b.children
+    var _i26 = 0
+    while (_i26 < _a26.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a26[_i26]
+      _i26++
       // ts: packages/layout/src/environment.ts:1099
       if ((jsStrEq(c.kind, "box") || jsStrEq((c as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         environment_boxDependencies((c as U_ControlBox_LayoutBox), out)
@@ -1473,11 +1473,11 @@ fun environment_inlineDependencies(c: U_InlineBox_LineBreak_TextLeaf, out: Depen
   environment_styleDependencies((c as InlineBox).style, out)
   // ts: packages/layout/src/environment.ts:1109
   run {
-    val _a25 = (c as InlineBox).children
-    var _i25 = 0
-    while (_i25 < _a25.size) {
-      val k: U_InlineBox_LineBreak_TextLeaf = _a25[_i25]
-      _i25++
+    val _a27 = (c as InlineBox).children
+    var _i27 = 0
+    while (_i27 < _a27.size) {
+      val k: U_InlineBox_LineBreak_TextLeaf = _a27[_i27]
+      _i27++
       environment_inlineDependencies(k, out)
     }
   }
@@ -1610,18 +1610,18 @@ fun environment_styleDependencies(s: LayoutStyle, out: DependencyFlags): Unit {
   if ((s.anchor != null)) {
     // ts: packages/layout/src/environment.ts:1147
     run {
-      val _a26 = jsUnwrap(s.anchor).options
-      var _i26 = 0
-      while (_i26 < _a26.size) {
-        val o: AnchorOption = _a26[_i26]
-        _i26++
+      val _a28 = jsUnwrap(s.anchor).options
+      var _i28 = 0
+      while (_i28 < _a28.size) {
+        val o: AnchorOption = _a28[_i28]
+        _i28++
         // ts: packages/layout/src/environment.ts:1147
         run {
-          val _a27 = environment_anchorOptionLengths(o)
-          var _i27 = 0
-          while (_i27 < _a27.size) {
-            val v: U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a27[_i27]
-            _i27++
+          val _a29 = environment_anchorOptionLengths(o)
+          var _i29 = 0
+          while (_i29 < _a29.size) {
+            val v: U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a29[_i29]
+            _i29++
             // ts: packages/layout/src/environment.ts:1147
             if (jsStrEq(v.kind, "calc")) {
               environment_calcDependencies((v as LengthCalc).expr, out)
@@ -1637,21 +1637,21 @@ fun environment_styleDependencies(s: LayoutStyle, out: DependencyFlags): Unit {
 fun environment_gridDependencies(g: GridContainerStyle, out: DependencyFlags): Unit {
   // ts: packages/layout/src/environment.ts:1152
   run {
-    val _a28 = g.templateColumns
-    var _i28 = 0
-    while (_i28 < _a28.size) {
-      val r: TrackRepeater = _a28[_i28]
-      _i28++
+    val _a30 = g.templateColumns
+    var _i30 = 0
+    while (_i30 < _a30.size) {
+      val r: TrackRepeater = _a30[_i30]
+      _i30++
       environment_tracksDependencies(r.sizes, out)
     }
   }
   // ts: packages/layout/src/environment.ts:1153
   run {
-    val _a29 = g.templateRows
-    var _i29 = 0
-    while (_i29 < _a29.size) {
-      val r: TrackRepeater = _a29[_i29]
-      _i29++
+    val _a31 = g.templateRows
+    var _i31 = 0
+    while (_i31 < _a31.size) {
+      val r: TrackRepeater = _a31[_i31]
+      _i31++
       environment_tracksDependencies(r.sizes, out)
     }
   }
@@ -1671,11 +1671,11 @@ fun environment_gridDependencies(g: GridContainerStyle, out: DependencyFlags): U
 fun environment_tracksDependencies(ts: JsArray<U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax>, out: DependencyFlags): Unit {
   // ts: packages/layout/src/environment.ts:1161
   run {
-    val _a30 = ts
-    var _i30 = 0
-    while (_i30 < _a30.size) {
-      val t: U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a30[_i30]
-      _i30++
+    val _a32 = ts
+    var _i32 = 0
+    while (_i32 < _a32.size) {
+      val t: U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a32[_i32]
+      _i32++
       // ts: packages/layout/src/environment.ts:1162
       if ((jsStrEq(t.kind, "breadth") && jsStrEq((t as TrackSize_breadth).breadth.kind, "calc"))) {
         environment_calcDependencies(((t as TrackSize_breadth).breadth as LengthCalc).expr, out)

@@ -101,7 +101,7 @@ function propagated(n: LayoutNode, unknown: ReadonlySet<string>): void {
   overflowOf(n, unknown);
 }
 
-/** The plain boxes controlsAsBoxes made of block buttons, which lay their contents out in a new formatting context (block.ts). */
+/** The plain boxes controlsAsBoxes made of controls, which lay their contents out in a new formatting context (block.ts). */
 const buttons = new WeakSet<object>();
 
 /** box.ts establishesFormattingContext, without the planted engine fault; overflow.ts isFcRoot also counts a block button. */
@@ -124,14 +124,14 @@ function flow(b: LayoutBox): void {
 }
 
 /**
- * overflow.ts controlChecked: a block button is its plain box, so the walk sees it as one; any other control, or a control that is a
- * scroll container, is refused (FORM-a).
+ * overflow.ts controlChecked: a block button, fieldset or legend is its plain box, so the walk sees it as one; any other control, or a
+ * control that is a scroll container, is refused (FORM-a).
  */
 function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly refused: Undecided | null } {
   let refused: Undecided | null = null;
   const plain = (x: LayoutBox | ControlBox): LayoutBox => {
     if (x.kind === 'control' && refused === null) {
-      if (x.control.kind !== 'button-block') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
+      if (x.control.kind !== 'button-block' && x.control.kind !== 'fieldset' && x.control.kind !== 'legend') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
       else if (scrollContainer(x)) refused = new Undecided(x.id, 'a form control that is a scroll container: its scrollable overflow is not decided here (FORM-a)');
     }
     const children = x.children.map((k) => (k.kind === 'box' || k.kind === 'control' ? plain(k) : k));

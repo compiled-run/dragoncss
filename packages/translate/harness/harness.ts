@@ -1118,6 +1118,14 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     obj(v, ['kind'], path);
     return { kind: 'button-block' };
   }
+  if (k === 'fieldset') {
+    obj(v, ['kind'], path);
+    return { kind: 'fieldset' };
+  }
+  if (k === 'legend') {
+    obj(v, ['kind'], path);
+    return { kind: 'legend' };
+  }
   return fail(`${path}: unknown kind ${k}`);
 }
 
