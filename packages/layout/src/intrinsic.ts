@@ -23,7 +23,7 @@ const NONE: NoneValue = { kind: 'none' };
 // being 0.
 export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
-  // FORM-b: a text field's is size x the advance of 0, whatever its value (controls.ts textFieldInlineSize).
+  // FORM-b: a text field's is size x its average character width, whatever its value (controls.ts textFieldInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-field') return textFieldInlineSize(ctx.measurer, node.control);
   const box = plainBox(node);
   // css-contain-2 §3.2 and css-sizing-4 §5.2: a size-contained box sizes as if it had no content, or content of its

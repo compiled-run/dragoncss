@@ -55,6 +55,16 @@ describe('FORM-b text fields', () => {
     expect([...b.keys()].filter((k) => k.startsWith('t::'))).toEqual(['t::editor', 't::editor:text0', 't::editor:text0:line0'].filter((k) => b.has(k)));
   });
 
+  it('sizes a field by its average character width, which Chrome rounds up from a half (max(avg, roundf(avg)))', () => {
+    // Ahem's average character width is 1em; at 10.5px Chrome takes 11px a character, so size 20 is 220px, not 210px.
+    const c = compile('tf-avg-width', '.h { font-size: 10.5px; } .l { font-size: 10.25px; }', '<input data-dragon-id="h" readonly="" class="h" value="XX">\n<input data-dragon-id="l" readonly="" class="l" size="4" value="XX">');
+    expect(errors(c)).toEqual([]);
+    const b = boxes(c);
+    expect(b.get('h::editor')?.width).toBe(220);
+    expect(b.get('h')?.width).toBe(228);
+    expect(b.get('l::editor')?.width).toBe(41);
+  });
+
   it('centres the editor unsafely in a fixed height and gives it line-height normal when the height exceeds the line height', () => {
     const b = boxes(compile('tf-centre', '.a { height: 41px; line-height: 30px; } .b { height: 4px; } .c { line-height: 30px; } .d { line-height: 4px; }', ['a', 'b', 'c', 'd'].map((k) => `<input data-dragon-id="${k}" readonly="" class="${k}" value="XX">`).join('\n')));
     expect(['a', 'b', 'c', 'd'].map((k) => b.get(`${k}::editor`)?.y)).toEqual([18.5, 0, 3, 3]);

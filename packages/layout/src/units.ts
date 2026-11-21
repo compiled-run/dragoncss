@@ -51,6 +51,11 @@ export function ceilFloatToWholePx(px: number): LU {
   return saturate(Math.ceil(Math.fround(px)) * LU_PER_PX);
 }
 
+/** C roundf of a non-negative float px: the nearest whole px, a half away from zero. */
+export function roundfPx(px: number): number {
+  return Math.floor(Math.fround(px) + 0.5);
+}
+
 /** A px value as an int, toward zero (Blink's int ComputedLineHeight). */
 export function truncPxToInt(px: number): number {
   return Math.trunc(px);
