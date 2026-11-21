@@ -457,9 +457,9 @@ describe("outline: the 3D tones (Blink 145's Color::Dark, Color::Light and Calcu
 });
 
 describe('outline: the hit model (R13)', () => {
-  it('models the outline longhands at their computed initial values only, so an outline that paints stays an unmodelled fact', () => {
+  it('models every outline longhand value (SELD-R2b): Blink never hit-tests an outline, so an outline that paints is a modelled fact', () => {
     const m = (p: 'outline-color' | 'outline-style' | 'outline-width' | 'outline-offset', v: unknown): boolean | undefined => HIT_MODELLED.get(p)?.(v as never);
     expect([m('outline-color', { kind: 'keyword', value: 'currentcolor' }), m('outline-style', { kind: 'keyword', value: 'none' }), m('outline-width', { kind: 'length', value: 0, unit: 'px' }), m('outline-offset', { kind: 'length', value: 0, unit: 'px' })]).toEqual([true, true, true, true]);
-    expect([m('outline-color', { kind: 'keyword', value: 'red' }), m('outline-style', { kind: 'keyword', value: 'solid' }), m('outline-width', { kind: 'length', value: 2, unit: 'px' }), m('outline-offset', { kind: 'length', value: -1, unit: 'px' })]).toEqual([false, false, false, false]);
+    expect([m('outline-color', { kind: 'keyword', value: 'red' }), m('outline-style', { kind: 'keyword', value: 'solid' }), m('outline-width', { kind: 'length', value: 2, unit: 'px' }), m('outline-offset', { kind: 'length', value: -1, unit: 'px' })]).toEqual([true, true, true, true]);
   });
 });

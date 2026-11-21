@@ -11,6 +11,7 @@ import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import { isScrollContainer, resolveBorder } from './box.ts';
+import type { Edges } from './box.ts';
 import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
@@ -18,7 +19,9 @@ import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
-import { floorOf, roundOf } from './rt-easing.ts';
+import { floorOf, froundOf, roundOf } from './rt-easing.ts';
+import { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';
+import type { RadiusLength } from './paint-radius.ts';
 import type { TextMeasurer } from './text.ts';
 
 /** One hit node: a box, or a text piece or line of a block's inline content. target is the node index hit testing returns. */
@@ -56,6 +59,8 @@ export type HitNode = {
   readonly inkRight: number;
   readonly inkBottom: number;
   readonly pointerEvents: PointerEvents;
+  /** A box's rounded border box in device px: its eight outer radii, then its eight inner (padding edge) radii; empty when square. */
+  readonly radii: readonly number[];
 };
 
 export type HitKind = 'box' | 'text' | 'line';
@@ -102,6 +107,181 @@ function touchesSnapped(px: number, py: number, x: number, y: number, w: number,
   return x0 <= px + LU_PX && px <= x1 && y0 <= py + LU_PX && py <= y1;
 }
 
+// ---------------------------------------------------------------- rounded borders (FloatRoundedRect::IntersectsQuad)
+// The hit box is the quad (x, y), (x + 1, y), (x + 1, y + 1), (x, y + 1) in device px, clockwise; float steps as gfx::QuadF's,
+// cross products and the triangle test in double as quad_f.cc and triangle_f.cc compute them.
+
+function f32(v: number): number {
+  return froundOf(v);
+}
+
+function quadOf(x: number, y: number): number[] {
+  const r = f32(x + 1);
+  const b = f32(y + 1);
+  return [x, y, r, y, r, b, x, b];
+}
+
+function qx(q: readonly number[], i: number): number {
+  const v = q[2 * i];
+  if (v === undefined) throw new HitError(`no quad point ${i}`);
+  return v;
+}
+
+function qy(q: readonly number[], i: number): number {
+  const v = q[2 * i + 1];
+  if (v === undefined) throw new HitError(`no quad point ${i}`);
+  return v;
+}
+
+function crossProduct(ax: number, ay: number, bx: number, by: number): number {
+  return ax * by - ay * bx;
+}
+
+/** QuadF::IsCounterClockwise. */
+function counterClockwise(q: readonly number[]): boolean {
+  const p24 = f32(qy(q, 1) - qy(q, 3));
+  const p31 = f32(qy(q, 2) - qy(q, 0));
+  return qx(q, 0) * p24 + qx(q, 1) * p31 < qx(q, 2) * p24 + qx(q, 3) * p31;
+}
+
+/** QuadF::IntersectsRectPartial: no side of the quad has the whole rect on its outer side. */
+function quadMeetsRectPartial(q: readonly number[], x: number, y: number, w: number, h: number): boolean {
+  const right = f32(x + w);
+  const bottom = f32(y + h);
+  const ccw = counterClockwise(q);
+  for (let k = 0; k < 4; k++) {
+    const from = k;
+    const to = ccw ? (k === 0 ? 3 : k - 1) : k === 3 ? 0 : k + 1;
+    const vx = f32(qx(q, to) - qx(q, from));
+    const vy = f32(qy(q, to) - qy(q, from));
+    const px = vy >= 0 ? x : right;
+    const py = vx >= 0 ? bottom : y;
+    if (crossProduct(vx, vy, f32(px - qx(q, from)), f32(py - qy(q, from))) < 0) return false;
+  }
+  return true;
+}
+
+/** QuadF::IntersectsRect: the extents overlap inclusively, then IntersectsRectPartial. */
+function quadMeetsRect(q: readonly number[], x: number, y: number, w: number, h: number): boolean {
+  const minX = minOf4(qx(q, 0), qx(q, 1), qx(q, 2), qx(q, 3));
+  const maxX = maxOf4(qx(q, 0), qx(q, 1), qx(q, 2), qx(q, 3));
+  const minY = minOf4(qy(q, 0), qy(q, 1), qy(q, 2), qy(q, 3));
+  const maxY = maxOf4(qy(q, 0), qy(q, 1), qy(q, 2), qy(q, 3));
+  if (minY > f32(y + h) || y > maxY) return false;
+  if (minX > f32(x + w) || x > maxX) return false;
+  return quadMeetsRectPartial(q, x, y, w, h);
+}
+
+function minOf4(a: number, b: number, c: number, d: number): number {
+  const ab = a < b ? a : b;
+  const cd = c < d ? c : d;
+  return ab < cd ? ab : cd;
+}
+
+function maxOf4(a: number, b: number, c: number, d: number): number {
+  const ab = a > b ? a : b;
+  const cd = c > d ? c : d;
+  return ab > cd ? ab : cd;
+}
+
+/** gfx::PointIsInTriangle, in double. */
+function inTriangle(px: number, py: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): boolean {
+  const r31x = f32(x1 - x3);
+  const r31y = f32(y1 - y3);
+  const r32x = f32(x2 - x3);
+  const r32y = f32(y2 - y3);
+  const r3px = f32(px - x3);
+  const r3py = f32(py - y3);
+  const denom = r32y * r31x - r32x * r31y;
+  const u = (r32y * r3px - r32x * r3py) / denom;
+  const v = (r31x * r3py - r31y * r3px) / denom;
+  const w = 1.0 - u - v;
+  return u >= 0 && v >= 0 && w >= 0;
+}
+
+/** LineIntersectsCircle (quad_f.cc) for a circle at the origin. */
+function segmentMeetsCircle(radius: number, x0: number, y0: number, x1: number, y1: number): boolean {
+  const radius2 = f32(radius * radius);
+  if (f32(f32(x0 * x0) + f32(y0 * y0)) <= radius2 || f32(f32(x1 * x1) + f32(y1 * y1)) <= radius2) return true;
+  if (x0 === x1 && y0 === y1) return false;
+  const a = f32(y0 - y1);
+  const b = f32(x1 - x0);
+  const c = f32(f32(x0 * y1) - f32(x1 * y0));
+  const ab = f32(f32(a * a) + f32(b * b));
+  const distance2 = f32(f32(c * c) / ab);
+  if (distance2 > radius2) return false;
+  const x = f32(f32(f32(0 - a) * c) / ab);
+  const y = f32(f32(f32(0 - b) * c) / ab);
+  return ((x0 <= x && x <= x1) || (x0 >= x && x >= x1)) && ((y0 <= y && y <= y1) || (y1 <= y && y <= y0));
+}
+
+/** QuadF::IntersectsEllipse: the quad, moved and scaled so the ellipse is a circle at the origin, meets that circle. */
+function quadMeetsEllipse(q: readonly number[], cx: number, cy: number, rx: number, ry: number): boolean {
+  const t: number[] = [];
+  for (let k = 0; k < 4; k++) {
+    t.push(f32(f32(qx(q, k) - cx) * ry));
+    t.push(f32(f32(qy(q, k) - cy) * rx));
+  }
+  const radius = f32(ry * rx);
+  if (inTriangle(0, 0, qx(t, 0), qy(t, 0), qx(t, 1), qy(t, 1), qx(t, 2), qy(t, 2)) || inTriangle(0, 0, qx(t, 0), qy(t, 0), qx(t, 2), qy(t, 2), qx(t, 3), qy(t, 3))) return true;
+  for (let k = 0; k < 4; k++) {
+    const n = k === 3 ? 0 : k + 1;
+    if (segmentMeetsCircle(radius, qx(t, k), qy(t, k), qx(t, n), qy(t, n))) return true;
+  }
+  return false;
+}
+
+function radiusAt(radii: readonly number[], i: number): number {
+  const v = radii[i];
+  if (v === undefined) throw new HitError(`no radius ${i}`);
+  return v;
+}
+
+/**
+ * FloatRoundedRect::IntersectsQuad for the hit box at (x, y) device px against the rect (rx, ry, rw, rh) with eight radii (horizontal
+ * then vertical, top-left, top-right, bottom-right, bottom-left, from index base): inside the rect, and inside each corner's ellipse it
+ * reaches into.
+ */
+function boxMeetsRounded(x: number, y: number, rx: number, ry: number, rw: number, rh: number, radii: readonly number[], base: number): boolean {
+  const q = quadOf(x, y);
+  if (!quadMeetsRect(q, rx, ry, rw, rh)) return false;
+  const minX = minOf4(qx(q, 0), qx(q, 1), qx(q, 2), qx(q, 3));
+  const maxX = maxOf4(qx(q, 0), qx(q, 1), qx(q, 2), qx(q, 3));
+  const minY = minOf4(qy(q, 0), qy(q, 1), qy(q, 2), qy(q, 3));
+  const maxY = maxOf4(qy(q, 0), qy(q, 1), qy(q, 2), qy(q, 3));
+  const right = f32(rx + rw);
+  const bottom = f32(ry + rh);
+  const tlw = radiusAt(radii, base + 0);
+  const tlh = radiusAt(radii, base + 4);
+  if (tlw !== 0 && tlh !== 0) {
+    const cr = f32(rx + tlw);
+    const cb = f32(ry + tlh);
+    if (minY <= cb && minX <= cr && quadMeetsRectPartial(q, rx, ry, tlw, tlh) && !quadMeetsEllipse(q, cr, cb, tlw, tlh)) return false;
+  }
+  const trw = radiusAt(radii, base + 1);
+  const trh = radiusAt(radii, base + 5);
+  if (trw !== 0 && trh !== 0) {
+    const cx = f32(right - trw);
+    const cb = f32(ry + trh);
+    if (minY <= cb && maxX >= cx && quadMeetsRectPartial(q, cx, ry, trw, trh) && !quadMeetsEllipse(q, cx, cb, trw, trh)) return false;
+  }
+  const blw = radiusAt(radii, base + 3);
+  const blh = radiusAt(radii, base + 7);
+  if (blw !== 0 && blh !== 0) {
+    const cy = f32(bottom - blh);
+    const cr = f32(rx + blw);
+    if (maxY >= cy && minX <= cr && quadMeetsRectPartial(q, rx, cy, blw, blh) && !quadMeetsEllipse(q, cr, cy, blw, blh)) return false;
+  }
+  const brw = radiusAt(radii, base + 2);
+  const brh = radiusAt(radii, base + 6);
+  if (brw !== 0 && brh !== 0) {
+    const cx = f32(right - brw);
+    const cy = f32(bottom - brh);
+    if (maxY >= cy && maxX >= cx && quadMeetsRectPartial(q, cx, cy, brw, brh) && !quadMeetsEllipse(q, cx, cy, brw, brh)) return false;
+  }
+  return true;
+}
+
 type HitCtx = {
   readonly nodes: readonly HitNode[];
   readonly children: readonly (readonly number[])[];
@@ -126,13 +306,43 @@ function visible(ctx: HitCtx, n: HitNode): boolean {
  * for a box that is its own layer, its border box (the layer's own clip, measured).
  */
 function insideClip(ctx: HitCtx, n: HitNode): boolean {
-  if (n.layer) return intersects(ctx.px, ctx.py, n.x, n.y, n.width, n.height);
-  return insidePadding(ctx, n);
+  if (n.layer) return intersects(ctx.px, ctx.py, n.x, n.y, n.width, n.height) && insideRoundedPadding(ctx, n);
+  return insidePadding(ctx, n) && insideRoundedPadding(ctx, n);
 }
 
 /** Whether the point lies inside a box's padding box. */
 function insidePadding(ctx: HitCtx, n: HitNode): boolean {
   return intersects(ctx.px, ctx.py, n.x + n.borderLeft, n.y + n.borderTop, n.width - n.borderLeft - n.borderRight, n.height - n.borderTop - n.borderBottom);
+}
+
+/** Whether the hit box meets a rounded box's pixel-snapped border box (HitTestClippedOutByBorder); a square box always passes. */
+function insideRoundedBorder(ctx: HitCtx, n: HitNode): boolean {
+  if (n.radii.length === 0) return true;
+  const x = roundPx(n.x);
+  const y = roundPx(n.y);
+  return boxMeetsRounded(f32(ctx.px / LU_PX), f32(ctx.py / LU_PX), x / LU_PX, y / LU_PX, (roundPx(n.x + n.width) - x) / LU_PX, (roundPx(n.y + n.height) - y) / LU_PX, n.radii, 0);
+}
+
+/** HitTestClippedOutByBorder of a line's block at the line's ink offset: the block's snapped border box moved there, rounded as the block. */
+function touchesBlockBorder(ctx: HitCtx, x: number, y: number, block: HitNode): boolean {
+  if (block.radii.length === 0) return touchesSnapped(ctx.px, ctx.py, x, y, block.width, block.height);
+  const x0 = roundPx(x);
+  const y0 = roundPx(y);
+  return boxMeetsRounded(f32(ctx.px / LU_PX), f32(ctx.py / LU_PX), x0 / LU_PX, y0 / LU_PX, (roundPx(x + block.width) - x0) / LU_PX, (roundPx(y + block.height) - y0) / LU_PX, block.radii, 0);
+}
+
+/** Whether the hit box meets a rounded clipping box's pixel-snapped padding edge (PixelSnappedContouredInnerBorder). */
+function insideRoundedPadding(ctx: HitCtx, n: HitNode): boolean {
+  if (n.radii.length === 0) return true;
+  const x = roundPx(n.x + n.borderLeft);
+  const y = roundPx(n.y + n.borderTop);
+  const w = maxOf0(roundPx(n.x + n.width - n.borderRight) - x);
+  const h = maxOf0(roundPx(n.y + n.height - n.borderBottom) - y);
+  return boxMeetsRounded(f32(ctx.px / LU_PX), f32(ctx.py / LU_PX), x / LU_PX, y / LU_PX, w / LU_PX, h / LU_PX, n.radii, 8);
+}
+
+function maxOf0(v: number): number {
+  return v > 0 ? v : 0;
 }
 
 /** The children of a box in reverse paint order (prepared once by prepareHit). */
@@ -193,7 +403,7 @@ function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: number): number
   for (const t of texts) {
     if (visible(ctx, t) && intersectsSnapped(ctx.px, ctx.py, t.x, t.y, t.width, t.height)) return t.target;
   }
-  if (visible(ctx, line) && intersects(ctx.px, ctx.py, line.x, line.y, line.width, line.height) && touchesSnapped(ctx.px, ctx.py, line.x, line.y, block.width, block.height)) return line.target;
+  if (visible(ctx, line) && intersects(ctx.px, ctx.py, line.x, line.y, line.width, line.height) && touchesBlockBorder(ctx, line.x, line.y, block) && insideRoundedBorder(ctx, block)) return line.target;
   return -1;
 }
 
@@ -214,7 +424,7 @@ function backgrounds(ctx: HitCtx, i: number): number {
 /** The box's own border box, unsnapped and exclusive. */
 function self(ctx: HitCtx, i: number): number {
   const n = node(ctx, i);
-  return visible(ctx, n) && intersects(ctx.px, ctx.py, n.x, n.y, n.width, n.height) ? n.target : -1;
+  return visible(ctx, n) && intersects(ctx.px, ctx.py, n.x, n.y, n.width, n.height) && insideRoundedBorder(ctx, n) ? n.target : -1;
 }
 
 /** HitTestAllPhases: foreground, then the descendant block backgrounds, then the box's own background. */
@@ -357,7 +567,13 @@ export function activationTarget(nodes: readonly HitNode[], activation: readonly
 // The hit table of a laid-out engine input (SELD-R1b): the same function on the host (TypeScript) and on the device (translated).
 
 /** One element's hit facts from the compiler: computed pointer-events, whether it was inherited, and its activation handler. */
-export type HitFact = { readonly pointerEvents: PointerEvents; readonly inherited: boolean; readonly activation: boolean };
+export type HitFact = {
+  readonly pointerEvents: PointerEvents;
+  readonly inherited: boolean;
+  readonly activation: boolean;
+  /** The eight authored border-radius components (horizontal then vertical, top-left first); empty when every corner is square. */
+  readonly radii: readonly RadiusLength[];
+};
 
 /** A table: the nodes hitTest takes, the id each names, and each node's activation flag. */
 export type HitTable = { readonly nodes: readonly HitNode[]; readonly ids: readonly string[]; readonly activation: readonly boolean[] };
@@ -574,7 +790,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     if (p.rect.x < x0) x0 = p.rect.x;
     if (p.rect.x + p.rect.width > x1) x1 = p.rect.x + p.rect.width;
   }
-  pushNode(s, { kind: 'line', parent, target, x: x0, y: top - run.halfLeading, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe }, `${b.id}:hitline${k}`, false);
+  pushNode(s, { kind: 'line', parent, target, x: x0, y: top - run.halfLeading, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: [] }, `${b.id}:hitline${k}`, false);
   for (const p of own) {
     const q = p.rect;
     // Ahem's ink: the glyph run's bounds rounded out to whole pixels in the run's own space (from the run origin to n em, and
@@ -585,9 +801,21 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     pushNode(s, {
       kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
       layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
-      inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe,
+      inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe, radii: [],
     }, q.id, false);
   }
+}
+
+/**
+ * A box's rounded border for the hit test (ContouredBorderGeometry::PixelSnappedContouredBorder and ...InnerBorder): roundedShape on
+ * its pixel-snapped border box in device px, radii resolved against the unsnapped size; empty when no corner is rounded.
+ */
+function roundedOf(r: LayoutRect, border: Edges, lengths: readonly RadiusLength[], dpr: number): number[] {
+  if (lengths.length === 0) return [];
+  const shape = roundedShape(roundPx(r.x) / LU_PX, roundPx(r.y) / LU_PX, roundPx(r.x + r.width) / LU_PX, roundPx(r.y + r.height) / LU_PX, r.width / LU_PX, r.height / LU_PX, [border.top / LU_PX, border.right / LU_PX, border.bottom / LU_PX, border.left / LU_PX], lengths, dpr, NO_RADIUS_FAULTS);
+  const outer: number[] = [];
+  for (let i = 0; i < 8; i++) outer.push(radiusAt(shape, i));
+  return hasRoundedCorner(outer) ? shape : [];
 }
 
 function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents): void {
@@ -595,12 +823,14 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   let pe = inherited;
   let own = target;
   let act = false;
+  let lengths: readonly RadiusLength[] = [];
   if (b.boxType !== 'anonymous') {
     const f = s.facts.get(b.id);
     if (f === undefined) throw new HitError(`no hit facts for element ${b.id}`);
     pe = s.faults.pointerEventsNotInherited && f.inherited ? 'auto' : f.pointerEvents;
     own = i;
     act = f.activation;
+    lengths = f.radii;
   }
   if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
   const r = rectOf(s, b.id);
@@ -611,7 +841,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
     absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
-    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r, border, lengths, s.ctx.devicePixelRatio),
   }, b.id, act);
   const leaves: TextLeaf[] = [];
   let kids = 0;
@@ -657,7 +887,7 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
     absolute: c.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && c.style.position !== 'absolute' ? c.style.order : 0, line: -1,
-    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe,
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r, border, f.radii, s.ctx.devicePixelRatio),
   }, c.id, f.activation);
 }
 
@@ -776,11 +1006,42 @@ function cross(out: HitPoint[], xs: readonly number[], ys: readonly number[], wi
   }
 }
 
+/** Every whole-px point, and the LU just before it, from one px before a to one px after b. */
+function addSpan(out: number[], a: number, b: number): void {
+  for (let v = floorOf(a / LU_PX) * LU_PX - LU_PX; v <= b + LU_PX; v += LU_PX) {
+    out.push(v - 1);
+    out.push(v);
+  }
+}
+
+/** For a rounded box, the points across each rounded corner of its snapped border box and of its snapped padding edge. */
+function addCorners(out: HitPoint[], n: HitNode, width: number, height: number): void {
+  if (n.radii.length === 0) return;
+  for (let pass = 0; pass < 2; pass++) {
+    const left = pass === 0 ? roundPx(n.x) : roundPx(n.x + n.borderLeft);
+    const top = pass === 0 ? roundPx(n.y) : roundPx(n.y + n.borderTop);
+    const right = pass === 0 ? roundPx(n.x + n.width) : roundPx(n.x + n.width - n.borderRight);
+    const bottom = pass === 0 ? roundPx(n.y + n.height) : roundPx(n.y + n.height - n.borderBottom);
+    for (let k = 0; k < 4; k++) {
+      const rw = radiusAt(n.radii, pass * 8 + k) * LU_PX;
+      const rh = radiusAt(n.radii, pass * 8 + 4 + k) * LU_PX;
+      if (rw <= 0 || rh <= 0) continue;
+      const xs: number[] = [];
+      const ys: number[] = [];
+      if (k === 0 || k === 3) addSpan(xs, left, left + rw);
+      else addSpan(xs, right - rw, right);
+      if (k === 0 || k === 1) addSpan(ys, top, top + rh);
+      else addSpan(ys, bottom - rh, bottom);
+      cross(out, xs, ys, width, height);
+    }
+  }
+}
+
 /**
  * The derived grid of a table in LU, inside a viewport of width x height LU: for each rect, around each edge's exclusive boundary
  * (a point p hits [a, b) when a - 1 px < p < b) and inclusive boundary, half a pixel either side of each edge and the centre,
- * crossed per rect; for text the snapped rect too, and for a line the block's snapped border box at the line. Sorted by y then x,
- * without repeats.
+ * crossed per rect; for text the snapped rect too, for a line the block's snapped border box at the line, and for a rounded box
+ * every whole px across each rounded corner. Sorted by y then x, without repeats.
  */
 export function hitGrid(t: HitTable, width: number, height: number): HitPoint[] {
   const all: HitPoint[] = [];
@@ -791,6 +1052,7 @@ export function hitGrid(t: HitTable, width: number, height: number): HitPoint[] 
     addAxis(xs, n.x, n.x + n.width);
     addAxis(ys, n.y, n.y + n.height);
     cross(all, xs, ys, width, height);
+    addCorners(all, n, width, height);
     if (n.kind === 'text') {
       const sx: number[] = [];
       const sy: number[] = [];

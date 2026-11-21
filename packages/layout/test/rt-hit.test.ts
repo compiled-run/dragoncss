@@ -6,7 +6,7 @@ import type { HitNode } from '../src/rt-hit.ts';
 import { activationTarget, HitError, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../src/rt-hit.ts';
 
 const PX = 64;
-const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto' } as const;
+const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', radii: [] } as const;
 const box = (parent: number, target: number, x: number, y: number, w: number, h: number, more: Partial<HitNode> = {}): HitNode => ({ ...base, kind: 'box', parent, target, x: x * PX, y: y * PX, width: w * PX, height: h * PX, ...more });
 const at = (nodes: readonly HitNode[], x: number, y: number, faults = NO_HIT_FAULTS): number => hitTest(nodes, Math.floor(x * PX), Math.floor(y * PX), faults);
 
@@ -115,7 +115,7 @@ describe('hitTableOf hit-tests a replaced element as a childless box', () => {
     const parent = { ...box('p', { display, width: px(100) }), children: [leaf('a', 40), box('d', { width: px(30), height: px(10) }), leaf('b', 20)] };
     const root = { ...box('html', { width: px(100) }), children: [parent] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const fact = (p: 'auto' | 'none', inherited: boolean) => ({ pointerEvents: p, inherited, activation: false });
+    const fact = (p: 'auto' | 'none', inherited: boolean) => ({ pointerEvents: p, inherited, activation: false, radii: [] });
     const facts = new Map([['html', fact('auto', true)], ['p', fact('auto', true)], ['a', fact(pe, false)], ['d', fact('auto', true)], ['b', fact('auto', true)]]) as unknown as Parameters<typeof hitTableOf>[2];
     return hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
   };
@@ -161,7 +161,7 @@ describe('hitTableOf and hitRefusal refuse a form control by name', () => {
     const parent = { ...box('p', { display, width: px(100) }), children: [box('wrap', {}, [first]), box('after', { width: px(20), height: px(10) })] };
     const root = { ...box('html', { width: px(100) }), children: [parent] };
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const fact = (activation: boolean) => ({ pointerEvents: 'auto', inherited: true, activation }) as const;
+    const fact = (activation: boolean) => ({ pointerEvents: 'auto', inherited: true, activation, radii: [] }) as const;
     const ids = ['html', 'p', 'wrap', 'btn', 'label', 'icon', 'after', 'container', 'track', 'thumb'];
     return { input, facts: new Map(ids.map((id) => [id, fact(id === 'btn')] as const)) };
   };
@@ -200,7 +200,7 @@ describe('hitTableOf and prepareHit scale with the table', () => {
     const items = Array.from({ length: n }, (_, k) => box(`i${k}`, { width: px(itemWidth), height: px(itemHeight) }));
     const container = box('f', { display: 'flex', flexWrap: wrap, width: px(100) }, items);
     const root = box('html', {}, [container]);
-    const facts = new Map(['html', 'f', ...items.map((b) => b.id)].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    const facts = new Map(['html', 'f', ...items.map((b) => b.id)].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
     return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts, container };
   };
 
@@ -283,7 +283,7 @@ describe('hitTableOf stacks positioned flex children in order-modified document 
     const flex = box('f', { display: 'flex', flexDirection: dir, position: 'relative', width: px(row ? 200 : 60), height: px(row ? 40 : 200), ...extra }, kids);
     const root = box('html', { width: px(400) }, [flex]) as unknown as Parameters<typeof hitTableOf>[0]['root'];
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const fact = { pointerEvents: 'auto', inherited: true, activation: false };
+    const fact = { pointerEvents: 'auto', inherited: true, activation: false, radii: [] };
     const facts = new Map(['html', 'f', ...items.map(([id]) => id)].map((id) => [id, fact])) as unknown as Parameters<typeof hitTableOf>[2];
     const t = hitTableOf(input as Parameters<typeof hitTableOf>[0], ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
     return t.ids[hitTest(t.nodes, x * PX, y * PX, NO_HIT_FAULTS)];
@@ -321,7 +321,7 @@ describe('hitTableOf clips every clipping overflow', () => {
       const c = box('c', { overflowX: o, overflowY: o, width: px(20), height: px(20) }, [box('k', { width: px(60), height: px(10) })]);
       const root = box('html', { width: px(100) }, [c]);
       const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-      const fact = { pointerEvents: 'auto', inherited: true, activation: false } as const;
+      const fact = { pointerEvents: 'auto', inherited: true, activation: false, radii: [] } as const;
       return hitTableOf(input, ahemMeasurer, new Map([['html', fact], ['c', fact], ['k', fact]]), NO_HIT_TABLE_FAULTS);
     };
     for (const o of ['hidden', 'auto', 'scroll', 'clip'] as const) {
@@ -346,7 +346,7 @@ describe('grid containers', () => {
     const items = ['a', 'b'].map((id, k) => box(id, { height: px(20), order: 1 - k, ...(inGrid ? { gridItem: cell } : {}) }));
     const container = inGrid ? box('g', { display: 'grid', width: px(100), grid }, items) : box('g', { width: px(100) }, items);
     const root = box('html', {}, [box('body', {}, [container])]);
-    const facts = new Map(['html', 'body', 'g', 'a', 'b'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    const facts = new Map(['html', 'body', 'g', 'a', 'b'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
     return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
   };
 
@@ -368,5 +368,28 @@ describe('grid containers', () => {
     const { input, facts } = await gridInput(false);
     expect(hitRefusal(input)).toBeNull();
     expect(hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS).ids).toEqual(['html', 'body', 'g', 'a', 'b']);
+  });
+});
+
+describe('hitTest through rounded corners (SELD-R2b, FloatRoundedRect::IntersectsQuad)', () => {
+  // A 100 px circle: radii 50 px on every corner, outer then inner (no border).
+  const circle = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
+  it('misses a rounded box where the hit box lies outside its corner ellipse, and hits where it touches the ellipse', () => {
+    const nodes = [box(-1, 0, 0, 0, 200, 200), box(0, 1, 0, 0, 100, 100, { radii: circle })];
+    // The hit box [14, 15] px reaches (15, 15), 49.5 px from the centre; [13, 14] reaches only (14, 14), 50.9 px away.
+    expect(at(nodes, 14, 14)).toBe(1);
+    expect(at(nodes, 13, 13)).toBe(0);
+    expect(at(nodes, 1, 50)).toBe(1);
+    expect(at(nodes, 50, 50)).toBe(1);
+    expect(at(nodes, 99, 99)).toBe(0);
+  });
+  it('clips a rounded clipping box\'s in-flow content to its rounded padding edge', () => {
+    const nodes = [box(-1, 0, 0, 0, 200, 200), box(0, 1, 0, 0, 100, 100, { radii: circle, clips: true }), box(1, 2, 0, 0, 100, 100)];
+    expect(at(nodes, 50, 50)).toBe(2);
+    expect(at(nodes, 5, 5)).toBe(0);
+  });
+  it('tests a square box as its rectangle', () => {
+    const nodes = [box(-1, 0, 0, 0, 200, 200), box(0, 1, 0, 0, 100, 100)];
+    expect(at(nodes, 0, 0)).toBe(1);
   });
 });
