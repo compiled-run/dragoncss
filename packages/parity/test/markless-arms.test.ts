@@ -53,6 +53,26 @@ describe('styled elements inside @if arms', () => {
     expect(new Set(report.rows.map((r) => JSON.stringify([r.values[details], r.values[late], r.values[step]]))).size).toBe(12);
   });
 
+  it('names a text directly in an arm under a parent in no arm, and each arm\'s copy of a text both arms show', () => {
+    const text = edit((v) => {
+      v['nodes'].push({ kind: 'element', id: 'h13', element: 'p', parent: 'h0', attributes: {} });
+      v['nodes'].push({ kind: 'text', id: 'h13:a', parent: 'h13', text: 'On its way', arm: { branch: step, index: 0 } });
+      v['nodes'].push({ kind: 'text', id: 'h13:b', parent: 'h13', text: 'On its way', arm: { branch: step, index: 1 } });
+    });
+    const twin = parseMarklessStyleInput(text);
+    const { exported: x } = marklessStyleExport(text, PATH);
+    for (const t of ['ios', 'android'] as const) {
+      for (const a of x.targets[t]!.assignments) {
+        const byId = new Map(a.nodes.map((n) => [n.id, n]));
+        for (const id of ['h13:a', 'h13:b']) {
+          const n = twin.nodes.find((m) => m.id === id)!;
+          expect(byId.has(id), `${id} in ${JSON.stringify(a.values)}`).toBe(true);
+          expect(byId.get(id)!.frame !== null, `${id} in ${JSON.stringify(a.values)}`).toBe(armShown(twin, n.arm, a.values));
+        }
+      }
+    }
+  });
+
   it('refuses an arm of no branch, an arm a branch does not have, a node outside its parent arm, a malformed domain and rows', () => {
     const at = (text: string): number => input.nodes.findIndex((n) => n.kind === 'element' && n.id === byText(text));
     expect(() => parseMarklessStyleInput(edit((v) => { v['nodes'][at('Packed')]['arm'] = { branch: 'nowhere', index: 0 }; }))).toThrow('arm names nowhere, which is not an earlier branch');
