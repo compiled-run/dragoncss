@@ -19,6 +19,9 @@ public final class RadiusLength {
   }
 }
 
+// ts: packages/layout/src/paint-radius.ts:19
+public let paintRadius_NO_RADIUS_FAULTS: RadiusFaults = RadiusFaults(false, false)
+
 // ts: packages/layout/src/paint-radius.ts:25
 public let paintRadius_SIZEF_TRIVIAL: Double = 9.5367431640625e-7
 

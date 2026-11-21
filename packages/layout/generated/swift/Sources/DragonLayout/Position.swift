@@ -86,11 +86,11 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:46
   do {
-    let _a236 = box.children
-    var _i236 = 0
-    while _i236 < _a236.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a236.items[_i236]
-      _i236 += 1
+    let _a234 = box.children
+    var _i234 = 0
+    while _i234 < _a234.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a234.items[_i234]
+      _i234 += 1
       // ts: packages/layout/src/position.ts:47
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
         try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s304, jsConcat(S.s565, (k as! ReplacedLeaf).id, S.s118))
@@ -126,11 +126,11 @@ public func position_inset(_ v: any U_Auto_LengthCalc_Percent_Px, _ basis: Doubl
 public func position_checkControlSubtree(_ ctx: Ctx, _ box: LayoutBox) throws -> Void {
   // ts: packages/layout/src/position.ts:63
   do {
-    let _a237 = box.children
-    var _i237 = 0
-    while _i237 < _a237.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a237.items[_i237]
-      _i237 += 1
+    let _a235 = box.children
+    var _i235 = 0
+    while _i235 < _a235.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a235.items[_i235]
+      _i235 += 1
       // ts: packages/layout/src/position.ts:64
       if ((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) {
         continue
@@ -293,7 +293,7 @@ public func position_layoutAbsolute(_ ctx: Ctx, _ box: LayoutBox, _ cb: Containi
   }
   // ts: packages/layout/src/position.ts:219
   if (s.height.kind == S.s_stretch) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s690, jsConcat(S.s804, box.id))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s690, jsConcat(S.s803, box.id))
   }
   let specified: Double? = try (sizeKeyword(s.width.kind) ? (nil as Double?) : (box_resolveInlineLengthWith(box_lengthWidth(box.id, s.width), cb.width, ctx.faults) as Double?))
   var width: Double

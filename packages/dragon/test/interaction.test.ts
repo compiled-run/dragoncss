@@ -481,6 +481,13 @@ describe('interaction states: hit model (R13)', () => {
     expect(otherErrors(compile({}, css.replace('transform: translateX(5px);', ''), body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
 
+  it('models border-radius in the hit test (SELD-R2b): a rounded box no longer refuses an interaction rule on native', () => {
+    for (const radius of ['border-radius: 4px;', 'border-radius: 50%;', 'border-top-left-radius: 3px 6px;', 'border-radius: 2px; overflow: hidden;']) {
+      const rounded = `${BODY}.h { width: 10px; height: 10px; ${radius} } .k:hover { background-color: #0c0; }`;
+      expect(otherErrors(compile({}, rounded, body, TARGETS, 'derive').diagnostics), radius).toEqual([]);
+    }
+  });
+
   it('counts an overflow value computed from a refused partner as refused, and leaves R13 to the lanes', () => {
     // overflow-x: clip beside visible is refused (OVFL-c); its refusal stands alone, with no hit-model refusal beside it.
     const clip = `${BODY}.h { overflow-x: clip; } .k:hover { background-color: #0c0; }`;

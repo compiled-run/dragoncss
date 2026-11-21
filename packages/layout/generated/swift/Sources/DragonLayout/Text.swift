@@ -269,11 +269,11 @@ public func text_spacedSums(_ data: FontData, _ text: JsString, _ size: Double, 
   var total: Double = 0.0
   // ts: packages/layout/src/text.ts:167
   do {
-    let _a373 = jsCodePoints(text)
-    var _i373 = 0
-    while _i373 < _a373.items.count {
-      let ch: JsString = _a373.items[_i373]
-      _i373 += 1
+    let _a371 = jsCodePoints(text)
+    var _i371 = 0
+    while _i371 < _a371.items.count {
+      let ch: JsString = _a371.items[_i371]
+      _i371 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       let em: Double = try text_emAdvance(data, cp)
       // ts: packages/layout/src/text.ts:170
@@ -325,11 +325,11 @@ public func text_smallCapsCodePoint(_ cp: Double) throws -> Double {
 public func text_hasSmallCapsLower(_ text: JsString) throws -> Bool {
   // ts: packages/layout/src/text.ts:204
   do {
-    let _a374 = jsCodePoints(text)
-    var _i374 = 0
-    while _i374 < _a374.items.count {
-      let ch: JsString = _a374.items[_i374]
-      _i374 += 1
+    let _a372 = jsCodePoints(text)
+    var _i372 = 0
+    while _i372 < _a372.items.count {
+      let ch: JsString = _a372.items[_i372]
+      _i372 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/layout/src/text.ts:206
       if try (text_smallCapsCodePoint(cp) != cp) {
@@ -351,11 +351,11 @@ public func text_smallCapsSums(_ data: FontData, _ text: JsString, _ size: Doubl
   var lower: Bool = false
   // ts: packages/layout/src/text.ts:227
   do {
-    let _a375 = jsCodePoints(text)
-    var _i375 = 0
-    while _i375 < _a375.items.count {
-      let ch: JsString = _a375.items[_i375]
-      _i375 += 1
+    let _a373 = jsCodePoints(text)
+    var _i373 = 0
+    while _i373 < _a373.items.count {
+      let ch: JsString = _a373.items[_i373]
+      _i373 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       let drawn: Double = try text_smallCapsCodePoint(cp)
       let em: Double = try ((drawn < 0.0) ? -1.0 : text_emAdvance(data, drawn))
@@ -409,11 +409,11 @@ public func text_codePointCount(_ text: JsString) throws -> Double {
   var n: Double = 0.0
   // ts: packages/layout/src/text.ts:258
   do {
-    let _a376 = jsCodePoints(text)
-    var _i376 = 0
-    while _i376 < _a376.items.count {
-      let ch: JsString = _a376.items[_i376]
-      _i376 += 1
+    let _a374 = jsCodePoints(text)
+    var _i374 = 0
+    while _i374 < _a374.items.count {
+      let ch: JsString = _a374.items[_i374]
+      _i374 += 1
       // ts: packages/layout/src/text.ts:258
       if try (jsUnwrap(jsCodePointAt0(ch)) >= 0.0) {
         n += 1.0
@@ -468,11 +468,11 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:297
     do {
-      let _a377 = jsCodePoints(text)
-      var _i377 = 0
-      while _i377 < _a377.items.count {
-        let ch: JsString = _a377.items[_i377]
-        _i377 += 1
+      let _a375 = jsCodePoints(text)
+      var _i375 = 0
+      while _i375 < _a375.items.count {
+        let ch: JsString = _a375.items[_i375]
+        _i375 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:300
@@ -523,11 +523,11 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:328
     do {
-      let _a378 = jsCodePoints(text)
-      var _i378 = 0
-      while _i378 < _a378.items.count {
-        let ch: JsString = _a378.items[_i378]
-        _i378 += 1
+      let _a376 = jsCodePoints(text)
+      var _i376 = 0
+      while _i376 < _a376.items.count {
+        let ch: JsString = _a376.items[_i376]
+        _i376 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:331

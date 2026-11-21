@@ -175,11 +175,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:135
   do {
-    let _a382 = values
-    var _i382 = 0
-    while _i382 < _a382.items.count {
-      let v: Double = _a382.items[_i382]
-      _i382 += 1
+    let _a380 = values
+    var _i380 = 0
+    while _i380 < _a380.items.count {
+      let v: Double = _a380.items[_i380]
+      _i380 += 1
       try total = units_add(total, v)
     }
   }
@@ -210,7 +210,7 @@ public func units_clampNegativeToZero(_ a: Double) throws -> Double {
 public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:157
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s836, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s835, jsNumberToString(n)))
   }
   return try units_saturate((a * n))
 }
@@ -420,7 +420,7 @@ public func units_distributedOffset(_ mode: JsString, _ free: Double, _ n: Doubl
 public func units_intDiv(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:355
   if (((!jsIsInteger(a)) || (!jsIsInteger(b))) || (b == 0.0)) {
-    throw JsError(message: jsConcat(S.s835, jsNumberToString(a), S.s12, jsNumberToString(b)))
+    throw JsError(message: jsConcat(S.s834, jsNumberToString(a), S.s12, jsNumberToString(b)))
   }
   return jsTrunc((a / b))
 }
@@ -764,11 +764,11 @@ public func units_effectiveZoom(_ deviceZoom: Double, _ zooms: JsArray<Double>) 
   var z: Double = deviceZoom
   // ts: packages/layout/src/units.ts:690
   do {
-    let _a383 = zooms
-    var _i383 = 0
-    while _i383 < _a383.items.count {
-      let own: Double = _a383.items[_i383]
-      _i383 += 1
+    let _a381 = zooms
+    var _i381 = 0
+    while _i381 < _a381.items.count {
+      let own: Double = _a381.items[_i381]
+      _i381 += 1
       let zoomed: Double = jsFround((z * jsFround(own)))
       z = ((zoomed < 0.000001) ? 0.000001 : ((zoomed > 1000000.0) ? 1000000.0 : zoomed))
     }
@@ -851,7 +851,7 @@ public func units_calcEvaluateFloat(_ value: Double, _ nonNegative: Bool) throws
 public func units_mulDiv(_ v: Double, _ m: Double, _ d: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:766
   if ((((d <= 0.0) || (m < 0.0)) || (!jsIsInteger(m))) || (!jsIsInteger(d))) {
-    throw JsError(message: S.s906)
+    throw JsError(message: S.s904)
   }
   let negative: Bool = (v < 0.0)
   let a: Double = (negative ? (-v) : v)

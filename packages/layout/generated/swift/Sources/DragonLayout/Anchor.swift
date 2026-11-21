@@ -412,7 +412,7 @@ public func anchor_placeOption(_ ctx: Ctx, _ box: LayoutBox, _ o: AnchorOption, 
   }
   // ts: packages/layout/src/anchor.ts:347
   if (s.height.kind == S.s_stretch) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s690, jsConcat(S.s805, box.id))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s690, jsConcat(S.s804, box.id))
   }
   let specified: Double? = try (sizeKeyword(s.width.kind) ? (nil as Double?) : (box_resolveInlineLengthWith(box_lengthWidth(box.id, s.width), regionWidth, ctx.faults) as Double?))
   var width: Double
@@ -524,12 +524,12 @@ public func anchor_layoutAnchored(_ ctx: Ctx, _ box: LayoutBox, _ cb: Containing
   // ts: packages/layout/src/anchor.ts:431
   do {
     var i: Double = 0.0
-    loop27: while (i < tried) {
-      loop27_body: do {
+    loop28: while (i < tried) {
+      loop28_body: do {
         let p: Anchor_Placed = try ((i == 0.0) ? base : anchor_placeOption(ctx, box, jsUnwrap(jsAt(options, i)), jsUnwrap(a).anchor, cb, staticX, staticY, anchors))
         // ts: packages/layout/src/anchor.ts:433
         if p.overflows {
-          break loop27_body
+          break loop28_body
         }
         // ts: packages/layout/src/anchor.ts:434
         if try (jsUnwrap(a).order == S.s_normal) {
