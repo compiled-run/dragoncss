@@ -469,6 +469,14 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
     if (table === undefined) continue;
     const was = before.lists[i];
     const now = after.lists[i];
+    // A removed animation's cancel comes before the new list's events, as Chrome dispatches them.
+    if (was !== undefined) {
+      for (const b of was) {
+        if (now !== undefined && sameAnimation(now, b) !== null) continue;
+        const from = computeSecondsTiming(b.timing, b.held.seconds, faults);
+        if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: from.activeTime === null ? 0 : from.activeTime });
+      }
+    }
     if (now !== undefined) {
       for (const a of now) {
         const norm = normalizeSeconds(a.timing);
@@ -486,13 +494,6 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
           out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: to.currentIteration * norm.iterationDuration });
         } else if (fromPhase === 'active' && to.phase === 'after') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
         else if (fromPhase === 'after' && to.phase === 'before') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
-      }
-    }
-    if (was !== undefined) {
-      for (const b of was) {
-        if (now !== undefined && sameAnimation(now, b) !== null) continue;
-        const from = computeSecondsTiming(b.timing, b.held.seconds, faults);
-        if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: from.activeTime === null ? 0 : from.activeTime });
       }
     }
   }

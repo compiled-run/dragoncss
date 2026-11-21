@@ -404,6 +404,13 @@ export class Animator {
     this.state = rtAnimator.animatorAdvance(this.state, this.tables, this.inputs, this.initial, ms, this.faults, this.anim);
   }
 
+  /** event, giving the CSS animation events the style change causes (rt-animator.ts animationEvents). */
+  eventWithEvents(to: number): rtAnimator.AnimationEventRecord[] {
+    const before = this.state;
+    this.event(to);
+    return rtAnimator.animationEvents(before, this.state, this.tables, this.faults);
+  }
+
   /** advance, giving the CSS animation events the step crosses (rt-animator.ts animationEvents). */
   advanceWithEvents(ms: number): rtAnimator.AnimationEventRecord[] {
     const before = this.state;
