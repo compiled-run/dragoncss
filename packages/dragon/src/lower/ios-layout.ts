@@ -943,6 +943,18 @@ const INLINE_IGNORES = {
  * none children are omitted, so they never split a run. The engine never creates boxes. A flex or grid item is blockified
  * (css-display-3 §2.7), so an inline-level element in one is lowered as a box, never an inline box.
  */
+/** A fieldset's children with its rendered legend as a legend control (LayoutFieldset::FindInFlowLegend: neither floated nor out of flow). */
+function withRenderedLegend(kids: readonly (ResolvedElement | ResolvedText)[], children: readonly (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[]): (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] {
+  const legends = new Set<string>();
+  for (const k of kids) if (k.kind === 'element' && k.element.tag === 'legend') legends.add(k.element.address);
+  let found = false;
+  return children.map((c) => {
+    if (found || c.kind !== 'box' || !legends.has(c.id) || c.style.float !== 'none' || c.style.position === 'absolute' || c.style.position === 'fixed') return c;
+    found = true;
+    return { kind: 'control', id: c.id, boxType: c.boxType, style: c.style, control: { kind: 'legend' }, strut: c.strut, children: c.children };
+  });
+}
+
 function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer | null): LayoutBox | ControlBox {
   const id = given.element.address;
   const el = withAnchorFacts(given, l);
@@ -993,6 +1005,8 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   // INL1a); an atomic inline is on a line (INL2a, RF-INL).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
   const strut = strutOf(el, inlineContent, l.mode, zoom);
+  // HTML §15.3.13: a block fieldset lays out its rendered legend, its first in-flow legend child, in its block-start border.
+  if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
   if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
   const range = rangePartOf(el);

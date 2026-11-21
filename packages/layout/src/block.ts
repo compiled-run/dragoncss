@@ -1,5 +1,5 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Auto, ControlBox, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue, TextAlign } from './input.ts';
+import type { Auto, ControlBox, Direction, InlineChild, LayoutBox, LayoutNode, LayoutStyle, NoneValue, ReplacedLeaf, TextAlign } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { BlockStretch, Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
@@ -12,6 +12,7 @@ import {
   inlineMinMaxWith,
   INDEFINITE,
   isScrollContainer,
+  NO_STRETCH,
   lengthMaxWidth,
   lengthMinWidth,
   lengthWidth,
@@ -413,7 +414,8 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
     unsupported('size-containment', box.id, 'css-contain-2 §3.1', `size containment on ${box.id} (${s.display}${s.containLayout ? '' : ', without layout containment'}) is not laid out yet`);
   }
   checkOutOfFlowSiblings(ctx, box);
-  if (control !== null) checkControlSubtree(ctx, box);
+  // A fieldset and its legend lay out positioned descendants as any block container does (LayoutFieldset); other controls do not yet.
+  if (control !== null && control.kind !== 'fieldset' && control.kind !== 'legend') checkControlSubtree(ctx, box);
   const pad = resolvePaddingWith(s, a.cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
@@ -431,6 +433,8 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const childBasis: HeightBasis = fixedBorderBox === null
     ? box.boxType === 'block-in-inline' ? a.heightBasis : INDEFINITE
     : a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite ? { kind: 'flex-dependent' } : { kind: 'definite', value: contentBox(fixedBorderBox, vbp) };
+
+  if (control !== null && control.kind === 'fieldset') return layoutFieldset(ctx, box, a, pad, bor, minMax, fixedBorderBox, childBasis);
 
   if (s.display === 'flex') {
     if (control !== null && control.kind === 'button-block') throw new Error(`${box.id} is a block button with display flex; validateLayoutInput rejects this input`);
@@ -517,6 +521,92 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
 }
 
+// HTML §15.3.13 with Blink's FieldsetLayoutAlgorithm (fieldset_layout_algorithm.cc at 145.0.7632.6, Layout, LayoutChildren,
+// LayoutLegend, LayoutFieldsetContent): the rendered legend is laid out at its fit-content width in what would be the content box,
+// centred over the block-start border when that is the thicker, and the other contents flow below it in an anonymous new
+// formatting context that carries the fieldset's padding and fills its inline size.
+function layoutFieldset(ctx: Ctx, box: LayoutBox, a: ContentsArgs, pad: Edges, bor: Edges, minMax: MinMax, fixedBorderBox: LU | null, childBasis: HeightBasis): ContentsResult {
+  const direction = directionOf(ctx, box);
+  const rtl = direction === 'rtl';
+  const contentWidth = contentBox(a.borderBoxWidth, sumEdges(bor.left, bor.right, pad.left, pad.right));
+  const placed: Placed[] = [];
+  const rest: (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] = [];
+  let legend: ControlBox | null = null;
+  for (const k of box.children) {
+    if (legend === null && k.kind === 'control' && k.control.kind === 'legend') legend = k;
+    else rest.push(k);
+  }
+  let intrinsic = bor.top;
+  if (legend !== null) {
+    // The legend is sized, and aligned, in what would be the fieldset's content box (measured against Chrome 145).
+    const container: InlineContainer = { bfcLineOffset: ZERO, borderBoxWidth: a.borderBoxWidth, lineLeft: add(bor.left, pad.left), newFormattingContext: true, textAlign: 'start' };
+    const inline = blockLevelInlineSize(ctx, legend, contentWidth, direction, container);
+    const c = layoutContents(ctx, legend, {
+      cbInline: contentWidth,
+      borderBoxWidth: inline.borderBoxWidth,
+      forcedBorderBoxHeight: null,
+      forcedHeightDefinite: false,
+      heightBasis: childBasis,
+      formattingContextRoot: true,
+      bfcLineOffset: ZERO,
+      blockStretch: NO_STRETCH,
+    });
+    // The legend's block-start margin moves nothing; its block-end margin pushes the contents down.
+    const spaceLeft = sub(bor.top, c.frag.height);
+    const blockOffset = spaceLeft > 0 ? divInt(spaceLeft, 2) : ZERO;
+    const marginEnd = add(add(blockOffset, c.frag.height), inline.marginBottom);
+    if (marginEnd > bor.top) intrinsic = marginEnd;
+    const ls = legend.style;
+    const start = resolveMarginWith(rtl ? ls.marginRight : ls.marginLeft, contentWidth, ctx.faults);
+    const end = resolveMarginWith(rtl ? ls.marginLeft : ls.marginRight, contentWidth, ctx.faults);
+    let inlineStart = add(add(rtl ? bor.right : bor.left, rtl ? pad.right : pad.left), start.value);
+    const free = sub(contentWidth, c.frag.width);
+    if (free > 0) {
+      const align = legendAlignment(start.auto, end.auto, ls.textAlign, rtl);
+      if (align === 'center') inlineStart = add(inlineStart, divInt(free, 2));
+      else if (align === 'end') inlineStart = add(inlineStart, sub(free, end.value));
+    }
+    const x = rtl ? sub(sub(a.borderBoxWidth, inlineStart), c.frag.width) : inlineStart;
+    const offset = relativeOffsetWith(legend, contentWidth, childBasis, direction, ctx.faults);
+    placed.push({ frag: c.frag, x: add(x, offset.dx), y: add(blockOffset, offset.dy) });
+  }
+  const legendSize = sub(intrinsic, bor.top);
+  const padBlock = add(pad.top, pad.bottom);
+  // The contents' padding box is fixed when the fieldset's height is: what the borders and the legend leave, at least the padding.
+  const fixedPadding = fixedBorderBox === null ? null : max(sub(sub(fixedBorderBox, add(bor.top, bor.bottom)), legendSize), padBlock);
+  const contents: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: box.style, strut: box.strut, marker: null, children: rest };
+  const top = add(intrinsic, pad.top);
+  const flow = layoutBlockFlow(ctx, contents, {
+    contentWidth,
+    borderBoxWidth: a.borderBoxWidth,
+    bfcLineOffset: ZERO,
+    origin: { x: add(bor.left, pad.left), y: top },
+    canCollapseTop: false,
+    keepsEndMargin: true,
+    childBasis: fixedPadding === null ? INDEFINITE : childBasis.kind === 'flex-dependent' ? childBasis : { kind: 'definite', value: contentBox(fixedPadding, padBlock) },
+    marker: null,
+  });
+  const flowEnd = add(flow.cursor, collapsed(flow.endStrut));
+  const floatEnd = floatsBottom(ctx, contents, flow.placed, contentWidth);
+  const contentHeight = floatEnd === null ? flowEnd : max(flowEnd, sub(floatEnd, top));
+  const paddingBox = fixedPadding === null ? add(contentHeight, padBlock) : fixedPadding;
+  const sized = fixedBorderBox !== null ? fixedBorderBox : constrain(add(add(intrinsic, paddingBox), bor.bottom), minMax);
+  const height = legend === null ? sized : max(sized, add(add(add(bor.top, bor.bottom), padBlock), legendSize));
+  for (const p of flow.placed) placed.push(p);
+  const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: flow.baseline, children: placed, outOfFlow: flow.outOfFlow, inflow: null };
+  return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: flow.lastBaseline, lastBaselineFlex: flow.lastBaselineFlex, defaultLastBaseline: flow.defaultLastBaseline, defaultLastBaselineFlex: flow.defaultLastBaselineFlex };
+}
+
+// fieldset_layout_algorithm.cc ComputeLegendBlockAlignment: auto inline margins align the legend, else its text-align does.
+function legendAlignment(startAuto: boolean, endAuto: boolean, textAlign: TextAlign, rtl: boolean): 'start' | 'center' | 'end' {
+  if (startAuto) return endAuto ? 'center' : 'end';
+  if (endAuto) return 'start';
+  if (textAlign === 'center') return 'center';
+  if (textAlign === 'left') return rtl ? 'end' : 'start';
+  if (textAlign === 'right') return rtl ? 'start' : 'end';
+  return 'start';
+}
+
 export type BlockLevelResult = {
   readonly frag: Frag;
   readonly marginLeft: LU;
@@ -587,7 +677,7 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
   // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
   // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
-  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range');
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'legend');
   const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
   const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
@@ -815,7 +905,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
     // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
     // css-multicol-1 §2: a multi-column container establishes a new block formatting context too.
-    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block') || kid.style.multicol !== null;
+    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && (kid.control.kind === 'button-block' || kid.control.kind === 'fieldset')) || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext, textAlign: box.style.textAlign };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).

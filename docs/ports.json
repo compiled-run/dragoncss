@@ -1156,6 +1156,26 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/forms/fieldset_layout_algorithm.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2018 The Chromium Authors",
+      "fileSha256": "46b164098225fd7668735f18f1255d0e039d2f15b83f1af59167b0f352392ef2",
+      "headerSha256": "bb164409c6a3593ec3b8bb889d907af0efb2e323920ac00bd35aa1f81101ab72",
+      "ranges": [
+        { "lines": "32-56", "symbol": "ComputeLegendBlockAlignment", "source": "located" },
+        { "lines": "71-160", "symbol": "FieldsetLayoutAlgorithm::Layout", "source": "located" },
+        { "lines": "162-238", "symbol": "FieldsetLayoutAlgorithm::LayoutChildren", "source": "located" },
+        { "lines": "240-314", "symbol": "FieldsetLayoutAlgorithm::LayoutLegend", "source": "located" },
+        { "lines": "316-428", "symbol": "FieldsetLayoutAlgorithm::LayoutFieldsetContent", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/block.ts", "symbol": "layoutFieldset", "use": "port" },
+        { "file": "packages/layout/src/block.ts", "symbol": "legendAlignment", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/block_layout_algorithm.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
