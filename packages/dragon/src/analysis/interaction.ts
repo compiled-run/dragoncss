@@ -22,7 +22,7 @@ import type { ResolvedValue } from './computed.ts';
 import { initialValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
-import { NO_INTERACTION, selectorMatches } from './match.ts';
+import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { propagatedFrom } from './computed-checks.ts';
 
@@ -232,9 +232,12 @@ export function interactionPartition(root: LinkedElement, resolve: (ix: Interact
       focusAt.set(key, focusValues.length - 1);
       return focusValues.length - 1;
     };
-    // R6 and R8: a tap or click focuses the nearest focusable inclusive ancestor, without focus-visible; keyboard focus sets it.
+    // R6 and R8: a tap or click focuses the nearest focusable inclusive ancestor, with focus-visible only on a select; keyboard focus sets it.
     const pointerFocusOf = nodes.map((n) => {
-      for (let x: string | null | undefined = n.el.address; x !== null && x !== undefined; x = parentOf.get(x)) if (focusable[order.get(x) as number]) return focusValue(x, false);
+      for (let x: string | null | undefined = n.el.address; x !== null && x !== undefined; x = parentOf.get(x)) {
+        const i = order.get(x) as number;
+        if (focusable[i]) return focusValue(x, pointerFocusVisible((nodes[i] as { el: LinkedElement }).el));
+      }
       return 0;
     });
     const keyboardFocusOf = nodes.map((n, i) => (focusable[i] ? focusValue(n.el.address, true) : -1));
@@ -445,30 +448,9 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   return out;
 }
 
-/** FORM-b: a :focus or :focus-visible rule matching a select, focused or not, is refused until FORM-c's focus states land. */
-export function selectFocusRefusals(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, faults: CompilerFaults): Diagnostic[] {
-  const focusRules = rules.filter((r) => r.declarations.length > 0 && interactionPseudosOf(r).some((p) => p === 'focus' || p === 'focus-visible'));
-  if (cases === null || focusRules.length === 0) return [];
-  const out: Diagnostic[] = [];
-  const seen = new Set<string>();
-  const walk = (el: LinkedElement, chain: readonly LinkedElement[]): void => {
-    const here = [...chain, el];
-    if (el.tag === 'select' && !seen.has(el.address)) {
-      const ix: InteractionState = { hover: new Set(), active: new Set(), focus: new Set([el.address]), focusVisible: new Set([el.address]) };
-      const rule = focusRules.find((r) => r.selectors.some((sel) => selectorMatches(r, sel, here, here.length - 1, 0, faults, ix) || selectorMatches(r, sel, here, here.length - 1, 0, faults, NO_INTERACTION)));
-      if (rule !== undefined) {
-        seen.add(el.address);
-        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
-          origin: authored((rule.declarations[0] as Rule['declarations'][number]).span),
-          message: `a :focus or :focus-visible rule on <select> ${el.address} is not supported: a focused select's style and Chrome's focus ring wait for FORM-c's focus states`,
-          manual: `Remove the :focus and :focus-visible rules that match <select> ${el.address}.`,
-        }));
-      }
-    }
-    for (const c of el.children) if (c.kind === 'element') walk(c, here);
-  };
-  for (const c of cases) walk(c.root, []);
-  return out;
+/** FORM-b: Chrome 145 matches :focus-visible on a select a tap or click focuses (form-b-select-focus.test.ts), as on a text input. */
+export function pointerFocusVisible(el: LinkedElement): boolean {
+  return el.tag === 'select';
 }
 
 /** SELD-R2 PR 5: the inputs an interaction row is proven for, each its own profile context interaction/<input>. */

@@ -108,3 +108,12 @@ The `select` element itself stays a Markless-native control: Markless's host ope
   - `zoomInput` is only for Ahem or planted-fault inputs.
 - **Ruling on scroll ranges (2026-11-21).** The style export refuses a missing scroll range only for a node with a scroll-container write, as expectedDump and the harness do, because a select's inner element clips (overflow hidden) but never scrolls on a phone.
 - **Ruling on options (2026-11-21).** The Markless export check treats an `<option>` or `<optgroup>` inside a `<select>`, and its text, as having no box, read from the input's element names and tree, because Chrome's closed control draws only the shown label; an option anywhere else is still required.
+
+## S5: :focus and :focus-visible on a select (2026-11-22)
+
+- **Chrome fact (form-b-select-focus.test.ts):** In Chrome 145 a tap (touch) or click (mouse) on a select, with `appearance: none` or devolved to menulist-button, gives it `:focus` and `:focus-visible`. A button gets `:focus` alone. A select is like T064 P6's text input, unlike its button, range and link.
+- **Change:** `analysis/interaction.ts` pointer focus (R6) gives focus-visible to a select it focuses (`pointerFocusVisible`). Every other element keeps focus without focus-visible. #618's select-specific refusal of `:focus` and `:focus-visible` rules is removed.
+- **What still gates a select's focus rules:**
+  - They are gated like any focus rule: the device proofs, and the native hit model. The hit model refuses every interaction rule in a case that holds a form control (`hitUnmodelledControl`, FORM-a); that is the next slice.
+  - A reachable focus-visible state whose outline is Chrome's ring (`outline: auto`) is still refused natively (T064 row 149).
+- **Proof:** for a tap and for a click, Chrome's `:focus`, `:focus-visible`, `border-top-color` and `background-color` on two selects and a button equal Dragon's pointer-focus value and its resolved style in that state.
