@@ -212,7 +212,8 @@ export type AlignContent =
   | 'baseline'
   | 'start'
   | 'end';
-export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** -webkit-center is <center>'s UA value: lines centre as center does, and block children with no auto margin centre too. */
+export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify' | '-webkit-center';
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
 /**

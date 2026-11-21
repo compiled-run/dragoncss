@@ -82,7 +82,7 @@ export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, fau
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults };
     const icbDirection = directionOf(ctx, root);
     // The root element establishes a block formatting context in the initial containing block.
-    const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection, { bfcLineOffset: ZERO, borderBoxWidth: icbWidth, lineLeft: ZERO, newFormattingContext: true });
+    const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection, { bfcLineOffset: ZERO, borderBoxWidth: icbWidth, lineLeft: ZERO, newFormattingContext: true, textAlign: 'start' });
     const r = layoutContents(ctx, root, {
       cbInline: icbWidth,
       borderBoxWidth: inline.borderBoxWidth,
