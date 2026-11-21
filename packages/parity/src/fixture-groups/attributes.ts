@@ -17,6 +17,7 @@ export const ATTRIBUTES: readonly FixtureSpec[] = [
   both('attr-neutral-role'),
   both('attr-neutral-title'),
   both('attr-neutral-ui'),
+  both('attr-neutral-overlay'),
   both('attr-neutral-rel'),
   both('attr-neutral-target'),
   reject('reject-attr-href', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<div data-dragon-id="a" class="a" href="https://example.com/">', 'attribute href on a is not supported: its rendering effect belongs to the inline and link package INL1'),
