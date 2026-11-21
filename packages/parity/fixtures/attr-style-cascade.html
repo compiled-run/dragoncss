@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* css-style-attr §4 and css-cascade-5 §6.2: a style attribute's declarations are attached to its element and beat every
+   declaration a selector maps at the same importance; an !important rule still beats a normal attribute declaration. */
+body { margin: 0; }
+.t { width: 10px; height: 4px; margin-bottom: 1px; background-color: rgb(220, 220, 220); }
+#a { width: 30px; }
+div#b.t.t.t { width: 40px; }
+.c { width: 50px !important; }
+.d { width: 60px !important; }
+@layer base { .e { width: 70px; } .e2 { width: 75px !important; } }
+.f { --w: 80px; }
+.g-start { margin-left: 4px; }
+.h > .t { height: 6px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="a1" class="t" id="a" style="width: 21px"></div>
+<div data-dragon-id="b1" class="t" id="b" style="width: 22px; height: 3px"></div>
+<div data-dragon-id="c1" class="t c" style="width: 23px"></div>
+<div data-dragon-id="d1" class="t d" style="width: 24px !important"></div>
+<div data-dragon-id="e1" class="t e" style="width: 25px"></div>
+<div data-dragon-id="e2" class="t e2" style="width: 32px !important"></div>
+<div data-dragon-id="f1" class="t f" style="width: var(--w)"></div>
+<div data-dragon-id="f2" class="t" style="--w: 26px; width: var(--w)"></div>
+<div data-dragon-id="g1" class="t g-start" style="margin-inline-start: 12px; width: 27px"></div>
+<div data-dragon-id="g2" class="t" style="margin: 2px 3px 4px 5px; width: 28px; width: 29px"></div>
+<div data-dragon-id="h1" class="h" style="--h: 2px; padding-top: var(--h)"><div data-dragon-id="h2" class="t" style="height: calc(var(--h) * 4)"></div></div>
+<div data-dragon-id="i1" class="t" style="width: 31px; background-color: rgb(40, 90, 200)"></div>
+</body>
+</html>

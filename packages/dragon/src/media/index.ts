@@ -1,6 +1,6 @@
 // Media Queries 4 for Dragon: parser, serialiser, Chrome's evaluator over { width, height } and the device readings (MQ-R2), and the
 // band partition. Pure TypeScript.
-export { band, bandAt, contains, evaluateInBand, holdsWholePx, MAX_BANDS, mediaAtoms } from './band.ts';
+export { band, bandAt, bandColorScheme, contains, evaluateInBand, holdsWholePx, MAX_BANDS, mediaAtoms } from './band.ts';
 export type { Band, BandPartition, Interval, MediaAtom } from './band.ts';
 export { compareMedia, comparisonsOf, DESKTOP_DEVICE, evaluateFeature, evaluateMediaQueryList, evaluateWithOracle, MEDIA_EPSILON, refusalsOf, TOUCH_DEVICE } from './evaluate.ts';
 export type { FeatureOracle, MediaDevice, MediaEnvironment, MediaRefusal, MediaResult } from './evaluate.ts';

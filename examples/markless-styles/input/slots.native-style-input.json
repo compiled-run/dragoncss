@@ -1,0 +1,168 @@
+{
+	"version": "markless.native-style-input/0",
+	"component": "App",
+	"nodes": [
+		{
+			"kind": "element",
+			"id": "h0",
+			"element": "main",
+			"parent": null,
+			"attributes": {
+				"class": "box"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h1",
+			"element": "div",
+			"parent": "h0",
+			"attributes": {
+				"class": "track"
+			},
+			"styleTemplate": [
+				"--x: ",
+				{
+					"slot": "slot:x"
+				},
+				"%"
+			]
+		},
+		{
+			"kind": "element",
+			"id": "h2",
+			"element": "div",
+			"parent": "h1",
+			"attributes": {
+				"class": "thumb"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h3",
+			"element": "div",
+			"parent": "h0",
+			"attributes": {
+				"class": "row"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h4",
+			"element": "div",
+			"parent": "h3",
+			"attributes": {
+				"class": "panel"
+			},
+			"styleTemplate": [
+				"--size: ",
+				{
+					"slot": "slot:size"
+				}
+			]
+		},
+		{
+			"kind": "element",
+			"id": "h5",
+			"element": "div",
+			"parent": "h3",
+			"attributes": {
+				"class": "rest"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h6",
+			"element": "div",
+			"parent": "h0",
+			"attributes": {
+				"class": "bar"
+			},
+			"styleTemplate": [
+				"width: ",
+				{
+					"slot": "slot:width"
+				},
+				"px"
+			]
+		},
+		{
+			"kind": "element",
+			"id": "h7",
+			"element": "div",
+			"parent": "h0",
+			"attributes": {
+				"class": "stack"
+			},
+			"styleTemplate": [
+				"--i: ",
+				{
+					"slot": "slot:index"
+				}
+			]
+		},
+		{
+			"kind": "element",
+			"id": "h8",
+			"element": "div",
+			"parent": "h0",
+			"attributes": {
+				"class": "swatch"
+			},
+			"styleTemplate": [
+				"--tone: rgb(",
+				{
+					"slot": "slot:red"
+				},
+				" 120 ",
+				{
+					"slot": "slot:blue"
+				},
+				")"
+			]
+		},
+		{
+			"kind": "element",
+			"id": "h9",
+			"element": "span",
+			"parent": "h8",
+			"attributes": {
+				"class": "label"
+			}
+		},
+		{
+			"kind": "text",
+			"id": "h9:text0",
+			"parent": "h9",
+			"text": "Tone"
+		}
+	],
+	"css": ".box { display: flex; flex-direction: column; gap: 6px; padding: 8px; }\n.track { position: relative; height: 20px; background-color: rgb(220 220 220); }\n.thumb { position: absolute; top: 2px; left: var(--x, 0%); width: 16px; height: 16px; background-color: rgb(40 80 200); }\n.row { display: flex; height: 24px; }\n.panel { flex: var(--size, 1) 1 0; background-color: rgb(240 200 120); }\n.rest { flex: 1 1 0; background-color: rgb(120 200 160); }\n.bar { height: 12px; background-color: rgb(90 90 90); }\n.stack { margin-top: calc(var(--i, 0) * 6px); height: 10px; background-color: rgb(200 60 60); }\n.swatch { height: 18px; color: var(--tone); background-color: var(--tone); }\n.label { white-space: nowrap; font-size: 12px; }\n",
+	"states": [],
+	"slots": [
+		{
+			"id": "slot:x",
+			"initial": 25
+		},
+		{
+			"id": "slot:size",
+			"initial": 1
+		},
+		{
+			"id": "slot:width",
+			"initial": 120
+		},
+		{
+			"id": "slot:index",
+			"initial": 2,
+			"integer": true
+		},
+		{
+			"id": "slot:red",
+			"initial": 200
+		},
+		{
+			"id": "slot:blue",
+			"initial": 40
+		}
+	]
+}

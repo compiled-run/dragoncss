@@ -2,10 +2,17 @@
 // each result is one line with every double as its IEEE bit pattern, so TypeScript and native runs compare byte for byte.
 import type { EngineFaults } from '../../layout/src/block.ts';
 import type {
+  AnchorEdge,
+  AnchorOption,
+  AnchorSizeRef,
+  AnchorStyle,
+  AreaTrack,
+  PositionArea,
   AlignContent,
   AspectRatioValue,
   AlignItems,
   AlignSelf,
+  BlockSizeValue,
   BorderWidthValue,
   BoxSizing,
   BoxType,
@@ -26,6 +33,8 @@ import type {
   GridAutoRepeat,
   GridContainerStyle,
   GridItemStyle,
+  MulticolStyle,
+  TextBoxTrim,
   GridLine,
   GridLineName,
   GridSelfAlign,
@@ -48,8 +57,10 @@ import type {
   ObjectFit,
   ObjectPositionValue,
   ReplacedLeaf,
+  MaxBlockSizeValue,
   MaxInlineSizeValue,
   MaxSizeValue,
+  MinBlockSizeValue,
   MinSizeValue,
   NoneValue,
   Float,
@@ -61,6 +72,7 @@ import type {
   SizeValue,
   TextAlign,
   TextOverflow,
+  TextWrapStyle,
   TextLeaf,
   TextWrapMode,
   WhiteSpaceCollapse,
@@ -76,16 +88,29 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import { absoluteRects, layoutWithFaults } from '../../layout/src/layout.ts';
-import { measurerFor } from '../../layout/src/platform.ts';
+import { absoluteRects, layout, layoutWithFaults, resolvedInput, zoomInput } from '../../layout/src/layout.ts';
+import type { Ctx } from '../../layout/src/block.ts';
+import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
+import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
+import type { Edges } from '../../layout/src/box.ts';
+import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
+import { controlAsBox } from '../../layout/src/controls.ts';
+import { markerTextId } from '../../layout/src/marker.ts';
+import type { LinePiece } from '../../layout/src/inline.ts';
+import { inlineLeaves, leafFontOf, placeLines } from '../../layout/src/inline.ts';
+import { clampedInput } from '../../layout/src/line-clamp.ts';
+import type { ScrollRange } from '../../layout/src/overflow.ts';
+import { scrollRanges } from '../../layout/src/overflow.ts';
+import { deviceShapedMeasurer, measurerFor } from '../../layout/src/platform.ts';
 import type { GlyphShaper, HanKerningFontData, ShapedItem, ShapeResult, ShapingFaults } from '../../layout/src/shaping.ts';
-import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
+import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, pieceGlyphs, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from '../../layout/src/text.ts';
 import { fontMetricLengths, smallCapsFontSize } from '../../layout/src/text.ts';
 import type { TextFont } from '../../layout/src/input.ts';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
-import { snapEdges } from '../../layout/src/snap.ts';
+import type { SnappedRect } from '../../layout/src/snap.ts';
+import { snapEdges, snapRect } from '../../layout/src/snap.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
@@ -104,6 +129,7 @@ import {
   floatInvert,
   fractionalFreeSpace,
   fromCssPx,
+  LU_PER_PX,
   fromDouble,
   fromFloatRound,
   fromPxCeil,
@@ -134,7 +160,7 @@ import {
 import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
 import { runAnimationScript } from '../../layout/src/rt-animations.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
-import { cubicBezier, easingFromSpec, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
+import { cubicBezier, easingFromSpec, froundOf, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
 import type { TransformOrigin } from '../../layout/src/paint-transform.ts';
 import { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from '../../layout/src/paint-transform.ts';
 import type { AnimatedValue, LegacyColor, LengthValue, Matrix2D, TransformFn, TransformOp, Trig, ValueRange } from '../../layout/src/rt-interpolate.ts';
@@ -573,6 +599,20 @@ function pxOrNone(v: JsonValue, path: string): Px | NoneValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+/** height and min-height: a SizeValue, or css-sizing-4's stretch. */
+function blockSizeValue(v: JsonValue, path: string): BlockSizeValue {
+  if (kindOf(v, path) !== 'stretch') return sizeValue(v, path);
+  obj(v, ['kind'], path);
+  return { kind: 'stretch' };
+}
+
+/** max-height: a MaxSizeValue, or css-sizing-4's stretch. */
+function maxBlockSizeValue(v: JsonValue, path: string): MaxBlockSizeValue {
+  if (kindOf(v, path) !== 'stretch') return maxSizeValue(v, path);
+  obj(v, ['kind'], path);
+  return { kind: 'stretch' };
+}
+
 /** width and min-width: a SizeValue, the css-sizing-3 keywords min-content, max-content and fit-content, or css-sizing-4's stretch. */
 function inlineSizeValue(v: JsonValue, path: string): InlineSizeValue {
   const k = kindOf(v, path);
@@ -667,13 +707,27 @@ function aspectRatioValue(v: JsonValue, path: string): AspectRatioValue {
   return fail(`${path}: unknown kind ${k}`);
 }
 
+function textWrapStyleValue(v: JsonValue, path: string): TextWrapStyle {
+  const k = kindOf(v, path);
+  if (k === 'auto') {
+    obj(v, ['kind'], path);
+    return { kind: 'auto' };
+  }
+  if (k === 'balance' || k === 'pretty') {
+    const o = obj(v, ['kind', 'zoom'], path);
+    const zoom = numField(o, 'zoom', path);
+    return k === 'balance' ? { kind: 'balance', zoom } : { kind: 'pretty', zoom };
+  }
+  return fail(`${path}: unknown kind ${k}`);
+}
+
 const STYLE_KEYS: readonly string[] = [
   'display', 'position', 'float', 'top', 'right', 'bottom', 'left', 'overflowX', 'overflowY', 'direction', 'boxSizing', 'width', 'height',
   'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop',
   'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order', 'justifyContent', 'alignItems', 'alignSelf',
   'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout', 'containPaint',
-  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
+  'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'anchor', 'zoom',
 ];
 
 function verticalAlignValue(v: JsonValue, path: string): VerticalAlignValue {
@@ -812,6 +866,31 @@ function decodeGrid(v: JsonValue, path: string): GridContainerStyle | null {
   };
 }
 
+function decodeMulticol(v: JsonValue, path: string): MulticolStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['count', 'width'], path);
+  const count = numField(o, 'count', path);
+  if (!Number.isInteger(count) || count < 0) return fail(`${path}.count: expected a column count of at least 0, got ${count}`);
+  const w = field(o, 'width', path);
+  const k = kindOf(w, `${path}.width`);
+  if (k === 'auto') {
+    obj(w, ['kind'], `${path}.width`);
+    if (count === 0) return fail(`${path}: column-count and column-width are both auto`);
+    return { count, width: { kind: 'auto' } };
+  }
+  if (k !== 'px') return fail(`${path}.width: unknown kind ${k}`);
+  return { count, width: { kind: 'px', value: numField(obj(w, ['kind', 'value'], `${path}.width`), 'value', `${path}.width`) } };
+}
+
+function decodeTextBoxTrim(v: JsonValue, path: string): TextBoxTrim | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['start', 'end', 'alphabetic'], path);
+  const start = bool(field(o, 'start', path), `${path}.start`);
+  const end = bool(field(o, 'end', path), `${path}.end`);
+  if (!start && !end) return fail(`${path}: text-box-trim trims the start, the end or both; none is null`);
+  return { start, end, alphabetic: bool(field(o, 'alphabetic', path), `${path}.alphabetic`) };
+}
+
 function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
   if (v.kind === 'null') return null;
   const o = obj(v, ['column', 'row', 'justifySelf'], path);
@@ -823,6 +902,79 @@ function decodeGridItem(v: JsonValue, path: string): GridItemStyle | null {
   };
 }
 
+const AREA_TRACKS: readonly string[] = ['start', 'center', 'end'];
+const ANCHOR_OPTION_KEYS: readonly string[] = [
+  'area', 'top', 'right', 'bottom', 'left', 'topAnchor', 'rightAnchor', 'bottomAnchor', 'leftAnchor', 'marginTop', 'marginRight', 'marginBottom',
+  'marginLeft', 'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'widthAnchor', 'heightAnchor', 'minWidthAnchor',
+  'minHeightAnchor', 'maxWidthAnchor', 'maxHeightAnchor', 'justifySelf', 'alignSelf',
+];
+
+function decodeArea(v: JsonValue, path: string): PositionArea | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['rowStart', 'rowEnd', 'columnStart', 'columnEnd'], path);
+  const t = (k: string): AreaTrack => lit(field(o, k, path), AREA_TRACKS, `${path}.${k}`) as AreaTrack;
+  return { rowStart: t('rowStart'), rowEnd: t('rowEnd'), columnStart: t('columnStart'), columnEnd: t('columnEnd') };
+}
+
+function decodeAnchorEdge(v: JsonValue, path: string): AnchorEdge | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['anchor', 'fraction'], path);
+  return { anchor: str(field(o, 'anchor', path), `${path}.anchor`), fraction: numField(o, 'fraction', path) };
+}
+
+function decodeAnchorSize(v: JsonValue, path: string): AnchorSizeRef | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['anchor', 'axis'], path);
+  const axis = lit(field(o, 'axis', path), ['width', 'height'], `${path}.axis`) === 'width' ? 'width' : 'height';
+  return { anchor: str(field(o, 'anchor', path), `${path}.anchor`), axis };
+}
+
+function decodeAnchorOption(v: JsonValue, path: string): AnchorOption {
+  const o = obj(v, ANCHOR_OPTION_KEYS, path);
+  const f = (k: string): JsonValue => field(o, k, path);
+  const p = (k: string): string => `${path}.${k}`;
+  const self = (k: string): 'normal' | 'anchor-center' => (lit(f(k), ['normal', 'anchor-center'], p(k)) === 'anchor-center' ? 'anchor-center' : 'normal');
+  return {
+    area: decodeArea(f('area'), p('area')),
+    top: sizeValue(f('top'), p('top')) as InsetValue,
+    right: sizeValue(f('right'), p('right')) as InsetValue,
+    bottom: sizeValue(f('bottom'), p('bottom')) as InsetValue,
+    left: sizeValue(f('left'), p('left')) as InsetValue,
+    topAnchor: decodeAnchorEdge(f('topAnchor'), p('topAnchor')),
+    rightAnchor: decodeAnchorEdge(f('rightAnchor'), p('rightAnchor')),
+    bottomAnchor: decodeAnchorEdge(f('bottomAnchor'), p('bottomAnchor')),
+    leftAnchor: decodeAnchorEdge(f('leftAnchor'), p('leftAnchor')),
+    marginTop: sizeValue(f('marginTop'), p('marginTop')) as MarginValue,
+    marginRight: sizeValue(f('marginRight'), p('marginRight')) as MarginValue,
+    marginBottom: sizeValue(f('marginBottom'), p('marginBottom')) as MarginValue,
+    marginLeft: sizeValue(f('marginLeft'), p('marginLeft')) as MarginValue,
+    width: inlineSizeValue(f('width'), p('width')),
+    height: blockSizeValue(f('height'), p('height')),
+    minWidth: inlineSizeValue(f('minWidth'), p('minWidth')),
+    minHeight: blockSizeValue(f('minHeight'), p('minHeight')) as MinBlockSizeValue,
+    maxWidth: maxInlineSizeValue(f('maxWidth'), p('maxWidth')),
+    maxHeight: maxBlockSizeValue(f('maxHeight'), p('maxHeight')),
+    widthAnchor: decodeAnchorSize(f('widthAnchor'), p('widthAnchor')),
+    heightAnchor: decodeAnchorSize(f('heightAnchor'), p('heightAnchor')),
+    minWidthAnchor: decodeAnchorSize(f('minWidthAnchor'), p('minWidthAnchor')),
+    minHeightAnchor: decodeAnchorSize(f('minHeightAnchor'), p('minHeightAnchor')),
+    maxWidthAnchor: decodeAnchorSize(f('maxWidthAnchor'), p('maxWidthAnchor')),
+    maxHeightAnchor: decodeAnchorSize(f('maxHeightAnchor'), p('maxHeightAnchor')),
+    justifySelf: self('justifySelf'),
+    alignSelf: self('alignSelf'),
+  };
+}
+
+function decodeAnchor(v: JsonValue, path: string): AnchorStyle | null {
+  if (v.kind === 'null') return null;
+  const o = obj(v, ['anchor', 'options', 'order'], path);
+  const a = field(o, 'anchor', path);
+  const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => decodeAnchorOption(x, `${path}.options[${i}]`));
+  if (options.length === 0) return fail(`${path}.options: an anchored box has at least its base option`);
+  const order = lit(field(o, 'order', path), ['normal', 'most-width', 'most-height'], `${path}.order`);
+  return { anchor: a.kind === 'null' ? null : str(a, `${path}.anchor`), options, order: order === 'most-width' ? 'most-width' : order === 'most-height' ? 'most-height' : 'normal' };
+}
+
 const ALIGN_ITEMS: readonly string[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'last baseline', 'start', 'end', 'self-start', 'self-end'];
 
 function decodeStyle(v: JsonValue, path: string): LayoutStyle {
@@ -831,7 +983,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   const p = (k: string): string => `${path}.${k}`;
   return {
     display: lit(f('display'), ['block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'], p('display')) as Display,
-    position: lit(f('position'), ['static', 'relative', 'absolute'], p('position')) as Position,
+    position: lit(f('position'), ['static', 'relative', 'absolute', 'fixed', 'sticky'], p('position')) as Position,
     float: lit(f('float'), ['none', 'left', 'right'], p('float')) as Float,
     top: sizeValue(f('top'), p('top')) as InsetValue,
     right: sizeValue(f('right'), p('right')) as InsetValue,
@@ -842,11 +994,11 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     direction: lit(f('direction'), ['ltr', 'rtl'], p('direction')) as Direction,
     boxSizing: lit(f('boxSizing'), ['content-box', 'border-box'], p('boxSizing')) as BoxSizing,
     width: inlineSizeValue(f('width'), p('width')),
-    height: sizeValue(f('height'), p('height')),
+    height: blockSizeValue(f('height'), p('height')),
     minWidth: inlineSizeValue(f('minWidth'), p('minWidth')),
-    minHeight: sizeValue(f('minHeight'), p('minHeight')) as MinSizeValue,
+    minHeight: blockSizeValue(f('minHeight'), p('minHeight')) as MinBlockSizeValue,
     maxWidth: maxInlineSizeValue(f('maxWidth'), p('maxWidth')),
-    maxHeight: maxSizeValue(f('maxHeight'), p('maxHeight')),
+    maxHeight: maxBlockSizeValue(f('maxHeight'), p('maxHeight')),
     marginTop: sizeValue(f('marginTop'), p('marginTop')) as MarginValue,
     marginRight: sizeValue(f('marginRight'), p('marginRight')) as MarginValue,
     marginBottom: sizeValue(f('marginBottom'), p('marginBottom')) as MarginValue,
@@ -871,7 +1023,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     alignContent: lit(f('alignContent'), ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'baseline', 'start', 'end'], p('alignContent')) as AlignContent,
     rowGap: gapValue(f('rowGap'), p('rowGap')),
     columnGap: gapValue(f('columnGap'), p('columnGap')),
-    textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
+    textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify', '-webkit-center'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,
@@ -882,8 +1034,12 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     containSize: lit(f('containSize'), ['none', 'inline-size', 'size'], p('containSize')) as ContainSize,
     containIntrinsicWidth: pxOrNone(f('containIntrinsicWidth'), p('containIntrinsicWidth')),
     containIntrinsicHeight: pxOrNone(f('containIntrinsicHeight'), p('containIntrinsicHeight')),
+    textWrapStyle: textWrapStyleValue(f('textWrapStyle'), p('textWrapStyle')),
+    multicol: decodeMulticol(f('multicol'), p('multicol')),
+    textBoxTrim: decodeTextBoxTrim(f('textBoxTrim'), p('textBoxTrim')),
     grid: decodeGrid(f('grid'), p('grid')),
     gridItem: decodeGridItem(f('gridItem'), p('gridItem')),
+    anchor: decodeAnchor(f('anchor'), p('anchor')),
     zoom: numbers(f('zoom'), p('zoom')),
   };
 }
@@ -973,6 +1129,14 @@ function controlKind(v: JsonValue, path: string): ControlKind {
   if (k === 'text-placeholder') {
     obj(v, ['kind'], path);
     return { kind: 'text-placeholder' };
+  }
+  if (k === 'fieldset') {
+    obj(v, ['kind'], path);
+    return { kind: 'fieldset' };
+  }
+  if (k === 'legend') {
+    obj(v, ['kind'], path);
+    return { kind: 'legend' };
   }
   return fail(`${path}: unknown kind ${k}`);
 }
@@ -1103,7 +1267,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1196,6 +1360,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
     containedContentSized: b('containedContentSized'),
     containerJoinsFlow: b('containerJoinsFlow'),
+    wrapStyleGreedy: b('wrapStyleGreedy'),
+    textBoxTrimIgnored: b('textBoxTrimIgnored'),
   };
 }
 
@@ -1300,6 +1466,18 @@ function sameNumbers(a: readonly number[], b: readonly number[]): boolean {
   return true;
 }
 
+/** A GlyphShaper that answers a call the build recorded as recorded, and any other (a row's text) with the device's own shaper. */
+function recordedOrLive(calls: readonly ReplayCall[], live: GlyphShaper): GlyphShaper {
+  return {
+    shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
+      for (const c of calls) {
+        if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
+      }
+      return live.shape(face, size, text, start, end, script, rtl, language, features);
+    },
+  };
+}
+
 /** R3: a GlyphShaper that replays a transcript; a call the transcript does not hold is a harness error. */
 function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
   return {
@@ -1359,7 +1537,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
       const d = faceOf(font.family).data;
       const size = platformFontSize(font.size);
       const round = (units: number): LU => (sf.metricRoundingSwapped ? roundFontMetricHalfUpToWholePx(fontMetricPx(size, d.unitsPerEm, units)) : roundCoreTextMetricToWholePx(units, d.unitsPerEm, size));
-      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap) };
+      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap), normalGapAbove: ZERO };
     },
     measure(text: string, font: TextFont): MeasureResult {
       const r = itemFor(text, font);
@@ -2970,4 +3148,1043 @@ function rtPointerResult(a: readonly JsonValue[]): string {
   const r = androidPointerReadings(sources, { bandBoundaryExclusive: false, primaryPointerFineFirst: false });
   const b = (x: boolean): string => h(x ? 1 : 0);
   return `[${h(r.pointer === 'coarse' ? 1 : r.pointer === 'fine' ? 2 : 0)},${b(r.hover)},${b(r.anyCoarse)},${b(r.anyFine)},${b(r.anyHover)}]`;
+}
+
+// ---------------------------------------------------------------- Markless plans
+
+/**
+ * A Markless page laid out on the device at its own size (Dragon parity markless-plan.ts writes the plan): the engine input of one
+ * assignment, measured with the text shaping the build recorded at the device's ratio, and the geometry the hosts apply, as the
+ * export computes it at build time (native-style-export.ts): every box's frame relative to its parent and border widths, every
+ * text node's lines with its glyphs, every dashed border's operations, every scroll container's range and the page's.
+ */
+type PlanDensity = { readonly dpr: number; readonly calls: readonly ReplayCall[]; readonly metrics: Map<string, FontMetrics>; readonly ownMetrics: Map<string, boolean>; readonly lengths: Map<string, FontLengths> };
+const PLAN_DASH_FAULTS: DashFaults = { phase1: false, gapUnfitted: false };
+type PlanDashed = { readonly id: string; readonly styles: readonly string[]; readonly colors: readonly number[] };
+
+function planFontKey(family: string, size: number): string {
+  return `${family}@${bitsHex(size)}`;
+}
+
+function planDensity(v: JsonValue, path: string): PlanDensity {
+  const o = obj(v, ['dpr', 'calls', 'metrics', 'lengths'], path);
+  const calls: ReplayCall[] = [];
+  arr(field(o, 'calls', path), `${path}.calls`).forEach((c, i) => {
+    const at = `${path}.calls[${i}]`;
+    const a = arr(c, at);
+    if (a.length !== 10) fail(`${at}: expected 10 fields, got ${a.length}`);
+    const item = (k: number): JsonValue => a[k] as JsonValue;
+    const glyphs = numbers(item(9), `${at}[9]`);
+    if (!Number.isInteger(glyphs.length / GLYPH_STRIDE)) fail(`${at}[9]: ${glyphs.length} integers are not whole glyph records of ${GLYPH_STRIDE}`);
+    calls.push({
+      face: str(item(0), `${at}[0]`), size: num(item(1), `${at}[1]`), text: str(item(2), `${at}[2]`), start: num(item(3), `${at}[3]`), end: num(item(4), `${at}[4]`),
+      script: str(item(5), `${at}[5]`), rtl: bool(item(6), `${at}[6]`), language: str(item(7), `${at}[7]`), features: numbers(item(8), `${at}[8]`), glyphs,
+    });
+  });
+  const metrics = new Map<string, FontMetrics>();
+  const ownMetrics = new Map<string, boolean>();
+  arr(field(o, 'metrics', path), `${path}.metrics`).forEach((m, i) => {
+    const at = `${path}.metrics[${i}]`;
+    const a = arr(m, at);
+    const key = planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`));
+    if (a.length === 2) {
+      ownMetrics.set(key, false);
+      return;
+    }
+    if (a.length !== 6) fail(`${at}: expected 2 or 6 fields, got ${a.length}`);
+    ownMetrics.set(key, true);
+    metrics.set(key, { ascent: num(a[2] as JsonValue, `${at}[2]`) as LU, descent: num(a[3] as JsonValue, `${at}[3]`) as LU, lineGap: num(a[4] as JsonValue, `${at}[4]`) as LU, normalGapAbove: num(a[5] as JsonValue, `${at}[5]`) as LU });
+  });
+  const lengths = new Map<string, FontLengths>();
+  arr(field(o, 'lengths', path), `${path}.lengths`).forEach((m, i) => {
+    const at = `${path}.lengths[${i}]`;
+    const a = arr(m, at);
+    if (a.length !== 5) fail(`${at}: expected 5 fields, got ${a.length}`);
+    lengths.set(planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`)), { xHeight: num(a[2] as JsonValue, `${at}[2]`), capHeight: num(a[3] as JsonValue, `${at}[3]`), zeroWidth: num(a[4] as JsonValue, `${at}[4]`) });
+  });
+  return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, metrics, ownMetrics, lengths };
+}
+
+/** The device's measurer: the build's measurer replayed, each face's metrics and lengths as the build read them; anything else fails. */
+function planMeasurer(faces: ReadonlyMap<string, FontData>, d: PlanDensity, live: GlyphShaper | null): TextMeasurer {
+  const m = deviceShapedMeasurer(faces, live === null ? replayShaper(d.calls) : recordedOrLive(d.calls, live));
+  return {
+    metrics(font: TextFont): FontMetrics {
+      const key = planFontKey(font.family, font.size);
+      const own = d.ownMetrics.get(key);
+      if (own === undefined) return fail(`the plan holds no metrics of ${font.family} at ${font.size} css px`);
+      if (!own) return m.metrics(font);
+      return d.metrics.get(key) as FontMetrics;
+    },
+    measure(text: string, font: TextFont): MeasureResult {
+      return m.measure(text, font);
+    },
+    measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult {
+      return m.measureRange(text, start, end, font);
+    },
+    lengths(font: TextFont): FontLengths {
+      const own = d.lengths.get(planFontKey(font.family, font.size));
+      if (own === undefined) return fail(`the plan holds no lengths of ${font.family} at ${font.size} css px`);
+      return own;
+    },
+    shaped(text: string, font: TextFont): ShapedItem {
+      return m.shaped(text, font);
+    },
+    hasFace(family: string): boolean {
+      return m.hasFace(family);
+    },
+  };
+}
+
+function edgeHex(e: Edges, scale: number): string {
+  return `[${h((e.top / LU_PER_PX) * scale)},${h((e.right / LU_PER_PX) * scale)},${h((e.bottom / LU_PER_PX) * scale)},${h((e.left / LU_PER_PX) * scale)}]`;
+}
+
+function numsHex(xs: readonly number[]): string {
+  let out = '[';
+  xs.forEach((x, i) => {
+    if (i > 0) out += ',';
+    out += h(x);
+  });
+  return `${out}]`;
+}
+
+/** Every box's style by id, through controls and replaced leaves, as the export reads border widths from the unzoomed input. */
+function planStyles(b: LayoutBox, out: Map<string, LayoutStyle>): void {
+  out.set(b.id, b.style);
+  for (const c of b.children) {
+    if (c.kind === 'box') planStyles(c, out);
+    else if (c.kind === 'control') planStyles(controlAsBox(c), out);
+    else if (c.kind === 'replaced') out.set(c.id, c.style);
+  }
+}
+
+/** Every text leaf's text by id, and each text marker's, of the unzoomed input (ahem-lines.ts cssFontSizes). */
+function planTexts(b: LayoutBox, out: Map<string, string>): void {
+  const m = b.marker;
+  if (m !== null && m.kind === 'text' && m.text !== null) out.set(markerTextId(m.id), m.text);
+  for (const c of b.children) {
+    if (c.kind === 'box') planTexts(c, out);
+    else if (c.kind === 'control') planTexts(controlAsBox(c), out);
+    else if (c.kind !== 'replaced') planInlineTexts(c, out);
+  }
+}
+
+function planInlineTexts(c: InlineChild, out: Map<string, string>): void {
+  if (c.kind === 'text') out.set(c.id, c.text);
+  else if (c.kind === 'inline') for (const k of c.children) planInlineTexts(k, out);
+}
+
+/** Border widths of every box of the zoomed input in whole device px (expected-dump.ts borderDevicePx). */
+function planDeviceBorders(b: LayoutBox, dpr: number, out: Map<string, readonly number[]>): void {
+  const e = resolveBorder(b.style, dpr);
+  out.set(b.id, [e.top / LU_PER_PX, e.right / LU_PER_PX, e.bottom / LU_PER_PX, e.left / LU_PER_PX]);
+  for (const c of b.children) {
+    if (c.kind === 'box') planDeviceBorders(c, dpr, out);
+    else if (c.kind === 'control') planDeviceBorders(controlAsBox(c), dpr, out);
+    else if (c.kind === 'replaced') {
+      const r = resolveBorder(c.style, dpr);
+      out.set(c.id, [r.top / LU_PER_PX, r.right / LU_PER_PX, r.bottom / LU_PER_PX, r.left / LU_PER_PX]);
+    }
+  }
+}
+
+function isLineRect(r: LayoutRect): boolean {
+  const parent = r.parent;
+  if (parent === null) return false;
+  const id = codePointsOf(r.id);
+  const prefix = codePointsOf(`${parent}:line`);
+  if (id.length < prefix.length) return false;
+  for (let i = 0; i < prefix.length; i++) if ((id[i] as number) !== (prefix[i] as number)) return false;
+  return true;
+}
+
+function codePointsOf(text: string): number[] {
+  const out: number[] = [];
+  for (const ch of text) out.push(ch.codePointAt(0) as number);
+  return out;
+}
+
+function sliceCodePoints(cps: readonly number[], start: number, end: number): number[] {
+  const out: number[] = [];
+  for (let i = start; i < end && i < cps.length; i++) out.push(cps[i] as number);
+  return out;
+}
+
+type PlanEllipsis = { readonly x: number; readonly cps: readonly number[]; readonly font: TextFont };
+/** start: the line's first code point in its text. */
+type PlanLine = { readonly start: number; readonly cps: readonly number[]; readonly shifts: readonly number[]; readonly rect: LayoutRect; readonly snappedTop: number; readonly halfLeading: number; readonly ellipsis: PlanEllipsis | null };
+type PlanText = { readonly id: string; readonly textFont: TextFont; readonly lines: readonly PlanLine[] };
+
+/** Every text node's lines as the device places them (line-breaks.ts engineTextLines). */
+function planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: readonly LayoutRect[]): PlanText[] {
+  const abs = absoluteRects(boxes);
+  const snappedList = snapEdges(boxes);
+  const snappedTop = new Map<string, number>();
+  boxes.forEach((b, i) => {
+    snappedTop.set(b.id, (snappedList[i] as SnappedRect).top);
+  });
+  const zoomed = clampedInput(resolvedInput(input, measurer, NO_ENGINE_FAULTS), boxes, measurer);
+  const zBoxes = new Map<string, LayoutBox>();
+  const zParent = new Map<string, string>();
+  const textContainer = new Map<string, string>();
+  const notText = new Map<string, boolean>();
+  const markers = new Map<string, ListMarker>();
+  const walkInline = (c: InlineChild, container: string): void => {
+    if (c.kind === 'text') textContainer.set(c.id, container);
+    else {
+      notText.set(c.id, true);
+      if (c.kind === 'inline') for (const k of c.children) walkInline(k, container);
+    }
+  };
+  const walk = (b: LayoutBox): void => {
+    notText.set(b.id, true);
+    zBoxes.set(b.id, b);
+    const mk = b.marker;
+    if (mk !== null) {
+      notText.set(mk.id, true);
+      if (mk.kind === 'text') markers.set(markerTextId(mk.id), mk);
+    }
+    for (const c of b.children) {
+      if (c.kind === 'box') {
+        zParent.set(c.id, b.id);
+        walk(c);
+      } else if (c.kind === 'control') {
+        zParent.set(c.id, b.id);
+        walk(controlAsBox(c));
+      } else if (c.kind === 'replaced') notText.set(c.id, true);
+      else walkInline(c, b.id);
+    }
+  };
+  walk(zoomed.root);
+  const rects = new Map<string, LayoutRect>();
+  for (const r of boxes) if (!isLineRect(r)) rects.set(r.id, r);
+  const widths = new Map<string, LU>();
+  const contentWidth = (id: string): LU => {
+    const hit = widths.get(id);
+    if (hit !== undefined) return hit;
+    const z = zBoxes.get(id);
+    const r = rects.get(id);
+    if (z === undefined || r === undefined) return fail(`no box ${id}`);
+    const parent = zParent.get(id);
+    const cb = parent === undefined ? fromCssPx(zoomed.viewport.width) : contentWidth(parent);
+    const pad = resolvePadding(z.style, cb);
+    const bor = resolveBorder(z.style, zoomed.devicePixelRatio);
+    const w = (r.width - bor.left - bor.right - pad.left - pad.right) as LU;
+    widths.set(id, w);
+    return w;
+  };
+  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const out: PlanText[] = [];
+  for (const r of boxes) {
+    if (isLineRect(r)) continue;
+    const pieces: LayoutRect[] = [];
+    for (const b of boxes) {
+      const parent = b.parent;
+      if (parent !== null && parent === r.id && isLineRect(b)) pieces.push(b);
+    }
+    const marker = markers.get(r.id);
+    if (marker !== undefined) {
+      const piece = pieces[0];
+      const box = abs.get(marker.id);
+      if (piece === undefined || pieces.length !== 1 || marker.text === null || box === undefined) return fail(`${r.id}: the text marker is not placed`);
+      const a = abs.get(piece.id) as LayoutRect;
+      out.push({ id: r.id, textFont: { family: marker.font.family, size: marker.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, lines: [{ start: 0, cps: codePointsOf(marker.text), shifts: [], rect: a, snappedTop: snappedTop.get(piece.id) as number, halfLeading: a.y - box.y, ellipsis: null }] });
+      continue;
+    }
+    const pId = textContainer.get(r.id);
+    if (pId === undefined) {
+      if (notText.has(r.id)) continue;
+      return fail(`rect ${r.id} is not a node of the layout input`);
+    }
+    const p = zBoxes.get(pId);
+    if (p === undefined) return fail(`text ${r.id} has no container`);
+    const leaves = inlineLeaves(p);
+    let li = -1;
+    leaves.forEach((t, i) => {
+      if (li < 0 && t.id === r.id) li = i;
+    });
+    if (li < 0) return fail(`no leaf ${r.id}`);
+    const leaf = leaves[li] as TextLeaf;
+    const scalars = codePointsOf(leaf.text);
+    const placed = placeLines(ctx, p, contentWidth(pId));
+    const own: PlanLine[] = [];
+    let used = 0;
+    for (const line of placed) {
+      const mine: LinePiece[] = [];
+      for (const q of line.pieces) if (q.leaf === li) mine.push(q);
+      const first = mine[0];
+      const last = mine[mine.length - 1];
+      if (first === undefined || last === undefined) continue;
+      const piece = pieces[used];
+      let n = 0;
+      for (const q of mine) n += q.truncated ? 2 : 1;
+      if (piece === undefined || used + n > pieces.length) return fail(`${r.id}: the engine's breaks give more lines than its layout (${pieces.length})`);
+      used += n;
+      const a = abs.get(piece.id) as LayoutRect;
+      const el = line.ellipsis;
+      let ellipsis: PlanEllipsis | null = null;
+      if (el !== null && el.leaf === li) ellipsis = { x: a.x + el.x - first.x, cps: codePointsOf(el.text), font: el.font };
+      const cps: number[] = [];
+      const shifts: number[] = [];
+      for (const q of mine) {
+        for (const c of sliceCodePoints(scalars, q.start, q.paintEnd)) cps.push(c);
+        for (const s of q.shifts) shifts.push(s);
+      }
+      own.push({ start: first.start, cps, shifts, rect: a, snappedTop: snappedTop.get(piece.id) as number, halfLeading: first.top - line.top, ellipsis });
+    }
+    if (used !== pieces.length) return fail(`${r.id}: the engine's breaks give ${used} fragments, its layout ${pieces.length}`);
+    out.push({ id: r.id, textFont: leafFontOf(leaf), lines: own });
+  }
+  return out;
+}
+
+/** A run of glyphs in one face at one size (native-style-export.ts runsOf), as [face, size, glyphs, xs]. */
+function planRuns(face: string, glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): string[] {
+  const out: string[] = [];
+  let size = -1;
+  let gs: number[] = [];
+  let ps: number[] = [];
+  const flush = (): void => {
+    if (gs.length > 0) out.push(`[${q(face)},${h(size)},${numsHex(gs)},${numsHex(ps)}]`);
+  };
+  glyphs.forEach((g, j) => {
+    const s = sizes[j] as number;
+    if (gs.length === 0 || s !== size) {
+      flush();
+      size = s;
+      gs = [];
+      ps = [];
+    }
+    gs.push(g);
+    ps.push(xs[j] as number);
+  });
+  flush();
+  return out;
+}
+
+/** A text node's lines (native-style-export.ts textLines), as [[top, baseline, runs], ...] in device px from its frame. */
+function planLines(t: PlanText, text: string, at: LayoutRect, m: TextMeasurer): string {
+  const ascent = m.metrics(t.textFont).ascent / LU_PER_PX;
+  const ax = at.x / LU_PER_PX;
+  const ay = at.y / LU_PER_PX;
+  let out = '[';
+  t.lines.forEach((line, k) => {
+    const start = line.start;
+    const g = pieceGlyphs(m, text, t.textFont, start, start + line.cps.length);
+    if (!g.ok) return fail(`${t.id} line ${k}: the shaped measurer refused its text: ${g.reason}`);
+    const x0 = line.rect.x / LU_PER_PX - ax;
+    const xs: number[] = [];
+    g.xs.forEach((x, j) => {
+      xs.push(x0 + x + (line.shifts.length === 0 ? 0 : (line.shifts[g.chars[j] as number] as number)));
+    });
+    const runs = planRuns(t.textFont.family, g.glyphs, xs, g.sizes);
+    const e = line.ellipsis;
+    if (e !== null) {
+      const d = pieceGlyphs(m, fromCodePoints(e.cps), e.font, 0, e.cps.length);
+      if (!d.ok) return fail(`${t.id} line ${k} ellipsis: the shaped measurer refused its text: ${d.reason}`);
+      const exs: number[] = [];
+      for (const x of d.xs) exs.push(e.x / LU_PER_PX - ax + x);
+      for (const r of planRuns(e.font.family, d.glyphs, exs, d.sizes)) runs.push(r);
+    }
+    if (k > 0) out += ',';
+    let joined = '';
+    runs.forEach((run, i) => {
+      joined += i > 0 ? `,${run}` : run;
+    });
+    out += `[${h(snapEdge((line.rect.y - line.halfLeading) as LU) - ay)},${h(line.snappedTop + ascent - ay)},[${joined}]]`;
+  });
+  return `${out}]`;
+}
+
+/** A dashed or dotted box's border operations (native-style-export.ts dashedBorder), or the empty string. */
+function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]): string {
+  let dashed = false;
+  d.styles.forEach((st, k) => {
+    if ((st === 'dashed' || st === 'dotted') && (widths[k] as number) > 0 && (d.colors[k * 4 + 3] as number) > 0) dashed = true;
+  });
+  if (!dashed || !borderNeedsSidePainter(widths, d.styles, d.colors)) return '';
+  const b = snapRect(rect);
+  const ops = borderPaintOps(b.left, b.top, b.right, b.bottom, widths, d.styles, d.colors, PLAN_DASH_FAULTS);
+  let out = `[[${h(b.left - rect.x / LU_PER_PX)},${h(b.top - rect.y / LU_PER_PX)}],[${h(b.width)},${h(b.height)}],${numsHex(widths)},[`;
+  ops.forEach((o, i) => {
+    if (i > 0) out += ',';
+    const points: number[] = [];
+    o.points.forEach((v, j) => {
+      if (o.op === 'dot') points.push(j === 0 ? v - b.left : j === 1 ? v - b.top : v);
+      else points.push(Math.floor(j / 2) * 2 === j ? v - b.left : v - b.top);
+    });
+    out += `[${q(o.op)},${o.side},${h(o.alpha)},${o.antialias ? 'true' : 'false'},${numsHex(points)}]`;
+  });
+  return `${out}]]`;
+}
+
+type PlanVariant = { readonly rootFontSize: number; readonly root: LayoutBox };
+type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly fields: readonly SlotField[]; readonly writes: readonly SlotWrite[]; readonly refusals: readonly SlotRefusal[] };
+
+// ---------------------------------------------------------------- typed slots: style values that follow state (markless-slots.ts)
+
+/** One number of a slot's piece: c + k·s by its rule; a piece's pieces are below zero, zero and up, and not finite (c alone). */
+type SlotRule = { readonly rule: string; readonly c: number; readonly k: number };
+type SlotLeaf = { readonly path: readonly JsonValue[]; readonly value: SlotRule };
+type SlotPiece = { readonly refused: boolean; readonly template: JsonValue; readonly leaves: readonly SlotLeaf[] };
+/** An engine-input style field of a box that follows a slot: the field's whole value per piece. */
+type SlotField = { readonly slot: number; readonly node: string; readonly key: string; readonly pieces: readonly SlotPiece[] };
+/** A number inside one of a node's writes (by its index in the node's writes) that follows a slot. */
+type SlotWrite = { readonly slot: number; readonly node: string; readonly write: string; readonly path: readonly JsonValue[]; readonly pieces: readonly SlotRule[] };
+/** A piece no sample of which compiles: a value there stops the layout with the reason. */
+type SlotRefusal = { readonly slot: number; readonly piece: number; readonly reason: string };
+/** A slot as the input declares it: its id and whether the app writes whole numbers only, the only values the build sampled it at. */
+type PlanSlot = { readonly id: string; readonly integer: boolean };
+
+function slotRule(v: JsonValue, path: string): SlotRule {
+  const a = arr(v, path);
+  if (a.length !== 3) fail(`${path}: expected [rule, c, k]`);
+  const rule = str(a[0] as JsonValue, `${path}[0]`);
+  if (rule !== 'line' && rule !== 'line32' && rule !== 'channel') fail(`${path}[0]: ${rule} is not a slot rule`);
+  return { rule, c: num(a[1] as JsonValue, `${path}[1]`), k: num(a[2] as JsonValue, `${path}[2]`) };
+}
+
+function slotPath(v: JsonValue, path: string): JsonValue[] {
+  const out: JsonValue[] = [];
+  arr(v, path).forEach((p, i) => {
+    if (p.kind !== 'str' && !(p.kind === 'num' && Number.isInteger(p.num) && p.num >= 0)) fail(`${path}[${i}]: expected a key or an index`);
+    out.push(p);
+  });
+  return out;
+}
+
+function slotIndex(v: JsonValue, count: number, path: string): number {
+  const n = num(v, path);
+  if (!Number.isInteger(n) || n < 0 || n >= count) fail(`${path}: ${n} is not a slot of the plan`);
+  return n;
+}
+
+function planSlots(plan: JsonObj): PlanSlot[] {
+  const out: PlanSlot[] = [];
+  if (!plan.values.has('slots')) return out;
+  arr(field(plan, 'slots', '$.plan'), '$.plan.slots').forEach((v, i) => {
+    const at = `$.plan.slots[${i}]`;
+    const a = arr(v, at);
+    if (a.length !== 2) fail(`${at}: expected [id, type]`);
+    out.push({ id: str(a[0] as JsonValue, `${at}[0]`), integer: lit(a[1] as JsonValue, ['number', 'integer'], `${at}[1]`) === 'integer' });
+  });
+  if (out.length === 0) fail('$.plan.slots: a plan with slots names at least one');
+  return out;
+}
+
+/** The line's slot values, one per slot of the plan; a fraction for an integer slot, which the build sampled at whole numbers only, is refused. */
+function slotValues(o: JsonObj, slots: readonly PlanSlot[]): number[] {
+  const values: number[] = [];
+  if (!o.values.has('slots')) {
+    if (slots.length > 0) fail('$: the plan has slots and the line gives no values for them');
+    return values;
+  }
+  const given = arr(field(o, 'slots', '$'), '$.slots');
+  if (given.length !== slots.length) fail(`$.slots: the line gives ${given.length} values and the plan has ${slots.length} slots`);
+  given.forEach((v, i) => {
+    const s = hexBits(str(v, `$.slots[${i}]`));
+    const slot = slots[i] as PlanSlot;
+    if (slot.integer && Number.isFinite(s) && !Number.isInteger(s)) fail(`$.slots: ${slot.id} at ${s} is not a whole number, and it is declared integer (the build sampled it at whole numbers only)`);
+    values.push(s);
+  });
+  return values;
+}
+
+function slotFields(v: JsonValue, count: number, path: string): SlotField[] {
+  const out: SlotField[] = [];
+  arr(v, path).forEach((f, i) => {
+    const at = `${path}[${i}]`;
+    const a = arr(f, at);
+    if (a.length !== 4) fail(`${at}: expected [slot, node, key, pieces]`);
+    const pieces: SlotPiece[] = [];
+    const ps = arr(a[3] as JsonValue, `${at}[3]`);
+    if (ps.length !== 3) fail(`${at}[3]: expected 3 pieces`);
+    ps.forEach((p, j) => {
+      if (p.kind === 'null') {
+        pieces.push({ refused: true, template: p, leaves: [] });
+        return;
+      }
+      const pa = arr(p, `${at}[3][${j}]`);
+      if (pa.length !== 2) fail(`${at}[3][${j}]: expected [template, leaves]`);
+      const leaves: SlotLeaf[] = [];
+      arr(pa[1] as JsonValue, `${at}[3][${j}][1]`).forEach((l, m) => {
+        const lp = `${at}[3][${j}][1][${m}]`;
+        const la = arr(l, lp);
+        if (la.length !== 2) fail(`${lp}: expected [path, rule]`);
+        const leaf: SlotLeaf = { path: slotPath(la[0] as JsonValue, `${lp}[0]`), value: slotRule(la[1] as JsonValue, `${lp}[1]`) };
+        if (j === 2 && leaf.value.k !== 0) fail(`${lp}: a value that is not finite gives a fixed number`);
+        if (jsonAt(pa[0] as JsonValue, leaf.path, lp).kind !== 'num') fail(`${lp}: the template holds no number there`);
+        leaves.push(leaf);
+      });
+      pieces.push({ refused: false, template: pa[0] as JsonValue, leaves });
+    });
+    out.push({ slot: slotIndex(a[0] as JsonValue, count, `${at}[0]`), node: str(a[1] as JsonValue, `${at}[1]`), key: str(a[2] as JsonValue, `${at}[2]`), pieces });
+  });
+  return out;
+}
+
+function slotWrites(v: JsonValue, count: number, path: string): SlotWrite[] {
+  const out: SlotWrite[] = [];
+  arr(v, path).forEach((w, i) => {
+    const at = `${path}[${i}]`;
+    const a = arr(w, at);
+    if (a.length !== 5) fail(`${at}: expected [slot, node, write, path, pieces]`);
+    const write = str(a[2] as JsonValue, `${at}[2]`);
+    const pieces: SlotRule[] = [];
+    const ps = arr(a[4] as JsonValue, `${at}[4]`);
+    if (ps.length !== 3) fail(`${at}[4]: expected 3 pieces`);
+    ps.forEach((p, j) => {
+      if (p.kind === 'null') {
+        pieces.push({ rule: 'refused', c: 0, k: 0 });
+        return;
+      }
+      const r = slotRule(p, `${at}[4][${j}]`);
+      if (j === 2 && r.k !== 0) fail(`${at}[4][${j}]: a value that is not finite gives a fixed number`);
+      pieces.push(r);
+    });
+    out.push({ slot: slotIndex(a[0] as JsonValue, count, `${at}[0]`), node: str(a[1] as JsonValue, `${at}[1]`), write, path: slotPath(a[3] as JsonValue, `${at}[3]`), pieces });
+  });
+  return out;
+}
+
+function slotRefusals(v: JsonValue, count: number, path: string): SlotRefusal[] {
+  const out: SlotRefusal[] = [];
+  arr(v, path).forEach((r, i) => {
+    const at = `${path}[${i}]`;
+    const a = arr(r, at);
+    if (a.length !== 3) fail(`${at}: expected [slot, piece, reason]`);
+    const piece = num(a[1] as JsonValue, `${at}[1]`);
+    if (piece !== 0 && piece !== 1 && piece !== 2) fail(`${at}[1]: ${piece} is not a piece`);
+    out.push({ slot: slotIndex(a[0] as JsonValue, count, `${at}[0]`), piece, reason: str(a[2] as JsonValue, `${at}[2]`) });
+  });
+  return out;
+}
+
+function refusedPiece(refusals: readonly SlotRefusal[], slot: number, piece: number): never {
+  for (const r of refusals) if (r.slot === slot && r.piece === piece) return fail(`$.slots: ${r.reason}`);
+  return fail(`$.slots: slot ${slot} has no rule for its value`);
+}
+
+function jsonAt(v: JsonValue, path: readonly JsonValue[], at: string): JsonValue {
+  let cur = v;
+  for (const p of path) {
+    if (p.kind === 'str' && cur.kind === 'obj') cur = field(cur, p.text, at);
+    else if (p.kind === 'num' && cur.kind === 'arr' && p.num < cur.items.length) cur = cur.items[p.num] as JsonValue;
+    else return fail(`${at}: the template has no such part`);
+  }
+  return cur;
+}
+
+function jsonWith(v: JsonValue, path: readonly JsonValue[], from: number, value: JsonValue): JsonValue {
+  if (from === path.length) return value;
+  const p = path[from] as JsonValue;
+  if (p.kind === 'str' && v.kind === 'obj') {
+    const values = new Map<string, JsonValue>();
+    for (const k of v.keys) values.set(k, k === p.text ? jsonWith(v.values.get(k) as JsonValue, path, from + 1, value) : (v.values.get(k) as JsonValue));
+    return { kind: 'obj', keys: v.keys, values };
+  }
+  if (p.kind === 'num' && v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    v.items.forEach((x, i) => {
+      items.push(i === p.num ? jsonWith(x, path, from + 1, value) : x);
+    });
+    return { kind: 'arr', items };
+  }
+  return fail('a slot path leaves its template');
+}
+
+/** Chrome's 8-bit channel of an rgb() number: clamped, rounded half up (Blink lround over [0, 255]), as css/color.ts round8. */
+function channel8(v: number): number {
+  const r = Math.round(v < 0 ? 0 : v > 255 ? 255 : v);
+  return r > 255 ? 255 : r;
+}
+
+function slotValue(r: SlotRule, piece: number, s: number): number {
+  const v = piece === 2 ? r.c : r.c + r.k * s;
+  if (r.rule === 'line32') return froundOf(v);
+  if (r.rule === 'channel') return channel8(v);
+  return v;
+}
+
+function slotPiece(s: number): number {
+  if (!Number.isFinite(s)) return 2;
+  return s < 0 ? 0 : 1;
+}
+
+function slotAt(values: readonly number[], slot: number, path: string): number {
+  if (slot >= values.length) return fail(`${path}: the line gives no value for slot ${slot}`);
+  return values[slot] as number;
+}
+
+/** The box `node` of an engine-input tree with its style field `key` set to `value`. */
+function withStyleField(v: JsonValue, node: string, key: string, value: JsonValue): JsonValue {
+  if (v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    for (const x of v.items) items.push(withStyleField(x, node, key, value));
+    return { kind: 'arr', items };
+  }
+  if (v.kind !== 'obj') return v;
+  const id = v.values.get('id');
+  const style = v.values.get('style');
+  const values = new Map<string, JsonValue>();
+  for (const k of v.keys) {
+    const x = v.values.get(k) as JsonValue;
+    if (k === 'style' && id !== undefined && id.kind === 'str' && id.text === node && style !== undefined && style.kind === 'obj') values.set(k, jsonWith(x, [{ kind: 'str', text: key }], 0, value));
+    else values.set(k, withStyleField(x, node, key, value));
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: readonly SlotRefusal[], values: readonly number[], path: string): JsonValue {
+  let out = root;
+  for (const f of fields) {
+    const s = slotAt(values, f.slot, path);
+    const piece = f.pieces[slotPiece(s)] as SlotPiece;
+    if (piece.refused) refusedPiece(refusals, f.slot, slotPiece(s));
+    let patched = piece.template;
+    for (const l of piece.leaves) {
+      patched = jsonWith(patched, l.path, 0, { kind: 'num', num: slotValue(l.value, slotPiece(s), s) });
+    }
+    out = withStyleField(out, f.node, f.key, patched);
+  }
+  return out;
+}
+
+function planObj(v: JsonValue): JsonObj {
+  const slotted = v.kind === 'obj' && v.values.has('slots');
+  const plan = obj(v, slotted ? ['version', 'faces', 'densities', 'variants', 'assignments', 'slots'] : ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
+  if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
+  return plan;
+}
+
+function planFaces(plan: JsonObj): Map<string, FontData> {
+  const faces = new Map<string, FontData>();
+  arr(field(plan, 'faces', '$.plan'), '$.plan.faces').forEach((f, i) => {
+    const at = `$.plan.faces[${i}]`;
+    const fo = obj(f, ['id', 'data'], at);
+    faces.set(str(field(fo, 'id', at), `${at}.id`), fontData(field(fo, 'data', at), `${at}.data`));
+  });
+  return faces;
+}
+
+function planVariant(plan: JsonObj, vi: number): PlanVariant {
+  return slottedVariant(plan, vi, [], [], []);
+}
+
+/** A variant with every slot field written in at its slot's value. */
+function slottedVariant(plan: JsonObj, vi: number, fields: readonly SlotField[], refusals: readonly SlotRefusal[], values: readonly number[]): PlanVariant {
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  if (!Number.isInteger(vi) || vi < 0 || vi >= variants.length) fail(`$.plan.variants: ${vi} is not a variant`);
+  const at = `$.plan.variants[${vi}]`;
+  const vo = obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], at);
+  const rootValue = slottedRoot(field(vo, 'root', at), fields, refusals, values, '$.slots');
+  if (rootValue.kind !== 'obj' || kindOf(rootValue, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
+  return { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(rootValue, `${at}.root`) };
+}
+
+function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
+  const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
+  if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`$.assignment: ${k} is not an assignment of the plan`);
+  const path = `$.plan.assignments[${k}]`;
+  const count = planSlots(plan).length;
+  const slotted = (assignments[k] as JsonValue).kind === 'obj' && (assignments[k] as JsonObj).values.has('slotFields');
+  if (slotted !== count > 0) fail(`${path}: ${count > 0 ? 'the plan has slots and the assignment binds none' : 'the assignment binds slots the plan does not have'}`);
+  const ao = obj(assignments[k] as JsonValue, slotted ? ['variant', 'dashed', 'scroll', 'slotFields', 'slotWrites', 'slotRefusals'] : ['variant', 'dashed', 'scroll'], path);
+  const variant = numField(ao, 'variant', path);
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  if (!Number.isInteger(variant) || variant < 0 || variant >= variants.length) fail(`${path}.variant: ${variant} is not a variant`);
+  const dashed = new Map<string, PlanDashed>();
+  arr(field(ao, 'dashed', path), `${path}.dashed`).forEach((d, i) => {
+    const at = `${path}.dashed[${i}]`;
+    const a = arr(d, at);
+    if (a.length !== 3) fail(`${at}: expected 3 fields`);
+    const styles: string[] = [];
+    for (const s of arr(a[1] as JsonValue, `${at}[1]`)) styles.push(str(s, `${at}[1]`));
+    dashed.set(str(a[0] as JsonValue, `${at}[0]`), { id: str(a[0] as JsonValue, `${at}[0]`), styles, colors: numbers(a[2] as JsonValue, `${at}[2]`) });
+  });
+  const scrollers = new Map<string, boolean>();
+  for (const s of arr(field(ao, 'scroll', path), `${path}.scroll`)) scrollers.set(str(s, `${path}.scroll`), true);
+  const fields = slotted ? slotFields(field(ao, 'slotFields', path), count, `${path}.slotFields`) : [];
+  const writes = slotted ? slotWrites(field(ao, 'slotWrites', path), count, `${path}.slotWrites`) : [];
+  const refusals = slotted ? slotRefusals(field(ao, 'slotRefusals', path), count, `${path}.slotRefusals`) : [];
+  return { variant, dashed, scrollers, fields, writes, refusals };
+}
+
+/**
+ * Every part of a Markless plan read as runMarklessLayout reads it on the device: ["ok"], or ["harness-error", detail] naming the
+ * first part the device could not read. The build runs it on every plan it writes.
+ */
+export function checkMarklessPlan(line: string): string {
+  try {
+    const plan = planObj(parseJson(line));
+    planFaces(plan);
+    arr(field(plan, 'densities', '$.plan'), '$.plan.densities').forEach((d, i) => {
+      planDensity(d, `$.plan.densities[${i}]`);
+    });
+    const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+    for (let vi = 0; vi < variants.length; vi++) planVariant(plan, vi);
+    const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
+    for (let k = 0; k < assignments.length; k++) planAssignment(plan, k);
+    return '["ok"]';
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/**
+ * One Markless layout: {"assignment", "dpr", "viewport": {width, height}, "safeArea": {top, right, bottom, left}, "plan"}. The
+ * result is ["ok", pageScroll, nodes] with every number as its bit pattern: pageScroll [minX, maxX, minY, maxY] or ["undecided",
+ * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
+ * left] or null, lines or null, borderOps or null, scrollRange or null].
+ */
+export function runMarklessLayout(line: string): string {
+  try {
+    const parsed = parseJson(line);
+    const withSlots = parsed.kind === 'obj' && parsed.values.has('slots');
+    return marklessLayout(obj(parsed, withSlots ? ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'slots'] : ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'], '$'), null);
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/**
+ * One Markless layout with the rows of its lists: as runMarklessLayout, with "rows": per list {"parent", "template": the ids of a
+ * row's top boxes, in order, "rows": [{"key", "assignment" (whose variant the row's boxes are taken from), "texts": [[leaf id,
+ * text]]}]}. Each row is a copy of the template named "<id>@<key>"; `shaper` shapes the text the build did not record.
+ */
+export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
+  try {
+    return marklessLayout(obj(parseJson(line), ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'], '$'), shaper);
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/** Whether `c` is white space to phase I (css-text-3 §4.1.1). */
+function isPhaseOneSpace(c: string): boolean {
+  return c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
+}
+
+/**
+ * A row's text as the build's phase I (resolve.ts) leaves it in a leaf of `mode`, '' when the build drops the leaf. In a collapsing
+ * leaf each run of white space inside the text is one space; the white space at its edges is removed when the leaf is `alone` in its
+ * box (collapseInlineContext over that one text), and refused beside other inline content, where the result depends on it.
+ */
+function rowText(text: string, mode: string, at: string, alone: boolean): string {
+  if (mode === 'preserve-breaks') return fail(`${at}: the leaf is white-space-collapse: preserve-breaks (white-space: pre-line), whose white space a phone does not process as the build does`);
+  if (mode !== 'collapse') return text;
+  let out = '';
+  let space = false;
+  let segmentBreak = false;
+  let before = '';
+  for (const c of text) {
+    if (isPhaseOneSpace(c)) {
+      if (out === '' && !alone) fail(`${at}: a row's text that begins with white space beside other inline content is not supported`);
+      if (out === '') continue;
+      space = true;
+      if (c === '\n' || c === '\r') segmentBreak = true;
+      continue;
+    }
+    if (space) {
+      if (segmentBreak && (before === '\u200b' || c === '\u200b')) fail(`${at}: a segment break beside U+200B in a row's text is not supported`);
+      out += ' ';
+    }
+    out += c;
+    before = c;
+    space = false;
+    segmentBreak = false;
+  }
+  if ((out === '' || space) && !alone) fail(`${at}: a row's text that is empty or ends with white space beside other inline content is not supported`);
+  return out;
+}
+
+/** The box with id `id` in a variant's JSON tree, or null. */
+function boxJson(v: JsonValue, id: string): JsonObj | null {
+  if (v.kind === 'arr') {
+    for (const item of v.items) {
+      const found = boxJson(item, id);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  if (v.kind !== 'obj') return null;
+  const own = v.values.get('id');
+  if (own !== undefined && own.kind === 'str' && own.text === id) return v;
+  for (const k of v.keys) {
+    const found = boxJson(v.values.get(k) as JsonValue, id);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+/** What the row copies take from their rows' assignments (each copy's dashed borders and scrolling), and the lists placed. */
+type RowSink = { readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly placed: Map<string, boolean> };
+
+/** Whether `v` is a text leaf whose text is empty. */
+function emptyLeaf(v: JsonValue): boolean {
+  if (v.kind !== 'obj') return false;
+  const kind = v.values.get('kind');
+  const text = v.values.get('text');
+  return kind !== undefined && kind.kind === 'str' && kind.text === 'text' && text !== undefined && text.kind === 'str' && text.text === '';
+}
+
+/**
+ * A copy of a row's box JSON for `row`: every id suffixed "@<key>", each text leaf named in its texts holding the row's text (and
+ * dropped when that is empty, as the build drops it), and each box's dashed borders and scrolling those of the row's own
+ * assignment; `used` gathers the text leaves it filled; `alone`: `v` is the children of a box that holds one leaf and nothing else.
+ */
+function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, boolean>, alone: boolean): JsonValue {
+  if (v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    for (const item of v.items) {
+      const copy = rowCopy(item, row, sink, used, alone);
+      if (!emptyLeaf(copy)) items.push(copy);
+    }
+    return { kind: 'arr', items };
+  }
+  if (v.kind !== 'obj') return v;
+  const id = v.values.get('id');
+  const kind = v.values.get('kind');
+  const values = new Map<string, JsonValue>();
+  for (const k of v.keys) {
+    const value = v.values.get(k) as JsonValue;
+    if (k === 'id' && value.kind === 'str') {
+      const copy = `${value.text}@${row.key}`;
+      values.set(k, { kind: 'str', text: copy });
+      const d = row.parts.dashed.get(value.text);
+      if (d !== undefined) sink.dashed.set(copy, d);
+      if (row.parts.scrollers.has(value.text)) sink.scrollers.set(copy, true);
+    } else if (k === 'text' && kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str' && row.texts.has(id.text)) {
+      const mode = v.values.get('whiteSpaceCollapse');
+      used.set(id.text, true);
+      values.set(k, { kind: 'str', text: rowText(row.texts.get(id.text) as string, mode !== undefined && mode.kind === 'str' ? mode.text : '', `${row.at}.texts: ${id.text}`, alone) });
+    } else values.set(k, rowCopy(value, row, sink, used, k === 'children' && kind !== undefined && kind.kind === 'str' && kind.text === 'box' && value.kind === 'arr' && value.items.length === 1));
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+type RowEntry = { readonly key: string; readonly at: string; readonly parts: PlanAssignmentParts; readonly variant: JsonValue; readonly texts: Map<string, string>; readonly leaves: readonly string[] };
+type RowList = { readonly parent: string; readonly template: readonly string[]; readonly rows: readonly RowEntry[] };
+
+/** The variant's tree with each list's template children replaced by one copy per row, in row order. */
+function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSink): JsonValue {
+  if (v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    for (const item of v.items) items.push(withRows(item, lists, sink));
+    return { kind: 'arr', items };
+  }
+  if (v.kind !== 'obj') return v;
+  const id = v.values.get('id');
+  let list: RowList | null = null;
+  if (id !== undefined && id.kind === 'str') {
+    const l = lists.get(id.text);
+    if (l !== undefined) list = l;
+  }
+  const values = new Map<string, JsonValue>();
+  for (const k of v.keys) {
+    const value = v.values.get(k) as JsonValue;
+    if (k !== 'children' || list === null || value.kind !== 'arr') {
+      values.set(k, withRows(value, lists, sink));
+      continue;
+    }
+    const items: JsonValue[] = [];
+    let at = 0;
+    let placed = false;
+    while (at < value.items.length) {
+      const child = value.items[at] as JsonValue;
+      const cid = child.kind === 'obj' ? child.values.get('id') : undefined;
+      if (cid !== undefined && cid.kind === 'str' && cid.text === (list.template[0] as string)) {
+        for (let t = 0; t < list.template.length; t++) {
+          const next = value.items[at + t];
+          const nid = next !== undefined && next.kind === 'obj' ? next.values.get('id') : undefined;
+          if (nid === undefined || nid.kind !== 'str' || nid.text !== (list.template[t] as string)) fail(`$.rows: the template of ${list.parent} is not its children in order`);
+        }
+        for (const row of list.rows) {
+          const used = new Map<string, boolean>();
+          for (const tid of list.template) {
+            const source = boxJson(row.variant, tid);
+            if (source === null) return fail(`$.rows: the variant of row ${row.key} has no box ${tid}`);
+            items.push(rowCopy(source, row, sink, used, false));
+          }
+          for (const leaf of row.leaves) if (!used.has(leaf)) fail(`${row.at}.texts: ${leaf} is no text leaf of the row's template`);
+        }
+        at += list.template.length;
+        placed = true;
+      } else {
+        items.push(withRows(child, lists, sink));
+        at += 1;
+      }
+    }
+    if (!placed) fail(`$.rows: ${list.parent} has no child ${list.template[0] as string}`);
+    sink.placed.set(list.parent, true);
+    values.set(k, { kind: 'arr', items });
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+/** The JSON of a plan variant's root. */
+function variantRootJson(plan: JsonObj, vi: number): JsonValue {
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  if (!Number.isInteger(vi) || vi < 0 || vi >= variants.length) fail(`$.plan.variants: ${vi} is not a variant`);
+  return field(obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], `$.plan.variants[${vi}]`), 'root', `$.plan.variants[${vi}]`);
+}
+
+function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
+    const plan = planObj(field(o, 'plan', '$'));
+    const values = slotValues(o, planSlots(plan));
+    const dpr = numField(o, 'dpr', '$');
+    const faces = planFaces(plan);
+    let density: PlanDensity | null = null;
+    arr(field(plan, 'densities', '$.plan'), '$.plan.densities').forEach((d, i) => {
+      const at = `$.plan.densities[${i}]`;
+      if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+    });
+    if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
+    const measurer = planMeasurer(faces, density, live);
+    const parts = planAssignment(plan, numField(o, 'assignment', '$'));
+    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'));
+    const variant = spliced === null ? slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values) : spliced.variant;
+    const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
+    const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
+    const input: LayoutInput = {
+      viewport,
+      devicePixelRatio: dpr,
+      viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
+      safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
+      rootFontSize: variant.rootFontSize,
+      root: variant.root,
+    };
+    const dashed = spliced === null ? parts.dashed : spliced.dashed;
+    const scrollers = spliced === null ? parts.scrollers : spliced.scrollers;
+
+    const r = layout(input, measurer);
+    if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
+    const boxes = r.boxes;
+    const abs = absoluteRects(boxes);
+    const styles = new Map<string, LayoutStyle>();
+    planStyles(input.root, styles);
+    const texts = new Map<string, string>();
+    planTexts(input.root, texts);
+    const deviceBorders = new Map<string, readonly number[]>();
+    const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+    planDeviceBorders(zoomed.root, zoomed.devicePixelRatio, deviceBorders);
+    const lines = new Map<string, string>();
+    for (const t of planTextLines(input, measurer, boxes)) {
+      const text = texts.get(t.id);
+      const at = abs.get(t.id);
+      if (text !== undefined && at !== undefined) lines.set(t.id, planLines(t, text, at, measurer));
+    }
+    const ranges = scrollRanges(input, measurer);
+    if (ranges.kind === 'refused') return fail(`the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
+    const rangeOf = new Map<string, ScrollRange>();
+    for (const sr of ranges.ranges) rangeOf.set(sr.id, sr);
+    for (const sr of ranges.refused) if (scrollers.has(sr.id)) fail(`no scroll range for ${sr.id} (at ${sr.nodeId}: ${sr.detail})`);
+    const body = input.root.children.find((c) => c.kind === 'box' && c.id === 'body');
+    const direction = body !== undefined && body.kind === 'box' ? body.style.direction : input.root.style.direction;
+    const metrics = scrollMetricsWithFaults(input, measurer, direction, NO_ENGINE_FAULTS);
+    let page = '';
+    if (metrics.kind === 'refused') page = `["undecided",${q(metrics.nodeId)},${q(metrics.detail)}]`;
+    else {
+      const v = metrics.viewport;
+      const ox = Math.floor((v.paddingX - v.scrollRect.x) / LU_PER_PX);
+      const oy = Math.floor((v.paddingY - v.scrollRect.y) / LU_PER_PX);
+      page = `[${h(0 - ox)},${h(snapEdge(v.scrollRect.width) - snapEdge(v.clientWidth) - ox)},${h(0 - oy)},${h(snapEdge(v.scrollRect.height) - snapEdge(v.clientHeight) - oy)}]`;
+    }
+    let out = `["ok",${page},[`;
+    let first = true;
+    for (const b of boxes) {
+      if (isLineRect(b)) continue;
+      if (!first) out += ',';
+      first = false;
+      const s = styles.get(b.id);
+      const ownLines = lines.get(b.id);
+      const d = dashed.get(b.id);
+      const rect = abs.get(b.id) as LayoutRect;
+      const dev = deviceBorders.get(b.id);
+      const ops = d === undefined || dev === undefined ? '' : planDashed(d, rect, dev);
+      const range = rangeOf.get(b.id);
+      out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
+    }
+    if (!o.values.has('slots')) return `${out}]]`;
+    out += '],[';
+    parts.writes.forEach((w, i) => {
+      const s = slotAt(values, w.slot, '$.slots');
+      let path = '';
+      w.path.forEach((p, j) => {
+        path += `${j === 0 ? '' : ','}${p.kind === 'str' ? q(p.text) : p.kind === 'num' ? `${p.num}` : 'null'}`;
+      });
+      const rule = w.pieces[slotPiece(s)] as SlotRule;
+      if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s));
+      out += `${i === 0 ? '' : ','}[${q(w.node)},${q(w.write)},[${path}],${h(slotValue(rule, slotPiece(s), s))}]`;
+    });
+    return `${out}]]`;
+}
+
+/** Whether `s` holds the character `c`. */
+function holds(s: string, c: string): boolean {
+  for (const ch of s) if (ch === c) return true;
+  return false;
+}
+
+type RowsVariant = { readonly variant: PlanVariant; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean> };
+
+/** The page variant with each list's rows in place of its template ($.rows), with the page's and each row copy's dashed borders and scrolling. */
+function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue): RowsVariant {
+  const vi = parts.variant;
+  const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
+  const lists = new Map<string, RowList>();
+  const parents: string[] = [];
+  const given = arr(rowsValue, '$.rows');
+  for (let li = 0; li < given.length; li++) {
+    const at = `$.rows[${li}]`;
+    const lo = obj(given[li] as JsonValue, ['parent', 'template', 'rows'], at);
+    const template: string[] = [];
+    const ids = arr(field(lo, 'template', at), `${at}.template`);
+    for (let ti = 0; ti < ids.length; ti++) template.push(str(ids[ti] as JsonValue, `${at}.template[${ti}]`));
+    if (template.length === 0) fail(`${at}.template: a row has at least one box`);
+    const rows: RowEntry[] = [];
+    const keys = new Map<string, boolean>();
+    const entries = arr(field(lo, 'rows', at), `${at}.rows`);
+    for (let ri = 0; ri < entries.length; ri++) {
+      const rat = `${at}.rows[${ri}]`;
+      const ro = obj(entries[ri] as JsonValue, ['key', 'assignment', 'texts'], rat);
+      const k = numField(ro, 'assignment', rat);
+      if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`${rat}.assignment: ${k} is not an assignment`);
+      const texts = new Map<string, string>();
+      const leaves: string[] = [];
+      const pairs = arr(field(ro, 'texts', rat), `${rat}.texts`);
+      for (let pi = 0; pi < pairs.length; pi++) {
+        const p = arr(pairs[pi] as JsonValue, `${rat}.texts[${pi}]`);
+        if (p.length !== 2) fail(`${rat}.texts[${pi}]: expected [leaf id, text]`);
+        const leaf = str(p[0] as JsonValue, `${rat}.texts[${pi}][0]`);
+        if (texts.has(leaf)) fail(`${rat}.texts[${pi}]: ${leaf} is given twice`);
+        texts.set(leaf, str(p[1] as JsonValue, `${rat}.texts[${pi}][1]`));
+        leaves.push(leaf);
+      }
+      const key = str(field(ro, 'key', rat), `${rat}.key`);
+      if (holds(key, '@')) fail(`${rat}.key: a row key holds no @`);
+      if (keys.has(key)) fail(`${rat}.key: row key ${key} is listed twice`);
+      keys.set(key, true);
+      const own = planAssignment(plan, k);
+      rows.push({ key, at: rat, parts: own, variant: variantRootJson(plan, own.variant), texts, leaves });
+    }
+    const parent = str(field(lo, 'parent', at), `${at}.parent`);
+    if (lists.has(parent)) fail(`${at}.parent: ${parent} holds two lists, which is not supported`);
+    lists.set(parent, { parent, template, rows });
+    parents.push(parent);
+  }
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  const at = `$.plan.variants[${vi}]`;
+  const vo = obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], at);
+  const sink: RowSink = { dashed: new Map<string, PlanDashed>(), scrollers: new Map<string, boolean>(), placed: new Map<string, boolean>() };
+  for (const [id, d] of parts.dashed) sink.dashed.set(id, d);
+  for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
+  const root = withRows(variantRootJson(plan, vi), lists, sink);
+  for (const parent of parents) if (!sink.placed.has(parent) && (lists.get(parent) as RowList).rows.length > 0) fail(`$.rows: the page has no box ${parent} to hold its list's rows`);
+  if (root.kind !== 'obj' || kindOf(root, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
+  return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers };
 }

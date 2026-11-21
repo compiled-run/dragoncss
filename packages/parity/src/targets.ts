@@ -59,7 +59,7 @@ export type TargetConfig = {
 };
 
 type P1Manifest = { readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly mutatedVectors: number; readonly generatedTrees: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
-type ExtendedManifest = { readonly dprSets: readonly number[]; readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly calcUnitsPerFunction: number; readonly calcUnitsFunctions: readonly string[]; readonly engineCalc: number; readonly engineInline: number; readonly engineOverflow: number; readonly snapGenerated: number; readonly snapVectors: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
+type ExtendedManifest = { readonly dprSets: readonly number[]; readonly unitsPerFunction: number; readonly unitsFunctions: readonly string[]; readonly calcUnitsPerFunction: number; readonly calcUnitsFunctions: readonly string[]; readonly engineCalc: number; readonly engineInline: number; readonly engineOverflow: number; readonly engineWrapStyle: number; readonly snapGenerated: number; readonly snapVectors: number; readonly cases: Readonly<Record<string, number>>; readonly digest: string };
 
 const readJson = <T>(path: string): T => JSON.parse(readFileSync(repoPath(path), 'utf8')) as T;
 export const p1Manifest = (): P1Manifest => readJson<P1Manifest>('packages/translate/corpus.json');
@@ -153,6 +153,8 @@ export function corpusSuites(): readonly CorpusSuite[] {
     { corpus: 'extended', suite: 'engine-overflow', cases: x.engineOverflow },
     // TXT1a-2: every shaped case's vector with its shape transcript, at DPR 1 and every DPR set (corpus-dpr.ts textLatinVectorCases).
     { corpus: 'extended', suite: 'text-latin', cases: shapedCaseIds().size * (1 + x.dprSets.length) },
+    // TXT-TW: generated text-wrap-style trees (corpus-dpr.ts engineWrapStyleCases).
+    { corpus: 'extended', suite: 'engine-wrap-style', cases: x.engineWrapStyle },
   ];
 }
 

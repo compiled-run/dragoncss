@@ -101,6 +101,9 @@ jobs:
           tar xf "$RUNNER_TEMP/$zig.tar.xz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/$zig" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/$zig/zig" version
+      # The image's default Xcode moves (27.1 by 2026-10-26); the Mac's 27.0 stays installed beside it.
+      - name: Select Xcode 27.0 (27A266a)
+        run: bash scripts/select-xcode27.sh
       - name: The pinned iOS 26.5 (23F77) simulator runtime
         run: |
           have() { xcrun simctl list runtimes -j | jq -e '.runtimes[] | select(.buildversion == "23F77" and .isAvailable)' >/dev/null; }

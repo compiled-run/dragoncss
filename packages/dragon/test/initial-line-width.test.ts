@@ -86,12 +86,20 @@ describe('R5: initial line widths lower to device px', () => {
     expect(isInitialByProvenance({ value: { kind: 'keyword', value: 'medium' }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }, 'border-top-width')).toBe(false);
   });
 
+  // Batch 5 proves web's inline rows for initial and flex-row rows for inherit on both.
+  const EXPECTED_CONTEXTS: Record<string, readonly string[]> = {
+    'web initial': ['block/ltr', 'block/rtl', 'inline/ltr', 'inline/rtl'],
+    'web inherit': ['block/ltr', 'block/rtl', 'flex-row/ltr', 'flex-row/rtl'],
+    'ios initial': ['block/ltr', 'block/rtl', 'inline/ltr'],
+    'ios inherit': ['block/ltr', 'block/rtl', 'flex-row/ltr', 'flex-row/rtl'],
+  };
   it('latent finding (not widened here): border-top-width initial compiles since CASC proved it (casc-css-wide) and inherit since ctx-proof-inherit proved it, each backed by its profile rows', () => {
     for (const [kw, fixture] of [['initial', 'casc-css-wide'], ['inherit', 'ctx-proof-inherit']] as const) {
       for (const profile of [webProfile, iosProfile]) {
         const rows = profile.rows.filter((r) => r.feature === `border-top-width:${kw}`);
-        expect(rows.map((r) => r.context).sort(), `${profile.target} ${kw}`).toEqual(kw === 'initial' && profile.target !== 'web' ? ['block/ltr', 'block/rtl', 'inline/ltr', 'inline/rtl'] : ['block/ltr', 'block/rtl']);
-        // casc-all proves initial's inline rows on native; the block rows are the named fixture's.
+        expect(rows.map((r) => r.context).sort(), `${profile.target} ${kw}`).toEqual(EXPECTED_CONTEXTS[`${profile.target} ${kw}`]);
+        // casc-all proves initial's inline rows; the block rows are the named fixture's. Batch 5 holds casc-all-rtl back on native
+        // (display: unset computes to inline in inline/rtl, which nothing proves yet), so native lacks inline/rtl until batch 6 restores it.
         for (const r of rows.filter((x) => x.context.startsWith('block/'))) expect(r.proofs.flatMap((pr) => pr.cases), `${profile.target} ${kw} ${r.context}`).toContain(r.context.endsWith('/rtl') ? `${fixture}-rtl` : fixture);
       }
       const c = project().compile(inputFor(`.a { border-style: solid; border-top-width: ${kw}; }`, (r) => [div(r, 'a', ['a'])]));

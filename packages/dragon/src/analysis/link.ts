@@ -358,9 +358,17 @@ export function linkDocument(valid: ValidInput, options: LinkOptions, diagnostic
 
 const BLANK = /^[ \t\n\r\f]*$/;
 
-/** Text children are addressed "<element address>:text<k>", and whitespace-only text "<element address>:space<k>". */
-function numberTexts(parent: string, children: (LinkedElement | LinkedText)[]): (LinkedElement | LinkedText)[] {
+/** Whitespace-only text, which Dragon addresses as ":space<k>" and drops where it collapses away. */
+export const isWhitespaceText = (text: string): boolean => BLANK.test(text);
+
+/** Addresses an element's text children in order: "<element address>:text<k>", and whitespace-only text "<element address>:space<k>". */
+export function textAddresser(parent: string): (text: string) => string {
   let k = 0;
   let blank = 0;
-  return children.map((c) => (c.kind !== 'text' ? c : { ...c, address: BLANK.test(c.text) ? `${parent}:space${blank++}` : `${parent}:text${k++}` }));
+  return (text) => (isWhitespaceText(text) ? `${parent}:space${blank++}` : `${parent}:text${k++}`);
+}
+
+function numberTexts(parent: string, children: (LinkedElement | LinkedText)[]): (LinkedElement | LinkedText)[] {
+  const address = textAddresser(parent);
+  return children.map((c) => (c.kind !== 'text' ? c : { ...c, address: address(c.text) }));
 }

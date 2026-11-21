@@ -1,0 +1,20 @@
+{
+  "case": "fieldset-legend",
+  "dpr": 2,
+  "texts": [
+    {"id":"f1d:text0","lines":[[0,2]]},
+    {"id":"f2l:text0","lines":[[0,2]]},
+    {"id":"f2d:text0","lines":[[0,1]]},
+    {"id":"f3l:text0","lines":[[0,2]]},
+    {"id":"f3:text0","lines":[[0,3]]},
+    {"id":"f4l:text0","lines":[[0,1]]},
+    {"id":"f4d:text0","lines":[[0,1]]},
+    {"id":"f5l:text0","lines":[[0,1]]},
+    {"id":"f5m:text0","lines":[[0,2]]},
+    {"id":"f6l:text0","lines":[[0,1]]},
+    {"id":"f6d:text0","lines":[[0,1]]},
+    {"id":"f7l:text0","lines":[[0,1]]},
+    {"id":"f8l:text0","lines":[[0,15],[15,24]]},
+    {"id":"f9d:text0","lines":[[0,3]]}
+  ]
+}
