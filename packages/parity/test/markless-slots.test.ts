@@ -124,6 +124,13 @@ describe('typed slots of a Markless style input', () => {
     }, 180_000);
   }
 
+  it('compares the phones\' export with Chrome at the slots\' initial values, from the input with slots', async () => {
+    // With system fonts iOS measures Safari's faces, so Chrome is compared on Android only, as the comparison requires.
+    const r = await compareMarklessExport(input, marklessStyleExport(TEXT, PATH, undefined, 'system', undefined, true).exported, undefined, 'light', [], null, ['android']);
+    expect(r.rows.filter((row) => !row.pass)).toEqual([]);
+    expect(r.compared).toBe(13);
+  }, 180_000);
+
   it('stops by name on a value no rule covers', () => {
     const below = device('ios', 0, [25, 1, -5, 2, 200, 40]);
     expect(below[0]).toBe('harness-error');
