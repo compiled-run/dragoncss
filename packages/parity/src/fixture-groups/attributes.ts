@@ -16,6 +16,7 @@ export const ATTRIBUTES: readonly FixtureSpec[] = [
   both('attr-neutral-aria'),
   both('attr-neutral-role'),
   both('attr-neutral-title'),
+  both('attr-neutral-name'),
   both('attr-neutral-ui'),
   both('attr-neutral-rel'),
   both('attr-neutral-target'),

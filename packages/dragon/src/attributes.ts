@@ -21,6 +21,7 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
   { name: 'aria-', exceptOn: [], html: 'ARIA attributes (HTML §3.2.8) expose accessibility semantics; HTML §15 has no rule keyed on them.', proof: 'attr-neutral-aria' },
   { name: 'role', exceptOn: [], html: 'role (HTML §3.2.8) is accessibility semantics; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-role' },
   { name: 'title', exceptOn: [], html: 'title (HTML §3.2.6.1) is advisory information shown as a tooltip; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-title' },
+  { name: 'name', exceptOn: [], html: 'name (HTML §4.10.19.1 on form controls, §4.8.5 on iframe) names a control for form submission or a browsing context; HTML §15 has no rule or presentational hint keyed on it.', proof: 'attr-neutral-name' },
   { name: 'ui-', exceptOn: [], html: 'ui-* is Dragon\'s state-attribute convention; HTML defines no such attribute, so HTML §15 has no rule keyed on it.', proof: 'attr-neutral-ui' },
   { name: 'rel', exceptOn: ['a', 'area', 'link'], html: 'rel is defined only on a, area, link and form (HTML §4.6.6); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-rel' },
   { name: 'target', exceptOn: ['a', 'area', 'link'], html: 'target is defined only on a, area and form (HTML §4.6.5); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-target' },
