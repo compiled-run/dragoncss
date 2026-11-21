@@ -163,11 +163,11 @@ export function engineStyles(sp: StateProgram, i: number): { readonly styles: Ma
 
 /**
  * The bindings of every slot per target and assignment, from compiles of the input at the slots' initial values (`base`), at each
- * sample of one slot with the others at their initial values, and with every slot at a sample at once (`together`, the values
- * `togetherValues`), which must be what the slots' bindings give together. Refused by name: a slot that moves anything other than a
- * box's style fields and write numbers, a number that follows no rule, a field two slots move.
+ * sample of one slot with the others at their initial values, and with every slot at once at each sample of a piece (`together`; a
+ * slot whose piece is refused stays at its initial value), which must be what the slots' bindings give together. Refused by name: a
+ * slot that moves anything other than a box's style fields and write numbers, a number that follows no rule, a field two slots move.
  */
-export function slotBindings(slots: readonly MarklessSlot[], base: SlotSample, sample: (slot: number, s: number) => SlotSample | { readonly refused: string }, together: SlotSample, togetherValues: readonly number[]): { readonly [T in NativeStyleTarget]?: readonly SlotBindings[] } {
+export function slotBindings(slots: readonly MarklessSlot[], base: SlotSample, sample: (slot: number, s: number) => SlotSample | { readonly refused: string }, together: (values: readonly number[]) => SlotSample): { readonly [T in NativeStyleTarget]?: readonly SlotBindings[] } {
   const out: { [T in NativeStyleTarget]?: SlotBindings[] } = {};
   const compiled = slots.map((slot, k) => (slot.integer === true ? SLOT_SAMPLES.integer : SLOT_SAMPLES.number).map((piece) => piece.map((s) => [s, sample(k, s)] as const)));
   const refused: SlotRefusal[] = [];
@@ -181,6 +181,12 @@ export function slotBindings(slots: readonly MarklessSlot[], base: SlotSample, s
     }), null];
   });
   for (const [k, slot] of slots.entries()) if (samples[k]![slotPiece(slot.initial)] === null) fail(`${slot.id} does not compile at values like its initial one: ${refused.find(([j]) => j === k)?.[2] ?? ''}`);
+  const combos = new Map<string, readonly number[]>();
+  for (const p of [0, 1]) for (const j of SLOT_SAMPLES.number[p]!.keys()) {
+    const values = slots.map((slot, k) => samples[k]![p]?.[j]?.[0] ?? slot.initial);
+    combos.set(JSON.stringify(values), values);
+  }
+  const togethers = [...combos.values()].map((values) => [values, together(values)] as const);
   for (const t of Object.keys(base) as NativeStyleTarget[]) {
     const assignments = base[t] ?? [];
     out[t] = assignments.map((b, i): SlotBindings => {
@@ -251,9 +257,11 @@ export function slotBindings(slots: readonly MarklessSlot[], base: SlotSample, s
         }
       });
       const bindings = { fields, writes, refused };
-      const want = applySlots(b, bindings, togetherValues);
-      const got = together[t]?.[i];
-      if (got === undefined || JSON.stringify(want.styles) !== JSON.stringify(Object.fromEntries(got.styles)) || JSON.stringify(want.writes) !== JSON.stringify(Object.fromEntries(got.writes))) fail(`${t} assignment ${i}: the slots moved together at ${JSON.stringify(togetherValues)} do not give what each gives alone`);
+      for (const [values, x] of togethers) {
+        const want = applySlots(b, bindings, values);
+        const got = x[t]?.[i];
+        if (got === undefined || got.other !== b.other || JSON.stringify(want.styles) !== JSON.stringify(Object.fromEntries(got.styles)) || JSON.stringify(want.writes) !== JSON.stringify(Object.fromEntries(got.writes))) fail(`${t} assignment ${i}: the slots moved together at ${JSON.stringify(values)} do not give what each gives alone`);
+      }
       const atInitial = applySlots(b, bindings, slots.map((s) => s.initial));
       if (JSON.stringify(atInitial.styles) !== JSON.stringify(Object.fromEntries(b.styles)) || JSON.stringify(atInitial.writes) !== JSON.stringify(Object.fromEntries(b.writes))) fail(`${t} assignment ${i}: the bindings at the slots' initial values are not the export`);
       return bindings;

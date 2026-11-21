@@ -17,7 +17,7 @@ import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeSt
 import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
 import type { MarklessSlot, SlotSample, StyleTemplate } from './markless-slots.ts';
-import { checkSlots, engineStyles, filledStyle, SLOT_SAMPLES, slotBindings } from './markless-slots.ts';
+import { checkSlots, engineStyles, filledStyle, slotBindings } from './markless-slots.ts';
 import { systemFontsFor } from './system-fonts/provider.ts';
 
 export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
@@ -514,7 +514,6 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
   };
   const initial = slots.map((s) => s.initial);
   const base = sampleOf(initial);
-  const together = slots.map((s) => (s.integer === true ? SLOT_SAMPLES.integer : SLOT_SAMPLES.number)[1][3] as number);
   const tried = (values: readonly number[]): SlotSample | { readonly refused: string } => {
     try {
       return sampleOf(values);
@@ -528,12 +527,17 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     const got = tried(values);
     if (!('refused' in got)) compiled.push([values, got]);
     return got;
-  }, sampleOf(together), together);
+  }, (values) => {
+    const got = tried(values);
+    if ('refused' in got) return fail(`the slots together at ${JSON.stringify(values)} do not compile: ${got.refused}`);
+    compiled.push([values, got]);
+    return got;
+  });
   const targets = Object.fromEntries(Object.entries(done.exported.targets).map(([t, x]) => {
     const plan = x.plan;
     const per = bindings[t as NativeStyleTarget];
     if (plan === undefined || per === undefined) return fail(`${t}: no plan to carry the slots in`);
-    const slotted = { ...plan, assignments: plan.assignments.map((a, i) => ({ ...a, slotFields: per[i]?.fields ?? [], slotWrites: per[i]?.writes ?? [], slotRefusals: per[i]?.refused ?? [] })) };
+    const slotted = { ...plan, slots: slots.map((s) => [s.id, s.integer === true ? 'integer' : 'number'] as const), assignments: plan.assignments.map((a, i) => ({ ...a, slotFields: per[i]?.fields ?? [], slotWrites: per[i]?.writes ?? [], slotRefusals: per[i]?.refused ?? [] })) };
     const read = JSON.parse(checkPlan(JSON.stringify(slotted))) as readonly unknown[];
     if (read[0] !== 'ok') fail(`${t}: the device cannot read this page's slots: ${String(read[1] ?? read[0])}`);
     // At every sample the phone's function lays the page out as that sample's own compile does (text it shapes is text the plan recorded).

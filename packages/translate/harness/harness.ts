@@ -3502,6 +3502,8 @@ type SlotField = { readonly slot: number; readonly node: string; readonly key: s
 type SlotWrite = { readonly slot: number; readonly node: string; readonly write: string; readonly path: readonly JsonValue[]; readonly pieces: readonly SlotRule[] };
 /** A piece no sample of which compiles: a value there stops the layout with the reason. */
 type SlotRefusal = { readonly slot: number; readonly piece: number; readonly reason: string };
+/** A slot as the input declares it: its id and whether the app writes whole numbers only, the only values the build sampled it at. */
+type PlanSlot = { readonly id: string; readonly integer: boolean };
 
 function slotRule(v: JsonValue, path: string): SlotRule {
   const a = arr(v, path);
@@ -3520,13 +3522,44 @@ function slotPath(v: JsonValue, path: string): JsonValue[] {
   return out;
 }
 
-function slotIndex(v: JsonValue, path: string): number {
+function slotIndex(v: JsonValue, count: number, path: string): number {
   const n = num(v, path);
-  if (!Number.isInteger(n) || n < 0) fail(`${path}: ${n} is not a slot`);
+  if (!Number.isInteger(n) || n < 0 || n >= count) fail(`${path}: ${n} is not a slot of the plan`);
   return n;
 }
 
-function slotFields(v: JsonValue, path: string): SlotField[] {
+function planSlots(plan: JsonObj): PlanSlot[] {
+  const out: PlanSlot[] = [];
+  if (!plan.values.has('slots')) return out;
+  arr(field(plan, 'slots', '$.plan'), '$.plan.slots').forEach((v, i) => {
+    const at = `$.plan.slots[${i}]`;
+    const a = arr(v, at);
+    if (a.length !== 2) fail(`${at}: expected [id, type]`);
+    out.push({ id: str(a[0] as JsonValue, `${at}[0]`), integer: lit(a[1] as JsonValue, ['number', 'integer'], `${at}[1]`) === 'integer' });
+  });
+  if (out.length === 0) fail('$.plan.slots: a plan with slots names at least one');
+  return out;
+}
+
+/** The line's slot values, one per slot of the plan; a fraction for an integer slot, which the build sampled at whole numbers only, is refused. */
+function slotValues(o: JsonObj, slots: readonly PlanSlot[]): number[] {
+  const values: number[] = [];
+  if (!o.values.has('slots')) {
+    if (slots.length > 0) fail('$: the plan has slots and the line gives no values for them');
+    return values;
+  }
+  const given = arr(field(o, 'slots', '$'), '$.slots');
+  if (given.length !== slots.length) fail(`$.slots: the line gives ${given.length} values and the plan has ${slots.length} slots`);
+  given.forEach((v, i) => {
+    const s = hexBits(str(v, `$.slots[${i}]`));
+    const slot = slots[i] as PlanSlot;
+    if (slot.integer && Number.isFinite(s) && !Number.isInteger(s)) fail(`$.slots: ${slot.id} at ${s} is not a whole number, and it is declared integer (the build sampled it at whole numbers only)`);
+    values.push(s);
+  });
+  return values;
+}
+
+function slotFields(v: JsonValue, count: number, path: string): SlotField[] {
   const out: SlotField[] = [];
   arr(v, path).forEach((f, i) => {
     const at = `${path}[${i}]`;
@@ -3554,12 +3587,12 @@ function slotFields(v: JsonValue, path: string): SlotField[] {
       });
       pieces.push({ refused: false, template: pa[0] as JsonValue, leaves });
     });
-    out.push({ slot: slotIndex(a[0] as JsonValue, `${at}[0]`), node: str(a[1] as JsonValue, `${at}[1]`), key: str(a[2] as JsonValue, `${at}[2]`), pieces });
+    out.push({ slot: slotIndex(a[0] as JsonValue, count, `${at}[0]`), node: str(a[1] as JsonValue, `${at}[1]`), key: str(a[2] as JsonValue, `${at}[2]`), pieces });
   });
   return out;
 }
 
-function slotWrites(v: JsonValue, path: string): SlotWrite[] {
+function slotWrites(v: JsonValue, count: number, path: string): SlotWrite[] {
   const out: SlotWrite[] = [];
   arr(v, path).forEach((w, i) => {
     const at = `${path}[${i}]`;
@@ -3578,12 +3611,12 @@ function slotWrites(v: JsonValue, path: string): SlotWrite[] {
       if (j === 2 && r.k !== 0) fail(`${at}[4][${j}]: a value that is not finite gives a fixed number`);
       pieces.push(r);
     });
-    out.push({ slot: slotIndex(a[0] as JsonValue, `${at}[0]`), node: str(a[1] as JsonValue, `${at}[1]`), write, path: slotPath(a[3] as JsonValue, `${at}[3]`), pieces });
+    out.push({ slot: slotIndex(a[0] as JsonValue, count, `${at}[0]`), node: str(a[1] as JsonValue, `${at}[1]`), write, path: slotPath(a[3] as JsonValue, `${at}[3]`), pieces });
   });
   return out;
 }
 
-function slotRefusals(v: JsonValue, path: string): SlotRefusal[] {
+function slotRefusals(v: JsonValue, count: number, path: string): SlotRefusal[] {
   const out: SlotRefusal[] = [];
   arr(v, path).forEach((r, i) => {
     const at = `${path}[${i}]`;
@@ -3591,7 +3624,7 @@ function slotRefusals(v: JsonValue, path: string): SlotRefusal[] {
     if (a.length !== 3) fail(`${at}: expected [slot, piece, reason]`);
     const piece = num(a[1] as JsonValue, `${at}[1]`);
     if (piece !== 0 && piece !== 1 && piece !== 2) fail(`${at}[1]: ${piece} is not a piece`);
-    out.push({ slot: slotIndex(a[0] as JsonValue, `${at}[0]`), piece, reason: str(a[2] as JsonValue, `${at}[2]`) });
+    out.push({ slot: slotIndex(a[0] as JsonValue, count, `${at}[0]`), piece, reason: str(a[2] as JsonValue, `${at}[2]`) });
   });
   return out;
 }
@@ -3687,7 +3720,8 @@ function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: re
 }
 
 function planObj(v: JsonValue): JsonObj {
-  const plan = obj(v, ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
+  const slotted = v.kind === 'obj' && v.values.has('slots');
+  const plan = obj(v, slotted ? ['version', 'faces', 'densities', 'variants', 'assignments', 'slots'] : ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
   if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
   return plan;
 }
@@ -3721,7 +3755,9 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
   if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`$.assignment: ${k} is not an assignment of the plan`);
   const path = `$.plan.assignments[${k}]`;
+  const count = planSlots(plan).length;
   const slotted = (assignments[k] as JsonValue).kind === 'obj' && (assignments[k] as JsonObj).values.has('slotFields');
+  if (slotted !== count > 0) fail(`${path}: ${count > 0 ? 'the plan has slots and the assignment binds none' : 'the assignment binds slots the plan does not have'}`);
   const ao = obj(assignments[k] as JsonValue, slotted ? ['variant', 'dashed', 'scroll', 'slotFields', 'slotWrites', 'slotRefusals'] : ['variant', 'dashed', 'scroll'], path);
   const variant = numField(ao, 'variant', path);
   const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
@@ -3737,9 +3773,9 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   });
   const scrollers = new Map<string, boolean>();
   for (const s of arr(field(ao, 'scroll', path), `${path}.scroll`)) scrollers.set(str(s, `${path}.scroll`), true);
-  const fields = slotted ? slotFields(field(ao, 'slotFields', path), `${path}.slotFields`) : [];
-  const writes = slotted ? slotWrites(field(ao, 'slotWrites', path), `${path}.slotWrites`) : [];
-  const refusals = slotted ? slotRefusals(field(ao, 'slotRefusals', path), `${path}.slotRefusals`) : [];
+  const fields = slotted ? slotFields(field(ao, 'slotFields', path), count, `${path}.slotFields`) : [];
+  const writes = slotted ? slotWrites(field(ao, 'slotWrites', path), count, `${path}.slotWrites`) : [];
+  const refusals = slotted ? slotRefusals(field(ao, 'slotRefusals', path), count, `${path}.slotRefusals`) : [];
   return { variant, dashed, scrollers, fields, writes, refusals };
 }
 
@@ -3776,11 +3812,8 @@ export function runMarklessLayout(line: string): string {
     const parsed = parseJson(line);
     const withSlots = parsed.kind === 'obj' && parsed.values.has('slots');
     const o = obj(parsed, withSlots ? ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'slots'] : ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'], '$');
-    const values: number[] = [];
-    if (withSlots) arr(field(o, 'slots', '$'), '$.slots').forEach((v, i) => {
-      values.push(hexBits(str(v, `$.slots[${i}]`)));
-    });
     const plan = planObj(field(o, 'plan', '$'));
+    const values = slotValues(o, planSlots(plan));
     const dpr = numField(o, 'dpr', '$');
     const faces = planFaces(plan);
     let density: PlanDensity | null = null;
@@ -3791,7 +3824,6 @@ export function runMarklessLayout(line: string): string {
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density);
     const parts = planAssignment(plan, numField(o, 'assignment', '$'));
-    if ((parts.fields.length > 0 || parts.writes.length > 0) && !withSlots) fail('$: the plan has slots and the line gives no values for them');
     const variant = slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values);
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');

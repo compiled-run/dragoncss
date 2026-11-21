@@ -8,6 +8,7 @@ import { compareMarklessExport, marklessDocumentHtml } from '../src/markless-sty
 import type { MarklessStyleInput } from '../src/markless-style-input.ts';
 import { filledAtInitial, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
+import { checkPlan } from '../src/markless-plan.ts';
 import { repoPath } from '../src/paths.ts';
 
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
@@ -126,7 +127,7 @@ describe('typed slots of a Markless style input', () => {
 
   it('compares the phones\' export with Chrome at the slots\' initial values, from the input with slots', async () => {
     // With system fonts iOS measures Safari's faces, so Chrome is compared on Android only, as the comparison requires.
-    const r = await compareMarklessExport(input, marklessStyleExport(TEXT, PATH, undefined, 'system', undefined, true).exported, undefined, 'light', [], null, ['android']);
+    const r = await compareMarklessExport(input, exported, undefined, 'light', [], null, ['android']);
     expect(r.rows.filter((row) => !row.pass)).toEqual([]);
     expect(r.compared).toBe(13);
   }, 180_000);
@@ -137,6 +138,26 @@ describe('typed slots of a Markless style input', () => {
     expect(String(below[1])).toContain('slot:width at -1');
     const nan = device('android', 0, [Number.NaN, 1, 120, 2, 200, 40]);
     expect(nan).toEqual(['harness-error', `$.slots: slot:x is not a finite number (the web gets NaN or Infinity, which makes the declaration that holds it invalid)`]);
+  }, 120_000);
+
+  it('carries each slot\'s type to the phone, which refuses a value outside it by name', () => {
+    expect(exported.targets.android!.plan!.slots).toEqual(slots.map((s) => [s.id, s.integer === true ? 'integer' : 'number']));
+    // The build sampled slot:index at whole numbers only, so the line fitted there does not cover 2.5.
+    expect(device('ios', 0, [25, 1, 120, 2.5, 200, 40])).toEqual(['harness-error', '$.slots: slot:index at 2.5 is not a whole number, and it is declared integer (the build sampled it at whole numbers only)']);
+    expect(device('android', 0, [25, 1, 120, 2, 200])).toEqual(['harness-error', '$.slots: the line gives 5 values and the plan has 6 slots']);
+    expect(device('android', 0, [25, 1, 120, 2, 200, 40, 7])).toEqual(['harness-error', '$.slots: the line gives 7 values and the plan has 6 slots']);
+    const x = exported.targets.ios!;
+    const bare = { assignment: 0, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan };
+    expect(JSON.parse(runMarklessLayout(JSON.stringify(bare)))).toEqual(['harness-error', '$: the plan has slots and the line gives no values for them']);
+    const { slots: _, ...untyped } = x.plan!;
+    expect(JSON.parse(checkPlan(JSON.stringify(untyped)))).toEqual(['harness-error', '$.plan.assignments[0]: the assignment binds slots the plan does not have']);
+    expect(JSON.parse(checkPlan(JSON.stringify({ ...x.plan!, slots: x.plan!.slots!.slice(0, 3) })))).toEqual(['harness-error', '$.plan.assignments[0].slotFields[4][0]: 3 is not a slot of the plan']);
+  }, 120_000);
+
+  it('refuses slots that move a value together other than each moves it alone, at any sample position', () => {
+    // slot:b scales slot:a's width by clamp(0, b - 1.5, 1): 1 at b's initial 5 and at 2.5, so only other positions show it.
+    const both = { version: input.version, component: 'App', css: '.t { height: 10px; width: calc(var(--a) * clamp(0, var(--b) - 1.5, 1) * 1px); }', states: [], slots: [{ id: 'slot:a', initial: 0 }, { id: 'slot:b', initial: 5 }], nodes: [{ kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} }, { kind: 'element', id: 'h1', element: 'div', parent: 'h0', attributes: { class: 't' }, styleTemplate: ['--a: ', { slot: 'slot:a' }, '; --b: ', { slot: 'slot:b' }] }] };
+    expect(() => marklessStyleExport(JSON.stringify(both), PATH, undefined, 'system', undefined, true)).toThrow('ios assignment 0: the slots moved together at [-1,-1] do not give what each gives alone');
   }, 120_000);
 
   it('refuses a slot whose value is not a straight line of it, by name', () => {
