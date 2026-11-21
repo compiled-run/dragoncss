@@ -15,6 +15,9 @@ import type { ResolvedElement } from '../resolve.ts';
 import { containsDescendants } from '../containment.ts';
 import type { PaintValueContext, PaintValues } from './types.ts';
 
+// Boxes Dragon lays out with a frame of their own (atomic inlines included), which a view transform moves as Chrome does.
+const TRANSFORMABLE: readonly string[] = ['block', 'flex', 'grid', 'inline-block', 'inline-flex'];
+
 /** A declared length in px, or unchanged when its font base is unknown (the font-size pre-pass), it is a percentage or it overflows. */
 function toPx(l: TransformLengthDecl, ctx: PaintValueContext): TransformLengthDecl {
   if (l.unit === '%' || l.unit === 'px') return l;
@@ -127,7 +130,7 @@ function transformOrigin(el: ResolvedElement): Origin {
 
 /**
  * The refusals of transforms by where they sit, on every target: a box whose individual transforms and transform compose to a skew, on html and body (the canvas background and the viewport are
- * not transformed with them), on a box that is not block, flex or grid (css-transforms-1: only transformable boxes), a static
+ * not transformed with them), on a box that is not block, flex, grid, inline-block or inline-flex (css-transforms-1: only transformable boxes), a static
  * transformed element that would become the containing block of an absolutely positioned descendant, and a fixed descendant of a
  * transformed element (POSX-f2). A transform extending a scroll container's scrollable overflow (PNT2-o) needs no check yet:
  * checkOverflow refuses every overflow that scrolls, and Dragon never scrolls an overflow: hidden box; OVFL adds it when it lifts
@@ -156,7 +159,7 @@ export function checkTransformContexts(root: ResolvedElement, targets: readonly 
       // The properties are each accepted alone; together a rotation after a non-uniform scale can skew the box (css/properties/transform.ts).
       if (skewsBox(elementTransform(el))) refuse(el, 'skew', `the translate, rotate, scale and transform of ${address} compose to a rotation after a non-uniform scale, which skews the box: Android's View transform cannot express it (package PNT2-m)`, `Rotate ${address} before scaling it unevenly, or scale it evenly.`);
       if (tag === 'html' || tag === 'body') refuse(el, 'root', `${what} on <${tag}> ${address} is not supported: the canvas background and the viewport do not transform with it`, `Put the transform on an element inside <${tag}>.`);
-      if (display !== 'block' && display !== 'flex' && display !== 'grid') refuse(el, 'display', `${what} on ${address} with display: ${display} is not supported: Dragon transforms block, flex and grid boxes`, `Give ${address} display: block, flex or grid.`);
+      if (!TRANSFORMABLE.includes(display)) refuse(el, 'display', `${what} on ${address} with display: ${display} is not supported: Dragon transforms block, flex, grid, inline-block and inline-flex boxes`, `Give ${address} display: block, flex, grid, inline-block or inline-flex.`);
     }
     // A box with layout or paint containment is already the containing block, transformed or not (css-contain-2 §3.2).
     if (creator !== null && position === 'static' && !containsDescendants(el)) {
