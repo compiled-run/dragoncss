@@ -8,6 +8,7 @@ import { compareMarklessExport, marklessDocumentHtml } from '../src/markless-sty
 import type { MarklessStyleInput } from '../src/markless-style-input.ts';
 import { filledAtInitial, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
+import { checkPlan } from '../src/markless-plan.ts';
 import { repoPath } from '../src/paths.ts';
 
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
@@ -126,7 +127,7 @@ describe('typed slots of a Markless style input', () => {
 
   it('compares the phones\' export with Chrome at the slots\' initial values, from the input with slots', async () => {
     // With system fonts iOS measures Safari's faces, so Chrome is compared on Android only, as the comparison requires.
-    const r = await compareMarklessExport(input, marklessStyleExport(TEXT, PATH, undefined, 'system', undefined, true).exported, undefined, 'light', [], null, ['android']);
+    const r = await compareMarklessExport(input, exported, undefined, 'light', [], null, ['android']);
     expect(r.rows.filter((row) => !row.pass)).toEqual([]);
     expect(r.compared).toBe(13);
   }, 180_000);
@@ -138,6 +139,50 @@ describe('typed slots of a Markless style input', () => {
     const nan = device('android', 0, [Number.NaN, 1, 120, 2, 200, 40]);
     expect(nan).toEqual(['harness-error', `$.slots: slot:x is not a finite number (the web gets NaN or Infinity, which makes the declaration that holds it invalid)`]);
   }, 120_000);
+
+  it('carries each slot\'s type to the phone, which refuses a value outside it by name', () => {
+    expect(exported.targets.android!.plan!.slots).toEqual(slots.map((s) => [s.id, s.integer === true ? 'integer' : 'number']));
+    // The build sampled slot:index at whole numbers only, so the line fitted there does not cover 2.5.
+    expect(device('ios', 0, [25, 1, 120, 2.5, 200, 40])).toEqual(['harness-error', '$.slots: slot:index at 2.5 is not a whole number, and it is declared integer (the build sampled it at whole numbers only)']);
+    expect(device('android', 0, [25, 1, 120, 2, 200])).toEqual(['harness-error', '$.slots: the line gives 5 values and the plan has 6 slots']);
+    expect(device('android', 0, [25, 1, 120, 2, 200, 40, 7])).toEqual(['harness-error', '$.slots: the line gives 7 values and the plan has 6 slots']);
+    const x = exported.targets.ios!;
+    const bare = { assignment: 0, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan };
+    expect(JSON.parse(runMarklessLayout(JSON.stringify(bare)))).toEqual(['harness-error', '$: the plan has slots and the line gives no values for them']);
+    const { slots: _, ...untyped } = x.plan!;
+    expect(JSON.parse(checkPlan(JSON.stringify(untyped)))).toEqual(['harness-error', '$.plan.assignments[0]: the assignment binds slots the plan does not have']);
+    expect(JSON.parse(checkPlan(JSON.stringify({ ...x.plan!, slots: x.plan!.slots!.slice(0, 3) })))).toEqual(['harness-error', '$.plan.assignments[0].slotFields[4][0]: 3 is not a slot of the plan']);
+  }, 120_000);
+
+  it('refuses slots that move a value together other than each moves it alone, at any sample position', () => {
+    // slot:b scales slot:a's width by clamp(0, b - 1.5, 1): 1 at b's initial 5 and at 2.5, so only other positions show it.
+    const both = { version: input.version, component: 'App', css: '.t { height: 10px; width: calc(var(--a) * clamp(0, var(--b) - 1.5, 1) * 1px); }', states: [], slots: [{ id: 'slot:a', initial: 0 }, { id: 'slot:b', initial: 5 }], nodes: [{ kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} }, { kind: 'element', id: 'h1', element: 'div', parent: 'h0', attributes: { class: 't' }, styleTemplate: ['--a: ', { slot: 'slot:a' }, '; --b: ', { slot: 'slot:b' }] }] };
+    expect(() => marklessStyleExport(JSON.stringify(both), PATH, undefined, 'system', undefined, true)).toThrow('ios assignment 0: the slots moved together at [-1,-1] do not give what each gives alone');
+  }, 120_000);
+
+  it('binds a slot inside an @if arm in each combination of arms, and lays it out as an export at that value', () => {
+    const armed = (initial: number): string => JSON.stringify({ version: input.version, component: 'App', css: '.bar { height: 10px; background-color: rgb(90 90 90); }', states: [], branches: [{ id: 'branch:0', domain: ['0', 'none'], initial: '0' }], slots: [{ id: 'slot:w', initial }], nodes: [{ kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} }, { kind: 'element', id: 'h1', element: 'div', parent: 'h0', attributes: { class: 'bar' }, arm: { branch: 'branch:0', index: 0 }, styleTemplate: ['width: ', { slot: 'slot:w' }, 'px'] }] });
+    const slotted = marklessStyleExport(armed(120), PATH, undefined, 'system', undefined, true).exported;
+    const concrete = marklessStyleExport(JSON.stringify(filledAtInitial(parseMarklessStyleInput(armed(37.5)))), PATH, undefined, 'system', undefined, true).exported;
+    for (const t of ['ios', 'android'] as const) {
+      const x = slotted.targets[t]!;
+      expect(x.plan!.assignments.map((a) => (a.slotFields ?? []).map(([, node, key]) => `${node} ${key}`))).toEqual(x.assignments.map((a) => (a.nodes.some((n) => n.id === 'h1' && n.frame !== null) ? ['h1 width'] : [])));
+      x.assignments.forEach((a, k) => {
+        const line = { assignment: k, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan, slots: [bitsHex(37.5)] };
+        const out = JSON.parse(runMarklessLayout(JSON.stringify(line))) as unknown[];
+        expect(out[0], JSON.stringify(out)).toBe('ok');
+        const names = new Map(x.planNames?.[k] ?? []);
+        const got = new Map((out[2] as unknown[][]).map((n) => [names.get(n[0] as string) ?? (n[0] as string), decode(n[1])]));
+        for (const n of concrete.targets[t]!.assignments[k]!.nodes) if (n.frame !== null) expect(got.get(n.id), `${t} ${k} ${n.id}`).toEqual(geometry(n)[0]);
+      });
+    }
+  }, 120_000);
+
+  it('refuses slots in an input with @for rows, by name', () => {
+    const rows = JSON.parse(readFileSync(repoPath('examples/markless-styles/input/rows.native-style-input.json'), 'utf8')) as MarklessStyleInput;
+    const both = { ...rows, slots: [{ id: 'slot:w', initial: 1 }], nodes: rows.nodes.map((n) => (n.id === 'h0' ? { ...n, styleTemplate: ['--w: ', { slot: 'slot:w' }] } : n)) };
+    expect(() => parseMarklessStyleInput(JSON.stringify(both))).toThrow('slots and @for rows (repeat:0) in one input are not supported yet: a phone lays rows out with no slot values');
+  });
 
   it('refuses a slot whose value is not a straight line of it, by name', () => {
     // Chrome keeps an rgb() alpha as round(a × 255) clamped, which is neither rule.
