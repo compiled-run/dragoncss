@@ -169,7 +169,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
  */
 function boxNeedsEnvironment(b: LayoutBox | ControlBox, faults: EngineFaults): boolean {
   // FORM-b: a text field's editor line height is decided by the pass (editorLineHeightIsNormal).
-  if (b.kind === 'control' && b.control.kind === 'text-field') return true;
+  if (b.kind === 'control' && (b.control.kind === 'text-field' || b.control.kind === 'select-menulist')) return true;
   if (styleNeedsEnvironment(b.style)) return true;
   if (b.strut !== null && fontNeedsEnvironment(b.strut.font, b.strut.lineHeight, faults)) return true;
   if (b.kind === 'box' && b.marker !== null && fontNeedsEnvironment(b.marker.font, b.marker.lineHeight, faults)) return true;
@@ -259,6 +259,12 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const children = normal ? b.children.map((k) => (k.kind === 'control' && k.control.kind === 'text-editor' ? withNormalLineHeight(k) : k)) : b.children;
     return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
   }
+  if (c.kind === 'select-menulist') {
+    const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
+    const children = resolveChildren(b.children, env);
+    const lh = own.lineHeight.kind === 'normal' ? menuListLineHeight(own.font, env) : null;
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: lh === null ? children : children.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withLineHeight(k, lh) : k)) };
+  }
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
   return { kind: 'control', id: b.id, boxType: b.boxType, style, control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
 }
@@ -277,6 +283,19 @@ function editorLineHeightIsNormal(c: Extract<ControlKind, { kind: 'text-field' }
   if (computedSize(c.font, env) >= lh) return true;
   const h = style.height;
   return h.kind === 'percent' || (h.kind === 'calc' && calcHasPercent(h.expr)) || (h.kind === 'px' && h.value > lh);
+}
+
+/** FORM-b: while a select's line height is normal its inner element's is the font's ascent + descent (menu_list_inner_element.cc:45-55). */
+function menuListLineHeight(font: FontSpec, env: Env): LineHeightValue {
+  refuseUnknownFace(env.measurer, font, env);
+  const m = env.measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+  return { kind: 'px', value: toPx(add(m.ascent, m.descent)) };
+}
+
+/** A resolved box whose strut and text take a resolved line height. */
+function withLineHeight(e: ControlBox, lineHeight: LineHeightValue): ControlBox {
+  const strut: LineStrut | null = e.strut === null ? null : { font: e.strut.font, lineHeight };
+  return { ...e, strut, children: e.children.map((k) => withNormalLeaf(k, lineHeight)) };
 }
 
 /** An inner editor whose strut and text take line-height normal (editorLineHeightIsNormal). */

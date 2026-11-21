@@ -13,6 +13,7 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   ...REPLACED_TAGS,
   ...SVG_SHAPE_TAGS,
   ...CONTROL_TAGS,
+  'option',
   'b', 'strong', 'em', 'i',
 ]);
 
@@ -32,11 +33,13 @@ export const GENERATED_TAGS: ReadonlySet<string> = new Set(['::before', '::after
 /** The tag of the element resolve.ts cascades a list item's ::marker rules on; only its color is read (markerOf). */
 export const MARKER_TAG = '::marker';
 
-/** The UA dataset row an element's tag reads; a control's also depends on its type attribute. */
-export function uaTagOf(tag: string, type?: string): UaKey {
+/** The UA dataset row an element's tag reads; a control's also depends on its type attribute, and a select's on disabled. */
+export function uaTagOf(tag: string, type?: string, disabled = false): UaKey {
   if (Object.hasOwn(REPLACED_UA_KEYS, tag)) return REPLACED_UA_KEYS[tag] as UaKey;
   if (GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return 'dragon-unstyled';
-  const control = controlUaKey(tag, type);
+  // FORM-b: an option has no box; of its style only colour, direction, unicode-bidi and text-align are read, set as on a div.
+  if (tag === 'option') return 'div';
+  const control = controlUaKey(tag, type, disabled);
   if (control !== null) return control;
   return (UNSTYLED_TAGS.has(tag) ? 'dragon-unstyled' : tag) as CapturedTag;
 }

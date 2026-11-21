@@ -95,7 +95,8 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, textFieldPartOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, textFieldPartOf, valueToString } from './resolve.ts';
+import { selectDisplaySize } from '../forms/select.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import { serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
@@ -1107,7 +1108,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const declared = size.origin === 'author' ? size.declared : null;
     const relative = declared !== null && (declared.kind === 'percentage' || isPercentFontSizeMath(declared) || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
-    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'))).contexts;
+    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'), tag === 'select' && el.element.attributes.has('disabled'))).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -1514,7 +1515,8 @@ function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, co
 
 /** FORM-a: on a native target a button or range is drawn but not interactive, and its view has no control accessibility role yet. */
 function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const what = el.element.tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
+  const tag = el.element.tag;
+  const what = tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : tag === 'select' ? `<select> ${el.element.address} shows its compiled option with no picker, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
   for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
     const id = `${t}|control-static|${el.element.address}`;
     if (reported.has(id)) continue;
@@ -1656,6 +1658,85 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   }
   if (!el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<input> ${address} is an editable text field: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <input> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+}
+
+/** The text longhands html.css resets on a select as on a button, and its text-align: start and text-shadow: none. */
+const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
+  ...BUTTON_RESETS,
+  ['text-align', (v) => v.kind === 'keyword' && v.value === 'start'],
+  ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
+];
+
+/** FORM-b S1: a single select with appearance: none (Chrome's menulist, resolve.ts); everything else about one is refused by name. */
+function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
+    refuseOn(el, v, what, code, targets, diagnostics, reported, message, manual);
+  const element = (what: string, origin: Origin, message: string, manual: string): void => {
+    const id = `select-${what}|${address}`;
+    if (reported.has(id)) return;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin, message, manual }));
+  };
+  const attrs = el.element.attributes;
+  if (attrs.has('multiple') || selectDisplaySize(attrs.get('size')) > 1) {
+    element('listbox', el.element.node.origin, `<select${attrs.has('multiple') ? ' multiple' : ` size=${attrs.get('size') ?? ''}`}> ${address} is a list box, which waits for the FORM-b listbox package; only a single select (no multiple, a size of 1) is laid out`, `Remove ${attrs.has('multiple') ? 'multiple' : 'size'} from <select> ${address}.`);
+  }
+  for (const c of el.element.children) {
+    if (c.kind === 'text') {
+      if (c.text.trim() !== '') element('text', c.node.origin, `text directly in <select> ${address} is not supported: only option elements are laid out`, `Put the text in an <option> of <select> ${address}.`);
+    } else if (c.tag !== 'option' && c.tag !== 'optgroup') {
+      element(`child-${c.address}`, c.node.origin, `<${c.tag}> ${c.address} in <select> ${address} is not supported: only option elements are laid out`, `Remove <${c.tag}> ${c.address} from <select> ${address}.`);
+    } else if (c.children.some((k) => k.kind === 'element')) {
+      element(`option-${c.address}`, c.node.origin, `<option> ${c.address} holds elements, which is not supported: only an option of text is laid out`, `Write the label of <option> ${c.address} as text.`);
+    }
+  }
+  for (const o of selectOptionsOf(el)) {
+    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([, v]) => v.declaration !== null);
+    if (styled !== undefined) refuseOn(o, styled[1], 'option-style', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${styled[0]} on <option> ${o.element.address} is not supported: Chrome draws only its label in the closed select, and Dragon writes no rule for an option`, `Style <select> ${address} instead of <option> ${o.element.address}.`);
+  }
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  if (keywordOf(appearance) !== 'none') {
+    refuse(appearance, 'appearance', `<select> ${address} with appearance: ${valueToString(appearance.value)} draws Chrome's drop-down arrow and internal paddings, which wait for FORM-b select S2; only appearance: none is laid out`, `Set appearance: none on <select> ${address}.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <select> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <select> ${address}, or make it a flex item.`);
+  } else if (d !== 'block' && d !== 'flex') {
+    refuse(display, 'display', `display: ${d} on <select> ${address} is not supported; only a block-level select is laid out`, `Set display: block on <select> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos === 'absolute' || pos === 'fixed') refuse(position, 'position', `position: ${pos} on <select> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <select> ${address} in its flow.`);
+  const float = el.props.get('float') as ResolvedValue;
+  if (keywordOf(float) !== 'none') refuse(float, 'float', `float: ${valueToString(float.value)} on <select> ${address} is not supported: the engine lays out only an in-flow select`, `Float a wrapper element and keep <select> ${address} in its flow.`);
+  const width = el.props.get('width') as ResolvedValue;
+  if (width.value.kind === 'keyword') refuse(width, 'width', `width: ${valueToString(width.value)} on <select> ${address} is not supported: Chrome sizes a select to its widest option, which Dragon does not measure`, `Give <select> ${address} a width (a length or percentage).`);
+  const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
+  const minWidth = el.props.get('min-width') as ResolvedValue;
+  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width', `<select> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from its widest option, which Dragon does not measure`, `Set min-width (0 is fine) on <select> ${address}.`);
+  const align = el.props.get('align-items') as ResolvedValue;
+  if (valueToString(align.value) !== 'center') refuse(align, 'align-items', `align-items: ${valueToString(align.value)} on <select> ${address} is not supported: only Chrome's center, which centres the label safely, is laid out`, `Remove align-items from <select> ${address}.`);
+  const direction = el.props.get('flex-direction') as ResolvedValue;
+  if (keywordOf(direction) !== 'row') refuse(direction, 'flex-direction', `flex-direction: ${valueToString(direction.value)} on <select> ${address} is not supported: Chrome's menulist is a row`, `Remove flex-direction from <select> ${address}.`);
+  for (const p of ['overflow-x', 'overflow-y'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (keywordOf(v) !== 'visible') refuse(v, 'overflow', `${p}: ${valueToString(v.value)} on <select> ${address} is not supported: Chrome forces a select's overflow to visible`, `Remove overflow from <select> ${address}.`);
+  }
+  noteStaticOnNative(el, targets, diagnostics, reported);
+  for (const [p, isReset] of SELECT_RESETS) {
+    const v = el.props.get(p) as ResolvedValue;
+    const reverted = v.declared !== null && v.declared.kind === 'keyword' && (v.declared.value === 'revert' || v.declared.value === 'revert-layer');
+    if ((v.origin !== 'inherited' || v.declaration !== null) && !reverted) continue;
+    if (isReset(v.value)) continue;
+    const how = reverted ? `resolves ${p}: ${valueToString(v.declared as CssValue)} to ${valueToString(v.value)}` : `inherits ${p}: ${valueToString(v.value)}`;
+    refuse(v, `reset-${p}`, `<select> ${address} ${how}, which Chrome's user-agent select rule resets; Dragon does not model that reset yet`, `Set ${p} on <select> ${address} to a value (inherit is fine).`);
+  }
+  const family = el.props.get('font-family') as ResolvedValue;
+  if (family.origin === 'user-agent') {
+    refuse(family, 'font', `<select> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <select> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
 }
 
@@ -1817,6 +1898,9 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here && el.element.tag === 'button') {
       checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+    } else if (!here && el.element.tag === 'select') {
+      checkSelect(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) {
       checkTextField(el, parentDisplay, targets, diagnostics, reported);

@@ -29,7 +29,7 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive, selectFocusRefusals } from './analysis/interaction.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -391,7 +391,9 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
   for (const n of nodes) {
     if (n.kind === 'element') {
       if (!SUPPORTED_TAGS.has(n.tag)) {
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
+        // FORM-b: Chrome indents a grouped option's label in the closed select (select_type.cc:1025 TextIndentedToRespectGroupLabel).
+        const why = n.tag === 'optgroup' ? ': an option group waits for FORM-b select, as Chrome indents a grouped option\'s label' : '';
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported${why} (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
       }
       for (const a of n.attributes) {
         const refusal = attributeRefusal(n.tag, a.name);
@@ -1375,6 +1377,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.push(...preLinkDiagnostics);
     }
     focusable = focusReachable(interactionRules, linked?.cases ?? null);
+    diagnostics.push(...selectFocusRefusals(interactionRules, linked?.cases ?? null, options.faults));
     const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else {

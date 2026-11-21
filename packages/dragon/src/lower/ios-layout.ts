@@ -62,7 +62,7 @@ import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { isControlTag } from '../analysis/elements/controls.ts';
-import { rangePartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { rangePartOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
@@ -865,6 +865,14 @@ function lowerBox(el: ResolvedElement, l: Lowerer, gridParent: GridContainer | n
     const own = field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
     return { kind: 'control', id, boxType: 'element', style: clipped, control: { kind: field.part === 'editor' ? 'text-editor' : 'text-placeholder' }, strut: own, children };
   }
+  const select = selectPartOf(el);
+  if (select !== undefined && select.part === null) {
+    // FORM-b: a single select is a flex row container whatever its display; its font and line height decide its inner element's.
+    const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight }, strut, children };
+  }
+  // An empty inner element still lays out one line of its own font, so it always carries its strut.
+  if (select !== undefined) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'select-inner' }, strut: strut ?? strutOf(el, true, l.mode, zoom), children };
   const range = rangePartOf(el);
   if (range !== undefined && range.part === null) {
     // A range is a flex container whatever its display (range_input_type.cc CreateLayoutObject); its default track length is

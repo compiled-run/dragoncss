@@ -40,6 +40,9 @@ const KEY_SPECS = {
   'a[href]': { tag: 'a', attrs: { href: 'https://dragon.invalid/unvisited' } },
   img: { tag: 'img', attrs: {} },
   span: { tag: 'span', attrs: {} },
+  // FORM-b: a single select (a menulist) and a disabled one, whose html.css :disabled rules give opacity, border colour and colour.
+  select: { tag: 'select', attrs: {} },
+  'select[disabled]': { tag: 'select', attrs: { disabled: '' } },
 } as const satisfies Record<string, { tag: string; attrs: Record<string, string> }>;
 type ElementKey = keyof typeof KEY_SPECS;
 const ELEMENT_KEYS = Object.keys(KEY_SPECS) as ElementKey[];
@@ -81,8 +84,8 @@ const FONT_SIZE_FAMILIES = ['Ahem', 'monospace'] as const;
 const FONT_SIZE_PARENTS = ['10px', '16px', '17.5px', '23.3px', 'medium', '2em', 'larger'] as const;
 /** Every key captured outside the element table; replaced elements are never an ancestor context. */
 const ALL_KEYS: readonly string[] = [...ELEMENT_KEYS, ...REPLACED_KEYS, ...PHRASING_KEYS];
-/** Void elements have no children, so they are never an ancestor context. */
-const ANCESTOR_KEYS = [...ELEMENT_KEYS.filter((k) => !['input', 'img'].includes(KEY_SPECS[k].tag)), ...PHRASING_KEYS.filter((k) => k !== 'br')];
+/** Void elements have no children, and a select renders none of its own (FORM-b), so neither is ever an ancestor context. */
+const ANCESTOR_KEYS = [...ELEMENT_KEYS.filter((k) => !['input', 'img', 'select'].includes(KEY_SPECS[k].tag)), ...PHRASING_KEYS.filter((k) => k !== 'br')];
 type Spec = { readonly tag: string; readonly attrs: Readonly<Record<string, string>>; readonly ns?: string };
 const SPECS: Record<string, Spec> = { ...Object.fromEntries(TAGS.map((t) => [t, { tag: t, attrs: {} }])), ...KEY_SPECS, ...REPLACED_KEY_SPECS, ...PHRASING_KEY_SPECS };
 /** Inherited font properties no milestone longhand models; a UA value for them changes how text is drawn. */
