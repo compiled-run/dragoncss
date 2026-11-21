@@ -23,12 +23,16 @@ export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
 /** A state's value: true or false, or one of the strings a cell can hold (a tab's selected value). */
 export type StateValue = boolean | string;
 type When = Readonly<Record<string, StateValue>>;
+/** Where a node sits when it belongs to one arm of an @if or @try: the branch, and the arm's index among its arms. */
+export type MarklessArm = { readonly branch: string; readonly index: number };
+/** The value a branch's state takes while it shows no arm (an @if with no @else whose test fails). */
+export const MARKLESS_NO_ARM = 'none';
 export type MarklessStyleInput = {
   readonly version: typeof MARKLESS_STYLE_INPUT_VERSION;
   readonly component: string;
   readonly nodes: readonly (
-    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly boxless?: true; readonly arm?: unknown }
-    | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly textByState?: readonly { readonly when: When; readonly value: string }[]; readonly arm?: unknown }
+    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly boxless?: true; readonly arm?: MarklessArm }
+    | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly textByState?: readonly { readonly when: When; readonly value: string }[]; readonly arm?: MarklessArm }
   )[];
   readonly css: string;
   readonly states: readonly { readonly cell: string; readonly domain: readonly StateValue[]; readonly initial: StateValue }[];
@@ -42,6 +46,11 @@ export type MarklessStyleInput = {
    * to the directory of the input file.
    */
   readonly fonts?: readonly { readonly url: string; readonly file: string }[];
+  /**
+   * Each @if or @try whose arms hold nodes, compiled as a state: its value is the arm it shows ("0", "1", …, or MARKLESS_NO_ARM), so
+   * every combination of arms is laid out as Chrome lays that page out. `arm`: the arm the branch itself sits in.
+   */
+  readonly branches?: readonly { readonly id: string; readonly domain: readonly string[]; readonly initial: string; readonly arm?: MarklessArm }[];
 };
 
 /**
@@ -121,7 +130,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
   const v: unknown = JSON.parse(text);
   if (!isRecord(v) || v['version'] !== MARKLESS_STYLE_INPUT_VERSION) fail(`not ${MARKLESS_STYLE_INPUT_VERSION}`);
   const o = v as Record<string, unknown>;
-  onlyKeys('the input', o, ['version', 'component', 'nodes', 'css', 'states', 'viewports', 'fonts']);
+  onlyKeys('the input', o, ['version', 'component', 'nodes', 'css', 'states', 'viewports', 'fonts', 'branches']);
   if (!isString(o['component']) || !/^[A-Z][A-Za-z0-9]*$/.test(o['component'])) fail(`component ${JSON.stringify(o['component'])} is not an identifier starting with an ASCII capital`);
   if (!isString(o['css'])) fail('css is not a string');
   if (!Array.isArray(o['states'])) fail('states is not a list');
@@ -159,6 +168,42 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       files.set(url, file);
     }
   }
+  const branches = new Map<string, readonly string[]>();
+  const branchArm = new Map<string, MarklessArm | undefined>();
+  const checkArm = (what: string, arm: unknown): void => {
+    const ok = isRecord(arm) && Object.keys(arm).sort().join() === 'branch,index' && isString(arm['branch']) && Number.isInteger(arm['index']) && (arm['index'] as number) >= 0;
+    if (!ok) fail(`${what}: an arm is { branch, index } with a whole index, not ${JSON.stringify(arm)}`);
+    const { branch, index } = arm as MarklessArm;
+    const domain = branches.get(branch);
+    if (domain === undefined) fail(`${what}: arm names ${branch}, which is not an earlier branch`);
+    if (!(domain as readonly string[]).includes(String(index))) fail(`${what}: ${branch} has no arm ${index}`);
+  };
+  if (o['branches'] !== undefined) {
+    if (!Array.isArray(o['branches'])) fail('branches is not a list');
+    for (const b of o['branches'] as unknown[]) {
+      if (!isRecord(b) || !isString(b['id']) || b['id'] === '') fail(`bad branch ${JSON.stringify(b)}`);
+      const br = b as Record<string, unknown>;
+      const id = br['id'] as string;
+      onlyKeys(`branch ${id}`, br, ['id', 'domain', 'initial', 'arm']);
+      if (branches.has(id) || cells.has(id)) fail(`branch ${id} is listed twice, or is also a state`);
+      const domain = br['domain'];
+      const arms = Array.isArray(domain) ? domain.filter((v) => v !== MARKLESS_NO_ARM) : [];
+      const ok = Array.isArray(domain) && arms.length > 0 && arms.every((v, k) => v === String(k)) && domain.length - arms.length <= 1 && (domain.length === arms.length || domain[domain.length - 1] === MARKLESS_NO_ARM);
+      if (!ok) fail(`branch ${id}: a domain is its arms "0", "1", … in order, then "${MARKLESS_NO_ARM}" when it can show none, not ${JSON.stringify(domain)}`);
+      if (!(domain as unknown[]).includes(br['initial'])) fail(`branch ${id}: initial ${JSON.stringify(br['initial'])} is not in its domain`);
+      if (br['arm'] !== undefined) checkArm(`branch ${id}`, br['arm']);
+      branches.set(id, domain as string[]);
+      branchArm.set(id, br['arm'] as MarklessArm | undefined);
+    }
+  }
+  const sameArm = (a: MarklessArm, b: MarklessArm): boolean => a.branch === b.branch && a.index === b.index;
+  const nodeArm = new Map<string, MarklessArm | undefined>();
+  // A node inside an element of an arm sits in that arm too, directly or through a branch nested in it.
+  const checkNested = (id: string, parent: unknown, arm: MarklessArm | undefined): void => {
+    const outer = isString(parent) ? nodeArm.get(parent) : undefined;
+    if (outer !== undefined && !armChain(arm, branchArm).some((a) => sameArm(a, outer))) fail(`${id}: its parent ${String(parent)} is in arm ${outer.index} of ${outer.branch}, and it is not`);
+    nodeArm.set(id, arm);
+  };
   if (!Array.isArray(o['nodes'])) fail('nodes is not a list');
   const ids = new Set<string>();
   for (const n of o['nodes'] as unknown[]) {
@@ -167,7 +212,9 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     const id = node['id'] as string;
     if (ids.has(id)) fail(`node ${id} is listed twice`);
     if (DOCUMENT_NODES.includes(id)) fail(`${id}: html and body are the export's own document nodes`);
-    if (node['arm'] !== undefined || node['row'] !== undefined) fail(`${id}: styles inside @if arms and @for rows are not supported yet`);
+    if (node['row'] !== undefined) fail(`${id}: styles inside @for rows are not supported yet`);
+    if (node['arm'] !== undefined) checkArm(id, node['arm']);
+    checkNested(id, node['parent'], node['arm'] as MarklessArm | undefined);
     const checkByState = (what: string, byState: unknown): void => {
       if (!Array.isArray(byState)) fail(`${id}: ${what} is not a list`);
       for (const e of byState as unknown[]) {
@@ -178,7 +225,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       }
     };
     if (node['kind'] === 'text') {
-      onlyKeys(id, node, ['kind', 'id', 'parent', 'text', 'textByState']);
+      onlyKeys(id, node, ['kind', 'id', 'parent', 'text', 'textByState', 'arm']);
       if (!isString(node['parent']) || !ids.has(node['parent'])) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isString(node['text'])) fail(`${id}: text is not a string`);
       if (node['textByState'] !== undefined) {
@@ -186,7 +233,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         if (!(node['textByState'] as unknown[]).every((e) => isString((e as Record<string, unknown>)['value']))) fail(`${id}: textByState gives a text that is not a string`);
       }
     } else if (node['kind'] === 'element') {
-      onlyKeys(id, node, ['kind', 'id', 'element', 'parent', 'attributes', 'classByState', 'attributesByState', 'boxless']);
+      onlyKeys(id, node, ['kind', 'id', 'element', 'parent', 'attributes', 'classByState', 'attributesByState', 'boxless', 'arm']);
       if (!isString(node['element']) || !/^[a-z][a-z0-9-]*$/.test(node['element'])) fail(`${id}: bad element name ${JSON.stringify(node['element'])}`);
       if (node['parent'] !== null && !(isString(node['parent']) && ids.has(node['parent']))) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
@@ -220,8 +267,27 @@ const classTokens = (value: string): string[] => value.split(/[\t\n\f\r ]+/).fil
 export const stateCombinations = (input: MarklessStyleInput): Record<string, StateValue>[] =>
   input.states.reduce<Record<string, StateValue>[]>((all, s) => all.flatMap((p) => s.domain.map((value) => ({ ...p, [s.cell]: value }))), [{}]);
 
-/** The input's state for a cell, named s<k> in Dragon (a cell id such as "state:liked" is not a state identifier). */
-const stateIds = (input: MarklessStyleInput): Map<string, string> => new Map(input.states.map((s, k) => [s.cell, `s${k}`]));
+/** Every combination the export lays out: the input's states, then each branch's arm, by branch id. */
+export const assignmentCombinations = (input: MarklessStyleInput): Record<string, StateValue>[] =>
+  (input.branches ?? []).reduce<Record<string, StateValue>[]>((all, b) => all.flatMap((p) => b.domain.map((value) => ({ ...p, [b.id]: value }))), stateCombinations(input));
+
+/** An arm and every arm around it, innermost first. */
+export function armChain(arm: MarklessArm | undefined, armOfBranch: ReadonlyMap<string, MarklessArm | undefined>): MarklessArm[] {
+  const out: MarklessArm[] = [];
+  for (let at = arm; at !== undefined; at = armOfBranch.get(at.branch)) out.push(at);
+  return out;
+}
+
+/** The branches around a node, each with the arm it must show for the node to be shown. */
+export const armsAround = (input: MarklessStyleInput, arm: MarklessArm | undefined): MarklessArm[] =>
+  armChain(arm, new Map((input.branches ?? []).map((b) => [b.id, b.arm])));
+
+/** Whether a node of one of the input's arms is shown where the branches take `values` (a node in no arm always is). */
+export const armShown = (input: MarklessStyleInput, arm: MarklessArm | undefined, values: Readonly<Record<string, unknown>>): boolean =>
+  armsAround(input, arm).every((a) => values[a.branch] === String(a.index));
+
+/** The input's state for a cell or branch, named s<k> in Dragon (a cell id such as "state:liked" is not a state identifier). */
+const stateIds = (input: MarklessStyleInput): Map<string, string> => new Map([...input.states.map((s) => s.cell), ...(input.branches ?? []).map((b) => b.id)].map((key, k) => [key, `s${k}`]));
 
 /**
  * Dragon's tree id for each node of the input: an element's own id where Dragon accepts it (Markless names a component's nodes
@@ -275,7 +341,8 @@ export function marklessNodeId(input: MarklessStyleInput, elementId: (id: string
     if (e.kind !== 'element') continue;
     elementOf.set(elementId(e.id), e.id);
     const address = textAddresser(elementId(e.id));
-    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id) textOf.set(address(shownText(c, values)), c.id);
+    // Only the texts this assignment shows are numbered: a sibling in an arm it does not show has no box, so no address.
+    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id && armShown(input, c.arm, values)) textOf.set(address(shownText(c, values)), c.id);
   }
   return (address) => textOf.get(address) ?? rehostAddress(address, (tree) => elementOf.get(tree));
 }
@@ -372,11 +439,20 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
           };
         }),
       ],
-      children: (children.get(n.id) ?? []).map(node),
+      children: (children.get(n.id) ?? []).map((c) => placed(c, n.arm)),
       origin,
     } as TreeNode;
   };
-  const body = { kind: 'element', id: 'body', tag: 'body', classes: [], attributes: [], children: (children.get(null) ?? []).map(node), origin } as TreeNode;
+  // A node in an arm its parent is not in is laid out only where its branch, and each branch around it, shows that arm.
+  const placed = (n: MarklessStyleInput['nodes'][number], outer: MarklessArm | undefined): TreeNode => {
+    const inside = n.arm === undefined || (outer !== undefined && n.arm.branch === outer.branch && n.arm.index === outer.index);
+    if (inside) return node(n);
+    const arms = armsAround(input, n.arm);
+    const terms = arms.map((a) => eq(a.branch, String(a.index)));
+    const when: Condition = terms.length === 1 ? (terms[0] as Condition) : { kind: 'and', values: terms };
+    return { kind: 'branch', id: fresh(), when, then: [node(n)], else: [], origin } as TreeNode;
+  };
+  const body = { kind: 'element', id: 'body', tag: 'body', classes: [], attributes: [], children: (children.get(null) ?? []).map((c) => placed(c, undefined)), origin } as TreeNode;
   const html = { kind: 'element', id: 'html', tag: 'html', classes: [], attributes: [], children: [body], origin } as TreeNode;
   return {
     producer: { name: 'markless-native-style-input', version: '0', schemaRevision: TREE_SCHEMA_REVISION },
@@ -396,7 +472,10 @@ export function marklessFrontEnd(input: MarklessStyleInput, inputText: string, i
         id: input.component,
         module: 'component',
         params: [],
-        states: input.states.map((s) => ({ id: states.get(s.cell) as string, domain: [...s.domain], initial: s.initial, origin })),
+        states: [
+          ...input.states.map((s) => ({ id: states.get(s.cell) as string, domain: [...s.domain], initial: s.initial, origin })),
+          ...(input.branches ?? []).map((b) => ({ id: states.get(b.id) as string, domain: [...b.domain], initial: b.initial, origin })),
+        ],
         slots: [],
         root: [html],
         origin,
@@ -432,7 +511,7 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
 
 /** Dragon keys a state "<instance>#s<k>"; the hosts know the cell. */
 function cellKey(parsed: MarklessStyleInput): (key: string) => string {
-  const cellOf = new Map(parsed.states.map((s, k) => [`s${k}`, s.cell]));
+  const cellOf = new Map([...parsed.states.map((s) => s.cell), ...(parsed.branches ?? []).map((b) => b.id)].map((key, k) => [`s${k}`, key]));
   return (key) => {
     if (key === BAND_KEY) return key;
     const cell = cellOf.get(key.slice(key.lastIndexOf('#') + 1));
@@ -553,7 +632,9 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       if (have.has(n.id)) return [];
       const byState = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
       // The boxless rule's display: contents !important beats hidden's UA display: none, so a boxless element hides nothing.
-      const own = n.kind === 'element' && n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id));
+      const own = n.kind === 'element'
+        ? n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id))
+        : !armShown(parsed, n.arm, values);
       if (!own && !hiddenHere.has(n.parent ?? '')) return [];
       hiddenHere.add(n.id);
       if (n.kind === 'element' && n.boxless === true) return [];
