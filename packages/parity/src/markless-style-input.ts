@@ -29,7 +29,7 @@ export type MarklessStyleInput = {
   readonly version: typeof MARKLESS_STYLE_INPUT_VERSION;
   readonly component: string;
   readonly nodes: readonly (
-    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly boxless?: true; readonly arm?: unknown; readonly styleTemplate?: StyleTemplate }
+    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly boxless?: true; readonly arm?: unknown; readonly styleTemplate?: StyleTemplate; readonly styleByState?: readonly { readonly when: When; readonly template: StyleTemplate }[] }
     | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly textByState?: readonly { readonly when: When; readonly value: string }[]; readonly arm?: unknown }
   )[];
   readonly css: string;
@@ -172,11 +172,13 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     if (ids.has(id)) fail(`node ${id} is listed twice`);
     if (DOCUMENT_NODES.includes(id)) fail(`${id}: html and body are the export's own document nodes`);
     if (node['arm'] !== undefined || node['row'] !== undefined) fail(`${id}: styles inside @if arms and @for rows are not supported yet`);
-    const checkByState = (what: string, byState: unknown): void => {
+    const checkByState = (what: string, byState: unknown, field: 'value' | 'template' = 'value'): void => {
       if (!Array.isArray(byState)) fail(`${id}: ${what} is not a list`);
       for (const e of byState as unknown[]) {
-        if (!isRecord(e) || !(e['value'] === null || isString(e['value'])) || !isRecord(e['when'])) fail(`${id}: bad ${what} entry ${JSON.stringify(e)}`);
-        onlyKeys(`${id}: a ${what} entry`, e as Record<string, unknown>, ['when', 'value']);
+        const given = isRecord(e) ? e[field] : undefined;
+        const ok = field === 'value' ? given === null || isString(given) : Array.isArray(given);
+        if (!isRecord(e) || !ok || !isRecord(e['when'])) fail(`${id}: bad ${what} entry ${JSON.stringify(e)}`);
+        onlyKeys(`${id}: a ${what} entry`, e as Record<string, unknown>, ['when', field]);
         const when = (e as Record<string, unknown>)['when'] as Record<string, unknown>;
         for (const [cell, value] of Object.entries(when)) if (!(cells.get(cell) ?? []).includes(value as StateValue)) fail(`${id}: ${what} names ${cell}=${JSON.stringify(value)}, which is not a state and one of its values`);
       }
@@ -190,7 +192,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         if (!(node['textByState'] as unknown[]).every((e) => isString((e as Record<string, unknown>)['value']))) fail(`${id}: textByState gives a text that is not a string`);
       }
     } else if (node['kind'] === 'element') {
-      onlyKeys(id, node, ['kind', 'id', 'element', 'parent', 'attributes', 'classByState', 'attributesByState', 'boxless', 'styleTemplate']);
+      onlyKeys(id, node, ['kind', 'id', 'element', 'parent', 'attributes', 'classByState', 'attributesByState', 'boxless', 'styleTemplate', 'styleByState']);
       if (!isString(node['element']) || !/^[a-z][a-z0-9-]*$/.test(node['element'])) fail(`${id}: bad element name ${JSON.stringify(node['element'])}`);
       if (node['parent'] !== null && !(isString(node['parent']) && ids.has(node['parent']))) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
@@ -210,6 +212,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
           checkByState(`attributesByState.${name}`, byState);
         }
       }
+      if (node['styleByState'] !== undefined) checkByState('styleByState', node['styleByState'], 'template');
     } else fail(`${id}: kind ${JSON.stringify(node['kind'])} is neither element nor text`);
     ids.add(id);
   }
@@ -217,15 +220,20 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
   return v as MarklessStyleInput;
 }
 
-/** The input with each styleTemplate written into its element's style attribute at the slots' initial values, and no slots. */
+/** The input with each styleTemplate and styleByState written into its element's style attribute at the slots' initial values, and no slots. */
 export function filledAtInitial(input: MarklessStyleInput): MarklessStyleInput {
-  if (input.slots === undefined) return input;
-  const values = new Map(input.slots.map((s) => [s.id, s.initial]));
+  if (input.slots === undefined && !input.nodes.some((n) => n.kind === 'element' && n.styleByState !== undefined)) return input;
+  const values = new Map((input.slots ?? []).map((s) => [s.id, s.initial]));
   const { slots: _, ...rest } = input;
   return {
     ...rest,
     nodes: input.nodes.map((n) => {
-      if (n.kind !== 'element' || n.styleTemplate === undefined) return n;
+      if (n.kind !== 'element') return n;
+      if (n.styleByState !== undefined) {
+        const { styleByState, ...e } = n;
+        return { ...e, attributesByState: { ...e.attributesByState, style: styleByState.map(({ when, template }) => ({ when, value: filledStyle(template, values) })) } };
+      }
+      if (n.styleTemplate === undefined) return n;
       const { styleTemplate, ...e } = n;
       return { ...e, attributes: { ...e.attributes, style: filledStyle(styleTemplate, values) } };
     }),

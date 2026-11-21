@@ -67,23 +67,31 @@ export function checkSlots(slots: unknown, nodes: readonly Record<string, unknow
     }
   }
   const used = new Set<string>();
-  for (const n of nodes) {
-    const template = n['styleTemplate'];
-    if (template === undefined) continue;
-    const id = String(n['id']);
-    if (n['kind'] !== 'element') fail(`${id}: only an element has a styleTemplate`);
-    if (isRecord(n['attributes']) && 'style' in n['attributes']) fail(`${id}: style is both a fixed attribute and a styleTemplate`);
-    if (isRecord(n['attributesByState']) && 'style' in n['attributesByState']) fail(`${id}: style is both an attribute by state and a styleTemplate`);
-    if (!Array.isArray(template) || template.length === 0) fail(`${id}: styleTemplate is not a non-empty list`);
-    for (const part of template as unknown[]) {
+  const checkParts = (id: string, what: string, template: readonly unknown[]): void => {
+    for (const part of template) {
       if (typeof part === 'string') continue;
-      if (!isRecord(part) || Object.keys(part).join() !== 'slot' || typeof part['slot'] !== 'string') fail(`${id}: bad styleTemplate part ${JSON.stringify(part)}: a part is text or { slot }`);
-      if (!ids.has((part as { slot: string }).slot)) fail(`${id}: styleTemplate names ${(part as { slot: string }).slot}, which is not a slot`);
+      if (!isRecord(part) || Object.keys(part).join() !== 'slot' || typeof part['slot'] !== 'string') fail(`${id}: bad ${what} part ${JSON.stringify(part)}: a part is text or { slot }`);
+      if (!ids.has((part as { slot: string }).slot)) fail(`${id}: ${what} names ${(part as { slot: string }).slot}, which is not a slot`);
       used.add((part as { slot: string }).slot);
     }
+  };
+  for (const n of nodes) {
+    const template = n['styleTemplate'];
+    const byState = n['styleByState'];
+    if (template === undefined && byState === undefined) continue;
+    const id = String(n['id']);
+    const what = template === undefined ? 'styleByState' : 'styleTemplate';
+    if (n['kind'] !== 'element') fail(`${id}: only an element has a ${what}`);
+    if (template !== undefined && byState !== undefined) fail(`${id}: style is both a styleTemplate and a styleByState`);
+    if (isRecord(n['attributes']) && 'style' in n['attributes']) fail(`${id}: style is both a fixed attribute and a ${what}`);
+    if (isRecord(n['attributesByState']) && 'style' in n['attributesByState']) fail(`${id}: style is both an attribute by state and a ${what}`);
+    if (template !== undefined) {
+      if (!Array.isArray(template) || template.length === 0) fail(`${id}: styleTemplate is not a non-empty list`);
+      checkParts(id, what, template as unknown[]);
+    } else for (const e of byState as { template: unknown[] }[]) checkParts(id, what, e.template);
   }
   const unused = [...ids].filter((s) => !used.has(s));
-  if (unused.length > 0) fail(`slot ${unused.join(', ')} is in no styleTemplate`);
+  if (unused.length > 0) fail(`slot ${unused.join(', ')} is in no styleTemplate or styleByState`);
 }
 
 /** The style attribute a template gives at these values: each hole is the number as JavaScript writes it (String(n)), as the web gets it. */
