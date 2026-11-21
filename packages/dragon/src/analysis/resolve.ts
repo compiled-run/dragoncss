@@ -26,7 +26,7 @@ import { generatedElement, generatedText, generatedTextNode, hostRefusal } from 
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { isSvgShapeTag, SVG_TAG, svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
-import { inputTypeState, isRangeType, isTextFieldType } from './elements/controls.ts';
+import { inputTypeState, isRangeType, isTextFieldType, selectAppearance } from './elements/controls.ts';
 import { sanitizedTextValue, shownPlaceholder, TEXT_FIELD_UA_SHADOW } from '../forms/text-field.ts';
 import type { SelectOption } from '../forms/select.ts';
 import { labelKeepsWhiteSpace, SELECT_UA_SHADOW, shownLabel, shownOptionIndex } from '../forms/select.ts';
@@ -362,6 +362,10 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     // applyShadowUserAgent below.
     const shadowRules = part === null ? [] : part === 'inner' ? SELECT_UA_SHADOW.inner : isTextFieldPart(part) ? TEXT_FIELD_UA_SHADOW[part] : RANGE_UA_SHADOW[part];
     const shadowSet = new Set<string>(shadowRules.flatMap((r) => r.declarations.map(([name]) => (name === 'min-inline-size' ? 'min-width' : name))));
+    // FORM-b: applySelectShadow, the select[disabled] > option colour and the menulist line-height reset below.
+    if (part === 'inner') for (const p of ['white-space-collapse', 'direction', 'unicode-bidi', 'text-align']) shadowSet.add(p);
+    if (pseudo === null && part === null && el.tag === 'select') shadowSet.add('line-height');
+    if (pseudo === null && part === null && el.tag === 'option' && parent !== null && parent.element.tag === 'select' && parent.element.attributes.has('disabled')) shadowSet.add('color');
     const laterUserAgent = (p: Longhand): boolean =>
       ((p === 'font-weight' || p === 'font-style') && textFontsOf(environment.ua, el.tag)[p] !== undefined) || ((p === 'color' || p === 'text-decoration-line') && isAnyLink(el)) || shadowSet.has(p);
     for (const p of LONGHANDS) {
@@ -438,6 +442,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     else if (part !== null) (isTextFieldPart(part) ? applyTextFieldShadow : applyShadowUserAgent)(part as never, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
+    // FORM-b: LayoutThemeDefault::AdjustMenuListStyle resets a themed or devolved select's line height (layout_theme_default.cc:222-227).
+    if (pseudo === null && part === null && el.tag === 'select' && selectAppearance(props) === 'menulist-button') props.set('line-height', { value: parseValueText('line-height', 'normal'), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
     applyHidden(el, props, defaulted);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;

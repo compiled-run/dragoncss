@@ -771,6 +771,18 @@ export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: read
   return [...out];
 }
 
+/** Whether a node is an option or optgroup inside a select, or a node inside such an option: Chrome's closed control draws only the shown label, so it has no box. */
+export function inSelectOptions(byId: ReadonlyMap<string, MarklessStyleInput['nodes'][number]>, n: MarklessStyleInput['nodes'][number]): boolean {
+  let at: MarklessStyleInput['nodes'][number] | undefined = n;
+  let listed = false;
+  while (at !== undefined) {
+    if (at.kind === 'element' && at.element === 'select') return listed;
+    if (at.kind === 'element' && (at.element === 'option' || at.element === 'optgroup')) listed = true;
+    at = at.parent === null ? undefined : byId.get(at.parent);
+  }
+  return false;
+}
+
 /** The media features whose value changes with the viewport's height. */
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
@@ -833,6 +845,8 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
     (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
   }
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
+  const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
@@ -840,7 +854,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const boxed = parsed.nodes.filter((n) => boxless(n) && have.has(n.id)).map((n) => n.id);
     if (boxed.length > 0) fail(`${t}: ${boxed.join(', ')} must generate no box (an ancestor in the markup, there for selectors and inheritance), but the CSS gives it a display other than contents`);
     // Whitespace-only text Dragon drops where it collapses away, as Chrome generates no box for it.
-    const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
+    const missing = parsed.nodes.filter((n) => !boxless(n) && !inSelectList(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
   if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
@@ -865,15 +879,18 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
 
 /**
  * Each list of the input as a phone lays its rows out (harness.ts runMarklessRowsLayout): the box its rows hang from and the ids of
- * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy.
+ * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy. A list
+ * of a select's options has no rows to lay out: the closed control draws only the shown label.
  */
 function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, string>): { readonly id: string; readonly parent: string; readonly template: readonly string[] }[] {
-  return (parsed.repeats ?? []).map((r) => {
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n] as const));
+  return (parsed.repeats ?? []).flatMap((r) => {
     const top = parsed.nodes.filter((n) => n.row === r.id && n.parent === r.parent);
+    if (top.length > 0 && top.every((n) => inSelectOptions(byId, n))) return [];
     const text = top.find((n) => n.kind === 'text');
     if (text !== undefined) fail(`${text.id}: text right inside a row of ${r.id} has no box a phone can copy per row; wrap it in an element`);
     if (top.length === 0) fail(`${r.id}: its rows hold no node`);
-    return { id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) };
+    return [{ id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) }];
   });
 }
 
