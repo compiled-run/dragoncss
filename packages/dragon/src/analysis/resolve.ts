@@ -24,6 +24,7 @@ import { appearanceDisplay, blockifyRoot, computeFontStyleLonghands, computeGrid
 import { BACKDROP_TAG, MARKER_TAG, uaTagOf } from './elements.ts';
 import { generatedElement, generatedText, generatedTextNode, hostRefusal } from './generated.ts';
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
+import { dirHint, dirHintDeclaration, dirUnicodeBidi } from './elements/dir.ts';
 import { isSvgShapeTag, SVG_TAG, svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
 import { isRangeType } from './elements/controls.ts';
@@ -334,7 +335,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     const selects = (r: Rule): boolean => r.selectors.some((sel) => (pseudo !== null ? pseudoSelectorMatches(r, sel, here, pseudo, faults, interaction) : part !== null ? partName !== null && partSelectorMatches(r, sel, here, partName, faults, interaction) : selectorMatches(r, sel, here, here.length - 1, 0, faults, interaction)));
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
-    const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart, pseudo === null && part === null ? attachedDeclarations(el) : undefined);
+    const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment, pseudo === null && part === null ? dirHint(el.tag, el.attributes) : null), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart, pseudo === null && part === null ? attachedDeclarations(el) : undefined);
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag, el.attributes.get('type'), pseudo === null && part === null && isDisabled(here));
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -353,7 +354,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     const defaulted = new Set<Longhand>();
     // Longhands whose author winner is revert or revert-layer: they keep that declaration while taking the rolled-back value.
     const revertedProps = new Set<Longhand>();
-    const hints = part === null ? presentationalHints(el.tag, el.attributes) : new Map();
+    const hints = part === null ? withDirHint(presentationalHints(el.tag, el.attributes), el) : new Map();
     // The UA values applied after the cascade to longhands no author declaration set: computeFontStyleLonghands, applyAnyLink and
     // applyShadowUserAgent below.
     const shadowSet = part === null ? new Set<string>() : new Set(RANGE_UA_SHADOW[part].flatMap((r) => r.declarations.map(([name]) => (name === 'min-inline-size' ? 'min-width' : name))));
@@ -393,7 +394,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
         // A presentational hint is a declaration below author rules (css-cascade-5 §6.1), so it beats inheritance too. An SVG paint
         // attribute keeps a stand-in declaration, so its value is profile-checked as the same value in CSS is (elements/svg.ts).
         const value = hints.get(p) as CssValue;
-        const stand = svgHintDeclaration(el, p, value);
+        const stand = svgHintDeclaration(el, p, value) ?? dirHintDeclaration(el, p, value);
         props.set(p, stand === null ? { value, origin: 'presentational-hint', span: null, ...none } : { value, origin: 'presentational-hint', span: stand.span, declaration: stand, declared: value, losing: [] });
       } else if (inherited && parent === null && p === 'direction') {
         // docs/api.md §7: the environment direction is the root's base direction; the harness gives both renderings the same one.
@@ -427,6 +428,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
     applyHidden(el, props, defaulted);
+    if (pseudo === null && part === null) applyDirIsolate(el, props, defaulted);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {
@@ -787,6 +789,23 @@ function applyHidden(el: LinkedElement, props: Map<Longhand, ResolvedValue>, def
   props.set('display', { ...none, ...props.get('display'), value: { kind: 'keyword', value: 'none' }, origin: 'user-agent' });
 }
 
+/** HTML §15.3.6: the dir attribute's direction hint, below every author rule, beside the element's other presentational hints. */
+function withDirHint(hints: ReadonlyMap<Longhand, CssValue>, el: LinkedElement): ReadonlyMap<Longhand, CssValue> {
+  const d = dirHint(el.tag, el.attributes);
+  return d === null ? hints : new Map([...hints, ['direction', { kind: 'keyword', value: d }]]);
+}
+
+/**
+ * html.css's [dir=ltr i], [dir=rtl i] { unicode-bidi: isolate }, as captured per tag. It is a UA rule, not a hint: Chrome keeps it
+ * under unicode-bidi: revert (DIR_UNICODE_BIDI_REVERTED), so like applyHidden it applies only where no author declaration set it.
+ */
+function applyDirIsolate(el: LinkedElement, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>): void {
+  const d = dirHint(el.tag, el.attributes);
+  if (d === null || !defaulted.has('unicode-bidi')) return;
+  const none = { span: null, declaration: null, declared: null, losing: [] } as const;
+  props.set('unicode-bidi', { ...none, ...props.get('unicode-bidi'), value: parseValueText('unicode-bidi', dirUnicodeBidi(el.tag, d)), origin: 'user-agent' });
+}
+
 function applyForcedUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, ua: UaDataset): void {
   const dirValue = (props.get('direction') as ResolvedValue).value;
   const forced = uaRows(ua, tag).forced[dirValue.kind === 'keyword' && dirValue.value === 'rtl' ? 'rtl' : 'ltr'];
@@ -800,14 +819,17 @@ function applyForcedUserAgent(tag: UaKey, props: Map<Longhand, ResolvedValue>, u
   }
 }
 
-/** The direction context of an element (logical.ts), from its parent's computed direction or, at the root, the environment. */
-function directionContext(parent: ResolvedElement | null, faults: CompilerFaults, environment: ResolveEnvironment): DirectionContext {
+/**
+ * The direction context of an element (logical.ts), from its parent's computed direction or, at the root, the environment. hint:
+ * the element's own dir hint, which it takes when no author rule sets direction (dir is refused on the root, elements/dir.ts).
+ */
+function directionContext(parent: ResolvedElement | null, faults: CompilerFaults, environment: ResolveEnvironment, hint: Direction | null): DirectionContext {
   const keyword = (v: CssValue): Direction => (v.kind === 'keyword' && v.value === 'rtl' ? 'rtl' : 'ltr');
   if (parent !== null) {
     const d = keyword((parent.props.get('direction') as ResolvedValue).value);
-    return { undeclared: d, inherited: d };
+    return { undeclared: hint ?? d, inherited: d, hint };
   }
-  return { undeclared: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction, inherited: keyword(parseValueText('direction', environment.ua.computed.html['direction'] as string)) };
+  return { undeclared: faults.ignoreEnvironmentDirection ? 'ltr' : environment.direction, inherited: keyword(parseValueText('direction', environment.ua.computed.html['direction'] as string)), hint: null };
 }
 
 // goal.md principle 3: a text node carries each inherited text property itself, inherited from its insertion parent.
