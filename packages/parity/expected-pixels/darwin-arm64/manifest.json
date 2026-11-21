@@ -303,6 +303,8 @@
         {"case":"block-elements-font-size","width":800,"height":600,"sha256":"ac9ecf5a9026e967f934b33fb495a6d305bfd235ba3b2ee0bfd9e9e5f91a3754"},
         {"case":"block-elements-margin-collapse","width":800,"height":600,"sha256":"fd1c5b352631ad6c6cb56f83d59eadd52286655d72d641b12c9fa72aa8e57108"},
         {"case":"block-elements-margin-collapse-rtl","width":800,"height":600,"sha256":"24f1011094162e5ea97a041cf7e2704e0816ecdfe4c1cedd713ee403764aa506"},
+        {"case":"center-block","width":800,"height":600,"sha256":"37fa68bf25b3d0e25c3ff1de85653d3495b8fc8e757f5a21527dcb7eac550719"},
+        {"case":"center-block-rtl","width":800,"height":600,"sha256":"6811d0a8a16f6554b4fe32e9abf501c20392544478a5d1a91fe1617b7aee58b7"},
         {"case":"units-absolute","width":800,"height":600,"sha256":"a7c0915629128432ac278c78867a43b94808e11f521ffe06c834ec1259b8d282"},
         {"case":"units-em","width":800,"height":600,"sha256":"df8d5bb516f14c050ce560d9530ac1a5bb2b873ad0f54c90fe8d22de6bc42227"},
         {"case":"units-rem","width":800,"height":600,"sha256":"6294d63addc75aedbb2b42cd0013fef93fb71bb54bad80f7efc790f42cfc645c"},
@@ -1606,6 +1608,8 @@
         {"case":"block-elements-font-size","width":1200,"height":900,"sha256":"6d080834b5295de77355373bc1a769136822de0a9271786052fa7d2ac42ee413"},
         {"case":"block-elements-margin-collapse","width":1200,"height":900,"sha256":"98bfa18a6b3a998c2077651ec1bb7843f2082fc96391eaf19254a6e1ab055f87"},
         {"case":"block-elements-margin-collapse-rtl","width":1200,"height":900,"sha256":"a4fa8b8f87e14cc6669467c0146bcc3ceae0f85f1d6a84c47426335faf2f1a0e"},
+        {"case":"center-block","width":1200,"height":900,"sha256":"0db5e9ac4044e564b8d8a7a3120e90c1b1cff5a19d9d8af0fb73c629037e758d"},
+        {"case":"center-block-rtl","width":1200,"height":900,"sha256":"c19751cbeb94bfcddb30287d33ae0750bff6ff5c36b4fac6f049ccb969c7e2d1"},
         {"case":"units-absolute","width":1200,"height":900,"sha256":"b753416063ada92d8e316788ff1f9f7d12dfcc0fb8c55b052673cef134ad9ad8"},
         {"case":"units-em","width":1200,"height":900,"sha256":"23468d76a5bf4bda83086c31ecf8fa4bd7f5796801afcd0476214a26788d9326"},
         {"case":"units-rem","width":1200,"height":900,"sha256":"3ed4698cfce7437ed19a97fe7e3914d8e5d6df3c8a30ed8fc38caf63688b2b6f"},
@@ -2604,7 +2608,7 @@
         {"case":"interaction-focus~fx1f3cf7176ecf","width":1200,"height":900,"sha256":"956f35152fcf5a4c56614b0023bab6721126de2ff005f6848b08247ea793af28"},
         {"case":"interaction-focus~fx504fb92901bd","width":1200,"height":900,"sha256":"1b51437d84e654c7f62b22520d8b2eddf6f7b752455417a938344af2f0558caf"},
         {"case":"interaction-focus~fx1f3cf7176ecf-rtl","width":1200,"height":900,"sha256":"6ede493ca1e794d95ca95332e64219aa10270a3df96e86439d11fe1a6f99871c"},
-        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1200,"height":900,"sha256":"411ebff10d995958a84fc3b0e9bcccc709f632da6da139c30b9378715e049c85"},
+        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1200,"height":900,"sha256":"ce091e99436a328807b4f720417bed790ee380d0d0408e627a781d26a33478bd"},
         {"case":"interaction-combo~fx57871c980ee7","width":1200,"height":900,"sha256":"13f86b80fc895dff3afda860c306829a52696ff062a06f39cfc16c8289623900"},
         {"case":"interaction-combo~fx57871c980ee7-rtl","width":1200,"height":900,"sha256":"46b605b5009913d33bfaba959ffc9a440bfe54124bcf28a80efb123a6df33322"}
       ]
@@ -2909,6 +2913,8 @@
         {"case":"block-elements-font-size","width":1050,"height":788,"sha256":"071cf2e7b478564eda5a155a542fe94f99b354aee28535711e7c7bf55ee1010d"},
         {"case":"block-elements-margin-collapse","width":1050,"height":788,"sha256":"ddd5fbb2a59953f2a664a6e3ca0f306bb9217a653d1402564ce325c0c63358a5"},
         {"case":"block-elements-margin-collapse-rtl","width":1050,"height":788,"sha256":"115997f1f4e104f5d1adb4a47f3aac8f8d4516d2eb0af942b2f8f8de9b3dfaa4"},
+        {"case":"center-block","width":1050,"height":788,"sha256":"ab6ce9d8e14377b39ae69cb8b488f7a5432624789acb2d1044973e24e845862b"},
+        {"case":"center-block-rtl","width":1050,"height":788,"sha256":"d0513c4dba68c2cc321557819b1bdb0e4c7300fc78ac01db7a23085a977782d1"},
         {"case":"units-absolute","width":1050,"height":788,"sha256":"3e413d7a55566fbd3fdbf64fd4e14afc6e43d33a190d88c3135ad3a5814cb463"},
         {"case":"units-em","width":1050,"height":788,"sha256":"66520d03cae4ff2ca1a92321edd20dcb94b36302c96b39bd99722e02a7741eff"},
         {"case":"units-rem","width":1050,"height":788,"sha256":"05b1b3413fb93dbd537c1a06153431567b6846eebaaee2763358dca0390cf170"},
@@ -3907,7 +3913,7 @@
         {"case":"interaction-focus~fx1f3cf7176ecf","width":1050,"height":788,"sha256":"9c6420ce9454f5b0db6395cecf84bf3deb44dae56f7d5a1da4c562b06cfabf71"},
         {"case":"interaction-focus~fx504fb92901bd","width":1050,"height":788,"sha256":"2506eda31b1513ec77a79cee4284905081c784700be08fd831ffb89ce44a38b9"},
         {"case":"interaction-focus~fx1f3cf7176ecf-rtl","width":1050,"height":788,"sha256":"c496b946abe75c01d561c1e4d6add2be14d4edc91aece740c929f9040ea21d4f"},
-        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1050,"height":788,"sha256":"9a60c3fdbb3c549042925f50b03e7b47a59b35602796610fdb20786c251e6afd"},
+        {"case":"interaction-focus~fx504fb92901bd-rtl","width":1050,"height":788,"sha256":"78e2fa55ca1f99409100f15df5cafc121d393dbe71ec3c4d6efb2d49d64a006a"},
         {"case":"interaction-combo~fx57871c980ee7","width":1050,"height":788,"sha256":"06efbcecd554d5e7849d3f0e2c95f6991557dbe8e01f8e118110e566e80fb16a"},
         {"case":"interaction-combo~fx57871c980ee7-rtl","width":1050,"height":788,"sha256":"f8531a54f2531c61e41fe03f358102a15c89c98e59ced21406ba5b559800d897"}
       ]
