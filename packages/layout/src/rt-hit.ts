@@ -14,7 +14,7 @@ import { isScrollContainer, resolveBorder } from './box.ts';
 import type { Edges } from './box.ts';
 import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
-import { fromRaw } from './units.ts';
+import { fromRaw, ZERO } from './units.ts';
 import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
@@ -59,7 +59,7 @@ export type HitNode = {
   readonly inkRight: number;
   readonly inkBottom: number;
   readonly pointerEvents: PointerEvents;
-  /** A box's rounded border box in device px: its eight outer radii, then its eight inner (padding edge) radii; empty when square. */
+  /** A box's rounded border box (a line's rect, with its block's radii) in device px: eight outer radii, then eight inner; empty when square. */
   readonly radii: readonly number[];
 };
 
@@ -375,8 +375,9 @@ function foreground(ctx: HitCtx, i: number): number {
 
 /**
  * HitTestLineBoxFragment: when the line's ink overflow (the line box and its text) holds the point, the line's text items, last
- * first, against their pixel-snapped rects exclusively (HitTestTextItem); then the line itself, exclusively against the line rect
- * and inclusively against the block's border box placed at the line's offset and pixel-snapped (HitTestClippedOutByBorder).
+ * first, against their pixel-snapped rects exclusively (HitTestTextItem); then the line itself, exclusively against the line rect,
+ * inclusively against the block's border box placed at the line's offset and pixel-snapped (HitTestClippedOutByBorder), and against
+ * the line rect rounded with the block's radii (PixelSnappedContouredBorder of the block's style on the line's bounds).
  */
 function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: number): number {
   let x0 = line.x;
@@ -403,7 +404,7 @@ function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: number): number
   for (const t of texts) {
     if (visible(ctx, t) && intersectsSnapped(ctx.px, ctx.py, t.x, t.y, t.width, t.height)) return t.target;
   }
-  if (visible(ctx, line) && intersects(ctx.px, ctx.py, line.x, line.y, line.width, line.height) && touchesBlockBorder(ctx, line.x, line.y, block) && insideRoundedBorder(ctx, block)) return line.target;
+  if (visible(ctx, line) && intersects(ctx.px, ctx.py, line.x, line.y, line.width, line.height) && touchesBlockBorder(ctx, line.x, line.y, block) && insideRoundedBorder(ctx, line)) return line.target;
   return -1;
 }
 
@@ -592,6 +593,8 @@ type TableState = {
   /** The zoomed style of each replaced leaf, by id. */
   readonly zoomedReplaced: Map<string, LayoutStyle>;
   readonly ctx: EngineCtx;
+  /** The input's device pixel ratio: the hit facts' px radii are CSS px, the rects device px (ctx's ratio is the zoomed input's 1). */
+  readonly dpr: number;
   readonly facts: ReadonlyMap<string, HitFact>;
   readonly faults: HitTableFaults;
 };
@@ -729,7 +732,7 @@ const LINE_PROBE_WIDTH = fromRaw(1073741824);
 /** A text piece and whether its leaf inks the whole em box. */
 type HitPiece = { readonly rect: LayoutRect; readonly full: boolean };
 
-function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[]): void {
+function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[], lengths: readonly RadiusLength[]): void {
   const zb = zoomedBox(s, b.id);
   const zLeaves: TextLeaf[] = [];
   for (const c of zb.children) {
@@ -774,14 +777,14 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
       own.push(p);
       at++;
     }
-    linePieces(s, b, parent, target, pe, run, size, own, head.rect.y, k);
+    linePieces(s, b, parent, target, pe, run, size, own, head.rect.y, k, lengths);
     k++;
     from = at;
   }
 }
 
 /** One line of a block's inline content (its pieces, all with this top): the line node, then each text piece on it. */
-function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, own: readonly HitPiece[], top: number, k: number): void {
+function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, own: readonly HitPiece[], top: number, k: number, lengths: readonly RadiusLength[]): void {
   const firstPiece = own[0];
   if (firstPiece === undefined) throw new HitError(`${b.id}: an empty line`);
   let x0 = firstPiece.rect.x;
@@ -790,7 +793,9 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     if (p.rect.x < x0) x0 = p.rect.x;
     if (p.rect.x + p.rect.width > x1) x1 = p.rect.x + p.rect.width;
   }
-  pushNode(s, { kind: 'line', parent, target, x: x0, y: top - run.halfLeading, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: [] }, `${b.id}:hitline${k}`, false);
+  const y = top - run.halfLeading;
+  const radii = roundedOf(x0, y, x1 - x0, run.lineHeight, NO_EDGES, lengths, s.dpr);
+  pushNode(s, { kind: 'line', parent, target, x: x0, y, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii }, `${b.id}:hitline${k}`, false);
   for (const p of own) {
     const q = p.rect;
     // Ahem's ink: the glyph run's bounds rounded out to whole pixels in the run's own space (from the run origin to n em, and
@@ -806,13 +811,15 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
   }
 }
 
+const NO_EDGES: Edges = { top: ZERO, right: ZERO, bottom: ZERO, left: ZERO };
+
 /**
  * A box's rounded border for the hit test (ContouredBorderGeometry::PixelSnappedContouredBorder and ...InnerBorder): roundedShape on
  * its pixel-snapped border box in device px, radii resolved against the unsnapped size; empty when no corner is rounded.
  */
-function roundedOf(r: LayoutRect, border: Edges, lengths: readonly RadiusLength[], dpr: number): number[] {
+function roundedOf(x: number, y: number, w: number, h: number, border: Edges, lengths: readonly RadiusLength[], dpr: number): number[] {
   if (lengths.length === 0) return [];
-  const shape = roundedShape(roundPx(r.x) / LU_PX, roundPx(r.y) / LU_PX, roundPx(r.x + r.width) / LU_PX, roundPx(r.y + r.height) / LU_PX, r.width / LU_PX, r.height / LU_PX, [border.top / LU_PX, border.right / LU_PX, border.bottom / LU_PX, border.left / LU_PX], lengths, dpr, NO_RADIUS_FAULTS);
+  const shape = roundedShape(roundPx(x) / LU_PX, roundPx(y) / LU_PX, roundPx(x + w) / LU_PX, roundPx(y + h) / LU_PX, w / LU_PX, h / LU_PX, [border.top / LU_PX, border.right / LU_PX, border.bottom / LU_PX, border.left / LU_PX], lengths, dpr, NO_RADIUS_FAULTS);
   const outer: number[] = [];
   for (let i = 0; i < 8; i++) outer.push(radiusAt(shape, i));
   return hasRoundedCorner(outer) ? shape : [];
@@ -841,7 +848,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
     absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
-    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r, border, lengths, s.ctx.devicePixelRatio),
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, lengths, s.dpr),
   }, b.id, act);
   const leaves: TextLeaf[] = [];
   let kids = 0;
@@ -854,7 +861,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     else kids++;
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
-  if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves);
+  if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves, lengths);
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : b.style.display === 'grid' ? gridOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
@@ -887,7 +894,7 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
     absolute: c.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && c.style.position !== 'absolute' ? c.style.order : 0, line: -1,
-    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r, border, f.radii, s.ctx.devicePixelRatio),
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, f.radii, s.dpr),
   }, c.id, f.activation);
 }
 
@@ -980,7 +987,7 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);
-  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, facts, faults };
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
   boxNodes(s, input.root, -1, null, -1, 'auto');
   return { nodes: s.nodes, ids: s.ids, activation: s.activation };
 }

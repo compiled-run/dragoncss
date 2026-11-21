@@ -107,7 +107,7 @@ describe('the host hit lane at a fractional device DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
     expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl']);
+      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip']);
       const mismatches: string[] = [];
       for (const id of ids) {
         const n = byId.get(id);
@@ -118,6 +118,7 @@ describe('the host hit lane at a fractional device DPR', () => {
         const r = compareHitsAt(n, c, dpr);
         expect(r.stale, id).toBe(false);
         for (const m of r.mismatches.slice(0, 3)) mismatches.push(`${m.case} (${m.x / (dpr * 64)}, ${m.y / (dpr * 64)}): Chrome ${m.chrome}, Dragon ${m.dragon}`);
+        if (!id.startsWith('interaction-combo')) continue;
         // The device-traces step (2, 30) is on c's bottom edge, y 30, over d: c's text rect snapped to device px (53
         // to 79) holds the band from 78.75 to 79 device px at 2.625, so Chrome names c there, where DPR 1 names d.
         const w = n.case.environment.viewport.width;

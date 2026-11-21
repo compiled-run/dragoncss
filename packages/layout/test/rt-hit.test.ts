@@ -144,6 +144,41 @@ describe('hitTableOf hit-tests a replaced element as a childless box', () => {
   });
 });
 
+// SELD-R2b: the facts' px radii are CSS px and the table is in device px, and a line is rounded on its own rect with its block's radii.
+describe('hitTableOf rounds boxes and lines as Blink does', () => {
+  const table = async (dpr: number, p: Record<string, unknown>, children: unknown[], radius: number) => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, neutralEnvironment } = await import('./helpers.ts');
+    const root = { ...box('html', {}), children: [box('p', p, children as Parameters<typeof box>[2])] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const r = Array.from({ length: 8 }, () => ({ percent: false, value: radius }));
+    const facts = new Map([['html', { pointerEvents: 'auto', inherited: false, activation: false, radii: [] }], ['p', { pointerEvents: 'auto', inherited: true, activation: false, radii: r }]]) as unknown as Parameters<typeof hitTableOf>[2];
+    return hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+  };
+  const idAt = (t: { nodes: readonly HitNode[]; ids: readonly string[] }, x: number, y: number) => t.ids[hitTest(t.nodes, Math.floor(x * PX), Math.floor(y * PX), NO_HIT_FAULTS)];
+
+  it('scales a px radius to device px at DPR 3, so a 12px corner is 36 device px', async () => {
+    const { px } = await import('./helpers.ts');
+    const t = await table(3, { width: px(60), height: px(60) }, [], 12);
+    const p = t.nodes[1] as HitNode;
+    expect([t.ids[1], p.width / PX, p.radii.slice(0, 8)]).toEqual(['p', 180, [36, 36, 36, 36, 36, 36, 36, 36]]);
+    // (3, 3) device px is inside a 12 device px corner but outside Chrome's 36.
+    expect(idAt(t, 3, 3)).toBe('html');
+    expect(idAt(t, 12, 12)).toBe('p');
+  });
+
+  it('hits a line that overflows its rounded block by less than the block\'s top padding, inside the rounded line rect', async () => {
+    const { px, text } = await import('./helpers.ts');
+    // p's border box is 0 to 18; its line box 8 to 28, the block's border box moved to the line 8 to 26, and the text 13 to 23.
+    const t = await table(1, { width: px(100), height: px(10), paddingTop: px(8) }, [text('t', 'XXXXXXXXXX', { lineHeight: px(20) })], 10);
+    const line = t.nodes[t.ids.indexOf('p:hitline0')] as HitNode;
+    expect([line.y / PX, line.height / PX, line.radii.slice(0, 8)]).toEqual([8, 20, [10, 10, 10, 10, 10, 10, 10, 10]]);
+    expect(idAt(t, 50, 24)).toBe('p');
+    expect(idAt(t, 50, 26.5)).toBe('html');
+  });
+});
+
 // FORM-a: a form control is refused by name, never hit as its parts: Chrome retargets a hit on a control's UA shadow parts to the
 // control element, which the hit table does not model, and no Chrome hit capture covers a control. Inputs without one are unaffected.
 describe('hitTableOf and hitRefusal refuse a form control by name', () => {

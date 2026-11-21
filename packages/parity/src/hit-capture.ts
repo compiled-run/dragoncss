@@ -27,10 +27,11 @@ export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/
  * The hit captures at a device DPR beside the DPR-1 ones: Chrome launched at that forced device scale factor (launchChrome(dpr), as
  * every DPR capture is), so it lays out and snaps text rects in device px, against the TS hit test at that DPR (expectedHitRuns, the
  * device-hit lane's and the device-traces reference's model). interaction-combo's step point (2, 30) is on c's bottom edge, which at
- * 2.625 is 78.75 device px, inside c's text rect snapped to device px (53 to 79): Chrome names c there, not DPR 1's d.
+ * 2.625 is 78.75 device px, inside c's text rect snapped to device px (53 to 79): Chrome names c there, not DPR 1's d. The radius
+ * cases check that px radii (CSS px in the hit facts) scale to device px, on the border box and on a rounded clip's padding edge.
  */
 export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
-  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl'] },
+  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip'] },
 ];
 export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
 export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;
