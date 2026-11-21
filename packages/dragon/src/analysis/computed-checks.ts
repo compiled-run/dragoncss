@@ -1933,9 +1933,9 @@ function checkInsideFieldset(el: ResolvedElement, chain: readonly ResolvedElemen
   const legend = renderedLegendOf(cb);
   const read = (['top', 'bottom', 'height', 'min-height', 'max-height'] as const).find((p) => {
     const v = el.props.get(p) as ResolvedValue;
-    if (p === 'top') return legend !== null ? keywordOf(v) !== 'auto' : v.value.kind === 'percentage';
+    if (p === 'top') return legend !== null ? keywordOf(v) !== 'auto' : hasPercentage(v);
     if (p === 'bottom') return keywordOf(v) !== 'auto';
-    return v.value.kind === 'percentage';
+    return hasPercentage(v);
   });
   if (read === undefined) return;
   const box = legend === null ? `the anonymous contents box of <fieldset> ${cb.element.address}, only as tall as its contents` : `the contents of <fieldset> ${cb.element.address} below its rendered legend <legend> ${legend.element.address}`;
