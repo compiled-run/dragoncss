@@ -83,7 +83,7 @@ import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
 import { uaTagOf } from './elements.ts';
-import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, textFieldAppearance } from './elements/controls.ts';
+import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, selectAppearance, textFieldAppearance } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -95,7 +95,7 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, textFieldPartOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, selectPartOf, textFieldPartOf, valueToString } from './resolve.ts';
 import { selectDisplaySize } from '../forms/select.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import { serializeColor } from '../css/color.ts';
@@ -1668,8 +1668,11 @@ const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] 
   ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
 ];
 
-/** FORM-b S1: a single select with appearance: none (Chrome's menulist, resolve.ts); everything else about one is refused by name. */
-function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+/**
+ * FORM-b: a single select with appearance: none, or auto devolved to menulist-button (Chrome's menulist, resolve.ts); everything
+ * else about one is refused by name.
+ */
+function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
   const address = el.element.address;
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
     refuseOn(el, v, what, code, targets, diagnostics, reported, message, manual);
@@ -1697,8 +1700,13 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets:
     if (styled !== undefined) refuseOn(o, styled[1], 'option-style', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${styled[0]} on <option> ${o.element.address} is not supported: Chrome draws only its label in the closed select, and Dragon writes no rule for an option`, `Style <select> ${address} instead of <option> ${o.element.address}.`);
   }
   const appearance = el.props.get('appearance') as ResolvedValue;
-  if (keywordOf(appearance) !== 'none') {
-    refuse(appearance, 'appearance', `<select> ${address} with appearance: ${valueToString(appearance.value)} draws Chrome's drop-down arrow and internal paddings, which wait for FORM-b select S2; only appearance: none is laid out`, `Set appearance: none on <select> ${address}.`);
+  const used = selectAppearance(el.props);
+  if (used === 'theme' && keywordOf(appearance) === 'auto') {
+    refuse(appearance, 'appearance', `<select> ${address} with appearance: auto and no author background, border or box-shadow is Chrome's themed menulist, which the platform theme paints; only appearance: none or a select styled with one of them (menulist-button) is laid out`, `Give <select> ${address} a background or border, or set appearance: none.`);
+  } else if (used === 'theme') {
+    refuse(appearance, 'appearance', `<select> ${address} with appearance: ${valueToString(appearance.value)} is not supported; only appearance: none or auto is laid out`, `Set appearance: none (or remove appearance) on <select> ${address}.`);
+  } else if (used === 'menulist-button') {
+    if (ua.menuListArrowWidth === null) refuse(appearance, 'arrow-width', `<select> ${address} draws Chrome's drop-down arrow, whose width no capture holds for ${ua.platform} (scripts/capture-form-data.ts)`, `Set appearance: none on <select> ${address}.`);
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);
@@ -1738,6 +1746,25 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets:
   if (family.origin === 'user-agent') {
     refuse(family, 'font', `<select> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <select> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
+}
+
+/**
+ * FORM-b: the native refusals of every menulist-button select's drop-down arrow, which the native hosts draw from FORM-b select S3;
+ * project.ts makes them lane-only in a parity-lanes compile, so the engine lane proves the select's layout.
+ */
+export function selectArrowNativeRefusals(roots: readonly ResolvedElement[], targets: readonly string[]): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const reported = new Set<string>();
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const walk = (el: ResolvedElement): void => {
+    if (el.element.tag === 'select' && selectPartOf(el)?.part === null && selectAppearance(el.props) === 'menulist-button') {
+      const address = el.element.address;
+      refuseOn(el, el.props.get('appearance') as ResolvedValue, 'arrow-native', 'DRAGON_UNSUPPORTED_VALUE', native, out, reported, `<select> ${address} draws Chrome's drop-down arrow (appearance: auto with an author background, border or box-shadow), which the native hosts draw from FORM-b select S3`, `Set appearance: none on <select> ${address} for native targets.`);
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+  };
+  for (const r of roots) walk(r);
+  return out;
 }
 
 /** The container-role longhands of a range input, which Chrome's range layout (a flex container) would read. */
@@ -1900,7 +1927,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkButton(el, parentDisplay, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'select') {
-      checkSelect(el, parentDisplay, targets, diagnostics, reported);
+      checkSelect(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) {
       checkTextField(el, parentDisplay, targets, diagnostics, reported);

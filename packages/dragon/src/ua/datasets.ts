@@ -3,6 +3,7 @@
 import { REFERENCE_PLATFORM } from './reference-platform.ts';
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
+import * as darwinArm64Forms from '../forms/chrome-145.darwin-arm64.forms.generated.ts';
 import type { CapturedTag, ElementKey, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 import { UNSTYLED_TAGS } from '../analysis/elements.ts';
 import { TEXT_FONT_LONGHANDS } from './uncaptured.ts';
@@ -50,6 +51,8 @@ export type UaDataset = {
   readonly elementKeyTextFonts: { readonly [K in ElementKey]: { readonly [property: string]: string } };
   /** ELB-2 userAgentForced for every captured key, by key name. */
   readonly userAgentForced: { readonly [key: string]: DirRows };
+  /** FORM-b: the platform's menulist arrow width in DIP (scripts/capture-form-data.ts), or null where none was captured. */
+  readonly menuListArrowWidth: number | null;
 };
 
 type TextFontRow = { readonly [property: string]: string };
@@ -147,8 +150,11 @@ function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark)
   const declared = ds.elementKeyDeclared['a[href]'];
   const line = ds.userAgentUnmodelled['a[href]']?.ltr['text-decoration-line'];
   if (declared.ltr['color'] === undefined || declared.rtl['color'] === undefined || line === undefined) throw new Error(`${ds.platform}: the a[href] capture has no color or text-decoration-line`);
-  return { ...ds, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line } };
+  return { ...ds, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line }, menuListArrowWidth: FORM_DATA.get(ds.platform) ?? null };
 }
+
+/** FORM-b: the captured form control data per platform. */
+const FORM_DATA: ReadonlyMap<string, number> = new Map([[darwinArm64Forms.platform, darwinArm64Forms.menuListArrowWidth]]);
 
 const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withSpecifiedTextFonts(darwinArm64)]]);
 

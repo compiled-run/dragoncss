@@ -975,8 +975,8 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'text-placeholder' };
   }
   if (k === 'select-menulist') {
-    const o = obj(v, ['kind', 'font', 'lineHeight'], path);
-    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+    const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth'], path);
+    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path) };
   }
   if (k === 'select-inner') {
     obj(v, ['kind'], path);

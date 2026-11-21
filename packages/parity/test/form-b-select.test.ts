@@ -1,12 +1,22 @@
-// FORM-b select S1: a single select with appearance: none compiles as Chrome 145's menulist, a flex row container of its inner
-// element holding the shown option's label; a list box, optgroup, any other appearance, an inline-level, shrink-to-fit or
-// flex-item-minimum select, option styles and focus rules are refused by name.
+// FORM-b select: a single select with appearance: none (S1), or auto devolved to menulist-button by an author background, border
+// or box-shadow (S2), compiles as Chrome 145's menulist, a flex row container of its inner element holding the shown option's
+// label; S2 adds the theme's internal paddings and the drop-down arrow, proven here against Chrome's committed pixels. A list box,
+// optgroup, themed menulist, an inline-level, shrink-to-fit or flex-item-minimum select, option styles and focus rules are refused.
 import { describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic } from 'dragon';
 import * as dragon from 'dragon';
-import { ahemMeasurer, layout as engineLayout } from '@dragon/layout';
+import type { ControlBox, LayoutBox } from '@dragon/layout';
+import { ahemMeasurer, layout as engineLayout, menuListArrow } from '@dragon/layout';
+import { casesOf, fixtureInput } from '../src/cases.ts';
+import { DPRS } from '../src/dpr.ts';
 import { fixtureToInput } from '../src/fixture-reader.ts';
-import { ENVIRONMENT } from '../src/fixtures.ts';
+import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
+import { pixelAt } from '../src/native-compare.ts';
+import { nativeCompile } from '../src/native-compile.ts';
+import { arrowSegments, selectArrows } from '../src/paint-samples/control.ts';
+import { SVG_CLEAR_DEVICE_PX } from '../src/samples.ts';
+import { arrowPixelProblems } from '../../dragon/src/forms/index.ts';
+import { caseBoxes, committedPixels } from '../src/pixel-reference.ts';
 
 const page = (css: string, body: string): string => `<!DOCTYPE html>
 <html data-dragon-id="html">
@@ -23,9 +33,9 @@ ${body}
 </html>
 `;
 
-function compile(id: string, css: string, body: string): Compiled<'ios' | 'android' | 'web'> {
-  const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem' });
-  return project.compile(fixtureToInput(id, page(css, body)));
+function compile(id: string, css: string, body: string, base = true, lanes = false): Compiled<'ios' | 'android' | 'web'> {
+  const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem', interactionLanes: lanes });
+  return project.compile(fixtureToInput(id, base ? page(css, body) : page(css, body).replace(/^select \{[^\n]*\n/m, '')));
 }
 
 const errors = (c: Compiled<string>): string[] => c.diagnostics.filter((d: Diagnostic) => d.severity === 'error').map((d) => `${d.target ?? 'all'} ${d.code} ${d.message}`);
@@ -87,7 +97,7 @@ describe('FORM-b select S1', () => {
     expect(errors(compile('sel-size', '', sel('s', '<option>A</option>', ' size="3"')))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <select size=3> s is a list box/)]);
     expect(errors(compile('sel-size-1', '', sel('s', '<option>A</option>', ' size="1"')))).toEqual([]);
     expect(errors(compile('sel-optgroup', '', sel('s', '<optgroup data-dragon-id="g" label="G"><option>A</option></optgroup>')))).toContainEqual(expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <optgroup> g is not supported: an option group waits for FORM-b select/));
-    expect(errors(compile('sel-auto', 'select { appearance: auto; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/<select> s with appearance: auto draws Chrome's drop-down arrow and internal paddings, which wait for FORM-b select S2/));
+    expect(errors(compile('sel-menulist', 'select { appearance: menulist; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/<select> s with appearance: menulist is not supported; only appearance: none or auto is laid out/));
     expect(errors(compile('sel-option-style', 'option { direction: rtl; }', sel('s', '<option data-dragon-id="o">A</option>')))).toContainEqual(expect.stringMatching(/direction on <option> o is not supported/));
     expect(errors(compile('sel-focus', 'select:focus-visible { outline: 2px solid red; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/a :focus or :focus-visible rule on <select> s is not supported/));
   });
@@ -104,3 +114,101 @@ describe('FORM-b select S1', () => {
     expect(errors(compile('sel-align', 'select { align-items: start; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/align-items: start on <select> s is not supported/));
   });
 });
+
+const button = (css: string): string => `select { display: block; width: 100px; font: inherit; margin: 0; color: #000; ${css} }`;
+
+describe('FORM-b select S2: menulist-button', () => {
+  it('devolves auto to menulist-button for an author background, border or box-shadow, and refuses the themed menulist', () => {
+    const arrow = (t: string): string => `${t} DRAGON_UNSUPPORTED_VALUE <select> s draws Chrome's drop-down arrow (appearance: auto with an author background, border or box-shadow), which the native hosts draw from FORM-b select S3`;
+    for (const css of ['background-color: #fff;', 'border: 1px solid #036;', 'box-shadow: 0 0 0 1px #036;', 'border-top-left-radius: 2px;']) {
+      expect(errors(compile('sel-devolve', button(css), sel('s', '<option>A</option>'), false)).sort(), css).toEqual([arrow('android'), arrow('ios')]);
+      expect(errors(compile('sel-devolve-lanes', button(css), sel('s', '<option>A</option>'), false, true)), css).toEqual([]);
+    }
+    for (const css of ['', 'box-shadow: none;']) {
+      expect(errors(compile('sel-theme', button(css), sel('s', '<option>A</option>'), false)), css).toContainEqual(expect.stringMatching(/^web DRAGON_UNSUPPORTED_VALUE <select> s with appearance: auto and no author background, border or box-shadow is Chrome's themed menulist/));
+    }
+  });
+
+  it('gives the inner element the internal margins 4 and 1 + 15 and paddings 1, mirrored in rtl, and resets the line height', () => {
+    const b = boxes(compile('sel-button', `${button('border: 1px solid #036; line-height: 30px;')} .r { direction: rtl; }`, `${sel('s', '<option>AA</option>')}\n${sel('r', '<option>AA</option>', ' class="r"')}`, false, true));
+    expect(b.get('s')).toMatchObject({ x: 0, y: 0, width: 100, height: 14 });
+    expect(b.get('s::inner')).toMatchObject({ x: 5, y: 1, width: 78, height: 12 });
+    expect(b.get('r::inner')).toMatchObject({ x: 17, width: 78 });
+  });
+
+  const spec = FIXTURES.find((f) => f.id === 'controls-select-button');
+  if (spec === undefined) throw new Error('no controls-select-button fixture');
+  const arrowCases = [{ spec, cases: casesOf(spec, fixtureInput(spec)) }];
+
+  /** Each select's arrow pixels at a DPR: fully covered by the stroke (Chrome shows the select's colour) and clear of it (its background). */
+  function arrowPixels(caseId: string, dpr: number, flip: boolean): { covered: number; clear: number; wrong: string[] } {
+    const f = arrowCases.flatMap((x) => x.cases.map((c) => ({ spec: x.spec, case: c }))).find((x) => x.case.id === caseId);
+    if (f === undefined) throw new Error(`no case ${caseId}`);
+    const compiled = nativeCompile(f.spec, f.case.environment.direction);
+    const p = dragon.nativePrograms(compiled, f.case.assignment);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const program = p.programs.uikit;
+    const colors = dragon.resolvedColors(compiled, f.case.assignment);
+    const img = committedPixels(caseId, dpr);
+    if (colors === null || img === null) throw new Error(`${caseId}@${dpr}: no colours or committed pixels`);
+    const sampled = caseBoxes(program, f.case.environment.viewport, dpr);
+    const byId = new Map(sampled.map((b) => [b.id, b]));
+    const flipped = flip ? { ...program, root: flipDirections(program.root) } : program;
+    let covered = 0;
+    let clear = 0;
+    const wrong: string[] = [];
+    const hex = (c: { r: number; g: number; b: number }): string => `#${((c.r << 16) | (c.g << 8) | c.b).toString(16).padStart(6, '0')}`;
+    const at = (x: number, y: number): string => {
+      const [r, g, b] = pixelAt(img, x, y);
+      return hex({ r, g, b });
+    };
+    for (const { id, arrow } of selectArrows(flipped, sampled, dpr)) {
+      const s = byId.get(id);
+      const inner = byId.get(`${id}::inner`);
+      const c = colors.get(id);
+      if (s === undefined || inner === undefined || c === undefined) throw new Error(`${caseId}: ${id} has no box, inner box or colours`);
+      if (c['background-color'].alpha !== 255) throw new Error(`${caseId}: ${id} has no opaque background to judge its arrow on`);
+      const segs = arrowSegments(arrow);
+      const xs = segs.flatMap(([a, z]) => [a.x, z.x]);
+      const ys = segs.flatMap(([a, z]) => [a.y, z.y]);
+      const left = Math.max(Math.min(...xs) - 5, s.left + s.border.left);
+      const top = Math.max(Math.min(...ys) - 5, s.top + s.border.top);
+      const right = Math.min(Math.max(...xs) + 5, s.right - s.border.right);
+      const bottom = Math.min(Math.max(...ys) + 5, s.bottom - s.border.bottom);
+      const r = arrowPixelProblems(arrow.shape.segments, arrow.strokeWidth, SVG_CLEAR_DEVICE_PX, at, [left, top, right - left, bottom - top], [inner.left, inner.top, inner.right, inner.bottom], hex(c.color), hex(c['background-color']));
+      covered += r.covered;
+      clear += r.clear;
+      wrong.push(...r.wrong.map((w) => `${id} ${w}`));
+    }
+    return { covered, clear, wrong };
+  }
+
+  it("draws Chrome's arrow at every DPR in both directions: every pixel the stroke covers is the select's colour, every clear one its background", () => {
+    expect(arrowCases.flatMap((f) => f.cases).length).toBe(2);
+    for (const c of arrowCases.flatMap((f) => f.cases)) {
+      for (const dpr of DPRS) {
+        const r = arrowPixels(c.id, dpr, false);
+        expect(r.wrong, `${c.id}@${dpr}`).toEqual([]);
+        expect(r.covered, `${c.id}@${dpr}`).toBeGreaterThan(100);
+        expect(r.clear, `${c.id}@${dpr}`).toBeGreaterThan(1000);
+      }
+    }
+  });
+
+  it('an arrow left unmirrored in rtl misses Chrome', () => {
+    for (const dpr of DPRS) expect(arrowPixels('controls-select-button-rtl', dpr, true).wrong.length, `@${dpr}`).toBeGreaterThan(0);
+  });
+
+  it('fits the arrow to a border box too short or narrow for it, and keeps the 2 device px stroke at every zoom', () => {
+    const shape = (h: number, w: number): number[] => menuListArrow(0, 0, w, h, 1, 1, 30, 15, false).shape.segments.flatMap((s) => (s.kind === 'move' || s.kind === 'line' ? [s.x, s.y] : []));
+    expect(shape(28, 200)).toEqual([176, 10, 184, 18, 192, 10]);
+    expect(shape(6, 200)).toEqual([178, 0, 184, 6, 190, 0]);
+    expect(shape(28, 20)).toEqual([-2, 11, 4, 17, 10, 11]);
+    expect(menuListArrow(0, 0, 200, 28, 1, 1, 60, 15, false).strokeWidth).toBe(2);
+  });
+});
+
+/** The program's tree with every box's direction flipped, so an rtl select places its arrow as ltr does (the arrow-unmirrored plant). */
+function flipDirections<T extends LayoutBox | ControlBox>(b: T): T {
+  return { ...b, style: { ...b.style, direction: b.style.direction === 'rtl' ? 'ltr' : 'rtl' }, children: b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? flipDirections(c) : c)) };
+}

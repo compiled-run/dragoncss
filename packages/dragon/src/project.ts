@@ -18,7 +18,7 @@ import { featureOf, parseStylesheet } from './css/stylesheet.ts';
 import { splitNotApplicable } from './css/not-applicable.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
-import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
+import { checkComputed, propagatedFrom, selectArrowNativeRefusals } from './analysis/computed-checks.ts';
 import { checkTranslucent, refuseAnimatedGroups } from './analysis/paint-values/effects.ts';
 import { checkGradientPhase } from './analysis/paint-values/gradient-phase.ts';
 import { checkSelectable } from './analysis/selection.ts';
@@ -1553,6 +1553,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
+  // FORM-b: a menulist-button select's arrow waits for the native hosts (S3); the lanes still lower it, so its layout is proven.
+  const arrowNative = selectArrowNativeRefusals(bandCases.flatMap((b) => b.cases.flatMap((c) => [c.resolved, ...c.interaction.map((i) => i.resolved)])).filter((r): r is ResolvedElement => r !== null), targets);
+  if (arrowNative.length > 0 && options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || arrowNative.some((d) => d.target === t));
+  else diagnostics.push(...arrowNative);
   // SVG-a2: a native row of the svg family is derived from the parity run (chrome-dual computed values, capped at caveat as every
   // native paint row is; device-pixels judges the drawing). In an enforced parity-lanes compile a value with no row yet is lane-only,
   // so the lanes still lower the shapes; a compile outside the lanes refuses it until its row exists.

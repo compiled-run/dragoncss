@@ -19,6 +19,7 @@ import type {
   CalcExpr,
   ControlBox,
   ControlKind,
+  Direction,
   FlexBasisValue,
   FontSpec,
   GapValue,
@@ -55,7 +56,7 @@ import type {
 } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
-import { zoomTrackLength } from './controls.ts';
+import { menuListInnerInsets, zoomTrackLength } from './controls.ts';
 import type { FontLengths, TextMeasurer } from './text.ts';
 import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
 import { unsupported } from './unsupported.ts';
@@ -263,7 +264,9 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
     const children = resolveChildren(b.children, env);
     const lh = own.lineHeight.kind === 'normal' ? menuListLineHeight(own.font, env) : null;
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: lh === null ? children : children.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withLineHeight(k, lh) : k)) };
+    const lined = lh === null ? children : children.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withLineHeight(k, lh) : k));
+    const inset = c.arrowWidth > 0 ? lined.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withInternalPadding(k, c.arrowWidth, style.direction, env) : k)) : lined;
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: c.arrowWidth }, strut: resolveStrutOf(b, env), children: inset };
   }
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
   return { kind: 'control', id: b.id, boxType: b.boxType, style, control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
@@ -290,6 +293,14 @@ function menuListLineHeight(font: FontSpec, env: Env): LineHeightValue {
   refuseUnknownFace(env.measurer, font, env);
   const m = env.measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
   return { kind: 'px', value: toPx(add(m.ascent, m.descent)) };
+}
+
+/** FORM-b: a menulist-button select's inner element with the theme's internal margins and paddings (menu_list_inner_element.cc:57-85), in zoomed px. */
+function withInternalPadding(e: ControlBox, arrowWidth: number, direction: Direction, env: Env): ControlBox {
+  const i = menuListInnerInsets(arrowWidth, env.zoom, env.device);
+  const ltr = direction === 'ltr';
+  const style: LayoutStyle = { ...e.style, marginLeft: { kind: 'px', value: ltr ? i.start : i.end }, marginRight: { kind: 'px', value: ltr ? i.end : i.start }, paddingTop: { kind: 'px', value: i.top }, paddingBottom: { kind: 'px', value: i.bottom } };
+  return { ...e, style };
 }
 
 /** A resolved box whose strut and text take a resolved line height. */

@@ -944,11 +944,13 @@
       "fileSha256": "278f479631fc328077aff311634d7a2c6a749f798f0a6482f14c6d7ea1f10f3e",
       "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
       "ranges": [
-        { "lines": "20-102", "symbol": "MenuListInnerElement::CustomStyleForLayoutObject", "source": "cited" }
+        { "lines": "20-102", "symbol": "MenuListInnerElement::CustomStyleForLayoutObject", "source": "cited" },
+        { "lines": "57-85", "symbol": "MenuListInnerElement::CustomStyleForLayoutObject", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/environment.ts", "symbol": "menuListLineHeight", "use": "port" }
+        { "file": "packages/layout/src/environment.ts", "symbol": "menuListLineHeight", "use": "port" },
+        { "file": "packages/layout/src/environment.ts", "symbol": "withInternalPadding", "use": "port" }
       ]
     },
     {
@@ -1749,6 +1751,7 @@
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "APPEARANCE_DISPLAY", "use": "reference" },
         { "file": "packages/dragon/src/analysis/elements/controls.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/elements/controls.ts", "symbol": "selectAppearance", "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.generated.ts", "symbol": "APPEARANCE_PROBE", "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/capture-form-data.ts", "symbol": "appearanceModule", "use": "reference" }
@@ -1759,8 +1762,9 @@
       "licence": "lgpl",
       "ruling": {
         "class": "A",
-        "basis": "Chrome observation: the select inner element's margins and paddings, captured through CDP, are 0 under appearance: none",
+        "basis": "Chrome observation: the select inner element's margins and paddings, captured through CDP at DPR 1, 2, 2.625 and 3 and zoom 1 and 2, are 0 under appearance: none and the internal paddings under menulist-button, whose line height is normal",
         "proof": [
+          "packages/dragon/test/forms/forms.test.ts",
           "packages/parity/test/form-b-select.test.ts"
         ]
       },
@@ -1769,10 +1773,36 @@
       "fileSha256": "76a4363b67f4dbd3a0c3eb224fd4e4e2815e5627d83a2d33f60d0bda73972e51",
       "headerSha256": "422eab9d8a2ab79c588f134bec98dfe6c7991b14b3cf6bbe20e7ed742cf07739",
       "ranges": [
-        { "lines": "237-260", "symbol": "LayoutThemeDefault::PopupInternalPaddingStart", "source": "located" }
+        { "lines": "222-227", "symbol": "LayoutThemeDefault::AdjustMenuListStyle", "source": "cited" },
+        { "lines": "237-260", "symbol": "LayoutThemeDefault::PopupInternalPaddingStart", "source": "located" },
+        { "lines": "268-291", "symbol": "LayoutThemeDefault::ClampedMenuListArrowPaddingSize", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/analysis/resolve.ts", "symbol": "resolveTree", "use": "reference" },
+        { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrowBox", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/theme_painter_default.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation: a menulist-button select's arrow pixels, captured at DPR 2 in both directions and committed for the fixtures at DPR 2, 3 and 2.625",
+        "proof": [
+          "packages/dragon/test/forms/forms.test.ts",
+          "packages/parity/test/form-b-select.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2007 Apple Inc.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2008 Collabora Ltd.; Copyright (C) 2008, 2009 Google Inc.; Copyright (C) 2009 Kenneth Rohde Christiansen",
+      "fileSha256": "cd0f6d63ed5fd4959265423dd14eac769e457e05ff6b60f32b0bf239767e2bff",
+      "headerSha256": "422eab9d8a2ab79c588f134bec98dfe6c7991b14b3cf6bbe20e7ed742cf07739",
+      "ranges": [
+        { "lines": "540-600", "symbol": "ThemePainterDefault::SetupMenuListArrow", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrow", "use": "reference" }
       ]
     },
     {
@@ -4153,6 +4183,21 @@
       "dragon": [
         { "file": "packages/layout/src/rt-interpolate.ts", "symbol": "translateMatrix", "use": "port" },
         { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "ui/native_theme/native_theme_base.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "bc7f19f1b86b74ff20f138e68f5807e288e9443ab48b9ac7be2b85e56fbcd738",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "691-800", "symbol": "NativeThemeBase::PaintMenuList", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrow", "use": "port" }
       ]
     },
     {

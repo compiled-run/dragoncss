@@ -501,7 +501,9 @@ export type ReplacedLeaf = {
  * - text-editor: the inner editor, a block container holding the value's text;
  * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow;
  * - select-menulist (FORM-b): a single select, a flex row container of its inner element. font and lineHeight are the select's
- *   own: while its line height is normal, the inner element's is the primary font's ascent + descent (environment.ts);
+ *   own: while its line height is normal, the inner element's is the primary font's ascent + descent (environment.ts).
+ *   arrowWidth is the platform's menulist arrow width in DIP when the select has an effective appearance (menulist-button), which
+ *   gives its inner element the internal margins and paddings and its drop-down arrow (controls.ts), and 0 for appearance: none;
  * - select-inner: the inner element, a block container holding the shown option's label; empty, it still holds one line.
  */
 export type ControlKind =
@@ -511,7 +513,7 @@ export type ControlKind =
   | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }
-  | { readonly kind: 'select-menulist'; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'select-menulist'; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly arrowWidth: number }
   | { readonly kind: 'select-inner' };
 
 /** A form control's box: a box with the same fields as LayoutBox plus its control facts. */

@@ -23,7 +23,7 @@ import { generatedElement, generatedText, generatedTextNode, hostRefusal } from 
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
-import { inputTypeState, isRangeType, isTextFieldType } from './elements/controls.ts';
+import { inputTypeState, isRangeType, isTextFieldType, selectAppearance } from './elements/controls.ts';
 import { sanitizedTextValue, shownPlaceholder, TEXT_FIELD_UA_SHADOW } from '../forms/text-field.ts';
 import type { SelectOption } from '../forms/select.ts';
 import { labelKeepsWhiteSpace, SELECT_UA_SHADOW, shownLabel, shownOptionIndex } from '../forms/select.ts';
@@ -415,6 +415,8 @@ export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults:
     else if (part !== null) (isTextFieldPart(part) ? applyTextFieldShadow : applyShadowUserAgent)(part as never, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
+    // FORM-b: LayoutThemeDefault::AdjustMenuListStyle resets a themed or devolved select's line height (layout_theme_default.cc:222-227).
+    if (pseudo === null && part === null && el.tag === 'select' && selectAppearance(props) === 'menulist-button') props.set('line-height', { value: parseValueText('line-height', 'normal'), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
       if (faults.colourOnly && set.origin !== 'inherited' && set.value.kind === 'color') {

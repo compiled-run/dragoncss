@@ -3268,7 +3268,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
             : c.kind === 'text-placeholder'
               ? `ControlKind_textPlaceholder(${str('text-placeholder')})`
               : c.kind === 'select-menulist'
-                ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+                ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${doubleLit(c.arrowWidth)})`
                 : c.kind === 'select-inner'
                   ? `ControlKind_selectInner(${str('select-inner')})`
                   : `ControlKind_buttonBlock(${str('button-block')})`;
