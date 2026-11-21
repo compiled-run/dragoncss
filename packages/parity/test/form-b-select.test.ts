@@ -104,6 +104,14 @@ describe('FORM-b select S1', () => {
     expect(errors(compile('sel-align', 'select { align-items: start; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/align-items: start on <select> s is not supported/));
   });
 
+  it('names the change that clears a width refusal on a row flex item with min-width: auto: min-width: 0 and a px flex basis', () => {
+    const c = compile('sel-manual', '.w { display: flex; width: 300px; } select { width: 100%; }', `<div data-dragon-id="w" class="w"><div data-dragon-id="c">${sel('s', '<option>A</option>')}</div></div>`);
+    const d = c.diagnostics.find((x: Diagnostic) => x.message.includes('width: 100% on <select> s'));
+    expect(d?.fix !== null && d?.fix !== undefined && 'manual' in d.fix ? d.fix.manual : null).toBe('Set min-width: 0 and a flex-basis in px on <div> c (flex: 1 1 0px; min-width: 0). Or give <select> s a width in px.');
+    const fixed = compile('sel-manual-fixed', '.w { display: flex; width: 300px; } .c { flex: 1 1 0px; min-width: 0; } select { width: 100%; }', `<div data-dragon-id="w" class="w"><div data-dragon-id="c" class="c">${sel('s', '<option>A</option>')}</div></div>`);
+    expect(errors(fixed)).toEqual([]);
+  });
+
   // Blink LayoutBox::DefaultIntrinsicContentInlineSize: a select's min-content and max-content widths are its widest option's.
   it('refuses a percentage width or flex basis that a content-sized box reads, and an intrinsic min-width, max-width or flex basis', () => {
     const wide = sel('s', '<option>A</option><option>AAAAAAAAAAAAAAAAAAAA</option>');
@@ -125,6 +133,14 @@ describe('FORM-b select S1', () => {
     expect(errors(compile('sel-basis', '.r { display: flex; } select { flex-basis: content; min-width: 0; }', `<div data-dragon-id="r" class="r">${wide}</div>`))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE flex-basis: content on <select> s is not supported: Chrome takes it from the select's widest option/));
     expect(errors(compile('sel-min', 'select { min-width: max-content; }', wide))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE min-width: max-content on <select> s is not supported: Chrome sizes a select's content to its widest option/));
     expect(errors(compile('sel-max', 'select { max-width: fit-content; }', wide))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE max-width: fit-content on <select> s is not supported/));
+    // Blink ComputeMinMaxSizeOfRowContainer: a flexible row item's contribution reads its percentage width as indefinite, whatever its basis.
+    for (const flex of ['1 1 150px', '1 1 0px', '0 1 150px']) {
+      expect(errors(compile('sel-basis-len', `.w { display: inline-flex; } select { width: 100%; flex: ${flex}; min-width: 0; }`, `<div data-dragon-id="w" class="w">${wide}</div>`)), flex).toContainEqual(expect.stringMatching(content('w', 'display: inline-flex with an auto width')));
+    }
+    expect(errors(compile('sel-basis-rigid', '.w { display: inline-flex; } select { width: 100%; flex: 0 0 150px; min-width: 0; }', `<div data-dragon-id="w" class="w">${wide}</div>`)).filter((e) => e.includes('<select>'))).toEqual([]);
+    expect(inside('.w { float: left; display: flex; } select { flex: 1 1 0px; min-width: 0; }', 'one')).toContainEqual(expect.stringMatching(content('w', 'float: left with an auto width')));
+    // css-flexbox-1 §9.4: a multi-line column container's line is as wide as its items' contributions.
+    expect(inside('.w { display: flex; flex-direction: column; flex-wrap: wrap; width: 300px; height: 100px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a stretched column flex item in a flex-wrap: wrap container')));
     // A percentage of a box whose width its content cannot change is laid out.
     expect(inside('.w { width: 300px; }', 'two')).toEqual([]);
     expect(inside('', 'two')).toEqual([]);

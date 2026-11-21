@@ -1850,6 +1850,9 @@ function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fix
     if (keywordOf(parent.props.get('flex-direction') as ResolvedValue).startsWith('column')) {
       const self = kw('align-self') === 'auto' ? keywordOf(parent.props.get('align-items') as ResolvedValue) : kw('align-self');
       const stretched = (self === 'stretch' || self === 'normal') && kw('margin-left') !== 'auto' && kw('margin-right') !== 'auto';
+      // css-flexbox-1 §9.4: a multi-line container's line is as wide as its items' contributions, which a stretched item fills.
+      const wrap = keywordOf(parent.props.get('flex-wrap') as ResolvedValue);
+      if (stretched && wrap !== 'nowrap') return step(`a stretched column flex item in a flex-wrap: ${wrap} container`);
       return step(stretched ? 'parent' : `a column flex item with align-self: ${self} and an auto width`);
     }
     const scroller = !['visible', 'clip'].includes(kw('overflow-x'));
@@ -1861,6 +1864,14 @@ function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fix
     return 'parent';
   }
   return step('parent');
+}
+
+/** How to clear a refusal whose content-sized box is at, by why widthSource named it. */
+function contentSizedFix(at: string, why: string): string {
+  if (why === 'a row flex item with min-width: auto' || why.startsWith('a flex item with')) return `Set min-width: 0 and a flex-basis in px on ${at} (flex: 1 1 0px; min-width: 0).`;
+  if (why.startsWith('a stretched column flex item')) return `Give ${at} a width in px, or set flex-wrap: nowrap on its flex container.`;
+  if (why.startsWith('min-width') || why.startsWith('max-width')) return `Give ${at} a ${why.slice(0, why.indexOf(':'))} in px, or remove it.`;
+  return `Give ${at} a width in px.`;
 }
 
 /** The first box from the select's layout parent outward whose width Chrome takes from its content, with why, or null. */
@@ -1941,7 +1952,12 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
   const basis = el.props.get('flex-basis') as ResolvedValue;
   const b = keywordOf(basis);
   if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis', `flex-basis: ${b} on <select> ${address} is not supported: Chrome takes it from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
-  const relative = rowItem && b !== 'auto' ? (hasPercentage(basis) ? basis : null) : width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
+  // Blink FlexLayoutAlgorithm::ComputeMinMaxSizeOfRowContainer: a row item's contribution is its content-based one (a percentage
+  // width is indefinite there) unless it cannot flex, so a length basis keeps a percentage width out of the walk only then.
+  const number = (p: Longhand): number => { const v = (el.props.get(p) as ResolvedValue).value; return v.kind === 'number' ? v.value : 1; };
+  const rigid = rowItem && b === '' && !hasPercentage(basis) && number('flex-grow') === 0 && number('flex-shrink') === 0;
+  const percentWidth = width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
+  const relative = rowItem && hasPercentage(basis) ? basis : rigid ? null : percentWidth;
   if (relative !== null) {
     const what = relative === basis ? 'flex-basis' : 'width';
     const said = `${what}: ${valueToString(relative.value)} on <select> ${address} is not supported`;
@@ -1950,7 +1966,8 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
       refuse(relative, 'width-content', `${said} on a grid item: Chrome resolves it against the grid area, whose tracks can be sized from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a ${what} in px.`);
     } else if (sized !== null) {
       const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
-      refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, and Dragon does not measure that option`, `Give ${at} a width in px, or give <select> ${address} a ${what} in px.`);
+      const own = relative === basis || !rowItem || b === 'auto' ? `give <select> ${address} a ${what} in px` : `give <select> ${address} a width in px, or flex-grow: 0 and flex-shrink: 0`;
+      refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, and Dragon does not measure that option`, `${contentSizedFix(at, sized.why)} Or ${own}.`);
     }
   }
   const align = el.props.get('align-items') as ResolvedValue;
