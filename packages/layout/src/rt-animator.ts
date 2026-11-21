@@ -449,6 +449,12 @@ export type AnimationEventRecord = {
   readonly elapsedTime: number;
 };
 
+/** max(min(t, activeDuration), 0): an interval start or end (css-animations-1 §4.2). */
+function clampInterval(t: number, activeDuration: number): number {
+  const m = t < activeDuration ? t : activeDuration;
+  return m > 0 ? m : 0;
+}
+
 /** The running animation of a list with this list index and name, or null. */
 function sameAnimation(list: readonly RunningAnimation[] | undefined, a: RunningAnimation): RunningAnimation | null {
   if (list === undefined) return null;
@@ -480,8 +486,8 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
     if (now !== undefined) {
       for (const a of now) {
         const norm = normalizeSeconds(a.timing);
-        const start = Math.max(Math.min(-norm.startDelay, norm.activeDuration), 0);
-        const end = Math.max(Math.min(norm.endTime - norm.startDelay, norm.activeDuration), 0);
+        const start = clampInterval(-norm.startDelay, norm.activeDuration);
+        const end = clampInterval(norm.endTime - norm.startDelay, norm.activeDuration);
         const b = sameAnimation(was, a);
         const from = b === null ? null : computeSecondsTiming(b.timing, b.held.seconds, faults);
         const to = computeSecondsTiming(a.timing, a.held.seconds, faults);
