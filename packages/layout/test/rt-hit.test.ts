@@ -168,6 +168,25 @@ describe('hitTableOf rounds boxes and lines as Blink does', () => {
     expect(idAt(t, 12, 12)).toBe('p');
   });
 
+  it('samples each rounded corner along its arc: every column\'s first pixel inside the box and the one before it, in few points', async () => {
+    const { px } = await import('./helpers.ts');
+    const { hitGrid } = await import('../src/rt-hit.ts');
+    const t = await table(3, { width: px(60), height: px(60) }, [], 12);
+    const grid = hitGrid(t, 180 * PX, 180 * PX);
+    const has = new Set(grid.map((g) => `${g.x},${g.y}`));
+    for (let x = 0; x < 36; x++) {
+      let y = 0;
+      while (idAt(t, x, y) !== 'p') y++;
+      expect(has.has(`${x * PX},${y * PX}`) && (y === 0 || has.has(`${x * PX},${(y - 1) * PX}`)), `column ${x}: first hit at ${y}`).toBe(true);
+    }
+    for (let x = 144; x < 180; x++) {
+      let y = 179;
+      while (idAt(t, x, y) !== 'p') y--;
+      expect(has.has(`${x * PX},${y * PX}`) && (y === 179 || has.has(`${x * PX},${(y + 1) * PX}`)), `column ${x}: last hit at ${y}`).toBe(true);
+    }
+    expect(grid.filter((g) => g.x < 36 * PX && g.y < 36 * PX).length).toBeLessThan(1000);
+  });
+
   it('hits a line that overflows its rounded block by less than the block\'s top padding, inside the rounded line rect', async () => {
     const { px, text } = await import('./helpers.ts');
     // p's border box is 0 to 18; its line box 8 to 28, the block's border box moved to the line 8 to 26, and the text 13 to 23.

@@ -20,6 +20,7 @@ import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
 import { floorOf, froundOf, roundOf } from './rt-easing.ts';
+import { sqrt64 } from './paint-aa.ts';
 import { hasRoundedCorner, NO_RADIUS_FAULTS, roundedShape } from './paint-radius.ts';
 import type { RadiusLength } from './paint-radius.ts';
 import type { TextMeasurer } from './text.ts';
@@ -1021,7 +1022,7 @@ function addSpan(out: number[], a: number, b: number): void {
   }
 }
 
-/** For a rounded box, the points across each rounded corner of its snapped border box and of its snapped padding edge. */
+/** For a rounded box, the points along each rounded corner's arc of its snapped border box and of its snapped padding edge. */
 function addCorners(out: HitPoint[], n: HitNode, width: number, height: number): void {
   if (n.radii.length === 0) return;
   for (let pass = 0; pass < 2; pass++) {
@@ -1033,22 +1034,55 @@ function addCorners(out: HitPoint[], n: HitNode, width: number, height: number):
       const rw = radiusAt(n.radii, pass * 8 + k) * LU_PX;
       const rh = radiusAt(n.radii, pass * 8 + 4 + k) * LU_PX;
       if (rw <= 0 || rh <= 0) continue;
+      const west = k === 0 || k === 3;
+      const north = k === 0 || k === 1;
+      const cx = west ? left + rw : right - rw;
+      const cy = north ? top + rh : bottom - rh;
       const xs: number[] = [];
       const ys: number[] = [];
-      if (k === 0 || k === 3) addSpan(xs, left, left + rw);
+      if (west) addSpan(xs, left, left + rw);
       else addSpan(xs, right - rw, right);
-      if (k === 0 || k === 1) addSpan(ys, top, top + rh);
+      if (north) addSpan(ys, top, top + rh);
       else addSpan(ys, bottom - rh, bottom);
-      cross(out, xs, ys, width, height);
+      // Only the pixels the arc crosses decide a hit; the rest of the corner square is the box's or its parent's either way.
+      for (const x of xs) {
+        if (floorOf(x / LU_PX) * LU_PX !== x) continue;
+        // A pixel hits when its 1 px box reaches the arc, so the crossing is read at its edge nearest the corner's centre.
+        const t = arcRatio(x + (west ? LU_PX : 0) - cx, rw);
+        arcBand(out, [x], cy + (north ? -1 : 1) * rh * sqrt64(1 - t * t), 'y', width, height);
+      }
+      for (const y of ys) {
+        if (floorOf(y / LU_PX) * LU_PX !== y) continue;
+        const t = arcRatio(y + (north ? LU_PX : 0) - cy, rh);
+        arcBand(out, [y], cx + (west ? -1 : 1) * rw * sqrt64(1 - t * t), 'x', width, height);
+      }
     }
   }
+}
+
+/** |d| / r, at most 1: how far across a corner a point sits. */
+function arcRatio(d: number, r: number): number {
+  const t = (d < 0 ? -d : d) / r;
+  return t > 1 ? 1 : t;
+}
+
+/** The whole px at and either side of an arc's crossing at v on one axis, each with its 1 LU neighbour, crossed with the other axis' points. */
+function arcBand(out: HitPoint[], others: readonly number[], v: number, axis: 'x' | 'y', width: number, height: number): void {
+  const at = floorOf(v / LU_PX) * LU_PX;
+  const band: number[] = [];
+  for (let d = -LU_PX; d <= LU_PX; d += LU_PX) {
+    band.push(at + d - 1);
+    band.push(at + d);
+  }
+  if (axis === 'y') cross(out, others, band, width, height);
+  else cross(out, band, others, width, height);
 }
 
 /**
  * The derived grid of a table in LU, inside a viewport of width x height LU: for each rect, around each edge's exclusive boundary
  * (a point p hits [a, b) when a - 1 px < p < b) and inclusive boundary, half a pixel either side of each edge and the centre,
  * crossed per rect; for text the snapped rect too, for a line the block's snapped border box at the line, and for a rounded box
- * every whole px across each rounded corner. Sorted by y then x, without repeats.
+ * the whole px along each rounded corner's arc. Sorted by y then x, without repeats.
  */
 export function hitGrid(t: HitTable, width: number, height: number): HitPoint[] {
   const all: HitPoint[] = [];
