@@ -86,18 +86,18 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
 })).map { $0 as! LayoutBox }
   // ts: packages/layout/src/position.ts:46
   do {
-    let _a235 = box.children
-    var _i235 = 0
-    while _i235 < _a235.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a235.items[_i235]
-      _i235 += 1
+    let _a239 = box.children
+    var _i239 = 0
+    while _i239 < _a239.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a239.items[_i239]
+      _i239 += 1
       // ts: packages/layout/src/position.ts:47
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
-        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s303, jsConcat(S.s564, (k as! ReplacedLeaf).id, S.s118))
+        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s308, jsConcat(S.s569, (k as! ReplacedLeaf).id, S.s120))
       }
       // ts: packages/layout/src/position.ts:48
       if try ((k.kind == S.s_control) && position_isOutOfFlow(ctx, (k as! ControlBox))) {
-        try unsupported_unsupported(S.s_control_out_of_flow, (k as! ControlBox).id, S.s304, jsConcat(S.s563, (k as! ControlBox).id, S.s118))
+        try unsupported_unsupported(S.s_control_out_of_flow, (k as! ControlBox).id, S.s309, jsConcat(S.s568, (k as! ControlBox).id, S.s120))
       }
     }
   }
@@ -109,7 +109,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
   if try jsSome(box.children, { (k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) || (((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).kind == S.s_box) && ((k as! LayoutBox).boxType == S.s_anonymous)))
 }) {
-    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s309, jsConcat(S.s562, jsUnwrap(oof).id, S.s24, box.id, S.s184))
+    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s314, jsConcat(S.s567, jsUnwrap(oof).id, S.s26, box.id, S.s188))
   }
 }
 
@@ -126,18 +126,18 @@ public func position_inset(_ v: any U_Auto_LengthCalc_Percent_Px, _ basis: Doubl
 public func position_checkControlSubtree(_ ctx: Ctx, _ box: LayoutBox) throws -> Void {
   // ts: packages/layout/src/position.ts:63
   do {
-    let _a236 = box.children
-    var _i236 = 0
-    while _i236 < _a236.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a236.items[_i236]
-      _i236 += 1
+    let _a240 = box.children
+    var _i240 = 0
+    while _i240 < _a240.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a240.items[_i240]
+      _i240 += 1
       // ts: packages/layout/src/position.ts:64
       if ((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) {
         continue
       }
       // ts: packages/layout/src/position.ts:65
       if try position_isOutOfFlow(ctx, ((k as! any U_ControlBox_LayoutBox) as! any U_ControlBox_LayoutBox_ReplacedLeaf)) {
-        try unsupported_unsupported(S.s_control_out_of_flow, (k as! any U_ControlBox_LayoutBox).id, S.s304, jsConcat(S.s562, (k as! any U_ControlBox_LayoutBox).id, S.s77, box.id, S.s118))
+        try unsupported_unsupported(S.s_control_out_of_flow, (k as! any U_ControlBox_LayoutBox).id, S.s309, jsConcat(S.s567, (k as! any U_ControlBox_LayoutBox).id, S.s79, box.id, S.s120))
       }
       try position_checkControlSubtree(ctx, controls_plainBox((k as! any U_ControlBox_LayoutBox)))
     }
@@ -160,7 +160,7 @@ public func position_blockInset(_ box: any U_ControlBox_LayoutBox_ReplacedLeaf, 
   }
   // ts: packages/layout/src/position.ts:75
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s674, S.s994)
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s679, S.s999)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
 }
@@ -289,11 +289,11 @@ public func position_layoutAbsolute(_ ctx: Ctx, _ box: LayoutBox, _ cb: Containi
   }
   // ts: packages/layout/src/position.ts:218
   if try (ratio_hasAspectRatio(s) && (sizeKeyword(s.width.kind) || sizeKeyword(s.height.kind))) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s689, jsConcat(S.s585, box.id))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s694, jsConcat(S.s590, box.id))
   }
   // ts: packages/layout/src/position.ts:219
   if (s.height.kind == S.s_stretch) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s688, jsConcat(S.s801, box.id))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s693, jsConcat(S.s806, box.id))
   }
   let specified: Double? = try (sizeKeyword(s.width.kind) ? (nil as Double?) : (box_resolveInlineLengthWith(box_lengthWidth(box.id, s.width), cb.width, ctx.faults) as Double?))
   var width: Double

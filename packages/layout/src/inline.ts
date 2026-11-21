@@ -718,8 +718,8 @@ function latinScopeRefusal(text: string): string {
 }
 
 /**
- * TXT1a-1 scope for real-font text: R4's Latin scope (planted fault latinCheckSkipped skips it), and no two adjacent leaves in one
- * face and size, which Blink shapes as one run (InlineNode::ShapeText) where Dragon shapes each leaf alone.
+ * TXT1a-1 scope for real-font text: R4's Latin scope (planted fault latinCheckSkipped skips it), and the runs Blink shapes across
+ * leaves (shapingRunOf).
  */
 function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], items: readonly Item[]): void {
   if (!ctx.faults.latinCheckSkipped) {
@@ -728,21 +728,105 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
       if (r !== '') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', `${r}; real-font text is Latin only (TXT1c, TXT2)`);
     }
   }
+  // Adjacent leaves in one face and size are one run to Blink (InlineNode::ShapeText). ShouldBreakShapingBeforeText breaks it where
+  // the Font differs, and FontDescription's == compares letter and word spacing and the variant caps, so a span with other spacing or
+  // caps is its own run; a control character (a <br>, a preserved newline) ends it.
+  let segLeaves: number[] = [];
+  let segTexts: string[] = [];
+  let segLengths: number[] = [];
+  let cur = '';
+  let curLength = 0;
   let last = -1;
   for (const it of items) {
-    if (it.kind === 'br') last = -1;
-    if (it.kind !== 'char' || it.leaf === last) continue;
-    const prev = last < 0 ? null : (leaves[last] as TextLeaf);
-    const t = leaves[it.leaf] as TextLeaf;
-    // ShouldBreakShapingBeforeText (inline_node.cc) breaks the run where the Font differs, and FontDescription's == compares letter
-    // and word spacing and the variant caps, so a span with other spacing or caps is its own run.
-    const pf = prev === null ? null : leafFontOf(prev);
-    const tf = leafFontOf(t);
-    if (prev !== null && pf !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && pf.letterSpacing === tf.letterSpacing && pf.wordSpacing === tf.wordSpacing && pf.smallCaps === tf.smallCaps) {
-      unsupported('text-shaping-run', t.id, 'css-text-3 §7.3 (boundary shaping)', `${prev.id} and ${t.id} are adjacent text in one face and size, which Blink shapes as one run`);
+    if (it.kind === 'br' || it.kind === 'nl') {
+      if (last >= 0) { segTexts.push(cur); segLengths.push(curLength); }
+      checkShapingRun(ctx, leaves, segLeaves, segTexts, segLengths);
+      segLeaves = [];
+      segTexts = [];
+      segLengths = [];
+      last = -1;
+      continue;
     }
+    if (it.kind !== 'char') continue;
+    if (it.leaf === last) {
+      cur += it.ch;
+      curLength++;
+      continue;
+    }
+    const t = leaves[it.leaf] as TextLeaf;
+    if (last >= 0) {
+      segTexts.push(cur);
+      segLengths.push(curLength);
+      if (!sameShapingFont(leaves[last] as TextLeaf, t)) {
+        checkShapingRun(ctx, leaves, segLeaves, segTexts, segLengths);
+        segLeaves = [];
+        segTexts = [];
+        segLengths = [];
+      }
+    }
+    segLeaves.push(it.leaf);
+    cur = it.ch;
+    curLength = 1;
     last = it.leaf;
   }
+  if (last >= 0) { segTexts.push(cur); segLengths.push(curLength); }
+  checkShapingRun(ctx, leaves, segLeaves, segTexts, segLengths);
+}
+
+function sameShapingFont(a: TextLeaf, b: TextLeaf): boolean {
+  const af = leafFontOf(a);
+  const bf = leafFontOf(b);
+  return a.font.family === b.font.family && a.font.size === b.font.size && af.letterSpacing === bf.letterSpacing && af.wordSpacing === bf.wordSpacing && af.smallCaps === bf.smallCaps;
+}
+
+/**
+ * One run Blink shapes across leaves (texts[k], lengths[k] code points, the characters of leaves[at[k]]). Blink gives each leaf its
+ * slice of the run's ShapeResult (CopyRange), where Dragon shapes each leaf alone. The two agree when the glyphs and the advance before
+ * every offset are the same; a kerned pair or a ligature across a boundary changes them, and the run is refused with text-shaping-run
+ * (css-text-3 §7.3, boundary shaping). HarfBuzz's unsafe-to-break flag is not the test: it marks boundaries whose glyphs do not change.
+ */
+function checkShapingRun(ctx: Ctx, leaves: readonly TextLeaf[], at: readonly number[], texts: readonly string[], lengths: readonly number[]): void {
+  if (at.length < 2) return;
+  const first = leaves[at[0] as number] as TextLeaf;
+  const font = leafFontOf(first);
+  let text = '';
+  let length = 0;
+  for (let n = 0; n < at.length; n++) {
+    text += texts[n] as string;
+    length = length + (lengths[n] as number);
+  }
+  const whole = ctx.measurer.shaped(text, font);
+  // A leaf the shaper refuses, or one outside the Basic Multilingual Plane, is refused where its line is shaped (shapedItemsOf).
+  if (!whole.ok || whole.result.end !== length) return;
+  const glyphs: number[] = [];
+  const advances: number[] = [];
+  for (const run of whole.result.runs) {
+    for (const g of run.glyphs) {
+      glyphs.push(g.glyph);
+      advances.push(g.advance);
+    }
+  }
+  let k = 0;
+  let before = 0;
+  let offset = 0;
+  for (let n = 0; n < at.length; n++) {
+    const leaf = leaves[at[n] as number] as TextLeaf;
+    const alone = ctx.measurer.shaped(texts[n] as string, font);
+    if (!alone.ok) return;
+    const why = `${first.id} to ${leaf.id} are adjacent text in one face and size, which Blink shapes as one run`;
+    for (const run of alone.result.runs) {
+      for (const g of run.glyphs) {
+        if (k >= glyphs.length || (glyphs[k] as number) !== g.glyph || (advances[k] as number) !== g.advance) unsupported('text-shaping-run', leaf.id, 'css-text-3 §7.3 (boundary shaping)', `${why}, and shaping ${leaf.id} alone gives other glyphs than its part of the run`);
+        k++;
+      }
+    }
+    for (let o = 0; o < (lengths[n] as number); o++) {
+      if ((whole.result.raw[offset + o] as number) !== before + (alone.result.raw[o] as number)) unsupported('text-shaping-run', leaf.id, 'css-text-3 §7.3 (boundary shaping)', `${why}, and shaping ${leaf.id} alone gives other advances than its part of the run`);
+    }
+    offset = offset + (lengths[n] as number);
+    before = before + alone.result.total;
+  }
+  if (k !== glyphs.length || before !== whole.result.total) unsupported('text-shaping-run', (leaves[at[at.length - 1] as number] as TextLeaf).id, 'css-text-3 §7.3 (boundary shaping)', `${first.id} to the end of the run shape to other glyphs as one run than leaf by leaf`);
 }
 
 /** The first item index after item i and the close tags that follow it: where a line that ends at item i ends. */

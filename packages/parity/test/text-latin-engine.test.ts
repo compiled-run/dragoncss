@@ -151,9 +151,17 @@ describe('TXT1a-1 phase B: R4 and the run refusal on the real-font path', () => 
     expect(referenceShapedMeasurer({ ...NO_ENGINE_FAULTS, latinCheckSkipped: true }, [lato]).shaped('A\u03a9', font).ok).toBe(true);
   });
 
-  it('refuses text across an inline box boundary in one face and size, which Blink shapes as one run, and accepts another size', () => {
-    expect(at(lay([leaf('t', 'one ', latoId, 16), span('s', leaf('u', 'two', latoId, 16))]))).toEqual(['text-shaping-run', 'u', 'css-text-3 §7.3 (boundary shaping)']);
+  it('lays out text across an inline box boundary in one face and size when the run shapes as its leaves do, and accepts another size', () => {
+    expect(at(lay([leaf('t', 'one ', latoId, 16), span('s', leaf('u', 'two', latoId, 16)), leaf('v', ' three', latoId, 16)]))).toBe('ok');
     expect(at(lay([leaf('t', 'one ', latoId, 16), span('s', leaf('u', 'two', latoId, 17))]))).toBe('ok');
+  });
+
+  it('refuses a run Blink shapes across an inline box boundary when a kerned pair crosses it', () => {
+    const r = lay([leaf('t', 'A', latoId, 16), span('s', leaf('u', 'V', latoId, 16))]);
+    expect(at(r)).toEqual(['text-shaping-run', 't', 'css-text-3 §7.3 (boundary shaping)']);
+    expect(r.kind === 'unsupported' && r.unsupported.detail).toMatch(/shaping t alone gives other glyphs than its part of the run$/);
+    // Lato kerns a space before w, so the space ending one leaf has another advance in the run.
+    expect(at(lay([leaf('t', 'Some ', latoId, 20), span('s', leaf('u', 'words', latoId, 20))]))).toEqual(['text-shaping-run', 't', 'css-text-3 §7.3 (boundary shaping)']);
   });
 });
 
