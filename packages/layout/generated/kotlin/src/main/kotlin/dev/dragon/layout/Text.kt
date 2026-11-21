@@ -212,11 +212,11 @@ fun text_spacedSums(data: FontData, text: String, size: Double, spacing16: Doubl
   var total: Double = 0.0
   // ts: packages/layout/src/text.ts:166
   run {
-    val _a355 = jsCodePoints(text)
-    var _i355 = 0
-    while (_i355 < _a355.size) {
-      val ch: String = _a355[_i355]
-      _i355++
+    val _a356 = jsCodePoints(text)
+    var _i356 = 0
+    while (_i356 < _a356.size) {
+      val ch: String = _a356[_i356]
+      _i356++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       val em: Double = text_emAdvance(data, cp)
       // ts: packages/layout/src/text.ts:169
@@ -268,11 +268,11 @@ fun text_smallCapsCodePoint(cp: Double): Double {
 fun text_hasSmallCapsLower(text: String): Boolean {
   // ts: packages/layout/src/text.ts:203
   run {
-    val _a356 = jsCodePoints(text)
-    var _i356 = 0
-    while (_i356 < _a356.size) {
-      val ch: String = _a356[_i356]
-      _i356++
+    val _a357 = jsCodePoints(text)
+    var _i357 = 0
+    while (_i357 < _a357.size) {
+      val ch: String = _a357[_i357]
+      _i357++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/layout/src/text.ts:205
       if ((text_smallCapsCodePoint(cp) != cp)) {
@@ -294,11 +294,11 @@ fun text_smallCapsSums(data: FontData, text: String, size: Double, small: Double
   var lower: Boolean = false
   // ts: packages/layout/src/text.ts:226
   run {
-    val _a357 = jsCodePoints(text)
-    var _i357 = 0
-    while (_i357 < _a357.size) {
-      val ch: String = _a357[_i357]
-      _i357++
+    val _a358 = jsCodePoints(text)
+    var _i358 = 0
+    while (_i358 < _a358.size) {
+      val ch: String = _a358[_i358]
+      _i358++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       val drawn: Double = text_smallCapsCodePoint(cp)
       val em: Double = (if ((drawn < 0.0)) -1.0 else text_emAdvance(data, drawn))
@@ -352,11 +352,11 @@ fun text_codePointCount(text: String): Double {
   var n: Double = 0.0
   // ts: packages/layout/src/text.ts:257
   run {
-    val _a358 = jsCodePoints(text)
-    var _i358 = 0
-    while (_i358 < _a358.size) {
-      val ch: String = _a358[_i358]
-      _i358++
+    val _a359 = jsCodePoints(text)
+    var _i359 = 0
+    while (_i359 < _a359.size) {
+      val ch: String = _a359[_i359]
+      _i359++
       // ts: packages/layout/src/text.ts:257
       if ((jsUnwrap(jsCodePointAt0(ch)) >= 0.0)) {
         n += 1.0
@@ -411,11 +411,11 @@ fun text_fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMeasurer 
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:295
     run {
-      val _a359 = jsCodePoints(text)
-      var _i359 = 0
-      while (_i359 < _a359.size) {
-        val ch: String = _a359[_i359]
-        _i359++
+      val _a360 = jsCodePoints(text)
+      var _i360 = 0
+      while (_i360 < _a360.size) {
+        val ch: String = _a360[_i360]
+        _i360++
         val cp: Double = jsUnwrap(jsCodePointAt0(ch))
         val advance: Double = text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:298
@@ -466,11 +466,11 @@ fun text_fontDataMeasurer(data: FontData, faults: AhemRuleFaults): TextMeasurer 
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:326
     run {
-      val _a360 = jsCodePoints(text)
-      var _i360 = 0
-      while (_i360 < _a360.size) {
-        val ch: String = _a360[_i360]
-        _i360++
+      val _a361 = jsCodePoints(text)
+      var _i361 = 0
+      while (_i361 < _a361.size) {
+        val ch: String = _a361[_i361]
+        _i361++
         val cp: Double = jsUnwrap(jsCodePointAt0(ch))
         val advance: Double = text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:329

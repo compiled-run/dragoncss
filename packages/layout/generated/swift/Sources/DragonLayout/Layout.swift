@@ -164,7 +164,7 @@ public func layout_layoutWithInflow(_ given: LayoutInput, _ measurer: TextMeasur
     let offset: RelativeOffset = try position_relativeOffsetWith(root, icbWidth, HeightBasis_definite(S.s_definite, icbHeight), icbDirection, ctx.faults)
     // ts: packages/layout/src/layout.ts:93
     if (root.style.position == S.s_sticky) {
-      try unsupported_unsupported(S.s_sticky, root.id, S.s657, jsConcat(S.s1091, root.id, S.s49))
+      try unsupported_unsupported(S.s_sticky, root.id, S.s658, jsConcat(S.s1096, root.id, S.s49))
     }
     let sticky: JsStringMap<Sticky> = JsStringMap<Sticky>()
     try layout_collectSticky(root, nil, nil, sticky)
@@ -202,21 +202,21 @@ public func layout_flatten(_ frag: Frag, _ parent: JsString?, _ inFlowX: Double,
   }
   // ts: packages/layout/src/layout.ts:120
   do {
-    let _a154 = frag.outOfFlow
-    var _i154 = 0
-    while _i154 < _a154.items.count {
-      let oof: OutOfFlow = _a154.items[_i154]
-      _i154 += 1
+    let _a155 = frag.outOfFlow
+    var _i155 = 0
+    while _i155 < _a155.items.count {
+      let oof: OutOfFlow = _a155.items[_i155]
+      _i155 += 1
       _ = jsPush(out.pending, Pending(oof, frag.id, absX, absY))
     }
   }
   // ts: packages/layout/src/layout.ts:121
   do {
-    let _a155 = frag.children
-    var _i155 = 0
-    while _i155 < _a155.items.count {
-      let c: Placed = _a155.items[_i155]
-      _i155 += 1
+    let _a156 = frag.children
+    var _i156 = 0
+    while _i156 < _a156.items.count {
+      let c: Placed = _a156.items[_i156]
+      _i156 += 1
       try layout_flatten(c.frag, frag.id, c.x, c.y, absX, absY, out)
     }
   }
@@ -226,11 +226,11 @@ public func layout_flatten(_ frag: Frag, _ parent: JsString?, _ inFlowX: Double,
 public func layout_collectSticky(_ b: LayoutBox, _ scroller: JsString?, _ within: JsString?, _ out: JsStringMap<Sticky>) throws -> Void {
   // ts: packages/layout/src/layout.ts:130
   do {
-    let _a156 = b.children
-    var _i156 = 0
-    while _i156 < _a156.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a156.items[_i156]
-      _i156 += 1
+    let _a157 = b.children
+    var _i157 = 0
+    while _i157 < _a157.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a157.items[_i157]
+      _i157 += 1
       // ts: packages/layout/src/layout.ts:131
       if ((c.kind != S.s_box) && ((c as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
         continue
@@ -238,23 +238,23 @@ public func layout_collectSticky(_ b: LayoutBox, _ scroller: JsString?, _ within
       var sticky: JsString? = within
       // ts: packages/layout/src/layout.ts:133
       if ((c as! any U_LayoutBox_ReplacedLeaf).style.position == S.s_sticky) {
-        let spec: JsString = S.s657
+        let spec: JsString = S.s658
         // ts: packages/layout/src/layout.ts:135
         if (scroller != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1092, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s76, jsUnwrap(scroller), S.s176))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1097, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s76, jsUnwrap(scroller), S.s177))
         }
         // ts: packages/layout/src/layout.ts:136
         if (within != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1092, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s77, jsUnwrap(within)))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1097, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s77, jsUnwrap(within)))
         }
         // ts: packages/layout/src/layout.ts:137
         if ((((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_block) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_flex)) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_grid)) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1092, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s72, b.id))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1097, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s72, b.id))
         }
         let s: LayoutStyle = b.style
         // ts: packages/layout/src/layout.ts:139
         if try (((box_hasPercent(s.paddingTop) || box_hasPercent(s.paddingRight)) || box_hasPercent(s.paddingBottom)) || box_hasPercent(s.paddingLeft)) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s536, b.id, S.s201, (c as! any U_LayoutBox_ReplacedLeaf).id))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s537, b.id, S.s202, (c as! any U_LayoutBox_ReplacedLeaf).id))
         }
         _ = out.set((c as! any U_LayoutBox_ReplacedLeaf).id, Sticky(((c as! any U_LayoutBox_ReplacedLeaf) as! any U_ControlBox_LayoutBox_ReplacedLeaf), b))
         sticky = (c as! any U_LayoutBox_ReplacedLeaf).id
@@ -278,7 +278,7 @@ public func layout_stickyOffset(_ st: StickyIndex, _ s: Sticky, _ x: Double, _ y
   let r: AbsoluteRect? = out.absolute.get(s.parent.id)
   // ts: packages/layout/src/layout.ts:162
   if (r == nil) {
-    throw JsError(message: jsConcat(S.s633, s.parent.id, S.s144, s.box.id, S.s111))
+    throw JsError(message: jsConcat(S.s634, s.parent.id, S.s145, s.box.id, S.s112))
   }
   let ps: LayoutStyle = s.parent.style
   let bor: Edges = try box_resolveBorder(ps, ctx.devicePixelRatio)
@@ -339,11 +339,11 @@ public func layout_parents(_ root: LayoutBox) throws -> JsStringMap<LayoutBox> {
   func walk(_ b: LayoutBox) throws -> Void {
     // ts: packages/layout/src/layout.ts:203
     do {
-      let _a157 = b.children
-      var _i157 = 0
-      while _i157 < _a157.items.count {
-        let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a157.items[_i157]
-        _i157 += 1
+      let _a158 = b.children
+      var _i158 = 0
+      while _i158 < _a158.items.count {
+        let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a158.items[_i158]
+        _i158 += 1
         // ts: packages/layout/src/layout.ts:204
         if (c.kind != S.s_box) {
           continue
@@ -375,7 +375,7 @@ public func layout_containingBlock(_ ctx: Ctx, _ box: LayoutBox, _ parentOf: JsS
   let r: AbsoluteRect? = try out.absolute.get(jsUnwrap(at).id)
   // ts: packages/layout/src/layout.ts:222
   if (r == nil) {
-    throw try JsError(message: jsConcat(S.s633, jsUnwrap(at).id, S.s142, box.id, S.s111))
+    throw try JsError(message: jsConcat(S.s634, jsUnwrap(at).id, S.s143, box.id, S.s112))
   }
   let bor: Edges = try box_resolveBorder(jsUnwrap(at).style, ctx.devicePixelRatio)
   let s: LayoutStyle = try jsUnwrap(at).style
@@ -430,11 +430,11 @@ public func layout_absoluteRects(_ boxes: JsArray<LayoutRect>) throws -> JsStrin
   let abs: JsStringMap<LayoutRect> = JsStringMap<LayoutRect>()
   // ts: packages/layout/src/layout.ts:281
   do {
-    let _a158 = boxes
-    var _i158 = 0
-    while _i158 < _a158.items.count {
-      let b: LayoutRect = _a158.items[_i158]
-      _i158 += 1
+    let _a159 = boxes
+    var _i159 = 0
+    while _i159 < _a159.items.count {
+      let b: LayoutRect = _a159.items[_i159]
+      _i159 += 1
       let parent: LayoutRect? = try ((b.parent == nil) ? (nil as LayoutRect?) : (abs.get(jsUnwrap(b.parent)) as LayoutRect?))
       let px0: Double = try ((parent == nil) ? 0.0 : jsUnwrap(parent).x)
       let py0: Double = try ((parent == nil) ? 0.0 : jsUnwrap(parent).y)

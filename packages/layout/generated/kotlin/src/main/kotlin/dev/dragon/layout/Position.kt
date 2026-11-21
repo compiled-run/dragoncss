@@ -58,11 +58,11 @@ fun position_checkOutOfFlowSiblings(ctx: Ctx, box: LayoutBox): Unit {
 }) as LayoutBox?)
   // ts: packages/layout/src/position.ts:45
   run {
-    val _a218 = box.children
-    var _i218 = 0
-    while (_i218 < _a218.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a218[_i218]
-      _i218++
+    val _a219 = box.children
+    var _i219 = 0
+    while (_i219 < _a219.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a219[_i219]
+      _i219++
       // ts: packages/layout/src/position.ts:46
       if ((jsStrEq(k.kind, "replaced") && position_isOutOfFlow(ctx, (k as ReplacedLeaf)))) {
         unsupported_unsupported("replaced-out-of-flow", (k as ReplacedLeaf).id, "CSS 2.2 \u00a710.3.8, \u00a710.6.5", ("absolutely positioned replaced " + (k as ReplacedLeaf).id + " is not supported"))
@@ -98,11 +98,11 @@ fun position_inset(v: U_Auto_LengthCalc_Percent_Px, basis: Double, faults: Engin
 fun position_checkControlSubtree(ctx: Ctx, box: LayoutBox): Unit {
   // ts: packages/layout/src/position.ts:62
   run {
-    val _a219 = box.children
-    var _i219 = 0
-    while (_i219 < _a219.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a219[_i219]
-      _i219++
+    val _a220 = box.children
+    var _i220 = 0
+    while (_i220 < _a220.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a220[_i220]
+      _i220++
       // ts: packages/layout/src/position.ts:63
       if ((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         continue

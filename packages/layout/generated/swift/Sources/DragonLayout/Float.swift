@@ -60,7 +60,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let s: LayoutStyle = node.style
   // ts: packages/layout/src/float.ts:67
   if (s.position != S.s_static) {
-    try unsupported_unsupported(S.s_float, node.id, S.s301, jsConcat(S.s518, s.position, S.s37, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s302, jsConcat(S.s519, s.position, S.s37, node.id))
   }
   let marginLeft: Double = try box_resolveMarginWith(s.marginLeft, cbInline, ctx.faults).value
   let marginRight: Double = try box_resolveMarginWith(s.marginRight, cbInline, ctx.faults).value
@@ -68,7 +68,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let marginBottom: Double = try box_resolveMarginWith(s.marginBottom, cbInline, ctx.faults).value
   // ts: packages/layout/src/float.ts:72
   if ((((marginLeft < 0.0) || (marginRight < 0.0)) || (marginTop < 0.0)) || (marginBottom < 0.0)) {
-    try unsupported_unsupported(S.s_float, node.id, S.s303, jsConcat(S.s531, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s304, jsConcat(S.s532, node.id))
   }
   // ts: packages/layout/src/float.ts:73
   if (node.kind == S.s_replaced) {
@@ -76,7 +76,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   }
   // ts: packages/layout/src/float.ts:75
   if try (ratio_hasAspectRatio(s) && (s.width.kind == S.s_auto)) {
-    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s660, jsConcat(S.s582, (node as! LayoutBox).id))
+    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s661, jsConcat(S.s583, (node as! LayoutBox).id))
   }
   let width: Double = try float_floatWidth(ctx, (node as! LayoutBox), cbInline, units_add(marginLeft, marginRight))
   let r: ContentsResult = try block_layoutContents(ctx, (node as! LayoutBox), ContentsArgs(cbInline, width, nil, false, basis, true, units_ZERO))
@@ -88,11 +88,11 @@ public func float_placeFloat(_ floats: JsArray<FloatArea>, _ side: JsString, _ w
   var at: Double = top
   // ts: packages/layout/src/float.ts:97
   do {
-    let _a36 = floats
-    var _i36 = 0
-    while _i36 < _a36.items.count {
-      let f: FloatArea = _a36.items[_i36]
-      _i36 += 1
+    let _a37 = floats
+    var _i37 = 0
+    while _i37 < _a37.items.count {
+      let f: FloatArea = _a37.items[_i37]
+      _i37 += 1
       try at = units_max(at, f.y)
     }
   }
@@ -105,11 +105,11 @@ public func float_placeFloat(_ floats: JsArray<FloatArea>, _ side: JsString, _ w
       var next: Double? = nil
       // ts: packages/layout/src/float.ts:104
       do {
-        let _a37 = floats
-        var _i37 = 0
-        while _i37 < _a37.items.count {
-          let f: FloatArea = _a37.items[_i37]
-          _i37 += 1
+        let _a38 = floats
+        var _i38 = 0
+        while _i38 < _a38.items.count {
+          let f: FloatArea = _a38.items[_i38]
+          _i38 += 1
           let bottom: Double = try units_add(f.y, f.height)
           // ts: packages/layout/src/float.ts:108
           if ((bottom <= at) || (f.width <= 0.0)) {
@@ -144,11 +144,11 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<P
   var bottom: Double? = nil
   // ts: packages/layout/src/float.ts:131
   do {
-    let _a38 = box.children
-    var _i38 = 0
-    while _i38 < _a38.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a38.items[_i38]
-      _i38 += 1
+    let _a39 = box.children
+    var _i39 = 0
+    while _i39 < _a39.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a39.items[_i39]
+      _i39 += 1
       // ts: packages/layout/src/float.ts:132
       if ((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
         continue
@@ -156,11 +156,11 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<P
       var p: Placed? = nil
       // ts: packages/layout/src/float.ts:134
       do {
-        let _a39 = placed
-        var _i39 = 0
-        while _i39 < _a39.items.count {
-          let x: Placed = _a39.items[_i39]
-          _i39 += 1
+        let _a40 = placed
+        var _i40 = 0
+        while _i40 < _a40.items.count {
+          let x: Placed = _a40.items[_i40]
+          _i40 += 1
           // ts: packages/layout/src/float.ts:134
           if (x.frag.id == (k as! any U_LayoutBox_ReplacedLeaf).id) {
             p = x
@@ -184,7 +184,7 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<P
         if (inner != nil) {
           // ts: packages/layout/src/float.ts:145
           if (kb.style.position != S.s_static) {
-            try unsupported_unsupported(S.s_float, kb.id, S.s300, jsConcat(S.s1072, kb.style.position, S.s27, kb.id, S.s67))
+            try unsupported_unsupported(S.s_float, kb.id, S.s301, jsConcat(S.s1077, kb.style.position, S.s27, kb.id, S.s67))
           }
           try b = units_add(jsUnwrap(p).y, jsUnwrap(inner))
         }
