@@ -61,10 +61,10 @@ public final class Fit {
 
 // ts: packages/layout/src/truncate.ts:34
 public func truncate_ellipsisOf(_ ctx: Ctx, _ nodeId: JsString, _ font: TextFont) throws -> EllipsisRun {
-  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s1203, font)
+  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s1205, font)
   // ts: packages/layout/src/truncate.ts:36
   if one.ok {
-    return EllipsisRun(S.s1203, (one as! MeasureResult_okTrue).measure.width)
+    return EllipsisRun(S.s1205, (one as! MeasureResult_okTrue).measure.width)
   }
   // ts: packages/layout/src/truncate.ts:37
   if ((one as! MeasureResult_okFalse).code != S.s_text_glyph) {
@@ -228,25 +228,25 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
   // ts: packages/layout/src/truncate.ts:139
   do {
     var i: Double = (jsLength(children) - 1.0)
-    loop44: while (i >= 0.0) {
-      loop44_body: do {
+    loop45: while (i >= 0.0) {
+      loop45_body: do {
         let c: TruncSource = try jsUnwrap(jsAt(children, i))
         let first: Bool = (i == 0.0)
         var space: Double = try units_sub(available, c.x)
         // ts: packages/layout/src/truncate.ts:143
         if (space <= 0.0) {
-          break loop44_body
+          break loop45_body
         }
         try space = units_sub(space, e.width)
         // ts: packages/layout/src/truncate.ts:145
         if (space >= c.width) {
           ellipsized = i
           try x = units_add(c.x, c.width)
-          break loop44
+          break loop45
         }
         // ts: packages/layout/src/truncate.ts:151
         if ((space <= 0.0) && (!first)) {
-          break loop44_body
+          break loop45_body
         }
         let length: Double = (c.end - c.start)
         let fit: Fit = try truncate_offsetToFit(ctx, nodeId, c, shaped, space)
@@ -255,7 +255,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         if ((n == 0.0) || (n == length)) {
           // ts: packages/layout/src/truncate.ts:156
           if (!first) {
-            break loop44_body
+            break loop45_body
           }
           n = ((n == 0.0) ? 1.0 : (length - 1.0))
         }
@@ -263,7 +263,7 @@ public func truncate_truncateLine(_ ctx: Ctx, _ nodeId: JsString, _ available: D
         count = n
         try cutWidth = ((n == fit.count) ? fit.width : truncate_truncatedWidth(ctx, nodeId, c, shaped, n))
         try x = units_add(c.x, cutWidth)
-        break loop44
+        break loop45
       }
       i -= 1.0
     }

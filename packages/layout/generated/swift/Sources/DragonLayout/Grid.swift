@@ -1223,7 +1223,7 @@ public func grid_resolveAgainstOpposite(_ a: GridAxisTracks, _ opposite: Double,
   if ((pos as! any U_GridLine_area_GridLine_line_GridLine_namedLine_GridLine_span).kind == S.s_span) {
     return (start ? (GridSpan_definite(S.s_definite, (opposite - (pos as! GridLine_span).n), opposite) as any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine) : (GridSpan_definite(S.s_definite, opposite, (opposite + (pos as! GridLine_span).n)) as any U_GridSpan_auto_GridSpan_definite_GridSpan_endLine_GridSpan_lines_GridSpan_startLine))
   }
-  throw JsError(message: S.s946)
+  throw JsError(message: S.s948)
 }
 
 // ts: packages/layout/src/grid.ts:703
@@ -1422,8 +1422,8 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
   }
   // ts: packages/layout/src/grid.ts:826
   do {
-    loop47: while true {
-      loop47_body: do {
+    loop48: while true {
+      loop48_body: do {
         try grid_updateItemsOverlappingMajorLine(list, c)
         nextMinor = c.current.minor
         // ts: packages/layout/src/grid.ts:829
@@ -1446,7 +1446,7 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
         }
         // ts: packages/layout/src/grid.ts:836
         if try (!fits()) {
-          break loop47_body
+          break loop48_body
         }
         var upcoming: Double = c.next
         // ts: packages/layout/src/grid.ts:838
@@ -3178,7 +3178,7 @@ public func grid_itemBaseline(_ ctx: Ctx, _ box: LayoutBox, _ frag: Frag) throws
 public func grid_lastBaselineOf(_ item: GridItemData, _ r: GridItemLayout) throws -> Double? {
   // ts: packages/layout/src/grid.ts:1941
   if (r.lastBaselineFlex != S.s0) {
-    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s668, jsConcat(S.s1142, r.lastBaselineFlex, S.s183, item.box.id, S.s8))
+    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s668, jsConcat(S.s1144, r.lastBaselineFlex, S.s183, item.box.id, S.s8))
   }
   let b: Double? = r.lastBaseline
   // ts: packages/layout/src/grid.ts:1943
@@ -3755,7 +3755,7 @@ public func grid_outOfFlowLines(_ ctx: Ctx, _ span: any U_GridSpan_auto_GridSpan
   case S.s_end_line:
     return try GridLines(grid_NOT_FOUND, within(((span as! GridSpan_endLine).line + startOffset)))
   case S.s_lines:
-    throw JsError(message: S.s950)
+    throw JsError(message: S.s952)
   default:
     break
   }

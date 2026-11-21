@@ -282,7 +282,7 @@ public func rtKeyframes_ruleAt(_ list: JsArray<RuleKeyframe>, _ i: Double) throw
   let k: RuleKeyframe? = jsAt(list, i)
   // ts: packages/layout/src/rt-keyframes.ts:172
   if (k == nil) {
-    throw JsError(message: jsConcat(S.s1042, jsNumberToString(i), S.s151))
+    throw JsError(message: jsConcat(S.s1044, jsNumberToString(i), S.s151))
   }
   return try jsUnwrap(k)
 }

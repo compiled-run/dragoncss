@@ -601,12 +601,12 @@ fun rtSelect_selectableFrom(t: SelectTable, i: Double): Caret? {
   // ts: packages/layout/src/rt-select.ts:375
   run {
     var k: Double = i
-    loop24@ while ((k < jsLength(t.nodes))) {
-      loop24_body@ do {
+    loop25@ while ((k < jsLength(t.nodes))) {
+      loop25_body@ do {
         val n: SelectNode = jsUnwrap(jsAt(t.nodes, k))
         // ts: packages/layout/src/rt-select.ts:377
         if ((!n.selectable)) {
-          break@loop24_body
+          break@loop25_body
         }
         // ts: packages/layout/src/rt-select.ts:378
         if (jsStrEq(n.kind, "text")) {
@@ -628,12 +628,12 @@ fun rtSelect_selectableBefore(t: SelectTable, i: Double): Caret? {
   // ts: packages/layout/src/rt-select.ts:386
   run {
     var k: Double = (i - 1.0)
-    loop25@ while ((k >= 0.0)) {
-      loop25_body@ do {
+    loop26@ while ((k >= 0.0)) {
+      loop26_body@ do {
         val n: SelectNode = jsUnwrap(jsAt(t.nodes, k))
         // ts: packages/layout/src/rt-select.ts:388
         if ((!n.selectable)) {
-          break@loop25_body
+          break@loop26_body
         }
         // ts: packages/layout/src/rt-select.ts:389
         if (jsStrEq(n.kind, "text")) {

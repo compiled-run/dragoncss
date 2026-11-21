@@ -110,7 +110,7 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
   let n: Double = jsLength(t.parent)
   // ts: packages/layout/src/rt-interaction.ts:116
   if (n == 0.0) {
-    throw try InteractionError(S.s1153)
+    throw try InteractionError(S.s1155)
   }
   // ts: packages/layout/src/rt-interaction.ts:117
   if (((t.hoverValues < 1.0) || (t.activeValues < 1.0)) || (t.focusValues < 1.0)) {
@@ -145,7 +145,7 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
       }
       try rtInteraction_inRange(jsUnwrap(jsAt(t.chainOf, i)), 0.0, t.hoverValues, jsConcat(S.s638, jsNumberToString(i), S.s531))
       try rtInteraction_inRange(jsUnwrap(jsAt(t.activeChainOf, i)), 0.0, t.activeValues, jsConcat(S.s570, jsNumberToString(i), S.s531))
-      try rtInteraction_inRange(jsUnwrap(jsAt(t.pointerFocusOf, i)), 0.0, t.focusValues, jsConcat(S.s1000, jsNumberToString(i), S.s531))
+      try rtInteraction_inRange(jsUnwrap(jsAt(t.pointerFocusOf, i)), 0.0, t.focusValues, jsConcat(S.s1002, jsNumberToString(i), S.s531))
       let focusable: Bool = try jsUnwrap(jsAt(t.focusable, i))
       try rtInteraction_inRange(jsUnwrap(jsAt(t.keyboardFocusOf, i)), (focusable ? 0.0 : -1.0), (focusable ? t.focusValues : 0.0), jsConcat(S.s850, jsNumberToString(i), S.s531))
       try rtInteraction_inRange(jsUnwrap(jsAt(t.forcedHoverOf, i)), -1.0, states, jsConcat(S.s779, jsNumberToString(i), S.s531))
@@ -165,7 +165,7 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
   }
   // ts: packages/layout/src/rt-interaction.ts:135
   if try (jsUnwrap(jsAt(t.combos, 0.0)) != -1.0) {
-    throw try InteractionError(S.s1133)
+    throw try InteractionError(S.s1135)
   }
 }
 
@@ -326,7 +326,7 @@ public func rtInteraction_remapped(_ t: InteractionTables, _ remap: JsArray<Doub
   }
   // ts: packages/layout/src/rt-interaction.ts:261
   if (e >= jsLength(remap)) {
-    throw try InteractionError(jsConcat(S.s1024, jsNumberToString(e), S.s54))
+    throw try InteractionError(jsConcat(S.s1026, jsNumberToString(e), S.s54))
   }
   return try rtInteraction_element(t, jsUnwrap(jsAt(remap, e)), S.s_remapPointer)
 }

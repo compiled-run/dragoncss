@@ -4,7 +4,7 @@ public final class SelectError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s1052, detail))
+    super.init(message: jsConcat(S.s1054, detail))
   }
 }
 
@@ -228,7 +228,7 @@ public func rtSelect_rectOf(_ s: SelectState, _ id: JsString) throws -> LayoutRe
   let r: LayoutRect? = s.abs.get(id)
   // ts: packages/layout/src/rt-select.ts:155
   if (r == nil) {
-    throw try SelectError(jsConcat(S.s1136, id))
+    throw try SelectError(jsConcat(S.s1138, id))
   }
   return try jsUnwrap(r)
 }
@@ -238,7 +238,7 @@ public func rtSelect_zoomedBox(_ s: SelectState, _ id: JsString) throws -> Layou
   let b: LayoutBox? = s.zoomed.get(id)
   // ts: packages/layout/src/rt-select.ts:161
   if (b == nil) {
-    throw try SelectError(jsConcat(S.s932, id))
+    throw try SelectError(jsConcat(S.s934, id))
   }
   return try jsUnwrap(b)
 }
@@ -549,7 +549,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   let out: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layout(input, measurer)
   // ts: packages/layout/src/rt-select.ts:300
   if (out.kind != S.s_ok) {
-    throw try SelectError(jsConcat(S.s1137, (out as! LayoutResult_unsupported).unsupported.code, S.s20, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s190))
+    throw try SelectError(jsConcat(S.s1139, (out as! LayoutResult_unsupported).unsupported.code, S.s20, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s190))
   }
   var zoomed: LayoutInput
   // ts: packages/layout/src/rt-select.ts:302
@@ -558,7 +558,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   } catch let e {
     // ts: packages/layout/src/rt-select.ts:305
     if (e is UnsupportedSignal) {
-      throw try SelectError(jsConcat(S.s1137, (e as! UnsupportedSignal).unsupported.code, S.s20, (e as! UnsupportedSignal).unsupported.nodeId, S.s190))
+      throw try SelectError(jsConcat(S.s1139, (e as! UnsupportedSignal).unsupported.code, S.s20, (e as! UnsupportedSignal).unsupported.nodeId, S.s190))
     }
     throw e
   }
@@ -699,12 +699,12 @@ public func rtSelect_selectableFrom(_ t: SelectTable, _ i: Double) throws -> Car
   // ts: packages/layout/src/rt-select.ts:375
   do {
     var k: Double = i
-    loop24: while (k < jsLength(t.nodes)) {
-      loop24_body: do {
+    loop25: while (k < jsLength(t.nodes)) {
+      loop25_body: do {
         let n: SelectNode = try jsUnwrap(jsAt(t.nodes, k))
         // ts: packages/layout/src/rt-select.ts:377
         if (!n.selectable) {
-          break loop24_body
+          break loop25_body
         }
         // ts: packages/layout/src/rt-select.ts:378
         if (n.kind == S.s_text) {
@@ -726,12 +726,12 @@ public func rtSelect_selectableBefore(_ t: SelectTable, _ i: Double) throws -> C
   // ts: packages/layout/src/rt-select.ts:386
   do {
     var k: Double = (i - 1.0)
-    loop25: while (k >= 0.0) {
-      loop25_body: do {
+    loop26: while (k >= 0.0) {
+      loop26_body: do {
         let n: SelectNode = try jsUnwrap(jsAt(t.nodes, k))
         // ts: packages/layout/src/rt-select.ts:388
         if (!n.selectable) {
-          break loop25_body
+          break loop26_body
         }
         // ts: packages/layout/src/rt-select.ts:389
         if (n.kind == S.s_text) {

@@ -345,8 +345,8 @@ fun layout_placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Con
   // ts: packages/layout/src/layout.ts:261
   run {
     var i: Double = 0.0
-    loop26@ while ((i < jsLength(out.pending))) {
-      loop26_body@ do {
+    loop27@ while ((i < jsLength(out.pending))) {
+      loop27_body@ do {
         val p: Pending = jsUnwrap(jsAt(out.pending, i))
         // ts: packages/layout/src/layout.ts:264
         if ((!anchor_anchorsPlaced(p.oof.box.style, out.absolute))) {
@@ -355,7 +355,7 @@ fun layout_placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Con
             unsupported_unsupported("anchor-order", p.oof.box.id, "css-anchor-position-1 \u00a72.3", ("an anchor of " + p.oof.box.id + " is never laid out before it"))
           }
           jsPush(out.pending, Pending(p.oof, p.parent, p.originX, p.originY, placed))
-          break@loop26_body
+          break@loop27_body
         }
         placed += 1.0
         val area: AreaRect? = p.oof.area

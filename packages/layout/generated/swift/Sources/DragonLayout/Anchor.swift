@@ -103,7 +103,7 @@ public func anchor_anchorOf(_ anchors: JsStringMap<AnchorRect>, _ id: JsString, 
   let r: AnchorRect? = anchors.get(id)
   // ts: packages/layout/src/anchor.ts:74
   if (r == nil) {
-    try unsupported_unsupported(S.s_anchor_order, box, S.s670, jsConcat(S.s1130, id, S.s147, box, S.s114))
+    try unsupported_unsupported(S.s_anchor_order, box, S.s670, jsConcat(S.s1132, id, S.s147, box, S.s114))
   }
   return try jsUnwrap(r)
 }
@@ -524,12 +524,12 @@ public func anchor_layoutAnchored(_ ctx: Ctx, _ box: LayoutBox, _ cb: Containing
   // ts: packages/layout/src/anchor.ts:431
   do {
     var i: Double = 0.0
-    loop27: while (i < tried) {
-      loop27_body: do {
+    loop28: while (i < tried) {
+      loop28_body: do {
         let p: Anchor_Placed = try ((i == 0.0) ? base : anchor_placeOption(ctx, box, jsUnwrap(jsAt(options, i)), jsUnwrap(a).anchor, cb, staticX, staticY, anchors))
         // ts: packages/layout/src/anchor.ts:433
         if p.overflows {
-          break loop27_body
+          break loop28_body
         }
         // ts: packages/layout/src/anchor.ts:434
         if try (jsUnwrap(a).order == S.s_normal) {
