@@ -1920,22 +1920,26 @@ function checkFieldset(el: ResolvedElement, parentDisplay: string | null, target
 }
 
 /**
- * An absolutely positioned box whose containing block is a fieldset with a rendered legend: Chrome's containing block there is the
- * fieldset's anonymous contents box, below the legend, which Dragon does not model, so a vertical inset or a percentage height
- * (which read its top or height) is refused. Without a legend, or with auto vertical insets and sizes, it lays out as Chrome's.
+ * An absolutely positioned box whose containing block is a fieldset: Chrome's containing block there is the fieldset's anonymous
+ * contents box (LayoutObject::ComputeIsAbsoluteContainer), below the rendered legend and only as tall as the contents when the
+ * fieldset's height is not definite (min-height stretches the fieldset, not that box), which Dragon does not model. So what reads
+ * that box's top or height is refused: a top, bottom or percentage size with a rendered legend, else a bottom, a percentage top
+ * or a percentage size. A px top without a legend reads the padding box's top, which the contents box shares.
  */
 function checkInsideFieldset(el: ResolvedElement, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   if (keywordOf(el.props.get('position') as ResolvedValue) !== 'absolute') return;
   const cb = [...chain].reverse().find((a) => keywordOf(a.props.get('position') as ResolvedValue) !== 'static');
   if (cb === undefined || cb.element.tag !== 'fieldset' || keywordOf(cb.props.get('display') as ResolvedValue) !== 'block') return;
   const legend = renderedLegendOf(cb);
-  if (legend === null) return;
   const read = (['top', 'bottom', 'height', 'min-height', 'max-height'] as const).find((p) => {
     const v = el.props.get(p) as ResolvedValue;
-    return p === 'top' || p === 'bottom' ? keywordOf(v) !== 'auto' : v.value.kind === 'percentage';
+    if (p === 'top') return legend !== null ? keywordOf(v) !== 'auto' : v.value.kind === 'percentage';
+    if (p === 'bottom') return keywordOf(v) !== 'auto';
+    return v.value.kind === 'percentage';
   });
   if (read === undefined) return;
-  refuseOn(el, el.props.get(read) as ResolvedValue, 'fieldset-contents-cb', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${read} on the absolutely positioned ${el.element.address} reads its containing block, the contents of <fieldset> ${cb.element.address} below its rendered legend <legend> ${legend.element.address}, which Dragon does not model yet`, `Position ${el.element.address} against a wrapper inside <fieldset> ${cb.element.address} (position: relative on the wrapper).`);
+  const box = legend === null ? `the anonymous contents box of <fieldset> ${cb.element.address}, only as tall as its contents` : `the contents of <fieldset> ${cb.element.address} below its rendered legend <legend> ${legend.element.address}`;
+  refuseOn(el, el.props.get(read) as ResolvedValue, 'fieldset-contents-cb', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${read} on the absolutely positioned ${el.element.address} reads its containing block, ${box}, which Dragon does not model yet`, `Position ${el.element.address} against a wrapper inside <fieldset> ${cb.element.address} (position: relative on the wrapper).`);
 }
 
 function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {

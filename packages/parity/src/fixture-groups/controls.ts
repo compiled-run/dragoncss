@@ -11,6 +11,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-button-block'),
   both('fieldset-legend'),
   both('fieldset-positioned'),
+  reject('reject-fieldset-positioned-bottom', 'DRAGON_UNSUPPORTED_VALUE', '0', 'bottom on the absolutely positioned b reads its containing block, the anonymous contents box of <fieldset> f'),
   reject('reject-fieldset-positioned-legend', 'DRAGON_UNSUPPORTED_VALUE', '0', 'top on the absolutely positioned b reads its containing block, the contents of <fieldset> f'),
   reject('reject-fieldset-grid-item', 'DRAGON_UNSUPPORTED_VALUE', '<fieldset data-dragon-id="f" class="f"></fieldset>', '<fieldset> f is a grid item'),
   reject('reject-fieldset-legend-contents', 'DRAGON_UNSUPPORTED_VALUE', '2px', 'the top border of <fieldset> f with the rendered legend <legend> l'),
