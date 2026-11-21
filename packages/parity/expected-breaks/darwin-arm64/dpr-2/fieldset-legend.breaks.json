@@ -1,0 +1,21 @@
+{
+  "case": "fieldset-legend",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"f1d:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f2l:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f2d:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f3:text0","data":"X X","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"f3l:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f4l:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f4d:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f5l:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f5m:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"f6l:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f6d:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f7l:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"f8l:text0","data":"XXXX XXXX XXXX XXXX XXXX","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1],"blank":[14]},
+    {"id":"f9d:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}
