@@ -92,8 +92,8 @@ export type ExportTarget = {
   readonly plan?: MarklessPlan;
   /** With a plan, from a Markless input, per assignment: each Dragon id the plan's geometry names, with the input's id for it. */
   readonly planNames?: readonly (readonly (readonly [string, string])[])[];
-  /** With a plan: each list's parent box and the ids of a row's top boxes, which a phone copies once per row. */
-  readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
+  /** With a plan: each list's parent box and the ids of a row's top boxes, which a phone copies once per row; `armed`: those a row's own arm may hide. */
+  readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[]; readonly armed?: readonly string[] }[];
 };
 export type NativeStyleExport = {
   readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;

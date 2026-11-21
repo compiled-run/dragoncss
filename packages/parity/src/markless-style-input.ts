@@ -55,9 +55,10 @@ export type MarklessStyleInput = {
   readonly fonts?: readonly { readonly url: string; readonly file: string }[];
   /**
    * Each @if or @try whose arms hold nodes, compiled as a state: its value is the arm it shows ("0", "1", …, or MARKLESS_NO_ARM), so
-   * every combination of arms is laid out as Chrome lays that page out. `arm`: the arm the branch itself sits in.
+   * every combination of arms is laid out as Chrome lays that page out. `arm`: the arm the branch itself sits in. `row`: the list
+   * whose rows each hold this branch, each row showing its own arm (a state of each row, as a row's own state is).
    */
-  readonly branches?: readonly { readonly id: string; readonly domain: readonly string[]; readonly initial: string; readonly arm?: MarklessArm }[];
+  readonly branches?: readonly { readonly id: string; readonly domain: readonly string[]; readonly initial: string; readonly arm?: MarklessArm; readonly row?: string }[];
 };
 
 /**
@@ -193,6 +194,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
   }
   const branches = new Map<string, readonly string[]>();
   const branchArm = new Map<string, MarklessArm | undefined>();
+  const branchRow = new Map<string, string>();
   const checkArm = (what: string, arm: unknown): void => {
     const ok = isRecord(arm) && Object.keys(arm).sort().join() === 'branch,index' && isString(arm['branch']) && Number.isInteger(arm['index']) && (arm['index'] as number) >= 0;
     if (!ok) fail(`${what}: an arm is { branch, index } with a whole index, not ${JSON.stringify(arm)}`);
@@ -207,7 +209,8 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (!isRecord(b) || !isString(b['id']) || b['id'] === '') fail(`bad branch ${JSON.stringify(b)}`);
       const br = b as Record<string, unknown>;
       const id = br['id'] as string;
-      onlyKeys(`branch ${id}`, br, ['id', 'domain', 'initial', 'arm']);
+      onlyKeys(`branch ${id}`, br, ['id', 'domain', 'initial', 'arm', 'row']);
+      if (br['row'] !== undefined && !(isString(br['row']) && repeats.has(br['row']))) fail(`branch ${id}: row ${JSON.stringify(br['row'])} is not a repeat`);
       if (branches.has(id) || cells.has(id)) fail(`branch ${id} is listed twice, or is also a state`);
       const domain = br['domain'];
       const arms = Array.isArray(domain) ? domain.filter((v) => v !== MARKLESS_NO_ARM) : [];
@@ -217,6 +220,10 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (br['arm'] !== undefined) checkArm(`branch ${id}`, br['arm']);
       branches.set(id, domain as string[]);
       branchArm.set(id, br['arm'] as MarklessArm | undefined);
+      if (isString(br['row'])) branchRow.set(id, br['row']);
+      // A branch of each row sits in its row's arms only: a branch outside the rows holds a node of every row.
+      const outer = br['arm'] === undefined ? undefined : branchRow.get((br['arm'] as MarklessArm).branch);
+      if (outer !== undefined && outer !== br['row']) fail(`branch ${id}: it sits in an arm of each row of ${outer}, and is not a branch of those rows`);
     }
   }
   for (const [id, r] of repeats) if (r.arm !== undefined) checkArm(`repeat ${id}`, r.arm);
@@ -245,6 +252,10 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     if (row !== undefined && parentRow === undefined && (node['parent'] ?? null) !== (repeats.get(row as string)?.parent ?? null)) fail(`${id}: a row of ${String(row)} hangs from its list's parent, not ${String(node['parent'])}`);
     nodeRow.set(id, row as string | undefined);
     if (node['arm'] !== undefined) checkArm(id, node['arm']);
+    for (const a of armChain(node['arm'] as MarklessArm | undefined, branchArm)) {
+      const own = branchRow.get(a.branch);
+      if (own !== undefined && own !== row) fail(`${id}: it sits in ${a.branch}, a branch of each row of ${own}, outside those rows`);
+    }
     // A row's node sits in the arm its list sits in, unless an arm inside the row holds it.
     const listArm = isString(row) ? (repeats.get(row)?.arm as MarklessArm | undefined) : undefined;
     checkNested(id, node['parent'], (node['arm'] as MarklessArm | undefined) ?? listArm);
@@ -311,16 +322,19 @@ function byStateVaries(entries: readonly unknown[], cell: string): boolean {
   return false;
 }
 
-/** One row of a list written out: its key, the value of each of its own states, and its texts by the template's text id. */
+/** One row of a list written out: its key, the value of each of its own states and branches, and its texts by the template's text id. */
 export type MarklessRow = { readonly key: string; readonly states: Readonly<Record<string, StateValue>>; readonly texts: ReadonlyMap<string, string> };
 
 /**
  * The input as the web renders it with these rows: each row a copy of its list's template named "<id>@<key>", in the list's arm,
- * with its classes and attributes at its own states' values and its own texts; the lists and the rows' states are gone.
+ * with its classes and attributes at its own states' values, its own texts, and only the arms of its own branches it shows; the
+ * lists, the rows' states and the rows' branches are gone.
  */
 export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<string, readonly MarklessRow[]>): MarklessStyleInput {
   const nodes: MarklessStyleInput['nodes'][number][] = [];
   const placed = new Set<string>();
+  const rowBranches = new Set((input.branches ?? []).filter((b) => b.row !== undefined).map((b) => b.id));
+  const branchArm = new Map((input.branches ?? []).map((b) => [b.id, b.arm]));
   for (const n of input.nodes) {
     if (n.row === undefined) {
       nodes.push(n);
@@ -333,8 +347,10 @@ export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<st
     const list = repeat as NonNullable<typeof repeat>;
     for (const row of rows.get(list.id) ?? []) {
       for (const t of input.nodes.filter((x) => x.row === list.id)) {
+        const chain = armChain(t.arm, branchArm);
+        if (chain.some((a) => rowBranches.has(a.branch) && row.states[a.branch] !== String(a.index))) continue;
         const parent = t.parent === list.parent ? t.parent : `${t.parent}@${row.key}`;
-        const arm = t.arm ?? list.arm;
+        const arm = chain.find((a) => !rowBranches.has(a.branch)) ?? list.arm;
         const place = arm === undefined ? {} : { arm };
         if (t.kind === 'text') {
           nodes.push({ kind: 'text', id: `${t.id}@${row.key}`, parent: parent as string, text: row.texts.get(t.id) ?? shownText(t, row.states), ...place });
@@ -351,8 +367,9 @@ export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<st
       }
     }
   }
-  const { repeats: _, ...rest } = input;
-  return { ...rest, nodes, states: input.states.filter((st) => st.row === undefined) };
+  const { repeats: _, branches: all, ...rest } = input;
+  const pageBranches = (all ?? []).filter((b) => b.row === undefined);
+  return { ...rest, nodes, states: input.states.filter((st) => st.row === undefined), ...(pageBranches.length > 0 ? { branches: pageBranches } : {}) };
 }
 
 /** HTML's class attribute: a set of tokens separated by ASCII whitespace. */
@@ -749,7 +766,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
-  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, fonts, mode, at);
+  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, styles, fonts, mode, at);
   const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
     const out = styles.targets[t as NativeStyleTarget];
     if (out?.kind !== 'emitted' || out.schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment`);
@@ -773,92 +790,102 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
  * Each list of the input as a phone lays its rows out (harness.ts runMarklessRowsLayout): the box its rows hang from and the ids of
  * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy.
  */
-function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, string>): { readonly id: string; readonly parent: string; readonly template: readonly string[] }[] {
+function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, string>): { readonly id: string; readonly parent: string; readonly template: readonly string[]; readonly armed?: readonly string[] }[] {
+  const rowBranches = new Set((parsed.branches ?? []).filter((b) => b.row !== undefined).map((b) => b.id));
   return (parsed.repeats ?? []).map((r) => {
     const top = parsed.nodes.filter((n) => n.row === r.id && n.parent === r.parent);
     const text = top.find((n) => n.kind === 'text');
     if (text !== undefined) fail(`${text.id}: text right inside a row of ${r.id} has no box a phone can copy per row; wrap it in an element`);
     if (top.length === 0) fail(`${r.id}: its rows hold no node`);
-    return { id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) };
+    // A template box in an arm of the row's own branch: a row whose arm hides it has no copy of it.
+    const armed = top.filter((n) => armsAround(parsed, n.arm).some((x) => rowBranches.has(x.branch))).map((n) => dragonIds.get(n.id) as string);
+    if (armed.length === top.length) fail(`${r.id}: every box right inside its rows is in an arm of the row's own @if; wrap the @if in an element a phone can copy per row`);
+    return { id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string), ...(armed.length > 0 ? { armed } : {}) };
   });
+}
+
+type StyleProgram = Extract<NonNullable<NativeStyles['targets'][NativeStyleTarget]>, { readonly kind: 'emitted' }>['program'];
+
+/** Each box's layout style and paint writes in a program's assignment `i`, by Dragon id. */
+function lookAt(sp: StyleProgram, i: number): Map<string, string> {
+  const out = new Map<string, string>();
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) {
+      for (const item of v) walk(item);
+      return;
+    }
+    if (v === null || typeof v !== 'object') return;
+    const box = v as Record<string, unknown>;
+    if (typeof box['id'] === 'string' && box['style'] !== undefined) out.set(box['id'], JSON.stringify(box['style']));
+    for (const [k, child] of Object.entries(box)) if (k !== 'style') walk(child);
+  };
+  walk((sp.variants[(sp.deltas[i] as { readonly variant: number }).variant] as { readonly root: unknown }).root);
+  for (const n of programAt(sp, i).nodes) out.set(n.id, `${out.get(n.id) ?? ''}${JSON.stringify(n.writes)}`);
+  return out;
 }
 
 /**
  * A phone copies a row's template, so every row must be styled as the template is, whatever its position, and a row's own state
- * must change only its own row. Refuses a style that depends on a row's position (`:first-child`, `:nth-child`, `+`, `~` across
- * rows): the page compiled with two rows written out must style both as the template. Refuses a node outside the rows whose style
- * follows a row's own state (`:has()`).
+ * or branch must change only its own row. Refuses a style that depends on a row's position (`:first-child`, `:nth-child`, `+`, `~`
+ * across rows): the page compiled with two rows written out, at each arm of the rows' branches, must style both as the template.
+ * Refuses a node outside the rows whose style follows a row's own state or arm (`:has()`). Where boxes sit is not compared: the
+ * phone lays the whole page out again with its rows.
  */
-function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: NativeStyleExport, mainStyles: NativeStyles, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
-  const rowStates = new Set(parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell));
+function checkRows(parsed: MarklessStyleInput, inputPath: string, mainStyles: NativeStyles, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
+  const rowBranches = (parsed.branches ?? []).filter((b) => b.row !== undefined);
+  const rowStates = new Set([...parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell), ...rowBranches.map((b) => b.id)]);
   const inRow = parsed.nodes.filter((n) => n.row !== undefined && n.kind === 'element').map((n) => n.id);
-  for (const [t, x] of Object.entries(exported.targets)) {
-    const byKey = new Map<string, ExportAssignment>();
-    // The export's values are still keyed by Dragon's state names here; the input names them by cell.
-    const rekey = cellKey(parsed);
-    const pageKey = (values: Readonly<Record<string, unknown>>): string => JSON.stringify(Object.entries(values).map(([k, v]) => [rekey(k), v] as const).filter(([k]) => !rowStates.has(k)).sort());
-    for (const a of x.assignments) {
-      const key = pageKey(a.values);
-      const first = byKey.get(key);
-      if (first === undefined) {
-        byKey.set(key, a);
-        continue;
-      }
-      const before = new Map(first.nodes.map((n) => [n.id, JSON.stringify([n.frame, n.writes])]));
-      const own = new Set(parsed.nodes.filter((n) => n.row !== undefined).map((n) => n.id));
-      for (const n of a.nodes) if (!own.has(n.id) && before.has(n.id) && before.get(n.id) !== JSON.stringify([n.frame, n.writes])) fail(`${t}: ${n.id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
-    }
-  }
-  const templateStates = Object.fromEntries(parsed.states.filter((st) => st.row !== undefined).map((st) => [st.cell, st.initial]));
-  const twoRows = new Map((parsed.repeats ?? []).map((r) => [r.id, ['r0', 'r1'].map((key): MarklessRow => ({ key, states: templateStates, texts: new Map() }))] as const));
-  const written = marklessWithRows(parsed, twoRows);
-  const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at).styles;
   const mainIds = dragonNodeIds(parsed);
-  const writtenIds = dragonNodeIds(written);
   const mainKey = cellKey(parsed);
-  const writtenKey = cellKey(written);
-  // Each box's layout style and paint writes in the program's assignment whose page states are `page`, by Dragon id.
-  const lookOf = (styles: NativeStyles, t: NativeStyleTarget, rekey: (k: string) => string, wanted: Readonly<Record<string, unknown>>): Map<string, string> | null => {
-    const o = styles.targets[t];
-    if (o === undefined || o.kind !== 'emitted') return null;
-    const sp = o.program;
-    const i = sp.assignments.findIndex((a) => {
-      const values = Object.fromEntries(Object.entries(valuesOf(a.assignment)).map(([k, v]) => [rekey(k), v]));
-      return Object.entries(wanted).every(([k, v]) => values[k] === v);
-    });
-    if (i < 0) return null;
-    const out = new Map<string, string>();
-    const walk = (v: unknown): void => {
-      if (Array.isArray(v)) {
-        for (const item of v) walk(item);
+  const outside = parsed.nodes.filter((n) => n.row === undefined).map((n) => mainIds.get(n.id) as string);
+  const valuesAt = (a: { readonly assignment: unknown }, rekey: (k: string) => string): Record<string, unknown> =>
+    Object.fromEntries(Object.entries(valuesOf(a.assignment as Parameters<typeof valuesOf>[0])).map(([k, v]) => [rekey(k), v]));
+  for (const [t, o] of Object.entries(mainStyles.targets)) {
+    if (o === undefined || o.kind !== 'emitted') continue;
+    const firstOf = new Map<string, Map<string, string>>();
+    o.program.assignments.forEach((a, i) => {
+      const key = JSON.stringify(Object.entries(valuesAt(a, mainKey)).filter(([k]) => !rowStates.has(k)).sort());
+      const look = lookAt(o.program, i);
+      const first = firstOf.get(key);
+      if (first === undefined) {
+        firstOf.set(key, look);
         return;
       }
-      if (v === null || typeof v !== 'object') return;
-      const box = v as Record<string, unknown>;
-      if (typeof box['id'] === 'string' && box['style'] !== undefined) out.set(box['id'], JSON.stringify(box['style']));
-      for (const [k, child] of Object.entries(box)) if (k !== 'style') walk(child);
-    };
-    walk((sp.variants[(sp.deltas[i] as { readonly variant: number }).variant] as { readonly root: unknown }).root);
-    for (const n of programAt(sp, i).nodes) out.set(n.id, `${out.get(n.id) ?? ''}${JSON.stringify(n.writes)}`);
-    return out;
-  };
-  for (const t of Object.keys(exported.targets) as NativeStyleTarget[]) {
-    const o = mainStyles.targets[t];
-    if (o === undefined || o.kind !== 'emitted') continue;
-    for (const a of o.program.assignments) {
-      const values = Object.fromEntries(Object.entries(valuesOf(a.assignment)).map(([k, v]) => [mainKey(k), v]));
-      if (!Object.entries(templateStates).every(([k, v]) => values[k] === v)) continue;
-      const template = lookOf(mainStyles, t, mainKey, values);
-      const copies = lookOf(writtenStyles, t, writtenKey, Object.fromEntries(Object.entries(values).filter(([k]) => !rowStates.has(k))));
-      if (template === null || copies === null) continue;
-      for (const id of inRow) {
-        const own = template.get(mainIds.get(id) as string);
-        if (own === undefined) continue;
-        for (const key of ['r0', 'r1']) {
-          const copy = copies.get(writtenIds.get(`${id}@${key}`) as string);
-          if (copy !== undefined && copy !== own) fail(`${t}: ${id} is styled differently in the ${key === 'r0' ? 'first' : 'second'} of two rows than alone; a style that depends on a row's position (:first-child, :nth-child, +, ~ across rows) is not supported yet`);
+      for (const id of outside) if (first.get(id) !== look.get(id)) fail(`${t}: ${id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
+    });
+  }
+  const templateStates = Object.fromEntries(parsed.states.filter((st) => st.row !== undefined).map((st) => [st.cell, st.initial]));
+  const armSets = rowBranches.reduce<Record<string, StateValue>[]>((all, b) => all.flatMap((p) => b.domain.map((value) => ({ ...p, [b.id]: value }))), [{}]);
+  for (const arms of armSets) {
+    const rowValues: Record<string, StateValue> = { ...templateStates, ...arms };
+    const twoRows = new Map((parsed.repeats ?? []).map((r) => [r.id, ['r0', 'r1'].map((key): MarklessRow => ({ key, states: rowValues, texts: new Map() }))] as const));
+    const written = marklessWithRows(parsed, twoRows);
+    const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at).styles;
+    const writtenIds = dragonNodeIds(written);
+    const writtenKey = cellKey(written);
+    for (const [t, o] of Object.entries(mainStyles.targets) as [NativeStyleTarget, NativeStyles['targets'][NativeStyleTarget]][]) {
+      const w = writtenStyles.targets[t];
+      if (o === undefined || o.kind !== 'emitted' || w === undefined || w.kind !== 'emitted') continue;
+      o.program.assignments.forEach((a, i) => {
+        const values = valuesAt(a, mainKey);
+        if (!Object.entries(rowValues).every(([k, v]) => values[k] === v)) return;
+        const page = Object.entries(values).filter(([k]) => !rowStates.has(k));
+        const j = w.program.assignments.findIndex((b) => {
+          const there = valuesAt(b, writtenKey);
+          return page.every(([k, v]) => there[k] === v);
+        });
+        if (j < 0) return;
+        const template = lookAt(o.program, i);
+        const copies = lookAt(w.program, j);
+        for (const id of inRow) {
+          const own = template.get(mainIds.get(id) as string);
+          if (own === undefined) continue;
+          for (const key of ['r0', 'r1']) {
+            const copy = copies.get(writtenIds.get(`${id}@${key}`) as string);
+            if (copy !== undefined && copy !== own) fail(`${t}: ${id} is styled differently in the ${key === 'r0' ? 'first' : 'second'} of two rows than alone; a style that depends on a row's position (:first-child, :nth-child, +, ~ across rows) is not supported yet`);
+          }
         }
-      }
+      });
     }
   }
 }

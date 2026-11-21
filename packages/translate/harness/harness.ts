@@ -3660,7 +3660,7 @@ function rowCopy(v: JsonValue, key: string, texts: ReadonlyMap<string, string>):
 }
 
 type RowEntry = { key: string; variant: JsonValue; texts: Map<string, string> };
-type RowList = { readonly parent: string; readonly template: readonly string[]; readonly rows: readonly RowEntry[] };
+type RowList = { readonly parent: string; readonly template: readonly string[]; readonly armed: readonly string[]; readonly rows: readonly RowEntry[] };
 
 /** The variant's tree with each list's template children replaced by one copy per row, in row order. */
 function withRows(v: JsonValue, lists: readonly RowList[]): JsonValue {
@@ -3685,31 +3685,50 @@ function withRows(v: JsonValue, lists: readonly RowList[]): JsonValue {
     let placed = false;
     while (at < value.items.length) {
       const child = value.items[at] as JsonValue;
-      const cid = child.kind === 'obj' ? child.values.get('id') : undefined;
-      if (cid !== undefined && cid.kind === 'str' && cid.text === (list.template[0] as string)) {
-        for (let t = 0; t < list.template.length; t++) {
-          const next = value.items[at + t];
-          const nid = next !== undefined && next.kind === 'obj' ? next.values.get('id') : undefined;
-          if (nid === undefined || nid.kind !== 'str' || nid.text !== (list.template[t] as string)) fail(`$.rows: the template of ${list.parent} is not its children in order`);
+      const first = templateIndex(list, child);
+      if (first >= 0 && !placed) {
+        // The template's boxes in order, less those of an arm the page's own assignment hides.
+        let t = 0;
+        while (t < list.template.length) {
+          const next = value.items[at];
+          const ti = next === undefined ? -1 : templateIndex(list, next);
+          const tid = list.template[t] as string;
+          if (ti === t) at += 1;
+          else if (!holdsId(list.armed, tid)) fail(`$.rows: the template of ${list.parent} is not its children in order`);
+          t += 1;
         }
         for (const row of list.rows) {
           for (const tid of list.template) {
             const source = boxJson(row.variant, tid);
+            if (source === null && holdsId(list.armed, tid)) continue;
             if (source === null) return fail(`$.rows: the variant of row ${row.key} has no box ${tid}`);
             items.push(rowCopy(source, row.key, row.texts));
           }
         }
-        at += list.template.length;
         placed = true;
       } else {
         items.push(withRows(child, lists));
         at += 1;
       }
     }
-    if (!placed) fail(`$.rows: ${list.parent} has no child ${list.template[0] as string}`);
+    if (!placed) fail(`$.rows: ${list.parent} has no box of its rows' template`);
     values.set(k, { kind: 'arr', items });
   }
   return { kind: 'obj', keys: v.keys, values };
+}
+
+/** The index in a list's template of a box JSON, or -1. */
+function templateIndex(list: RowList, v: JsonValue): number {
+  const id = v.kind === 'obj' ? v.values.get('id') : undefined;
+  if (id === undefined || id.kind !== 'str') return -1;
+  for (let t = 0; t < list.template.length; t++) if ((list.template[t] as string) === id.text) return t;
+  return -1;
+}
+
+/** Whether `ids` holds `id`. */
+function holdsId(ids: readonly string[], id: string): boolean {
+  for (const x of ids) if (x === id) return true;
+  return false;
 }
 
 /** The JSON of a plan variant's root. */
@@ -3821,10 +3840,21 @@ function rowsVariant(plan: JsonObj, vi: number, rowsValue: JsonValue): PlanVaria
   const given = arr(rowsValue, '$.rows');
   for (let li = 0; li < given.length; li++) {
     const at = `$.rows[${li}]`;
-    const lo = obj(given[li] as JsonValue, ['parent', 'template', 'rows'], at);
+    const raw = given[li] as JsonValue;
+    const lo = raw.kind === 'obj' && raw.values.has('armed') ? obj(raw, ['parent', 'template', 'armed', 'rows'], at) : obj(raw, ['parent', 'template', 'rows'], at);
     const template: string[] = [];
     const ids = arr(field(lo, 'template', at), `${at}.template`);
     for (let ti = 0; ti < ids.length; ti++) template.push(str(ids[ti] as JsonValue, `${at}.template[${ti}]`));
+    const armed: string[] = [];
+    const armedValue = lo.values.get('armed');
+    if (armedValue !== undefined) {
+      const items = arr(armedValue, `${at}.armed`);
+      for (let ai = 0; ai < items.length; ai++) {
+        const id = str(items[ai] as JsonValue, `${at}.armed[${ai}]`);
+        if (!holdsId(template, id)) fail(`${at}.armed[${ai}]: ${id} is not a box of the template`);
+        armed.push(id);
+      }
+    }
     if (template.length === 0) fail(`${at}.template: a row has at least one box`);
     const rows: RowEntry[] = [];
     const entries = arr(field(lo, 'rows', at), `${at}.rows`);
@@ -3844,7 +3874,7 @@ function rowsVariant(plan: JsonObj, vi: number, rowsValue: JsonValue): PlanVaria
       if (holds(key, '@')) fail(`${rat}.key: a row key holds no @`);
       rows.push({ key, variant: variantRootJson(plan, planAssignment(plan, k).variant), texts });
     }
-    lists.push({ parent: str(field(lo, 'parent', at), `${at}.parent`), template, rows });
+    lists.push({ parent: str(field(lo, 'parent', at), `${at}.parent`), template, armed, rows });
   }
   const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
   const at = `$.plan.variants[${vi}]`;
