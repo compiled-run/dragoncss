@@ -957,6 +957,8 @@
     "controls-button-block-rtl": "b1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "fieldset-legend": "f1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "fieldset-legend-rtl": "f1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
+    "fieldset-positioned": "f1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
+    "fieldset-positioned-rtl": "f1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-button-flex": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-button-flex-rtl": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-button-demo": "library-button is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
