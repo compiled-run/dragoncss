@@ -1093,7 +1093,13 @@ export function parseSubstitutedValue(property: Longhand | Shorthand, text: stri
   // Substitution can nest brackets past MAX_NESTING, which the css-tree parser would recurse through.
   if (nestingDepth(text) > MAX_NESTING) return { kind: 'refused', diagnostic: tooDeep(property, base) };
   let failed = false;
-  const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  let node: CssNode;
+  try {
+    node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  } catch {
+    // css-tree throws on some token runs Chrome only fails to match (an ident before a "%" delim: "NaN%").
+    return { kind: 'invalid' };
+  }
   if (failed) return { kind: 'invalid' };
   if (text.includes('\\')) canonicalizeEscapes(node);
   const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');

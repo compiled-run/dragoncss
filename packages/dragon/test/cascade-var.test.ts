@@ -72,6 +72,9 @@ describe('var() substitution', () => {
     expect(valueToString(at('a', 'margin-left').value)).toBe('0px');
     expect(at('a', 'width').declared).toEqual({ kind: 'keyword', value: 'unset' });
     expect(one('.a { --u: 1; --v: px; width: var(--u)var(--v); }', 'a', 'width')).toBe('auto');
+    // "NaN%" is an ident and a delim, which css-tree's value parser throws on.
+    expect(one('.a { --x: NaN%; width: var(--x); }', 'a', 'width')).toBe('auto');
+    expect(one('.a { --x: NaN%; margin-left: var(--x); }', 'a', 'margin-left')).toBe('0px');
   });
 
   it('empty, guaranteed-invalid and CSS-wide custom property values', () => {

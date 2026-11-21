@@ -7,13 +7,16 @@ import type { FontData, FontLengths, FontMetrics, LayoutInput, TextMeasurer } fr
 import { layout } from '@dragon/layout';
 import type { NativeStyleTarget, StateProgram } from 'dragon';
 import { programAt } from 'dragon';
+import type { SlotField, SlotRefusal, SlotWrite } from './markless-slots.ts';
 import { repoPath } from './paths.ts';
 import type { MeasurerRecorder } from './system-fonts/measurer.ts';
 import { systemFaceData, systemMeasurer } from './system-fonts/measurer.ts';
 import type { SystemFonts } from './system-fonts/provider.ts';
 
 // The harness is loaded by path at run time, as cli/paint-vectors.ts does: it is written in the translator subset, outside this package.
-const harness = (await import(pathToFileURL(repoPath('packages/translate/harness/harness.ts')).href)) as { checkMarklessPlan(line: string): string };
+const harness = (await import(pathToFileURL(repoPath('packages/translate/harness/harness.ts')).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string };
+const host = (await import(pathToFileURL(repoPath('packages/translate/harness/host.ts')).href)) as { bitsHex(x: number): string; hexBits(s: string): number };
+export const hexBits = (s: string): number => host.hexBits(s);
 
 export const MARKLESS_PLAN_VERSION = 'dragon.markless-plan/1';
 
@@ -37,13 +40,28 @@ export type PlanAssignment = {
   /** Each box with border-styles and border-colors writes: [id, styles, rgba per side]. */
   readonly dashed: readonly (readonly unknown[])[];
   readonly scroll: readonly string[];
+  /** Only for an input with slots: the style fields and write numbers that follow them (markless-slots.ts). */
+  readonly slotFields?: readonly SlotField[];
+  readonly slotWrites?: readonly SlotWrite[];
+  readonly slotRefusals?: readonly SlotRefusal[];
 };
+
+/** The device's reader of a plan (harness.ts checkMarklessPlan): ["ok"] or the first part it cannot read. */
+export const checkPlan = (line: string): string => harness.checkMarklessPlan(line);
+
+/** The phone's layout of a plan's assignment at these slot values (harness.ts runMarklessLayout), parsed. */
+export function slottedLayout(plan: MarklessPlan, assignment: number, viewport: { readonly width: number; readonly height: number }, dpr: number, slots: readonly number[]): readonly unknown[] {
+  const line = { assignment, dpr, viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan, slots: slots.map((v) => host.bitsHex(v)) };
+  return JSON.parse(harness.runMarklessLayout(JSON.stringify(line))) as readonly unknown[];
+}
 export type MarklessPlan = {
   readonly version: typeof MARKLESS_PLAN_VERSION;
   readonly faces: readonly { readonly id: string; readonly data: FontData }[];
   readonly densities: readonly PlanDensity[];
   readonly variants: StateProgram['variants'];
   readonly assignments: readonly PlanAssignment[];
+  /** Only for an input with slots: each slot's id and type, in the order the line gives their values; the phone refuses a fraction for an integer slot. */
+  readonly slots?: readonly (readonly [id: string, type: 'number' | 'integer'])[];
 };
 
 type Write = { readonly kind: string } & Readonly<Record<string, unknown>>;

@@ -13,7 +13,7 @@ import { repoPath } from '../src/paths.ts';
 
 // The translate harness is loaded by path at run time, as text-latin-engine.test.ts does.
 const { checkMarklessPlan, runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string };
-const { hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { hexBits(s: string): number };
+const { bitsHex, hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { bitsHex(x: number): string; hexBits(s: string): number };
 
 const INPUTS = ['fluid', 'width-media', 'borders-dashed', 'scheme', 'tabs'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
 const FLUID = 'examples/markless-styles/input/fluid.native-style-input.json';
@@ -137,7 +137,7 @@ describe('the layout plan of a Markless export', () => {
     expect(w[w.length - 1]).toBe(1400);
   });
 
-  it("gives each menulist-button select's arrow after the nodes, from its snapped border box, and a page without one as it was", () => {
+  it("gives each menulist-button select's arrow last, tagged, from its snapped border box, and a page without one as it was", () => {
     const lato = new Uint8Array(readFileSync(repoPath('packages/dragon/test/fonts/woff/Lato-Regular.woff2')));
     const css = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); }\nbody { margin: 0; font-family: 'Harbour Lato'; }\nselect { font: inherit; }\n.page { padding: 24px; }\n.field { display: block; width: 100%; padding: 12px 14px; border: 1px dashed #c9c2ad; background: #fffdf7; }\n";
     const nodes = [
@@ -180,6 +180,31 @@ describe('the layout plan of a Markless export', () => {
     expect(arrows).toBe(2);
     const plain = marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true).exported.targets.ios!;
     expect(deviceLayout(plain.plan!, 0, plain.viewport.width, plain.viewport.height, plain.dpr).length).toBe(3);
+  });
+
+  it('gives a slotted page with a menulist-button select its slot writes, then its arrows, tagged and last', () => {
+    const path = 'examples/markless-styles/input/slots.native-style-input.json';
+    const input = JSON.parse(readFileSync(repoPath(path), 'utf8')) as { css: string; nodes: unknown[]; slots: { initial: number }[] };
+    const text = JSON.stringify({
+      ...input,
+      css: `${input.css}\n.pick { display: block; font: inherit; min-width: 0; width: 100%; padding: 4px 6px; border: 1px solid rgb(90 90 90); background: rgb(250 250 245); }\n`,
+      nodes: [...input.nodes, { kind: 'element', id: 'h20', element: 'select', parent: 'h0', attributes: { class: 'pick' } }, { kind: 'element', id: 'h21', element: 'option', parent: 'h20', attributes: {} }, { kind: 'text', id: 'h21:text0', parent: 'h21', text: 'One' }],
+    });
+    const { exported } = marklessStyleExport(text, path, undefined, 'system', undefined, true);
+    for (const t of ['ios', 'android'] as const) {
+      const x = exported.targets[t]!;
+      const line = { assignment: 0, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan };
+      const slotted = JSON.parse(runMarklessLayout(JSON.stringify({ ...line, slots: input.slots.map((s) => bitsHex(s.initial)) }))) as unknown[];
+      expect(slotted[0], JSON.stringify(slotted)).toBe('ok');
+      expect(slotted.length, t).toBe(5);
+      const writes = slotted[3] as unknown[][];
+      expect(writes.length, t).toBeGreaterThan(0);
+      for (const w of writes) expect(typeof w[0] === 'string' && typeof w[1] === 'string' && Array.isArray(w[2]), t).toBe(true);
+      const names = new Map(x.planNames?.[0] ?? []);
+      const arrows = slotted[4] as [string, unknown[][]];
+      expect(arrows[0], t).toBe('menulist-arrows');
+      expect(arrows[1].map((a) => names.get(a[0] as string) ?? a[0]), t).toEqual(['h20']);
+    }
   });
 
   it('keeps the font mode and each assignment\'s canvas, body background and colour scheme beside the plan, for the paint checks', () => {
