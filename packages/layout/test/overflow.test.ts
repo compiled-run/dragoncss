@@ -147,17 +147,20 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     expect(r.kind === 'refused' ? r.nodeId : '').toBe('k');
   });
 
-  it('a form control is refused, never skipped: its scrollable overflow is not decided here', () => {
+  it('a block button is decided as the plain box it lays out as; any other control, or one that scrolls, is refused', () => {
+    // Chrome's button with visible overflow adds its contents' overflow to its ancestors' as a plain box does (parity fixture
+    // overflow-controls, its scroll metrics equal Chrome at DPR 1, 2, 3 and 2.625), so a 300 px button in a 100 px box scrolls 200 px.
     const button = control('button', { kind: 'button-block' }, { width: px(300), height: px(300) });
-    for (const i of [input([box('s', sc('auto'), [button])]), input([button])]) {
-      const r = scrollMetrics(i, ahemMeasurer, 'ltr');
-      expect(r.kind).toBe('refused');
-      expect(r.kind === 'refused' ? [r.nodeId, r.detail] : []).toEqual(['button', 'a form control: its scrollable overflow is not decided here']);
-    }
+    expect(scrollRanges(input([box('s', sc('auto'), [button])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [{ id: 's', minX: 0, maxX: 200, minY: 0, maxY: 200 }], refused: [] });
+    const page = scrollMetrics(input([button]), ahemMeasurer, 'ltr');
+    expect(page.kind).toBe('ok');
+    const range = control('range', { kind: 'range', defaultInlineSize: 129 }, {});
+    const detail = 'a range form control: its scrollable overflow is not decided here';
+    expect(scrollMetrics(input([range]), ahemMeasurer, 'ltr')).toEqual({ kind: 'refused', nodeId: 'range', detail });
     // scrollRanges, which the native runtime calls on every layout, refuses each scroll container instead of the whole layout.
-    const detail = 'a form control: its scrollable overflow is not decided here';
-    expect(scrollRanges(input([button]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [] });
-    expect(scrollRanges(input([box('s', sc('auto'), [button]), box('a', sc('hidden'), [])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [{ id: 's', nodeId: 'button', detail }, { id: 'a', nodeId: 'button', detail }] });
+    expect(scrollRanges(input([box('s', sc('auto'), [range]), box('a', sc('hidden'), [])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [], refused: [{ id: 's', nodeId: 'range', detail }, { id: 'a', nodeId: 'range', detail }] });
+    const scrolling = control('button', { kind: 'button-block' }, { ...sc('auto') });
+    expect(scrollMetrics(input([scrolling]), ahemMeasurer, 'ltr')).toEqual({ kind: 'refused', nodeId: 'button', detail: 'a form control that is a scroll container: its scrollable overflow is not decided here' });
   });
 });
 

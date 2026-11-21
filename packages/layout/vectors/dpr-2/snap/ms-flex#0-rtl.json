@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 11264
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 11264
+  },
+  {
+   "id": "app/stack",
+   "parent": "body",
+   "x": 24576,
+   "y": 0,
+   "width": 26624,
+   "height": 11264
+  },
+  {
+   "id": "app/row",
+   "parent": "app/stack",
+   "x": 3072,
+   "y": 512,
+   "width": 23040,
+   "height": 3072
+  },
+  {
+   "id": "app/ra",
+   "parent": "app/row",
+   "x": 20480,
+   "y": 896,
+   "width": 2560,
+   "height": 1280
+  },
+  {
+   "id": "app/rb",
+   "parent": "app/row",
+   "x": 8960,
+   "y": 0,
+   "width": 3840,
+   "height": 3072
+  },
+  {
+   "id": "app/rc",
+   "parent": "app/row",
+   "x": 0,
+   "y": 512,
+   "width": 1280,
+   "height": 2048
+  },
+  {
+   "id": "app/col",
+   "parent": "app/stack",
+   "x": 18432,
+   "y": 4352,
+   "width": 7680,
+   "height": 6400
+  },
+  {
+   "id": "app/ca",
+   "parent": "app/col",
+   "x": 0,
+   "y": 1344,
+   "width": 2560,
+   "height": 1280
+  },
+  {
+   "id": "app/cc",
+   "parent": "app/col",
+   "x": 0,
+   "y": 3008,
+   "width": 1280,
+   "height": 2048
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 176,
+   "width": 800,
+   "height": 176
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 176,
+   "width": 800,
+   "height": 176
+  },
+  {
+   "id": "app/stack",
+   "left": 384,
+   "top": 0,
+   "right": 800,
+   "bottom": 176,
+   "width": 416,
+   "height": 176
+  },
+  {
+   "id": "app/row",
+   "left": 432,
+   "top": 8,
+   "right": 792,
+   "bottom": 56,
+   "width": 360,
+   "height": 48
+  },
+  {
+   "id": "app/ra",
+   "left": 752,
+   "top": 22,
+   "right": 792,
+   "bottom": 42,
+   "width": 40,
+   "height": 20
+  },
+  {
+   "id": "app/rb",
+   "left": 572,
+   "top": 8,
+   "right": 632,
+   "bottom": 56,
+   "width": 60,
+   "height": 48
+  },
+  {
+   "id": "app/rc",
+   "left": 432,
+   "top": 16,
+   "right": 452,
+   "bottom": 48,
+   "width": 20,
+   "height": 32
+  },
+  {
+   "id": "app/col",
+   "left": 672,
+   "top": 68,
+   "right": 792,
+   "bottom": 168,
+   "width": 120,
+   "height": 100
+  },
+  {
+   "id": "app/ca",
+   "left": 672,
+   "top": 89,
+   "right": 712,
+   "bottom": 109,
+   "width": 40,
+   "height": 20
+  },
+  {
+   "id": "app/cc",
+   "left": 672,
+   "top": 115,
+   "right": 692,
+   "bottom": 147,
+   "width": 20,
+   "height": 32
+  }
+ ]
+}

@@ -140,7 +140,7 @@ export function lowerAll(): Lowered {
   if (el.violations.length > 0) throw new TranslateError(el.violations);
   const hFiles = [...files, HARNESS_FILE];
   const hProgram = createProgram([...hFiles, HOST_FILE]);
-  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }, { file: HARNESS_FILE, name: 'runSnapCase' }] });
+  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }, { file: HARNESS_FILE, name: 'runSnapCase' }, { file: HARNESS_FILE, name: 'runMarklessLayout' }, { file: HARNESS_FILE, name: 'runMarklessRowsLayout' }] });
   const harness = hl.lower();
   if (hl.violations.length > 0) throw new TranslateError(hl.violations);
   // The harness may use only the engine as translated for the roots: no extra engine declaration, no new union of engine classes.

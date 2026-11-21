@@ -75,6 +75,9 @@ const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
 const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {}, stretch: {} } as const;
+const minBlockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, stretch: {} });
+const blockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
+const maxBlockSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, stretch: {} });
 const inlineSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxInlineSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, ...intrinsic });
 const margin = tagged({ px: { value: anyNum }, percent: { value: anyNum }, ...auto, ...calc });
@@ -119,6 +122,41 @@ const gridContainer = obj({
 });
 const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
 
+// css-anchor-position-1: a position option (input.ts AnchorOption) and an anchored box's anchor and options.
+const areaTrack = lit('start', 'center', 'end');
+const anchorEdge = nullable(obj({ anchor: str, fraction: num(0) }));
+const anchorSize = nullable(obj({ anchor: str, axis: lit('width', 'height') }));
+const anchorOption = obj({
+  area: nullable(obj({ rowStart: areaTrack, rowEnd: areaTrack, columnStart: areaTrack, columnEnd: areaTrack })),
+  top: inset,
+  right: inset,
+  bottom: inset,
+  left: inset,
+  topAnchor: anchorEdge,
+  rightAnchor: anchorEdge,
+  bottomAnchor: anchorEdge,
+  leftAnchor: anchorEdge,
+  marginTop: margin,
+  marginRight: margin,
+  marginBottom: margin,
+  marginLeft: margin,
+  width: inlineSize,
+  height: blockSize,
+  minWidth: inlineSize,
+  minHeight: minBlockSize,
+  maxWidth: maxInlineSize,
+  maxHeight: maxBlockSize,
+  widthAnchor: anchorSize,
+  heightAnchor: anchorSize,
+  minWidthAnchor: anchorSize,
+  minHeightAnchor: anchorSize,
+  maxWidthAnchor: anchorSize,
+  maxHeightAnchor: anchorSize,
+  justifySelf: lit('normal', 'anchor-center'),
+  alignSelf: lit('normal', 'anchor-center'),
+});
+const anchorStyle = obj({ anchor: nullable(str), options: arr(anchorOption, 1), order: lit('normal', 'most-width', 'most-height') });
+
 export const styleSchema = obj({
   display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
   position: lit('static', 'relative', 'absolute', 'fixed', 'sticky'),
@@ -132,11 +170,11 @@ export const styleSchema = obj({
   direction: lit('ltr', 'rtl'),
   boxSizing: lit('content-box', 'border-box'),
   width: inlineSize,
-  height: size,
+  height: blockSize,
   minWidth: inlineSize,
-  minHeight: size,
+  minHeight: minBlockSize,
   maxWidth: maxInlineSize,
-  maxHeight: maxSize,
+  maxHeight: maxBlockSize,
   marginTop: margin,
   marginRight: margin,
   marginBottom: margin,
@@ -165,7 +203,7 @@ export const styleSchema = obj({
   ),
   rowGap: gap,
   columnGap: gap,
-  textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify'),
+  textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify', '-webkit-center'),
   aspectRatio,
   verticalAlign: tagged({
     keyword: { value: lit('baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom') },
@@ -181,8 +219,12 @@ export const styleSchema = obj({
   containSize: lit('none', 'inline-size', 'size'),
   containIntrinsicWidth: tagged({ ...px(0), none: {} }),
   containIntrinsicHeight: tagged({ ...px(0), none: {} }),
+  textWrapStyle: tagged({ ...auto, balance: { zoom: positive }, pretty: { zoom: positive } }),
+  multicol: nullable(obj({ count: count0, width: tagged({ ...px(0), ...auto }) })),
+  textBoxTrim: nullable(obj({ start: bool, end: bool, alphabetic: bool })),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
+  anchor: nullable(anchorStyle),
   zoom: arr({ t: 'number', min: 0, exclusiveMin: true, integer: false }, 0),
 });
 
@@ -252,6 +294,7 @@ export type ValidationErrorCode =
   | 'mixed-children'
   | 'text-in-flex'
   | 'grid-shape'
+  | 'multicol-shape'
   | 'uncollapsed-text'
   | 'leaf-font'
   | 'anonymous-shape'
@@ -524,6 +567,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (isRecord(style) && style['float'] !== 'none') errors.push({ path: `${path}.style.float`, code: 'bad-value', message: 'a float is blockified: it is never an inline box' });
     // css-grid-2 §5 and css-display-3 §2.7: an inline box is no grid container, and a grid item is blockified, so never an inline box.
     if (isRecord(style) && ((style['grid'] !== null && style['grid'] !== undefined) || (style['gridItem'] !== null && style['gridItem'] !== undefined))) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'an inline box is neither a grid container nor a grid item' });
+    if (isRecord(style)) checkMulticol(style, false, path, errors);
+    if (isRecord(style)) checkTextBoxTrim(style, false, path, errors);
     const kids = childrenOf(value, path, errors);
     if (kids === null) return;
     kids.forEach((child: unknown, i: number) => {
@@ -547,6 +592,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       checkRatioBlockLengths(style, path, errors, false);
       // css-grid-2 §5: a replaced box establishes no grid; its placement is checked by its parent (checkGrid).
       if (style['display'] === 'grid' || style['display'] === 'inline-grid' || (style['grid'] !== null && style['grid'] !== undefined)) errors.push({ path: `${path}.style.grid`, code: 'grid-shape', message: 'a replaced box is not a grid container' });
+      checkMulticol(style, false, path, errors);
+      checkTextBoxTrim(style, false, path, errors);
     }
     return;
   }
@@ -594,6 +641,25 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   }
   if (isRecord(style)) checkRatioBlockLengths(style, path, errors);
   if (isRecord(style)) checkGrid(style, children, path, errors);
+  if (isRecord(style)) checkMulticol(style, style['display'] === 'block', path, errors);
+  if (isRecord(style)) checkTextBoxTrim(style, style['display'] === 'block', path, errors);
+}
+
+/** css-multicol-1 §2: only a block container is a multi-column container, and column-count and column-width are not both auto. */
+function checkMulticol(style: Record<string, unknown>, blockContainer: boolean, path: string, errors: ValidationError[]): void {
+  const m = style['multicol'];
+  if (!isRecord(m)) return;
+  if (!blockContainer) errors.push({ path: `${path}.style.multicol`, code: 'multicol-shape', message: 'only a block container (display block) is a multi-column container' });
+  const width = m['width'];
+  if (m['count'] === 0 && isRecord(width) && width['kind'] === 'auto') errors.push({ path: `${path}.style.multicol`, code: 'multicol-shape', message: 'a multi-column container has a column-count or a column-width; with both auto multicol is null' });
+}
+
+/** css-inline-3 §5.1: text-box-trim trims a block container's inline content, at its start, its end or both; null is none. */
+function checkTextBoxTrim(style: Record<string, unknown>, blockContainer: boolean, path: string, errors: ValidationError[]): void {
+  const t = style['textBoxTrim'];
+  if (!isRecord(t)) return;
+  if (!blockContainer) errors.push({ path: `${path}.style.textBoxTrim`, code: 'bad-value', message: 'only a block-level block container (display block) trims its text box' });
+  if (t['start'] === false && t['end'] === false) errors.push({ path: `${path}.style.textBoxTrim`, code: 'bad-value', message: 'text-box-trim trims the start, the end or both; none is null' });
 }
 
 /** Blink kGridMaxTracks (core/style/grid_area.h): the most tracks a grid axis has, and the largest line magnitude. */
@@ -885,7 +951,7 @@ function exprHoldsPercent(e: unknown): boolean {
 }
 
 // css-sizing-4 §5.1: a ratio transfers the block size before layout knows its percentage basis in every context, so Dragon
-// refuses a percentage height, min-height or max-height beside an aspect-ratio (the compiler reports it).
+// refuses a percentage or stretch height, min-height or max-height beside an aspect-ratio (the compiler reports it).
 function checkRatioBlockLengths(style: Record<string, unknown>, path: string, errors: ValidationError[], percentsRefused = true): void {
   const ratio = style['aspectRatio'];
   if (!isRecord(ratio) || ratio['kind'] === 'auto') return;
@@ -893,6 +959,11 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
   for (const part of ['width', 'height']) {
     const v = ratio[part];
     if (typeof v === 'number' && v > 2147483647) errors.push({ path: `${path}.style.aspectRatio.${part}`, code: 'bad-value', message: 'a layout ratio part is a raw LayoutUnit, at most 2147483647' });
+  }
+  // A ratio transfers a stretch block size before layout knows what it fills, as with a percentage (ratio.ts noPercentBasis).
+  for (const key of ['height', 'minHeight', 'maxHeight']) {
+    const v = style[key];
+    if (isRecord(v) && v['kind'] === 'stretch') errors.push({ path: `${path}.style.${key}`, code: 'bad-value', message: `a stretch ${key} beside an aspect-ratio is not supported` });
   }
   // A replaced box resolves its block lengths against its percentage basis itself (replaced.ts), so it takes them.
   if (!percentsRefused) return;
@@ -902,7 +973,7 @@ function checkRatioBlockLengths(style: Record<string, unknown>, path: string, er
 }
 
 /** CSS2 §9.2.1.1 and css-flexbox-1 §4: the initial value of every non-inherited LayoutStyle field an anonymous box must carry. */
-const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'gridItem' | 'zoom'>]: LayoutStyle[K] } = {
+const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction' | 'textAlign' | 'textIndent' | 'textWrapStyle' | 'gridItem' | 'zoom'>]: LayoutStyle[K] } = {
   display: 'block',
   position: 'static',
   float: 'none',
@@ -952,11 +1023,15 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   containSize: 'none',
   containIntrinsicWidth: { kind: 'none' },
   containIntrinsicHeight: { kind: 'none' },
+  multicol: null,
+  textBoxTrim: null,
   grid: null,
+  anchor: null,
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its
-// id is "<parent id>:anon<k>", and it inherits direction, text-align and text-indent while every other field is its initial value.
+// id is "<parent id>:anon<k>", and it inherits direction, text-align, text-indent and text-wrap-style while every other field is
+// its initial value.
 function checkAnonymous(box: Record<string, unknown>, children: readonly unknown[], path: string, errors: ValidationError[], parentId: string | null): void {
   const bad = (message: string): void => {
     errors.push({ path, code: 'anonymous-shape', message });

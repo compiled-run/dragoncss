@@ -90,6 +90,14 @@ export function fromFloatRound(px: number): LU {
   return saturate(roundHalfAwayFromZero(Math.fround(px) * LU_PER_PX));
 }
 
+/**
+ * css-anchor-position-1 §3.2 anchor(<percentage>): Blink LayoutUnit::FromFloatRound(size * percentage / 100), each step in float
+ * (anchor_evaluator_impl.cc ResolveAnchorValue); fraction is the percentage over 100.
+ */
+export function anchorPercentOffset(size: LU, fraction: number): LU {
+  return fromFloatRound(Math.fround(Math.fround(toFloat(size) * Math.fround(fraction * 100)) / 100));
+}
+
 /** Whole CSS px as LU, for integer-pixel metrics such as rounded font ascent. */
 export function fromWholePx(n: number): LU {
   if (!Number.isInteger(n)) throw new Error(`whole px expected, got ${n}`);
@@ -222,6 +230,11 @@ export function roundFontMetricToWholePx(px: number): LU {
 /** Planted fault metricHalfUp: Blink's SkScalarRoundToScalar rounding (halves up), which the macOS oracle does not show. */
 export function roundFontMetricHalfUpToWholePx(px: number): LU {
   return fromWholePx(Math.floor(Math.fround(px) + 0.5));
+}
+
+/** Blink FontDescription::ComputedPixelSize: the computed font size as an int, int(size + 0.5f). */
+export function computedPixelSize(fontSizePx: number): number {
+  return Math.trunc(Math.fround(Math.fround(fontSizePx) + 0.5));
 }
 
 /**

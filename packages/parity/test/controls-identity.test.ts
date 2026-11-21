@@ -23,7 +23,11 @@ import { repoPath } from '../src/paths.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
 const controlIds = new Set(CONTROLS.map((f) => f.id));
-const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !controlIds.has(f.id));
+// Later fixtures that hold buttons by design are not earlier cases: OVFL's overflow-controls (buttons in scroll boxes), the
+// anchor group's anchor-control (a button as an anchor) and the Markless ladder's ms-button-disabled (:disabled on a button).
+const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled'];
+const notEarlier = new Set([...controlIds, ...LATER_WITH_CONTROLS]);
+const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !notEarlier.has(f.id));
 
 function elements(root: ResolvedElement): ResolvedElement[] {
   const out: ResolvedElement[] = [root];
@@ -42,6 +46,7 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
   it('covers every earlier layout fixture, and the controls group adds only its own', () => {
     expect(earlier.length).toBeGreaterThan(200);
     expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(11);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(11 + LATER_WITH_CONTROLS.length);
   });
 
   it('no earlier element is a control, and the display adjustment leaves every one alone (appearance-values sets appearance only on displays Chrome keeps)', () => {
@@ -101,7 +106,7 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
     }
     expect(off).toEqual([]);
     // Every committed vector and emitted file of an earlier fixture was compared: none is left out.
-    const own = (name: string): boolean => !CONTROLS.some((f) => name.startsWith(`${f.id}.`) || name.startsWith(`${f.id}-rtl.`));
+    const own = (name: string): boolean => ![...notEarlier].some((id) => name.startsWith(`${id}.`) || name.startsWith(`${id}-rtl.`) || name.startsWith(`${id}#`));
     expect(vectors).toBe(readdirSync(repoPath('packages/layout/vectors')).filter((f) => f.endsWith('.json') && own(f)).length);
     expect(bodies).toBe(readdirSync(repoPath('packages/parity/emitted')).filter((f) => f.endsWith('.css') && own(f)).length);
   });

@@ -66,6 +66,7 @@ import {
   inlineMinMax,
   isScrollContainer,
   lengthWidth,
+  NO_STRETCH,
   resolveBorder,
   resolveInlineLength,
   resolveLength,
@@ -1800,6 +1801,7 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
     heightBasis: basis,
     formattingContextRoot: true,
     bfcLineOffset: ZERO,
+    blockStretch: NO_STRETCH,
   });
   return { frag: r.frag, margins, lastBaseline: r.defaultLastBaseline, lastBaselineFlex: r.defaultLastBaselineFlex };
 }

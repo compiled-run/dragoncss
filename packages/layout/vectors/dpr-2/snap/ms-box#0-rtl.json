@@ -1,0 +1,76 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 7168
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 768,
+   "width": 51200,
+   "height": 5632
+  },
+  {
+   "id": "app/card",
+   "parent": "body",
+   "x": 32512,
+   "y": 0,
+   "width": 17664,
+   "height": 5632
+  },
+  {
+   "id": "app/swatch",
+   "parent": "app/card",
+   "x": 1152,
+   "y": 1152,
+   "width": 14336,
+   "height": 3072
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 112,
+   "width": 800,
+   "height": 112
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 12,
+   "right": 800,
+   "bottom": 100,
+   "width": 800,
+   "height": 88
+  },
+  {
+   "id": "app/card",
+   "left": 508,
+   "top": 12,
+   "right": 784,
+   "bottom": 100,
+   "width": 276,
+   "height": 88
+  },
+  {
+   "id": "app/swatch",
+   "left": 526,
+   "top": 30,
+   "right": 750,
+   "bottom": 78,
+   "width": 224,
+   "height": 48
+  }
+ ]
+}

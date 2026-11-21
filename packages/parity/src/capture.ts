@@ -1,11 +1,10 @@
 // Live capture of a fixture rendering in pinned Chrome: border boxes by data-dragon-id, text boxes by Range, and
-// getComputedStyle for every milestone longhand on each element. Each text node "<element>:text<k>" (k counts text nodes
-// that are not whitespace-only) is its Range bounding rect, followed by one "<text>:line<j>" node per Range client rect: one
-// per line the text shows on, in order. A whitespace-only text node is "<element>:space<k>" and is recorded only when it has
-// client rects.
+// getComputedStyle for every milestone longhand on each element. Each text node is its Range bounding rect, followed by one
+// line node per Range client rect: one per line the text shows on, in order. Nodes are named by Dragon's rule (node-ids.ts).
 import type { Browser, CDPSession, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
+import { generatedTextId, isWhitespaceText, lineId, pseudoId, textAddresser } from './node-ids.ts';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage, videosReady } from './chrome.ts';
 import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
@@ -42,10 +41,18 @@ export type WebCapture = {
   readonly nodes: readonly CapturedNode[];
 };
 
-/** Runs in the page: every data-dragon-id element's box and computed values, and its text and line boxes. */
-const collectNodes = (props: string[]): CapturedNode[] => {
-  const out: CapturedNode[] = [];
-  const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
+export type Rect = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+/** One data-dragon-id element as the page reports it, before naming: its box, its line fragments and its text children. */
+export type CollectedElement = {
+  readonly node: CapturedNode;
+  readonly lines: readonly Rect[];
+  readonly texts: readonly { readonly data: string; readonly box: Rect; readonly rects: readonly Rect[] }[];
+};
+
+/** Runs in the page: every data-dragon-id element's box and computed values, and its line fragments and text children. */
+export const collectNodes = (props: string[]): CollectedElement[] => {
+  const out: CollectedElement[] = [];
+  const rect = (r: DOMRect): Rect => ({ x: r.x, y: r.y, width: r.width, height: r.height });
   // Runs in the page (page.evaluate), so it closes over nothing: the elements Chrome lays out as LayoutReplaced.
   const REPLACED_TAGS = ['IMG', 'VIDEO', 'CANVAS', 'IFRAME', 'EMBED'];
   for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
@@ -58,37 +65,53 @@ const collectNodes = (props: string[]): CapturedNode[] => {
     const box = shape === null ? null : shape.getBBox();
     const m = shape === null ? null : shape.getScreenCTM();
     const svg = box === null || m === null ? {} : { svg: { bbox: [box.x, box.y, box.width, box.height], ctm: [m.a, m.b, m.c, m.d, m.e, m.f] } };
-    out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed, ...svg });
-    // INL1a: an inline box's fragments, one "<id>:line<j>" per client rect (one per line it is on); a <br> has none. A culled
+    const node: CapturedNode = { id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed, ...svg };
+    // INL1a: an inline box's fragments, one per client rect (one per line it is on); a <br> has none. A culled
     // box (no box fragment of its own) also lists the zero-width piece of a <br> inside it beside that line's rect, and only in
     // the first layout (INL-P open question 1), so a zero-width <br> piece with another rect on its line is left out.
     // An SVG element is never a CSS inline box: an <svg> is a replaced element (an atomic inline at most) and a shape inside it
     // is laid out by SVG, not by inline formatting, though its computed display is 'inline' (Chrome's LayoutSVGShape). RF-INL: a
     // replaced element with display: inline is an atomic inline (Chrome's LayoutReplaced), one box on its line, not an inline box.
+    let lines: Rect[] = [];
     if (cs.display === 'inline' && el.tagName !== 'BR' && !REPLACED_TAGS.includes(el.tagName) && el.namespaceURI !== 'http://www.w3.org/2000/svg') {
       const rects = Array.from(el.getClientRects());
       const brPieces = Array.from(el.querySelectorAll('br')).flatMap((b) => Array.from(b.getClientRects()));
       const extraBrPiece = (f: DOMRect): boolean =>
         f.width === 0 && brPieces.some((b) => b.x === f.x && b.y === f.y && b.height === f.height) && rects.some((o) => o !== f && o.y === f.y && o.height === f.height);
-      rects.filter((f) => !extraBrPiece(f)).forEach((f, j) => out.push({ id: `${id}:line${j}`, kind: 'line', hasBox: true, x: f.x, y: f.y, width: f.width, height: f.height, computed: null }));
+      lines = rects.filter((f) => !extraBrPiece(f)).map(rect);
     }
-    let k = 0;
-    let spaces = 0;
+    const texts: CollectedElement['texts'][number][] = [];
     for (const child of Array.from(el.childNodes)) {
       if (child.nodeType !== Node.TEXT_NODE) continue;
       const range = document.createRange();
       range.selectNodeContents(child);
-      const rects = Array.from(range.getClientRects());
-      const isBlank = blank((child as Text).data);
-      const textId = isBlank ? `${id}:space${spaces++}` : `${id}:text${k++}`;
-      if (isBlank && rects.length === 0) continue;
-      const t = range.getBoundingClientRect();
-      out.push({ id: textId, kind: 'text', hasBox: rects.length > 0, x: t.x, y: t.y, width: t.width, height: t.height, computed: null });
-      rects.forEach((r, j) => out.push({ id: `${textId}:line${j}`, kind: 'line', hasBox: true, x: r.x, y: r.y, width: r.width, height: r.height, computed: null }));
+      texts.push({ data: (child as Text).data, box: rect(range.getBoundingClientRect()), rects: Array.from(range.getClientRects()).map(rect) });
     }
+    out.push({ node, lines, texts });
   }
   return out;
 };
+
+/**
+ * The collected elements as captured nodes, named by Dragon's rule (node-ids.ts): each text "<element>:text<k>" or, whitespace
+ * only, "<element>:space<k>" (recorded only when it has client rects), and each line fragment "<node>:line<j>".
+ */
+export function nameCollected(elements: readonly CollectedElement[]): CapturedNode[] {
+  const out: CapturedNode[] = [];
+  const line = (id: string, j: number, r: Rect): CapturedNode => ({ id: lineId(id, j), kind: 'line', hasBox: true, x: r.x, y: r.y, width: r.width, height: r.height, computed: null });
+  for (const { node, lines, texts } of elements) {
+    out.push(node);
+    lines.forEach((r, j) => out.push(line(node.id, j, r)));
+    const address = textAddresser(node.id);
+    for (const t of texts) {
+      const textId = address(t.data);
+      if (isWhitespaceText(t.data) && t.rects.length === 0) continue;
+      out.push({ id: textId, kind: 'text', hasBox: t.rects.length > 0, x: t.box.x, y: t.box.y, width: t.box.width, height: t.box.height, computed: null });
+      t.rects.forEach((r, j) => out.push(line(textId, j, r)));
+    }
+  }
+  return out;
+}
 
 /**
  * extra: properties captured after LONGHANDS (a fixture's computedExtra); none for every fixture that predates them. prepare: a
@@ -105,7 +128,7 @@ export async function captureFixture(browser: Browser, fixture: string, html: st
 }
 
 /** The code that decides a capture's nodes beside the page itself: the page setup, the in-page collector and the transform twin. */
-const CAPTURE_CODE = ['packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/transform-capture.ts', 'packages/parity/src/pseudo-capture.ts'];
+const CAPTURE_CODE = ['packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/transform-capture.ts', 'packages/parity/src/pseudo-capture.ts', 'packages/parity/src/node-ids.ts', 'packages/dragon/src/analysis/link.ts'];
 /** Remembered and fresh captures of this process (chrome-memo.ts). */
 export const CAPTURE_MEMO: MemoStats = { hits: 0, misses: 0 };
 
@@ -131,7 +154,7 @@ async function captureFixtureLive(browser: Browser, fixture: string, html: strin
     if (hostPlatform() === REFERENCE_PLATFORM && isScrollCase(fixture)) await assertOverlayScrollbars(page);
     // PNT2 case-kind registration (RT-13 style): a page with a transformed element is captured through the transform twin.
     const twin = await applyTransformTwin(page, [...LONGHANDS, ...extra]);
-    const nodes = await page.evaluate(collectNodes, [...LONGHANDS, ...extra]);
+    const nodes = nameCollected(await page.evaluate(collectNodes, [...LONGHANDS, ...extra]));
     // GEN-a R9: the ::before, ::after and ::marker boxes and their text, through CDP; a page without one opens no CDP session.
     if (await pageHasGeneratedContent(page)) {
       if (twin !== null) throw new Error(`${fixture}: a page with a transformed element and a generated box is not captured (the transform twin restyles the page)`);
@@ -207,7 +230,7 @@ async function captureRangeParts(page: Page, props: readonly string[]): Promise<
           if (!String(e).includes('Could not compute box model')) throw e;
         }
         const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
-        nodes.push({ id: `${id}::${part}`, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
+        nodes.push({ id: pseudoId(id, part), kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
       }
       out.set(id, nodes);
     }
@@ -237,7 +260,7 @@ async function captureTextFieldParts(page: Page, props: readonly string[]): Prom
   await withTextFieldParts(page, async (cdp, fields) => {
     for (const { id, parts } of fields) {
       const nodes: CapturedNode[] = [];
-      for (const [part, n] of parts) nodes.push(...(await shadowPartNodes(cdp, `${id}::${part}`, n, props)));
+      for (const [part, n] of parts) nodes.push(...(await shadowPartNodes(cdp, pseudoId(id, part), n, props)));
       out.set(id, nodes);
     }
   });
@@ -316,8 +339,9 @@ async function shadowPartNodes(cdp: CDPSession, partId: string, n: DomNode, prop
   const ux = Math.min(...rects.map((r) => r.x));
   const uy = Math.min(...rects.map((r) => r.y));
   const union = rects.length === 0 ? { x: 0, y: 0, width: 0, height: 0 } : { x: ux, y: uy, width: Math.max(...rects.map((r) => r.x + r.width)) - ux, height: Math.max(...rects.map((r) => r.y + r.height)) - uy };
-  nodes.push({ id: `${partId}:text0`, kind: 'text', hasBox: rects.length > 0, ...union, computed: null });
-  rects.forEach((r, j) => nodes.push({ id: `${partId}:text0:line${j}`, kind: 'line', hasBox: true, ...r, computed: null }));
+  const textId = generatedTextId(partId);
+  nodes.push({ id: textId, kind: 'text', hasBox: rects.length > 0, ...union, computed: null });
+  rects.forEach((r, j) => nodes.push({ id: lineId(textId, j), kind: 'line', hasBox: true, ...r, computed: null }));
   return nodes;
 }
 
@@ -326,7 +350,7 @@ async function captureSelectParts(page: Page, props: readonly string[]): Promise
   const out = new Map<string, CapturedNode[]>();
   await withSelectInners(page, async (cdp, inners) => {
     // A select showing no option holds an empty text node, which Dragon's inner element leaves out.
-    for (const { id, inner } of inners) out.set(id, await shadowPartNodes(cdp, `${id}::inner`, inner, props, true));
+    for (const { id, inner } of inners) out.set(id, await shadowPartNodes(cdp, pseudoId(id, 'inner'), inner, props, true));
   });
   return out;
 }
@@ -345,13 +369,13 @@ export async function captureShadowBreakTexts(page: Page): Promise<{ id: string;
     if (/[\u0000-\u001f\u00ad\u200b]/.test(data)) throw new Error(`${partId}: the shadow text ${JSON.stringify(data)} holds a control, soft hyphen or zero-width space, whose breaks are not captured`);
     const quads = ((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads;
     if (quads.length !== 1) throw new Error(`${partId}: the shadow text has ${quads.length} fragments, not one`);
-    out.push({ id: `${partId}:text0`, data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] });
+    out.push({ id: generatedTextId(partId), data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] });
   };
   await withTextFieldParts(page, async (cdp, fields) => {
-    for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, `${id}::${part}`, n);
+    for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, pseudoId(id, part), n);
   });
   await withSelectInners(page, async (cdp, inners) => {
-    for (const { id, inner } of inners) await read(cdp, `${id}::inner`, inner);
+    for (const { id, inner } of inners) await read(cdp, pseudoId(id, 'inner'), inner);
   });
   return out;
 }
@@ -420,7 +444,7 @@ export async function captureFixtureInFrame(browser: Browser, fixture: string, h
     if (await child.evaluate(hasGeneratedBox)) {
       throw new Error(`${fixture}: a zoomed frame with a generated box is not captured (GEN-a R9 reads generated boxes through the page's CDP session)`);
     }
-    const nodes = await child.evaluate(collectNodes, [...LONGHANDS]);
+    const nodes = nameCollected(await child.evaluate(collectNodes, [...LONGHANDS]));
     return {
       fixture,
       chrome: CHROME_VERSION,

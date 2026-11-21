@@ -14,6 +14,8 @@ import type { AnimTables, rtBand } from '@dragon/layout';
 import { BAND_KEY } from '../../lower/band-program.ts';
 import { doubleLit, inputFunctions, liveEnvironmentArgs, stringLit } from '../native-support.ts';
 import { animTablesLit } from './anim.ts';
+import { radiusLengthLit } from '../paint/radius.ts';
+import { clipPathInsets } from '../paint/clip.ts';
 import { bandTableLit } from './media.ts';
 
 export const STATE_RUNTIME_VERSION = 'dragon.runtime-state/1';
@@ -70,6 +72,8 @@ export type ScriptCase = {
 /** One state program as the emitter sees it. */
 export type StateEmit = {
   readonly id: string;
+  /** The generated symbols' name (dragon<name>States, Dragon<name>States, the file Dragon<name>States); else they are numbered by position. */
+  readonly name?: string;
   readonly fixture: string;
   readonly direction: 'ltr' | 'rtl';
   readonly compilerDigest: string;
@@ -99,8 +103,12 @@ public enum DragonStateWrite {
   case borderStyles([String])
   case borderColors([DragonRGBA8])
   case clip
+  case clipPath([Double])
+  case clipText
   case paintOrder(String, Int, Int)
+  case radii([RadiusLength])
   case text(String, String, DragonRGBA8)
+  case syntheticBold([Double], [Double])
 }
 
 /// One node record of a state program.
@@ -259,9 +267,13 @@ public final class DragonStateMachine {
       if n.kind == "text" {
         let v = t.textNode(n.id, parent: n.parent, kind: n.kind)
         for w in n.writes {
-          guard case let .text(s, family, color) = w else { fatalError("dragon: text \(n.id) holds a box write") }
-          // ANIM-b1 R9: a text run draws its element's animated colour.
-          v.dragonSetText(s, family: family, color: n.parent.flatMap { animator?.color($0, "color") } ?? color)
+          switch w {
+          case let .text(s, family, color):
+            // ANIM-b1 R9: a text run draws its element's animated colour.
+            v.dragonSetText(s, family: family, color: n.parent.flatMap { animator?.color($0, "color") } ?? color)
+          case let .syntheticBold(keys, values): v.dragonSetSyntheticBold(keys: keys, values: values)
+          default: fatalError("dragon: text \(n.id) holds a box write")
+          }
         }
         continue
       }
@@ -272,8 +284,11 @@ public final class DragonStateMachine {
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = dragonAnimatedSides(animator, n.id, c)
         case .clip: v.dragonEnableClip()
+        case .clipPath(let insets): dragonSetClipPath(v, insets)
+        case .clipText: dragonClipText(v)
         case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
-        case .text: fatalError("dragon: box \(n.id) holds a text write")
+        case .radii(let lengths): dragonSetRadii(v, lengths)
+        case .text, .syntheticBold: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
       // ANIM-b2: a node whose transform animates takes the frame's through the view's transform writer.
@@ -486,6 +501,7 @@ function kotlinSupportText(): string {
 import android.view.ViewGroup
 import dev.dragon.layout.AnimTables
 import dev.dragon.layout.LayoutInput
+import dev.dragon.layout.RadiusLength
 import dev.dragon.layout.SafeAreaInsets
 import dev.dragon.layout.TextMeasurer
 import dev.dragon.layout.block_NO_ENGINE_FAULTS
@@ -497,8 +513,12 @@ sealed class DragonStateWrite {
   class BorderStyles(val s: Array<String>) : DragonStateWrite()
   class BorderColors(val c: Array<DragonRGBA8>) : DragonStateWrite()
   object Clip : DragonStateWrite()
+  class ClipPath(val insets: DoubleArray) : DragonStateWrite()
+  object ClipText : DragonStateWrite()
   class PaintOrder(val host: String, val bucket: Int, val rank: Int) : DragonStateWrite()
+  class Radii(val lengths: Array<RadiusLength>) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
+  class SyntheticBold(val keys: DoubleArray, val values: DoubleArray) : DragonStateWrite()
 }
 
 /** One node record of a state program. */
@@ -661,9 +681,12 @@ class DragonStateMachine(
       if (n.kind == "text") {
         val v = t.textNode(n.id, n.parent, n.kind)
         for (w in n.writes) {
-          if (w !is DragonStateWrite.Text) throw IllegalStateException("dragon: text " + n.id + " holds a box write")
-          // ANIM-b1 R9: a text run draws its element's animated colour.
-          v.dragonSetText(w.text, w.family, n.parent?.let { animator?.color(it, "color") } ?: w.color)
+          when (w) {
+            // ANIM-b1 R9: a text run draws its element's animated colour.
+            is DragonStateWrite.Text -> v.dragonSetText(w.text, w.family, n.parent?.let { animator?.color(it, "color") } ?: w.color)
+            is DragonStateWrite.SyntheticBold -> v.dragonSetSyntheticBold(w.keys, w.values)
+            else -> throw IllegalStateException("dragon: text " + n.id + " holds a box write")
+          }
         }
         continue
       }
@@ -674,8 +697,11 @@ class DragonStateMachine(
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = dragonAnimatedSides(animator, n.id, w.c)
           is DragonStateWrite.Clip -> v.dragonEnableClip()
+          is DragonStateWrite.ClipPath -> dragonSetClipPath(v, w.insets)
+          is DragonStateWrite.ClipText -> dragonClipText(v)
           is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
-          is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
+          is DragonStateWrite.Radii -> dragonSetRadii(v, w.lengths)
+          is DragonStateWrite.Text, is DragonStateWrite.SyntheticBold -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
       // ANIM-b2: a node whose transform animates takes the frame's through the view's transform writer.
@@ -956,8 +982,8 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         // TXT-W: the state runtime's text record carries no shear; a sheared run is drawn from the static program only.
         throw new StateEmitError(`${n.id}: a synthetic oblique in a state program has no state-node write (TXT-W shears glyphs on the static program only)`);
       case 'synthetic-bold':
-        // TXT-W: the state runtime's text record carries no fake-bold stroke; an emboldened run is drawn from the static program only.
-        throw new StateEmitError(`${n.id}: a synthetic bold in a state program has no state-node write (TXT-W emboldens glyphs on the static program only)`);
+        writes.push(lang === 'swift' ? `.syntheticBold([${w.keys.map(doubleLit).join(', ')}], [${w.values.map(doubleLit).join(', ')}])` : `DragonStateWrite.SyntheticBold(doubleArrayOf(${w.keys.map(doubleLit).join(', ')}), doubleArrayOf(${w.values.map(doubleLit).join(', ')}))`);
+        break;
       case 'text-stroke':
         // TXT-FX: the state runtime's text record carries no stroke; a stroked run is drawn from the static program only.
         throw new StateEmitError(`${n.id}: a text stroke in a state program has no state-node write (TXT-FX strokes glyphs on the static program only)`);
@@ -983,6 +1009,8 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         // REPL-a draws an image or hosts a web view, MEDIA-EL a video player, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
+        writes.push(lang === 'swift' ? `.radii([${w.lengths.map((l) => radiusLengthLit('swift', l)).join(', ')}])` : `DragonStateWrite.Radii(arrayOf(${w.lengths.map((l) => radiusLengthLit('kotlin', l)).join(', ')}))`);
+        break;
       case 'box-shadow':
       case 'outline':
         // The state runtime has no writer for these yet (PNT1 paints them from the program); a case script would drop them.
@@ -1006,10 +1034,16 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       case 'clip-rect-label':
         // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.
         throw new StateEmitError(`${n.id}: a clip rect in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
-      case 'clip-path-inset':
-      case 'clip-path-shape':
+      case 'clip-path-inset': {
+        const insets = clipPathInsets(w.edges).map(doubleLit);
+        writes.push(lang === 'swift' ? `.clipPath([${insets.join(', ')}])` : `DragonStateWrite.ClipPath(doubleArrayOf(${insets.join(', ')}))`);
+        break;
+      }
       case 'clip-text':
-        // MASK-CLIP: a state record holds no clip-path write; the clip is drawn on the static program only.
+        writes.push(lang === 'swift' ? '.clipText' : 'DragonStateWrite.ClipText');
+        break;
+      case 'clip-path-shape':
+        // MASK-CLIP: a state record holds no clip-path shape write; the shape is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a clip-path in a state program has no state-node write (MASK-CLIP writes it on the static program only)`);
       case 'mask-layer':
         // MASK-CLIP: a state record holds no mask write; the gradient mask is drawn on the static program only.
@@ -1101,7 +1135,8 @@ function stepLit(lang: Lang, sp: StateProgram, id: string, step: ScriptStep): st
 function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults): string {
   const q = (s: string): string => stringLit(lang, s);
   const sp = e.program;
-  const p = `dragonStates${k}`;
+  if (e.name !== undefined && !/^[A-Z][A-Za-z0-9]*$/.test(e.name)) throw new StateEmitError(`${e.id}: the name ${JSON.stringify(e.name)} is not an identifier starting with an ASCII capital`);
+  const p = e.name === undefined ? `dragonStates${k}` : `dragon${e.name}States`;
   const out: string[] = [`// state program ${commentText(e.id)} (${sp.assignments.length} assignments, ${sp.variants.length} layout variants)`];
   const variantFns: string[] = [];
   sp.variants.forEach((variant, j) => {
@@ -1150,7 +1185,7 @@ function machineSource(lang: Lang, e: StateEmit, k: number, faults: StateFaults)
   }
   // The typed setters (decision 17): booleans for boolean domains, an enum per other domain.
   const setters = typedSetters(sp);
-  const cls = `DragonStates${k}`;
+  const cls = e.name === undefined ? `DragonStates${k}` : `Dragon${e.name}States`;
   const body: string[] = [];
   setters.forEach((s, i) => {
     const state = sp.states[i] as StateProgram['states'][number];
@@ -1208,9 +1243,14 @@ export function emitStatePrograms(backend: NativeBackend, emits: readonly StateE
   const header = lang === 'swift' ? `${generated}import UIKit\n\n` : `${generated}package dev.dragon.cases\n\nimport dev.dragon.layout.*\nimport dev.dragon.views.*\n\n`;
   const ids = emits.flatMap((e) => e.scripts.map((s) => s.id));
   if (new Set(ids).size !== ids.length) throw new StateEmitError('two case scripts share an id');
-  const files = emits.map((e, k): GeneratedFile => (lang === 'swift'
-    ? { path: `Cases/DragonStates${String(k).padStart(3, '0')}.swift`, text: `${header}${machineSource(lang, e, k, faults)}\n` }
-    : { path: `kotlin/dev/dragon/cases/DragonStates${String(k).padStart(3, '0')}.kt`, text: `${header}${machineSource(lang, e, k, faults)}\n` }));
+  const names = emits.flatMap((e) => (e.name === undefined ? [] : [e.name]));
+  if (new Set(names).size !== names.length) throw new StateEmitError('two state programs share a name');
+  const files = emits.map((e, k): GeneratedFile => {
+    const file = e.name === undefined ? `DragonStates${String(k).padStart(3, '0')}` : `Dragon${e.name}States`;
+    return lang === 'swift'
+      ? { path: `Cases/${file}.swift`, text: `${header}${machineSource(lang, e, k, faults)}\n` }
+      : { path: `kotlin/dev/dragon/cases/${file}.kt`, text: `${header}${machineSource(lang, e, k, faults)}\n` };
+  });
   const scripts = emits.flatMap((e, k) => e.scripts.map((_, j) => `dragonStates${k}Script${j}`));
   files.push(lang === 'swift'
     ? { path: 'Cases/DragonStateCaseTable.swift', text: `${header}/// Every case script, in state program order.\npublic let dragonStateCaseList: [DragonStateScript] = [${scripts.join(', ')}]\n\npublic let dragonStateCaseTable: [String: DragonStateScript] = Dictionary(uniqueKeysWithValues: dragonStateCaseList.map { ($0.dragonCase.id, $0) })\n` }

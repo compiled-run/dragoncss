@@ -34,7 +34,7 @@ async function breakTexts(browser: Awaited<ReturnType<typeof launchChrome>>, n: 
 
 // The code that decides a case's break texts beside the page itself: this capture, the page setup, the DPR environment and the
 // in-page reader with its transform twin.
-const BREAK_CODE = ['packages/parity/src/cli/break-capture.ts', 'packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/dpr.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/transform-capture.ts'];
+const BREAK_CODE = ['packages/parity/src/cli/break-capture.ts', 'packages/parity/src/capture.ts', 'packages/parity/src/chrome.ts', 'packages/parity/src/dpr.ts', 'packages/parity/src/line-breaks.ts', 'packages/parity/src/transform-capture.ts', 'packages/parity/src/pseudo-capture.ts', 'packages/parity/src/node-ids.ts', 'packages/dragon/src/analysis/link.ts'];
 const memo: MemoStats = { hits: 0, misses: 0 };
 
 /** breakTexts, remembered by its page and the browser's flags (chrome-memo.ts); a case with a prepare script runs code the key cannot

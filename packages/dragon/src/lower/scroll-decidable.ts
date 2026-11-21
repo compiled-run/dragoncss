@@ -87,7 +87,7 @@ function unknownPadding(root: LayoutBox): ReadonlySet<string> {
 
 /** overflowOf, without the scroll container's own flow (flow below). */
 function overflowOf(b: LayoutNode, unknown: ReadonlySet<string>): void {
-  // A tree with a form control is refused before this runs (firstControl).
+  // Form controls arrive as their plain boxes (controlsAsBoxes).
   if (b.kind !== 'box') return;
   if (unknown.has(b.id)) throw new Undecided(b.id, 'a percentage padding against a grid area: its basis is not decided here');
   lineLevel(b);
@@ -101,11 +101,14 @@ function propagated(n: LayoutNode, unknown: ReadonlySet<string>): void {
   overflowOf(n, unknown);
 }
 
-/** box.ts establishesFormattingContext, without the planted engine fault. */
-const fcRoot = (b: LayoutNode): boolean =>
-  b.kind === 'replaced' || b.style.display !== 'block' || scrollContainer(b) || b.style.containLayout || b.style.containPaint || b.style.containSize !== 'none';
+/** The plain boxes controlsAsBoxes made of block buttons, which lay their contents out in a new formatting context (block.ts). */
+const buttons = new WeakSet<object>();
 
-/** readFlow and readChild from a block flow: a percentage height whose end margins may collapse through it is refused. */
+/** box.ts establishesFormattingContext, without the planted engine fault; overflow.ts isFcRoot also counts a block button. */
+const fcRoot = (b: LayoutNode): boolean =>
+  b.kind === 'replaced' || buttons.has(b) || b.style.display !== 'block' || scrollContainer(b) || b.style.containLayout || b.style.containPaint || b.style.containSize !== 'none';
+
+/** readFlow and readChild from a block flow: a percentage or stretch height whose end margins may collapse through it is refused. */
 function flow(b: LayoutBox): void {
   if (b.style.display !== 'block' || hasInlineContent(b)) return;
   floatIn(b);
@@ -113,33 +116,43 @@ function flow(b: LayoutBox): void {
     if (!isNode(k) || outOfFlow(k) || k.kind === 'replaced' || fcRoot(k)) continue;
     flow(k);
     const endMayCollapse = !positivePx(k.style.borderBottomWidth) && !positivePx(k.style.paddingBottom) && k.children.some((c) => isNode(c) && !outOfFlow(c));
-    if (k.style.height.kind !== 'auto' && mayHavePercent(k.style.height) && endMayCollapse) {
-      throw new Undecided(k.id, 'a percentage height on a box whose end margins may collapse through it: its basis is not decided here');
+    const h = k.style.height;
+    if (h.kind !== 'auto' && (h.kind === 'stretch' || mayHavePercent(h)) && endMayCollapse) {
+      throw new Undecided(k.id, 'a percentage or stretch height on a box whose end margins may collapse through it: its basis is not decided here');
     }
   }
 }
 
-/** indexOf: the first form control of the tree, which the engine refuses wherever it is (FORM-a). */
-function firstControl(b: LayoutBox): ControlBox | null {
-  for (const k of b.children) {
-    if (k.kind === 'control') return k;
-    if (k.kind === 'box') {
-      const c = firstControl(k);
-      if (c !== null) return c;
+/**
+ * overflow.ts controlChecked: a block button is its plain box, so the walk sees it as one; any other control, or a control that is a
+ * scroll container, is refused (FORM-a).
+ */
+function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly refused: Undecided | null } {
+  let refused: Undecided | null = null;
+  const plain = (x: LayoutBox | ControlBox): LayoutBox => {
+    if (x.kind === 'control' && refused === null) {
+      if (x.control.kind !== 'button-block') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
+      else if (scrollContainer(x)) refused = new Undecided(x.id, 'a form control that is a scroll container: its scrollable overflow is not decided here (FORM-a)');
     }
-  }
-  return null;
+    const children = x.children.map((k) => (k.kind === 'box' || k.kind === 'control' ? plain(k) : k));
+    const box = { kind: 'box', id: x.id, boxType: x.boxType, style: x.style, strut: x.strut, marker: x.kind === 'box' ? x.marker : null, children } as LayoutBox;
+    if (x.kind === 'control') buttons.add(box);
+    return box;
+  };
+  const root = plain(b);
+  return { root, refused };
 }
 
 /** Every auto or scroll container of a lowered tree whose scroll range the engine may refuse, in preorder, with the first reason. */
 export function undecidedScrollContainers(root: LayoutBox): ScrollUndecided[] {
   const out: ScrollUndecided[] = [];
+  const { root: plainRoot, refused: control } = controlsAsBoxes(root);
+  root = plainRoot;
   const unknown = unknownPadding(root);
-  const control = firstControl(root);
   const walk = (b: LayoutNode): void => {
     if (userScrolls(b) && b.kind === 'box') {
       try {
-        if (control !== null) throw new Undecided(control.id, 'a form control: its scrollable overflow is not decided here (FORM-a)');
+        if (control !== null) throw control;
         overflowOf(b, unknown);
         if (b.children.some((k) => isNode(k) && !outOfFlow(k))) flow(b);
       } catch (e) {

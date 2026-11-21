@@ -15,7 +15,7 @@ import type { Diagnostic } from '../types.ts';
 
 // Any revert-layer identifier in the value, escaped or not: a var() fallback or a custom property can carry it into a substitution.
 const hasRevertLayer = (text: string): boolean => tokenize(text).some((t) => t.type === 'ident' && asciiLower(t.value) === 'revert-layer');
-const isRevertLayer = (d: Declaration): boolean => hasRevertLayer(d.text);
+export const isRevertLayer = (d: Declaration): boolean => hasRevertLayer(d.text);
 
 /**
  * A declaration whose whole value is the revert-layer keyword, written plainly, that rollBackLayers rolls back: a normal one on
@@ -63,8 +63,8 @@ export function rankLayers(rules: readonly Rule[], declared: readonly string[], 
   });
 }
 
-/** The layer a normal declaration competes in, as beats() orders them: unlayered above every layer. */
-const layerOf = (d: Declaration): number => d.layer ?? Number.POSITIVE_INFINITY;
+/** The layer a normal declaration competes in, as beats() orders them: unlayered above every layer, a style attribute's above that. */
+const layerOf = (d: Declaration): number => (d.attached === true ? Number.POSITIVE_INFINITY : (d.layer ?? Number.MAX_VALUE));
 
 /**
  * css-cascade-5 §7.4: a longhand whose winner is a revert-layer that rollsBack takes the winner of the declarations in the layers

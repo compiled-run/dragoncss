@@ -1,0 +1,169 @@
+{
+ "gateDevicePx": 1,
+ "targets": {
+  "ios": {
+   "viewport": {
+    "width": 402,
+    "height": 778
+   },
+   "dpr": 3,
+   "assignments": [
+    {
+     "values": {},
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 168
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 168
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 18,
+        "width": 1206,
+        "height": 132
+       },
+       "dragon": {
+        "x": 0,
+        "y": 18,
+        "width": 1206,
+        "height": 132
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/card",
+       "chrome": {
+        "x": 24,
+        "y": 18,
+        "width": 414,
+        "height": 132
+       },
+       "dragon": {
+        "x": 24,
+        "y": 18,
+        "width": 414,
+        "height": 132
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/swatch",
+       "chrome": {
+        "x": 51,
+        "y": 45,
+        "width": 336,
+        "height": 72
+       },
+       "dragon": {
+        "x": 51,
+        "y": 45,
+        "width": 336,
+        "height": 72
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    }
+   ]
+  },
+  "android": {
+   "viewport": {
+    "width": 411,
+    "height": 818
+   },
+   "dpr": 2.625,
+   "assignments": [
+    {
+     "values": {},
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 143.7500023841858
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 143.75
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 15.75,
+        "width": 1079.0000495910645,
+        "height": 112.25000238418579
+       },
+       "dragon": {
+        "x": 0,
+        "y": 15.75,
+        "width": 1079,
+        "height": 112.25
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/card",
+       "chrome": {
+        "x": 21,
+        "y": 15.75,
+        "width": 360.50002670288086,
+        "height": 112.25000238418579
+       },
+       "dragon": {
+        "x": 21,
+        "y": 15.75,
+        "width": 360.5,
+        "height": 112.25
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/swatch",
+       "chrome": {
+        "x": 43.749998331069946,
+        "y": 38.50000083446503,
+        "width": 294,
+        "height": 61.50000071525574
+       },
+       "dragon": {
+        "x": 43.75,
+        "y": 38.5,
+        "width": 294,
+        "height": 61.5
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

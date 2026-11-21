@@ -338,13 +338,13 @@ export function shimSources(target: 'ios' | 'android', probe: readonly ShimProbe
   }
   const faces = shimmed.map((f) => `  DragonShimFace(${kotlinString(f.id)}, ${kotlinString(f.androidAsset)}, ${kotlinString(f.sha256)}),`).join('\n');
   const faceData = realData.map((f) => `  DragonShimFaceData(${kotlinString(f.id)}, doubleArrayOf(${f.data.map(num).join(', ')})),`).join('\n');
-  const calls = probe.map((p) => `  DragonShimCall(${kotlinString(p.face)}, ${num(p.size)}, ${kotlinString(p.text)}, ${kotlinString(p.script)}, ${p.rtl}, ${kotlinString(p.language)}, intArrayOf(${ints(p.features.map((x) => x | 0))}), intArrayOf(${ints(p.glyphs)})),`).join('\n');
+  const calls = probe.map((p) => `  DragonShimCall(${kotlinString(p.face)}, ${num(p.size)}, ${kotlinString(p.text)}, ${kotlinString(p.script)}, ${p.rtl}, ${kotlinString(p.language)}, intArrayOf(${ints(p.features.map((x) => x | 0))}), dragonInts("${ints(p.glyphs).replaceAll(' ', '')}")),`).join('\n');
   return [
     { path: 'kotlin/dev/dragon/text/DragonHB.kt', text: readFileSync(join(SHAPER_DIR, 'kotlin', 'src', 'dev', 'dragon', 'text', 'DragonHB.kt'), 'utf8') },
     { path: 'kotlin/dev/dragon/host/DragonShaper.kt', text: gen('//') + KOTLIN_SHAPER },
     {
       path: 'kotlin/dev/dragon/host/DragonShimProbe.kt',
-      text: `${gen('//')}package dev.dragon.host\n\nclass DragonShimFace(val id: String, val asset: String, val sha256: String)\n\nclass DragonShimCall(val face: String, val size: Double, val text: String, val script: String, val rtl: Boolean, val language: String, val features: IntArray, val glyphs: IntArray)\n\nclass DragonShimFaceData(val id: String, val data: DoubleArray)\n\nval DRAGON_SHIM_FACES = listOf(\n${faces}\n)\n\nval DRAGON_SHIM_FACE_DATA: List<DragonShimFaceData> = listOf(\n${faceData}\n)\n\nval DRAGON_SHIM_PROBE = listOf(\n${calls}\n)\n`,
+      text: `${gen('//')}package dev.dragon.host\n\nclass DragonShimFace(val id: String, val asset: String, val sha256: String)\n\nclass DragonShimCall(val face: String, val size: Double, val text: String, val script: String, val rtl: Boolean, val language: String, val features: IntArray, val glyphs: IntArray)\n\nclass DragonShimFaceData(val id: String, val data: DoubleArray)\n\nval DRAGON_SHIM_FACES = listOf(\n${faces}\n)\n\nval DRAGON_SHIM_FACE_DATA: List<DragonShimFaceData> = listOf(\n${faceData}\n)\n\n/** A probe's integers, comma-separated: a string constant, since thousands of intArrayOf elements overflow the JVM's 64 KB <clinit>. */\nfun dragonInts(s: String): IntArray = if (s.isEmpty()) IntArray(0) else s.split(',').map { it.toInt() }.toIntArray()\n\nval DRAGON_SHIM_PROBE = listOf(\n${calls}\n)\n`,
     },
   ];
 }

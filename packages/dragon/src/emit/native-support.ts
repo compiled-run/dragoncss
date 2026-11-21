@@ -793,7 +793,8 @@ public func dragonSafeArea(_ container: UIView) -> SafeAreaInsets {
   let r = container.convert(container.bounds, to: w)
   let b = w.bounds
   func css(_ v: CGFloat) -> Double { return Double(max(0, v)) }
-  return SafeAreaInsets(css(i.top - r.minY), css(r.maxX - (b.width - i.right)), css(r.maxY - (b.height - i.bottom)), css(i.left - r.minX))
+  // Each side's unsafe band is the window's own edge strip: a container reaching past the window's edge is not under a bar there.
+  return SafeAreaInsets(css(min(i.top, r.maxY) - max(r.minY, 0)), css(min(r.maxX, b.width) - max(r.minX, b.width - i.right)), css(min(r.maxY, b.height) - max(r.minY, b.height - i.bottom)), css(min(i.left, r.maxX) - max(r.minX, 0)))
 }
 
 /// css-env-1: input with its safe-area insets replaced by a mount's measured ones.
@@ -865,6 +866,8 @@ public final class DragonTree {
   public func companion(_ id: String, _ view: UIView) { companions[id, default: []].append(view) }
   /// A built node's view, for the runtime writers (RT-1, RT-2, RT-11).
   public func node(_ id: String) -> DragonNodeView? { return views[id] }
+  /// A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted.
+  public func layoutParent(_ id: String) -> String? { return parents[id] ?? nil }
 
   public func boxNode(_ id: String, parent: String?, kind: String) -> DragonBoxView {
     let v = DragonBoxView(dragonId: id, kind: kind, parent: parent)
@@ -2212,7 +2215,9 @@ fun dragonSafeArea(container: android.view.View, scale: Double): SafeAreaInsets 
   val right = at[0] + container.width - container.paddingRight
   val bottom = at[1] + container.height - container.paddingBottom
   fun css(px: Int): Double = maxOf(0, px) / scale
-  return SafeAreaInsets(css(bars.top - top), css(right - (window.width - bars.right)), css(bottom - (window.height - bars.bottom)), css(bars.left - left))
+  // Each side's unsafe band is the window's own edge strip: a container reaching past the window's edge (a mount's media root
+  // larger than the stage) is not under a bar there.
+  return SafeAreaInsets(css(minOf(bars.top, bottom) - maxOf(top, 0)), css(minOf(right, window.width) - maxOf(left, window.width - bars.right)), css(minOf(bottom, window.height) - maxOf(top, window.height - bars.bottom)), css(minOf(bars.left, right) - maxOf(left, 0)))
 }
 
 /** css-env-1: input with its safe-area insets replaced by a mount's measured ones. */
@@ -2287,6 +2292,8 @@ class DragonTree(val context: Context) {
   fun companion(id: String, view: android.view.View) { companions.getOrPut(id) { ArrayList() }.add(view) }
   /** A built node's view, for the runtime writers (RT-1, RT-2, RT-11). */
   fun node(id: String): DragonNodeView? = views[id]
+  /** A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted. */
+  fun layoutParent(id: String): String? = parents[id]
 
   /** Each inline box's fragments (INL1a): left, top, right, bottom relative to the box's snapped edges, and the baseline from the top. */
   private val inlineLines = HashMap<String, List<DoubleArray>>()
@@ -3058,7 +3065,7 @@ export const STYLE_FIELDS = [
   'maxWidth', 'maxHeight', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
   'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis', 'order',
   'justifyContent', 'alignItems', 'alignSelf', 'alignContent', 'rowGap', 'columnGap', 'textAlign', 'aspectRatio', 'verticalAlign', 'textOverflow', 'textIndent', 'lineClamp', 'containLayout',
-  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'grid', 'gridItem', 'zoom',
+  'containPaint', 'containSize', 'containIntrinsicWidth', 'containIntrinsicHeight', 'textWrapStyle', 'multicol', 'textBoxTrim', 'grid', 'gridItem', 'anchor', 'zoom',
 ] as const;
 
 const VALUE_CLASSES: Readonly<Record<string, string>> = {
@@ -3108,6 +3115,22 @@ function gridSpanValue(lang: Lang, s: GridSpanInput, str: (s: string) => string)
   return `GridSpan_lines(${str('lines')}, ${gridLineValue(s.start, str)}, ${gridLineValue(s.end, str)})`;
 }
 
+/** The multicol field of a LayoutStyle (css-multicol-1; input.ts MulticolStyle), or null. */
+function multicolValue(lang: Lang, v: unknown): string {
+  if (v === undefined) throw new Error('LayoutStyle.multicol is missing; it is null where unused');
+  if (v === null) return lang === 'swift' ? 'nil' : 'null';
+  const m = v as import('@dragon/layout').MulticolStyle;
+  return `MulticolStyle(${doubleLit(m.count)}, ${engineValue(lang, m.width)})`;
+}
+
+/** The textBoxTrim field of a LayoutStyle (css-inline-3 §5.1; input.ts TextBoxTrim), or null. */
+function textBoxTrimValue(lang: Lang, v: unknown): string {
+  if (v === undefined) throw new Error('LayoutStyle.textBoxTrim is missing; it is null where unused');
+  if (v === null) return lang === 'swift' ? 'nil' : 'null';
+  const t = v as import('@dragon/layout').TextBoxTrim;
+  return `TextBoxTrim(${String(t.start)}, ${String(t.end)}, ${String(t.alphabetic)})`;
+}
+
 /** The grid and gridItem fields of a LayoutStyle (css-grid-2; input.ts GridContainerStyle and GridItemStyle), or null. */
 function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: string) => string): string {
   if (v === undefined) throw new Error(`LayoutStyle.${field} is missing; it is null where unused`);
@@ -3131,6 +3154,25 @@ function gridValue(lang: Lang, field: 'grid' | 'gridItem', v: unknown, str: (s: 
   ].join(', ')})`;
 }
 
+/** css-anchor-position-1: LayoutStyle.anchor in the translated AnchorStyle's field order (input.ts), null off an anchored box. */
+function anchorValue(lang: Lang, v: unknown, str: (s: string) => string): string {
+  if (v === undefined) throw new Error('LayoutStyle.anchor is missing; it is null where unused');
+  const none = lang === 'swift' ? 'nil' : 'null';
+  if (v === null) return none;
+  const a = v as import('@dragon/layout').AnchorStyle;
+  const edge = (e: import('@dragon/layout').AnchorEdge | null): string => (e === null ? none : `AnchorEdge(${str(e.anchor)}, ${doubleLit(e.fraction)})`);
+  const size = (r: import('@dragon/layout').AnchorSizeRef | null): string => (r === null ? none : `AnchorSizeRef(${str(r.anchor)}, ${str(r.axis)})`);
+  const area = (r: import('@dragon/layout').PositionArea | null): string =>
+    r === null ? none : `PositionArea(${str(r.rowStart)}, ${str(r.rowEnd)}, ${str(r.columnStart)}, ${str(r.columnEnd)})`;
+  const option = (o: import('@dragon/layout').AnchorOption): string =>
+    `AnchorOption(${[
+      area(o.area), ...[o.top, o.right, o.bottom, o.left].map((x) => engineValue(lang, x)), ...[o.topAnchor, o.rightAnchor, o.bottomAnchor, o.leftAnchor].map(edge),
+      ...[o.marginTop, o.marginRight, o.marginBottom, o.marginLeft, o.width, o.height, o.minWidth, o.minHeight, o.maxWidth, o.maxHeight].map((x) => engineValue(lang, x)),
+      ...[o.widthAnchor, o.heightAnchor, o.minWidthAnchor, o.minHeightAnchor, o.maxWidthAnchor, o.maxHeightAnchor].map(size), str(o.justifySelf), str(o.alignSelf),
+    ].join(', ')})`;
+  return `AnchorStyle(${a.anchor === null ? none : str(a.anchor)}, ${engineArray(lang, 'AnchorOption', false, a.options.map(option))}, ${str(a.order)})`;
+}
+
 /** The translated union of CalcExpr (V2 of the value model): the element type of a calculation's operand list. */
 const CALC_UNION = 'U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength';
 
@@ -3138,6 +3180,9 @@ const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 
 
 /** The translated classes of the AspectRatioValue members with parts (input.ts); auto is the shared Auto class. */
 const RATIO_CLASSES: Readonly<Record<string, string>> = { ratio: 'AspectRatioValue_ratio', 'auto-ratio': 'AspectRatioValue_autoRatio' };
+
+/** The translated classes of the TextWrapStyle members with a zoom (input.ts); auto is the shared Auto class. */
+const WRAP_STYLE_CLASSES: Readonly<Record<string, string>> = { balance: 'TextWrapStyle_balance', pretty: 'TextWrapStyle_pretty' };
 
 /** A LengthCalc or a CalcExpr node that is not a plain value, as a constructor call; null for any other value. */
 function calcValue(lang: Lang, o: Record<string, unknown>): string | null {
@@ -3193,6 +3238,12 @@ function engineValue(lang: Lang, v: unknown): string {
     if (typeof r.width !== 'number' || typeof r.height !== 'number') throw new Error(`aspect ratio ${JSON.stringify(v)} lacks its parts`);
     return `${ratio}(${str(r.kind)}, ${doubleLit(r.width)}, ${doubleLit(r.height)})`;
   }
+  const w = v as { kind: string; zoom?: number };
+  const wrap = WRAP_STYLE_CLASSES[w.kind];
+  if (wrap !== undefined) {
+    if (typeof w.zoom !== 'number') throw new Error(`text-wrap-style ${JSON.stringify(v)} lacks its zoom`);
+    return `${wrap}(${str(w.kind)}, ${doubleLit(w.zoom)})`;
+  }
   const o = v as { kind: string; value?: number | string };
   if (o.kind === 'keyword') return `VerticalAlignKeywordValue(${str('keyword')}, ${str(o.value as string)})`;
   const cls = VALUE_CLASSES[o.kind];
@@ -3245,6 +3296,9 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   const str = (s: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, s)})` : stringLit(lang, s));
   const fieldValue = (st: import('@dragon/layout').LayoutStyle, f: (typeof STYLE_FIELDS)[number]): string => {
     const v = (st as unknown as Record<string, unknown>)[f];
+    if (f === 'multicol') return multicolValue(lang, v);
+    if (f === 'textBoxTrim') return textBoxTrimValue(lang, v);
+    if (f === 'anchor') return anchorValue(lang, v, str);
     if (f === 'zoom') return engineArray(lang, 'Double', false, (v as readonly number[]).map(doubleLit));
     return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
   };

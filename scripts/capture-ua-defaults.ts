@@ -26,6 +26,7 @@ const TAGS = [
   'html', 'body', 'div',
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
   'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd',
+  'center',
   'dragon-unstyled',
 ] as const;
 /** The tags whose declared values and contexts are derived: every captured tag but the root and the unstyled element. */
@@ -33,6 +34,8 @@ const ELEMENT_TAGS = TAGS.filter((t) => t !== 'html' && t !== 'dragon-unstyled')
 /** Element keys outside the element table, each an element with the attributes its UA rules key on. */
 const KEY_SPECS = {
   button: { tag: 'button', attrs: { type: 'button' } },
+  // A disabled button: html.css's :disabled rules (color, background-color, border-color), which Dragon applies on a disabled one.
+  'button[disabled]': { tag: 'button', attrs: { type: 'button', disabled: '' } },
   input: { tag: 'input', attrs: {} },
   'input[type=range]': { tag: 'input', attrs: { type: 'range' } },
   a: { tag: 'a', attrs: {} },

@@ -6,7 +6,8 @@
   "sources": {
     "chromium": "https://chromium.googlesource.com/chromium/src/+/refs/tags/145.0.7632.6/{path}?format=TEXT",
     "skia": "https://skia.googlesource.com/skia/+/2ab8add5be2c46eb6238f4c217f6d6dbc9bccd23/{path without third_party/skia/}?format=TEXT",
-    "v8": "https://chromium.googlesource.com/v8/v8/+/4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c/{path without v8/}?format=TEXT"
+    "v8": "https://chromium.googlesource.com/v8/v8/+/4e031e4b6bfa4ba1d203e9bcfe3dc26d47a06b2c/{path without v8/}?format=TEXT",
+    "ots": "https://chromium.googlesource.com/external/github.com/khaledhosny/ots/+/46bea9879127d0ff1c6601b078e2ce98e83fcd33/{path without third_party/ots/src/}?format=TEXT"
   },
   "entries": [
     {
@@ -692,7 +693,9 @@
         { "lines": "5060-5201", "symbol": "ParseBackgroundOrMask", "source": "located" },
         { "lines": "776-844", "symbol": "ConsumeFilterFunction", "source": "located" },
         { "lines": "1994-2091", "symbol": "ConsumeColorMixFunction", "source": "located" },
-        { "lines": "3761-3784", "symbol": "ConsumeFilterFunctionList", "source": "located" }
+        { "lines": "3761-3784", "symbol": "ConsumeFilterFunctionList", "source": "located" },
+        { "lines": "8624-8668", "symbol": "ConsumeTextBoxEdge", "source": "cited" },
+        { "lines": "8671-8674", "symbol": "ConsumeTextBoxTrim", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/css/aliases.ts", "symbol": null, "use": "reference" },
@@ -712,7 +715,8 @@
         { "file": "scripts/gen-css-grammar.ts", "symbol": "SYNTAX_EXTENSIONS", "use": "reference" },
         { "file": "packages/dragon/src/css/properties/clip-path.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/css/aliases/mask.ts", "symbol": null, "use": "reference" },
-        { "file": "packages/dragon/src/css/color.ts", "symbol": "colorMix", "use": "port" }
+        { "file": "packages/dragon/src/css/color.ts", "symbol": "colorMix", "use": "port" },
+        { "file": "packages/dragon/src/css/properties/text-box.ts", "symbol": "consumeTextBoxEdge", "use": "port" }
       ]
     },
     {
@@ -1138,6 +1142,30 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/anchor_evaluator_impl.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2022 The Chromium Authors",
+      "fileSha256": "dbc744775c258e78645aca1fb77c0a9f52afe2f69767a9ec162cff33889aa9e7",
+      "headerSha256": "92d2eeedf6b379a7a4915a6328828c4152ebc772d3b4463657eabf539567fa33",
+      "ranges": [
+        { "lines": "60-213", "symbol": null, "source": "cited" },
+        { "lines": "545-656", "symbol": null, "source": "cited" },
+        { "lines": "89-183", "symbol": "ResolveAnchorValue", "source": "located" },
+        { "lines": "187-216", "symbol": "ResolveAnchorSizeValue", "source": "located" },
+        { "lines": "545-641", "symbol": "AnchorEvaluatorImpl::ComputePositionAreaOffsetsForLayout", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "areaOffsets", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "anchorSizePx", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "insetOf", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" },
+        { "file": "packages/layout/src/units.ts", "symbol": "anchorPercentOffset", "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/layout/baseline_utils.h",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -1182,11 +1210,22 @@
       "fileSha256": "46fa3e1ac5646589f28326891f1e82bb403084d84e6c31ebc26bc2feadd845a9",
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
+        { "lines": "51-416", "symbol": null, "source": "cited" },
+        { "lines": "467-603", "symbol": null, "source": "cited" },
+        { "lines": "622-945", "symbol": null, "source": "cited" },
         { "lines": "659-815", "symbol": "ComputeOofInlineDimensions", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/ratio.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioAbsoluteInlineSize", "use": "port" }
+        { "file": "packages/layout/src/ratio.ts", "symbol": "ratioAbsoluteInlineSize", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "alignBias", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "resize", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "unclampedImcb", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "clampedImcb", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "margins", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "insetStartOf", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" }
       ]
     },
     {
@@ -1215,7 +1254,8 @@
         { "lines": "3631-3649", "symbol": null, "source": "cited" },
         { "lines": "793-851", "symbol": null, "source": "cited" },
         { "lines": "1148-1159", "symbol": null, "source": "cited" },
-        { "lines": "1220-1231", "symbol": null, "source": "cited" }
+        { "lines": "1220-1231", "symbol": null, "source": "cited" },
+        { "lines": "3007-3191", "symbol": "BlockLayoutAlgorithm::FinalizeForFragmentation", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
@@ -1233,7 +1273,9 @@
         { "file": "packages/layout/src/inline-box.ts", "symbol": "atomicBaseline", "use": "reference" },
         { "file": "packages/layout/src/line-clamp.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/inline.ts", "symbol": "checkClampContext", "use": "port" },
-        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/multicol.test.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1925,6 +1967,7 @@
         { "lines": "1016-1231", "symbol": "ComputeReplacedSizeInternal", "source": "located" },
         { "lines": "1518-1545", "symbol": "ComputePadding", "source": "cited" },
         { "lines": "1555-1574", "symbol": "ResolveInlineAutoMargins", "source": "located" },
+        { "lines": "1294-1325", "symbol": "ResolveUsedColumnCount", "source": "cited" },
         { "lines": "1905-1938", "symbol": "CalculateMinMaxSizesIgnoringChildren", "source": "located" }
       ],
       "dragon": [
@@ -1941,7 +1984,8 @@
         { "file": "packages/layout/src/ratio.ts", "symbol": "transferredInlineMinMax", "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedContribution", "use": "port" },
-        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" }
+        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" },
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" }
       ]
     },
     {
@@ -1957,6 +2001,26 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/grid.ts", "symbol": "marginsOf", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/out_of_flow_layout_part.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2016 The Chromium Authors",
+      "fileSha256": "3eb79230dfb5a5f6a4d76fafb4f1f299b269ec3cb83591495936f8bc704cc7ae",
+      "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
+      "ranges": [
+        { "lines": "65-107", "symbol": null, "source": "cited" },
+        { "lines": "2276-2470", "symbol": null, "source": "cited" },
+        { "lines": "2190-2190", "symbol": "kMaxTryAttempts", "source": "located" },
+        { "lines": "2515-2835", "symbol": "OutOfFlowLayoutPart::TryCalculateOffset", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "MAX_TRY_ATTEMPTS", "use": "port" }
       ]
     },
     {
@@ -4504,11 +4568,98 @@
       "headerSha256": "a489594a325164453be11b04cf0a82ccab956934ef65b44080a0c4c9614b9f62",
       "ranges": [
         { "lines": "902-928", "symbol": null, "source": "cited" },
-        { "lines": "331-351", "symbol": "InlineLayoutAlgorithm::GetLineClampState", "source": "located" }
+        { "lines": "331-351", "symbol": "InlineLayoutAlgorithm::GetLineClampState", "source": "located" },
+        { "lines": "58-222", "symbol": "LineBreakStrategy", "source": "located" }
       ],
       "dragon": [
         { "file": "packages/layout/src/inline.ts", "symbol": "alignOffset", "use": "port" },
-        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/layout/test/line-clamp.test.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/inline.ts", "symbol": "wrapStyleLines", "use": "port" },
+        { "file": "packages/layout/src/input.ts", "symbol": "TextWrapStyle", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/score_line_breaker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "ad19690239c7dbc5bf12cd37589eb85e21e2b4541f21b772ff321580c0f7e020",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "57-160", "symbol": "ScoreLineBreaker::OptimalBreakPoints", "source": "located" },
+        { "lines": "162-166", "symbol": "ScoreLineBreaker::BalanceBreakPoints", "source": "located" },
+        { "lines": "168-225", "symbol": "ScoreLineBreaker::Optimize", "source": "located" },
+        { "lines": "267-289", "symbol": "ScoreLineBreaker::SetupParameters", "source": "located" },
+        { "lines": "291-368", "symbol": "ScoreLineBreaker::ComputeScores", "source": "located" },
+        { "lines": "370-401", "symbol": "ScoreLineBreaker::ComputeBreakPoints", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": "linePenaltyOf", "use": "port" },
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": "scoreBreakPoints", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/line_break_candidate.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "40c3a2b3c03aad98ef55f4064605fcc20226daa1cebfe30c0404b338ffa6e816",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "95-172", "symbol": "LineBreakCandidateContext::AppendLine", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/line_break_candidate.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "9af383a0d0b627515ee77dcfb9e32f193625e052f4619386af546db4806eeef3",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "24-57", "symbol": "LineBreakCandidate", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/text-wrap.ts", "symbol": "WrapCandidate", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/score_line_break_context.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "2f04b3238810a58f3afaaa143a93affee8601e3456fb276b3902a4837439f40e",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "17-17", "symbol": "kMaxLinesForBalance", "source": "located" },
+        { "lines": "18-18", "symbol": "kMaxLinesForOptimal", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "MAX_LINES_FOR_BALANCE", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/inline/paragraph_line_breaker.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "8b7ad973c8568c29611a06f0a2edd7142fbcb3fef9a398d46ee1083e04563879",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "126-140", "symbol": "EstimateNumLines", "source": "located" },
+        { "lines": "145-232", "symbol": "ParagraphLineBreaker::AttemptParagraphBalancing", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/inline.ts", "symbol": "bisectedLines", "use": "port" }
       ]
     },
     {
@@ -4573,6 +4724,57 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/layout/column_layout_algorithm.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "83d23b9610725041c7321c5baff25254b1090749564030283edf2b78b5ccbfc2",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "235-246", "symbol": "CombinedColumnGapSize", "source": "cited" },
+        { "lines": "266-301", "symbol": "ColumnLayoutAlgorithm::Layout", "source": "cited" },
+        { "lines": "843-1243", "symbol": "ColumnLayoutAlgorithm::LayoutLine", "source": "cited" },
+        { "lines": "1578-1601", "symbol": "ColumnLayoutAlgorithm::PropagateBaselineFromChild", "source": "cited" },
+        { "lines": "1614-1810", "symbol": "ColumnLayoutAlgorithm::ResolveColumnAutoBlockSizeInternal", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/test/multicol.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/geometry/layout_unit_diffuser.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2025 The Chromium Authors",
+      "fileSha256": "f361ac44bc101c4cf643d7dd54569c1ee1d75829ff65d2a7810e6e0e0949b172",
+      "headerSha256": "f0becbc6a99a89f1949bdbdac5e4f383c5c94c1c7a235ff46564eb41cd5c0ae7",
+      "ranges": [
+        { "lines": "38-82", "symbol": "LayoutUnitDiffuser", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/fragmentation_utils.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "d6dc0f2b2889aeeab8178d1626d61f3397b93f7f42505798a92383c823dafe04",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "983-1053", "symbol": "PropagateSpaceShortage", "source": "cited" },
+        { "lines": "1133-1240", "symbol": "MovePastBreakpoint", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/editing/iterators/text_iterator.cc",
       "licence": "bsd-apple",
       "noticeText": "header-bsd-2",
@@ -4595,6 +4797,27 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/style/position_area.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2023 The Chromium Authors",
+      "fileSha256": "0a00aa35e5e8f193e44ff066047f9b924ba75bf0de4a45760c50e67d51db1c45",
+      "headerSha256": "27c04bbc1ca143262c066454bc2f07e0471b8e676621dd1c8a6eb2afda7e300d",
+      "ranges": [
+        { "lines": "207-292", "symbol": null, "source": "cited" },
+        { "lines": "167-234", "symbol": "PositionArea::ToPhysical", "source": "located" },
+        { "lines": "237-306", "symbol": "PositionArea::AlignJustifySelfFromPhysical", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/anchor.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "areaAlign", "use": "port" },
+        { "file": "packages/layout/src/anchor.ts", "symbol": "placeOption", "use": "port" },
+        { "file": "packages/dragon/src/lower/anchor-layout.ts", "symbol": "physicalArea", "use": "port" },
+        { "file": "packages/dragon/test/anchor-lowering.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/modules/accessibility/ax_node_object.cc",
       "licence": "bsd-google",
       "noticeText": "header-bsd-7",
@@ -4609,9 +4832,498 @@
         { "file": "packages/dragon/src/lower/paint/clip-label.ts", "symbol": null, "use": "port" },
         { "file": "packages/dragon/test/paint-clip-rect.test.ts", "symbol": null, "use": "reference" }
       ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/platform/fonts/web_font_decoder.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2009 Google Inc. All rights reserved.",
+      "fileSha256": "0740eb0a18a3675fc0d1a520b0d9946af7c25b1e825497233853693fcd29be70",
+      "headerSha256": "7711ee8ba98830558349c7b287468c26354d910078a8f3531e02bfac59ca808d",
+      "ranges": [
+        { "lines": "116-170", "symbol": "BlinkOTSContext::GetTableAction", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/sanitize.ts", "symbol": "PASSED_THROUGH", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/ots.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. Its header defers to the OTS LICENSE file (BSD 3-Clause), whose notice is kept in packages/dragon/src/fonts/ots/sanitize.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "1aab2dd50dd0c7a47a7955e77178fd20c812631bfcbd749b174a9ad81fd680c0",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "111-165", "symbol": "supported_tables", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/sanitize.ts", "symbol": "CHECKS", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/cmap.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/cmap.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "ce06f2dedb56a069417ac75cc9dcbac0edc646b9161ae5a148f427ea6b5b7e5e",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "62-265", "symbol": "OpenTypeCMAP::ParseFormat4", "source": "located" },
+        { "lines": "267-336", "symbol": "OpenTypeCMAP::Parse31012", "source": "located" },
+        { "lines": "338-401", "symbol": "OpenTypeCMAP::Parse31013", "source": "located" },
+        { "lines": "403-537", "symbol": "OpenTypeCMAP::Parse0514", "source": "located" },
+        { "lines": "539-565", "symbol": "OpenTypeCMAP::Parse100", "source": "located" },
+        { "lines": "567-838", "symbol": "OpenTypeCMAP::Parse", "source": "located" },
+        { "lines": "840-863", "symbol": "OpenTypeCMAP::Serialize", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/cmap.ts", "symbol": "checkFormat4", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cmap.ts", "symbol": "checkGroups", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cmap.ts", "symbol": "checkFormat14", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cmap.ts", "symbol": "checkFormat0", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cmap.ts", "symbol": "checkCmap", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/glyf.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/glyf.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "09b512487dc4db7eb1047c115518999cbd6d4677e1c0e36c2bf5d756c28f76a3",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "19-81", "symbol": "OpenTypeGLYF::ParseFlagsForSimpleGlyph", "source": "located" },
+        { "lines": "83-144", "symbol": "OpenTypeGLYF::ParseSimpleGlyph", "source": "located" },
+        { "lines": "153-232", "symbol": "OpenTypeGLYF::ParseCompositeGlyph", "source": "located" },
+        { "lines": "234-392", "symbol": "OpenTypeGLYF::Parse", "source": "located" },
+        { "lines": "394-475", "symbol": "OpenTypeGLYF::TraverseComponentsCountingPoints", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/glyf.ts", "symbol": "checkGlyf", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/glyf.ts", "symbol": "compositePoints", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/glyf.ts", "symbol": "glyph", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/glyf.ts", "symbol": "simple", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/glyf.ts", "symbol": "composite", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/cff.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/cff.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2012-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "9e23b2f6801e56a9108eed9d1f0b0f3cbd71300c13f4ceec7f486580cfb67c81",
+      "headerSha256": "8b32ba4db6ab5dff999b9de014dbb07de276c3348e9c0c415f9fe5864b653310",
+      "ranges": [
+        { "lines": "46-62", "symbol": "ReadOffset", "source": "located" },
+        { "lines": "64-137", "symbol": "ParseIndex", "source": "located" },
+        { "lines": "139-169", "symbol": "ParseNameData", "source": "located" },
+        { "lines": "171-179", "symbol": "CheckOffset", "source": "located" },
+        { "lines": "181-189", "symbol": "CheckSid", "source": "located" },
+        { "lines": "191-247", "symbol": "ParseDictDataBcd", "source": "located" },
+        { "lines": "249-265", "symbol": "ParseDictDataEscapedOperator", "source": "located" },
+        { "lines": "267-322", "symbol": "ParseDictDataNumber", "source": "located" },
+        { "lines": "324-343", "symbol": "ParseDictDataReadNext", "source": "located" },
+        { "lines": "400-578", "symbol": "ParsePrivateDictData", "source": "located" },
+        { "lines": "605-621", "symbol": "ParseDictData", "source": "located" },
+        { "lines": "623-1159", "symbol": "ParseDictData", "source": "located" },
+        { "lines": "1165-1177", "symbol": "OpenTypeCFF::ValidateFDSelect", "source": "located" },
+        { "lines": "1179-1283", "symbol": "OpenTypeCFF::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "checkCff", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "readIndex", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "checkName", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "token", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "dictNumber", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "bcd", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "dicts", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "offsetOperand", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "sid", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "dict", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "checkCharset", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "fdSelect", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "privateDict", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/cff_charstring.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/cff-charstring.ts, packages/dragon/src/fonts/ots/cff.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2010-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "a688d8ed839858006d517b02c8dc27ebcb31cc274956e5e4c5390de9ad020bdf",
+      "headerSha256": "2b9c79aae46f2f3e763615c105d387886a3f476e02157c663473a81c83856ae5",
+      "ranges": [
+        { "lines": "162-231", "symbol": "ReadNextNumberFromCharString", "source": "located" },
+        { "lines": "268-804", "symbol": "ExecuteCharStringOperator", "source": "located" },
+        { "lines": "826-897", "symbol": "ExecuteCharString", "source": "located" },
+        { "lines": "901-933", "symbol": "SelectLocalSubr", "source": "located" },
+        { "lines": "939-1016", "symbol": "ValidateCFFCharStrings", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/cff-charstring.ts", "symbol": "checkCharString", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff-charstring.ts", "symbol": "execute", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff-charstring.ts", "symbol": "stems", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff-charstring.ts", "symbol": "operator", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/cff.ts", "symbol": "localSubrs", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/ots.h",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/reader.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "9e4935846221623a5ec01d6b2f25a51c62e26d530fd726f8902d43fe3ca0f3fe",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "75-169", "symbol": "Buffer", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/reader.ts", "symbol": "Reader", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/head.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "48c30c479c34ba657ac90e00f4041342dc97f2956cc98c416542130a31b048fd",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "14-106", "symbol": "OpenTypeHEAD::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkHead", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/maxp.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "4fe35b529c7560619f80fadd85ccd2c1724f9b848163442002d268c9207e9d53",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "12-68", "symbol": "OpenTypeMAXP::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkMaxp", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/hhea.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "0b123913fa85a2f197b892c045c134f704211d9184d087e5ab156c4f30cc68cb",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "15-26", "symbol": "OpenTypeHHEA::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkHhea", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/vhea.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2011-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "cad98a97de80f076fde8d31c765dd6b35db351578e6d6c6d0025a8f7c3e169cc",
+      "headerSha256": "8b7b5acfba78b527ced9ba0313f104a61ee404029b501af599955c70c42e46c4",
+      "ranges": [
+        { "lines": "15-27", "symbol": "OpenTypeVHEA::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkVhea", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/metrics.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2011-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "d4760774c4deb874b692bc580e82b4a8b1854912e86a91d6d652edc31d891e4c",
+      "headerSha256": "8b7b5acfba78b527ced9ba0313f104a61ee404029b501af599955c70c42e46c4",
+      "ranges": [
+        { "lines": "16-87", "symbol": "OpenTypeMetricsHeader::Parse", "source": "located" },
+        { "lines": "110-158", "symbol": "OpenTypeMetricsTable::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "metricsHeader", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkMetrics", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkHmtx", "use": "port" },
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkVmtx", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/loca.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "de51c53482b9bd04b653841891e80a52878082d58782adf266f661202780d8e6",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "15-64", "symbol": "OpenTypeLOCA::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkLoca", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/os2.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "4b54d4d25c96c944452d0090e0f476f9725d0e61aa439ba918af0b96997d14a8",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "15-243", "symbol": "OpenTypeOS2::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkOs2", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/post.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "ee63d17d35a70d0da8e07e267a667aef30f2f60e7d10f1ee9b116c7563888b25",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "14-120", "symbol": "OpenTypePOST::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkPost", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/name.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2011-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "f3c4e97512220e161907b731407893ffded992af911fac13f1c243b5c46f7703",
+      "headerSha256": "8b7b5acfba78b527ced9ba0313f104a61ee404029b501af599955c70c42e46c4",
+      "ranges": [
+        { "lines": "66-264", "symbol": "OpenTypeNAME::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkName", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/cvt.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "4c34a4c9ec41b4081e35335a63239645f69fcb9beed8151abb0cabf4b5b807e8",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "12-30", "symbol": "OpenTypeCVT::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkInstructions", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/fpgm.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "ba8a57d56ca88ef8224f4e986c35b8abeaa9e5f23cfa39b5e2f004432403ed76",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "12-26", "symbol": "OpenTypeFPGM::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkInstructions", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/prep.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "03ff69a56aacfc5f3c9bdc81c3e258b287d10e1e9254be3ef943f11f2f205b49",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "12-27", "symbol": "OpenTypePREP::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkInstructions", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/gasp.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "8f8aa592643ddf304ae6571c413c4292dc615eb73cd46d679041c3bc9f069e66",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "12-64", "symbol": "OpenTypeGASP::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkGasp", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/hdmx.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "73a5c0463bb7faeba1c53ca67943eeacc242ca9952996db8bf354ecec2fe0051",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "14-86", "symbol": "OpenTypeHDMX::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkHdmx", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/vdmx.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "46c6a5833b0e800d143a48a5d00f24e4ec73b3112ff165315b10e07d31a736c5",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "12-104", "symbol": "OpenTypeVDMX::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkVdmx", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/ltsh.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "d215fcf106037b48914bdaf8026886076a839bb957f8b6e2d0514eebb5228371",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "14-47", "symbol": "OpenTypeLTSH::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkLtsh", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/vorg.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "f84eeb3b68c197cf26a28c3ebf31a81cfd5a2379c411230ab0d6ee96cb7faf35",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "14-54", "symbol": "OpenTypeVORG::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkVorg", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/kern.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2009-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "2490855b3cd881a2fd398bd8e168fcb0a3496f471fecb15e3d9065f3ef17f8ae",
+      "headerSha256": "af62408bf00e76e49400e361fab726f64edf801436bc64dbf7422acaa8289ba2",
+      "ranges": [
+        { "lines": "12-136", "symbol": "OpenTypeKERN::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkKern", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/ots/src/src/math.cc",
+      "licence": "bsd-other",
+      "attribution": "OTS (OpenType Sanitizer) at revision 46bea9879127d0ff1c6601b078e2ce98e83fcd33, the ots_revision Chromium 145.0.7632.6's DEPS pins at third_party/ots/src. BSD 3-Clause (the OTS LICENSE file); the notice is kept in packages/dragon/src/fonts/ots/tables.ts and THIRD_PARTY_NOTICES.md.",
+      "noticeText": "ots-bsd",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (c) 2014-2017 The OTS Authors. All rights reserved.",
+      "fileSha256": "97c594b8231ce457c95c94b91f7a82d3398032e1538c913576685f7264e0a3e3",
+      "headerSha256": "08496be22bed75ee4057a9c42a9922ae09108d1a780895fcfa46f5114395f07b",
+      "ranges": [
+        { "lines": "516-570", "symbol": "OpenTypeMATH::Parse", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/fonts/ots/tables.ts", "symbol": "checkMath", "use": "port" }
+      ]
     }
   ],
   "notChrome": [
+    {
+      "cited": [
+        "metadata_format.h"
+      ],
+      "source": "AOSP system/core fs_mgr/liblp include/liblp/metadata_format.h, Apache-2.0: the on-disk layout of a dynamic-partition super image, which Dragon reads to take the system fonts out of the Android SDK's system image; not a Blink/Skia/gfx port",
+      "files": [
+        "packages/parity/src/system-fonts/android-image.ts"
+      ]
+    },
+    {
+      "cited": [
+        "FontCocoa.mm"
+      ],
+      "source": "WebKit Source/WebCore/platform/graphics/coretext/FontCoreText.cpp (formerly cocoa/FontCocoa.mm), BSD-2-Clause, Apple Inc.: Safari's line metrics on iOS (each metric rounded up, Helvetica's ascent +15%), each matched by measurement in Safari on iOS 27.2; not a Blink/Skia/gfx port",
+      "files": [
+        "packages/parity/src/system-fonts/provider.ts",
+        "packages/parity/src/system-fonts/web-generics.ts"
+      ]
+    },
     {
       "cited": [
         "uscript.h",
@@ -4709,6 +5421,7 @@
     "kinnunen-bsd-2": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n1. Redistributions of source code must retain the above copyright\n   notice, this list of conditions and the following disclaimer.\n2. Redistributions in binary form must reproduce the above copyright\n   notice, this list of conditions and the following disclaimer in the\n   documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY\nEXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\nPURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR\nCONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\nEXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\nPROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\nPROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY\nOF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "adobe-bsd-2": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions\nare met:\n\n1. Redistributions of source code must retain the above\n   copyright notice, this list of conditions and the following\n   disclaimer.\n2. Redistributions in binary form must reproduce the above\n   copyright notice, this list of conditions and the following\n   disclaimer in the documentation and/or other materials\n   provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS\nFOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE\nCOPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,\nINDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)\nHOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,\nSTRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\nARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED\nOF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "rapidhash-bsd-2": "rapidhash - Very fast, high quality, platform-independent hashing algorithm.\n\nBased on 'wyhash', by Wang Yi <godspeed_china@yeah.net>\n\nBSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\n     notice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\n     copyright notice, this list of conditions and the following disclaimer\n     in the documentation and/or other materials provided with the\n     distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nYou can contact the author at:\n  - rapidhash source repository: https://github.com/Nicoshev/rapidhash\n",
+    "ots-bsd": "Redistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n   * Redistributions of source code must retain the above copyright\nnotice, this list of conditions and the following disclaimer.\n   * Redistributions in binary form must reproduce the above\ncopyright notice, this list of conditions and the following disclaimer\nin the documentation and/or other materials provided with the\ndistribution.\n   * Neither the name of Google Inc. nor the names of its\ncontributors may be used to endorse or promote products derived from\nthis software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nOWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n",
     "fdlibm-sun": "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.\n\nDeveloped at SunSoft, a Sun Microsystems, Inc. business.\nPermission to use, copy, modify, and distribute this\nsoftware is freely granted, provided that this notice\nis preserved.\n"
   }
 }

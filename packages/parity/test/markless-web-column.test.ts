@@ -1,0 +1,251 @@
+// The web column's device handling with the device stubbed: Chrome on the Mac plays the phone's browser, following the appearance
+// the stubbed device commands set, so each assignment is measured under its band's preference and every device change is undone.
+import { BAND_KEY } from 'dragon';
+import type { Browser, BrowserContext } from 'playwright';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { launchChrome } from '../src/chrome.ts';
+import { marklessHeightDependence, marklessStyleExport, parseMarklessStyleInput, schemeOf } from '../src/markless-style-input.ts';
+import type { MarklessStyleExport } from '../src/markless-style-input.ts';
+import type { WebColumnDevice, WebColumnHost } from '../src/markless-web-column.ts';
+import { withCleanup } from '../src/markless-style-compare.ts';
+import { PREFERENCE_READS, webColumn } from '../src/markless-web-column.ts';
+
+const TEXT = JSON.stringify({
+  version: 'markless.native-style-input/0',
+  component: 'Page',
+  nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'box' } }],
+  css: ':root { color-scheme: light dark; } .box { height: 40px; } @media (prefers-color-scheme: dark) { .box { height: 60px; } }',
+  states: [],
+});
+const input = parseMarklessStyleInput(TEXT);
+const exported: MarklessStyleExport = { ...marklessStyleExport(TEXT, 'web-column.json').exported, fontMode: 'system' };
+const ANDROID: WebColumnDevice = { target: 'android', serial: 'emulator-5554' };
+const IOS: WebColumnDevice = { target: 'ios', udid: 'SIM-UDID' };
+
+let browser: Browser;
+beforeAll(async () => {
+  browser = await launchChrome(1);
+}, 120_000);
+afterAll(async () => {
+  await browser?.close();
+});
+
+type Fake = { readonly host: WebColumnHost; readonly log: string[]; readonly contexts: BrowserContext[]; readonly appearance: () => string };
+
+/**
+ * A device whose browser takes `lag` page loads after an appearance change to prefer the new scheme (never, for Infinity), and
+ * whose command `fail` names throws; its browser shows `viewport` (the export's, unless given).
+ */
+function fakeDevice(device: WebColumnDevice, start: string, lag: number, fail: (args: string) => boolean = () => false, viewport?: { readonly width: number; readonly height: number }): Fake {
+  const log: string[] = [];
+  const contexts: BrowserContext[] = [];
+  let appearance = start;
+  let previous = start;
+  let loads = 0;
+  const dark = (a: string): boolean => a === 'dark' || a === 'yes';
+  const run = (cmd: string, args: readonly string[]): string => {
+    const line = [cmd, ...args].join(' ');
+    log.push(line);
+    if (fail(line)) throw new Error(`${line} failed`);
+    const set = (value: string): string => {
+      previous = appearance;
+      appearance = value;
+      loads = 0;
+      return '';
+    };
+    if (device.target === 'ios' && args[0] === 'simctl' && args[1] === 'ui') return args[4] === undefined ? `${appearance}\n` : set(args[4]);
+    if (args.slice(2).join(' ') === 'shell cmd uimode night') return `Night mode: ${appearance}\n`;
+    if (args.slice(2, 5).join(' ') === 'shell cmd uimode') return set(args[6] as string);
+    if (args.slice(2).join(' ') === 'shell settings get global debug_app') return 'null\n';
+    return '';
+  };
+  const t = exported.targets[device.target]!;
+  const open = (_device: WebColumnDevice, url: string): void => {
+    log.push(`open ${new URL(url).searchParams.get('i')}`);
+    const prefers = loads++ < lag ? previous : appearance;
+    void (async () => {
+      const context = await browser.newContext({ viewport: viewport ?? t.viewport, deviceScaleFactor: t.dpr });
+      contexts.push(context);
+      const page = await context.newPage();
+      await page.emulateMedia({ colorScheme: dark(prefers) ? 'dark' : 'light' });
+      await page.goto(url);
+    })();
+  };
+  return { host: { run, open, screenshot: () => {}, wait: async () => {} }, log, contexts, appearance: () => appearance };
+}
+
+/** The boxes a phone draws for an export's assignment, in points or dp from the page's top left: the export's own frames. */
+function phoneBoxes(e: MarklessStyleExport, target: 'ios' | 'android', index: number): Map<string, { x: number; y: number; width: number; height: number }> {
+  const t = e.targets[target]!;
+  const byId = new Map(t.assignments[index]!.nodes.map((n) => [n.id, n]));
+  const absolute = (id: string): { x: number; y: number } => {
+    const n = byId.get(id)!;
+    const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
+    return { x: p.x + n.frame!.x, y: p.y + n.frame!.y };
+  };
+  return new Map([...byId.values()].flatMap((n) => {
+    const f = n.frame;
+    if (f === null) return [];
+    const at = absolute(n.id);
+    return [[n.id, { x: at.x / t.dpr, y: at.y / t.dpr, width: f.width / t.dpr, height: f.height / t.dpr }] as const];
+  }));
+}
+
+const wants = (target: 'ios' | 'android'): ('light' | 'dark')[] => exported.targets[target]!.assignments.map((a) => schemeOf(exported.targets[target]!.bands, a.values[BAND_KEY] as number));
+
+describe('the web column sets the device\'s appearance per assignment', () => {
+  it('the export has an assignment in each scheme', () => {
+    expect(wants('android')).toEqual(['light', 'dark']);
+    expect(wants('ios')).toEqual(['light', 'dark']);
+  });
+
+  for (const [device, start, setting] of [[ANDROID, 'no', (s: string) => `adb -s emulator-5554 shell cmd uimode night ${s === 'dark' ? 'yes' : 'no'}`], [IOS, 'light', (s: string) => `xcrun simctl ui SIM-UDID appearance ${s}`]] as const) {
+    it(`${device.target}: switches before each assignment whose band reads the other scheme, waits for the browser, and restores the original`, async () => {
+      const fake = fakeDevice(device, start, 2);
+      try {
+        const r = await webColumn(input, exported, device, [], undefined, { kind: 'proof' }, fake.host);
+        expect(r.compared).toBeGreaterThan(0);
+        const expected: string[] = [];
+        let current: 'light' | 'dark' = 'light';
+        for (const [i, want] of wants(device.target).entries()) {
+          if (want !== current) {
+            expected.push(setting(want), `open ${i}`, `open ${i}`, `open ${i}`);
+            current = want;
+          } else expected.push(`open ${i}`);
+        }
+        if (current !== 'light') expected.push(setting('light'));
+        expect(fake.log.filter((l) => l.startsWith('open') || / appearance (light|dark)$| night (yes|no)$/.test(l))).toEqual(expected);
+        expect(fake.appearance()).toBe(start);
+      } finally {
+        for (const c of fake.contexts) await c.close();
+      }
+    }, 120_000);
+  }
+
+  it('switches and restores the appearance in the scaled and native size modes too, measuring only the assignment the phone drew', async () => {
+    const t = exported.targets.android!;
+    const dark = wants('android').indexOf('dark');
+    const boxes = phoneBoxes(exported, 'android', dark);
+    for (const size of [{ kind: 'scaled' }, { kind: 'native', layout: { assignment: dark, viewport: t.viewport, scale: t.dpr, boxes } }] as const) {
+      const fake = fakeDevice(ANDROID, 'no', 1);
+      try {
+        const r = await webColumn(input, exported, ANDROID, [], undefined, size, fake.host);
+        expect(r.compared).toBeGreaterThan(0);
+        const opens = fake.log.filter((l) => l.startsWith('open'));
+        if (size.kind === 'native') expect(opens).toEqual([`open ${dark}`, `open ${dark}`]);
+        else expect(new Set(opens)).toEqual(new Set(t.assignments.map((_, i) => `open ${i}`)));
+        expect(fake.log).toContain('adb -s emulator-5554 shell cmd uimode night yes');
+        expect(fake.log.at(-4)).toBe('adb -s emulator-5554 shell cmd uimode night no');
+        expect(fake.appearance()).toBe('no');
+      } finally {
+        for (const c of fake.contexts) await c.close();
+      }
+    }
+  }, 120_000);
+
+  it('fails by name when the browser never follows the appearance, and still restores the device and removes what it set up', async () => {
+    const fake = fakeDevice(ANDROID, 'no', Infinity);
+    try {
+      const first = wants('android').indexOf('dark');
+      await expect(webColumn(input, exported, ANDROID, [], undefined, { kind: 'proof' }, fake.host)).rejects.toThrow(`android assignment ${first}: the browser still prefers light ${PREFERENCE_READS} reads after the device's appearance was set to dark`);
+      expect(fake.appearance()).toBe('no');
+      expect(fake.log.slice(-4)).toEqual(['adb -s emulator-5554 shell cmd uimode night no', expect.stringMatching(/^adb -s emulator-5554 reverse --remove tcp:\d+$/), 'adb -s emulator-5554 shell am clear-debug-app', 'adb -s emulator-5554 shell rm -f /data/local/tmp/chrome-command-line']);
+    } finally {
+      for (const c of fake.contexts) await c.close();
+    }
+  }, 120_000);
+
+  it('runs every cleanup step when one throws, and keeps the original error with the cleanup failure attached', async () => {
+    const fake = fakeDevice(ANDROID, 'no', Infinity, (l) => l.includes('reverse --remove'));
+    try {
+      const error = await webColumn(input, exported, ANDROID, [], undefined, { kind: 'proof' }, fake.host).then(() => null, (e: unknown) => e);
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).message).toMatch(/^android assignment \d+: the browser still prefers light .*; and cleanup \(remove the adb reverse\) failed: adb -s emulator-5554 reverse --remove tcp:\d+ failed$/);
+      expect(((error as AggregateError).errors[0] as Error).message).toMatch(/the browser still prefers light/);
+      expect(fake.log.slice(-3)).toEqual([expect.stringMatching(/reverse --remove/), 'adb -s emulator-5554 shell am clear-debug-app', 'adb -s emulator-5554 shell rm -f /data/local/tmp/chrome-command-line']);
+      expect(fake.appearance()).toBe('no');
+    } finally {
+      for (const c of fake.contexts) await c.close();
+    }
+  }, 120_000);
+
+  it('fails a run that succeeded when a cleanup step fails, after running every other step', async () => {
+    const fake = fakeDevice(ANDROID, 'no', 0, (l) => l.endsWith('clear-debug-app'));
+    try {
+      await expect(webColumn(input, exported, ANDROID, [], undefined, { kind: 'proof' }, fake.host)).rejects.toThrow('cleanup (restore the debug app) failed: adb -s emulator-5554 shell am clear-debug-app failed');
+      expect(fake.log.at(-1)).toBe('adb -s emulator-5554 shell rm -f /data/local/tmp/chrome-command-line');
+      expect(fake.appearance()).toBe('no');
+    } finally {
+      for (const c of fake.contexts) await c.close();
+    }
+  }, 120_000);
+
+  it('fails by name when the browser posts a result that is not JSON, and serves nothing for a request that names no assignment', async () => {
+    const fake = fakeDevice(ANDROID, 'no', 0);
+    const statuses: number[] = [];
+    const host: WebColumnHost = {
+      ...fake.host,
+      open: (_device, url) => {
+        const u = new URL(url);
+        void (async () => {
+          statuses.push((await fetch(`${u.origin}/page`)).status, (await fetch(`${u.origin}/favicon.ico`)).status);
+          await fetch(`${u.origin}/result?i=${u.searchParams.get('i')}`, { method: 'POST', body: '{"dpr":' });
+        })();
+      },
+    };
+    await expect(webColumn(input, exported, ANDROID, [], undefined, { kind: 'proof' }, host)).rejects.toThrow('android: the browser posted assignment 0\'s result as no JSON');
+    expect(statuses).toEqual([404, 404]);
+    expect(fake.appearance()).toBe('no');
+  });
+
+  it('withCleanup rethrows the body\'s own error untouched when every step succeeds', async () => {
+    const original = new Error('measuring failed');
+    const ran: string[] = [];
+    await expect(withCleanup(async (undo) => {
+      undo('a', () => void ran.push('a'));
+      undo('b', () => void ran.push('b'));
+      throw original;
+    })).rejects.toBe(original);
+    expect(ran).toEqual(['b', 'a']);
+  });
+});
+
+describe('a phone\'s layout is compared by width alone', () => {
+  // Text only where Chrome on this computer draws none: its system fonts are not the phone's.
+  const page = (css: string, text = false): string => JSON.stringify({ version: 'markless.native-style-input/0', component: 'Page', nodes: [{ kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'box' } }, ...(text ? [{ kind: 'text', id: 't0', parent: 'h0', text: 'Hello' }] : [])], css, states: [] });
+  const dependence = (css: string): string[] => marklessHeightDependence(parseMarklessStyleInput(page(css, true)), [], 'system', 'ios', 402, 3, [778, 754]);
+
+  it('names what makes a page\'s layout depend on the viewport\'s height, from the compile', () => {
+    expect(dependence('.box { height: 40px; width: 50%; }')).toEqual([]);
+    expect(dependence('.box { height: 50vh; }')).toEqual(['node html', 'node body', 'node h0']);
+    expect(dependence('html, body { height: 100%; } .box { height: 50%; }')).toEqual(['node html', 'node body', 'node h0']);
+    expect(dependence('.box { font-size: 3vh; }')).toContain('node t0');
+    expect(dependence('@media (min-height: 600px) { .box { height: 60px; } }')).toEqual(['@media (height)']);
+    expect(dependence('@media (orientation: landscape) { .box { height: 60px; } }')).toEqual(['@media (orientation)']);
+  });
+
+  it('passes a width-only page drawn 778 points tall against a browser whose 100vh is 754 CSS px (an iPhone 17\'s app and Safari)', async () => {
+    const text = page('.box { height: 40px; width: 50%; }');
+    const e: MarklessStyleExport = { ...marklessStyleExport(text, 'web-column.json').exported, fontMode: 'system' };
+    const t = e.targets.ios!;
+    expect(t.viewport).toEqual({ width: 402, height: 778 });
+    const fake = fakeDevice(IOS, 'light', 0, () => false, { width: 402, height: 754 });
+    try {
+      const r = await webColumn(parseMarklessStyleInput(text), e, IOS, [], undefined, { kind: 'native', layout: { assignment: 0, viewport: t.viewport, scale: t.dpr, boxes: phoneBoxes(e, 'ios', 0) } }, fake.host);
+      expect(r.size.vh).toBe(754);
+      expect(r.compared).toBeGreaterThan(0);
+      expect(r.rows.filter((x) => !x.pass)).toEqual([]);
+    } finally {
+      for (const c of fake.contexts) await c.close();
+    }
+  }, 120_000);
+
+  it('refuses a page whose layout reads the viewport\'s height by name, before touching the device', async () => {
+    const text = page('.box { height: 50vh; }');
+    const e: MarklessStyleExport = { ...marklessStyleExport(text, 'web-column.json').exported, fontMode: 'system' };
+    const t = e.targets.ios!;
+    const fake = fakeDevice(IOS, 'light', 0);
+    await expect(webColumn(parseMarklessStyleInput(text), e, IOS, [], undefined, { kind: 'native', layout: { assignment: 0, viewport: t.viewport, scale: t.dpr, boxes: phoneBoxes(e, 'ios', 0) } }, fake.host)).rejects.toThrow('ios: the page\'s layout depends on the viewport\'s height through node html, node body, node h0; a phone\'s page area is not its browser\'s 100vh');
+    expect(fake.log).toEqual([]);
+  });
+});

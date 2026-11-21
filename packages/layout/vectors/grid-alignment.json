@@ -159,8 +159,14 @@
     "containIntrinsicHeight": {
      "kind": "none"
     },
+    "textWrapStyle": {
+     "kind": "auto"
+    },
+    "multicol": null,
+    "textBoxTrim": null,
     "grid": null,
     "gridItem": null,
+    "anchor": null,
     "zoom": []
    },
    "strut": null,
@@ -297,8 +303,14 @@
       "containIntrinsicHeight": {
        "kind": "none"
       },
+      "textWrapStyle": {
+       "kind": "auto"
+      },
+      "multicol": null,
+      "textBoxTrim": null,
       "grid": null,
       "gridItem": null,
+      "anchor": null,
       "zoom": []
      },
      "strut": null,
@@ -437,6 +449,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -527,6 +544,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -664,6 +682,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -676,6 +699,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -814,6 +838,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -826,6 +855,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -964,6 +994,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -976,6 +1011,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1117,6 +1153,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -1207,6 +1248,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -1344,6 +1386,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -1356,6 +1403,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1494,6 +1542,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -1506,6 +1559,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -1647,6 +1701,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -1737,6 +1796,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -1874,6 +1934,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -1886,6 +1951,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2024,6 +2090,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -2036,6 +2107,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2177,6 +2249,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -2267,6 +2344,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -2404,6 +2482,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -2416,6 +2499,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2554,6 +2638,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -2566,6 +2655,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2704,6 +2794,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -2716,6 +2811,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -2854,6 +2950,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -2866,6 +2967,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3007,6 +3109,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -3097,6 +3204,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -3234,6 +3342,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -3246,6 +3359,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3384,6 +3498,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -3396,6 +3515,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3537,6 +3657,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -3627,6 +3752,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -3764,6 +3890,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -3776,6 +3907,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -3914,6 +4046,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -3926,6 +4063,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -4067,6 +4205,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -4157,6 +4300,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -4294,6 +4438,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -4306,6 +4455,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -4447,6 +4597,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -4537,6 +4692,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -4674,6 +4830,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -4686,6 +4847,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -4827,6 +4989,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -4917,6 +5084,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -5054,6 +5222,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -5066,6 +5239,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -5207,6 +5381,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -5297,6 +5476,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -5434,6 +5614,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -5446,6 +5631,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -5587,6 +5773,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -5673,6 +5864,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -5810,6 +6002,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -5822,6 +6019,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -6003,6 +6201,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -6015,6 +6218,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -6197,6 +6401,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -6209,6 +6418,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -6350,6 +6560,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -6436,6 +6651,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -6572,6 +6788,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -6584,6 +6805,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -6766,6 +6988,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -6778,6 +7005,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -6919,6 +7147,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -6973,6 +7206,7 @@
          "justifyItems": "normal"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -7111,6 +7345,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -7123,6 +7362,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -7263,6 +7503,11 @@
         "containIntrinsicHeight": {
          "kind": "none"
         },
+        "textWrapStyle": {
+         "kind": "auto"
+        },
+        "multicol": null,
+        "textBoxTrim": null,
         "grid": {
          "templateColumns": [
           {
@@ -7341,6 +7586,7 @@
          "justifyItems": "center"
         },
         "gridItem": null,
+        "anchor": null,
         "zoom": []
        },
        "strut": null,
@@ -7479,6 +7725,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -7491,6 +7742,7 @@
            },
            "justifySelf": "start"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -7630,6 +7882,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -7642,6 +7899,7 @@
            },
            "justifySelf": "end"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -7779,6 +8037,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -7791,6 +8054,7 @@
            },
            "justifySelf": "stretch"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -7930,6 +8194,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -7942,6 +8211,7 @@
            },
            "justifySelf": "self-start"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -8081,6 +8351,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -8093,6 +8368,7 @@
            },
            "justifySelf": "self-end"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -8232,6 +8508,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -8244,6 +8525,7 @@
            },
            "justifySelf": "left"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -8383,6 +8665,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -8395,6 +8682,7 @@
            },
            "justifySelf": "right"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -8534,6 +8822,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -8546,6 +8839,7 @@
            },
            "justifySelf": "flex-start"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -8685,6 +8979,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -8697,6 +8996,7 @@
            },
            "justifySelf": "flex-end"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -8834,6 +9134,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -8846,6 +9151,7 @@
            },
            "justifySelf": "normal"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": {
@@ -9029,6 +9335,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -9041,6 +9352,7 @@
            },
            "justifySelf": "center"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -9180,6 +9492,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -9192,6 +9509,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -9328,6 +9646,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -9340,6 +9663,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -9478,6 +9802,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -9490,6 +9819,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -9627,6 +9957,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -9639,6 +9974,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,
@@ -9776,6 +10112,11 @@
           "containIntrinsicHeight": {
            "kind": "none"
           },
+          "textWrapStyle": {
+           "kind": "auto"
+          },
+          "multicol": null,
+          "textBoxTrim": null,
           "grid": null,
           "gridItem": {
            "column": {
@@ -9788,6 +10129,7 @@
            },
            "justifySelf": "auto"
           },
+          "anchor": null,
           "zoom": []
          },
          "strut": null,

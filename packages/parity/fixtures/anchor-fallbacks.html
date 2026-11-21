@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.cb { position: relative; width: 300px; height: 150px; border: 2px solid #000; margin-bottom: 4px; }
+.a { width: 40px; height: 20px; background-color: #ccc; }
+.n1 { margin: 120px 0 0 20px; anchor-name: --low; }
+.n2 { margin: -70px 0 0 250px; anchor-name: --right; }
+.p { position: absolute; background-color: #f88; width: 60px; height: 40px; }
+.f1 { position-anchor: --low; position-area: block-end; position-try-fallbacks: flip-block; }
+.f2 { position-anchor: --right; position-area: right; position-try-fallbacks: flip-inline; }
+.f3 { position-anchor: --right; position-area: bottom span-right; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; }
+.f4 { position-anchor: --low; position-area: bottom; position-try-fallbacks: right, top; }
+.f5 { position-anchor: --low; position-area: bottom; position-try: most-height flip-block, flip-start; }
+.f6 { position-anchor: --right; position-area: right; position-try-fallbacks: flip-start; width: 30px; height: 50px; }
+.f7 { position-anchor: --low; top: anchor(bottom); left: anchor(left); position-try-fallbacks: flip-block; }
+.f8 { position-anchor: --right; position-area: right; position-try: most-width flip-inline, top; }
+.f9 { position-anchor: --low; position-area: block-end; position-try-fallbacks: flip-inline; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c" class="cb"><div data-dragon-id="n1" class="a n1"></div><div data-dragon-id="n2" class="a n2"></div><div data-dragon-id="y1" class="p f1"></div><div data-dragon-id="y2" class="p f2"></div><div data-dragon-id="y3" class="p f3"></div><div data-dragon-id="y4" class="p f4"></div><div data-dragon-id="y5" class="p f5"></div><div data-dragon-id="y6" class="p f6"></div><div data-dragon-id="y7" class="p f7"></div><div data-dragon-id="y8" class="p f8"></div><div data-dragon-id="y9" class="p f9"></div></div>
+</body>
+</html>

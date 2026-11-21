@@ -97,6 +97,13 @@ export type Stretch = { readonly kind: 'stretch' };
 export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
 export type InlineSizeValue = SizeValue | SizeKeyword;
 export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
+/**
+ * css-sizing-4 §3.1: height, min-height and max-height also take stretch, read only on a block-level box in block flow; height also
+ * takes min-content, max-content and fit-content, read only on an absolutely positioned box (css-sizing-3 §3.2: the content's block size).
+ */
+export type BlockSizeValue = SizeValue | Stretch | MinContent | MaxContent | FitContent;
+export type MinBlockSizeValue = MinSizeValue | Stretch;
+export type MaxBlockSizeValue = MaxSizeValue | Stretch;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
 export type PaddingValue = Px | Percent | LengthCalc;
 /**
@@ -126,10 +133,23 @@ export type AspectRatioValue =
   | { readonly kind: 'auto-ratio'; readonly width: number; readonly height: number };
 
 /**
+ * css-inline-3 §5.1-§5.2: which edges of a block container's inline content text-box-trim trims (the block-start edge of its first
+ * line, the block-end edge of its last line), and whether text-box-edge's under edge is alphabetic (the baseline) rather than text
+ * (the font's descent). The over edge is text: the font's ascent (auto and text; cap and ex are refused by the compiler).
+ */
+export type TextBoxTrim = { readonly start: boolean; readonly end: boolean; readonly alphabetic: boolean };
+
+/**
  * display: none subtrees generate no boxes (CSS2 §9.2.4); the compiler omits them from the layout input. inline is the display of an
  * InlineBox only (CSS2 §9.2.2); a LayoutBox is block, flex or grid, or inline-block, inline-flex or inline-grid for an atomic inline
  * among a block container's inline-level children (CSS2 §9.2.4, css-display-3 §2.4).
  */
+/**
+ * css-multicol-1 §3: column-count (0 for auto) and column-width (auto or a px length), not both auto. The engine balances the
+ * columns (column-fill: balance) of a container that holds one inline formatting context, with the gap from columnGap.
+ */
+export type MulticolStyle = { readonly count: number; readonly width: Px | Auto };
+
 export type Display = 'block' | 'flex' | 'grid' | 'inline' | 'inline-block' | 'inline-flex' | 'inline-grid';
 /**
  * CSS2 §9.3.1: relative offsets a box after layout; absolute takes it out of flow (§10.3.7, §10.6.4), and so does fixed, whose
@@ -192,9 +212,20 @@ export type AlignContent =
   | 'baseline'
   | 'start'
   | 'end';
-export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** -webkit-center is <center>'s UA value: lines centre as center does, and block children with no auto margin centre too. */
+export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify' | '-webkit-center';
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
+/**
+ * css-text-4 §5.1 text-wrap-style of a block container, which Blink reads from the block's own style (inline_layout_algorithm.cc
+ * LineBreakStrategy): auto breaks greedily (stable is auto); balance and pretty run Blink's own line-breaking passes (inline.ts
+ * wrapStyleLines), whose penalties read the block's effective zoom (ScoreLineBreaker::SetupParameters). zoom is 1 in the compiler's
+ * input; the environment pass multiplies it by the block's effective zoom (the device pixel ratio times its zoom chain).
+ */
+export type TextWrapStyle =
+  | Auto
+  | { readonly kind: 'balance'; readonly zoom: number }
+  | { readonly kind: 'pretty'; readonly zoom: number };
 /**
  * css-text-3 §8.1 text-indent: <length-percentage>, negative allowed, on the first formatted line of a block container. A percentage
  * is of the line's available inline size, and of nothing (0) at min-content and max-content (Blink LineBreaker::ComputeTextIndent).
@@ -315,6 +346,65 @@ export type GridItemStyle = {
   readonly justifySelf: 'auto' | GridSelfAlign;
 };
 
+/** css-anchor-position-1 §3.1.2: one physical track of the position-area grid: before the anchor, the anchor's own, or after it. */
+export type AreaTrack = 'start' | 'center' | 'end';
+
+/**
+ * css-anchor-position-1 §3.1: the physical region of the position-area grid, the rows (top to bottom) and the columns (left to
+ * right) it spans; the compiler resolves the logical keywords against the containing block (Blink PositionArea::ToPhysical).
+ */
+export type PositionArea = { readonly rowStart: AreaTrack; readonly rowEnd: AreaTrack; readonly columnStart: AreaTrack; readonly columnEnd: AreaTrack };
+
+/** css-anchor-position-1 §3.2: anchor() in an inset, a position along the anchor box in its physical axis (0 the top or left edge, 1 the bottom or right). */
+export type AnchorEdge = { readonly anchor: string; readonly fraction: number };
+
+/** css-anchor-position-1 §5.1: anchor-size(), the anchor box's width or height. */
+export type AnchorSizeRef = { readonly anchor: string; readonly axis: 'width' | 'height' };
+
+/** The self-alignment an anchored box takes in one axis: normal (the position-area's default, §4.1) or anchor-center (§4.2). */
+export type AnchorSelfAlign = 'normal' | 'anchor-center';
+
+/**
+ * css-anchor-position-1 §6: one position option, the accepted @position-try properties in physical terms. An inset, margin or size
+ * whose anchor field is not null is that anchor() or anchor-size(); otherwise its value is the length.
+ */
+export type AnchorOption = {
+  readonly area: PositionArea | null;
+  readonly top: InsetValue;
+  readonly right: InsetValue;
+  readonly bottom: InsetValue;
+  readonly left: InsetValue;
+  readonly topAnchor: AnchorEdge | null;
+  readonly rightAnchor: AnchorEdge | null;
+  readonly bottomAnchor: AnchorEdge | null;
+  readonly leftAnchor: AnchorEdge | null;
+  readonly marginTop: MarginValue;
+  readonly marginRight: MarginValue;
+  readonly marginBottom: MarginValue;
+  readonly marginLeft: MarginValue;
+  readonly width: InlineSizeValue;
+  readonly height: BlockSizeValue;
+  readonly minWidth: InlineSizeValue;
+  readonly minHeight: MinBlockSizeValue;
+  readonly maxWidth: MaxInlineSizeValue;
+  readonly maxHeight: MaxBlockSizeValue;
+  readonly widthAnchor: AnchorSizeRef | null;
+  readonly heightAnchor: AnchorSizeRef | null;
+  readonly minWidthAnchor: AnchorSizeRef | null;
+  readonly minHeightAnchor: AnchorSizeRef | null;
+  readonly maxWidthAnchor: AnchorSizeRef | null;
+  readonly maxHeightAnchor: AnchorSizeRef | null;
+  readonly justifySelf: AnchorSelfAlign;
+  readonly alignSelf: AnchorSelfAlign;
+};
+
+/**
+ * css-anchor-position-1 on an absolutely positioned box: its default anchor box (the target anchor element the compiler found, §2.3),
+ * null when it has none, and its position options, the base style first and then each position-try-fallbacks entry (§6.1), tried in
+ * position-try-order (§6.2, physical).
+ */
+export type AnchorStyle = { readonly anchor: string | null; readonly options: readonly AnchorOption[]; readonly order: 'normal' | 'most-width' | 'most-height' };
+
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
@@ -328,11 +418,11 @@ export type LayoutStyle = {
   readonly direction: Direction;
   readonly boxSizing: BoxSizing;
   readonly width: InlineSizeValue;
-  readonly height: SizeValue;
+  readonly height: BlockSizeValue;
   readonly minWidth: InlineSizeValue;
-  readonly minHeight: MinSizeValue;
+  readonly minHeight: MinBlockSizeValue;
   readonly maxWidth: MaxInlineSizeValue;
-  readonly maxHeight: MaxSizeValue;
+  readonly maxHeight: MaxBlockSizeValue;
   readonly marginTop: MarginValue;
   readonly marginRight: MarginValue;
   readonly marginBottom: MarginValue;
@@ -387,10 +477,17 @@ export type LayoutStyle = {
   readonly containSize: ContainSize;
   readonly containIntrinsicWidth: Px | NoneValue;
   readonly containIntrinsicHeight: Px | NoneValue;
+  readonly textWrapStyle: TextWrapStyle;
+  /** css-multicol-1 §3 on a block container: its columns; null when column-count and column-width are both auto. */
+  readonly multicol: MulticolStyle | null;
+  /** css-inline-3 §5.1 text-box-trim with text-box-edge on a block container whose children are inline-level; null for none. */
+  readonly textBoxTrim: TextBoxTrim | null;
   /** Written for display: grid only; null otherwise. */
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
+  /** css-anchor-position-1: written for an absolutely positioned box placed against an anchor; null otherwise. */
+  readonly anchor: AnchorStyle | null;
   /**
    * ZOOM (css-viewport-1 §5): the zoom of each element from the root down to this one that is not 1, root first; an anonymous box
    * takes its parent's. Its lengths and its text's font sizes and spacings are CSS px at zoom 1, which the environment pass

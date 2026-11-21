@@ -43,7 +43,10 @@ export function vendorFontBytes(file: string): Buffer {
   return readFileSync(repoPath(`${VENDOR_FONTS}${file}`));
 }
 
-export const fontDataUrl = (bytes: Uint8Array): string => `data:font/ttf;base64,${Buffer.from(bytes).toString('base64')}`;
+export const fontDataUrl = (bytes: Uint8Array): string => {
+  const magic = String.fromCharCode(...bytes.subarray(0, 4));
+  return `data:font/${magic === 'wOF2' ? 'woff2' : magic === 'wOFF' ? 'woff' : 'ttf'};base64,${Buffer.from(bytes).toString('base64')}`;
+};
 
 const quoteCss = (s: string): string => `"${s.replace(/["\\]/g, (c) => `\\${c}`)}"`;
 

@@ -12,6 +12,7 @@
     "grammar:gen": "node scripts/gen-css-grammar.ts",
     "libm:capture": "node scripts/capture-libm.ts",
     "ua:capture": "node --conditions=dragon-internal scripts/capture-ua-defaults.ts",
+    "ua:capture-top-layer": "node --conditions=dragon-internal scripts/capture-top-layer-ua.ts",
     "parity:capture": "node --conditions=dragon-internal packages/parity/src/cli/capture.ts",
     "parity:report": "node --conditions=dragon-internal packages/parity/src/cli/report.ts",
     "layout:vectors": "node --conditions=dragon-internal packages/parity/src/cli/vectors.ts",
@@ -44,6 +45,11 @@
     "native:swift": "node packages/translate/src/cli/native.ts swift",
     "native:kotlin": "node packages/translate/src/cli/native.ts kotlin",
     "native:planted": "node packages/translate/src/cli/planted.ts",
+    "markless:style-export": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-export.ts",
+    "markless:native-check": "node --conditions=dragon-internal packages/parity/src/cli/markless-native-check.ts",
+    "markless:any-size": "node --conditions=dragon-internal packages/parity/src/cli/markless-any-size.ts",
+    "markless:style-web-column": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-web-column.ts",
+    "native:style-export": "node --conditions=dragon-internal packages/parity/src/cli/native-style-export.ts",
     "app-screens": "node --conditions=dragon-internal examples/app-screens/tools/check.ts",
     "north-star:check": "node --conditions=dragon-internal examples/music-player/tools/check.ts",
     "north-star:capture": "node --conditions=dragon-internal examples/music-player/tools/capture-chrome.ts",
@@ -81,7 +87,8 @@
     "parity:device-mqr": "node --conditions=dragon-internal packages/parity/src/cli/device-mqr.ts",
     "parity:pointer-vectors": "node --conditions=dragon-internal packages/parity/src/cli/pointer-vectors.ts",
     "parity:resize-capture": "node --conditions=dragon-internal packages/parity/src/cli/resize-capture.ts",
-    "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts"
+    "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts",
+    "markless:style-compare": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-compare.ts"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",

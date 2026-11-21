@@ -10,6 +10,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import { containsDescendants, paintContained } from '../containment.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { isTopLayer } from '../top-layer.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { PaintValues } from './types.ts';
 
@@ -42,6 +43,7 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
       transformed: transformedForStacking(el),
       ...(containsDescendants(el) ? { containsAbsolute: true } : {}),
       ...(backfaceHidden(el) ? { layered: true } : {}),
+      ...(isTopLayer(el) ? { topLayer: true } : {}),
       clips: el !== propagated && keyword(el, 'display') !== 'inline' && (keyword(el, 'overflow-x') !== 'visible' || paintContained(el)),
       text: false,
       children: el.children.flatMap((c): StackNode[] => {
