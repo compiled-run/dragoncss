@@ -14,7 +14,7 @@
 //   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
 //   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
 import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
-import type { SvgPathShape, SvgSegment } from './svg-geometry.ts';
+import type { SvgPathShape, SvgSegment } from './svg-path-types.ts';
 import type { TextMeasurer } from './text.ts';
 import type { LU } from './units.ts';
 import { ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatAdd, floatDiv, floatMul, fromCssPx, fromDouble, intDiv, sub, toPx, truncPxToInt, ZERO } from './units.ts';
