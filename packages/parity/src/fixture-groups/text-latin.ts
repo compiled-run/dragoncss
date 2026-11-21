@@ -20,6 +20,8 @@ export const TEXT_LATIN: readonly FixtureSpec[] = [
   layout('text-ahem-fractional', ['ltr']),
   // TXT1a-2 phase R: faces declared with @font-face (Roboto, and Inter Bold for the UA-bold h1), the font-family:<declared> proof.
   layout('text-latin-declared', ['ltr', 'rtl']),
+  // Text in one face across inline boxes (a link, spans that wrap, a span inside a word), which Blink shapes as one run (InlineNode::ShapeText).
+  layout('text-latin-runs', ['ltr']),
 ];
 
 /** data-dragon-id to postScriptName: the face Chrome must draw each listed element's text with, in both documents. */
@@ -35,6 +37,7 @@ export const TEXT_LATIN_FACES: ReadonlyMap<string, { readonly [id: string]: stri
   ['text-latin-words', { a: LATO, b: LATO, c: INTER, d: LATO, e: LATO }],
   ['text-latin-metrics', { r1: LATO, r2: LATO, r3: INTER, r4: INTER }],
   ['text-latin-declared', { regular: 'Roboto-Regular', wide: 'Roboto-Regular', bold: 'Inter-Bold' }],
+  ['text-latin-runs', { link: LATO, 'link-a': LATO, spans: LATO, 'spans-a': LATO, 'spans-b': LATO, inside: LATO, 'inside-a': LATO }],
 ]);
 
 /**
