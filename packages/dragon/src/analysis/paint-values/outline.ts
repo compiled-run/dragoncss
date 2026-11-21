@@ -183,6 +183,13 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
       refuse(el, 'stacking', `has an outline ${where} ${why}, and Dragon draws native outlines only in the layer of a positioned or transformed box, a z-index or the root, not yet inside a layer made by ${why}`, `Outline a box outside the ${why} box, or outline: none.`, targets, diagnostics, reported);
       continue;
     }
+    const style = paintedOutlineStyle(el) as string;
+    const moved = [...ancestors, el].reverse().find((a) => transformsDescendants(a));
+    if (moved !== undefined && style !== 'solid' && style !== 'double') {
+      const where = moved === el ? 'and has' : `inside ${moved.element.address}, which has`;
+      refuse(el, 'stacking', `has a ${style} outline ${where} ${transformWord(moved)}, and Dragon draws only solid and double outlines inside a transformed layer`, `Use a solid or double outline, or outline: none.`, targets, diagnostics, reported);
+      continue;
+    }
     // A clip: rect() that hides its box hides the box view, and every view inside it (lower/paint/clip.ts clip-rect-empty and -label).
     const hidden = [...ancestors, el].reverse().find((a) => clipHidesBox(a) === true);
     if (hidden !== undefined) {

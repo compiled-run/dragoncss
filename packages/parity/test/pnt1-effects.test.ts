@@ -968,7 +968,7 @@ function modelOut(p: NativeProgram, viewport: { width: number; height: number })
 
 /** The corpus cases outside the model (modelOut), pinned: a change here is a decision, not drift. */
 const OUT = [
-  'alias-paint', 'backface-values', 'backface-values-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
+  'alias-paint', 'backface-values', 'backface-values-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'outline-transform', 'outline-transform-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
   'transform-clip', 'transform-demo', 'transform-direction', 'transform-direction-rtl', 'transform-flex', 'transform-indiv-compose', 'transform-indiv-values', 'transform-indiv-values-rtl', 'transform-matrix', 'transform-nested',
   'transform-origin', 'transform-perspective', 'transform-perspective-rtl', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
   'var-logical-rtl',
@@ -982,7 +982,7 @@ describe('PNT1 outline-layer: outlines paint in their paint layer, as Chrome pai
   const spec = FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures.find((f) => f.id === 'outline-layers');
   if (spec === undefined) throw new Error('no outline-layers fixture');
   it('is the outline-root-hosted plant case', () => {
-    expect(PLANT_CASES['outline-root-hosted']).toEqual(['outline-layers']);
+    expect(PLANT_CASES['outline-root-hosted']).toContain('outline-layers');
   });
   for (const c of casesOf(spec, fixtureInput(spec))) {
     it(`${c.id}: every sample point equals Chrome, outline points included, and the root-hosted twin differs at the plant's rules`, () => {

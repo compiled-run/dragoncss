@@ -188,10 +188,9 @@ describe('outline: the native targets draw every style but auto, the side painte
       expect(outlineErrors(c), css).toEqual([]);
     }
   });
-  it('an outline inside a layer made by opacity, a transform, will-change, isolation or containment is refused on ios by name, on the box itself too; web compiles', () => {
+  it('an outline inside a layer made by opacity, will-change: opacity, isolation or containment is refused on ios by name, on the box itself too; web compiles', () => {
     const groups = [
       ['.q { opacity: 0.5; }', 'opacity: 0.5'],
-      ['.q { transform: translateX(2px); }', 'a transform'],
       ['.q { will-change: opacity; }', 'will-change: opacity'],
       ['.q { isolation: isolate; }', 'isolation: isolate'],
       ['.q { contain: layout; }', 'contain: layout'],
@@ -199,10 +198,10 @@ describe('outline: the native targets draw every style but auto, the side painte
     for (const [css, why] of groups) {
       const inside = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
       const got = errors(inside).filter((d) => d.message.startsWith('b has an outline'));
-      expect(got.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline inside q, which has ${why}, and Dragon draws native outlines only in the layer of a positioned box, a z-index or the root, not yet inside a layer made by ${why}${SUFFIX}`]]);
+      expect(got.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline inside q, which has ${why}, and Dragon draws native outlines only in the layer of a positioned or transformed box, a z-index or the root, not yet inside a layer made by ${why}${SUFFIX}`]]);
       expectCatalogued(got);
       const own = tree(`.q { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'q', ['q'])]);
-      expect(errors(own).filter((d) => d.message.startsWith('q has an outline')).map((d) => d.message), css).toEqual([`q has an outline and has ${why}, and Dragon draws native outlines only in the layer of a positioned box, a z-index or the root, not yet inside a layer made by ${why}${SUFFIX}`]);
+      expect(errors(own).filter((d) => d.message.startsWith('q has an outline')).map((d) => d.message), css).toEqual([`q has an outline and has ${why}, and Dragon draws native outlines only in the layer of a positioned or transformed box, a z-index or the root, not yet inside a layer made by ${why}${SUFFIX}`]);
       // A positioned layer between the box and the group does not lift it out of the group.
       const nested = tree(`.b { height: 5px; outline: 2px solid red; } .m { position: relative; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'm', ['m'], [div(r, 'b', ['b'])])])]);
       expect(errors(nested).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0]), css).toEqual(['b has an outline inside q']);
@@ -210,6 +209,23 @@ describe('outline: the native targets draw every style but auto, the side painte
     // Web paints every outline itself.
     const web = tree('.b { height: 5px; outline: 2px solid red; } .q { opacity: 0.5; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])], { web: {} });
     expect(errors(web)).toEqual([]);
+  });
+  it('a solid or double outline inside a 2D transform compiles on ios (its view moves with the layer); a dotted, dashed or 3D one is refused', () => {
+    for (const css of ['.q { transform: scale(0.97); }', '.q { transform: translate(4px, 2px); }', '.q { transform: rotate(8deg); }', '.q { will-change: transform; }', '.q { perspective: 100px; }']) {
+      for (const outline of ['2px solid red', '6px double blue']) {
+        const inside = tree(`.b { height: 5px; outline: ${outline}; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+        expect(errors(inside).filter((d) => d.message.includes('has a') && d.message.includes('outline')), `${css} ${outline}`).toEqual([]);
+        const own = tree(`.q { height: 5px; outline: ${outline}; } ${css}`, (r) => [div(r, 'q', ['q'])]);
+        expect(errors(own).filter((d) => d.message.includes('outline')), `${css} ${outline}`).toEqual([]);
+      }
+    }
+    const dashed = tree('.b { height: 5px; outline: 2px dashed red; } .q { transform: scale(0.97); }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+    const got = errors(dashed).filter((d) => d.message.startsWith('b has a dashed outline'));
+    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `b has a dashed outline inside q, which has a transform, and Dragon draws only solid and double outlines inside a transformed layer${SUFFIX}`]]);
+    expectCatalogued(got);
+    // A transform with opacity is still a layer the outline would have to join the composite of.
+    const both = tree('.b { height: 5px; outline: 2px solid red; } .q { transform: scale(0.97); opacity: 0.85; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+    expect(errors(both).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0])).toEqual(['b has an outline inside q']);
   });
   it("a layer item's own outline is refused when it clips its overflow (its view clips the views it hosts)", () => {
     const c = tree('.q { position: relative; height: 5px; overflow: hidden; outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]);
