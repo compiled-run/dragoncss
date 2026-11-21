@@ -103,4 +103,35 @@ describe('FORM-b select S1', () => {
     expect(errors(compile('sel-dir', 'select { flex-direction: column; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/flex-direction: column on <select> s is not supported/));
     expect(errors(compile('sel-align', 'select { align-items: start; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/align-items: start on <select> s is not supported/));
   });
+
+  // Blink LayoutBox::DefaultIntrinsicContentInlineSize: a select's min-content and max-content widths are its widest option's.
+  it('refuses a percentage width or flex basis that a content-sized box reads, and an intrinsic min-width, max-width or flex basis', () => {
+    const wide = sel('s', '<option>A</option><option>AAAAAAAAAAAAAAAAAAAA</option>');
+    const inside = (css: string, wrap = '', item = ''): string[] => errors(compile('sel-pct', `select { width: 100%; ${item} } ${css}`, wrap === '' ? wide : `<div data-dragon-id="w" class="w">${wrap === 'two' ? `<div data-dragon-id="c" class="c">${wide}</div>` : wide}</div>`));
+    const content = (at: string, why: string): RegExp => new RegExp(`DRAGON_UNSUPPORTED_VALUE width: 100% on <select> s is not supported here: <div> ${at} takes its width from its content \\(${why.replace(/[()]/g, '\\$&')}\\)`);
+    expect(inside('.w { float: left; }', 'one')).toContainEqual(expect.stringMatching(content('w', 'float: left with an auto width')));
+    expect(inside('.w { display: inline-block; }', 'one')).toContainEqual(expect.stringMatching(content('w', 'display: inline-block with an auto width')));
+    expect(inside('.w { width: max-content; }', 'one')).toContainEqual(expect.stringMatching(content('w', 'width: max-content')));
+    expect(inside('.w { position: absolute; left: 0; }', 'one')).toContainEqual(expect.stringMatching(content('w', 'position: absolute with an auto width')));
+    expect(inside('.w { display: flex; width: 300px; } .c { flex: none; min-width: 0; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a flex item with an auto flex basis and width')));
+    expect(inside('.w { display: flex; width: 300px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a row flex item with min-width: auto')));
+    expect(inside('.w { display: flex; flex-direction: column; align-items: start; width: 300px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a column flex item with align-self: start and an auto width')));
+    expect(inside('.w { display: grid; grid-template-columns: auto; width: 300px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a grid item')));
+    // A block with an auto width fills its containing block, so the walk goes on to the shrink-to-fit box around it.
+    expect(inside('.w { float: left; }', 'two')).toContainEqual(expect.stringMatching(content('w', 'float: left with an auto width')));
+    expect(errors(compile('sel-calc', 'select { width: calc(100% - 10px); } .w { display: inline-block; }', `<div data-dragon-id="w" class="w">${wide}</div>`))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE width: calc\(100% - 10px\) on <select> s is not supported here: <div> w takes its width from its content/));
+    expect(errors(compile('sel-grid', '.g { display: grid; width: 300px; } select { width: 50%; }', `<div data-dragon-id="g" class="g">${wide}</div>`))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE width: 50% on <select> s is not supported on a grid item/));
+    expect(errors(compile('sel-basis-pct', '.r { display: inline-flex; } select { flex-basis: 50%; min-width: 0; }', `<div data-dragon-id="r" class="r">${wide}</div>`))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE flex-basis: 50% on <select> s is not supported here: <div> r takes its width from its content \(display: inline-flex with an auto width\)/));
+    expect(errors(compile('sel-basis', '.r { display: flex; } select { flex-basis: content; min-width: 0; }', `<div data-dragon-id="r" class="r">${wide}</div>`))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE flex-basis: content on <select> s is not supported: Chrome takes it from the select's widest option/));
+    expect(errors(compile('sel-min', 'select { min-width: max-content; }', wide))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE min-width: max-content on <select> s is not supported: Chrome sizes a select's content to its widest option/));
+    expect(errors(compile('sel-max', 'select { max-width: fit-content; }', wide))).toContainEqual(expect.stringMatching(/DRAGON_UNSUPPORTED_VALUE max-width: fit-content on <select> s is not supported/));
+    // A percentage of a box whose width its content cannot change is laid out.
+    expect(inside('.w { width: 300px; }', 'two')).toEqual([]);
+    expect(inside('', 'two')).toEqual([]);
+    expect(inside('.w { float: left; width: 200px; }', 'two')).toEqual([]);
+    expect(inside('.w { display: flex; width: 300px; } .c { flex: 1; min-width: 0; }', 'two')).toEqual([]);
+    expect(inside('.w { display: flex; flex-direction: column; width: 300px; }', 'two')).toEqual([]);
+    expect(inside('.w { display: inline-block; width: 200px; }', 'two')).toEqual([]);
+    expect(inside('.p { position: relative; width: 300px; height: 50px; } .w { position: absolute; left: 0; right: 0; }', 'one').filter((e) => e.includes('<select>'))).toEqual([]);
+  });
 });

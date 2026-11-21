@@ -1817,6 +1817,64 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   }
 }
 
+/** css-sizing-3 §3.2: the keywords that size a box from its content. */
+const INTRINSIC_SIZES: ReadonlySet<string> = new Set(['min-content', 'max-content', 'fit-content']);
+
+/** A width's shape for intrinsic sizing: an intrinsic keyword, auto (or stretch), a percentage of the containing block, or a fixed length. */
+function widthShape(v: ResolvedValue): 'intrinsic' | 'auto' | 'percent' | 'fixed' {
+  if (v.value.kind === 'keyword') return INTRINSIC_SIZES.has(v.value.value) ? 'intrinsic' : 'auto';
+  return hasPercentage(v) ? 'percent' : 'fixed';
+}
+
+/**
+ * Where box's used width comes from, for a descendant whose min-content and max-content contributions it may read: fixed (its own
+ * width, or a containing block its content cannot widen), parent (its layout parent's width), or why Chrome sizes it from its content.
+ */
+function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fixed' | 'parent' | string {
+  if (parent === null) return 'fixed';
+  const kw = (p: Longhand): string => keywordOf(box.props.get(p) as ResolvedValue);
+  const width = widthShape(box.props.get('width') as ResolvedValue);
+  for (const p of ['width', 'min-width', 'max-width'] as const) if (INTRINSIC_SIZES.has(kw(p))) return `${p}: ${kw(p)}`;
+  const pos = kw('position');
+  if (pos === 'absolute' || pos === 'fixed') return width === 'auto' && (kw('left') === 'auto' || kw('right') === 'auto') ? `position: ${pos} with an auto width` : 'fixed';
+  const step = (auto: string): 'fixed' | 'parent' | string => (width === 'fixed' ? 'fixed' : width === 'percent' ? 'parent' : auto);
+  if (kw('float') !== 'none') return step(`float: ${kw('float')} with an auto width`);
+  const d = kw('display');
+  if (d === 'table' || d === 'inline-table' || d.startsWith('table-')) return `display: ${d}`;
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid') return step(`display: ${d} with an auto width`);
+  const tag = box.element.tag;
+  if (tag === 'button' || (tag === 'legend' && parent.element.tag === 'fieldset')) return step(tag === 'button' ? 'a button with an auto width' : 'a fieldset legend with an auto width');
+  const pd = keywordOf(parent.props.get('display') as ResolvedValue);
+  if (pd === 'grid' || pd === 'inline-grid') return width === 'fixed' ? 'fixed' : 'a grid item';
+  if (pd === 'flex' || pd === 'inline-flex') {
+    if (keywordOf(parent.props.get('flex-direction') as ResolvedValue).startsWith('column')) {
+      const self = kw('align-self') === 'auto' ? keywordOf(parent.props.get('align-items') as ResolvedValue) : kw('align-self');
+      const stretched = (self === 'stretch' || self === 'normal') && kw('margin-left') !== 'auto' && kw('margin-right') !== 'auto';
+      return step(stretched ? 'parent' : `a column flex item with align-self: ${self} and an auto width`);
+    }
+    const scroller = !['visible', 'clip'].includes(kw('overflow-x'));
+    if (kw('min-width') === 'auto' && !scroller) return 'a row flex item with min-width: auto';
+    const basis = box.props.get('flex-basis') as ResolvedValue;
+    const b = keywordOf(basis);
+    if (b === 'content' || INTRINSIC_SIZES.has(b)) return `a flex item with flex-basis: ${b}`;
+    if (b === 'auto' && width === 'auto') return 'a flex item with an auto flex basis and width';
+    return 'parent';
+  }
+  return step('parent');
+}
+
+/** The first box from the select's layout parent outward whose width Chrome takes from its content, with why, or null. */
+function contentSizedAncestor(chain: readonly ResolvedElement[]): { readonly box: ResolvedElement; readonly why: string } | null {
+  const boxes = chain.filter((a) => !isContents(a));
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const box = boxes[i] as ResolvedElement;
+    const source = widthSource(box, boxes[i - 1] ?? null);
+    if (source === 'fixed') return null;
+    if (source !== 'parent') return { box, why: source };
+  }
+  return null;
+}
+
 /** The text longhands html.css resets on a select as on a button (color to FieldText), and its text-align: start and text-shadow: none. */
 const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue, fieldText: Rgba8) => boolean])[] = [
   ...BUTTON_RESETS,
@@ -1825,7 +1883,7 @@ const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue, fieldText: Rgba
 ];
 
 /** FORM-b S1: a single select with appearance: none (Chrome's menulist, resolve.ts); everything else about one is refused by name. */
-function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
+function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
   const address = el.element.address;
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
     refuseOn(el, v, what, code, targets, diagnostics, reported, message, manual);
@@ -1873,6 +1931,28 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets:
   const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
   const minWidth = el.props.get('min-width') as ResolvedValue;
   if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width', `<select> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from its widest option, which Dragon does not measure`, `Set min-width (0 is fine) on <select> ${address}.`);
+  // Blink LayoutBox::DefaultIntrinsicContentInlineSize: a menulist's min-content and max-content widths are its widest option's
+  // (MenuListIntrinsicInlineSize), and Dragon's inner element holds only the shown one, so every width that reads them is refused.
+  for (const p of ['min-width', 'max-width'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, p, `${p}: ${keywordOf(v)} on <select> ${address} is not supported: Chrome sizes a select's content to its widest option, which Dragon does not measure`, `Give <select> ${address} a ${p} in px or %, or remove it.`);
+  }
+  const rowItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !keywordOf((chain.filter((a) => !isContents(a)).at(-1) as ResolvedElement).props.get('flex-direction') as ResolvedValue).startsWith('column');
+  const basis = el.props.get('flex-basis') as ResolvedValue;
+  const b = keywordOf(basis);
+  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis', `flex-basis: ${b} on <select> ${address} is not supported: Chrome takes it from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
+  const relative = rowItem && b !== 'auto' ? (hasPercentage(basis) ? basis : null) : width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
+  if (relative !== null) {
+    const what = relative === basis ? 'flex-basis' : 'width';
+    const said = `${what}: ${valueToString(relative.value)} on <select> ${address} is not supported`;
+    const sized = contentSizedAncestor(chain);
+    if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') {
+      refuse(relative, 'width-content', `${said} on a grid item: Chrome resolves it against the grid area, whose tracks can be sized from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a ${what} in px.`);
+    } else if (sized !== null) {
+      const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
+      refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, and Dragon does not measure that option`, `Give ${at} a width in px, or give <select> ${address} a ${what} in px.`);
+    }
+  }
   const align = el.props.get('align-items') as ResolvedValue;
   if (valueToString(align.value) !== 'center') refuse(align, 'align-items', `align-items: ${valueToString(align.value)} on <select> ${address} is not supported: only Chrome's center, which centres the label safely, is laid out`, `Remove align-items from <select> ${address}.`);
   const direction = el.props.get('flex-direction') as ResolvedValue;
@@ -2172,7 +2252,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkButton(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'select') {
-      checkSelect(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).ua);
+      checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) {
       checkTextField(el, parentDisplay, targets, diagnostics, reported);
