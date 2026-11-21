@@ -160,6 +160,30 @@ describe('typed slots of a Markless style input', () => {
     expect(() => marklessStyleExport(JSON.stringify(both), PATH, undefined, 'system', undefined, true)).toThrow('ios assignment 0: the slots moved together at [-1,-1] do not give what each gives alone');
   }, 120_000);
 
+  it('binds a slot inside an @if arm in each combination of arms, and lays it out as an export at that value', () => {
+    const armed = (initial: number): string => JSON.stringify({ version: input.version, component: 'App', css: '.bar { height: 10px; background-color: rgb(90 90 90); }', states: [], branches: [{ id: 'branch:0', domain: ['0', 'none'], initial: '0' }], slots: [{ id: 'slot:w', initial }], nodes: [{ kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} }, { kind: 'element', id: 'h1', element: 'div', parent: 'h0', attributes: { class: 'bar' }, arm: { branch: 'branch:0', index: 0 }, styleTemplate: ['width: ', { slot: 'slot:w' }, 'px'] }] });
+    const slotted = marklessStyleExport(armed(120), PATH, undefined, 'system', undefined, true).exported;
+    const concrete = marklessStyleExport(JSON.stringify(filledAtInitial(parseMarklessStyleInput(armed(37.5)))), PATH, undefined, 'system', undefined, true).exported;
+    for (const t of ['ios', 'android'] as const) {
+      const x = slotted.targets[t]!;
+      expect(x.plan!.assignments.map((a) => (a.slotFields ?? []).map(([, node, key]) => `${node} ${key}`))).toEqual(x.assignments.map((a) => (a.nodes.some((n) => n.id === 'h1' && n.frame !== null) ? ['h1 width'] : [])));
+      x.assignments.forEach((a, k) => {
+        const line = { assignment: k, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan, slots: [bitsHex(37.5)] };
+        const out = JSON.parse(runMarklessLayout(JSON.stringify(line))) as unknown[];
+        expect(out[0], JSON.stringify(out)).toBe('ok');
+        const names = new Map(x.planNames?.[k] ?? []);
+        const got = new Map((out[2] as unknown[][]).map((n) => [names.get(n[0] as string) ?? (n[0] as string), decode(n[1])]));
+        for (const n of concrete.targets[t]!.assignments[k]!.nodes) if (n.frame !== null) expect(got.get(n.id), `${t} ${k} ${n.id}`).toEqual(geometry(n)[0]);
+      });
+    }
+  }, 120_000);
+
+  it('refuses slots in an input with @for rows, by name', () => {
+    const rows = JSON.parse(readFileSync(repoPath('examples/markless-styles/input/rows.native-style-input.json'), 'utf8')) as MarklessStyleInput;
+    const both = { ...rows, slots: [{ id: 'slot:w', initial: 1 }], nodes: rows.nodes.map((n) => (n.id === 'h0' ? { ...n, styleTemplate: ['--w: ', { slot: 'slot:w' }] } : n)) };
+    expect(() => parseMarklessStyleInput(JSON.stringify(both))).toThrow('slots and @for rows (repeat:0) in one input are not supported yet: a phone lays rows out with no slot values');
+  });
+
   it('refuses a slot whose value is not a straight line of it, by name', () => {
     // Chrome keeps an rgb() alpha as round(a × 255) clamped, which is neither rule.
     const alpha = { ...input, css: `${input.css}\n.panel { background-color: rgb(10 20 30 / var(--size, 1)); }` };

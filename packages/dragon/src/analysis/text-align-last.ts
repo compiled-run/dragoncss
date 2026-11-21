@@ -15,6 +15,7 @@ function side(value: string, direction: string): string | null {
   const rtl = direction === 'rtl';
   if (value === 'start') return rtl ? 'right' : 'left';
   if (value === 'end') return rtl ? 'left' : 'right';
+  if (value === '-webkit-center') return 'center';
   if (value === 'left' || value === 'right' || value === 'center' || value === 'justify') return value;
   return null;
 }

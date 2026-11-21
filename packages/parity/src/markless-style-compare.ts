@@ -13,7 +13,7 @@ import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { CapturedNode } from './capture.ts';
 import type { MarklessCompiledTarget, MarklessExportAssignment, MarklessFontFile, MarklessFonts, MarklessStyleExport, MarklessStyleInput } from './markless-style-input.ts';
-import { checkMarklessExport, filledAtInitial, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, stateCombinations, valueUnder } from './markless-style-input.ts';
+import { armShown, assignmentCombinations, checkMarklessExport, filledAtInitial, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, valueUnder } from './markless-style-input.ts';
 import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { decodePng } from './pixel-reference.ts';
 import type { SystemFonts } from './system-fonts/provider.ts';
@@ -59,9 +59,11 @@ export function marklessBodyTree(slotted: MarklessStyleInput, values: Values): D
       if (v !== null) attributes.push([name, v]);
     }
     if (attributes.slice(1).some(([name]) => name === 'data-dragon-id')) throw new Error(`${n.id}: data-dragon-id is the comparison's own attribute, so the input cannot set it`);
-    return { element: n.element, namespace, attributes, children: (children.get(n.id) ?? []).map((c) => build(c, namespace)) };
+    return { element: n.element, namespace, attributes, children: shownIn(children.get(n.id)).map((c) => build(c, namespace)) };
   };
-  return (children.get(null) ?? []).map((n) => build(n, HTML_NS));
+  // A node of an arm its branch does not show here is not in the page, as the web leaves it out.
+  const shownIn = (nodes: readonly MarklessStyleInput['nodes'][number][] | undefined): MarklessStyleInput['nodes'][number][] => (nodes ?? []).filter((n) => armShown(input, n.arm, values));
+  return shownIn(children.get(null)).map((n) => build(n, HTML_NS));
 }
 
 /** The body tree once each modal dialog is shown: showModal() adds open="" after the dialog's other attributes. */
@@ -153,7 +155,7 @@ export function checkCoverage(input: MarklessStyleInput, compiled: MarklessCompi
   if (JSON.stringify(t.states) !== JSON.stringify(compiled.states)) throw new Error(`${target}: states ${JSON.stringify(t.states)} are not the input's states${banded ? ' and the band' : ''} ${JSON.stringify(compiled.states)}`);
   if (JSON.stringify(t.bands ?? null) !== JSON.stringify(compiled.bands ?? null)) throw new Error(`${target}: bands ${JSON.stringify(t.bands ?? null)} are not the bands the input's @media compiles to ${JSON.stringify(compiled.bands ?? null)}`);
   const keys = compiled.states.map((s) => s.key);
-  const want = stateCombinations(input).flatMap((c) => (compiled.bands === undefined ? [c] : compiled.bands.bands.map((_, b): Values => ({ ...c, [BAND_KEY]: b }))));
+  const want = assignmentCombinations(input).flatMap((c) => (compiled.bands === undefined ? [c] : compiled.bands.bands.map((_, b): Values => ({ ...c, [BAND_KEY]: b }))));
   const keyOf = (values: Values): string => JSON.stringify(keys.map((k) => values[k]));
   const seen = new Set<string>();
   const extra: Values[] = [];

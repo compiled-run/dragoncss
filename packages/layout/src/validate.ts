@@ -203,7 +203,7 @@ export const styleSchema = obj({
   ),
   rowGap: gap,
   columnGap: gap,
-  textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify'),
+  textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify', '-webkit-center'),
   aspectRatio,
   verticalAlign: tagged({
     keyword: { value: lit('baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom') },

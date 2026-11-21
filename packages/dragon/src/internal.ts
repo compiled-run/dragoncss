@@ -25,7 +25,7 @@ import type { Assignment, Origin, Target } from './types.ts';
 export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
 export type { NativeStyleBlocked, NativeStyleOutput, NativeStyles, NativeStylesConfig, NativeStyleTarget } from './native-styles.ts';
-export { compileNativeStyles, NATIVE_STYLES_VERSION } from './native-styles.ts';
+export { compileNativeStyles, compileNativeStylesWith, NATIVE_STYLES_VERSION } from './native-styles.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
 export { NO_FAULTS } from './faults.ts';
@@ -71,6 +71,8 @@ export { isScalar, isTreeNodeId } from './analysis/input.ts';
 export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
 export { applyTextTransform } from './analysis/text-transform.ts';
 export type { TextTransform } from './analysis/text-transform.ts';
+import type { TextTransform } from './analysis/text-transform.ts';
+import { textTransformOf } from './analysis/text-transform.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
@@ -207,6 +209,21 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
     const color = usedColors(markerStyleOf(item)).color;
     out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
   }
+  return out;
+}
+
+/** Each element's computed text-transform in one case in one @media band (0 without bands), by element address; null when the case did not resolve there. */
+export function resolvedTextTransforms(compiled: object, assignment: Assignment, band: number): ReadonlyMap<string, TextTransform> | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  if (c === undefined || c.resolved === null) return null;
+  const out = new Map<string, TextTransform>();
+  const walk = (el: ResolvedElement): void => {
+    out.set(el.element.address, textTransformOf(el.props));
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
   return out;
 }
 
