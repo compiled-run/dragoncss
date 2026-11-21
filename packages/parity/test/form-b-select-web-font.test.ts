@@ -109,4 +109,9 @@ describe('FORM-b select in a Markless page drawn in Lato WOFF2', () => {
     const listed = parsed.nodes.filter((n) => inSelectOptions(byId, n)).map((n) => n.id);
     expect(listed).toEqual(['h4', 'h4:text0', 'h6', 'h6:text0', 'h9', 'h10', 'h10:text0']);
   });
+  it('plans no rows for a list of the select\'s options, which the closed control does not lay out', () => {
+    const rowed = SELECT.map((n) => (n.id === 'h0' || n.id === 'h3' ? n : { ...n, row: 'repeat:0' }));
+    const out = marklessStyleExport(JSON.stringify({ ...JSON.parse(input(FIELD, rowed)), repeats: [{ id: 'repeat:0', parent: 'h3' }] }), 'select-rows.json', read, 'system', undefined, true);
+    expect(out.exported.targets.ios!.planRepeats ?? []).toEqual([]);
+  });
 });

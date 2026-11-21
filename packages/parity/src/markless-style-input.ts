@@ -794,15 +794,18 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
 
 /**
  * Each list of the input as a phone lays its rows out (harness.ts runMarklessRowsLayout): the box its rows hang from and the ids of
- * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy.
+ * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy. A list
+ * of a select's options has no rows to lay out: the closed control draws only the shown label.
  */
 function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, string>): { readonly id: string; readonly parent: string; readonly template: readonly string[] }[] {
-  return (parsed.repeats ?? []).map((r) => {
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n] as const));
+  return (parsed.repeats ?? []).flatMap((r) => {
     const top = parsed.nodes.filter((n) => n.row === r.id && n.parent === r.parent);
+    if (top.length > 0 && top.every((n) => inSelectOptions(byId, n))) return [];
     const text = top.find((n) => n.kind === 'text');
     if (text !== undefined) fail(`${text.id}: text right inside a row of ${r.id} has no box a phone can copy per row; wrap it in an element`);
     if (top.length === 0) fail(`${r.id}: its rows hold no node`);
-    return { id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) };
+    return [{ id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) }];
   });
 }
 
