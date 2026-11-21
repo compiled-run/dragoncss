@@ -474,7 +474,7 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
         const norm = normalizeSeconds(a.timing);
         const start = Math.max(Math.min(-norm.startDelay, norm.activeDuration), 0);
         const end = Math.max(Math.min(norm.endTime - norm.startDelay, norm.activeDuration), 0);
-        const b = a.event === 'started' ? null : sameAnimation(was, a);
+        const b = sameAnimation(was, a);
         const from = b === null ? null : computeSecondsTiming(b.timing, b.held.seconds, faults);
         const to = computeSecondsTiming(a.timing, a.held.seconds, faults);
         const fromPhase = from === null ? 'none' : from.phase;

@@ -404,6 +404,13 @@ export class Animator {
     this.state = rtAnimator.animatorAdvance(this.state, this.tables, this.inputs, this.initial, ms, this.faults, this.anim);
   }
 
+  /** advance, giving the CSS animation events the step crosses (rt-animator.ts animationEvents). */
+  advanceWithEvents(ms: number): rtAnimator.AnimationEventRecord[] {
+    const before = this.state;
+    this.advance(ms);
+    return rtAnimator.animationEvents(before, this.state, this.tables, this.faults);
+  }
+
   /** Every animated (node, property) value now, transitions and animations, in CSS px and legacy colour. */
   frame(): AnimFrame {
     return frameOf(rtAnimator.animatorFrame(this.state, this.tables, this.faults));
