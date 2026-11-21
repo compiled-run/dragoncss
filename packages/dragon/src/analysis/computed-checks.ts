@@ -1849,10 +1849,21 @@ function refuseScrollInControl(el: ResolvedElement, control: ResolvedElement, ta
   }
 }
 
-/** LayoutFieldset::FindInFlowLegend: a fieldset's first legend child that is neither floated nor out of flow, or null. */
+/**
+ * LayoutFieldset::FindInFlowLegend: a fieldset's first legend among its layout children (display: none skipped, display: contents
+ * looked through, as ios-layout.ts boxChildren lowers them) that is neither floated nor out of flow, or null.
+ */
 export function renderedLegendOf(fieldset: ResolvedElement): ResolvedElement | null {
   for (const c of fieldset.children) {
-    if (c.kind !== 'element' || c.element.tag !== 'legend') continue;
+    if (c.kind !== 'element') continue;
+    const display = keywordOf(c.props.get('display') as ResolvedValue);
+    if (display === 'none') continue;
+    if (display === 'contents') {
+      const inner = renderedLegendOf(c);
+      if (inner !== null) return inner;
+      continue;
+    }
+    if (c.element.tag !== 'legend') continue;
     const pos = keywordOf(c.props.get('position') as ResolvedValue);
     if (keywordOf(c.props.get('float') as ResolvedValue) === 'none' && pos !== 'absolute' && pos !== 'fixed') return c;
   }
@@ -1866,9 +1877,10 @@ export function renderedLegendOf(fieldset: ResolvedElement): ResolvedElement | n
  * with a rendered legend, a painted border, background or box shadow (FieldsetPainter cuts the legend out of the top border and
  * moves the border box to the legend's middle, which no target draws yet).
  */
-function checkFieldset(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkFieldset(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const address = el.element.address;
   const refuse = (on: ResolvedElement, v: ResolvedValue, what: string, message: string, manual: string): void => refuseOn(on, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
+  refuseGridItem(el, parentDisplay, (v, what, message, manual) => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual));
   const prop = (on: ResolvedElement, p: Longhand): ResolvedValue => on.props.get(p) as ResolvedValue;
   const display = keywordOf(prop(el, 'display'));
   if (display !== 'block') {
@@ -1905,6 +1917,25 @@ function checkFieldset(el: ResolvedElement, targets: readonly string[], diagnost
     refuse(el, prop(el, 'background-color'), 'fieldset-legend-background', `the background of <fieldset> ${address} ${paint}`, `Put the background on a wrapper around <fieldset> ${address}.`);
   }
   if (keywordOf(prop(el, 'box-shadow')) !== 'none') refuse(el, prop(el, 'box-shadow'), 'fieldset-legend-shadow', `the box shadow of <fieldset> ${address} ${paint}`, `Put the shadow on a wrapper around <fieldset> ${address}.`);
+}
+
+/**
+ * An absolutely positioned box whose containing block is a fieldset with a rendered legend: Chrome's containing block there is the
+ * fieldset's anonymous contents box, below the legend, which Dragon does not model, so a vertical inset or a percentage height
+ * (which read its top or height) is refused. Without a legend, or with auto vertical insets and sizes, it lays out as Chrome's.
+ */
+function checkInsideFieldset(el: ResolvedElement, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (keywordOf(el.props.get('position') as ResolvedValue) !== 'absolute') return;
+  const cb = [...chain].reverse().find((a) => keywordOf(a.props.get('position') as ResolvedValue) !== 'static');
+  if (cb === undefined || cb.element.tag !== 'fieldset' || keywordOf(cb.props.get('display') as ResolvedValue) !== 'block') return;
+  const legend = renderedLegendOf(cb);
+  if (legend === null) return;
+  const read = (['top', 'bottom', 'height', 'min-height', 'max-height'] as const).find((p) => {
+    const v = el.props.get(p) as ResolvedValue;
+    return p === 'top' || p === 'bottom' ? keywordOf(v) !== 'auto' : v.value.kind === 'percentage';
+  });
+  if (read === undefined) return;
+  refuseOn(el, el.props.get(read) as ResolvedValue, 'fieldset-contents-cb', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${read} on the absolutely positioned ${el.element.address} reads its containing block, the contents of <fieldset> ${cb.element.address} below its rendered legend <legend> ${legend.element.address}, which Dragon does not model yet`, `Position ${el.element.address} against a wrapper inside <fieldset> ${cb.element.address} (position: relative on the wrapper).`);
 }
 
 function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
@@ -1987,7 +2018,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
-    if (!here && el.element.tag === 'fieldset') checkFieldset(el, targets, diagnostics, reported);
+    if (!here && el.element.tag === 'fieldset') checkFieldset(el, parentDisplay, targets, diagnostics, reported);
+    if (!here) checkInsideFieldset(el, chain, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here && el.element.tag === 'button') {
       checkButton(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).ua);

@@ -620,8 +620,10 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   if (isRecord(style)) checkFloat(value, style, path, parentId, errors);
   const children = childrenOf(value, path, errors);
   if (children === null) return;
-  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || isControl));
   const controlKind = isControl && isRecord(value['control']) ? value['control']['kind'] : null;
+  // A fieldset and its legend hold positioned descendants as any block container does; the other controls fence theirs.
+  const fences = isControl && controlKind !== 'fieldset' && controlKind !== 'legend';
+  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || fences));
   // The rendered legend is the one first in-flow legend of its fieldset (block.ts layoutFieldset).
   let legends = 0;
   children.forEach((child: unknown, i: number) => {

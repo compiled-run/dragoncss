@@ -10,6 +10,10 @@ import { both, reject } from './define.ts';
 export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-button-block'),
   both('fieldset-legend'),
+  both('fieldset-positioned'),
+  reject('reject-fieldset-positioned-legend', 'DRAGON_UNSUPPORTED_VALUE', '0', 'top on the absolutely positioned b reads its containing block, the contents of <fieldset> f'),
+  reject('reject-fieldset-grid-item', 'DRAGON_UNSUPPORTED_VALUE', '<fieldset data-dragon-id="f" class="f"></fieldset>', '<fieldset> f is a grid item'),
+  reject('reject-fieldset-legend-contents', 'DRAGON_UNSUPPORTED_VALUE', '2px', 'the top border of <fieldset> f with the rendered legend <legend> l'),
   reject('reject-fieldset-legend-border', 'DRAGON_UNSUPPORTED_VALUE', '2px', 'the top border of <fieldset> f with the rendered legend <legend> l'),
   reject('reject-fieldset-display', 'DRAGON_UNSUPPORTED_VALUE', 'flex', 'display: flex on <fieldset> f is not laid out yet'),
   reject('reject-ua-fieldset-groove', 'DRAGON_UNSUPPORTED_VALUE', '<fieldset data-dragon-id="f"></fieldset>', 'border-top-style, border-right-style, border-bottom-style, border-left-style: groove'),
