@@ -1,0 +1,27 @@
+{
+	"version": "markless.native-style-input/0",
+	"component": "App",
+	"nodes": [
+		{ "kind": "element", "id": "h0", "element": "main", "parent": null, "attributes": { "class": "box" } },
+		{ "kind": "element", "id": "h1", "element": "div", "parent": "h0", "attributes": { "class": "before" } },
+		{
+			"kind": "element",
+			"id": "h2",
+			"element": "div",
+			"parent": "h0",
+			"attributes": { "class": "surface" },
+			"styleByState": [
+				{ "when": { "c0": false }, "template": [] },
+				{ "when": { "c0": true }, "template": ["--x: ", { "slot": "slot:x" }, "px; --y: ", { "slot": "slot:y" }, "px;"] }
+			]
+		},
+		{ "kind": "text", "id": "t0", "parent": "h2", "text": "Menu" },
+		{ "kind": "element", "id": "h3", "element": "div", "parent": "h0", "attributes": { "class": "after" } }
+	],
+	"css": ".box { padding: 8px; }\n.before, .after { height: 30px; background: rgb(200 200 200); }\n.surface { position: fixed; left: var(--x); top: var(--y); width: 120px; padding: 4px; background: rgb(30 90 200); color: white; }",
+	"states": [{ "cell": "c0", "domain": [false, true], "initial": false }],
+	"slots": [
+		{ "id": "slot:x", "initial": 0 },
+		{ "id": "slot:y", "initial": 0 }
+	]
+}
