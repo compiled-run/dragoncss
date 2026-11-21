@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, parseStylesheet, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -220,6 +220,12 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     }
   }
   for (const [id, r] of repeats) if (r.arm !== undefined) checkArm(`repeat ${id}`, r.arm);
+  const listIn = new Map<string | null, string>();
+  for (const [id, r] of repeats) {
+    const other = listIn.get(r.parent);
+    if (other !== undefined) fail(`repeat ${id}: its parent ${r.parent ?? 'body'} holds repeat ${other} too; two lists in one parent are not supported yet`);
+    listIn.set(r.parent, id);
+  }
   const sameArm = (a: MarklessArm, b: MarklessArm): boolean => a.branch === b.branch && a.index === b.index;
   const nodeArm = new Map<string, MarklessArm | undefined>();
   // A node inside an element of an arm sits in that arm too, directly or through a branch nested in it.
@@ -786,15 +792,69 @@ function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, 
   });
 }
 
+type ParsedSelector = ReturnType<typeof parseStylesheet>[number]['selectors'][number];
+type ParsedCompound = ParsedSelector['parts'][number]['compound'];
+type InputElement = Extract<MarklessStyleInput['nodes'][number], { readonly kind: 'element' }>;
+
+/** Whether a compound may match an element in some state: its type, and each class and id it names among those the element takes. */
+function mayMatch(c: ParsedCompound, n: InputElement): boolean {
+  if (c.tag !== null && c.tag !== n.element) return false;
+  const taken = (name: string): Set<string> => {
+    const values = [n.attributes[name], ...(name === 'class' ? (n.classByState ?? []).map((e) => e.value) : []), ...(n.attributesByState?.[name] ?? []).map((e) => e.value)];
+    return new Set(values.flatMap((v) => (typeof v === 'string' ? (name === 'class' ? classTokens(v) : [v]) : [])));
+  };
+  const classes = taken('class');
+  const ids = taken('id');
+  return c.classes.every((x) => classes.has(x)) && c.ids.every((x) => ids.has(x));
+}
+
 /**
- * A phone copies a row's template, so every row must be styled as the template is, whatever its position, and a row's own state
- * must change only its own row. Refuses a style that depends on a row's position (`:first-child`, `:nth-child`, `+`, `~` across
- * rows): the page compiled with two rows written out must style both as the template. Refuses a node outside the rows whose style
- * follows a row's own state (`:has()`).
+ * Refuses a selector, as Dragon parses the input's sheet, that tests where an element sits among the children of a list's parent
+ * (:first-child, :nth-child() and the rest, :only-child, or + and ~ beside it): those children are the rows and their siblings,
+ * whose positions a phone's copies of the template do not see, at any row count.
+ */
+function checkRowPositions(parsed: MarklessStyleInput): void {
+  const parents = new Set((parsed.repeats ?? []).map((r) => r.parent));
+  const children = parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && parents.has(n.parent));
+  const reaches = (c: ParsedCompound): string[] => children.filter((n) => mayMatch(c, n)).map((n) => n.id);
+  // host: the compound an :is(), :not() or "of S" argument's subject stands for.
+  const positional = (sel: ParsedSelector, host: ParsedCompound | null): string[] => {
+    const at = (j: number): ParsedCompound => (j === 0 && host !== null ? host : (sel.parts[j] as ParsedSelector['parts'][number]).compound);
+    return sel.parts.flatMap((p, i) => [
+      ...(p.combinator === '+' || p.combinator === '~' ? [...reaches(at(i)), ...reaches(at(i - 1))] : []),
+      ...p.compound.pseudos.flatMap((ps) => {
+        if (ps.kind === 'nth') return [...reaches(at(i)), ...(ps.of ?? []).flatMap((s) => positional(s, at(i)))];
+        if (ps.kind === 'only') return reaches(at(i));
+        if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => positional(s, at(i)));
+        if (ps.kind === 'has') return ps.selectors.flatMap((s) => [...(s.anchor === '+' || s.anchor === '~' ? reaches(at(i)) : []), ...positional(s, null)]);
+        return [];
+      }),
+    ]);
+  };
+  const ref = { uri: `dragon-source://${PROJECT_ID}/markless/${parsed.component}/component.css`, revision: 'markless', hash: 'sha256:0' };
+  const rules = parseStylesheet(parsed.css, { source: ref, start: 0, end: parsed.css.length }, { id: 'component', owner: DOCUMENT_ID, scope: 'document' }, 0, []);
+  for (const rule of rules) {
+    if (rule.declarations.length === 0) continue;
+    const ids = [...new Set(rule.selectors.filter((sel) => !sel.dropped).flatMap((sel) => positional(sel, null)))];
+    if (ids.length > 0) fail(`a selector tests where ${ids.join(', ')} sits among a list's rows (:first-child, :nth-child(), :only-child, + or ~); a style that depends on a row's position is not supported yet`);
+  }
+}
+
+/** Each combination of the values of the states each row of `repeat` holds for itself. */
+function rowStateCombinations(parsed: MarklessStyleInput, repeat: string): Record<string, StateValue>[] {
+  return parsed.states.filter((st) => st.row === repeat).reduce<Record<string, StateValue>[]>((acc, st) => acc.flatMap((c) => st.domain.map((v) => ({ ...c, [st.cell]: v }))), [{}]);
+}
+
+/**
+ * A phone copies a row's template, so every row must be styled as the template is, whatever its position and the other rows, and a
+ * row's own state must change only its own row. Refuses a selector that tests a row's position (checkRowPositions), and a style
+ * that follows another row: the page compiled with each list's rows written out at each combination of their own states, each
+ * twice, must style each row as the template at those states. Refuses a node outside the rows whose style follows a row's own
+ * state (`:has()`).
  */
 function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: NativeStyleExport, mainStyles: NativeStyles, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
+  checkRowPositions(parsed);
   const rowStates = new Set(parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell));
-  const inRow = parsed.nodes.filter((n) => n.row !== undefined && n.kind === 'element').map((n) => n.id);
   for (const [t, x] of Object.entries(exported.targets)) {
     const byKey = new Map<string, ExportAssignment>();
     // The export's values are still keyed by Dragon's state names here; the input names them by cell.
@@ -812,9 +872,11 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
       for (const n of a.nodes) if (!own.has(n.id) && before.has(n.id) && before.get(n.id) !== JSON.stringify([n.frame, n.writes])) fail(`${t}: ${n.id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
     }
   }
-  const templateStates = Object.fromEntries(parsed.states.filter((st) => st.row !== undefined).map((st) => [st.cell, st.initial]));
-  const twoRows = new Map((parsed.repeats ?? []).map((r) => [r.id, ['r0', 'r1'].map((key): MarklessRow => ({ key, states: templateStates, texts: new Map() }))] as const));
-  const written = marklessWithRows(parsed, twoRows);
+  const rowsOf = new Map((parsed.repeats ?? []).map((r) => {
+    const combos = rowStateCombinations(parsed, r.id);
+    return [r.id, [...combos, ...combos].map((states, k): MarklessRow => ({ key: `r${k}`, states, texts: new Map() }))] as const;
+  }));
+  const written = marklessWithRows(parsed, rowsOf);
   const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at).styles;
   const mainIds = dragonNodeIds(parsed);
   const writtenIds = dragonNodeIds(written);
@@ -850,16 +912,17 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
     if (o === undefined || o.kind !== 'emitted') continue;
     for (const a of o.program.assignments) {
       const values = Object.fromEntries(Object.entries(valuesOf(a.assignment)).map(([k, v]) => [mainKey(k), v]));
-      if (!Object.entries(templateStates).every(([k, v]) => values[k] === v)) continue;
       const template = lookOf(mainStyles, t, mainKey, values);
       const copies = lookOf(writtenStyles, t, writtenKey, Object.fromEntries(Object.entries(values).filter(([k]) => !rowStates.has(k))));
       if (template === null || copies === null) continue;
-      for (const id of inRow) {
-        const own = template.get(mainIds.get(id) as string);
-        if (own === undefined) continue;
-        for (const key of ['r0', 'r1']) {
-          const copy = copies.get(writtenIds.get(`${id}@${key}`) as string);
-          if (copy !== undefined && copy !== own) fail(`${t}: ${id} is styled differently in the ${key === 'r0' ? 'first' : 'second'} of two rows than alone; a style that depends on a row's position (:first-child, :nth-child, +, ~ across rows) is not supported yet`);
+      for (const [list, rows] of rowsOf) {
+        for (const row of rows.filter((r) => Object.entries(r.states).every(([k, v]) => values[k] === v))) {
+          for (const n of parsed.nodes) {
+            if (n.row !== list || n.kind !== 'element') continue;
+            const own = template.get(mainIds.get(n.id) as string);
+            const copy = copies.get(writtenIds.get(`${n.id}@${row.key}`) as string);
+            if (own !== undefined && copy !== undefined && copy !== own) fail(`${t}: ${n.id} is styled differently in row ${row.key} of the ${rows.length} written out than alone at its states ${JSON.stringify(row.states)}; a style that depends on a row's position or on another row (:first-child, :nth-child, +, ~, :has() across rows) is not supported yet`);
+          }
         }
       }
     }

@@ -157,11 +157,88 @@ describe('styled @for rows', () => {
     });
   }
 
+  const withCss = (css: string): string => JSON.stringify({ ...JSON.parse(TEXT), css: `${input.css}\n${css}` });
+
   it('refuses a style that depends on a row\'s position, and a style outside the rows that follows a row\'s own state', () => {
-    const withCss = (css: string): string => JSON.stringify({ ...JSON.parse(TEXT), css: `${input.css}\n${css}` });
     expect(() => marklessStyleExport(withCss('.note:first-child { padding: 30px; }'), PATH, undefined, 'system', undefined, true)).toThrow("a style that depends on a row's position");
     expect(() => marklessStyleExport(withCss('.note + .note { margin-top: 30px; }'), PATH, undefined, 'system', undefined, true)).toThrow("a style that depends on a row's position");
     expect(() => marklessStyleExport(withCss('.page:has(.pinned) { padding: 40px; }'), PATH, undefined, 'system', undefined, true)).toThrow("its style follows a row's own state");
+  });
+
+  it('refuses a position a third row or later first reaches, and a position under a row state other than the initial one', () => {
+    for (const css of ['.note:nth-child(3) { margin-top: 40px; }', '.note:nth-child(n+3) { margin-top: 40px; }', '.note ~ .note ~ .note { margin-top: 40px; }', '.note:not(.pinned):first-child { background: #ff0000; }', '.notes > :is(:nth-last-child(4)) { padding: 30px; }', '.note:has(~ .note:not(.pinned)) { background: #ff0000; }']) {
+      expect(() => marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true), css).toThrow("a style that depends on a row's position");
+    }
+  });
+
+  it('refuses a row styled by another row\'s own state', () => {
+    expect(() => marklessStyleExport(withCss('.notes:has(> .pinned) > .note { background: #ff0000; }'), PATH, undefined, 'system', undefined, true)).toThrow("a style that depends on a row's position or on another row");
+  });
+
+  it('keeps a position test that reaches no child of a list\'s parent', () => {
+    expect(() => marklessStyleExport(withCss('.heading:first-child { margin-top: 0; } .action + .action { margin-top: 4px; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
+  });
+
+  it('refuses two lists in one parent by name', () => {
+    const o = JSON.parse(TEXT) as { repeats: { id: string; parent: string | null }[] };
+    o.repeats.push({ id: 'repeat:1', parent: repeat.parent });
+    expect(() => parseMarklessStyleInput(JSON.stringify(o))).toThrow('two lists in one parent are not supported yet');
+  });
+
+  /** A rows layout line on Android at the page assignment whose row state is `pageOption`, with `extra` replacing parts of it. */
+  function rowsLine(x: NonNullable<typeof exported.targets.android>, pageOption: string, rows: readonly { key: string; option: string; texts: readonly (readonly [string, string])[] }[], extra: (line: Record<string, unknown>) => void = () => {}): string {
+    const at = (option: string): number => x.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === option);
+    const line: Record<string, unknown> = {
+      assignment: at(pageOption),
+      dpr: x.dpr,
+      viewport: x.viewport,
+      safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
+      plan: x.plan,
+      rows: x.planRepeats!.map((r) => ({ parent: r.parent, template: r.template, rows: rows.map((row) => ({ key: row.key, assignment: at(row.option), texts: row.texts })) })),
+    };
+    extra(line);
+    return runMarklessRowsLayout(JSON.stringify(line), systemFontsFor('android', x.dpr).shaper as never);
+  }
+
+  it('paints each row copy\'s dashed borders from the row\'s own assignment, not the page\'s', () => {
+    const x = marklessStyleExport(withCss('.note.pinned.mk-1gmxfth { border-style: dashed; border-radius: 0; }'), PATH, undefined, 'system', undefined, true).exported.targets.android!;
+    const li = x.planRepeats![0]!.template[0]!;
+    for (const page of [pinnedOption(true), pinnedOption(false)]) {
+      const out = JSON.parse(rowsLine(x, page, [{ key: 'a', option: pinnedOption(false), texts: [] }, { key: 'b', option: pinnedOption(true), texts: [] }])) as unknown[];
+      expect(out[0], JSON.stringify(out)).toBe('ok');
+      const ops = new Map((out[2] as unknown[][]).map((n) => [n[0] as string, n[4]]));
+      expect(ops.get(`${li}@a`), `page ${page}, unpinned row`).toBeNull();
+      expect(ops.get(`${li}@b`), `page ${page}, pinned row`).not.toBeNull();
+    }
+  });
+
+  it('refuses by name what the phone cannot lay out as the build does', () => {
+    const x = exported.targets.android!;
+    const page = x.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === rowState.initial);
+    const leaf = new Map((x.planNames?.[page] ?? []).map(([d, m]) => [m, d])).get(titleText) ?? titleText;
+    const some = [{ key: 'a', option: pinnedOption(false), texts: [] }];
+    const one = (texts: readonly (readonly [string, string])[]): { key: string; option: string; texts: readonly (readonly [string, string])[] } => ({ key: 'a', option: pinnedOption(false), texts });
+    const err = (out: string): string => {
+      const v = JSON.parse(out) as unknown[];
+      expect(v[0], out).toBe('harness-error');
+      return v[1] as string;
+    };
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'A']]), { ...one([[leaf, 'B']]), key: 'a' }]))).toContain('row key a is listed twice');
+    expect(err(rowsLine(x, rowState.initial as string, [one([['h6:text0-not-a-leaf', 'A']])]))).toContain('is no text leaf of the row\'s template');
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'A'], [leaf, 'B']])]))).toContain('is given twice');
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, ' Groceries']])]))).toContain('begins with white space');
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'Groceries\n']])]))).toContain('ends with white space');
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, '']])]))).toContain('is empty');
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'a\u200b\nb']])]))).toContain('U+200B');
+    expect(err(rowsLine(x, rowState.initial as string, [one([])], (line) => {
+      const rows = line['rows'] as Record<string, unknown>[];
+      line['rows'] = [rows[0], rows[0]];
+    }))).toContain('holds two lists');
+    expect(err(rowsLine(x, rowState.initial as string, some, (line) => {
+      (line['rows'] as Record<string, unknown>[])[0]!['parent'] = 'no-such-box';
+    }))).toContain('the page has no box no-such-box');
+    const preLine = marklessStyleExport(withCss('.title.mk-1gmxfth { white-space: pre-line; }'), PATH, undefined, 'system', undefined, true).exported.targets.android!;
+    expect(err(rowsLine(preLine, rowState.initial as string, [one([[leaf, 'Water\tthe\r\nplants']])]))).toContain('preserve-breaks');
   });
 
   for (const count of [0, 1, 3]) {
