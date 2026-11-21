@@ -1470,7 +1470,7 @@ function graphemeBreakIn(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, 
 function needsAccurateEnd(ctx: Ctx, box: LayoutBox): boolean {
   const a = box.style.textAlign;
   const rtl = directionOf(ctx, box) === 'rtl';
-  return a === 'end' || a === 'center' || a === 'justify' || (a === 'left' && rtl) || (a === 'right' && !rtl);
+  return a === 'end' || a === 'center' || a === '-webkit-center' || a === 'justify' || (a === 'left' && rtl) || (a === 'right' && !rtl);
 }
 
 /** The next char after item i (skipping tags), or -1 at a <br> or the end. */
@@ -1806,7 +1806,7 @@ function shiftsOf(line: Line, from: number, to: number): number[] {
 function alignOffset(ctx: Ctx, box: LayoutBox, free: LU): LU {
   // A line justify does not expand (the last line, a line ending in a forced break, a full line or one without an expansion
   // opportunity) is start-aligned (Blink ApplyTextAlign, inline_layout_algorithm.cc 902-928, with text-align-last auto).
-  const align = box.style.textAlign === 'justify' ? 'start' : box.style.textAlign;
+  const align = box.style.textAlign === 'justify' ? 'start' : box.style.textAlign === '-webkit-center' ? 'center' : box.style.textAlign;
   const rtl = directionOf(ctx, box) === 'rtl';
   if (free <= 0) return rtl ? free : ZERO;
   const physical = align === 'start' ? (rtl ? 'right' : 'left') : align === 'end' ? (rtl ? 'left' : 'right') : align;

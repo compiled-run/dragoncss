@@ -563,7 +563,7 @@ function lowerStyleFrom(id: string, get: Get, isInitial: IsInitial, faults: Comp
     ], false),
     rowGap: gap(id, get, 'row-gap', l),
     columnGap: gap(id, get, 'column-gap', l),
-    textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify']),
+    textAlign: keyword<TextAlign>(id, get, 'text-align', ['start', 'end', 'left', 'right', 'center', 'justify', '-webkit-center']),
     aspectRatio: aspectRatio(id, get),
     verticalAlign: verticalAlign(id, get, l),
     textOverflow: keyword<TextOverflow>(id, get, 'text-overflow', ['clip', 'ellipsis']),

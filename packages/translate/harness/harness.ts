@@ -1023,7 +1023,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
     alignContent: lit(f('alignContent'), ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly', 'baseline', 'start', 'end'], p('alignContent')) as AlignContent,
     rowGap: gapValue(f('rowGap'), p('rowGap')),
     columnGap: gapValue(f('columnGap'), p('columnGap')),
-    textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify'], p('textAlign')) as TextAlign,
+    textAlign: lit(f('textAlign'), ['start', 'end', 'left', 'right', 'center', 'justify', '-webkit-center'], p('textAlign')) as TextAlign,
     aspectRatio: aspectRatioValue(f('aspectRatio'), p('aspectRatio')),
     verticalAlign: verticalAlignValue(f('verticalAlign'), p('verticalAlign')),
     textOverflow: lit(f('textOverflow'), ['clip', 'ellipsis'], p('textOverflow')) as TextOverflow,

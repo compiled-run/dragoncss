@@ -1,5 +1,5 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Auto, ControlBox, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue } from './input.ts';
+import type { Auto, ControlBox, Direction, LayoutBox, LayoutNode, LayoutStyle, NoneValue, TextAlign } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
 import type { BlockStretch, Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
@@ -546,6 +546,8 @@ export type InlineContainer = {
   readonly lineLeft: LU;
   /** Whether the box establishes a new formatting context, which Blink places in a layout opportunity (LayoutNewFormattingContext). */
   readonly newFormattingContext: boolean;
+  /** The container's text-align, whose -webkit-center also centres a block-level box with no auto margin. */
+  readonly textAlign: TextAlign;
 };
 
 const AUTO: Auto = { kind: 'auto' };
@@ -658,13 +660,16 @@ function placeWithMargins(m: InlineMargins, container: InlineContainer, width: L
   } else if (m.end.auto) {
     usedEnd = sub(sub(available, width), usedStart);
   }
+  // Blink WebkitTextAlignAndJustifySelfOffset: with no auto margin, -webkit-center takes half the free space, clamped at zero. With
+  // no floats the layout opportunity is the containing block, so both placements measure the space against cbInline.
+  const webkit = !m.start.auto && !m.end.auto && container.textAlign === '-webkit-center' ? divInt(clampNegativeToZero(sub(m.cbInline, add(width, inlineSum))), 2) : ZERO;
   let bfcLineOffset: LU;
   if (container.newFormattingContext) {
     bfcLineOffset = rtl
-      ? sub(sub(m.lineRightOffset, sub(usedStart, m.lineRightMargin)), width)
-      : add(m.lineLeftOffset, sub(usedStart, m.lineLeftMargin));
+      ? sub(sub(sub(m.lineRightOffset, webkit), sub(usedStart, m.lineRightMargin)), width)
+      : add(add(m.lineLeftOffset, sub(usedStart, m.lineLeftMargin)), webkit);
   } else {
-    const additional = rtl ? sub(sub(m.cbInline, width), add(usedStart, usedEnd)) : ZERO;
+    const additional = rtl ? sub(sub(sub(m.cbInline, webkit), width), add(usedStart, usedEnd)) : webkit;
     bfcLineOffset = add(add(m.origin, additional), rtl ? usedEnd : usedStart);
   }
   const relative = sub(bfcLineOffset, container.bfcLineOffset);
@@ -811,7 +816,7 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
     // css-multicol-1 §2: a multi-column container establishes a new block formatting context too.
     const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && kid.control.kind === 'button-block') || kid.style.multicol !== null;
-    const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext };
+    const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext, textAlign: box.style.textAlign };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).
       const frag = layoutReplacedInFlow(ctx, kid, a.contentWidth, a.childBasis);
