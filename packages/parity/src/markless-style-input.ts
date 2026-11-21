@@ -305,7 +305,6 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     ids.add(id);
   }
   checkSlots(o['slots'], o['nodes'] as Record<string, unknown>[]);
-  if (o['slots'] !== undefined && repeats.size > 0) fail(`slots and @for rows (${[...repeats.keys()].join(', ')}) in one input are not supported yet: a phone lays rows out with no slot values`);
   return v as MarklessStyleInput;
 }
 
@@ -374,7 +373,7 @@ export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<st
           const v = valueUnder(entries, row.states, t.id);
           if (v !== null) attributes[name] = v;
         }
-        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...place });
+        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...(t.styleTemplate === undefined ? {} : { styleTemplate: t.styleTemplate }), ...place });
       }
     }
   }

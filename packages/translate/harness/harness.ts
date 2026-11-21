@@ -3555,17 +3555,22 @@ function planSlots(plan: JsonObj): PlanSlot[] {
 
 /** The line's slot values, one per slot of the plan; a fraction for an integer slot, which the build sampled at whole numbers only, is refused. */
 function slotValues(o: JsonObj, slots: readonly PlanSlot[]): number[] {
-  const values: number[] = [];
   if (!o.values.has('slots')) {
     if (slots.length > 0) fail('$: the plan has slots and the line gives no values for them');
-    return values;
+    return [];
   }
-  const given = arr(field(o, 'slots', '$'), '$.slots');
-  if (given.length !== slots.length) fail(`$.slots: the line gives ${given.length} values and the plan has ${slots.length} slots`);
-  given.forEach((v, i) => {
-    const s = hexBits(str(v, `$.slots[${i}]`));
+  return slotList(field(o, 'slots', '$'), slots, '$.slots');
+}
+
+/** One value per plan slot, each its bit pattern in hex; a fraction for an integer slot is refused by name. */
+function slotList(v: JsonValue, slots: readonly PlanSlot[], path: string): number[] {
+  const values: number[] = [];
+  const given = arr(v, path);
+  if (given.length !== slots.length) fail(`${path}: the line gives ${given.length} values and the plan has ${slots.length} slots`);
+  given.forEach((g, i) => {
+    const s = hexBits(str(g, `${path}[${i}]`));
     const slot = slots[i] as PlanSlot;
-    if (slot.integer && Number.isFinite(s) && !Number.isInteger(s)) fail(`$.slots: ${slot.id} at ${s} is not a whole number, and it is declared integer (the build sampled it at whole numbers only)`);
+    if (slot.integer && Number.isFinite(s) && !Number.isInteger(s)) fail(`${path}: ${slot.id} at ${s} is not a whole number, and it is declared integer (the build sampled it at whole numbers only)`);
     values.push(s);
   });
   return values;
@@ -3837,7 +3842,9 @@ export function runMarklessLayout(line: string): string {
  */
 export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
   try {
-    return marklessLayout(obj(parseJson(line), ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'], '$'), shaper);
+    const parsed = parseJson(line);
+    const withSlots = parsed.kind === 'obj' && parsed.values.has('slots');
+    return marklessLayout(obj(parsed, withSlots ? ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows', 'slots'] : ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'], '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -3947,7 +3954,7 @@ function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, b
   return { kind: 'obj', keys: v.keys, values };
 }
 
-type RowEntry = { readonly key: string; readonly at: string; readonly parts: PlanAssignmentParts; readonly variant: JsonValue; readonly texts: Map<string, string>; readonly leaves: readonly string[] };
+type RowEntry = { readonly key: string; readonly at: string; readonly parts: PlanAssignmentParts; readonly variant: JsonValue; readonly texts: Map<string, string>; readonly leaves: readonly string[]; readonly values: readonly number[] };
 type RowList = { readonly parent: string; readonly template: readonly string[]; readonly rows: readonly RowEntry[] };
 
 /** The variant's tree with each list's template children replaced by one copy per row, in row order. */
@@ -4026,7 +4033,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density, live);
     const parts = planAssignment(plan, numField(o, 'assignment', '$'));
-    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'));
+    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values);
     const variant = spliced === null ? slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
@@ -4090,18 +4097,30 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
     if (!o.values.has('slots')) return `${out}]]`;
-    out += '],[';
-    parts.writes.forEach((w, i) => {
-      const s = slotAt(values, w.slot, '$.slots');
-      let path = '';
-      w.path.forEach((p, j) => {
-        path += `${j === 0 ? '' : ','}${p.kind === 'str' ? q(p.text) : p.kind === 'num' ? `${p.num}` : 'null'}`;
-      });
-      const rule = w.pieces[slotPiece(s)] as SlotRule;
-      if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s));
-      out += `${i === 0 ? '' : ','}[${q(w.node)},${q(w.write)},[${path}],${h(slotValue(rule, slotPiece(s), s))}]`;
+    out += `],${writeNumbers(parts, values, '$.slots')}`;
+    if (spliced === null) return `${out}]`;
+    // Each row's write numbers at its own values, for every node of its assignment; the host applies those of its copy.
+    out += ',[';
+    spliced.rows.forEach((row, i) => {
+      out += `${i === 0 ? '' : ','}[${q(row.key)},${writeNumbers(row.parts, row.values, `${row.at}.slots`)}]`;
     });
     return `${out}]]`;
+}
+
+/** Every bound write number of an assignment at these slot values: [[node, write kind, path, value], ...]. */
+function writeNumbers(parts: PlanAssignmentParts, values: readonly number[], at: string): string {
+  let out = '[';
+  parts.writes.forEach((w, i) => {
+    const s = slotAt(values, w.slot, at);
+    let path = '';
+    w.path.forEach((p, j) => {
+      path += `${j === 0 ? '' : ','}${p.kind === 'str' ? q(p.text) : p.kind === 'num' ? `${p.num}` : 'null'}`;
+    });
+    const rule = w.pieces[slotPiece(s)] as SlotRule;
+    if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s));
+    out += `${i === 0 ? '' : ','}[${q(w.node)},${q(w.write)},[${path}],${h(slotValue(rule, slotPiece(s), s))}]`;
+  });
+  return `${out}]`;
 }
 
 /** Whether `s` holds the character `c`. */
@@ -4110,14 +4129,21 @@ function holds(s: string, c: string): boolean {
   return false;
 }
 
-type RowsVariant = { readonly variant: PlanVariant; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean> };
+type RowsVariant = { readonly variant: PlanVariant; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly rows: readonly RowEntry[] };
+
+/** Whether the plan's style reads slots. */
+function slotted(plan: JsonObj): boolean {
+  return planSlots(plan).length > 0;
+}
 
 /** The page variant with each list's rows in place of its template ($.rows), with the page's and each row copy's dashed borders and scrolling. */
-function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue): RowsVariant {
+function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[]): RowsVariant {
+  const slots = planSlots(plan);
   const vi = parts.variant;
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
   const lists = new Map<string, RowList>();
   const parents: string[] = [];
+  const all: RowEntry[] = [];
   const given = arr(rowsValue, '$.rows');
   for (let li = 0; li < given.length; li++) {
     const at = `$.rows[${li}]`;
@@ -4131,7 +4157,9 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
     const entries = arr(field(lo, 'rows', at), `${at}.rows`);
     for (let ri = 0; ri < entries.length; ri++) {
       const rat = `${at}.rows[${ri}]`;
-      const ro = obj(entries[ri] as JsonValue, ['key', 'assignment', 'texts'], rat);
+      const withSlots = (entries[ri] as JsonValue).kind === 'obj' && (entries[ri] as JsonObj).values.has('slots');
+      if (withSlots && slots.length === 0) fail(`${rat}.slots: the plan has no slots`);
+      const ro = obj(entries[ri] as JsonValue, withSlots ? ['key', 'assignment', 'texts', 'slots'] : ['key', 'assignment', 'texts'], rat);
       const k = numField(ro, 'assignment', rat);
       if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`${rat}.assignment: ${k} is not an assignment`);
       const texts = new Map<string, string>();
@@ -4150,7 +4178,12 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
       if (keys.has(key)) fail(`${rat}.key: row key ${key} is listed twice`);
       keys.set(key, true);
       const own = planAssignment(plan, k);
-      rows.push({ key, at: rat, parts: own, variant: variantRootJson(plan, own.variant), texts, leaves });
+      // A row's copy takes its own values of the slots its template reads; a row that gives none takes the page's.
+      const rowValues = withSlots ? slotList(field(ro, 'slots', rat), slots, `${rat}.slots`) : values;
+      const variant = slotted(plan) ? slottedRoot(variantRootJson(plan, own.variant), own.fields, own.refusals, rowValues, withSlots ? `${rat}.slots` : '$.slots') : variantRootJson(plan, own.variant);
+      const entry: RowEntry = { key, at: rat, parts: own, variant, texts, leaves, values: rowValues };
+      rows.push(entry);
+      all.push(entry);
     }
     const parent = str(field(lo, 'parent', at), `${at}.parent`);
     if (lists.has(parent)) fail(`${at}.parent: ${parent} holds two lists, which is not supported`);
@@ -4163,8 +4196,9 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   const sink: RowSink = { dashed: new Map<string, PlanDashed>(), scrollers: new Map<string, boolean>(), placed: new Map<string, boolean>() };
   for (const [id, d] of parts.dashed) sink.dashed.set(id, d);
   for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
-  const root = withRows(variantRootJson(plan, vi), lists, sink);
+  const page = slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
+  const root = withRows(page, lists, sink);
   for (const parent of parents) if (!sink.placed.has(parent) && (lists.get(parent) as RowList).rows.length > 0) fail(`$.rows: the page has no box ${parent} to hold its list's rows`);
   if (root.kind !== 'obj' || kindOf(root, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
-  return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers };
+  return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers, rows: all };
 }
