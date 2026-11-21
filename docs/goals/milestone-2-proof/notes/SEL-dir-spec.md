@@ -158,3 +158,11 @@ Approved with the rulings and amendments below. Where they differ from the secti
 - **A12 Markless path:** copy Markless e63329eb8's packages/mobile/proofs/u102-drawer-swipe/native-style-input.json into examples/markless-styles/input/drawer.native-style-input.json, and report its refusals on ios and android before and after, through `pnpm run markless:style-export`.
 - **A13:** Markless follow-ups are not in this PR; the PR body lists them.
 - **A14:** one PR, whose body states the measured reviewed size (outside the .macroscope/ignore.md paths). Split into D1a/D1b only if it is well over 150 KB.
+
+### Implementation notes (confirmed by the coordinator, 2026-11-21)
+
+- The `dir` capture lives in scripts/capture-selector-validity.ts (platform-free); the revert probe shows the isolate is a UA rule, applied after the cascade where `unicode-bidi` is defaulted.
+- `selectors-dir-drawer` carries the offsets 0 and 0.37 as `var()` percentages (`0%`, `±37%`), since Dragon refuses calc() in translate.
+- `dir` is also refused on fieldset, legend and dialog, which no fixture proves.
+- The inline `<span dir=rtl>` isolate is native-refused by checkBidi; its fixture `bidi-dir-attribute-inline` is lane-only on native, and sel-dir.test.ts pins the refusal.
+- No `dirFromEnvironment` fault.
