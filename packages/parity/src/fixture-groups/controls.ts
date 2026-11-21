@@ -5,7 +5,7 @@
 // auto-width flex button in block flow, and an inline element that appearance makes inline-block. A fieldset lays out its rendered
 // legend in its block-start border (HTML §15.3.13); the rejects name the legend cutout paint, a non-block fieldset and the UA groove.
 import type { FixtureSpec } from '../fixtures.ts';
-import { both, reject } from './define.ts';
+import { both, layout, reject } from './define.ts';
 
 export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-button-block'),
@@ -30,9 +30,10 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-button-flex-width', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', '<button> b is a flex button with an auto width in block flow'),
   both('controls-range-block'),
   both('controls-range-flex'),
+  layout('controls-text-field'),
   reject('reject-controls-range-theme', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input type=range> r is painted by the platform theme'),
   reject('reject-controls-range-inline', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', 'display: inline-block on <input> r makes it an inline-level control'),
-  reject('reject-controls-input-text', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="r" type="text">', '<input> r of type text is not supported'),
+  reject('reject-controls-input-password', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="r" type="password" value="XX">', '<input type=password> r is not supported'),
   reject('reject-controls-range-flex-direction', 'DRAGON_UNSUPPORTED_VALUE', 'column', 'flex-direction: column on <input type=range> r is not supported'),
   reject('reject-controls-range-thumb-abspos', 'DRAGON_UNSUPPORTED_VALUE', 'absolute', 'position: absolute on <div> r::thumb inside <input> r'),
   reject('reject-controls-range-part-direction', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'direction on the track of <input> r is not supported'),
