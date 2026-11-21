@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compileNativeStyles, decodeFontFile, isTreeNodeId, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -227,6 +227,12 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     }
   }
   for (const [id, r] of repeats) if (r.arm !== undefined) checkArm(`repeat ${id}`, r.arm);
+  const listIn = new Map<string | null, string>();
+  for (const [id, r] of repeats) {
+    const other = listIn.get(r.parent);
+    if (other !== undefined) fail(`repeat ${id}: its parent ${r.parent ?? 'body'} holds repeat ${other} too; two lists in one parent are not supported yet`);
+    listIn.set(r.parent, id);
+  }
   const sameArm = (a: MarklessArm, b: MarklessArm): boolean => a.branch === b.branch && a.index === b.index;
   const nodeArm = new Map<string, MarklessArm | undefined>();
   // A node inside an element of an arm sits in that arm too, directly or through a branch nested in it.
@@ -453,7 +459,8 @@ export function marklessNodeId(input: MarklessStyleInput, elementId: (id: string
     if (e.kind !== 'element') continue;
     elementOf.set(elementId(e.id), e.id);
     const address = textAddresser(elementId(e.id));
-    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id) textOf.set(address(shownText(c, values)), c.id);
+    // Only the texts this assignment shows are numbered: a sibling in an arm it does not show has no box, so no address.
+    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id && armShown(input, c.arm, values)) textOf.set(address(shownText(c, values)), c.id);
   }
   return (address) => textOf.get(address) ?? rehostAddress(address, (tree) => elementOf.get(tree));
 }
@@ -609,15 +616,15 @@ export const marklessDevices = (parsed: MarklessStyleInput, at?: MarklessAtSize)
   at !== undefined ? at : parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
 
 /** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
-function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
+function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly compiled: object; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
   const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
-  const styles = compileNativeStyles(config, input);
+  const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
-  return { input, styles, devices };
+  return { input, styles, compiled, devices };
 }
 
 /** Dragon keys a state "<instance>#s<k>"; the hosts know the cell. */
@@ -700,7 +707,7 @@ export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: read
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
-  const { input, styles, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
+  const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
   const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
@@ -743,7 +750,9 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       if (have.has(n.id)) return [];
       const byState = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
       // The boxless rule's display: contents !important beats hidden's UA display: none, so a boxless element hides nothing.
-      const own = n.kind === 'element' && n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id));
+      const own = n.kind === 'element'
+        ? n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id))
+        : !armShown(parsed, n.arm, values);
       if (!own && !hiddenHere.has(n.parent ?? '')) return [];
       hiddenHere.add(n.id);
       if (n.kind === 'element' && n.boxless === true) return [];
@@ -766,7 +775,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
-  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, styles, fonts, mode, at);
+  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
   const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
     const out = styles.targets[t as NativeStyleTarget];
     if (out?.kind !== 'emitted' || out.schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment`);
@@ -804,6 +813,118 @@ function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, 
   });
 }
 
+type ParsedRule = ReturnType<typeof parseStylesheet>[number];
+type ParsedSelector = ParsedRule['selectors'][number];
+type ParsedCompound = ParsedSelector['parts'][number]['compound'];
+type InputElement = Extract<MarklessStyleInput['nodes'][number], { readonly kind: 'element' }>;
+
+/** The compounds an element must match, all of them, for one part of a selector; an :is(), :where() or "of S" argument's subject also its host's. */
+type Subject = readonly ParsedCompound[];
+
+/** Part j's subject in `sel`: an argument's subject (j 0) is also its `host`, unless the argument is negated (:not()), when only the host's. */
+function subjectAt(sel: ParsedSelector, host: Subject | null, negated: boolean): (j: number) => Subject {
+  return (j) => {
+    const own = (sel.parts[j] as ParsedSelector['parts'][number]).compound;
+    return j === 0 && host !== null ? (negated ? host : [...host, own]) : [own];
+  };
+}
+
+/** Whether a compound may match an element in some state: its type, and each class and id it names among those the element takes. */
+function mayMatch(c: ParsedCompound, n: InputElement): boolean {
+  if (c.tag !== null && c.tag !== n.element) return false;
+  const taken = (name: string): Set<string> => {
+    const values = [n.attributes[name], ...(name === 'class' ? (n.classByState ?? []).map((e) => e.value) : []), ...(n.attributesByState?.[name] ?? []).map((e) => e.value)];
+    return new Set(values.flatMap((v) => (typeof v === 'string' ? (name === 'class' ? classTokens(v) : [v]) : [])));
+  };
+  const classes = taken('class');
+  const ids = taken('id');
+  return c.classes.every((x) => classes.has(x)) && c.ids.every((x) => ids.has(x));
+}
+
+/**
+ * Refuses a selector, as Dragon parses the input's sheet, that tests where an element sits among the children of a list's parent
+ * (:first-child, :nth-child() and the rest, :only-child, or + and ~ beside it): those children are the rows and their siblings,
+ * whose positions a phone's copies of the template do not see, at any row count.
+ */
+function checkRowPositions(parsed: MarklessStyleInput, rules: readonly ParsedRule[]): void {
+  const parents = new Set((parsed.repeats ?? []).map((r) => r.parent));
+  const children = parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && parents.has(n.parent));
+  const reaches = (c: Subject): string[] => children.filter((n) => c.every((x) => mayMatch(x, n))).map((n) => n.id);
+  const positional = (sel: ParsedSelector, host: Subject | null, negated = false): string[] => {
+    const at = subjectAt(sel, host, negated);
+    return sel.parts.flatMap((p, i) => [
+      ...(p.combinator === '+' || p.combinator === '~' ? [...reaches(at(i)), ...reaches(at(i - 1))] : []),
+      ...p.compound.pseudos.flatMap((ps) => {
+        if (ps.kind === 'nth') return [...reaches(at(i)), ...(ps.of ?? []).flatMap((s) => positional(s, at(i)))];
+        if (ps.kind === 'only') return reaches(at(i));
+        if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => positional(s, at(i), ps.kind === 'not'));
+        if (ps.kind === 'has') return ps.selectors.flatMap((s) => [...(s.anchor === '+' || s.anchor === '~' ? reaches(at(i)) : []), ...positional(s, null)]);
+        return [];
+      }),
+    ]);
+  };
+  for (const rule of rules) {
+    if (rule.declarations.length === 0) continue;
+    const ids = [...new Set(rule.selectors.filter((sel) => !sel.dropped).flatMap((sel) => positional(sel, null)))];
+    if (ids.length > 0) fail(`a selector tests where ${ids.join(', ')} sits among a list's rows (:first-child, :nth-child(), :only-child, + or ~); a style that depends on a row's position is not supported yet`);
+  }
+}
+
+/** The input's sheet as Dragon parses it. */
+function inputRules(parsed: MarklessStyleInput): ParsedRule[] {
+  const ref = { uri: `dragon-source://${PROJECT_ID}/markless/${parsed.component}/component.css`, revision: 'markless', hash: 'sha256:0' };
+  return parseStylesheet(parsed.css, { source: ref, start: 0, end: parsed.css.length }, { id: 'component', owner: DOCUMENT_ID, scope: 'document' }, 0, []);
+}
+
+/** Whether a compound may match the document's own html or body, which hold no classes or ids. */
+const mayMatchDocument = (c: ParsedCompound, tag: 'html' | 'body'): boolean => (c.tag === null || c.tag === tag) && c.classes.length === 0 && c.ids.length === 0;
+
+/**
+ * Refuses a selector that tests whether a list holds rows, or what a row's text holds, which a phone's rows and the build's one
+ * template answer differently: :empty on a list's parent or on a row's element that holds a row's text, or :has() (on any subject)
+ * whose argument may match an element of a row and may reach one from its subject: down from a list's parent or an ancestor, or,
+ * through + or ~, from beside one of those. A :has() on a row's element that only descends stays in that row.
+ */
+function checkRowCount(parsed: MarklessStyleInput, rules: readonly ParsedRule[]): void {
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n] as const));
+  const above = new Set<string | null>();
+  for (const r of parsed.repeats ?? []) {
+    for (let at: string | null = r.parent; ; at = byId.get(at)?.parent ?? null) {
+      above.add(at);
+      if (at === null) break;
+    }
+  }
+  const elements = parsed.nodes.filter((n): n is InputElement => n.kind === 'element');
+  const rowTexts = new Set(parsed.nodes.filter((n) => n.kind === 'text' && n.row !== undefined).map((n) => n.parent));
+  const holders = new Set<string | null>([...(parsed.repeats ?? []).map((r) => r.parent), ...rowTexts]);
+  const beside = new Set(elements.filter((n) => above.has(n.parent)).map((n) => n.id));
+  // null is the document's body, which holds every list; html is above it.
+  const reaches = (c: Subject, ids: ReadonlySet<string | null>, document: boolean): string[] => [...elements.filter((n) => ids.has(n.id) && c.every((x) => mayMatch(x, n))).map((n) => n.id), ...(document && c.every((x) => mayMatchDocument(x, 'body')) ? ['body'] : []), ...(document && c.every((x) => mayMatchDocument(x, 'html')) ? ['html'] : [])];
+  const rowElements = elements.filter((n) => n.row !== undefined);
+  const counted = (sel: ParsedSelector, host: Subject | null, negated = false): string[] => {
+    const at = subjectAt(sel, host, negated);
+    return sel.parts.flatMap((p, i) => p.compound.pseudos.flatMap((ps) => {
+      if (ps.kind === 'empty') return reaches(at(i), holders, holders.has(null));
+      if (ps.kind === 'nth') return (ps.of ?? []).flatMap((s) => counted(s, at(i)));
+      if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => counted(s, at(i), ps.kind === 'not'));
+      if (ps.kind === 'has') {
+        return ps.selectors.flatMap((s) => {
+          const row = s.parts.some((q) => rowElements.some((n) => mayMatch(q.compound, n)));
+          const sideways = s.anchor === '+' || s.anchor === '~' || s.parts.some((q) => q.combinator === '+' || q.combinator === '~');
+          return [...(row ? [...reaches(at(i), above, true), ...(sideways ? reaches(at(i), beside, false) : [])] : []), ...counted(s, null)];
+        });
+      }
+      return [];
+    }));
+  };
+  for (const rule of rules) {
+    if (rule.declarations.length === 0) continue;
+    const ids = [...new Set(rule.selectors.filter((sel) => !sel.dropped).flatMap((sel) => counted(sel, null)))];
+    if (ids.length > 0) fail(`a selector tests whether a list holds rows from ${ids.join(', ')} (:empty, or :has() reaching a row); a style that depends on how many rows a list has, or on a row's text, is not supported yet`);
+  }
+}
+
+/** Each combination of the values of the states each row of `repeat` holds for itself. */
 type StyleProgram = Extract<NonNullable<NativeStyles['targets'][NativeStyleTarget]>, { readonly kind: 'emitted' }>['program'];
 
 /** Each box's layout style and paint writes in a program's assignment `i`, by Dragon id. */
@@ -824,22 +945,42 @@ function lookAt(sp: StyleProgram, i: number): Map<string, string> {
   return out;
 }
 
+function rowStateCombinations(parsed: MarklessStyleInput, repeat: string): Record<string, StateValue>[] {
+  const own = [...parsed.states.filter((st) => st.row === repeat).map((st) => [st.cell, st.domain] as const), ...(parsed.branches ?? []).filter((b) => b.row === repeat).map((b) => [b.id, b.domain] as const)];
+  return own.reduce<Record<string, StateValue>[]>((acc, [id, domain]) => acc.flatMap((c) => domain.map((v) => ({ ...c, [id]: v }))), [{}]);
+}
+
 /**
- * A phone copies a row's template, so every row must be styled as the template is, whatever its position, and a row's own state
- * or branch must change only its own row. Refuses a style that depends on a row's position (`:first-child`, `:nth-child`, `+`, `~`
- * across rows): the page compiled with two rows written out, at each arm of the rows' branches, must style both as the template.
- * Refuses a node outside the rows whose style follows a row's own state or arm (`:has()`). Where boxes sit is not compared: the
- * phone lays the whole page out again with its rows.
+ * A phone copies a row's template, so every row must be styled as the template is, whatever its position and the other rows, and a
+ * row's own state must change only its own row. Refuses a selector that tests a row's position (checkRowPositions), and a style
+ * that follows another row: the page compiled with each list's rows written out at each combination of their own states, each
+ * twice, must style each row as the template at those states. Refuses a node outside the rows whose style follows a row's own
+ * state (`:has()`), a style that follows how many rows a list holds (checkRowCount), and a row's text that the build transforms.
  */
-function checkRows(parsed: MarklessStyleInput, inputPath: string, mainStyles: NativeStyles, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
+function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: NativeStyleExport, mainStyles: NativeStyles, compiled: object, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
+  const rules = inputRules(parsed);
+  checkRowPositions(parsed, rules);
+  const mainIds = dragonNodeIds(parsed);
+  // The build lays out a text transformed (resolve.ts transformRun); a phone gets a row's text as typed.
+  const bands = nativeBands(compiled);
+  for (let band = 0; band < (bands === null ? 1 : bands.table.bands.length); band++) {
+    for (const c of compiledCases(compiled)) {
+      const transforms = resolvedTextTransforms(compiled, c.assignment, band);
+      if (transforms === null) return fail(`a case of ${parsed.component} did not resolve in band ${band}`);
+      for (const n of parsed.nodes) {
+        if (n.kind !== 'text' || n.row === undefined) continue;
+        const transform = transforms.get(mainIds.get(n.parent) as string);
+        if (transform !== undefined && transform !== 'none') fail(`${n.id}: a row's text with text-transform: ${transform}${bands === null ? '' : ` (under ${bands.conditions[band] ?? `band ${band}`})`} is not supported yet; a phone lays out the text it is given`);
+      }
+    }
+  }
   const rowBranches = (parsed.branches ?? []).filter((b) => b.row !== undefined);
   const rowStates = new Set([...parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell), ...rowBranches.map((b) => b.id)]);
-  const inRow = parsed.nodes.filter((n) => n.row !== undefined && n.kind === 'element').map((n) => n.id);
-  const mainIds = dragonNodeIds(parsed);
   const mainKey = cellKey(parsed);
-  const outside = parsed.nodes.filter((n) => n.row === undefined).map((n) => mainIds.get(n.id) as string);
   const valuesAt = (a: { readonly assignment: unknown }, rekey: (k: string) => string): Record<string, unknown> =>
     Object.fromEntries(Object.entries(valuesOf(a.assignment as Parameters<typeof valuesOf>[0])).map(([k, v]) => [rekey(k), v]));
+  // Where boxes sit is not compared: the phone lays the whole page out again with its rows, so a row that grows moves what follows.
+  const outside = parsed.nodes.filter((n) => n.row === undefined).map((n) => mainIds.get(n.id) as string);
   for (const [t, o] of Object.entries(mainStyles.targets)) {
     if (o === undefined || o.kind !== 'emitted') continue;
     const firstOf = new Map<string, Map<string, string>>();
@@ -854,40 +995,41 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, mainStyles: Na
       for (const id of outside) if (first.get(id) !== look.get(id)) fail(`${t}: ${id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
     });
   }
-  const templateStates = Object.fromEntries(parsed.states.filter((st) => st.row !== undefined).map((st) => [st.cell, st.initial]));
-  const armSets = rowBranches.reduce<Record<string, StateValue>[]>((all, b) => all.flatMap((p) => b.domain.map((value) => ({ ...p, [b.id]: value }))), [{}]);
-  for (const arms of armSets) {
-    const rowValues: Record<string, StateValue> = { ...templateStates, ...arms };
-    const twoRows = new Map((parsed.repeats ?? []).map((r) => [r.id, ['r0', 'r1'].map((key): MarklessRow => ({ key, states: rowValues, texts: new Map() }))] as const));
-    const written = marklessWithRows(parsed, twoRows);
-    const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at).styles;
-    const writtenIds = dragonNodeIds(written);
-    const writtenKey = cellKey(written);
-    for (const [t, o] of Object.entries(mainStyles.targets) as [NativeStyleTarget, NativeStyles['targets'][NativeStyleTarget]][]) {
-      const w = writtenStyles.targets[t];
-      if (o === undefined || o.kind !== 'emitted' || w === undefined || w.kind !== 'emitted') continue;
-      o.program.assignments.forEach((a, i) => {
-        const values = valuesAt(a, mainKey);
-        if (!Object.entries(rowValues).every(([k, v]) => values[k] === v)) return;
-        const page = Object.entries(values).filter(([k]) => !rowStates.has(k));
-        const j = w.program.assignments.findIndex((b) => {
-          const there = valuesAt(b, writtenKey);
-          return page.every(([k, v]) => there[k] === v);
-        });
-        if (j < 0) return;
-        const template = lookAt(o.program, i);
-        const copies = lookAt(w.program, j);
-        for (const id of inRow) {
-          const own = template.get(mainIds.get(id) as string);
-          if (own === undefined) continue;
-          for (const key of ['r0', 'r1']) {
-            const copy = copies.get(writtenIds.get(`${id}@${key}`) as string);
-            if (copy !== undefined && copy !== own) fail(`${t}: ${id} is styled differently in the ${key === 'r0' ? 'first' : 'second'} of two rows than alone; a style that depends on a row's position (:first-child, :nth-child, +, ~ across rows) is not supported yet`);
+  const rowsOf = new Map((parsed.repeats ?? []).map((r) => {
+    const combos = rowStateCombinations(parsed, r.id);
+    return [r.id, [...combos, ...combos].map((states, k): MarklessRow => ({ key: `r${k}`, states, texts: new Map() }))] as const;
+  }));
+  const written = marklessWithRows(parsed, rowsOf);
+  const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at).styles;
+  const writtenIds = dragonNodeIds(written);
+  const writtenKey = cellKey(written);
+  for (const t of Object.keys(exported.targets) as NativeStyleTarget[]) {
+    const o = mainStyles.targets[t];
+    const w = writtenStyles.targets[t];
+    if (o === undefined || o.kind !== 'emitted' || w === undefined || w.kind !== 'emitted') continue;
+    o.program.assignments.forEach((a, i) => {
+      const values = valuesAt(a, mainKey);
+      const page = Object.entries(values).filter(([k]) => !rowStates.has(k));
+      const j = w.program.assignments.findIndex((b) => {
+        const there = valuesAt(b, writtenKey);
+        return page.every(([k, v]) => there[k] === v);
+      });
+      if (j < 0) return;
+      const template = lookAt(o.program, i);
+      const copies = lookAt(w.program, j);
+      for (const [list, rows] of rowsOf) {
+        for (const row of rows.filter((r) => Object.entries(r.states).every(([k, v]) => values[k] === v))) {
+          for (const n of parsed.nodes) {
+            if (n.row !== list || n.kind !== 'element') continue;
+            const own = template.get(mainIds.get(n.id) as string);
+            const copy = copies.get(writtenIds.get(`${n.id}@${row.key}`) as string);
+            if (own !== undefined && copy !== undefined && copy !== own) fail(`${t}: ${n.id} is styled differently in row ${row.key} of the ${rows.length} written out than alone at its states ${JSON.stringify(row.states)}; a style that depends on a row's position or on another row (:first-child, :nth-child, +, ~, :has() across rows) is not supported yet`);
           }
         }
-      });
-    }
+      }
+    });
   }
+  checkRowCount(parsed, rules);
 }
 
 type UsedScheme = { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 };
