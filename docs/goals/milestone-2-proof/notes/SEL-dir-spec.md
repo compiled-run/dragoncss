@@ -119,3 +119,42 @@ Each fixture runs in both environment directions (`both(...)`) unless noted. Eve
 3. **Invalid `dir` values:** refuse them (proposed), or model them (inherit, plus `<body>`'s `direction: ltr` hint)?
 4. **The device locale:** `:dir()` follows only `dir`, as in Chrome, and a phone's rtl locale stays out (proposed). Or should Dragon or Markless map the locale to a root `dir`?
 5. **Native proof:** an rtl subtree inside an ltr root is a new mix for native. Do the profiles' rtl direction facet and its device rows cover it, or does `selectors-dir` need its own device rows?
+
+## Judge verdict (2026-11-21)
+
+Approved with the rulings and amendments below. Where they differ from the sections above, they win.
+
+### Rulings
+
+- **Q1 (order):** one PR, in separate commits: the capture table; parse, match and faults; the `dir` attribute with its hint and bidi; the fixtures, then the CI regen.
+- **Q2 (the `[dir]` UA rule):** capture `dir`'s `unicode-bidi` effect per supported tag, plus an origin probe (`<span dir=rtl style='unicode-bidi:revert'>`). Do not hand-copy html.css. Blink may add it as a presentational hint in HTMLElement::CollectStyleForPresentationAttribute, skipping `bdi`, `bdo` and `output`.
+- **Q3 (invalid values):** refuse invalid `dir` values. An enumerated value is not trimmed, so `dir=' rtl'` is invalid.
+- **Q4 (device locale):** `:dir()` follows only `dir`, never the device locale.
+- **Q5 (native proof):** native proof is missing for `fixed-in-*/rtl/cb-ltr` and `fixed-in-*/ltr/cb-rtl`. The fixtures must produce those layout rows.
+
+### Amendments
+
+- **A1 Parse:** the `:dir(...)` corpus goes in scripts/capture-selector-validity.ts, and the parser uses the table for `:dir()` (drop) and the identifiers. `dir` joins the non-functional corpus, so a bare `:dir` drops. `dir` joins escapes.ts PSEUDO_ARGUMENTS.
+- **A2 Invalid fixtures** (this corrects §1 above, which sent them through `chromeInvalid`):
+  - `selectors-dir-invalid` keeps only `:dir()` (dropped, DRAGON_SELECTOR_DROPPED).
+  - `:dir("rtl")`, `:dir(ltr rtl)` and `:dir(ltr, rtl)` become reject fixtures pinned to DRAGON_CSS_PARSE, because css-tree fails to parse them.
+  - `reject-selector-dir-forgiving` pins DRAGON_CSS_PARSE for `:is(:dir("rtl"), .a)`, plus a second case pinned to DRAGON_UNSUPPORTED_SELECTOR for `:is(:dir(), .a)`.
+- **A3 Faults:** no `dirFromDirection`, since the matcher runs before the cascade. Add `dirNotInherited`, where only the element's own `dir` counts; it must fail the inheriting-child and nested-override cases. Add `dirCaseSensitive`, which must fail `dir=RTL`. `dirFromEnvironment` is optional.
+- **A4 Direction hint:**
+  - it sets elementDirection's `undeclared` for the element itself, not the parent's (logical.ts, resolve.ts directionContext);
+  - it carries a stand-in declaration (`presentationHint: true`, span at the attribute), as svg.ts svgHintDeclaration and project.ts presentationHint do, so profile and support checks see it;
+  - `direction: revert` on an element with `dir` rolls back to the parent's direction, and `revert-layer` rolls back to the hint. Test both, or refuse them by name.
+- **A5 Tags:**
+  - accept `dir=ltr|rtl` on the supported non-replaced, non-control HTML tags;
+  - refuse `dir` on `html` (the root; `reject-dir-root`), because Chrome's environment author rule beats the hint;
+  - refuse it on SVG tags, and on controls, replaced tags and `body`, unless a fixture proves them;
+  - the refusal is written by value in project.ts checkTemplates, in every arm.
+- **A6 unicode-bidi:** apply the captured table through the origin Chrome shows (the hint path, or the UA path after the cascade, like applyHidden), and only where `unicode-bidi` is defaulted. The revert probe pins the origin. checkBidi's existing native refusal of an inline `<span dir=rtl>` in an rtl context needs a reject or native-refusal fixture.
+- **A7:** `bidi-dir-attribute` adds `<ul dir=rtl>`, where `padding-inline-start` becomes `padding-right`.
+- **A8 Rounding:** the rtl-inside-ltr fixtures use fractional widths (for example 60% and odd px sizes) at DPR 2, 2.625 and 3. `selectors-dir-drawer` uses `--offset` 0 and a fraction such as 0.37.
+- **A9 Native proof:** `selectors-dir-drawer` runs `both(layout)` with `position: fixed` inside `dir=rtl` under an ltr root, plus its mirror, so ios and android get `fixed-in-block/rtl/cb-ltr` and `fixed-in-block/ltr/cb-rtl` rows.
+- **A10 State:** `tree-selectors-dir-state` gets an arm where the `dir` ancestor flips while a descendant's own `dir=ltr` stays. The native lanes cover the transition.
+- **A11 More `selectors-dir` cases:** `:dir(auto)` matches nothing on an ltr page; `:nth-child(1 of :dir(rtl))`; `:dir(rtl)::before` on an rtl host.
+- **A12 Markless path:** copy Markless e63329eb8's packages/mobile/proofs/u102-drawer-swipe/native-style-input.json into examples/markless-styles/input/drawer.native-style-input.json, and report its refusals on ios and android before and after, through `pnpm run markless:style-export`.
+- **A13:** Markless follow-ups are not in this PR; the PR body lists them.
+- **A14:** one PR, whose body states the measured reviewed size (outside the .macroscope/ignore.md paths). Split into D1a/D1b only if it is well over 150 KB.
