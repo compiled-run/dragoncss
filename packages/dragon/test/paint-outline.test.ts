@@ -219,6 +219,14 @@ describe('outline: the native targets draw every style but auto, the side painte
     // A flow box clipping itself keeps its outline: its paint layer is the root's view.
     expect(errors(tree('.q { height: 5px; overflow: hidden; outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]))).toEqual([]);
   });
+  it('an outline on or inside a box whose clip: rect() hides it is refused on ios (the native targets hide that view, outline included)', () => {
+    const own = tree('.q { position: absolute; width: 5px; height: 5px; clip: rect(0 0 0 0); outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]);
+    const got = errors(own).filter((d) => d.message.startsWith('q has an outline'));
+    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `q has an outline and has a clip: rect() that hides its box, and the native targets hide that box's view, with the outline view inside it${SUFFIX}`]]);
+    expectCatalogued(got);
+    const inside = tree('.q { position: absolute; width: 5px; height: 5px; clip: rect(0 0 0 0); } .b { height: 2px; outline: 2px solid red; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+    expect(errors(inside).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0])).toEqual(["b has an outline inside q"]);
+  });
   it('an outline is refused on ios when a layer item stays under an overflow clip its layer would take it out of', () => {
     const c = tree('.b { height: 5px; outline: 2px solid red; } .p { height: 20px; overflow: hidden; } .r { position: relative; height: 5px; }', (r) => [div(r, 'b', ['b']), div(r, 'p', ['p'], [div(r, 'r', ['r'])])]);
     const got = errors(c).filter((d) => d.message.includes('outline'));

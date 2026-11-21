@@ -12,6 +12,7 @@ import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from '../../lower/paint/colors.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
+import { clipHidesBox } from '../../css/properties/clip-rect.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -176,6 +177,13 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
       const why = groupReason(grouped) as string;
       const where = grouped === el ? 'and has' : `inside ${grouped.element.address}, which has`;
       refuse(el, 'stacking', `has an outline ${where} ${why}, and Dragon draws native outlines only in the layer of a positioned box, a z-index or the root, not yet inside a layer made by ${why}`, `Outline a box outside the ${why} box, or outline: none.`, targets, diagnostics, reported);
+      continue;
+    }
+    // A clip: rect() that hides its box hides the box view, and every view inside it (lower/paint/clip.ts clip-rect-empty and -label).
+    const hidden = [...ancestors, el].reverse().find((a) => clipHidesBox(a) === true);
+    if (hidden !== undefined) {
+      const where = hidden === el ? 'and has' : `inside ${hidden.element.address}, which has`;
+      refuse(el, 'stacking', `has an outline ${where} a clip: rect() that hides its box, and the native targets hide that box's view, with the outline view inside it`, `Outline a box outside the clipped box, or outline: none.`, targets, diagnostics, reported);
       continue;
     }
     if (kept !== undefined) {
