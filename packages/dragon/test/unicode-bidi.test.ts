@@ -24,9 +24,9 @@ function parse(value: string): Diagnostic[] {
 }
 
 /** <div a><div b>XX <span s>YY</span> ZZ</div></div>, with the b text given. */
-function compile(css: string, targets: Targets = { web: {} }, words = 'XX ', direction: 'ltr' | 'rtl' = 'ltr') {
+function compile(css: string, targets: Targets = { web: {} }, words = 'XX ', direction: 'ltr' | 'rtl' = 'ltr', tag = 'span') {
   const input = inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'b', ['b'], [
-    text(r, 't0', words), { ...(div(r, 's', ['s'], [text(r, 't1', 'YY')]) as object), tag: 'span' } as TreeNode, text(r, 't2', ' ZZ'),
+    text(r, 't0', words), { ...(div(r, 's', ['s'], [text(r, 't1', 'YY')]) as object), tag } as TreeNode, text(r, 't2', ' ZZ'),
   ])])]);
   return createProjectWith({ projectId: 'test', targets }, { faults: NO_FAULTS, profiles: 'derive', direction }).compile(input);
 }
@@ -107,5 +107,12 @@ describe('unicode-bidi: native compiles it where Chrome reorders nothing', () =>
     expectCatalogued(errs);
     expect(errors(compile('.b { display: inline; unicode-bidi: normal; }', NATIVE, 'XX ', 'rtl'))).toEqual([]);
     expect(errors(compile('.a { display: inline; } .b { display: inline; }', NATIVE))).toEqual([]);
+  });
+  it("refuses the UA isolate of an <output> in an rtl context, where it is inline from the start, and not over ltr Latin text", () => {
+    const errs = errors(compile('', NATIVE, 'XX ', 'rtl', 'output'));
+    expect(errs.map((d) => [d.code, d.target])).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios'], ['DRAGON_UNSUPPORTED_VALUE', 'android']]);
+    expect(errs[0]?.message.startsWith("The UA's unicode-bidi: isolate on <output> s can reorder its text in Chrome")).toBe(true);
+    expectCatalogued(errs);
+    expect(errors(compile('', NATIVE, 'XX ', 'ltr', 'output'))).toEqual([]);
   });
 });

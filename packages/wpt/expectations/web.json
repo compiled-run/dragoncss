@@ -27757,7 +27757,7 @@
     "css/css-tables/fixup-dynamic-anonymous-inline-table-002.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-tables/fixup-dynamic-anonymous-inline-table-003.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-tables/fixup-dynamic-anonymous-table-001.html": {"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-tables/fractional-percent-width.html": {"missing":"DRAGON_UNSUPPORTED_ELEMENT:<output data-dragon-id=\"log\"></output>","status":"not-runnable"},
+    "css/css-tables/fractional-percent-width.html": {"missing":"DRAGON_UNSUPPORTED_ELEMENT:<table data-dragon-id=\"n16\" width=\"100%\"> <tbody data-dragon-id=\"n17\"> <tr data-","status":"not-runnable"},
     "css/css-tables/height-distribution/computing-row-measure-0.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-tables/height-distribution/computing-row-measure-1.html": {"missing":"kind:testharness-other","status":"not-runnable"},
     "css/css-tables/height-distribution/extra-height-given-to-all-row-groups-001.html": {"missing":"kind:reftest","status":"not-runnable"},
