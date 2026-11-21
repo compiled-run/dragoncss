@@ -13,7 +13,7 @@ import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { CapturedNode } from './capture.ts';
 import type { MarklessCompiledTarget, MarklessExportAssignment, MarklessFontFile, MarklessFonts, MarklessStyleExport, MarklessStyleInput } from './markless-style-input.ts';
-import { armShown, assignmentCombinations, checkMarklessExport, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, valueUnder } from './markless-style-input.ts';
+import { armShown, assignmentCombinations, checkMarklessExport, filledAtInitial, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, valueUnder } from './markless-style-input.ts';
 import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { decodePng } from './pixel-reference.ts';
 import type { SystemFonts } from './system-fonts/provider.ts';
@@ -39,7 +39,8 @@ export const modalIds = (input: MarklessStyleInput): string[] => input.nodes.fil
  * The input's body as one assignment shows it, node for node, each element named by its input id (data-dragon-id), as the DOM
  * calls build it: a dialog the host shows with showModal() has no open attribute until it is shown.
  */
-export function marklessBodyTree(input: MarklessStyleInput, values: Values): DocumentNode[] {
+export function marklessBodyTree(slotted: MarklessStyleInput, values: Values): DocumentNode[] {
+  const input = filledAtInitial(slotted);
   const children = new Map<string | null, MarklessStyleInput['nodes'][number][]>();
   for (const n of input.nodes) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
   const modal = new Set(modalIds(input));
