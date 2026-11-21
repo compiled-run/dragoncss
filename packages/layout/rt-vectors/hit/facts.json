@@ -892,6 +892,8 @@
     "zoom-one-rtl": [["body","auto",true,false],["html","auto",false,false],["ra","auto",true,false],["rb","auto",true,false],["row","auto",true,false],["s1","auto",true,false],["s2","auto",true,false],["s2c","auto",true,false],["s3","auto",true,false],["s4","auto",true,false],["s5","auto",true,false],["s6","auto",true,false],["s7","auto",true,false],["s8","auto",true,false]]
   },
   "refused": {
+    "center-block": "s6 is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)",
+    "center-block-rtl": "s6 is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)",
     "attr-style-visually-hidden": "clip-path on vh: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)",
     "attr-style-visually-hidden-rtl": "clip-path on vh: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)",
     "inline-mixed-sizes": "m1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
