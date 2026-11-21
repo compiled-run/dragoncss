@@ -7,7 +7,8 @@ import { containsDescendants, paintContained } from '../containment.ts';
 import { elementMaskGradient } from '../mask.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
 import { isolates } from '../../css/properties/isolation.ts';
-import { blendModeOf } from '../../css/properties/fx.ts';
+import { blendModeOf, hasBackdropFilter } from '../../css/properties/fx.ts';
+import { filterApplies } from '../../css/properties/filter.ts';
 import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from '../../lower/paint/colors.ts';
@@ -17,7 +18,7 @@ import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
-import { stackingOf, transformedForStacking } from '../../lower/paint/stacking.ts';
+import { stackingOf } from '../../lower/paint/stacking.ts';
 import { isTopLayer } from '../top-layer.ts';
 import { resolvedStackTree } from './stacking.ts';
 import { elementWillChange, transformsDescendants, transformWord } from './transform.ts';
@@ -97,10 +98,11 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
  * transform or opacity, a clip-path, containment, a mask image, isolation: isolate, backface-visibility: hidden, a mix-blend-mode,
  * a filter, or the top layer), or null.
  */
-function groupReason(el: ResolvedElement): string | null {
+function groupReason(el: ResolvedElement, transforms = true): string | null {
   const opacity = opacityOf((el.props.get('opacity') as ResolvedValue).value);
   if (opacity !== null && opacity < 1) return `opacity: ${opacity}`;
-  if (transformsDescendants(el)) return transformWord(el);
+  if (hasBackdropFilter(el.props.get('backdrop-filter')?.value)) return 'a backdrop-filter';
+  if (transforms && transformsDescendants(el)) return transformWord(el);
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
   if (hasClipPath(el)) return 'a clip-path';
   if (containsDescendants(el)) return `contain: ${keywordOf(el, 'contain')}`;
@@ -110,7 +112,8 @@ function groupReason(el: ResolvedElement): string | null {
   const mode = blendModeOf(el.props.get('mix-blend-mode')?.value);
   if (mode !== 'normal') return `mix-blend-mode: ${mode}`;
   if (isTopLayer(el)) return 'the top layer';
-  if (transformedForStacking(el)) return 'a filter';
+  const filter = el.props.get('filter') as ResolvedValue | undefined;
+  if (filter !== undefined && filterApplies(filter.value)) return 'a filter';
   return null;
 }
 
@@ -171,11 +174,12 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
       refuse(el, 'clip', `has an outline inside the overflow clip of ${clip.element.address}, and Dragon draws native outlines in their paint layer's view, outside that clip`, `Move the outline to a box outside ${clip.element.address}, or let ${clip.element.address} overflow visibly.`, targets, diagnostics, reported);
       continue;
     }
-    const grouped = [...ancestors, el].reverse().find((a) => groupReason(a) !== null);
+    // A 2D transform (or will-change: transform, or perspective) moves its view, and the outline view inside it with it.
+    const grouped = [...ancestors, el].reverse().find((a) => groupReason(a, false) !== null);
     if (grouped !== undefined) {
-      const why = groupReason(grouped) as string;
+      const why = groupReason(grouped, false) as string;
       const where = grouped === el ? 'and has' : `inside ${grouped.element.address}, which has`;
-      refuse(el, 'stacking', `has an outline ${where} ${why}, and Dragon draws native outlines only in the layer of a positioned box, a z-index or the root, not yet inside a layer made by ${why}`, `Outline a box outside the ${why} box, or outline: none.`, targets, diagnostics, reported);
+      refuse(el, 'stacking', `has an outline ${where} ${why}, and Dragon draws native outlines only in the layer of a positioned or transformed box, a z-index or the root, not yet inside a layer made by ${why}`, `Outline a box outside the ${why} box, or outline: none.`, targets, diagnostics, reported);
       continue;
     }
     if (kept !== undefined) {
