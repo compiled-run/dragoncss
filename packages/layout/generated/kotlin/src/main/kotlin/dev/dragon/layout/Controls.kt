@@ -12,7 +12,7 @@ fun controls_controlAsBox(c: ControlBox): LayoutBox {
 }
 
 // ts: packages/layout/src/controls.ts:34
-fun controls_controlOf(box: U_ControlBox_LayoutBox): U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb? {
+fun controls_controlOf(box: U_ControlBox_LayoutBox): U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb? {
   return (if (jsStrEq(box.kind, "control")) (box as ControlBox).control else null)
 }
 

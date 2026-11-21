@@ -23,11 +23,11 @@ fun calc_calcHasPercent(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_Ca
     "sum", "product", "min", "max" -> {
       // ts: packages/layout/src/calc.ts:52
       run {
-        val _a5 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-        var _i5 = 0
-        while (_i5 < _a5.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a5[_i5]
-          _i5++
+        val _a7 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+        var _i7 = 0
+        while (_i7 < _a7.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a7[_i7]
+          _i7++
           // ts: packages/layout/src/calc.ts:52
           if (calc_calcHasPercent(t)) {
             return true
@@ -127,11 +127,11 @@ fun calc_evaluateCalc(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_Calc
       var m: Double = calc_evaluateCalc(jsUnwrap(jsAt((e as CalcMin).terms, 0.0)), maxValue, faults)
       // ts: packages/layout/src/calc.ts:114
       run {
-        val _a6 = (e as CalcMin).terms
-        var _i6 = 0
-        while (_i6 < _a6.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a6[_i6]
-          _i6++
+        val _a8 = (e as CalcMin).terms
+        var _i8 = 0
+        while (_i8 < _a8.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a8[_i8]
+          _i8++
           m = units_floatMin(m, calc_evaluateCalc(t, maxValue, faults))
         }
       }
@@ -141,11 +141,11 @@ fun calc_evaluateCalc(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_Calc
       var m: Double = calc_evaluateCalc(jsUnwrap(jsAt((e as CalcMax).terms, 0.0)), maxValue, faults)
       // ts: packages/layout/src/calc.ts:119
       run {
-        val _a7 = (e as CalcMax).terms
-        var _i7 = 0
-        while (_i7 < _a7.size) {
-          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a7[_i7]
-          _i7++
+        val _a9 = (e as CalcMax).terms
+        var _i9 = 0
+        while (_i9 < _a9.size) {
+          val t: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a9[_i9]
+          _i9++
           m = units_floatMax(m, calc_evaluateCalc(t, maxValue, faults))
         }
       }

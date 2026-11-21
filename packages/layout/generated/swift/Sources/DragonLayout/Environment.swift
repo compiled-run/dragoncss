@@ -120,11 +120,11 @@ public func environment_boxNeedsEnvironment(_ b: any U_ControlBox_LayoutBox, _ f
   }
   // ts: packages/layout/src/environment.ts:180
   do {
-    let _a8 = b.children
-    var _i8 = 0
-    while _i8 < _a8.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a8.items[_i8]
-      _i8 += 1
+    let _a10 = b.children
+    var _i10 = 0
+    while _i10 < _a10.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a10.items[_i10]
+      _i10 += 1
       // ts: packages/layout/src/environment.ts:181
       if ((c.kind == S.s_box) || ((c as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         // ts: packages/layout/src/environment.ts:182
@@ -180,11 +180,11 @@ public func environment_inlineNeedsEnvironment(_ c: any U_InlineBox_LineBreak_Te
   }
   // ts: packages/layout/src/environment.ts:204
   do {
-    let _a9 = (c as! InlineBox).children
-    var _i9 = 0
-    while _i9 < _a9.items.count {
-      let k: any U_InlineBox_LineBreak_TextLeaf = _a9.items[_i9]
-      _i9 += 1
+    let _a11 = (c as! InlineBox).children
+    var _i11 = 0
+    while _i11 < _a11.items.count {
+      let k: any U_InlineBox_LineBreak_TextLeaf = _a11.items[_i11]
+      _i11 += 1
       // ts: packages/layout/src/environment.ts:204
       if try environment_inlineNeedsEnvironment(k, faults) {
         return true
@@ -216,11 +216,11 @@ public func environment_styleNeedsEnvironment(_ s: LayoutStyle) throws -> Bool {
   let kinds: JsArray<JsString> = JsArray<JsString>([s.top.kind, s.right.kind, s.bottom.kind, s.left.kind, s.width.kind, s.height.kind, s.minWidth.kind, s.minHeight.kind, s.maxWidth.kind, s.maxHeight.kind, s.marginTop.kind, s.marginRight.kind, s.marginBottom.kind, s.marginLeft.kind, s.paddingTop.kind, s.paddingRight.kind, s.paddingBottom.kind, s.paddingLeft.kind, s.borderTopWidth.kind, s.borderRightWidth.kind, s.borderBottomWidth.kind, s.borderLeftWidth.kind, s.flexBasis.kind, s.rowGap.kind, s.columnGap.kind, s.verticalAlign.kind, s.textIndent.kind])
   // ts: packages/layout/src/environment.ts:224
   do {
-    let _a10 = kinds
-    var _i10 = 0
-    while _i10 < _a10.items.count {
-      let k: JsString = _a10.items[_i10]
-      _i10 += 1
+    let _a12 = kinds
+    var _i12 = 0
+    while _i12 < _a12.items.count {
+      let k: JsString = _a12.items[_i12]
+      _i12 += 1
       // ts: packages/layout/src/environment.ts:224
       if (k == S.s_calc) {
         return true
@@ -230,11 +230,11 @@ public func environment_styleNeedsEnvironment(_ s: LayoutStyle) throws -> Bool {
   let lengths: JsArray<any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch> = JsArray<any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch>([(s.top as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.right as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.bottom as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.left as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.width as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.height as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.minWidth as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.minHeight as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.maxWidth as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.maxHeight as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginTop as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginRight as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginBottom as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.marginLeft as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingTop as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingRight as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingBottom as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.paddingLeft as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.flexBasis as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.rowGap as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.columnGap as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch), (s.textIndent as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch)])
   // ts: packages/layout/src/environment.ts:229
   do {
-    let _a11 = lengths
-    var _i11 = 0
-    while _i11 < _a11.items.count {
-      let v: any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch = _a11.items[_i11]
-      _i11 += 1
+    let _a13 = lengths
+    var _i13 = 0
+    while _i13 < _a13.items.count {
+      let v: any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_NormalValue_Percent_Px_Stretch = _a13.items[_i13]
+      _i13 += 1
       // ts: packages/layout/src/environment.ts:229
       if try ((v.kind == S.s_px) && (!units_inCssLengthRange((v as! Px).value))) {
         return true
@@ -243,11 +243,11 @@ public func environment_styleNeedsEnvironment(_ s: LayoutStyle) throws -> Bool {
   }
   // ts: packages/layout/src/environment.ts:230
   do {
-    let _a12 = JsArray<any U_NoneValue_Px>([s.containIntrinsicWidth, s.containIntrinsicHeight])
-    var _i12 = 0
-    while _i12 < _a12.items.count {
-      let v: any U_NoneValue_Px = _a12.items[_i12]
-      _i12 += 1
+    let _a14 = JsArray<any U_NoneValue_Px>([s.containIntrinsicWidth, s.containIntrinsicHeight])
+    var _i14 = 0
+    while _i14 < _a14.items.count {
+      let v: any U_NoneValue_Px = _a14.items[_i14]
+      _i14 += 1
       // ts: packages/layout/src/environment.ts:230
       if try ((v.kind == S.s_px) && (!units_inCssLengthRange((v as! Px).value))) {
         return true
@@ -263,18 +263,18 @@ public func environment_styleNeedsEnvironment(_ s: LayoutStyle) throws -> Bool {
   if (s.anchor != nil) {
     // ts: packages/layout/src/environment.ts:233
     do {
-      let _a13 = try jsUnwrap(s.anchor).options
-      var _i13 = 0
-      while _i13 < _a13.items.count {
-        let o: AnchorOption = _a13.items[_i13]
-        _i13 += 1
+      let _a15 = try jsUnwrap(s.anchor).options
+      var _i15 = 0
+      while _i15 < _a15.items.count {
+        let o: AnchorOption = _a15.items[_i15]
+        _i15 += 1
         // ts: packages/layout/src/environment.ts:233
         do {
-          let _a14 = try environment_anchorOptionLengths(o)
-          var _i14 = 0
-          while _i14 < _a14.items.count {
-            let v: any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a14.items[_i14]
-            _i14 += 1
+          let _a16 = try environment_anchorOptionLengths(o)
+          var _i16 = 0
+          while _i16 < _a16.items.count {
+            let v: any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a16.items[_i16]
+            _i16 += 1
             // ts: packages/layout/src/environment.ts:233
             if try ((v.kind == S.s_calc) || (((v as! any U_Auto_FitContent_MaxContent_MinContent_NoneValue_Percent_Px_Stretch).kind == S.s_px) && (!units_inCssLengthRange((v as! Px).value)))) {
               return true
@@ -314,8 +314,8 @@ public func environment_resolveChildren(_ children: JsArray<any U_ControlBox_Inl
 // ts: packages/layout/src/environment.ts:257
 public func environment_resolveControl(_ b: ControlBox, _ parent: Env) throws -> ControlBox {
   let env: Env = try environment_atElement(parent, b.id, b.style)
-  let c: any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb = b.control
-  let control: any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb = try ((c.kind == S.s_range) ? (ControlKind_range(S.s_range, controls_zoomTrackLength((c as! ControlKind_range).defaultInlineSize, env.zoom)) as any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb) : (((c as! any U_ControlKind_buttonBlock_ControlKind_sliderThumb) as! any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb) as any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_sliderThumb))
+  let c: any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb = b.control
+  let control: any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb = try ((c.kind == S.s_range) ? (ControlKind_range(S.s_range, controls_zoomTrackLength((c as! ControlKind_range).defaultInlineSize, env.zoom)) as any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb) : (((c as! any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_sliderThumb) as! any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb) as any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_sliderThumb))
   return try ControlBox(S.s_control, b.id, b.boxType, environment_resolveStyle(b.style, env), control, environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
 }
 
@@ -510,11 +510,11 @@ public func environment_trackNeedsEnvironment(_ t: any U_TrackSize_breadth_Track
 public func environment_tracksNeedEnvironment(_ ts: JsArray<any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax>) throws -> Bool {
   // ts: packages/layout/src/environment.ts:461
   do {
-    let _a15 = ts
-    var _i15 = 0
-    while _i15 < _a15.items.count {
-      let t: any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a15.items[_i15]
-      _i15 += 1
+    let _a17 = ts
+    var _i17 = 0
+    while _i17 < _a17.items.count {
+      let t: any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a17.items[_i17]
+      _i17 += 1
       // ts: packages/layout/src/environment.ts:461
       if try environment_trackNeedsEnvironment(t) {
         return true
@@ -532,11 +532,11 @@ public func environment_gridNeedsEnvironment(_ g: GridContainerStyle?) throws ->
   }
   // ts: packages/layout/src/environment.ts:468
   do {
-    let _a16 = try jsUnwrap(g).templateColumns
-    var _i16 = 0
-    while _i16 < _a16.items.count {
-      let r: TrackRepeater = _a16.items[_i16]
-      _i16 += 1
+    let _a18 = try jsUnwrap(g).templateColumns
+    var _i18 = 0
+    while _i18 < _a18.items.count {
+      let r: TrackRepeater = _a18.items[_i18]
+      _i18 += 1
       // ts: packages/layout/src/environment.ts:468
       if try environment_tracksNeedEnvironment(r.sizes) {
         return true
@@ -545,11 +545,11 @@ public func environment_gridNeedsEnvironment(_ g: GridContainerStyle?) throws ->
   }
   // ts: packages/layout/src/environment.ts:469
   do {
-    let _a17 = try jsUnwrap(g).templateRows
-    var _i17 = 0
-    while _i17 < _a17.items.count {
-      let r: TrackRepeater = _a17.items[_i17]
-      _i17 += 1
+    let _a19 = try jsUnwrap(g).templateRows
+    var _i19 = 0
+    while _i19 < _a19.items.count {
+      let r: TrackRepeater = _a19.items[_i19]
+      _i19 += 1
       // ts: packages/layout/src/environment.ts:469
       if try environment_tracksNeedEnvironment(r.sizes) {
         return true
@@ -922,11 +922,11 @@ public func environment_leafPx(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_C
 public func environment_nanIn(_ values: JsArray<Double>) throws -> Double? {
   // ts: packages/layout/src/environment.ts:726
   do {
-    let _a18 = values
-    var _i18 = 0
-    while _i18 < _a18.items.count {
-      let v: Double = _a18.items[_i18]
-      _i18 += 1
+    let _a20 = values
+    var _i20 = 0
+    while _i20 < _a20.items.count {
+      let v: Double = _a20.items[_i20]
+      _i20 += 1
       // ts: packages/layout/src/environment.ts:726
       if (v).isNaN {
         return v
@@ -993,11 +993,11 @@ public func environment_computeDouble(_ e: any U_CalcClamp_CalcInvert_CalcMax_Ca
     var m: Double = try jsUnwrap(jsAt(values, 0.0))
     // ts: packages/layout/src/environment.ts:775
     do {
-      let _a19 = values
-      var _i19 = 0
-      while _i19 < _a19.items.count {
-        let v: Double = _a19.items[_i19]
-        _i19 += 1
+      let _a21 = values
+      var _i21 = 0
+      while _i21 < _a21.items.count {
+        let v: Double = _a21.items[_i21]
+        _i21 += 1
         try m = units_doubleMinStep(m, v)
       }
     }
@@ -1014,11 +1014,11 @@ public func environment_computeDouble(_ e: any U_CalcClamp_CalcInvert_CalcMax_Ca
     var m: Double = try jsUnwrap(jsAt(values, 0.0))
     // ts: packages/layout/src/environment.ts:783
     do {
-      let _a20 = values
-      var _i20 = 0
-      while _i20 < _a20.items.count {
-        let v: Double = _a20.items[_i20]
-        _i20 += 1
+      let _a22 = values
+      var _i22 = 0
+      while _i22 < _a22.items.count {
+        let v: Double = _a22.items[_i22]
+        _i22 += 1
         try m = units_doubleMaxStep(m, v)
       }
     }
@@ -1060,11 +1060,11 @@ public func environment_hasLength(_ e: any U_CalcClamp_CalcInvert_CalcMax_CalcMi
   case S.s_sum, S.s_product, S.s_min, S.s_max:
     // ts: packages/layout/src/environment.ts:824
     do {
-      let _a21 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-      var _i21 = 0
-      while _i21 < _a21.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a21.items[_i21]
-        _i21 += 1
+      let _a23 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+      var _i23 = 0
+      while _i23 < _a23.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a23.items[_i23]
+        _i23 += 1
         // ts: packages/layout/src/environment.ts:824
         if try environment_hasLength(t) {
           return true
@@ -1249,11 +1249,11 @@ public func environment_toCalcExpression(_ e: any U_CalcClamp_CalcInvert_CalcMax
     var simple: Bool = true
     // ts: packages/layout/src/environment.ts:963
     do {
-      let _a22 = terms
-      var _i22 = 0
-      while _i22 < _a22.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a22.items[_i22]
-        _i22 += 1
+      let _a24 = terms
+      var _i24 = 0
+      while _i24 < _a24.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a24.items[_i24]
+        _i24 += 1
         // ts: packages/layout/src/environment.ts:963
         if try (!environment_isSimplePixels(t)) {
           simple = false
@@ -1391,11 +1391,11 @@ public func environment_calcDependencies(_ e: any U_CalcClamp_CalcInvert_CalcMax
   case S.s_sum, S.s_product, S.s_min, S.s_max:
     // ts: packages/layout/src/environment.ts:1084
     do {
-      let _a23 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-      var _i23 = 0
-      while _i23 < _a23.items.count {
-        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a23.items[_i23]
-        _i23 += 1
+      let _a25 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+      var _i25 = 0
+      while _i25 < _a25.items.count {
+        let t: any U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength = _a25.items[_i25]
+        _i25 += 1
         try environment_calcDependencies(t, out)
       }
     }
@@ -1420,11 +1420,11 @@ public func environment_boxDependencies(_ b: any U_ControlBox_LayoutBox, _ out: 
   }
   // ts: packages/layout/src/environment.ts:1098
   do {
-    let _a24 = b.children
-    var _i24 = 0
-    while _i24 < _a24.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a24.items[_i24]
-      _i24 += 1
+    let _a26 = b.children
+    var _i26 = 0
+    while _i26 < _a26.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a26.items[_i26]
+      _i26 += 1
       // ts: packages/layout/src/environment.ts:1099
       if ((c.kind == S.s_box) || ((c as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         try environment_boxDependencies((c as! any U_ControlBox_LayoutBox), out)
@@ -1447,11 +1447,11 @@ public func environment_inlineDependencies(_ c: any U_InlineBox_LineBreak_TextLe
   try environment_styleDependencies((c as! InlineBox).style, out)
   // ts: packages/layout/src/environment.ts:1109
   do {
-    let _a25 = (c as! InlineBox).children
-    var _i25 = 0
-    while _i25 < _a25.items.count {
-      let k: any U_InlineBox_LineBreak_TextLeaf = _a25.items[_i25]
-      _i25 += 1
+    let _a27 = (c as! InlineBox).children
+    var _i27 = 0
+    while _i27 < _a27.items.count {
+      let k: any U_InlineBox_LineBreak_TextLeaf = _a27.items[_i27]
+      _i27 += 1
       try environment_inlineDependencies(k, out)
     }
   }
@@ -1584,18 +1584,18 @@ public func environment_styleDependencies(_ s: LayoutStyle, _ out: DependencyFla
   if (s.anchor != nil) {
     // ts: packages/layout/src/environment.ts:1147
     do {
-      let _a26 = try jsUnwrap(s.anchor).options
-      var _i26 = 0
-      while _i26 < _a26.items.count {
-        let o: AnchorOption = _a26.items[_i26]
-        _i26 += 1
+      let _a28 = try jsUnwrap(s.anchor).options
+      var _i28 = 0
+      while _i28 < _a28.items.count {
+        let o: AnchorOption = _a28.items[_i28]
+        _i28 += 1
         // ts: packages/layout/src/environment.ts:1147
         do {
-          let _a27 = try environment_anchorOptionLengths(o)
-          var _i27 = 0
-          while _i27 < _a27.items.count {
-            let v: any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a27.items[_i27]
-            _i27 += 1
+          let _a29 = try environment_anchorOptionLengths(o)
+          var _i29 = 0
+          while _i29 < _a29.items.count {
+            let v: any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch = _a29.items[_i29]
+            _i29 += 1
             // ts: packages/layout/src/environment.ts:1147
             if (v.kind == S.s_calc) {
               try environment_calcDependencies((v as! LengthCalc).expr, out)
@@ -1611,21 +1611,21 @@ public func environment_styleDependencies(_ s: LayoutStyle, _ out: DependencyFla
 public func environment_gridDependencies(_ g: GridContainerStyle, _ out: DependencyFlags) throws -> Void {
   // ts: packages/layout/src/environment.ts:1152
   do {
-    let _a28 = g.templateColumns
-    var _i28 = 0
-    while _i28 < _a28.items.count {
-      let r: TrackRepeater = _a28.items[_i28]
-      _i28 += 1
+    let _a30 = g.templateColumns
+    var _i30 = 0
+    while _i30 < _a30.items.count {
+      let r: TrackRepeater = _a30.items[_i30]
+      _i30 += 1
       try environment_tracksDependencies(r.sizes, out)
     }
   }
   // ts: packages/layout/src/environment.ts:1153
   do {
-    let _a29 = g.templateRows
-    var _i29 = 0
-    while _i29 < _a29.items.count {
-      let r: TrackRepeater = _a29.items[_i29]
-      _i29 += 1
+    let _a31 = g.templateRows
+    var _i31 = 0
+    while _i31 < _a31.items.count {
+      let r: TrackRepeater = _a31.items[_i31]
+      _i31 += 1
       try environment_tracksDependencies(r.sizes, out)
     }
   }
@@ -1645,11 +1645,11 @@ public func environment_gridDependencies(_ g: GridContainerStyle, _ out: Depende
 public func environment_tracksDependencies(_ ts: JsArray<any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax>, _ out: DependencyFlags) throws -> Void {
   // ts: packages/layout/src/environment.ts:1161
   do {
-    let _a30 = ts
-    var _i30 = 0
-    while _i30 < _a30.items.count {
-      let t: any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a30.items[_i30]
-      _i30 += 1
+    let _a32 = ts
+    var _i32 = 0
+    while _i32 < _a32.items.count {
+      let t: any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a32.items[_i32]
+      _i32 += 1
       // ts: packages/layout/src/environment.ts:1162
       if ((t.kind == S.s_breadth) && ((t as! TrackSize_breadth).breadth.kind == S.s_calc)) {
         try environment_calcDependencies(((t as! TrackSize_breadth).breadth as! LengthCalc).expr, out)

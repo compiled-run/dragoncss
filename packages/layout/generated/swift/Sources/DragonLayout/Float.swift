@@ -88,11 +88,11 @@ public func float_placeFloat(_ floats: JsArray<FloatArea>, _ side: JsString, _ w
   var at: Double = top
   // ts: packages/layout/src/float.ts:99
   do {
-    let _a44 = floats
-    var _i44 = 0
-    while _i44 < _a44.items.count {
-      let f: FloatArea = _a44.items[_i44]
-      _i44 += 1
+    let _a46 = floats
+    var _i46 = 0
+    while _i46 < _a46.items.count {
+      let f: FloatArea = _a46.items[_i46]
+      _i46 += 1
       try at = units_max(at, f.y)
     }
   }
@@ -105,11 +105,11 @@ public func float_placeFloat(_ floats: JsArray<FloatArea>, _ side: JsString, _ w
       var next: Double? = nil
       // ts: packages/layout/src/float.ts:106
       do {
-        let _a45 = floats
-        var _i45 = 0
-        while _i45 < _a45.items.count {
-          let f: FloatArea = _a45.items[_i45]
-          _i45 += 1
+        let _a47 = floats
+        var _i47 = 0
+        while _i47 < _a47.items.count {
+          let f: FloatArea = _a47.items[_i47]
+          _i47 += 1
           let bottom: Double = try units_add(f.y, f.height)
           // ts: packages/layout/src/float.ts:110
           if ((bottom <= at) || (f.width <= 0.0)) {
@@ -144,11 +144,11 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<B
   var bottom: Double? = nil
   // ts: packages/layout/src/float.ts:133
   do {
-    let _a46 = box.children
-    var _i46 = 0
-    while _i46 < _a46.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a46.items[_i46]
-      _i46 += 1
+    let _a48 = box.children
+    var _i48 = 0
+    while _i48 < _a48.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a48.items[_i48]
+      _i48 += 1
       // ts: packages/layout/src/float.ts:134
       if ((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
         continue
@@ -156,11 +156,11 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<B
       var p: Box_Placed? = nil
       // ts: packages/layout/src/float.ts:136
       do {
-        let _a47 = placed
-        var _i47 = 0
-        while _i47 < _a47.items.count {
-          let x: Box_Placed = _a47.items[_i47]
-          _i47 += 1
+        let _a49 = placed
+        var _i49 = 0
+        while _i49 < _a49.items.count {
+          let x: Box_Placed = _a49.items[_i49]
+          _i49 += 1
           // ts: packages/layout/src/float.ts:136
           if (x.frag.id == (k as! any U_LayoutBox_ReplacedLeaf).id) {
             p = x
@@ -184,7 +184,7 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<B
         if (inner != nil) {
           // ts: packages/layout/src/float.ts:147
           if (kb.style.position != S.s_static) {
-            try unsupported_unsupported(S.s_float, kb.id, S.s314, jsConcat(S.s1133, kb.style.position, S.s27, kb.id, S.s69))
+            try unsupported_unsupported(S.s_float, kb.id, S.s314, jsConcat(S.s1135, kb.style.position, S.s27, kb.id, S.s69))
           }
           try b = units_add(jsUnwrap(p).y, jsUnwrap(inner))
         }
