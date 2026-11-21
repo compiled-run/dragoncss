@@ -3495,21 +3495,19 @@ type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<stri
 /** One number of a slot's piece: c + k·s by its rule; a piece's pieces are below zero, zero and up, and not finite (c alone). */
 type SlotRule = { readonly rule: string; readonly c: number; readonly k: number };
 type SlotLeaf = { readonly path: readonly JsonValue[]; readonly value: SlotRule };
-type SlotPiece = { readonly template: JsonValue; readonly leaves: readonly SlotLeaf[] };
+type SlotPiece = { readonly refused: boolean; readonly template: JsonValue; readonly leaves: readonly SlotLeaf[] };
 /** An engine-input style field of a box that follows a slot: the field's whole value per piece. */
-type SlotField = { readonly slot: number; readonly node: string; readonly key: string; readonly pieces: readonly (SlotPiece | null)[] };
+type SlotField = { readonly slot: number; readonly node: string; readonly key: string; readonly pieces: readonly SlotPiece[] };
 /** A number inside one of a node's writes (by its index in the node's writes) that follows a slot. */
-type SlotWrite = { readonly slot: number; readonly node: string; readonly write: string; readonly path: readonly JsonValue[]; readonly pieces: readonly (SlotRule | null)[] };
+type SlotWrite = { readonly slot: number; readonly node: string; readonly write: string; readonly path: readonly JsonValue[]; readonly pieces: readonly SlotRule[] };
 /** A piece no sample of which compiles: a value there stops the layout with the reason. */
 type SlotRefusal = { readonly slot: number; readonly piece: number; readonly reason: string };
-
-const SLOT_RULES: readonly string[] = ['line', 'line32', 'channel'];
 
 function slotRule(v: JsonValue, path: string): SlotRule {
   const a = arr(v, path);
   if (a.length !== 3) fail(`${path}: expected [rule, c, k]`);
   const rule = str(a[0] as JsonValue, `${path}[0]`);
-  if (!SLOT_RULES.includes(rule)) fail(`${path}[0]: ${rule} is not a slot rule`);
+  if (rule !== 'line' && rule !== 'line32' && rule !== 'channel') fail(`${path}[0]: ${rule} is not a slot rule`);
   return { rule, c: num(a[1] as JsonValue, `${path}[1]`), k: num(a[2] as JsonValue, `${path}[2]`) };
 }
 
@@ -3534,12 +3532,12 @@ function slotFields(v: JsonValue, path: string): SlotField[] {
     const at = `${path}[${i}]`;
     const a = arr(f, at);
     if (a.length !== 4) fail(`${at}: expected [slot, node, key, pieces]`);
-    const pieces: (SlotPiece | null)[] = [];
+    const pieces: SlotPiece[] = [];
     const ps = arr(a[3] as JsonValue, `${at}[3]`);
     if (ps.length !== 3) fail(`${at}[3]: expected 3 pieces`);
     ps.forEach((p, j) => {
       if (p.kind === 'null') {
-        pieces.push(null);
+        pieces.push({ refused: true, template: p, leaves: [] });
         return;
       }
       const pa = arr(p, `${at}[3][${j}]`);
@@ -3549,12 +3547,12 @@ function slotFields(v: JsonValue, path: string): SlotField[] {
         const lp = `${at}[3][${j}][1][${m}]`;
         const la = arr(l, lp);
         if (la.length !== 2) fail(`${lp}: expected [path, rule]`);
-        const leaf = { path: slotPath(la[0] as JsonValue, `${lp}[0]`), value: slotRule(la[1] as JsonValue, `${lp}[1]`) };
+        const leaf: SlotLeaf = { path: slotPath(la[0] as JsonValue, `${lp}[0]`), value: slotRule(la[1] as JsonValue, `${lp}[1]`) };
         if (j === 2 && leaf.value.k !== 0) fail(`${lp}: a value that is not finite gives a fixed number`);
         if (jsonAt(pa[0] as JsonValue, leaf.path, lp).kind !== 'num') fail(`${lp}: the template holds no number there`);
         leaves.push(leaf);
       });
-      pieces.push({ template: pa[0] as JsonValue, leaves });
+      pieces.push({ refused: false, template: pa[0] as JsonValue, leaves });
     });
     out.push({ slot: slotIndex(a[0] as JsonValue, `${at}[0]`), node: str(a[1] as JsonValue, `${at}[1]`), key: str(a[2] as JsonValue, `${at}[2]`), pieces });
   });
@@ -3568,12 +3566,12 @@ function slotWrites(v: JsonValue, path: string): SlotWrite[] {
     const a = arr(w, at);
     if (a.length !== 5) fail(`${at}: expected [slot, node, write, path, pieces]`);
     const write = str(a[2] as JsonValue, `${at}[2]`);
-    const pieces: (SlotRule | null)[] = [];
+    const pieces: SlotRule[] = [];
     const ps = arr(a[4] as JsonValue, `${at}[4]`);
     if (ps.length !== 3) fail(`${at}[4]: expected 3 pieces`);
     ps.forEach((p, j) => {
       if (p.kind === 'null') {
-        pieces.push(null);
+        pieces.push({ rule: 'refused', c: 0, k: 0 });
         return;
       }
       const r = slotRule(p, `${at}[4][${j}]`);
@@ -3677,11 +3675,13 @@ function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: re
   let out = root;
   for (const f of fields) {
     const s = slotAt(values, f.slot, path);
-    const found = f.pieces[slotPiece(s)];
-    const piece = found === undefined || found === null ? refusedPiece(refusals, f.slot, slotPiece(s)) : found;
-    let value = piece.template;
-    for (const l of piece.leaves) value = jsonWith(value, l.path, 0, { kind: 'num', num: slotValue(l.value, slotPiece(s), s) });
-    out = withStyleField(out, f.node, f.key, value);
+    const piece = f.pieces[slotPiece(s)] as SlotPiece;
+    if (piece.refused) refusedPiece(refusals, f.slot, slotPiece(s));
+    let patched = piece.template;
+    for (const l of piece.leaves) {
+      patched = jsonWith(patched, l.path, 0, { kind: 'num', num: slotValue(l.value, slotPiece(s), s) });
+    }
+    out = withStyleField(out, f.node, f.key, patched);
   }
   return out;
 }
@@ -3862,8 +3862,8 @@ export function runMarklessLayout(line: string): string {
       w.path.forEach((p, j) => {
         path += `${j === 0 ? '' : ','}${p.kind === 'str' ? q(p.text) : p.kind === 'num' ? `${p.num}` : 'null'}`;
       });
-      const found = w.pieces[slotPiece(s)];
-      const rule = found === undefined || found === null ? refusedPiece(parts.refusals, w.slot, slotPiece(s)) : found;
+      const rule = w.pieces[slotPiece(s)] as SlotRule;
+      if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s));
       out += `${i === 0 ? '' : ','}[${q(w.node)},${q(w.write)},[${path}],${h(slotValue(rule, slotPiece(s), s))}]`;
     });
     return `${out}]]`;
