@@ -12,7 +12,7 @@ import { resolveTree } from '../src/analysis/resolve.ts';
 import { attributeRefusal } from '../src/attributes.ts';
 import { DIR_UNICODE_BIDI_REVERTED, DIR_ATTRIBUTE_UNICODE_BIDI } from '../src/css/selector-validity.generated.ts';
 import { createProject } from '../src/index.ts';
-import type { AttributeBinding, ElementNode } from '../src/index.ts';
+import type { AttributeBinding, DraftTree, ElementNode } from '../src/index.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import { always, div, eq, inputFor, text } from './helpers.ts';
 
@@ -179,8 +179,9 @@ describe('dir refusals (DRAGON_UNSUPPORTED_ATTRIBUTE)', () => {
     const project = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
     const compile = (value: AttributeBinding['value']) => {
       const input = inputFor('.a { width: 1px; }', (r) => [{ ...div(r, 'a', ['a']), attributes: [{ name: 'dir', value, origin }] } as ElementNode]);
-      const root = input.tree.components[0] as (typeof input.tree.components)[number];
-      return project.compile({ ...input, tree: { ...input.tree, components: [{ ...root, states: [{ id: 's', domain: ['a', 'b'], initial: 'a', origin: root.origin }] }] } });
+      const tree = input.tree as DraftTree;
+      const root = tree.components[0] as DraftTree['components'][number];
+      return project.compile({ ...input, tree: { ...tree, components: [{ ...root, states: [{ id: 's', domain: ['a', 'b'], initial: 'a', origin: root.origin }] }] } });
     };
     for (const v of ['rtl', 'ltr', 'RTL']) expect(compile([{ when: always, value: v }]).diagnostics, v).toEqual([]);
     for (const v of ['auto', 'foo', '', ' rtl']) {
