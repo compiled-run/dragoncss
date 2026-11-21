@@ -55,6 +55,9 @@ describe('contain', () => {
     expect(errorsAt('contain: size')).toEqual(['DRAGON_UNSUPPORTED_VALUE contain: size on <div> a']);
     expect(errorsAt('display: flex; contain: strict')).toEqual(['DRAGON_UNSUPPORTED_VALUE contain: strict on <div> a']);
     expect(errorsAt('display: grid', 'contain: strict')).toEqual(['DRAGON_UNSUPPORTED_VALUE contain: strict on <div> b']);
+    // Inline-size containment is laid out on flex and grid boxes, as container-type: inline-size is.
+    expect(errorsAt('display: flex; contain: inline-size layout')).toEqual([]);
+    expect(errorsAt('display: grid', 'contain: inline-size layout')).toEqual([]);
     // An absolutely positioned item is not laid out by its flex container.
     expect(errorsAt('display: flex; position: relative', 'contain: strict; position: absolute')).toEqual([]);
     expect(errorsAt('contain: layout', 'position: fixed')).toEqual(['DRAGON_UNSUPPORTED_VALUE contain: layout on <div> a']);

@@ -2,7 +2,7 @@
 // no dark scheme, and one that names dark on a box that is not the root, a link, a form control, a box whose colour is initial or, on
 // the web, a scroll container. The Chrome cases are color-scheme-plain and the reject-color-scheme ones (packages/parity/fixtures).
 import { describe, expect, it } from 'vitest';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, nativeBands, NO_FAULTS } from '../src/internal.ts';
 import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
 import { INHERITED, LONGHANDS } from '../src/css/properties.ts';
@@ -78,5 +78,32 @@ describe('color-scheme', () => {
     const ds = project.compile(input).diagnostics.filter((d) => d.severity !== 'info');
     expect(ds.map((d) => `${String(d.target)} ${d.code}`).sort()).toEqual(REFUSED);
     expect(ds.map((d) => spanTextOf(input, d))).toEqual(['light dark', 'light dark', 'light dark']);
+  });
+});
+
+describe('color-scheme where the host paints the canvas', () => {
+  const hosted = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', hostCanvas: true });
+  const compile = (css: string, child = '', kid: 'div' | 'link' = 'div') => hosted.compile(inputFor(`${css} .a { height: 5px; } .c { ${child} }`, (r) => [div(r, 'a', ['a'], [kid === 'link' ? link(r, 'c') : div(r, 'c', ['c'])])]));
+  const refusals = (c: ReturnType<typeof compile>): string[] => c.diagnostics.filter((d) => d.severity !== 'info' && d.message.includes('color-scheme')).map((d) => `${String(d.target)} ${d.code}`).sort();
+  // One per refused element and target: the web output refuses the root and the child as before.
+  const WEB = ['web DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
+  const NATIVE = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE'];
+
+  it('draws a root that opts into dark, with its links, on native; the web output stays refused', () => {
+    for (const css of [':root { color-scheme: light dark; }', 'html { color-scheme: dark; }', ':root { --s: light dark; color-scheme: var(--s); }']) {
+      expect(refusals(compile(css, '', 'link')), css).toEqual(WEB);
+      expect(refusals(compile(css, 'color: initial')), css).toEqual(WEB);
+    }
+  });
+  it('splits the bands on the preference where the root follows it, and only there', () => {
+    expect(nativeBands(compile(':root { color-scheme: light dark; }'))?.conditions).toEqual(['(not (prefers-color-scheme: dark))', '(prefers-color-scheme: dark)']);
+    expect(nativeBands(compile(':root { color-scheme: dark; }'))).toBeNull();
+    expect(nativeBands(compile('.c { color-scheme: light dark; }'))).toBeNull();
+  });
+  it('refuses on native what the dark scheme recolours and Dragon does not draw in it: an auto outline, a box whose scheme is not the root\'s', () => {
+    expect(refusals(compile('html { color-scheme: dark; }', 'outline: auto 2px'))).toEqual([...NATIVE, ...WEB].sort());
+    expect(refusals(compile('html { color-scheme: dark; } .a { color-scheme: light; }', '', 'link'))).toEqual([...NATIVE, 'web DRAGON_UNSUPPORTED_VALUE'].sort());
+    expect(refusals(compile('html { color-scheme: light; } .a { color-scheme: dark; }', '', 'link'))).toEqual([...NATIVE, 'web DRAGON_UNSUPPORTED_VALUE'].sort());
+    expect(refusals(compile('html { color-scheme: dark; } .a { color-scheme: dark only; }', '', 'link'))).toEqual(WEB);
   });
 });

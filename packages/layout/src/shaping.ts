@@ -1753,7 +1753,7 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
       const size = platformFontSize(font.size);
       const d = f.data;
       const round = (units: number): LU => (faults.metricRoundingSwapped ? roundFontMetricHalfUpToWholePx(fontMetricPx(size, d.unitsPerEm, units)) : roundCoreTextMetricToWholePx(units, d.unitsPerEm, size));
-      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap) };
+      return { ascent: round(d.ascent), descent: round(d.descent), lineGap: d.lineGap === 0 ? ZERO : round(d.lineGap), normalGapAbove: ZERO };
     },
     // ShapeResult::SnappedWidth of the whole item: FromFloatCeil of its float width.
     measure(text: string, font: TextFont): MeasureResult {

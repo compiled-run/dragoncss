@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../../dragon/src/index.ts';
 import { valueToString } from '../../dragon/src/analysis/resolve.ts';
-import { ANCHOR_POSITION_LONGHANDS } from '../../dragon/src/css/properties/anchor-position.ts';
+import { ANCHOR_POSITION_LONGHANDS, isAnchorTyped } from '../../dragon/src/css/properties/anchor-position.ts';
 import { IMAGE_RENDERING_LONGHANDS } from '../../dragon/src/css/properties/image-rendering.ts';
 import { SVG_EXTRA_LONGHANDS } from '../../dragon/src/css/properties/svg-extra.ts';
 import { VIEW_TRANSITION_LONGHANDS } from '../../dragon/src/css/properties/view-transition.ts';
@@ -30,7 +30,8 @@ function item(name: string, v: string): Item {
   const code = diagnostics[0]?.code ?? null;
   const longhands = rules[0]?.declarations[0]?.longhands ?? [];
   if (code === null && (longhands.length === 0 || !longhands.every((l) => LONGHANDS.includes(l.property)))) throw new Error(`${name}: ${v}: accepted without the family's longhands`);
-  const accepted = code === null && longhands.every((l) => l.value.kind !== 'other');
+  // A value is accepted when no longhand keeps it as written (refused): its initial values, or anchor positioning's typed values.
+  const accepted = code === null && longhands.every((l) => l.value.kind !== 'other' || isAnchorTyped(l.value));
   return { name, v, code, longhands: accepted ? longhands.map((l) => [l.property, valueToString(l.value)] as const) : null };
 }
 
@@ -39,9 +40,9 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   'anchor-name': ['none', 'NONE', '--a', '--a, --b', 'none, --a', 'a', 'none none'],
   'anchor-scope': ['none', 'None', 'all', '--a', '--a, --b', 'none --a'],
   'position-anchor': ['none', 'NONE', 'normal', 'auto', '--a', 'match-parent', 'none none'],
-  'position-area': ['none', 'NONE', 'top', 'top left', 'span-all', 'center', 'none none'],
+  'position-area': ['none', 'NONE', 'top', 'top left', 'span-all', 'center', 'none none', 'block-end', 'BLOCK-START', 'bottom span-all', 'left top', 'start end', 'block-start inline-end', 'span-x-start y-end', 'self-block-end', 'span-self-start self-end', 'left right', 'top top', 'block-start left'],
   'position-try-order': ['normal', 'NORMAL', 'most-width', 'most-height', 'most-block-size', 'most-inline-size', 'none'],
-  'position-try-fallbacks': ['none', 'None', 'flip-block', '--a', 'flip-block, --a', 'top', 'none none'],
+  'position-try-fallbacks': ['none', 'None', 'flip-block', '--a', 'flip-block, --a', 'top', 'none none', 'flip-y flip-x, top', 'bottom span-all', '--a flip-start', 'flip-block flip-block', 'flip-block, '],
   'position-try': ['none', 'NONE', 'normal none', 'Normal None', 'none normal', 'normal', 'NORMAL', 'most-width', 'most-width --a', 'flip-block', 'normal none none'],
   'position-visibility': ['anchors-visible', 'ANCHORS-VISIBLE', 'anchor-visible', 'always', 'no-overflow', 'anchors-visible no-overflow', 'none'],
   'baseline-shift': ['0', '0px', '0PX', '-0', '0em', '0vw', '0%', 'sub', 'super', '2px', '10%', 'baseline', 'top', 'center', 'bottom', 'none', 'BASELINE', 'calc(0px)', 'calc(1px - 1px)', 'calc(0em)', 'calc(0%)', 'calc(0px + 0%)', 'calc(1px)'],
@@ -57,8 +58,8 @@ const VALUES: { readonly [name: string]: readonly string[] } = {
   'timeline-scope': ['none', 'NONE', 'all', '--t', '--a, --b', 'none --a'],
 };
 
-/** How many of VALUES Dragon accepts as initial (pinned so a parser change that accepts more or fewer is seen). */
-const ACCEPTED = 56;
+/** How many of VALUES Dragon accepts: initial, or an anchor positioning value it lays out (pinned so a parser change that accepts more or fewer is seen). */
+const ACCEPTED = 89;
 /** How many of VALUES Dragon drops, as Chrome 145 does (pinned likewise). */
 const DROPPED = 22;
 
@@ -76,7 +77,7 @@ function judge(items: readonly Item[], seen: readonly Seen[]): string[] {
 describe('image-rendering, anchor positioning and svg-extra: Chrome 145 parsing', () => {
   type Browser = { newPage(): Promise<{ setContent(html: string): Promise<void>; evaluate(expression: string): Promise<unknown> }>; close(): Promise<void> };
 
-  it('Dragon drops no value Chrome keeps, every accepted value computes to the initial values, and the plants are caught', async () => {
+  it('Dragon drops no value Chrome keeps, every accepted value computes as Chrome computes the authored one, and the plants are caught', async () => {
     const real = Object.entries(VALUES).flatMap(([name, vs]) => vs.map((v) => item(name, v)));
     const planted: { readonly name: string; readonly items: Item[] }[] = [
       { name: 'renderingDropped', items: [{ name: 'image-rendering', v: 'pixelated', code: 'DRAGON_CSS_INVALID_VALUE', longhands: null }] },

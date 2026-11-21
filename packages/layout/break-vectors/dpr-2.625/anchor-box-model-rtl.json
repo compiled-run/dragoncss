@@ -1,0 +1,8 @@
+{
+  "case": "anchor-box-model-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"m4:text0","lines":[[0,2]]},
+    {"id":"m7:text0","lines":[[0,2]]}
+  ]
+}

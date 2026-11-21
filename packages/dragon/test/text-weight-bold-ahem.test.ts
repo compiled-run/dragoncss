@@ -177,8 +177,10 @@ describe('font-weight over Ahem on native', () => {
     }
     const node = p.uikit.nodes.find((n) => n.id === 'a:text0');
     if (node === undefined) throw new Error('no text node a:text0');
-    expect(() => nodeLit('swift', node)).toThrow(StateEmitError);
-    expect(() => nodeLit('swift', node)).toThrow(/synthetic bold in a state program/);
+    expect(nodeLit('swift', node)).toContain(`.syntheticBold([9.0, 36.0], [${Math.fround(1 / 24)}, 0.03125])`);
+    const kt = p['android-views'].nodes.find((n) => n.id === 'a:text0');
+    if (kt === undefined) throw new Error('no android text node a:text0');
+    expect(nodeLit('kotlin', kt)).toContain(`DragonStateWrite.SyntheticBold(doubleArrayOf(9.0, 36.0), doubleArrayOf(${Math.fround(1 / 24)}, 0.03125))`);
   });
 
   it('the stroke width is Skia\'s fake bold in float: size / 24 to 9px, size / 32 from 36px, interpolated between', () => {

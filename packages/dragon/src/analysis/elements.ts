@@ -7,7 +7,7 @@ import { REPLACED_TAGS, REPLACED_UA_KEYS, SVG_SHAPE_TAGS } from './elements/repl
 export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   'html', 'body', 'div',
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
-  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd',
+  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'center', 'fieldset', 'legend',
   'span', 'a', 'label',
   'br',
   ...REPLACED_TAGS,
@@ -33,9 +33,14 @@ export const GENERATED_TAGS: ReadonlySet<string> = new Set(['::before', '::after
 /** The tag of the element resolve.ts cascades a list item's ::marker rules on; only its color is read (markerOf). */
 export const MARKER_TAG = '::marker';
 
-/** The UA dataset row an element's tag reads; a control's also depends on its type attribute, and a select's on disabled. */
+/** The tag of the element resolve.ts builds for a <dialog>'s ::backdrop box (the host presents the top layer). */
+export const BACKDROP_TAG = '::backdrop';
+
+/** The UA dataset row an element's tag reads; a control's also depends on its type attribute and on whether it is :disabled. */
 export function uaTagOf(tag: string, type?: string, disabled = false): UaKey {
   if (Object.hasOwn(REPLACED_UA_KEYS, tag)) return REPLACED_UA_KEYS[tag] as UaKey;
+  if (tag === 'dialog') return 'dialog';
+  if (tag === BACKDROP_TAG) return 'backdrop';
   if (GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return 'dragon-unstyled';
   // FORM-b: an option has no box; of its style only colour, direction, unicode-bidi and text-align are read, set as on a div.
   if (tag === 'option') return 'div';

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; color: rgb(20, 40, 160); }
+.box { width: 60px; height: 30px; margin: 4px; padding: 3px; background-color: #e8d36a; border: 2px solid #1a1a2e; }
+.s { offset: none; }
+.S { OFFSET: NONE; }
+.l { offset-path: none; offset-distance: 0; offset-position: normal; offset-anchor: auto; offset-rotate: auto; }
+.u { OFFSET-PATH: None; OFFSET-DISTANCE: 0PX; OFFSET-POSITION: NORMAL; OFFSET-ANCHOR: Auto; OFFSET-ROTATE: AUTO; }
+.o { offset-distance: 0px; offset: none; offset-rotate: auto; }
+.v { --p: none; --d: 0px; offset-path: var(--p); offset-distance: var(--d); }
+.k { offset: initial; offset-anchor: unset; offset-rotate: revert; offset-distance: initial; }
+.i { offset-path: inherit; offset-distance: inherit; offset-position: inherit; offset-anchor: inherit; offset-rotate: inherit; color: rgb(20, 120, 40); }
+.abs { position: absolute; top: 3px; inset-inline-end: 4px; width: 20px; height: 12px; background-color: rgb(200, 0, 90); offset: none; }
+.row { display: flex; width: 200px; position: relative; offset-path: none; offset-anchor: auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="box s">XX XX</div>
+<div data-dragon-id="s2" class="box S"><div data-dragon-id="s2c" class="i">XXX</div></div>
+<div data-dragon-id="s3" class="box l">XX</div>
+<div data-dragon-id="s4" class="box u"><div data-dragon-id="s4c" class="i">XX</div></div>
+<div data-dragon-id="s5" class="box o">XX</div>
+<div data-dragon-id="s6" class="box v">XX</div>
+<div data-dragon-id="s7" class="box k">XX</div>
+<div data-dragon-id="row" class="row s"><div data-dragon-id="ra" class="box l">XX XX</div><div data-dragon-id="rb" class="box u">XX</div><div data-dragon-id="rabs" class="abs"></div></div>
+</body>
+</html>

@@ -23,7 +23,7 @@ const NONE: NoneValue = { kind: 'none' };
 // being 0.
 export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
-  // FORM-b: a text field's is size x the advance of 0, whatever its value (controls.ts textFieldInlineSize).
+  // FORM-b: a text field's is size x its average character width, whatever its value (controls.ts textFieldInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-field') return textFieldInlineSize(ctx.measurer, node.control);
   const box = plainBox(node);
   // css-contain-2 §3.2 and css-sizing-4 §5.2: a size-contained box sizes as if it had no content, or content of its
@@ -32,6 +32,7 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   const w = box.style.containIntrinsicWidth;
   if (box.style.containSize !== 'none' && !ctx.faults.containedContentSized) return w.kind === 'px' ? fromCssPx(w.value) : box.style.display === 'grid' ? gridIntrinsicContentInlineSize(ctx, { ...box, children: [] }, kind) : ZERO;
   const kids = box.children;
+  if (box.style.multicol !== null) unsupported('multicol', box.id, 'css-multicol-1 §3.4', `the ${kind}-content size of the multi-column container ${box.id} is not yet proven against Chrome`);
   if (box.style.display === 'flex') return flexIntrinsicContent(ctx, box, kind);
   if (box.style.display === 'grid') return gridIntrinsicContentInlineSize(ctx, box, kind);
   if (box.strut !== null) return inlineIntrinsicSize(ctx, box, kind);

@@ -672,10 +672,11 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
       const o = outcomes.get(spec.id) as FixtureOutcome;
       expect(o.environments.map((e) => e.direction), spec.id).toEqual(['ltr', 'rtl']);
       for (const e of o.environments) expect([e.expected, e.renderer, e.dragon], `${spec.id} ${e.direction}`).toEqual([declared.cases, declared.cases, declared.cases]);
-      expect([o.expectedCases, o.rendererCases, o.dragonCases, o.cases.length], spec.id).toEqual([2 * declared.cases, 2 * declared.cases, 2 * declared.cases, 2 * declared.cases]);
-      if (spec.id !== 'tree-whitespace-leaves' && spec.id !== 'tree-position-toggle') existing += o.cases.length;
+      const counted = o.cases.filter((c) => !isForcedCaseId(c.id));
+      expect([o.expectedCases, o.rendererCases, o.dragonCases, counted.length], spec.id).toEqual([2 * declared.cases, 2 * declared.cases, 2 * declared.cases, 2 * declared.cases]);
+      if (spec.id !== 'tree-whitespace-leaves' && spec.id !== 'tree-position-toggle') existing += counted.length;
       for (const direction of ['ltr', 'rtl'] as const) {
-        const initial = o.cases.filter((c) => c.isInitial && c.direction === direction);
+        const initial = counted.filter((c) => c.isInitial && c.direction === direction);
         expect(initial.length, `${spec.id} ${direction}`).toBe(1);
         expect((initial[0] as CaseOutcome).assignment.map((e) => ({ instance: e.state.instance, state: e.state.state, value: e.value })), spec.id).toEqual(declared.initial);
         expect(caseCountProblems(declared, fixtureInput(spec), compileFixture(spec, NO_FAULTS, 'enforce', direction).compiled), `${spec.id} ${direction}`).toEqual([]);
@@ -701,9 +702,11 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     for (const spec of FIXTURES.filter((f) => f.format === 'tree' && f.kind === 'layout')) {
       const declared = readTreeExpectation(spec.id) as NonNullable<ReturnType<typeof readTreeExpectation>>;
       const o = outcomes.get(spec.id) as FixtureOutcome;
+      // A forced case pairs with its own rtl twin, apart from the counted case of the same assignment.
+      const keyOf = (c: CaseOutcome): string => (isForcedCaseId(c.id) ? `${describeAssignment(c.assignment)} ${c.id.replace(/-rtl$/, '')}` : describeAssignment(c.assignment));
       const byAssignment = new Map<string, CaseOutcome[]>();
-      for (const c of o.cases) byAssignment.set(describeAssignment(c.assignment), [...(byAssignment.get(describeAssignment(c.assignment)) ?? []), c]);
-      expect(byAssignment.size, spec.id).toBe(declared.cases);
+      for (const c of o.cases) byAssignment.set(keyOf(c), [...(byAssignment.get(keyOf(c)) ?? []), c]);
+      expect([...byAssignment.values()].filter((pair) => !pair.some((c) => isForcedCaseId(c.id))).length, spec.id).toBe(declared.cases);
       for (const [key, pair] of byAssignment) {
         expect(pair.map((c) => c.direction).sort(), `${spec.id} ${key}`).toEqual(['ltr', 'rtl']);
         const [ltr, rtl] = [pair.find((c) => c.direction === 'ltr') as CaseOutcome, pair.find((c) => c.direction === 'rtl') as CaseOutcome];

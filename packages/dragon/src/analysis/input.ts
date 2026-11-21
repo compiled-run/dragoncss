@@ -45,6 +45,9 @@ function exactKeys<T>(v: T, keys: readonly string[], optional: readonly string[]
 
 const isString = (v: unknown): v is string => typeof v === 'string';
 
+/** A tree node id Dragon accepts: non-empty, without the "/" and ":" its addresses use as separators. */
+export const isTreeNodeId = (id: string): boolean => id.length > 0 && !id.includes('/') && !id.includes(':');
+
 /** docs/api.md §3.2: typed JSON scalars; NaN, Infinity and -0 have no stable identity. */
 export function isScalar(v: unknown): v is Scalar {
   if (v === null || typeof v === 'string' || typeof v === 'boolean') return true;
@@ -452,7 +455,7 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
         diagnostics.push(diagnostic('DRAGON_TREE_NODE_KIND', { origin: where, message: `${c.id}/${id} has unknown node kind "${String(kind)}"` }));
         return;
       }
-      if (!exactKeys(n, shape) || !isString(n['id']) || id.length === 0 || id.includes('/') || id.includes(':')) {
+      if (!exactKeys(n, shape) || !isString(n['id']) || !isTreeNodeId(id)) {
         invalid(`${c.id}/${id}: a ${String(kind)} node needs exactly ${shape.join(', ')}, and an id without "/" or ":"`, where);
         ok = false;
         return;

@@ -28,7 +28,9 @@ export type PseudoClass =
   | { readonly kind: 'not'; readonly selectors: readonly Selector[] }
   | { readonly kind: 'has'; readonly selectors: readonly Selector[] }
   | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo }
-  | { readonly kind: 'link'; readonly state: LinkState };
+  | { readonly kind: 'link'; readonly state: LinkState }
+  /** :disabled, or :enabled (Selectors-4 §12.1.1, HTML §4.16.3): a form control's disabled attribute, a state like any other. */
+  | { readonly kind: 'disabled'; readonly enabled: boolean };
 
 /** :link (an unvisited hyperlink), :visited, or :any-link (either). */
 export type LinkState = 'unvisited' | 'visited' | 'any';
@@ -91,7 +93,7 @@ export type Selector = {
 
 const SELECTOR_FIX =
   'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
-const INTERACTIVE = new Set(['focus-within', 'target', 'checked', 'disabled', 'enabled']);
+const INTERACTIVE = new Set(['focus-within', 'target', 'checked']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const LEGACY_GENERATED: ReadonlySet<string> = new Set(GENERATED_PSEUDOS);
 const ZERO: Specificity = [0, 0, 0];
@@ -224,6 +226,7 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
   if (name === 'link' && args === null) return { kind: 'link', state: 'unvisited' };
   if (name === 'visited' && args === null) return { kind: 'link', state: 'visited' };
   if (name === 'any-link' && args === null) return { kind: 'link', state: 'any' };
+  if ((name === 'disabled' || name === 'enabled') && args === null) return { kind: 'disabled', enabled: name === 'enabled' };
   if (INTERACTIVE.has(name)) {
     refuse(part, `${text} depends on user interaction or document state, which a later package models as runtime state`, 'Model the state as a component state and select it with a class or a [ui-*] attribute.');
     return null;

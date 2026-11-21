@@ -5,10 +5,12 @@
 // (css/properties/scroll-snap.ts) is accepted at any value except an active snap pair on iOS and Android (checkScrollSnap).
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { isInitialValue } from '../css/properties/initial-only.ts';
+import { browserOnlyDiagnostic } from '../css/not-applicable.ts';
+import { browserOnlyEntry } from '../profiles/browser-only-native.ts';
 import type { Longhand } from '../css/properties.ts';
 import { CONTAINMENT_INITIAL, CONTAINMENT_INITIAL_ONLY } from '../css/properties/containment.ts';
 import { alignsSnap, snapTypeOf } from '../css/properties/scroll-snap.ts';
-import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS } from '../css/properties/anchor-position.ts';
+import { ANCHOR_POSITION_INITIAL, ANCHOR_POSITION_LONGHANDS, anchorValueAccepted } from '../css/properties/anchor-position.ts';
 import { SVG_EXTRA_INITIAL, SVG_EXTRA_LONGHANDS } from '../css/properties/svg-extra.ts';
 import { VIEW_TRANSITION_INITIAL, VIEW_TRANSITION_LONGHANDS } from '../css/properties/view-transition.ts';
 import { ANIMATION_EXTRA_INITIAL, ANIMATION_EXTRA_LONGHANDS } from '../css/properties/animation-extra.ts';
@@ -22,16 +24,36 @@ import { isSvgShapeTag } from './elements/svg.ts';
 
 /** A family Dragon accepts at its initial values alone: its longhands, their initial values, and why any other value is refused.
  * userAgent: a value the Chrome UA sheet sets (origin user-agent) is accepted too, as every page has it. */
-export type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string; readonly userAgent?: true };
+export type InitialOnlyFamily = { readonly id: string; readonly longhands: readonly Longhand[]; readonly initial: { readonly [p: string]: CssValue }; readonly reason: string; readonly userAgent?: true;
+  /** BROWSER-ONLY: the longhands are on profiles/browser-only-native.ts, so iOS and Android get DRAGON_BROWSER_ONLY_NATIVE instead. */
+  readonly browserOnly?: true;
+  /** A computed value the family lays out besides its initial value (anchor-position's typed values). */
+  readonly accepts?: (p: Longhand, v: CssValue) => boolean };
 
 /** Refuses the element's first longhand of the family whose computed value is not initial, once per element and family. */
 export function refuseNonInitial(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, f: InitialOnlyFamily): void {
   const accepted = (q: Longhand): boolean => {
     const v = el.props.get(q) as ResolvedValue;
-    return isInitialValue(f.initial[q] as CssValue, v.value) || (f.userAgent === true && v.origin === 'user-agent');
+    return isInitialValue(f.initial[q] as CssValue, v.value) || (f.userAgent === true && v.origin === 'user-agent') || (f.accepts !== undefined && f.accepts(q, v.value));
   };
   const p = f.longhands.find((q) => !accepted(q));
-  if (p !== undefined) refuse(el, targets, diagnostics, reported, f.id, p, `${f.reason}; only ${valueToString(f.initial[p] as CssValue)} is accepted`, valueToString(f.initial[p] as CssValue));
+  if (p === undefined) return;
+  const entry = f.browserOnly === true ? browserOnlyEntry(p) : null;
+  if (entry === null) {
+    refuse(el, targets, diagnostics, reported, f.id, p, `${f.reason}; only ${valueToString(f.initial[p] as CssValue)} is accepted`, valueToString(f.initial[p] as CssValue));
+    return;
+  }
+  const web = targets.filter((t) => t !== 'ios' && t !== 'android');
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  refuse(el, web, diagnostics, reported, f.id, p, `${f.reason}; only ${valueToString(f.initial[p] as CssValue)} is accepted`, valueToString(f.initial[p] as CssValue));
+  if (native.length === 0) return;
+  // refuse has marked the element when web is a target; the native errors come once per element and family either way.
+  const id = `${f.id}|native|${el.element.address}`;
+  if (reported.has(id)) return;
+  reported.add(id);
+  const v = el.props.get(p) as ResolvedValue;
+  const origin = v.declaration !== null ? authored(v.declaration.valueSpan) : el.element.node.origin;
+  for (const t of native) diagnostics.push(browserOnlyDiagnostic(entry, origin, t, `${p}: ${valueToString(v.value)} on <${el.element.tag}> ${el.element.address}`));
 }
 
 function refuse(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, family: string, p: Longhand, reason: string, accepted: string): void {
@@ -53,7 +75,7 @@ function refuse(el: ResolvedElement, targets: readonly string[], diagnostics: Di
 
 // css-contain-2: content-visibility skips laying out and painting a box's contents (text included), and the intrinsic sizes apply
 // under size containment; contain itself is analysis/containment.ts's.
-const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_INITIAL_ONLY, initial: CONTAINMENT_INITIAL, reason: 'Dragon skips no contents and sizes no contained box from contain-intrinsic-size yet' };
+const CONTAINMENT: InitialOnlyFamily = { id: 'containment', longhands: CONTAINMENT_INITIAL_ONLY, initial: CONTAINMENT_INITIAL, reason: 'Dragon skips no contents yet, and sizes a contained box from contain-intrinsic-width and -height alone' };
 
 /**
  * css-conditional-5 §2.1: container-type: inline-size compiles (lower/ios-layout.ts containInlineSize, LayoutStyle containSize inline-size) on a box that generates a block
@@ -79,14 +101,21 @@ function checkContainerType(el: ResolvedElement, targets: readonly string[], dia
 }
 
 // css-anchor-position-1: an anchor name or scope only names anchors, and the position longhands move or hide an anchored box.
-const ANCHOR_POSITION: InitialOnlyFamily = { id: 'anchor-position', longhands: ANCHOR_POSITION_LONGHANDS, initial: ANCHOR_POSITION_INITIAL, reason: 'Dragon implements no anchor positioning yet' };
+const ANCHOR_POSITION: InitialOnlyFamily = {
+  id: 'anchor-position',
+  longhands: ANCHOR_POSITION_LONGHANDS,
+  initial: ANCHOR_POSITION_INITIAL,
+  reason: 'Dragon lays out the css-anchor-position-1 grammar it reads and hides no anchored box (position-visibility)',
+  accepts: (p, v) => anchorValueAccepted(p as (typeof ANCHOR_POSITION_LONGHANDS)[number], v),
+};
 // SVG 2: baseline-shift of SVG text, which Dragon does not build, and the rendering hints, which would change how its shapes are
 // drawn (the stop, flood, mask-type and text-anchor properties are SVG-inert-b's, css/properties/svg.ts, accepted at every value).
 const SVG_EXTRA: InitialOnlyFamily = { id: 'svg-extra', longhands: SVG_EXTRA_LONGHANDS, initial: SVG_EXTRA_INITIAL, reason: 'Dragon builds no SVG text and draws its shapes with the default rendering hints' };
 
 // css-view-transitions-2: the names, classes and groups of a view transition's captured boxes. Chrome's UA sheet names the root
 // (:root { view-transition-name: root }), which captures it only once a transition starts, so that UA value is accepted too.
-const VIEW_TRANSITION: InitialOnlyFamily = { id: 'view-transition', longhands: VIEW_TRANSITION_LONGHANDS, initial: VIEW_TRANSITION_INITIAL, reason: 'Dragon implements no view transitions yet', userAgent: true };
+// On iOS and Android any other value is a browser-only error (profiles/browser-only-native.ts).
+const VIEW_TRANSITION: InitialOnlyFamily = { id: 'view-transition', longhands: VIEW_TRANSITION_LONGHANDS, initial: VIEW_TRANSITION_INITIAL, reason: 'Dragon implements no view transitions yet', userAgent: true, browserOnly: true };
 // css-values-5 §8.2, scroll-animations-1 §4.2: keyword size interpolation and the scope of named timelines.
 const ANIMATION_EXTRA: InitialOnlyFamily = { id: 'animation-extra', longhands: ANIMATION_EXTRA_LONGHANDS, initial: ANIMATION_EXTRA_INITIAL, reason: 'Dragon interpolates no intrinsic size keyword and has no scroll-driven timelines yet' };
 

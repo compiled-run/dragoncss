@@ -156,8 +156,8 @@ const INITIAL: LayoutStyle = {
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start',
   aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' },
-  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' },
-  grid: null, gridItem: null, zoom: [],
+  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' }, multicol: null, textBoxTrim: null,
+  grid: null, gridItem: null, anchor: null, zoom: [],
 };
 
 function len(r: Rng, min: number): number {
@@ -171,7 +171,7 @@ function pct(r: Rng): number {
   return r.pick([0, 10, 25, 33.333333, 50, 66.666667, 100, 12.5, 150, Math.round(r.next() * 10000) / 100]);
 }
 
-type Size = LayoutStyle['height'];
+type Size = LayoutStyle['minHeight'];
 function sizeV(r: Rng, autoP: number): Size {
   if (r.chance(autoP)) return { kind: 'auto' };
   return r.chance(0.25) ? { kind: 'percent', value: pct(r) } : { kind: 'px', value: len(r, 0) };

@@ -144,6 +144,10 @@ describe('absolutely positioned boxes', () => {
     expect(at(run([cb({ height: px(100) }, [abs({ ...all, aspectRatio: r(1, 1) })])]), 'a')).toEqual([0, 0, 200, 200]);
     expect(at(run([cb({ height: px(100) }, [abs({ top: px(0), bottom: px(10), left: px(5), aspectRatio: r(2, 1) })])]), 'a')).toEqual([5, 0, 180, 90]);
   });
+  it('a definite width without both inline insets stretches between the block insets, the ratio unused (Chrome 145)', () => {
+    expect(at(run([cb({ height: px(100) }, [abs({ top: px(10), bottom: px(0), left: px(50), width: px(30), aspectRatio: r(2, 1) })])]), 'a')).toEqual([50, 10, 30, 90]);
+    expect(at(run([cb({ height: px(100) }, [abs({ top: px(10), bottom: px(0), left: px(0), right: px(0), width: px(30), aspectRatio: r(2, 1) })])]), 'a')).toEqual([0, 10, 30, 15]);
+  });
   it('shrink-to-fit, with max-height transferred', () => {
     expect(at(run([cb({ height: px(100) }, [abs({ top: px(0), left: px(0), aspectRatio: r(2, 1) }, [t('a', 'XX X')])])]), 'a')).toEqual([0, 0, 40, 20]);
     expect(at(run([cb({ height: px(100) }, [abs({ top: px(0), left: px(0), aspectRatio: r(2, 1), maxHeight: px(5) }, [t('a', 'XX X')])])]), 'a')).toEqual([0, 0, 10, 5]);

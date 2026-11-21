@@ -1,0 +1,8 @@
+{
+  "case": "anchor-center",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"x6:text0","data":"abc","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "case": "ms-text#0",
+  "dpr": 3,
+  "texts": [
+    {"id":"app/title:text0","lines":[[0,6]]},
+    {"id":"app/note:text0","lines":[[0,6]]},
+    {"id":"app/plain:text0","lines":[[0,6]]}
+  ]
+}

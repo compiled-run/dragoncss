@@ -4,7 +4,7 @@
 import { generate, parse, tokenize, tokenTypes } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
-import type { Diagnostic, Span } from '../types.ts';
+import type { Diagnostic, Origin, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import type { AliasValueParser } from './aliases.ts';
 import { aliasValueParser, legacyAliasRefusal, legacyAliasValue, resolveAlias } from './aliases.ts';
@@ -24,8 +24,9 @@ import type { Longhand, Shorthand } from './properties.ts';
 import { isLonghand, isShorthand, LONGHANDS } from './properties.ts';
 import type { Selector } from './selectors.ts';
 import { parseSelectorList, testsVisitState } from './selectors.ts';
-import { markNotApplicable } from './not-applicable.ts';
+import { markBrowserOnly, markNotApplicable } from './not-applicable.ts';
 import { notApplicableEntry } from '../profiles/not-applicable-native.ts';
+import { browserOnlyEntry } from '../profiles/browser-only-native.ts';
 import { LISTS_VALUE_PROPERTIES, parseListsValue } from './properties/lists.ts';
 import { parseTransformValue, TRANSFORM_VALUE_PROPERTIES } from './properties/transform.ts';
 import { pairedLonghands } from './properties/overscroll.ts';
@@ -37,7 +38,7 @@ import { provenContexts } from '../profiles/types.ts';
 import { BLINK_MATH_FUNCTIONS, mathGrammarFor, mathInvalidity } from './math.ts';
 import { relativeColorGrammarText } from './color.ts';
 import { checkEnvCalls, ENV_FIX, envVarRefusal, firstEnv, grammarText } from './env.ts';
-import { mathFunctionRefusal, normalizeUnit, unitRefusal } from './units.ts';
+import { mathFunctionRefusal, normalizeUnit, unitRefusalIn } from './units.ts';
 import type { CustomValue, PendingSubstitution } from './variables.ts';
 import { hasVar, MAX_NESTING, nestingDepth, parseVarParts } from './variables.ts';
 import type { AnimationDeclValue } from './properties/animation.ts';
@@ -86,6 +87,8 @@ export type Declaration = {
   readonly presentationHint?: true;
   /** CASC 3: the cascade rank of the declaration's layer (layerRanks); absent when unlayered, which ranks above every layer. */
   readonly layer?: number;
+  /** css-cascade-5 §6.2: a declaration of the element's style attribute, attached to it rather than mapped by a selector. */
+  readonly attached?: true;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -167,6 +170,40 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   }
   diagnostics.push(...parsed);
   return rules;
+}
+
+/**
+ * css-style-attr §3: a style attribute's value is the contents of a declaration block, parsed as one (an at-rule or a stray token
+ * drops only itself, and a "}" is an invalid token, not the end). Every declaration is element-attached (css-cascade-5 §6.2). The
+ * value's place inside its start tag is not known, so every declaration's span, and every diagnostic's, is the attribute's (`at`).
+ */
+export function parseStyleAttribute(authoredText: string, at: Span, diagnostics: Diagnostic[]): Declaration[] {
+  const text = preprocessInput(authoredText);
+  const base: Span = { source: at.source, start: at.start, end: at.start + text.length };
+  const local: Diagnostic[] = [];
+  if (authoredText.includes('\u0000')) local.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: 'the style attribute holds a U+0000 code point, which Chrome 145 reads differently by position', manual: 'Remove the U+0000, or write the escape \\FFFD for U+FFFD.' }));
+  const errors: string[] = [];
+  const ast = parseCss(text, { context: 'declarationList', positions: true, parseValue: true, onParseError: (e) => errors.push(e.message) });
+  if (text.includes('\\')) canonicalizeEscapes(ast);
+  const out: Declaration[] = [];
+  let order = 0;
+  for (const d of list(ast, 'children')) {
+    if (d.type !== 'Declaration') {
+      local.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `the style attribute holds ${d.type === 'Atrule' ? 'an at-rule' : 'a rule or a stray token'}, which Chrome drops; a style attribute holds declarations only (css-style-attr §3)` }));
+      continue;
+    }
+    const parsed = parseDeclaration(d, base, text, order++, local);
+    if (parsed !== null) out.push({ ...parsed, span: at, valueSpan: at, attached: true });
+  }
+  for (const e of errors) local.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error in the style attribute: ${e}` }));
+  const here = (o: Origin): Origin => (o.kind === 'authored' ? { kind: 'authored', span: at } : o);
+  for (const x of local) {
+    const related = x.related.map((r) => ({ ...r, origin: here(r.origin) }));
+    // An edit fix needs the declaration's own span, which the attribute does not give, so the refusal names the attribute instead.
+    if (x.fix !== null && 'edits' in x.fix) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: authored(at), target: x.target, message: `the style attribute holds a declaration Dragon refuses: ${x.message}`, manual: `${x.fix.title} from the style attribute.`, related, ...(x.profile === null ? {} : { profile: x.profile }) }));
+    else diagnostics.push({ ...x, origin: here(x.origin), related });
+  }
+  return out;
 }
 
 /** The children of the stylesheet or of a conditional at-rule's block: style rules, and every other node through refuseNode. */
@@ -578,6 +615,9 @@ function refuseNode(node: CssNode, st: ParseState, at: Where, diagnostics: Diagn
       return;
     }
     const refusal = outcome.kind === 'refuse' ? outcome.diagnostic : layerRefusal ?? refuseAtRule(context).diagnostic;
+    // BROWSER-ONLY: a listed at-rule is refused on web as before and is a browser-only error on native (css/not-applicable.ts).
+    const browserOnly = browserOnlyEntry(`@${asciiLower(String(node['name']))}`);
+    if (browserOnly !== null) markBrowserOnly(refusal, browserOnly);
     diagnostics.push(refusal);
     if (block === null || block === undefined) return;
     // T005 rec 3: the enclosed rules are parsed with the block unwrapped, for analysis only.
@@ -766,7 +806,7 @@ function parseAll(valueNode: CssNode, span: Span, valueSpan: Span, text: string,
   }
   const value: CssValue = { kind: 'keyword', value: keyword };
   // Chrome's all skips direction, unicode-bidi and -webkit-user-modify (Chrome 145, landing review of #480).
-  const longhands = LONGHANDS.filter((p) => p !== 'direction' && p !== '-webkit-user-modify').map((p) => ({ property: p, value, explicit: true }));
+  const longhands = LONGHANDS.filter((p) => p !== 'direction' && p !== 'unicode-bidi' && p !== '-webkit-user-modify').map((p) => ({ property: p, value, explicit: true }));
   const animation: AnimationDeclValue = { longhands: new Map((Object.keys(ANIM_INITIAL) as AnimLonghand[]).map((p): [AnimLonghand, AnimList] => [p, { kind: 'wide', keyword }])) };
   return { property: 'all', text, span, valueSpan, longhands, order, ...important, animation };
 }
@@ -997,8 +1037,9 @@ export function parseValue(property: Longhand | Shorthand, valueNode: CssNode, t
     return { kind: 'invalid', reason: 'Chrome takes only baseline or first baseline here (css_parsing_utils.cc ConsumeFirstBaseline)' };
   }
   const values: CssValue[] = pair === null ? [] : [pair];
+  const declared: readonly string[] = isLonghand(property) ? [property] : shorthandHandler(property).longhands;
   for (const t of pair === null ? tokens : []) {
-    const unitRefused = t.type === 'Dimension' ? unitRefusal(normalizeUnit(String(t['unit']))) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
+    const unitRefused = t.type === 'Dimension' ? unitRefusalIn(normalizeUnit(String(t['unit'])), declared) : t.type === 'Function' ? mathFunctionRefusal(String(t['name'])) : null;
     if (unitRefused !== null) {
       return { kind: 'refused', diagnostic: diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(spanOf(t, base)), message: `${property}: ${generate(t)} is unsupported: ${unitRefused.reason}`, manual: unitRefused.fix }) };
     }
@@ -1052,7 +1093,13 @@ export function parseSubstitutedValue(property: Longhand | Shorthand, text: stri
   // Substitution can nest brackets past MAX_NESTING, which the css-tree parser would recurse through.
   if (nestingDepth(text) > MAX_NESTING) return { kind: 'refused', diagnostic: tooDeep(property, base) };
   let failed = false;
-  const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  let node: CssNode;
+  try {
+    node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  } catch {
+    // css-tree throws on some token runs Chrome only fails to match (an ident before a "%" delim: "NaN%").
+    return { kind: 'invalid' };
+  }
   if (failed) return { kind: 'invalid' };
   if (text.includes('\\')) canonicalizeEscapes(node);
   const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');

@@ -1,0 +1,823 @@
+{
+ "schema": "dragon.native-style-export/1",
+ "units": "device px; frames relative to the parent box",
+ "compiler": "50039002206aa1f497a13361573958fc23698f54331580eb1667c60218e2ab63",
+ "component": "Box",
+ "source": "packages/parity/fixtures/ms-box",
+ "warnings": [],
+ "fonts": [],
+ "targets": {
+  "ios": {
+   "backend": "uikit",
+   "viewport": {
+    "width": 402,
+    "height": 778
+   },
+   "dpr": 3,
+   "readiness": {
+    "kind": "analysis-only",
+    "reason": "The iOS output is analysis-only: its layout projection feeds the internal lanes, and the generated UIKit Swift stays internal to the native lanes until every ios lane passes in a current committed lanes record; these lanes do not pass: layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked); device-pixels fail (185 failures (pixel 185)); device-states fail (168 failures (pixel 168)); device-anim fail (52 failures (device-record 52))."
+   },
+   "states": [],
+   "initial": 0,
+   "assignments": [
+    {
+     "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
+     "nodes": [
+      {
+       "id": "html",
+       "parent": null,
+       "kind": "element",
+       "native": "DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 168
+       },
+       "borderWidths": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "alpha": 0
+         },
+         "key": "backgroundColor"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widths"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "none",
+          "none",
+          "none",
+          "none"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        }
+       ]
+      },
+      {
+       "id": "body",
+       "parent": "html",
+       "kind": "element",
+       "native": "DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 0,
+        "y": 18,
+        "width": 1206,
+        "height": 132
+       },
+       "borderWidths": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "alpha": 0
+         },
+         "key": "backgroundColor"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widths"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "none",
+          "none",
+          "none",
+          "none"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        }
+       ]
+      },
+      {
+       "id": "app/card",
+       "parent": "body",
+       "kind": "element",
+       "native": "DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 24,
+        "y": 0,
+        "width": 414,
+        "height": 132
+       },
+       "borderWidths": {
+        "top": 9,
+        "right": 9,
+        "bottom": 9,
+        "left": 9
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 255,
+          "g": 238,
+          "b": 136,
+          "alpha": 255
+         },
+         "key": "backgroundColor"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widths"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "solid",
+          "solid",
+          "solid",
+          "solid"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          },
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          },
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          },
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        },
+        {
+         "kind": "border-radius",
+         "lengths": [
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          }
+         ],
+         "key": "dragonRadius.radiiPx"
+        }
+       ]
+      },
+      {
+       "id": "app/swatch",
+       "parent": "app/card",
+       "kind": "element",
+       "native": "DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 27,
+        "y": 27,
+        "width": 336,
+        "height": 72
+       },
+       "borderWidths": {
+        "top": 3,
+        "right": 6,
+        "bottom": 9,
+        "left": 12
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 30,
+          "g": 60,
+          "b": 200,
+          "alpha": 255
+         },
+         "key": "backgroundColor"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widths"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "solid",
+          "solid",
+          "solid",
+          "solid"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 204,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 204,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 204,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        },
+        {
+         "kind": "border-radius",
+         "lengths": [
+          {
+           "percent": false,
+           "value": 4
+          },
+          {
+           "percent": false,
+           "value": 0
+          },
+          {
+           "percent": false,
+           "value": 6
+          },
+          {
+           "percent": false,
+           "value": 2
+          },
+          {
+           "percent": false,
+           "value": 4
+          },
+          {
+           "percent": false,
+           "value": 0
+          },
+          {
+           "percent": false,
+           "value": 6
+          },
+          {
+           "percent": false,
+           "value": 2
+          }
+         ],
+         "key": "dragonRadius.radiiPx"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "next": [
+    []
+   ]
+  },
+  "android": {
+   "backend": "android-views",
+   "viewport": {
+    "width": 411,
+    "height": 818
+   },
+   "dpr": 2.625,
+   "readiness": {
+    "kind": "analysis-only",
+    "reason": "The Android output is analysis-only: its layout projection feeds the internal lanes, and the generated Android Views Kotlin stays internal to the native lanes until every android lane passes in a current committed lanes record; these lanes do not pass: layout-vectors-device not run (run pnpm run parity:lanes -- --run-device (simulators and emulators); the tools are installed, so this is not blocked); device-pixels fail (253 failures (pixel 253)); device-states fail (252 failures (pixel 252)); device-anim fail (55 failures (device-record 52, frame-chrome 3)); device-traces fail (2 failures (trace-mismatch 2))."
+   },
+   "states": [],
+   "initial": 0,
+   "assignments": [
+    {
+     "values": {},
+     "pageScroll": {
+      "minX": 0,
+      "maxX": 0,
+      "minY": 0,
+      "maxY": 0
+     },
+     "nodes": [
+      {
+       "id": "html",
+       "parent": null,
+       "kind": "element",
+       "native": "dev.dragon.views.DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 143.75
+       },
+       "borderWidths": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "alpha": 0
+         },
+         "key": "background.color"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widthsPx"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "none",
+          "none",
+          "none",
+          "none"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        }
+       ]
+      },
+      {
+       "id": "body",
+       "parent": "html",
+       "kind": "element",
+       "native": "dev.dragon.views.DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 0,
+        "y": 15.75,
+        "width": 1079,
+        "height": 112.25
+       },
+       "borderWidths": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "alpha": 0
+         },
+         "key": "background.color"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widthsPx"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "none",
+          "none",
+          "none",
+          "none"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        }
+       ]
+      },
+      {
+       "id": "app/card",
+       "parent": "body",
+       "kind": "element",
+       "native": "dev.dragon.views.DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 21,
+        "y": 0,
+        "width": 360.5,
+        "height": 112.25
+       },
+       "borderWidths": {
+        "top": 6.97265625,
+        "right": 6.97265625,
+        "bottom": 6.97265625,
+        "left": 6.97265625
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 255,
+          "g": 238,
+          "b": 136,
+          "alpha": 255
+         },
+         "key": "background.color"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widthsPx"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "solid",
+          "solid",
+          "solid",
+          "solid"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          },
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          },
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          },
+          {
+           "r": 34,
+           "g": 170,
+           "b": 102,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        },
+        {
+         "kind": "border-radius",
+         "lengths": [
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          },
+          {
+           "percent": false,
+           "value": 8
+          }
+         ],
+         "key": "dragonRadius.radiiPx"
+        }
+       ]
+      },
+      {
+       "id": "app/swatch",
+       "parent": "app/card",
+       "kind": "element",
+       "native": "dev.dragon.views.DragonBoxView",
+       "text": null,
+       "frame": {
+        "x": 22.75,
+        "y": 22.75,
+        "width": 294,
+        "height": 61.5
+       },
+       "borderWidths": {
+        "top": 1.96875,
+        "right": 4.962890625,
+        "bottom": 6.97265625,
+        "left": 9.966796875
+       },
+       "writes": [
+        {
+         "kind": "background-color",
+         "color": {
+          "r": 30,
+          "g": 60,
+          "b": 200,
+          "alpha": 255
+         },
+         "key": "background.color"
+        },
+        {
+         "kind": "border-widths",
+         "key": "dragonBorder.widthsPx"
+        },
+        {
+         "kind": "border-styles",
+         "styles": [
+          "solid",
+          "solid",
+          "solid",
+          "solid"
+         ],
+         "key": "dragonBorder.styles"
+        },
+        {
+         "kind": "border-colors",
+         "colors": [
+          {
+           "r": 0,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 204,
+           "g": 0,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 204,
+           "b": 0,
+           "alpha": 255
+          },
+          {
+           "r": 0,
+           "g": 0,
+           "b": 204,
+           "alpha": 255
+          }
+         ],
+         "key": "dragonBorder.colors"
+        },
+        {
+         "kind": "border-radius",
+         "lengths": [
+          {
+           "percent": false,
+           "value": 4
+          },
+          {
+           "percent": false,
+           "value": 0
+          },
+          {
+           "percent": false,
+           "value": 6
+          },
+          {
+           "percent": false,
+           "value": 2
+          },
+          {
+           "percent": false,
+           "value": 4
+          },
+          {
+           "percent": false,
+           "value": 0
+          },
+          {
+           "percent": false,
+           "value": 6
+          },
+          {
+           "percent": false,
+           "value": 2
+          }
+         ],
+         "key": "dragonRadius.radiiPx"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "next": [
+    []
+   ]
+  }
+ }
+}

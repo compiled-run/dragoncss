@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.cb { position: relative; width: 300px; height: 200px; border: 2px solid #000; padding: 4px; margin-bottom: 4px; }
+.a1 { margin: 40px 0 0 80px; width: 60px; height: 40px; anchor-name: --a; background-color: #ccc; }
+.a2 { margin: 10px 0 0 160px; width: 30px; height: 20px; anchor-name: --b; background-color: #aaa; }
+.p { position: absolute; background-color: #f88; width: 10px; height: 10px; }
+.i1 { top: anchor(--a bottom); left: anchor(--a left); }
+.i2 { bottom: anchor(--a top); right: anchor(--a right); }
+.i3 { top: anchor(--a center); left: anchor(--a 25%); }
+.i4 { top: anchor(--a inside); left: anchor(--a outside); }
+.i5 { bottom: anchor(--a inside); right: anchor(--a outside); }
+.i6 { top: anchor(--a start); left: anchor(--a end); }
+.i7 { top: anchor(--a self-end); left: anchor(--a self-start); }
+.i8 { top: anchor(--a top); bottom: anchor(--b bottom); left: anchor(--a right); right: anchor(--b left); width: auto; height: auto; }
+.i9 { position-anchor: --b; top: anchor(bottom); left: anchor(center); margin: 3px 2px 1px 5px; }
+.i10 { top: anchor(--a 100%); left: anchor(--b 60%); width: 20%; height: 10%; }
+.i11 { top: anchor(--a bottom, 7px); left: anchor(--zz left, 9px); }
+.i12 { top: anchor(--a top); bottom: anchor(--a bottom); left: anchor(--b right); padding: 2px; border: 1px solid #000; height: auto; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c" class="cb"><div data-dragon-id="a1" class="a1"></div><div data-dragon-id="a2" class="a2"></div><div data-dragon-id="q1" class="p i1"></div><div data-dragon-id="q2" class="p i2"></div><div data-dragon-id="q3" class="p i3"></div><div data-dragon-id="q4" class="p i4"></div><div data-dragon-id="q5" class="p i5"></div><div data-dragon-id="q6" class="p i6"></div><div data-dragon-id="q7" class="p i7"></div><div data-dragon-id="q8" class="p i8"></div><div data-dragon-id="q9" class="p i9"></div><div data-dragon-id="q10" class="p i10"></div><div data-dragon-id="q11" class="p i11"></div><div data-dragon-id="q12" class="p i12"></div></div>
+</body>
+</html>

@@ -37,42 +37,45 @@
   "engineCalc": 4000,
   "engineInline": 4500,
   "engineOverflow": 3000,
+  "engineWrapStyle": 400,
   "snapGenerated": 20000,
-  "snapVectors": 3321,
+  "snapVectors": 3534,
   "cases": {
-    "vectors-m2": 921,
-    "vectors-dpr": 3537,
-    "engine-dpr": 3537,
+    "vectors-m2": 992,
+    "vectors-dpr": 3750,
+    "engine-dpr": 3750,
     "units-m2": 120000,
-    "snap": 23321,
+    "snap": 23534,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
     "units-calc": 50000,
     "engine-inline": 4500,
     "engine-overflow": 3000,
-    "text-latin": 47
+    "text-latin": 176,
+    "engine-wrap-style": 400
   },
   "engineSplit": {
-    "ok": 3496,
-    "unsupported": 11,
+    "ok": 3736,
+    "unsupported": 14,
     "refused": 0,
     "threw": 0,
-    "harnessError": 30
+    "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "2867aa038e6bd73745be83bba3f21e70de3b4a4aa09bd1e5a6f5d2688c55f7fd",
-    "vectors-dpr": "3d597ea3d328c36360005772717c8a98e82a868940c2a53fc070df4adc65d953",
-    "engine-dpr": "5d4e0417d42d70c5e46d0d29470e22cdb0fd8c753cef7757b2b4fe35934309fc",
+    "vectors-m2": "efa1f349faa85114501b9accc42071d965936c2a80dff6a3fdf7a9c43f62b937",
+    "vectors-dpr": "e84db1af9660832587a14a18a2f68b0cd1b5bba8403b4b1afa0aff88e1ed1829",
+    "engine-dpr": "9a9a81c4444856dadf7feaf7e62f08ec12945afe22e15e75e7efb53f96227ea7",
     "units-m2": "2b91cf3a4d7f5740c44f317838cf08401c3448f7eb981dca70d21df22ede62ea",
-    "snap": "f473c5deba540d44d31d54ebc35a177d71416632f2bbc549dd9e28aeab67d959",
+    "snap": "ea79b962e54393fd86c61845edf9ee73e54e63beaf2bfe9545a2d8dd0f5211f9",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
-    "calc-goldens": "4f30d1403177ec2bfdf0130d57e71e5cbb8d9b7ca9793e0b2cc567c59fe986a6",
-    "engine-calc": "34f6a25c809dd164add4637d2f032f51c5036b1045d596b8b3a85ecc5b805ca5",
+    "calc-goldens": "adffc1f6abde1a97a2aaf9ce921ddee67dfe7952baa12f46b49ba24770119035",
+    "engine-calc": "add19b2233afa9801ffa483c7855501fa860798d77fa88df69209178423b409f",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
-    "engine-inline": "a165b67bb59d56421ab3ddab5cbab90d79f45d8c6457ddd4d8d5fdfb8a0368dc",
-    "engine-overflow": "6690e21faf5baf5cdc868efdbfed0f92a3ad1431ef521b3f266ed2b318593d24",
-    "text-latin": "48d9761935a3f4dc62f616596b5b9a7230e4ada34816839948a89b67fc009ae7"
+    "engine-inline": "38b258dbe93976916a8ad2bc2922f50b093c0595efa1ea3dd7032ee3360298fe",
+    "engine-overflow": "e9c0fc2e2c797ddfc2bc775d5d17eacebed1f73464df2113f0715865718593a0",
+    "text-latin": "72f8840d0605c0628c693c170c6be8196b304e34b7afe3cd622b0491ccb1b877",
+    "engine-wrap-style": "ec379d45e42810aa738f46883cd8ea3093d58976f03725e62596e9286c0cade0"
   },
-  "digest": "77c665c61cdede773f90334fd070c25b553b2d9fb6b7c0ae04c779f63f6b6520"
+  "digest": "d376e70e2fe347c592aabb2ff46bbb75c104f94b568a513233ceff581721147a"
 }

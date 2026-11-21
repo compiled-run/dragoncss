@@ -1,0 +1,76 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 4096
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 4096
+  },
+  {
+   "id": "app/bar",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 4096
+  },
+  {
+   "id": "app/button/button",
+   "parent": "app/bar",
+   "x": 39168,
+   "y": 512,
+   "width": 11520,
+   "height": 3072
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 64,
+   "width": 800,
+   "height": 64
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 64,
+   "width": 800,
+   "height": 64
+  },
+  {
+   "id": "app/bar",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 64,
+   "width": 800,
+   "height": 64
+  },
+  {
+   "id": "app/button/button",
+   "left": 612,
+   "top": 8,
+   "right": 792,
+   "bottom": 56,
+   "width": 180,
+   "height": 48
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+  "case": "contain-intrinsic-ahem",
+  "dpr": 2,
+  "texts": [
+    {"id":"blk:text0","lines":[[0,14]]},
+    {"id":"line:text0","lines":[[0,1]]},
+    {"id":"ibs:text0","lines":[[0,3],[3,5]]},
+    {"id":"line:text1","lines":[[0,1]]},
+    {"id":"ibi:text0","lines":[[0,6],[6,11]]},
+    {"id":"ict:text0","lines":[[0,7],[7,9]]},
+    {"id":"ibw:text0","lines":[[0,2]]},
+    {"id":"line:text2","lines":[[0,1]]},
+    {"id":"fix:text0","lines":[[0,2]]},
+    {"id":"em:text0","lines":[[0,2]]},
+    {"id":"none:text0","lines":[[0,2]]},
+    {"id":"inert:text0","lines":[[0,5]]},
+    {"id":"inert-auto:text0","lines":[[0,2]]},
+    {"id":"inert-none:text0","lines":[[0,2]]},
+    {"id":"inert-h:text0","lines":[[0,6]]},
+    {"id":"abs:text0","lines":[[0,2]]}
+  ]
+}

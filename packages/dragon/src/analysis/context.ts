@@ -5,7 +5,8 @@ import type { Longhand } from '../css/properties.ts';
 import { LONGHANDS, PROPERTY_ROLE } from '../css/properties.ts';
 import type { Declaration } from '../css/stylesheet.ts';
 import { featureOf } from '../css/stylesheet.ts';
-import type { FamilyKeyContext } from '../css/values.ts';
+import type { CssValue, FamilyKeyContext } from '../css/values.ts';
+import { CSS_WIDE } from '../css/values.ts';
 import { GENERATED_TAGS } from './elements.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { markerOf } from './resolve.ts';
@@ -221,7 +222,17 @@ export type UsedKey = {
   readonly declaration: Declaration;
   /** The element address, or for a text property the address of the text node the value reaches. */
   readonly address: string;
+  /**
+   * CASC: for a declared CSS-wide keyword (all: unset, width: inherit), the value it computed to on this element and its feature.
+   * The keyword's own row decides first; where it has none, a keyword that leaves the element's value unchanged (ResolvedValue
+   * unchanged) needs no row, and otherwise the computed value's row in the same context decides (project.ts).
+   */
+  readonly resolved?: { readonly feature: string; readonly value: CssValue; readonly unchanged: boolean };
 };
+
+/** The resolved field of a used key whose declared value is a CSS-wide keyword. */
+const resolvedOf = (p: Longhand, v: ResolvedValue, fonts?: FamilyKeyContext): Pick<UsedKey, 'resolved'> =>
+  v.declared !== null && v.declared.kind === 'keyword' && CSS_WIDE.has(v.declared.value) ? { resolved: { feature: featureOf(p, v.value, fonts), value: v.value, unchanged: v.unchanged === true } } : {};
 
 export const rowKey = (feature: string, context: string): string => `${feature}@${context}`;
 
@@ -240,7 +251,7 @@ export function usedKeys(root: ResolvedElement, fonts?: FamilyKeyContext): UsedK
       if (v.declaration === null || v.declared === null) continue;
       const feature = featureOf(p, v.declared);
       const context = p === 'content' && GENERATED_TAGS.has(el.element.tag) ? pseudoContext(el, chain) : formattingContext(p, el, chain);
-      out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: el.element.address });
+      out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: el.element.address, ...resolvedOf(p, v) });
     }
     // A list item's ::marker takes only color from its own rules (generated.ts markerRuleRefusals), keyed in the paint context.
     const marker = markerOf(el);
@@ -248,7 +259,7 @@ export function usedKeys(root: ResolvedElement, fonts?: FamilyKeyContext): UsedK
     if (marker !== undefined && color !== undefined && color.declaration !== null && color.declared !== null) {
       const feature = featureOf('color', color.declared);
       const context = formattingContext('color', marker, [...chain, el]);
-      out.push({ key: rowKey(feature, context), feature, context, property: 'color', declaration: color.declaration, address: marker.element.address });
+      out.push({ key: rowKey(feature, context), feature, context, property: 'color', declaration: color.declaration, address: marker.element.address, ...resolvedOf('color', color) });
     }
     for (const c of el.children) {
       if (c.kind === 'element') {
@@ -264,7 +275,7 @@ export function usedKeys(root: ResolvedElement, fonts?: FamilyKeyContext): UsedK
           const v = at.props.get(p) as ResolvedValue;
           if (v.declaration !== null && v.declared !== null) {
             const feature = featureOf(p, v.declared, p === 'font-family' ? fonts : undefined);
-            out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: c.node.address });
+            out.push({ key: rowKey(feature, context), feature, context, property: p, declaration: v.declaration, address: c.node.address, ...resolvedOf(p, v, p === 'font-family' ? fonts : undefined) });
             break;
           }
           if (v.origin !== 'inherited') break;

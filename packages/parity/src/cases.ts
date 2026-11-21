@@ -5,7 +5,7 @@ import type { Page } from 'playwright';
 import type { Assignment, Environment, ForcedPseudo, FrontEndResult, InteractionPartition } from 'dragon';
 import { fontMapOf } from './fixture-groups/fonts.ts';
 import { fontDataUrl, fontReferencePrepare, VENDOR_FONTS, vendorFontBytes } from './font-reference.ts';
-import { compiledFixtureHtml, fontFaceUrls, parseFixtureHtml, readHtmlFixture } from './fixture-reader.ts';
+import { compiledFixtureHtml, fontFaceUrls, parseFixtureHtml, readHtmlFixture, vendoredFontId } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { directionSuffix, environmentsOf } from './fixtures.ts';
 import { authoredModel } from './render.ts';
@@ -69,12 +69,15 @@ export function forcedCasesOf(spec: FixtureSpec, c: ParityCase, p: InteractionPa
   }));
 }
 
-/** The authored document as Chrome loads it: each @font-face url() that names a vendored font (fontFaceUrls) inlined as a data: URL. */
-export function authoredFontHtml(html: string): string {
+/**
+ * The authored document as Chrome loads it: each @font-face url() that names a vendored font (fontFaceUrls), or a file of `files`
+ * (bytes by the url as the CSS spells it), inlined as a data: URL.
+ */
+export function authoredFontHtml(html: string, files: ReadonlyMap<string, Uint8Array> = new Map()): string {
   const { style } = parseFixtureHtml(html);
   if (style === null) return html;
-  const edits = fontFaceUrls(html.slice(style.start, style.end))
-    .flatMap((u) => u.spans.map((sp) => ({ start: style.start + sp.start, end: style.start + sp.end, text: `url("${fontDataUrl(vendorFontBytes(u.id.slice(VENDOR_FONTS.length)))}")` })))
+  const edits = fontFaceUrls(html.slice(style.start, style.end), (specifier) => (files.has(specifier) ? specifier : vendoredFontId(specifier)))
+    .flatMap((u) => u.spans.map((sp) => ({ start: style.start + sp.start, end: style.start + sp.end, text: `url("${fontDataUrl(files.get(u.id) ?? vendorFontBytes(u.id.slice(VENDOR_FONTS.length)))}")` })))
     .sort((a, b) => b.start - a.start);
   let out = html;
   for (const e of edits) out = out.slice(0, e.start) + e.text + out.slice(e.end);
