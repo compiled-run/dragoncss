@@ -220,7 +220,7 @@ function computeEmitCases(target: NativeTarget): EmitCase[] {
 export function engineBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, measurer: TextMeasurer = referenceMeasurer()): readonly LayoutRect[] {
   const input: LayoutInput = programInput(p, viewport, dpr);
   const out = layout(input, measurer);
-  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
+  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}: ${out.unsupported.code} at ${out.unsupported.nodeId}: ${out.unsupported.detail}`);
   return out.boxes;
 }
 

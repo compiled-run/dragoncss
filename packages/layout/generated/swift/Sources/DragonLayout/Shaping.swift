@@ -702,11 +702,11 @@ public func shaping_utf16Units(_ text: JsString) throws -> JsArray<Double> {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/shaping.ts:96
   do {
-    let _a334 = jsCodePoints(text)
-    var _i334 = 0
-    while _i334 < _a334.items.count {
-      let ch: JsString = _a334.items[_i334]
-      _i334 += 1
+    let _a335 = jsCodePoints(text)
+    var _i335 = 0
+    while _i335 < _a335.items.count {
+      let ch: JsString = _a335.items[_i335]
+      _i335 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       _ = jsPush(out, cp)
       // ts: packages/layout/src/shaping.ts:99
@@ -785,11 +785,11 @@ public func shaping_getScripts(_ cp: Double) throws -> JsArray<Double> {
   var dst: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/shaping.ts:134
   do {
-    let _a335 = try scriptData_scriptExtensions(cp)
-    var _i335 = 0
-    while _i335 < _a335.items.count {
-      let s: Double = _a335.items[_i335]
-      _i335 += 1
+    let _a336 = try scriptData_scriptExtensions(cp)
+    var _i336 = 0
+    while _i336 < _a336.items.count {
+      let s: Double = _a336.items[_i336]
+      _i336 += 1
       _ = jsPush(dst, s)
     }
   }
@@ -946,11 +946,11 @@ public func shaping_fixupStack(_ st: ScriptRunState, _ resolved: Double, _ exclu
 public func shaping_refusalOf(_ units: JsArray<Double>) throws -> JsString {
   // ts: packages/layout/src/shaping.ts:223
   do {
-    let _a336 = units
-    var _i336 = 0
-    while _i336 < _a336.items.count {
-      let cp: Double = _a336.items[_i336]
-      _i336 += 1
+    let _a337 = units
+    var _i337 = 0
+    while _i337 < _a337.items.count {
+      let cp: Double = _a337.items[_i337]
+      _i337 += 1
       // ts: packages/layout/src/shaping.ts:224
       if (cp < 0.0) {
         continue
@@ -1034,11 +1034,11 @@ public func shaping_segmentText(_ text: JsString) throws -> any U_SegmentResult_
                 if (((script == scriptData_USCRIPT_HAN) || (script == scriptData_USCRIPT_HIRAGANA)) || (script == scriptData_USCRIPT_BOPOMOFO)) {
                   // ts: packages/layout/src/shaping.ts:265
                   do {
-                    let _a337 = st.currentSet
-                    var _i337 = 0
-                    while _i337 < _a337.items.count {
-                      let s: Double = _a337.items[_i337]
-                      _i337 += 1
+                    let _a338 = st.currentSet
+                    var _i338 = 0
+                    while _i338 < _a338.items.count {
+                      let s: Double = _a338.items[_i338]
+                      _i338 += 1
                       // ts: packages/layout/src/shaping.ts:266
                       if (((s == scriptData_USCRIPT_HAN) || (s == scriptData_USCRIPT_HIRAGANA)) || (s == scriptData_USCRIPT_BOPOMOFO)) {
                         script = s
@@ -1277,11 +1277,11 @@ public func shaping_hanKerningFeatures(_ item: ShapeItem, _ start: Double, _ end
   let features: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/shaping.ts:418
   do {
-    let _a338 = indices
-    var _i338 = 0
-    while _i338 < _a338.items.count {
-      let i: Double = _a338.items[_i338]
-      _i338 += 1
+    let _a339 = indices
+    var _i339 = 0
+    while _i339 < _a339.items.count {
+      let i: Double = _a339.items[_i339]
+      _i339 += 1
       _ = jsPush(features, shaping_TAG_HALT)
       _ = jsPush(features, 1.0)
       _ = jsPush(features, i)
@@ -1304,11 +1304,11 @@ public func shaping_makeItem(_ input: ItemInput) throws -> any U_ItemResult_okFa
   if (input.smallCapsSize >= 0.0) {
     // ts: packages/layout/src/shaping.ts:502
     do {
-      let _a339 = jsCodePoints(input.text)
-      var _i339 = 0
-      while _i339 < _a339.items.count {
-        let ch: JsString = _a339.items[_i339]
-        _i339 += 1
+      let _a340 = jsCodePoints(input.text)
+      var _i340 = 0
+      while _i340 < _a340.items.count {
+        let ch: JsString = _a340.items[_i340]
+        _i340 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let drawn: Double = try text_smallCapsCodePoint(cp)
         // ts: packages/layout/src/shaping.ts:505
@@ -1331,11 +1331,11 @@ public func shaping_makeItem(_ input: ItemInput) throws -> any U_ItemResult_okFa
   if ((jsFround(input.letterSpacing) != 0.0) && (!input.faults.ligaturesKept)) {
     // ts: packages/layout/src/shaping.ts:518
     do {
-      let _a340 = JsArray<Double>([shaping_TAG_LIGA, shaping_TAG_CLIG, shaping_TAG_CALT])
-      var _i340 = 0
-      while _i340 < _a340.items.count {
-        let tag: Double = _a340.items[_i340]
-        _i340 += 1
+      let _a341 = JsArray<Double>([shaping_TAG_LIGA, shaping_TAG_CLIG, shaping_TAG_CALT])
+      var _i341 = 0
+      while _i341 < _a341.items.count {
+        let tag: Double = _a341.items[_i341]
+        _i341 += 1
         _ = jsPush(features, tag)
         _ = jsPush(features, 0.0)
         _ = jsPush(features, 0.0)
@@ -1357,11 +1357,11 @@ public func shaping_sumAdvances(_ advances: JsArray<Double>, _ faults: ShapingFa
     var w: Double = 0.0
     // ts: packages/layout/src/shaping.ts:543
     do {
-      let _a341 = advances
-      var _i341 = 0
-      while _i341 < _a341.items.count {
-        let a: Double = _a341.items[_i341]
-        _i341 += 1
+      let _a342 = advances
+      var _i342 = 0
+      while _i342 < _a342.items.count {
+        let a: Double = _a342.items[_i342]
+        _i342 += 1
         try w = units_floatAdd(w, units_inlineToFloat(a))
       }
     }
@@ -1370,11 +1370,11 @@ public func shaping_sumAdvances(_ advances: JsArray<Double>, _ faults: ShapingFa
   var total: Double = 0.0
   // ts: packages/layout/src/shaping.ts:547
   do {
-    let _a342 = advances
-    var _i342 = 0
-    while _i342 < _a342.items.count {
-      let a: Double = _a342.items[_i342]
-      _i342 += 1
+    let _a343 = advances
+    var _i343 = 0
+    while _i343 < _a343.items.count {
+      let a: Double = _a343.items[_i343]
+      _i343 += 1
       total = (total + a)
     }
   }
@@ -1451,11 +1451,11 @@ public func shaping_caseRanges(_ item: ShapeItem, _ start: Double, _ end: Double
   let out: JsArray<CaseRange> = JsArray<CaseRange>([])
   // ts: packages/layout/src/shaping.ts:603
   do {
-    let _a343 = item.segments
-    var _i343 = 0
-    while _i343 < _a343.items.count {
-      let seg: ScriptSegment = _a343.items[_i343]
-      _i343 += 1
+    let _a344 = item.segments
+    var _i344 = 0
+    while _i344 < _a344.items.count {
+      let seg: ScriptSegment = _a344.items[_i344]
+      _i344 += 1
       let s: Double = ((seg.start > start) ? seg.start : start)
       let e: Double = ((seg.end < end) ? seg.end : end)
       // ts: packages/layout/src/shaping.ts:606
@@ -1502,11 +1502,11 @@ public func shaping_shapeRange(_ item: ShapeItem, _ start: Double, _ end: Double
   let unsafe: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/shaping.ts:633
   do {
-    let _a344 = try shaping_caseRanges(item, start, end)
-    var _i344 = 0
-    while _i344 < _a344.items.count {
-      let ranges: CaseRange = _a344.items[_i344]
-      _i344 += 1
+    let _a345 = try shaping_caseRanges(item, start, end)
+    var _i345 = 0
+    while _i345 < _a345.items.count {
+      let ranges: CaseRange = _a345.items[_i345]
+      _i345 += 1
       let seg: ScriptSegment = ranges.seg
       let s: Double = ranges.start
       let e: Double = ranges.end
@@ -1514,17 +1514,7 @@ public func shaping_shapeRange(_ item: ShapeItem, _ start: Double, _ end: Double
       let features: JsArray<Double> = JsArray<Double>([])
       // ts: packages/layout/src/shaping.ts:639
       do {
-        let _a345 = item.features
-        var _i345 = 0
-        while _i345 < _a345.items.count {
-          let f: Double = _a345.items[_i345]
-          _i345 += 1
-          _ = jsPush(features, f)
-        }
-      }
-      // ts: packages/layout/src/shaping.ts:640
-      do {
-        let _a346 = extra.features
+        let _a346 = item.features
         var _i346 = 0
         while _i346 < _a346.items.count {
           let f: Double = _a346.items[_i346]
@@ -1532,13 +1522,23 @@ public func shaping_shapeRange(_ item: ShapeItem, _ start: Double, _ end: Double
           _ = jsPush(features, f)
         }
       }
-      // ts: packages/layout/src/shaping.ts:641
+      // ts: packages/layout/src/shaping.ts:640
       do {
-        let _a347 = extra.unsafeBefore
+        let _a347 = extra.features
         var _i347 = 0
         while _i347 < _a347.items.count {
-          let u: Double = _a347.items[_i347]
+          let f: Double = _a347.items[_i347]
           _i347 += 1
+          _ = jsPush(features, f)
+        }
+      }
+      // ts: packages/layout/src/shaping.ts:641
+      do {
+        let _a348 = extra.unsafeBefore
+        var _i348 = 0
+        while _i348 < _a348.items.count {
+          let u: Double = _a348.items[_i348]
+          _i348 += 1
           _ = jsPush(unsafe, u)
         }
       }
@@ -1572,18 +1572,18 @@ public func shaping_shapeRange(_ item: ShapeItem, _ start: Double, _ end: Double
   }
   // ts: packages/layout/src/shaping.ts:662
   do {
-    let _a348 = unsafe
-    var _i348 = 0
-    while _i348 < _a348.items.count {
-      let offset: Double = _a348.items[_i348]
-      _i348 += 1
+    let _a349 = unsafe
+    var _i349 = 0
+    while _i349 < _a349.items.count {
+      let offset: Double = _a349.items[_i349]
+      _i349 += 1
       // ts: packages/layout/src/shaping.ts:663
       do {
-        let _a349 = runs
-        var _i349 = 0
-        while _i349 < _a349.items.count {
-          let run: ShapingRun = _a349.items[_i349]
-          _i349 += 1
+        let _a350 = runs
+        var _i350 = 0
+        while _i350 < _a350.items.count {
+          let run: ShapingRun = _a350.items[_i350]
+          _i350 += 1
           let ro: Double = (offset - run.start)
           // ts: packages/layout/src/shaping.ts:665
           if ((ro < 0.0) || (ro >= run.numChars)) {
@@ -1591,11 +1591,11 @@ public func shaping_shapeRange(_ item: ShapeItem, _ start: Double, _ end: Double
           }
           // ts: packages/layout/src/shaping.ts:666
           do {
-            let _a350 = run.glyphs
-            var _i350 = 0
-            while _i350 < _a350.items.count {
-              let g: ShapingGlyph = _a350.items[_i350]
-              _i350 += 1
+            let _a351 = run.glyphs
+            var _i351 = 0
+            while _i351 < _a351.items.count {
+              let g: ShapingGlyph = _a351.items[_i351]
+              _i351 += 1
               // ts: packages/layout/src/shaping.ts:666
               if (g.ci == ro) {
                 g.safe = false
@@ -1615,18 +1615,18 @@ public func shaping_shapeRange(_ item: ShapeItem, _ start: Double, _ end: Double
   var lastRaw: Double = 0.0
   // ts: packages/layout/src/shaping.ts:677
   do {
-    let _a351 = runs
-    var _i351 = 0
-    while _i351 < _a351.items.count {
-      let run: ShapingRun = _a351.items[_i351]
-      _i351 += 1
+    let _a352 = runs
+    var _i352 = 0
+    while _i352 < _a352.items.count {
+      let run: ShapingRun = _a352.items[_i352]
+      _i352 += 1
       // ts: packages/layout/src/shaping.ts:678
       do {
-        let _a352 = run.glyphs
-        var _i352 = 0
-        while _i352 < _a352.items.count {
-          let g: ShapingGlyph = _a352.items[_i352]
-          _i352 += 1
+        let _a353 = run.glyphs
+        var _i353 = 0
+        while _i353 < _a353.items.count {
+          let g: ShapingGlyph = _a353.items[_i353]
+          _i353 += 1
           let idx: Double = ((run.start + g.ci) - start)
           // ts: packages/layout/src/shaping.ts:680
           if (jsLength(safe) <= idx) {
@@ -1761,18 +1761,18 @@ public func shaping_viewWidth(_ segments: JsArray<ViewSegment>, _ faults: Shapin
   var width: Double = 0.0
   // ts: packages/layout/src/shaping.ts:764
   do {
-    let _a353 = segments
-    var _i353 = 0
-    while _i353 < _a353.items.count {
-      let seg: ViewSegment = _a353.items[_i353]
-      _i353 += 1
+    let _a354 = segments
+    var _i354 = 0
+    while _i354 < _a354.items.count {
+      let seg: ViewSegment = _a354.items[_i354]
+      _i354 += 1
       // ts: packages/layout/src/shaping.ts:765
       do {
-        let _a354 = seg.result.runs
-        var _i354 = 0
-        while _i354 < _a354.items.count {
-          let run: ShapingRun = _a354.items[_i354]
-          _i354 += 1
+        let _a355 = seg.result.runs
+        var _i355 = 0
+        while _i355 < _a355.items.count {
+          let run: ShapingRun = _a355.items[_i355]
+          _i355 += 1
           let runEnd: Double = (run.start + run.numChars)
           let s: Double = ((seg.start > run.start) ? seg.start : run.start)
           let e: Double = ((seg.end < runEnd) ? seg.end : runEnd)
@@ -1788,11 +1788,11 @@ public func shaping_viewWidth(_ segments: JsArray<ViewSegment>, _ faults: Shapin
             let advances: JsArray<Double> = JsArray<Double>([])
             // ts: packages/layout/src/shaping.ts:775
             do {
-              let _a355 = run.glyphs
-              var _i355 = 0
-              while _i355 < _a355.items.count {
-                let g: ShapingGlyph = _a355.items[_i355]
-                _i355 += 1
+              let _a356 = run.glyphs
+              var _i356 = 0
+              while _i356 < _a356.items.count {
+                let g: ShapingGlyph = _a356.items[_i356]
+                _i356 += 1
                 let c: Double = (run.start + g.ci)
                 // ts: packages/layout/src/shaping.ts:777
                 if ((c >= s) && (c < e)) {
@@ -1839,11 +1839,11 @@ public func shaping_snapped(_ segments: JsArray<ViewSegment>, _ faults: ShapingF
 public func shaping_missingIn(_ results: JsArray<ShapeResult>) throws -> Double {
   // ts: packages/layout/src/shaping.ts:808
   do {
-    let _a356 = results
-    var _i356 = 0
-    while _i356 < _a356.items.count {
-      let r: ShapeResult = _a356.items[_i356]
-      _i356 += 1
+    let _a357 = results
+    var _i357 = 0
+    while _i357 < _a357.items.count {
+      let r: ShapeResult = _a357.items[_i357]
+      _i357 += 1
       // ts: packages/layout/src/shaping.ts:808
       if (r.missing >= 0.0) {
         return r.missing
@@ -1889,7 +1889,7 @@ public func shaping_hyphenWidth(_ item: ShapeItem) throws -> any U_LineResult_ok
     }
     return try shaping_shapeItem((made as! ItemResult_okTrue).item)
   }
-  var r: ShapeResult = try own(S.s1201)
+  var r: ShapeResult = try own(S.s1200)
   // ts: packages/layout/src/shaping.ts:841
   if ((r.missing >= 0.0) || (jsLength(r.runs) == 0.0)) {
     try r = own(S.s224)
@@ -1922,7 +1922,7 @@ public func shaping_lineView(_ item: ShapeItem, _ paragraph: ShapeResult, _ star
   if try (((start == rangeStart) && (available >= shaping_snapWidth(paragraph.width, faults))) && shaping_isStartSafe(paragraph)) {
     // ts: packages/layout/src/shaping.ts:860
     if (breakOffset != rangeEnd) {
-      return LineResult_okFalse(false, jsConcat(S.s1139, jsNumberToString(breakOffset)))
+      return LineResult_okFalse(false, jsConcat(S.s1138, jsNumberToString(breakOffset)))
     }
     return try LineResult_okTrue(true, rangeEnd, shaping_snapped(JsArray<ViewSegment>([ViewSegment(paragraph, rangeStart, rangeEnd)]), faults))
   }
@@ -1968,7 +1968,7 @@ public func shaping_lineView(_ item: ShapeItem, _ paragraph: ShapeResult, _ star
   if (candidate >= rangeEnd) {
     // ts: packages/layout/src/shaping.ts:899
     if (breakOffset != rangeEnd) {
-      return LineResult_okFalse(false, jsConcat(S.s1149, jsNumberToString(breakOffset)))
+      return LineResult_okFalse(false, jsConcat(S.s1148, jsNumberToString(breakOffset)))
     }
     let missing: Double = try shaping_missingIn(JsArray<ShapeResult>([lineStart]))
     // ts: packages/layout/src/shaping.ts:901
@@ -2098,11 +2098,11 @@ public func shaping_viewLine(_ item: ShapeItem, _ segments: JsArray<ViewSegment>
   let shaped: JsArray<ShapeResult> = JsArray<ShapeResult>([])
   // ts: packages/layout/src/shaping.ts:997
   do {
-    let _a357 = segments
-    var _i357 = 0
-    while _i357 < _a357.items.count {
-      let s: ViewSegment = _a357.items[_i357]
-      _i357 += 1
+    let _a358 = segments
+    var _i358 = 0
+    while _i358 < _a358.items.count {
+      let s: ViewSegment = _a358.items[_i358]
+      _i358 += 1
       _ = jsPush(shaped, s.result)
     }
   }
@@ -2317,11 +2317,11 @@ public func shaping_subView(_ view: LineView, _ start: Double, _ end: Double) th
   let out: JsArray<ViewSegment> = JsArray<ViewSegment>([])
   // ts: packages/layout/src/shaping.ts:1136
   do {
-    let _a358 = view.segments
-    var _i358 = 0
-    while _i358 < _a358.items.count {
-      let s: ViewSegment = _a358.items[_i358]
-      _i358 += 1
+    let _a359 = view.segments
+    var _i359 = 0
+    while _i359 < _a359.items.count {
+      let s: ViewSegment = _a359.items[_i359]
+      _i359 += 1
       let a: Double = ((s.start > start) ? s.start : start)
       let b: Double = ((s.end < end) ? s.end : end)
       // ts: packages/layout/src/shaping.ts:1139
@@ -2338,18 +2338,18 @@ public func shaping_justifiedViewWidth(_ item: ShapeItem, _ view: LineView, _ ba
   var width: Double = 0.0
   // ts: packages/layout/src/shaping.ts:1152
   do {
-    let _a359 = view.segments
-    var _i359 = 0
-    while _i359 < _a359.items.count {
-      let seg: ViewSegment = _a359.items[_i359]
-      _i359 += 1
+    let _a360 = view.segments
+    var _i360 = 0
+    while _i360 < _a360.items.count {
+      let seg: ViewSegment = _a360.items[_i360]
+      _i360 += 1
       // ts: packages/layout/src/shaping.ts:1153
       do {
-        let _a360 = seg.result.runs
-        var _i360 = 0
-        while _i360 < _a360.items.count {
-          let run: ShapingRun = _a360.items[_i360]
-          _i360 += 1
+        let _a361 = seg.result.runs
+        var _i361 = 0
+        while _i361 < _a361.items.count {
+          let run: ShapingRun = _a361.items[_i361]
+          _i361 += 1
           let runEnd: Double = (run.start + run.numChars)
           let s: Double = ((seg.start > run.start) ? seg.start : run.start)
           let e: Double = ((seg.end < runEnd) ? seg.end : runEnd)
@@ -2443,11 +2443,11 @@ public func shaping_recomputePosition(_ b: LineBuild) throws -> Void {
   var p: Double = 0.0
   // ts: packages/layout/src/shaping.ts:1314
   do {
-    let _a361 = b.results
-    var _i361 = 0
-    while _i361 < _a361.items.count {
-      let r: MutableResult = _a361.items[_i361]
-      _i361 += 1
+    let _a362 = b.results
+    var _i362 = 0
+    while _i362 < _a362.items.count {
+      let r: MutableResult = _a362.items[_i362]
+      _i362 += 1
       p = (p + r.width)
     }
   }
@@ -2506,7 +2506,7 @@ public func shaping_breakText(_ b: LineBuild, _ r: MutableResult, _ availIn: Dou
   let it: any U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = try jsUnwrap(jsAt(b.items, r.index))
   // ts: packages/layout/src/shaping.ts:1348
   if (it.kind != S.s_text) {
-    throw try BreakFailure(S.s631)
+    throw try BreakFailure(S.s630)
   }
   var avail: Double = availIn
   let wrapped: Bool = (((((it as! BreakItem_text).offset + r.start) != 0.0) && (((it as! BreakItem_text).offset + r.start) == b.lineStart)) && (!b.afterForced))
@@ -2767,7 +2767,7 @@ public func shaping_handleText(_ b: LineBuild) throws -> Void {
   let it: any U_BreakItem_br_BreakItem_close_BreakItem_open_BreakItem_text = try jsUnwrap(jsAt(b.items, b.curItem))
   // ts: packages/layout/src/shaping.ts:1538
   if (it.kind != S.s_text) {
-    throw try BreakFailure(S.s795)
+    throw try BreakFailure(S.s794)
   }
   // ts: packages/layout/src/shaping.ts:1539
   if (b.state == S.s_trailing) {
@@ -2945,11 +2945,11 @@ public func shaping_breakOneLine(_ b: LineBuild) throws -> BrokenLine {
   let results: JsArray<BreakResult> = JsArray<BreakResult>([])
   // ts: packages/layout/src/shaping.ts:1658
   do {
-    let _a362 = b.results
-    var _i362 = 0
-    while _i362 < _a362.items.count {
-      let r: MutableResult = _a362.items[_i362]
-      _i362 += 1
+    let _a363 = b.results
+    var _i363 = 0
+    while _i363 < _a363.items.count {
+      let r: MutableResult = _a363.items[_i363]
+      _i363 += 1
       _ = jsPush(results, BreakResult(r.index, r.start, r.end, r.width, r.hyphen, r.view, r.canBreakAfter, r.mayBreakInside))
     }
   }
@@ -2976,7 +2976,7 @@ public func shaping_breakItemLines(_ items: JsArray<any U_BreakItem_br_BreakItem
       }
       // ts: packages/layout/src/shaping.ts:1687
       if ((line.nextItem == curItem) && (line.nextOffset == curOffset)) {
-        throw try BreakFailure(jsConcat(S.s1142, jsNumberToString(curItem)))
+        throw try BreakFailure(jsConcat(S.s1141, jsNumberToString(curItem)))
       }
       _ = jsPush(lines, line)
       curItem = line.nextItem
@@ -3014,11 +3014,11 @@ public func shaping_shapedText(_ faces: JsStringMap<ShapedFace>, _ shaper: Glyph
     var out: any U_ShapedItem_okFalse_ShapedItem_okTrue
     // ts: packages/layout/src/shaping.ts:1728
     if (f == nil) {
-      out = ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s917, face))
+      out = ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s916, face))
     } else if ((smallCapsSize >= 0.0) && (face != text_AHEM_FACE_ID)) {
-      out = ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s1065, face, S.s248))
+      out = ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s1064, face, S.s248))
     } else if ((smallCapsSize >= 0.0) && ((letterSpacing != 0.0) || (wordSpacing != 0.0))) {
-      out = ShapedItem_okFalse(false, S.s_text_glyph, S.s1069)
+      out = ShapedItem_okFalse(false, S.s_text_glyph, S.s1068)
     } else {
       let made: any U_ItemResult_okFalse_ItemResult_okTrue = try shaping_makeItem(ItemInput(shaper, jsUnwrap(f).id, size, text, language, jsUnwrap(f).hanKerning, letterSpacing, wordSpacing, smallCapsSize, faults))
       // ts: packages/layout/src/shaping.ts:1734
@@ -3048,7 +3048,7 @@ public func shaping_shapedText(_ faces: JsStringMap<ShapedFace>, _ shaper: Glyph
     let f: ShapedFace? = faces.get(font.family)
     // ts: packages/layout/src/shaping.ts:1752
     if (f == nil) {
-      throw JsError(message: jsConcat(S.s917, font.family, S.s275))
+      throw JsError(message: jsConcat(S.s916, font.family, S.s275))
     }
     let size: Double = try units_platformFontSize(font.size)
     let d: FontData = try jsUnwrap(f).data
@@ -3077,7 +3077,7 @@ public func shaping_shapedText(_ faces: JsStringMap<ShapedFace>, _ shaper: Glyph
     let f: ShapedFace? = faces.get(font.family)
     // ts: packages/layout/src/shaping.ts:1775
     if (f == nil) {
-      throw JsError(message: jsConcat(S.s917, font.family, S.s275))
+      throw JsError(message: jsConcat(S.s916, font.family, S.s275))
     }
     return try text_fontMetricLengths(jsUnwrap(f).data, units_platformFontSize(font.size))
 }, { (text: JsString, font: TextFont) throws -> any U_ShapedItem_okFalse_ShapedItem_okTrue in
@@ -3140,11 +3140,11 @@ public func shaping_pieceGlyphs(_ measurer: TextMeasurer, _ textIn: JsString, _ 
   var seg: JsString = S.s0
   // ts: packages/layout/src/shaping.ts:1824
   do {
-    let _a363 = jsCodePoints(textIn)
-    var _i363 = 0
-    while _i363 < _a363.items.count {
-      let ch: JsString = _a363.items[_i363]
-      _i363 += 1
+    let _a364 = jsCodePoints(textIn)
+    var _i364 = 0
+    while _i364 < _a364.items.count {
+      let ch: JsString = _a364.items[_i364]
+      _i364 += 1
       // ts: packages/layout/src/shaping.ts:1825
       if (ch == S.s1) {
         // ts: packages/layout/src/shaping.ts:1826
@@ -3176,18 +3176,18 @@ public func shaping_pieceGlyphs(_ measurer: TextMeasurer, _ textIn: JsString, _ 
   var pen: Double = 0.0
   // ts: packages/layout/src/shaping.ts:1844
   do {
-    let _a364 = (s as! ShapedItem_okTrue).result.runs
-    var _i364 = 0
-    while _i364 < _a364.items.count {
-      let run: ShapingRun = _a364.items[_i364]
-      _i364 += 1
+    let _a365 = (s as! ShapedItem_okTrue).result.runs
+    var _i365 = 0
+    while _i365 < _a365.items.count {
+      let run: ShapingRun = _a365.items[_i365]
+      _i365 += 1
       // ts: packages/layout/src/shaping.ts:1845
       do {
-        let _a365 = run.glyphs
-        var _i365 = 0
-        while _i365 < _a365.items.count {
-          let g: ShapingGlyph = _a365.items[_i365]
-          _i365 += 1
+        let _a366 = run.glyphs
+        var _i366 = 0
+        while _i366 < _a366.items.count {
+          let g: ShapingGlyph = _a366.items[_i366]
+          _i366 += 1
           let at: Double = (run.start + g.ci)
           // ts: packages/layout/src/shaping.ts:1847
           if ((at < from) || (at >= to)) {
@@ -3250,11 +3250,11 @@ public func shaping_latinScopedMeasurer(_ measurer: TextMeasurer, _ latinCheckSk
 public func shaping_firstOutsideLatin(_ text: JsString) throws -> Double {
   // ts: packages/layout/src/shaping.ts:1900
   do {
-    let _a366 = jsCodePoints(text)
-    var _i366 = 0
-    while _i366 < _a366.items.count {
-      let ch: JsString = _a366.items[_i366]
-      _i366 += 1
+    let _a367 = jsCodePoints(text)
+    var _i367 = 0
+    while _i367 < _a367.items.count {
+      let ch: JsString = _a367.items[_i367]
+      _i367 += 1
       // ts: packages/layout/src/shaping.ts:1900
       if try (!scriptData_isLatinText(ch)) {
         return try jsUnwrap(jsCodePointAt0(ch))

@@ -45,6 +45,9 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // fits, and an icon beside a label. The refused cases (a carousel slide past a px width, an image-replacement text-indent) are
   // native-only, which the reject fixtures' web-blocked contract cannot hold, so dragon's paint-clip-view-text.test.ts pins them.
   both('overflow-text-cards'),
+  // Inline boxes in a line (R16, INL1a): spans and links, one wider than its scroller,
+  // nested inline boxes with a larger font, and a tall line; the line's inline box fragments add to the scrollable overflow.
+  both('overflow-inline-boxes'),
   // Block buttons inside scroll containers and past the viewport: a form control adds its border box to the scrollable overflow
   // when its contents stay inside it (overflow.ts controlContribution), so pages and boxes holding buttons have a decided range.
   both('overflow-controls'),

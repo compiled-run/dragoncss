@@ -460,7 +460,7 @@ function propagated(ix: Index, n: Node): OverflowRect {
 
 /**
  * The PlacedLine fields addLines accounts for (R16): a new line item kind is added here with a Chrome metrics case, never skipped.
- * boxes, boxRects, breaks and breakRects are empty on every line addLines sees, as refuseLineLevelBoxes refuses inline boxes and <br>s.
+ * breaks and breakRects are empty on every line addLines sees, as refuseLineLevelBoxes refuses <br>s; boxRects are inline box fragments it adds.
  */
 export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline', 'pieces', 'boxes', 'boxRects', 'breaks', 'breakRects', 'ellipsis'];
 
@@ -477,8 +477,7 @@ export function refuseLineLevelBoxes(box: LayoutBox): void {
   if (!hasInlineContent(box)) return;
   for (const k of box.children) {
     if (k.kind === 'box' || k.kind === 'replaced') throw new OverflowRefusal(k.id, `an atomic inline in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL2)`);
-    // INL1a's inline box fragments and <br>s are line items addLines does not measure (ScrollableOverflowForLine adds them).
-    if (k.kind === 'inline') throw new OverflowRefusal(k.id, `an inline box in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);
+    // INL1a's <br>s are line items addLines does not measure (ScrollableOverflowForLine adds them); inline boxes it does.
     if (k.kind === 'br') throw new OverflowRefusal(k.id, `a <br> in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);
   }
 }
@@ -512,6 +511,8 @@ function addLines(ix: Index, n: Node, box: LayoutBox, c: Calc): void {
       if (e !== null && p.leaf === e.leaf) hidden = true;
     }
     if (e !== null) addOverflow(c, { x: add(ox, e.x), y: add(oy, e.top), width: e.width, height: add(e.ascent, e.descent) });
+    // INL1a: each inline box fragment on the line adds its border box (ScrollableOverflowForLine over the line's box items).
+    for (const r of line.boxRects) addOverflow(c, { x: add(ox, r.x), y: add(oy, r.y), width: r.width, height: r.height });
   }
 }
 

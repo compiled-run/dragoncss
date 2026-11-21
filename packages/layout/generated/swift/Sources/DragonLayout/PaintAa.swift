@@ -629,11 +629,11 @@ public func paintAa_clampToZero(_ radii: JsArray<Radius>) throws -> ClampedRadii
   var allSquare: Bool = true
   // ts: packages/layout/src/paint-aa.ts:406
   do {
-    let _a188 = radii
-    var _i188 = 0
-    while _i188 < _a188.items.count {
-      let r: Radius = _a188.items[_i188]
-      _i188 += 1
+    let _a189 = radii
+    var _i189 = 0
+    while _i189 < _a189.items.count {
+      let r: Radius = _a189.items[_i189]
+      _i189 += 1
       // ts: packages/layout/src/paint-aa.ts:407
       if ((r.x <= 0.0) || (r.y <= 0.0)) {
         _ = jsPush(out, Radius(0.0, 0.0))
@@ -878,11 +878,11 @@ public func paintAa_boundsOf(_ pts: JsArray<Pt>) throws -> PaintAa_FRect {
   var b: Double = t
   // ts: packages/layout/src/paint-aa.ts:628
   do {
-    let _a189 = pts
-    var _i189 = 0
-    while _i189 < _a189.items.count {
-      let p: Pt = _a189.items[_i189]
-      _i189 += 1
+    let _a190 = pts
+    var _i190 = 0
+    while _i190 < _a190.items.count {
+      let p: Pt = _a190.items[_i190]
+      _i190 += 1
       try l = paintAa_minNum(l, p.x)
       try t = paintAa_minNum(t, p.y)
       try r = paintAa_maxNum(r, p.x)
@@ -911,39 +911,39 @@ public func paintAa_drrectPath(_ outer: SkRRect, _ inner: SkRRect) throws -> AaP
   let weights: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-aa.ts:654
   do {
-    let _a190 = JsArray<SkRRect>([outer, inner])
-    var _i190 = 0
-    while _i190 < _a190.items.count {
-      let rr: SkRRect = _a190.items[_i190]
-      _i190 += 1
+    let _a191 = JsArray<SkRRect>([outer, inner])
+    var _i191 = 0
+    while _i191 < _a191.items.count {
+      let rr: SkRRect = _a191.items[_i191]
+      _i191 += 1
       let s: Shape = try (((rr.type == S.s_rect) || (rr.type == S.s_empty)) ? paintAa_rectPoints(rr.rect, 3.0) : ((rr.type == S.s_oval) ? paintAa_ovalPoints(rr.rect, 3.0) : paintAa_rrectPoints(rr, 6.0)))
       // ts: packages/layout/src/paint-aa.ts:656
       do {
-        let _a191 = s.pts
-        var _i191 = 0
-        while _i191 < _a191.items.count {
-          let p: Pt = _a191.items[_i191]
-          _i191 += 1
+        let _a192 = s.pts
+        var _i192 = 0
+        while _i192 < _a192.items.count {
+          let p: Pt = _a192.items[_i192]
+          _i192 += 1
           _ = jsPush(pts, p)
         }
       }
       // ts: packages/layout/src/paint-aa.ts:657
       do {
-        let _a192 = s.verbs
-        var _i192 = 0
-        while _i192 < _a192.items.count {
-          let v: Double = _a192.items[_i192]
-          _i192 += 1
+        let _a193 = s.verbs
+        var _i193 = 0
+        while _i193 < _a193.items.count {
+          let v: Double = _a193.items[_i193]
+          _i193 += 1
           _ = jsPush(verbs, v)
         }
       }
       // ts: packages/layout/src/paint-aa.ts:658
       do {
-        let _a193 = s.weights
-        var _i193 = 0
-        while _i193 < _a193.items.count {
-          let w: Double = _a193.items[_i193]
-          _i193 += 1
+        let _a194 = s.weights
+        var _i194 = 0
+        while _i194 < _a194.items.count {
+          let w: Double = _a194.items[_i194]
+          _i194 += 1
           _ = jsPush(weights, w)
         }
       }
@@ -957,11 +957,11 @@ public func paintAa_translatePath(_ path: AaPath, _ dx: Double, _ dy: Double) th
   let pts: JsArray<Pt> = JsArray<Pt>([])
   // ts: packages/layout/src/paint-aa.ts:666
   do {
-    let _a194 = path.pts
-    var _i194 = 0
-    while _i194 < _a194.items.count {
-      let p: Pt = _a194.items[_i194]
-      _i194 += 1
+    let _a195 = path.pts
+    var _i195 = 0
+    while _i195 < _a195.items.count {
+      let p: Pt = _a195.items[_i195]
+      _i195 += 1
       _ = try jsPush(pts, paintAa_pt(paintAa_f32((p.x + dx)), paintAa_f32((p.y + dy))))
     }
   }
@@ -1807,11 +1807,11 @@ public func paintAa_addSegment(_ list: EdgeList, _ seg: JsArray<Pt>, _ clip: Pai
   try paintAa_clipQuad(seg, jsUnwrap(clip), canCullToTheRight, out)
   // ts: packages/layout/src/paint-aa.ts:1371
   do {
-    let _a195 = out
-    var _i195 = 0
-    while _i195 < _a195.items.count {
-      let piece: JsArray<Pt> = _a195.items[_i195]
-      _i195 += 1
+    let _a196 = out
+    var _i196 = 0
+    while _i196 < _a196.items.count {
+      let piece: JsArray<Pt> = _a196.items[_i196]
+      _i196 += 1
       // ts: packages/layout/src/paint-aa.ts:1372
       if (jsLength(piece) == 2.0) {
         try paintAa_addLine(list, jsUnwrap(jsAt(piece, 0.0)), jsUnwrap(jsAt(piece, 1.0)))
@@ -1833,11 +1833,11 @@ public func paintAa_buildEdges(_ path: AaPath, _ faults: AaFaults, _ clip: Paint
   var needsClose: Bool = false
   // ts: packages/layout/src/paint-aa.ts:1389
   do {
-    let _a196 = path.verbs
-    var _i196 = 0
-    while _i196 < _a196.items.count {
-      let v: Double = _a196.items[_i196]
-      _i196 += 1
+    let _a197 = path.verbs
+    var _i197 = 0
+    while _i197 < _a197.items.count {
+      let v: Double = _a197.items[_i197]
+      _i197 += 1
       // ts: packages/layout/src/paint-aa.ts:1390
       if (v == paintAa_VERB_MOVE) {
         // ts: packages/layout/src/paint-aa.ts:1391
@@ -2097,11 +2097,11 @@ public func paintAa_sortEdges(_ edges: JsArray<Edge>) throws -> JsArray<Edge> {
   let xs: JsArray<EdgeCell> = JsArray<EdgeCell>([])
   // ts: packages/layout/src/paint-aa.ts:1560
   do {
-    let _a197 = edges
-    var _i197 = 0
-    while _i197 < _a197.items.count {
-      let e: Edge = _a197.items[_i197]
-      _i197 += 1
+    let _a198 = edges
+    var _i198 = 0
+    while _i198 < _a198.items.count {
+      let e: Edge = _a198.items[_i198]
+      _i198 += 1
       _ = jsPush(xs, EdgeCell(e))
     }
   }
@@ -2113,11 +2113,11 @@ public func paintAa_sortEdges(_ edges: JsArray<Edge>) throws -> JsArray<Edge> {
   let out: JsArray<Edge> = JsArray<Edge>([])
   // ts: packages/layout/src/paint-aa.ts:1564
   do {
-    let _a198 = xs
-    var _i198 = 0
-    while _i198 < _a198.items.count {
-      let c: EdgeCell = _a198.items[_i198]
-      _i198 += 1
+    let _a199 = xs
+    var _i199 = 0
+    while _i199 < _a199.items.count {
+      let c: EdgeCell = _a199.items[_i199]
+      _i199 += 1
       _ = jsPush(out, c.e)
     }
   }
@@ -2186,11 +2186,11 @@ public func paintAa_accFlush(_ acc: Acc) throws -> Void {
     var `any`: Bool = false
     // ts: packages/layout/src/paint-aa.ts:1634
     do {
-      let _a199 = acc.row
-      var _i199 = 0
-      while _i199 < _a199.items.count {
-        let c: PaintAa_Cell = _a199.items[_i199]
-        _i199 += 1
+      let _a200 = acc.row
+      var _i200 = 0
+      while _i200 < _a200.items.count {
+        let c: PaintAa_Cell = _a200.items[_i200]
+        _i200 += 1
         try c.v = paintAa_snapAlpha(c.v)
         // ts: packages/layout/src/paint-aa.ts:1636
         if (c.v != 0.0) {
@@ -2210,11 +2210,11 @@ public func paintAa_accFlush(_ acc: Acc) throws -> Void {
       }
       // ts: packages/layout/src/paint-aa.ts:1640
       do {
-        let _a200 = acc.row
-        var _i200 = 0
-        while _i200 < _a200.items.count {
-          let c: PaintAa_Cell = _a200.items[_i200]
-          _i200 += 1
+        let _a201 = acc.row
+        var _i201 = 0
+        while _i201 < _a201.items.count {
+          let c: PaintAa_Cell = _a201.items[_i201]
+          _i201 += 1
           c.v = 0.0
         }
       }
@@ -3271,11 +3271,11 @@ public func paintAa_antiFillPath(_ dev: Device, _ path: AaPath, _ tileClip: Pain
     var curves: Bool = false
     // ts: packages/layout/src/paint-aa.ts:2375
     do {
-      let _a201 = path.verbs
-      var _i201 = 0
-      while _i201 < _a201.items.count {
-        let v: Double = _a201.items[_i201]
-        _i201 += 1
+      let _a202 = path.verbs
+      var _i202 = 0
+      while _i202 < _a202.items.count {
+        let v: Double = _a202.items[_i202]
+        _i202 += 1
         // ts: packages/layout/src/paint-aa.ts:2375
         if ((v == paintAa_VERB_CONIC) || (v == paintAa_VERB_QUAD)) {
           curves = true
@@ -3330,11 +3330,11 @@ public func paintAa_flatten(_ path: AaPath) throws -> JsArray<JsArray<Pt>> {
   var wi: Double = 0.0
   // ts: packages/layout/src/paint-aa.ts:2404
   do {
-    let _a202 = path.verbs
-    var _i202 = 0
-    while _i202 < _a202.items.count {
-      let v: Double = _a202.items[_i202]
-      _i202 += 1
+    let _a203 = path.verbs
+    var _i203 = 0
+    while _i203 < _a203.items.count {
+      let v: Double = _a203.items[_i203]
+      _i203 += 1
       // ts: packages/layout/src/paint-aa.ts:2405
       if (v == paintAa_VERB_MOVE) {
         // ts: packages/layout/src/paint-aa.ts:2406
@@ -3402,11 +3402,11 @@ public func paintAa_supersampleFill(_ dev: Device, _ path: AaPath, _ ir: PaintAa
                   var wind: Double = 0.0
                   // ts: packages/layout/src/paint-aa.ts:2441
                   do {
-                    let _a203 = contours
-                    var _i203 = 0
-                    while _i203 < _a203.items.count {
-                      let c: JsArray<Pt> = _a203.items[_i203]
-                      _i203 += 1
+                    let _a204 = contours
+                    var _i204 = 0
+                    while _i204 < _a204.items.count {
+                      let c: JsArray<Pt> = _a204.items[_i204]
+                      _i204 += 1
                       // ts: packages/layout/src/paint-aa.ts:2442
                       do {
                         var i: Double = 0.0
@@ -3468,11 +3468,11 @@ public func paintAa_normalizeLimbs(_ xs: JsArray<Double>) throws -> JsArray<Doub
   var carry: Double = 0.0
   // ts: packages/layout/src/paint-aa.ts:2479
   do {
-    let _a204 = xs
-    var _i204 = 0
-    while _i204 < _a204.items.count {
-      let x: Double = _a204.items[_i204]
-      _i204 += 1
+    let _a205 = xs
+    var _i205 = 0
+    while _i205 < _a205.items.count {
+      let x: Double = _a205.items[_i205]
+      _i205 += 1
       let v: Double = (x + carry)
       try carry = rtEasing_floorOf((v / paintAa_LIMB))
       _ = jsPush(out, (v - (carry * paintAa_LIMB)))
@@ -3641,11 +3641,11 @@ public func paintAa_devicePixels(_ dev: Device) throws -> JsArray<Double> {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-aa.ts:3405
   do {
-    let _a205 = dev.px
-    var _i205 = 0
-    while _i205 < _a205.items.count {
-      let c: PaintAa_Cell = _a205.items[_i205]
-      _i205 += 1
+    let _a206 = dev.px
+    var _i206 = 0
+    while _i206 < _a206.items.count {
+      let c: PaintAa_Cell = _a206.items[_i206]
+      _i206 += 1
       _ = jsPush(out, c.v)
     }
   }
