@@ -126,7 +126,8 @@ describe('OVFL-B: undecidedScrollContainers against the engine', () => {
 
   it('names the engine reason for each refusal class', () => {
     const reasons = (k: Child[]): string[] => undecidedScrollContainers(input([box('c', sc('auto'), k)]).root).map((u) => `${u.containerId} ${u.nodeId}: ${u.detail}`);
-    expect(reasons([leaf('t', 'XX'), span('s', [leaf('u', 'YY')])])).toEqual(['c s: an inline box in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL1a)']);
+    // INL1a: the engine adds a line's inline box fragments to its scrollable overflow (ovfl-metrics.test.ts, overflow-inline-boxes).
+    expect(reasons([leaf('t', 'XX'), span('s', [leaf('u', 'YY')])])).toEqual([]);
     expect(reasons([leaf('t', 'XX'), br('b'), leaf('v', 'YY')])).toEqual(['c b: a <br> in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL1a)']);
     expect(reasons([leaf('t', 'XX'), box('k', { display: 'flex', width: px(10), height: px(10) })])).toEqual(['c k: an atomic inline in the inline formatting context of c: its scrollable overflow is not decided here (R16, INL2)']);
     expect(reasons([box('p', { height: pct(50) }, [box('k', { height: px(10), marginBottom: px(5) })])])).toEqual(['c p: a percentage or stretch height on a box whose end margins may collapse through it: its basis is not decided here']);
@@ -150,10 +151,9 @@ describe('OVFL-B: the compiler refuses an undecided native scroll container', ()
   const both = (m: string): string[] => [`DRAGON_UNPROVEN_CONTEXT android: ${m}`, `DRAGON_UNPROVEN_CONTEXT ios: ${m}`];
   const prefix = (at: string): string => `overflow auto or scroll on a: the native scroll view's range is not decided at ${at}: `;
 
-  it('an inline box, a <br>, an atomic inline and a collapsing percentage height inside auto or scroll are refused on ios and android only', () => {
+  it('a <br>, an atomic inline and a collapsing percentage height inside auto or scroll are refused on ios and android only; an inline box is decided', () => {
     const span = compile('', (r) => [text(r, 't', 'XX'), el(r, 'span', 's', [], [text(r, 'u', 'YY')])]);
-    expect(refusals(span)).toEqual(both(`${prefix('s')}an inline box in the inline formatting context of a: its scrollable overflow is not decided here (R16, INL1a) (OVFL-B)`));
-    expect([span.outputs.ios.kind, span.outputs.android.kind, span.outputs.web.kind]).toEqual(['blocked', 'blocked', 'ready']);
+    expect(refusals(span)).toEqual([]);
     const brk = compile('', (r) => [text(r, 't', 'XX'), el(r, 'br', 'b', []), text(r, 'u', 'YY')]);
     expect(refusals(brk)).toEqual(both(`${prefix('b')}a <br> in the inline formatting context of a: its scrollable overflow is not decided here (R16, INL1a) (OVFL-B)`));
     // INL2a lowers an atomic inline (an inline-level box beside text) on native, so the engine's atomic-inline rule refuses its scroll container.

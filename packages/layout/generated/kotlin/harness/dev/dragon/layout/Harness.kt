@@ -288,11 +288,11 @@ fun harness_expect(c: Cursor, cp: Double): Unit {
 fun harness_word(c: Cursor, cps: JsArray<Double>): Unit {
   // ts: packages/translate/harness/harness.ts:239
   run {
-    val _a382 = cps
-    var _i382 = 0
-    while (_i382 < _a382.size) {
-      val cp: Double = _a382[_i382]
-      _i382++
+    val _a383 = cps
+    var _i383 = 0
+    while (_i383 < _a383.size) {
+      val cp: Double = _a383[_i383]
+      _i383++
       harness_expect(c, cp)
     }
   }
@@ -554,11 +554,11 @@ fun harness_parseJson(text: String): U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj
   val cps: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/translate/harness/harness.ts:393
   run {
-    val _a383 = jsCodePoints(text)
-    var _i383 = 0
-    while (_i383 < _a383.size) {
-      val ch: String = _a383[_i383]
-      _i383++
+    val _a384 = jsCodePoints(text)
+    var _i384 = 0
+    while (_i384 < _a384.size) {
+      val ch: String = _a384[_i384]
+      _i384++
       jsPush(cps, jsUnwrap(jsCodePointAt0(ch)))
     }
   }
@@ -584,11 +584,11 @@ fun harness_obj(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, keys: Js
   }
   // ts: packages/translate/harness/harness.ts:406
   run {
-    val _a384 = keys
-    var _i384 = 0
-    while (_i384 < _a384.size) {
-      val k: String = _a384[_i384]
-      _i384++
+    val _a385 = keys
+    var _i385 = 0
+    while (_i385 < _a385.size) {
+      val k: String = _a385[_i385]
+      _i385++
       // ts: packages/translate/harness/harness.ts:406
       if ((!(v as JsonObj).values.has(k))) {
         harness_fail((path + ": missing key " + k))
@@ -1691,11 +1691,11 @@ fun harness_q(s: String): String {
   var out: String = "\""
   // ts: packages/translate/harness/harness.ts:1361
   run {
-    val _a385 = jsCodePoints(s)
-    var _i385 = 0
-    while (_i385 < _a385.size) {
-      val ch: String = _a385[_i385]
-      _i385++
+    val _a386 = jsCodePoints(s)
+    var _i386 = 0
+    while (_i386 < _a386.size) {
+      val ch: String = _a386[_i386]
+      _i386++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/translate/harness/harness.ts:1363
       if (jsStrEq(ch, "\"")) {
@@ -1802,11 +1802,11 @@ fun harness_replayShaper(calls: JsArray<ReplayCall>): GlyphShaper {
   return GlyphShaper(fun(face: String, size: Double, text: String, start: Double, end: Double, script: String, rtl: Boolean, language: String, features: JsArray<Double>): JsArray<Double> {
     // ts: packages/translate/harness/harness.ts:1461
     run {
-      val _a386 = calls
-      var _i386 = 0
-      while (_i386 < _a386.size) {
-        val c: ReplayCall = _a386[_i386]
-        _i386++
+      val _a387 = calls
+      var _i387 = 0
+      while (_i387 < _a387.size) {
+        val c: ReplayCall = _a387[_i387]
+        _i387++
         // ts: packages/translate/harness/harness.ts:1462
         if (((((((((jsStrEq(c.face, face) && (c.size == size)) && jsStrEq(c.text, text)) && (c.start == start)) && (c.end == end)) && jsStrEq(c.script, script)) && (c.rtl == rtl)) && jsStrEq(c.language, language)) && harness_sameNumbers(c.features, features))) {
           return c.glyphs
@@ -2554,11 +2554,11 @@ fun harness_commaList(parts: JsArray<String>): String {
   var out: String = ""
   // ts: packages/translate/harness/harness.ts:1913
   run {
-    val _a387 = parts
-    var _i387 = 0
-    while (_i387 < _a387.size) {
-      val x: String = _a387[_i387]
-      _i387++
+    val _a388 = parts
+    var _i388 = 0
+    while (_i388 < _a388.size) {
+      val x: String = _a388[_i388]
+      _i388++
       out = (if (jsStrEq(out, "")) x else (out + "," + x))
     }
   }
@@ -2632,11 +2632,11 @@ fun harness_tableTrig(v: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, pa
   fun find(r: Double): TrigEntry {
     // ts: packages/translate/harness/harness.ts:1962
     run {
-      val _a388 = table
-      var _i388 = 0
-      while (_i388 < _a388.size) {
-        val e: TrigEntry = _a388[_i388]
-        _i388++
+      val _a389 = table
+      var _i389 = 0
+      while (_i389 < _a389.size) {
+        val e: TrigEntry = _a389[_i389]
+        _i389++
         // ts: packages/translate/harness/harness.ts:1962
         if ((e.radians == r)) {
           return e
@@ -2932,13 +2932,13 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:2215
       run {
-        val _a389 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
+        val _a390 = jsSort(jsCopy(items), fun(x: SortItem, y: SortItem): Double {
     return (x.key - y.key)
 })
-        var _i389 = 0
-        while (_i389 < _a389.size) {
-          val it: SortItem = _a389[_i389]
-          _i389++
+        var _i390 = 0
+        while (_i390 < _a390.size) {
+          val it: SortItem = _a390[_i390]
+          _i390++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_q(it.tag))
         }
       }
@@ -2970,11 +2970,11 @@ fun harness_libraryResult(op: String, a: JsArray<U_JsonArr_JsonBool_JsonNull_Jso
       var out: String = ""
       // ts: packages/translate/harness/harness.ts:2233
       run {
-        val _a390 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
-        var _i390 = 0
-        while (_i390 < _a390.size) {
-          val ch: String = _a390[_i390]
-          _i390++
+        val _a391 = jsCodePoints(harness_str(jsUnwrap(v), "\$[1]"))
+        var _i391 = 0
+        while (_i391 < _a391.size) {
+          val ch: String = _a391[_i391]
+          _i391++
           out += ((if (jsStrEq(out, "")) "" else ",") + harness_h(jsUnwrap(jsCodePointAt0(ch))))
         }
       }
@@ -3882,22 +3882,22 @@ fun harness_rtAnimatorResult(a: JsArray<U_JsonArr_JsonBool_JsonNull_JsonNum_Json
       var values: String = ""
       // ts: packages/translate/harness/harness.ts:2923
       run {
-        val _a391 = frame
-        var _i391 = 0
-        while (_i391 < _a391.size) {
-          val e: FrameEntry = _a391[_i391]
-          _i391++
+        val _a392 = frame
+        var _i392 = 0
+        while (_i392 < _a392.size) {
+          val e: FrameEntry = _a392[_i392]
+          _i392++
           values += ((if (jsStrEq(values, "")) "" else ",") + "[" + harness_q(e.node) + "," + harness_q(e.property) + "," + harness_q(rtInterpolate_serializeValue(e.value, 0.0, 0.0, harness_RT_TRIG)) + "]")
         }
       }
       var colors: String = ""
       // ts: packages/translate/harness/harness.ts:2925
       run {
-        val _a392 = rtAnimator_frameColors(frame, t, harness_AN_NO_FAULTS)
-        var _i392 = 0
-        while (_i392 < _a392.size) {
-          val c: ColorWrite = _a392[_i392]
-          _i392++
+        val _a393 = rtAnimator_frameColors(frame, t, harness_AN_NO_FAULTS)
+        var _i393 = 0
+        while (_i393 < _a393.size) {
+          val c: ColorWrite = _a393[_i393]
+          _i393++
           colors += ((if (jsStrEq(colors, "")) "" else ",") + "[" + harness_q(c.node) + "," + harness_q(c.property) + "," + harness_h(c.rgba.r) + "," + harness_h(c.rgba.g) + "," + harness_h(c.rgba.b) + "," + harness_h(c.rgba.alpha) + "]")
         }
       }
@@ -3908,19 +3908,19 @@ fun harness_rtAnimatorResult(a: JsArray<U_JsonArr_JsonBool_JsonNull_JsonNum_Json
       var transforms: String = ""
       // ts: packages/translate/harness/harness.ts:2929
       run {
-        val _a393 = rtAnimator_frameTransforms(s, t, frame)
-        var _i393 = 0
-        while (_i393 < _a393.size) {
-          val w: TransformWrite = _a393[_i393]
-          _i393++
+        val _a394 = rtAnimator_frameTransforms(s, t, frame)
+        var _i394 = 0
+        while (_i394 < _a394.size) {
+          val w: TransformWrite = _a394[_i394]
+          _i394++
           var ops: String = ""
           // ts: packages/translate/harness/harness.ts:2931
           run {
-            val _a394 = w.ops
-            var _i394 = 0
-            while (_i394 < _a394.size) {
-              val o: TransformOp = _a394[_i394]
-              _i394++
+            val _a395 = w.ops
+            var _i395 = 0
+            while (_i395 < _a395.size) {
+              val o: TransformOp = _a395[_i395]
+              _i395++
               ops += ((if (jsStrEq(ops, "")) "" else ",") + "[" + harness_q(o.fn) + "," + len(o.x) + "," + len(o.y) + "," + harness_h(o.angle) + "," + harness_h(o.sx) + "," + harness_h(o.sy) + "]")
             }
           }
@@ -3992,11 +3992,11 @@ fun harness_iaElements(xs: JsArray<Double>): String {
   var out: String = ""
   // ts: packages/translate/harness/harness.ts:3004
   run {
-    val _a395 = xs
-    var _i395 = 0
-    while (_i395 < _a395.size) {
-      val x: Double = _a395[_i395]
-      _i395++
+    val _a396 = xs
+    var _i396 = 0
+    while (_i396 < _a396.size) {
+      val x: Double = _a396[_i396]
+      _i396++
       out += ((if (jsStrEq(out, "")) "" else ",") + harness_h(x))
     }
   }
@@ -4323,11 +4323,11 @@ fun harness_planStyles(b: LayoutBox, out: JsStringMap<LayoutStyle>): Unit {
   out.set(b.id, b.style)
   // ts: packages/translate/harness/harness.ts:3231
   run {
-    val _a396 = b.children
-    var _i396 = 0
-    while (_i396 < _a396.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a396[_i396]
-      _i396++
+    val _a397 = b.children
+    var _i397 = 0
+    while (_i397 < _a397.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a397[_i397]
+      _i397++
       // ts: packages/translate/harness/harness.ts:3232
       if (jsStrEq(c.kind, "box")) {
         harness_planStyles((c as LayoutBox), out)
@@ -4351,11 +4351,11 @@ fun harness_planInlineStyles(c: U_InlineBox_LineBreak_TextLeaf, out: JsStringMap
   out.set((c as InlineBox).id, (c as InlineBox).style)
   // ts: packages/translate/harness/harness.ts:3243
   run {
-    val _a397 = (c as InlineBox).children
-    var _i397 = 0
-    while (_i397 < _a397.size) {
-      val k: U_InlineBox_LineBreak_TextLeaf = _a397[_i397]
-      _i397++
+    val _a398 = (c as InlineBox).children
+    var _i398 = 0
+    while (_i398 < _a398.size) {
+      val k: U_InlineBox_LineBreak_TextLeaf = _a398[_i398]
+      _i398++
       harness_planInlineStyles(k, out)
     }
   }
@@ -4370,11 +4370,11 @@ fun harness_planTexts(b: LayoutBox, out: JsStringMap<String>): Unit {
   }
   // ts: packages/translate/harness/harness.ts:3250
   run {
-    val _a398 = b.children
-    var _i398 = 0
-    while (_i398 < _a398.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a398[_i398]
-      _i398++
+    val _a399 = b.children
+    var _i399 = 0
+    while (_i399 < _a399.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a399[_i399]
+      _i399++
       // ts: packages/translate/harness/harness.ts:3251
       if (jsStrEq(c.kind, "box")) {
         harness_planTexts((c as LayoutBox), out)
@@ -4395,11 +4395,11 @@ fun harness_planInlineTexts(c: U_InlineBox_LineBreak_TextLeaf, out: JsStringMap<
   } else if (jsStrEq((c as U_InlineBox_LineBreak).kind, "inline")) {
     // ts: packages/translate/harness/harness.ts:3259
     run {
-      val _a399 = (c as InlineBox).children
-      var _i399 = 0
-      while (_i399 < _a399.size) {
-        val k: U_InlineBox_LineBreak_TextLeaf = _a399[_i399]
-        _i399++
+      val _a400 = (c as InlineBox).children
+      var _i400 = 0
+      while (_i400 < _a400.size) {
+        val k: U_InlineBox_LineBreak_TextLeaf = _a400[_i400]
+        _i400++
         harness_planInlineTexts(k, out)
       }
     }
@@ -4412,11 +4412,11 @@ fun harness_planDeviceBorders(b: LayoutBox, dpr: Double, out: JsStringMap<JsArra
   out.set(b.id, jsArrayOf<Double>((e.top / units_LU_PER_PX), (e.right / units_LU_PER_PX), (e.bottom / units_LU_PER_PX), (e.left / units_LU_PER_PX)))
   // ts: packages/translate/harness/harness.ts:3266
   run {
-    val _a400 = b.children
-    var _i400 = 0
-    while (_i400 < _a400.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a400[_i400]
-      _i400++
+    val _a401 = b.children
+    var _i401 = 0
+    while (_i401 < _a401.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a401[_i401]
+      _i401++
       // ts: packages/translate/harness/harness.ts:3267
       if (jsStrEq(c.kind, "box")) {
         harness_planDeviceBorders((c as LayoutBox), dpr, out)
@@ -4462,11 +4462,11 @@ fun harness_codePointsOf(text: String): JsArray<Double> {
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/translate/harness/harness.ts:3288
   run {
-    val _a401 = jsCodePoints(text)
-    var _i401 = 0
-    while (_i401 < _a401.size) {
-      val ch: String = _a401[_i401]
-      _i401++
+    val _a402 = jsCodePoints(text)
+    var _i402 = 0
+    while (_i402 < _a402.size) {
+      val ch: String = _a402[_i402]
+      _i402++
       jsPush(out, jsUnwrap(jsCodePointAt0(ch)))
     }
   }
@@ -4512,11 +4512,11 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
       if (jsStrEq((c as U_InlineBox_LineBreak).kind, "inline")) {
         // ts: packages/translate/harness/harness.ts:3321
         run {
-          val _a402 = (c as InlineBox).children
-          var _i402 = 0
-          while (_i402 < _a402.size) {
-            val k: U_InlineBox_LineBreak_TextLeaf = _a402[_i402]
-            _i402++
+          val _a403 = (c as InlineBox).children
+          var _i403 = 0
+          while (_i403 < _a403.size) {
+            val k: U_InlineBox_LineBreak_TextLeaf = _a403[_i403]
+            _i403++
             walkInline(k, container)
           }
         }
@@ -4538,11 +4538,11 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
     }
     // ts: packages/translate/harness/harness.ts:3332
     run {
-      val _a403 = b.children
-      var _i403 = 0
-      while (_i403 < _a403.size) {
-        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a403[_i403]
-        _i403++
+      val _a404 = b.children
+      var _i404 = 0
+      while (_i404 < _a404.size) {
+        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a404[_i404]
+        _i404++
         // ts: packages/translate/harness/harness.ts:3333
         if (jsStrEq(c.kind, "box")) {
           zParent.set((c as LayoutBox).id, b.id)
@@ -4562,11 +4562,11 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
   val rects: JsStringMap<LayoutRect> = JsStringMap<LayoutRect>()
   // ts: packages/translate/harness/harness.ts:3345
   run {
-    val _a404 = boxes
-    var _i404 = 0
-    while (_i404 < _a404.size) {
-      val r: LayoutRect = _a404[_i404]
-      _i404++
+    val _a405 = boxes
+    var _i405 = 0
+    while (_i405 < _a405.size) {
+      val r: LayoutRect = _a405[_i405]
+      _i405++
       // ts: packages/translate/harness/harness.ts:3345
       if ((!harness_isLineRect(r))) {
         rects.set(r.id, r)
@@ -4599,11 +4599,11 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
   val out: JsArray<PlanText> = jsArrayOf<PlanText>()
   // ts: packages/translate/harness/harness.ts:3363
   run {
-    val _a405 = boxes
-    var _i405 = 0
-    while (_i405 < _a405.size) {
-      val r: LayoutRect = _a405[_i405]
-      _i405++
+    val _a406 = boxes
+    var _i406 = 0
+    while (_i406 < _a406.size) {
+      val r: LayoutRect = _a406[_i406]
+      _i406++
       // ts: packages/translate/harness/harness.ts:3364
       if (harness_isLineRect(r)) {
         continue
@@ -4611,11 +4611,11 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
       val pieces: JsArray<LayoutRect> = jsArrayOf<LayoutRect>()
       // ts: packages/translate/harness/harness.ts:3366
       run {
-        val _a406 = boxes
-        var _i406 = 0
-        while (_i406 < _a406.size) {
-          val b: LayoutRect = _a406[_i406]
-          _i406++
+        val _a407 = boxes
+        var _i407 = 0
+        while (_i407 < _a407.size) {
+          val b: LayoutRect = _a407[_i407]
+          _i407++
           val parent: String? = b.parent
           // ts: packages/translate/harness/harness.ts:3368
           if ((((parent != null) && jsStrEq(jsUnwrap(parent), r.id)) && harness_isLineRect(b))) {
@@ -4669,19 +4669,19 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
       var used: Double = 0.0
       // ts: packages/translate/harness/harness.ts:3397
       run {
-        val _a407 = placed
-        var _i407 = 0
-        while (_i407 < _a407.size) {
-          val line: PlacedLine = _a407[_i407]
-          _i407++
+        val _a408 = placed
+        var _i408 = 0
+        while (_i408 < _a408.size) {
+          val line: PlacedLine = _a408[_i408]
+          _i408++
           val mine: JsArray<LinePiece> = jsArrayOf<LinePiece>()
           // ts: packages/translate/harness/harness.ts:3399
           run {
-            val _a408 = line.pieces
-            var _i408 = 0
-            while (_i408 < _a408.size) {
-              val q: LinePiece = _a408[_i408]
-              _i408++
+            val _a409 = line.pieces
+            var _i409 = 0
+            while (_i409 < _a409.size) {
+              val q: LinePiece = _a409[_i409]
+              _i409++
               // ts: packages/translate/harness/harness.ts:3399
               if ((q.leaf == li)) {
                 jsPush(mine, q)
@@ -4698,11 +4698,11 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
           var n: Double = 0.0
           // ts: packages/translate/harness/harness.ts:3405
           run {
-            val _a409 = mine
-            var _i409 = 0
-            while (_i409 < _a409.size) {
-              val q: LinePiece = _a409[_i409]
-              _i409++
+            val _a410 = mine
+            var _i410 = 0
+            while (_i410 < _a410.size) {
+              val q: LinePiece = _a410[_i410]
+              _i410++
               n += (if (q.truncated) 2.0 else 1.0)
             }
           }
@@ -4722,28 +4722,28 @@ fun harness_planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: JsA
           val shifts: JsArray<Double> = jsArrayOf<Double>()
           // ts: packages/translate/harness/harness.ts:3414
           run {
-            val _a410 = mine
-            var _i410 = 0
-            while (_i410 < _a410.size) {
-              val q: LinePiece = _a410[_i410]
-              _i410++
+            val _a411 = mine
+            var _i411 = 0
+            while (_i411 < _a411.size) {
+              val q: LinePiece = _a411[_i411]
+              _i411++
               // ts: packages/translate/harness/harness.ts:3415
               run {
-                val _a411 = harness_sliceCodePoints(scalars, q.start, q.paintEnd)
-                var _i411 = 0
-                while (_i411 < _a411.size) {
-                  val c: Double = _a411[_i411]
-                  _i411++
+                val _a412 = harness_sliceCodePoints(scalars, q.start, q.paintEnd)
+                var _i412 = 0
+                while (_i412 < _a412.size) {
+                  val c: Double = _a412[_i412]
+                  _i412++
                   jsPush(cps, c)
                 }
               }
               // ts: packages/translate/harness/harness.ts:3416
               run {
-                val _a412 = q.shifts
-                var _i412 = 0
-                while (_i412 < _a412.size) {
-                  val s: Double = _a412[_i412]
-                  _i412++
+                val _a413 = q.shifts
+                var _i413 = 0
+                while (_i413 < _a413.size) {
+                  val s: Double = _a413[_i413]
+                  _i413++
                   jsPush(shifts, s)
                 }
               }
@@ -4821,21 +4821,21 @@ fun harness_planLines(t: PlanText, text: String, at: LayoutRect, m: TextMeasurer
       val exs: JsArray<Double> = jsArrayOf<Double>()
       // ts: packages/translate/harness/harness.ts:3471
       run {
-        val _a413 = (d as PieceGlyphs_okTrue).xs
-        var _i413 = 0
-        while (_i413 < _a413.size) {
-          val x: Double = _a413[_i413]
-          _i413++
+        val _a414 = (d as PieceGlyphs_okTrue).xs
+        var _i414 = 0
+        while (_i414 < _a414.size) {
+          val x: Double = _a414[_i414]
+          _i414++
           jsPush(exs, (((jsUnwrap(e).x / units_LU_PER_PX) - ax) + x))
         }
       }
       // ts: packages/translate/harness/harness.ts:3472
       run {
-        val _a414 = harness_planRuns(jsUnwrap(e).font.family, (d as PieceGlyphs_okTrue).glyphs, exs, (d as PieceGlyphs_okTrue).sizes)
-        var _i414 = 0
-        while (_i414 < _a414.size) {
-          val r: String = _a414[_i414]
-          _i414++
+        val _a415 = harness_planRuns(jsUnwrap(e).font.family, (d as PieceGlyphs_okTrue).glyphs, exs, (d as PieceGlyphs_okTrue).sizes)
+        var _i415 = 0
+        while (_i415 < _a415.size) {
+          val r: String = _a415[_i415]
+          _i415++
           jsPush(runs, r)
         }
       }
@@ -4865,11 +4865,11 @@ fun harness_planMarkerPaints(input: LayoutInput, measurer: TextMeasurer, boxes: 
     }
     // ts: packages/translate/harness/harness.ts:3493
     run {
-      val _a415 = b.children
-      var _i415 = 0
-      while (_i415 < _a415.size) {
-        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a415[_i415]
-        _i415++
+      val _a416 = b.children
+      var _i416 = 0
+      while (_i416 < _a416.size) {
+        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a416[_i416]
+        _i416++
         // ts: packages/translate/harness/harness.ts:3493
         if (jsStrEq(c.kind, "box")) {
           walk((c as LayoutBox))
@@ -4924,11 +4924,11 @@ fun harness_planDecorationRects(input: LayoutInput, measurer: TextMeasurer, boxe
       inlineFonts.set((c as InlineBox).id, (c as InlineBox).font)
       // ts: packages/translate/harness/harness.ts:3531
       run {
-        val _a416 = (c as InlineBox).children
-        var _i416 = 0
-        while (_i416 < _a416.size) {
-          val k: U_InlineBox_LineBreak_TextLeaf = _a416[_i416]
-          _i416++
+        val _a417 = (c as InlineBox).children
+        var _i417 = 0
+        while (_i417 < _a417.size) {
+          val k: U_InlineBox_LineBreak_TextLeaf = _a417[_i417]
+          _i417++
           walkInline(k, container)
         }
       }
@@ -4942,11 +4942,11 @@ fun harness_planDecorationRects(input: LayoutInput, measurer: TextMeasurer, boxe
     }
     // ts: packages/translate/harness/harness.ts:3536
     run {
-      val _a417 = b.children
-      var _i417 = 0
-      while (_i417 < _a417.size) {
-        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a417[_i417]
-        _i417++
+      val _a418 = b.children
+      var _i418 = 0
+      while (_i418 < _a418.size) {
+        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a418[_i418]
+        _i418++
         // ts: packages/translate/harness/harness.ts:3537
         if (jsStrEq(c.kind, "box")) {
           walk((c as LayoutBox))
@@ -4976,11 +4976,11 @@ fun harness_planDecorationRects(input: LayoutInput, measurer: TextMeasurer, boxe
   val faults: DecorationFaults = DecorationFaults(false, false, false, false, false, false, false, false, false, false)
   // ts: packages/translate/harness/harness.ts:3558
   run {
-    val _a418 = texts
-    var _i418 = 0
-    while (_i418 < _a418.size) {
-      val t: PlanText = _a418[_i418]
-      _i418++
+    val _a419 = texts
+    var _i419 = 0
+    while (_i419 < _a419.size) {
+      val t: PlanText = _a419[_i419]
+      _i419++
       val list: JsArray<PlanDecoration>? = decorations.get(t.id)
       // ts: packages/translate/harness/harness.ts:3560
       if ((list == null)) {
@@ -4997,11 +4997,11 @@ fun harness_planDecorationRects(input: LayoutInput, measurer: TextMeasurer, boxe
       var rects: String = ""
       // ts: packages/translate/harness/harness.ts:3567
       run {
-        val _a419 = jsUnwrap(list)
-        var _i419 = 0
-        while (_i419 < _a419.size) {
-          val d: PlanDecoration = _a419[_i419]
-          _i419++
+        val _a420 = jsUnwrap(list)
+        var _i420 = 0
+        while (_i420 < _a420.size) {
+          val d: PlanDecoration = _a420[_i420]
+          _i420++
           val spec: FontSpec? = (if ((d.box == null)) struts.get(jsUnwrap(container)) else inlineFonts.get(jsUnwrap(d.box)))
           // ts: packages/translate/harness/harness.ts:3570
           if ((spec == null)) {
@@ -5010,21 +5010,21 @@ fun harness_planDecorationRects(input: LayoutInput, measurer: TextMeasurer, boxe
           val font: DecorationFont = metricsOf(jsUnwrap(spec))
           // ts: packages/translate/harness/harness.ts:3572
           run {
-            val _a420 = t.lines
-            var _i420 = 0
-            while (_i420 < _a420.size) {
-              val line: PlanLine = _a420[_i420]
-              _i420++
+            val _a421 = t.lines
+            var _i421 = 0
+            while (_i421 < _a421.size) {
+              val line: PlanLine = _a421[_i421]
+              _i421++
               val textTop: Double = (line.rect.y / units_LU_PER_PX)
               val baseline: Double = (textTop + textFont.ascent)
               val found: JsArray<DecorationRect> = textDecoration_decorationRects(DecorationInput(d.lines, deviceLength(d.thickness), deviceLength(d.offset), font, textFont, (line.rect.x / units_LU_PER_PX), (line.rect.width / units_LU_PER_PX), textTop, (baseline - font.ascent), d.double), faults)
               // ts: packages/translate/harness/harness.ts:3576
               run {
-                val _a421 = found
-                var _i421 = 0
-                while (_i421 < _a421.size) {
-                  val r: DecorationRect = _a421[_i421]
-                  _i421++
+                val _a422 = found
+                var _i422 = 0
+                while (_i422 < _a422.size) {
+                  val r: DecorationRect = _a422[_i422]
+                  _i422++
                   // ts: packages/translate/harness/harness.ts:3577
                   if ((d.skipInk && !jsStrEq(r.line, "line-through"))) {
                     harness_fail((t.id + ": skip-ink auto clips an " + r.line + " around glyph ink, which the device does not draw"))
@@ -5170,11 +5170,11 @@ fun harness_planAssignment(plan: JsonObj, k: Double): PlanAssignmentParts {
     val styles: JsArray<String> = jsArrayOf<String>()
     // ts: packages/translate/harness/harness.ts:3681
     run {
-      val _a422 = harness_arr(jsUnwrap(jsAt(a, 1.0)), (at + "[1]"))
-      var _i422 = 0
-      while (_i422 < _a422.size) {
-        val s: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = _a422[_i422]
-        _i422++
+      val _a423 = harness_arr(jsUnwrap(jsAt(a, 1.0)), (at + "[1]"))
+      var _i423 = 0
+      while (_i423 < _a423.size) {
+        val s: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = _a423[_i423]
+        _i423++
         jsPush(styles, harness_str(s, (at + "[1]")))
       }
     }
@@ -5183,11 +5183,11 @@ fun harness_planAssignment(plan: JsonObj, k: Double): PlanAssignmentParts {
   val scrollers: JsStringMap<Boolean> = JsStringMap<Boolean>()
   // ts: packages/translate/harness/harness.ts:3685
   run {
-    val _a423 = harness_arr(harness_field(ao, "scroll", path), (path + ".scroll"))
-    var _i423 = 0
-    while (_i423 < _a423.size) {
-      val s: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = _a423[_i423]
-      _i423++
+    val _a424 = harness_arr(harness_field(ao, "scroll", path), (path + ".scroll"))
+    var _i424 = 0
+    while (_i424 < _a424.size) {
+      val s: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = _a424[_i424]
+      _i424++
       scrollers.set(harness_str(s, (path + ".scroll")), true)
     }
   }
@@ -5204,11 +5204,11 @@ fun harness_planAssignment(plan: JsonObj, k: Double): PlanAssignmentParts {
     val lines: JsArray<String> = jsArrayOf<String>()
     // ts: packages/translate/harness/harness.ts:3694
     run {
-      val _a424 = harness_arr(jsUnwrap(jsAt(a, 2.0)), (at + "[2]"))
-      var _i424 = 0
-      while (_i424 < _a424.size) {
-        val l: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = _a424[_i424]
-        _i424++
+      val _a425 = harness_arr(jsUnwrap(jsAt(a, 2.0)), (at + "[2]"))
+      var _i425 = 0
+      while (_i425 < _a425.size) {
+        val l: U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr = _a425[_i425]
+        _i425++
         val name: String = harness_str(l, (at + "[2]"))
         // ts: packages/translate/harness/harness.ts:3696
         if (((jsStrEq(name, "underline") || jsStrEq(name, "overline")) || jsStrEq(name, "line-through"))) {
@@ -5307,11 +5307,11 @@ fun harness_runMarklessLayout(line: String): String {
     val decorated: JsStringMap<String> = harness_planDecorationRects(input, measurer, boxes, textLines, parts.decorations, dpr)
     // ts: packages/translate/harness/harness.ts:3793
     run {
-      val _a425 = textLines
-      var _i425 = 0
-      while (_i425 < _a425.size) {
-        val t: PlanText = _a425[_i425]
-        _i425++
+      val _a426 = textLines
+      var _i426 = 0
+      while (_i426 < _a426.size) {
+        val t: PlanText = _a426[_i426]
+        _i426++
         val text: String? = texts.get(t.id)
         val at: LayoutRect? = abs.get(t.id)
         // ts: packages/translate/harness/harness.ts:3796
@@ -5328,21 +5328,21 @@ fun harness_runMarklessLayout(line: String): String {
     val rangeOf: JsStringMap<ScrollRange> = JsStringMap<ScrollRange>()
     // ts: packages/translate/harness/harness.ts:3801
     run {
-      val _a426 = (ranges as ScrollRangesResult_ok).ranges
-      var _i426 = 0
-      while (_i426 < _a426.size) {
-        val sr: ScrollRange = _a426[_i426]
-        _i426++
+      val _a427 = (ranges as ScrollRangesResult_ok).ranges
+      var _i427 = 0
+      while (_i427 < _a427.size) {
+        val sr: ScrollRange = _a427[_i427]
+        _i427++
         rangeOf.set(sr.id, sr)
       }
     }
     // ts: packages/translate/harness/harness.ts:3802
     run {
-      val _a427 = (ranges as ScrollRangesResult_ok).refused
-      var _i427 = 0
-      while (_i427 < _a427.size) {
-        val sr: ScrollRangeRefusal = _a427[_i427]
-        _i427++
+      val _a428 = (ranges as ScrollRangesResult_ok).refused
+      var _i428 = 0
+      while (_i428 < _a428.size) {
+        val sr: ScrollRangeRefusal = _a428[_i428]
+        _i428++
         // ts: packages/translate/harness/harness.ts:3802
         if (scrollers.has(sr.id)) {
           harness_fail(("no scroll range for " + sr.id + " (at " + sr.nodeId + ": " + sr.detail + ")"))
@@ -5368,11 +5368,11 @@ fun harness_runMarklessLayout(line: String): String {
     var first: Boolean = true
     // ts: packages/translate/harness/harness.ts:3816
     run {
-      val _a428 = boxes
-      var _i428 = 0
-      while (_i428 < _a428.size) {
-        val b: LayoutRect = _a428[_i428]
-        _i428++
+      val _a429 = boxes
+      var _i429 = 0
+      while (_i429 < _a429.size) {
+        val b: LayoutRect = _a429[_i429]
+        _i429++
         // ts: packages/translate/harness/harness.ts:3817
         if (harness_isLineRect(b)) {
           continue

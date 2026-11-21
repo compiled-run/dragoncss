@@ -90,9 +90,9 @@ public func marker_layoutMarker(_ ctx: Ctx, _ m: ListMarker) throws -> MarkerBox
   if (!r.ok) {
     // ts: packages/layout/src/marker.ts:51
     if ((r as! MeasureResult_okFalse).code == S.s_text_script) {
-      try unsupported_unsupported(S.s_text_script, m.id, S.s939, (r as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_script, m.id, S.s938, (r as! MeasureResult_okFalse).reason)
     }
-    try unsupported_unsupported(S.s_text_glyph, m.id, S.s677, (r as! MeasureResult_okFalse).reason)
+    try unsupported_unsupported(S.s_text_glyph, m.id, S.s676, (r as! MeasureResult_okFalse).reason)
   }
   let font: FontMetrics = try inline_fontMetricsOf(ctx, m.id, m.font)
   let own: MarkerText = try MarkerText(marker_markerTextId(m.id), units_sub(line.above, font.ascent), units_add(font.ascent, font.descent))

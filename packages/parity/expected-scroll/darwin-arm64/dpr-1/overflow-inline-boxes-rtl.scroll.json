@@ -1,0 +1,76 @@
+{
+ "case": "overflow-inline-boxes-rtl",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 1,
+ "direction": "rtl",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 300,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "a",
+   "scrollWidth": 120,
+   "scrollHeight": 50,
+   "clientWidth": 120,
+   "clientHeight": 40
+  },
+  {
+   "id": "b",
+   "scrollWidth": 250,
+   "scrollHeight": 40,
+   "clientWidth": 120,
+   "clientHeight": 40
+  },
+  {
+   "id": "d",
+   "scrollWidth": 120,
+   "scrollHeight": 50,
+   "clientWidth": 120,
+   "clientHeight": 40
+  },
+  {
+   "id": "e",
+   "scrollWidth": 120,
+   "scrollHeight": 110,
+   "clientWidth": 120,
+   "clientHeight": 40
+  }
+ ],
+ "extents": [
+  {
+   "id": "a",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 10
+  },
+  {
+   "id": "b",
+   "minLeft": -130,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "d",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 10
+  },
+  {
+   "id": "e",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 70
+  }
+ ]
+}

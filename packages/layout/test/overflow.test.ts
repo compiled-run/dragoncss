@@ -202,30 +202,29 @@ describe('replaced leaves and line-level boxes (pre-landing review of #96)', () 
     expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['k', expect.stringContaining('(R16, INL2)')]);
   });
 
-  it('an inline box or a <br> in an inline formatting context (INL1a line items addLines does not measure) is refused', () => {
+  it('an inline box in an inline formatting context is measured (INL1a: addLines adds its fragments); a <br> is refused', () => {
     const withSpan = box('s', sc('auto'), [text('t', 'XX'), span('i', [text('u', 'YY')])]);
-    expect(() => refuseLineLevelBoxes(withSpan)).toThrow('an inline box in the inline formatting context of s');
-    const r = scrollMetrics(input([withSpan]), ahemMeasurer, 'ltr');
-    expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['i', expect.stringContaining('(R16, INL1a)')]);
-    // Only inline boxes, no text of its own: still an inline formatting context, never measured as an empty block.
-    const onlySpan = box('s', sc('auto'), [span('i', [text('u', 'YY')])]);
-    expect(() => refuseLineLevelBoxes(onlySpan)).toThrow(OverflowRefusal);
+    expect(() => refuseLineLevelBoxes(withSpan)).not.toThrow();
+    expect(scrollMetrics(input([withSpan]), ahemMeasurer, 'ltr').kind).toBe('ok');
     const withBr = box('s', sc('auto'), [text('t', 'XX'), br('b'), text('v', 'YY')]);
     expect(() => refuseLineLevelBoxes(withBr)).toThrow('a <br> in the inline formatting context of s');
+    // Only a <br>, no text of its own: still an inline formatting context, never measured as an empty block.
+    const onlyBr = box('s', sc('auto'), [br('b')]);
+    expect(() => refuseLineLevelBoxes(onlyBr)).toThrow(OverflowRefusal);
   });
 
   it('scrollRanges decides each scroll container on its own: an undecided one is listed refused, the others and the viewport do not refuse', () => {
-    // An inline box outside every scroll container: scrollMetrics refuses (the viewport reads it), scrollRanges gives every range.
-    const outside = input([box('p', {}, [text('t', 'XX'), span('i', [text('u', 'YY')])]), box('a', sc('auto'), [box('c', { width: px(300), height: px(10) })])]);
+    // A <br> outside every scroll container: scrollMetrics refuses (the viewport reads it), scrollRanges gives every range.
+    const outside = input([box('p', {}, [text('t', 'XX'), br('b'), text('v', 'YY')]), box('a', sc('auto'), [box('c', { width: px(300), height: px(10) })])]);
     expect(scrollMetrics(outside, ahemMeasurer, 'ltr').kind).toBe('refused');
     const r = scrollRanges(outside, ahemMeasurer);
     expect(r).toEqual({ kind: 'ok', ranges: [{ id: 'a', minX: 0, maxX: 200, minY: 0, maxY: 0 }], refused: [] });
-    // An inline box inside one scroll container: that one is refused, naming the node and the rule; the other keeps its range.
-    const inside = input([box('s', sc('auto'), [text('t', 'XX'), span('i', [text('u', 'YY')])]), box('a', sc('hidden'), [box('c', { width: px(10), height: px(300) })])]);
+    // A <br> inside one scroll container: that one is refused, naming the node and the rule; the other keeps its range.
+    const inside = input([box('s', sc('auto'), [text('t', 'XX'), br('b'), text('v', 'YY')]), box('a', sc('hidden'), [box('c', { width: px(10), height: px(300) })])]);
     const q = scrollRanges(inside, ahemMeasurer);
     if (q.kind !== 'ok') throw new Error(q.detail);
     expect(q.ranges).toEqual([{ id: 'a', minX: 0, maxX: 0, minY: 0, maxY: 200 }]);
-    expect(q.refused).toEqual([{ id: 's', nodeId: 'i', detail: expect.stringContaining('(R16, INL1a)') }]);
+    expect(q.refused).toEqual([{ id: 's', nodeId: 'b', detail: expect.stringContaining('(R16, INL1a)') }]);
   });
 });
 
