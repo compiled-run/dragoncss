@@ -15,6 +15,8 @@ export const INLINE: readonly FixtureSpec[] = [
   both('inline-box-boundaries'),
   layout('inline-box-hyphen'),
   both('inline-tags'),
+  // <output>: an inline box whose only UA rule is unicode-bidi: isolate, which reorders nothing over ltr Latin text.
+  layout('output-inline'),
   // b1:text1 sits on two lines whose baselines lie differently below their line tops: the single-run-baseline plant case.
   both('inline-baselines'),
   reject('reject-inline-padding', 'DRAGON_UNPROVEN_CONTEXT', '2px', 'padding-left:<length-px> on s is used in the inline/ltr context'),
