@@ -73,7 +73,7 @@ describe('-webkit-text-stroke on the native targets', () => {
     // The expected dump has each view stroke at the css width * device pixel ratio in device px, which each device dumps from its
     // own stroke (the layer's scale on iOS, the stroke Paint's width on Android), so a view stroking at another width fails its dump.
     const engine = { float32: Math.fround } as unknown as Parameters<typeof appliedValue>[0];
-    const geometry = { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 }, size: [0, 0], fontSize: null, replaced: null, scroll: null } as unknown as Parameters<typeof appliedValue>[4];
+    const geometry = { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 }, size: [0, 0], fontSize: null, replaced: null, scroll: null, selectArrow: null } as unknown as Parameters<typeof appliedValue>[4];
     for (const [prog, dpr, want] of [[uikit, 3, 7.5], [android, 2.625, Math.fround(6.5625)], [android, 1, 2.5]] as const) {
       const w = prog.nodes.flatMap((n) => n.writes).find((x) => x.kind === 'text-stroke');
       if (w === undefined) throw new Error('no text-stroke write');

@@ -95,7 +95,7 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, selectPartOf, textFieldPartOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, textFieldPartOf, valueToString } from './resolve.ts';
 import { selectDisplaySize } from '../forms/select.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import { serializeColor } from '../css/color.ts';
@@ -1746,25 +1746,6 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, targets:
   if (family.origin === 'user-agent') {
     refuse(family, 'font', `<select> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <select> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
-}
-
-/**
- * FORM-b: the native refusals of every menulist-button select's drop-down arrow, which the native hosts draw from FORM-b select S3;
- * project.ts makes them lane-only in a parity-lanes compile, so the engine lane proves the select's layout.
- */
-export function selectArrowNativeRefusals(roots: readonly ResolvedElement[], targets: readonly string[]): Diagnostic[] {
-  const out: Diagnostic[] = [];
-  const reported = new Set<string>();
-  const native = targets.filter((t) => t === 'ios' || t === 'android');
-  const walk = (el: ResolvedElement): void => {
-    if (el.element.tag === 'select' && selectPartOf(el)?.part === null && selectAppearance(el.props) === 'menulist-button') {
-      const address = el.element.address;
-      refuseOn(el, el.props.get('appearance') as ResolvedValue, 'arrow-native', 'DRAGON_UNSUPPORTED_VALUE', native, out, reported, `<select> ${address} draws Chrome's drop-down arrow (appearance: auto with an author background, border or box-shadow), which the native hosts draw from FORM-b select S3`, `Set appearance: none on <select> ${address} for native targets.`);
-    }
-    for (const c of el.children) if (c.kind === 'element') walk(c);
-  };
-  for (const r of roots) walk(r);
-  return out;
 }
 
 /** The container-role longhands of a range input, which Chrome's range layout (a flex container) would read. */

@@ -86,6 +86,8 @@ import type { TextFont } from '../../layout/src/input.ts';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdges } from '../../layout/src/snap.ts';
+import { menuListArrows } from '../../layout/src/paint.ts';
+import type { SvgSegment } from '../../layout/src/svg-geometry.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
@@ -1411,6 +1413,38 @@ function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: str
   return `${out}]]`;
 }
 
+/** FORM-b: the drop-down arrow of every menulist-button select (paint.ts menuListArrows), only in a result that has one. */
+function arrowSuffix(input: LayoutInput, boxes: readonly LayoutRect[]): string {
+  const arrows = menuListArrows(input, boxes);
+  if (arrows.length === 0) return '';
+  let out = ',["menulist-arrows",[';
+  arrows.forEach((a, i) => {
+    if (i > 0) out += ',';
+    out += `[${q(a.id)},${h(a.arrow.strokeWidth)},[`;
+    a.arrow.shape.segments.forEach((g, k) => {
+      if (k > 0) out += ',';
+      out += segmentJson(g);
+    });
+    out += ']]';
+  });
+  return `${out}]]`;
+}
+
+function segmentJson(g: SvgSegment): string {
+  switch (g.kind) {
+    case 'move':
+      return `["move",${h(g.x)},${h(g.y)}]`;
+    case 'line':
+      return `["line",${h(g.x)},${h(g.y)}]`;
+    case 'quad':
+      return `["quad",${h(g.x1)},${h(g.y1)},${h(g.x)},${h(g.y)}]`;
+    case 'cubic':
+      return `["cubic",${h(g.x1)},${h(g.y1)},${h(g.x2)},${h(g.y2)},${h(g.x)},${h(g.y)}]`;
+    case 'close':
+      return '["close"]';
+  }
+}
+
 /**
  * The first shaping plant set in faults, or ''. The shaping plants act only through a shaped measurer (platform.ts
  * shapedMeasurerFor, or replayMeasurer here), so a case without a shape transcript, which measurerFor's Ahem measurer lays out,
@@ -1472,7 +1506,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}${arrowSuffix(input, r.boxes)}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';

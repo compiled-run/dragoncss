@@ -1,7 +1,6 @@
 // The control module's sample points (FORM-b): a menulist-button select's drop-down arrow is a 2 device px stroke, so as for any
 // SVG stroke every pixel within SVG_CLEAR_DEVICE_PX of its edges is indeterminate and no base point there is compared; with a
-// stroke that thin none is left inside it. Chrome's arrow pixels are proven on the host (form-b-select.test.ts), and a case with
-// an arrow is lane-only on native until the hosts draw it (FORM-b select S3).
+// stroke that thin none is left inside it. Chrome's arrow pixels are proven on the host (form-b-select.test.ts).
 import type { ControlBox, LayoutBox, MenuListArrow } from '@dragon/layout';
 import { effectiveZoom, menuListArrow, menuListArrowBox } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';

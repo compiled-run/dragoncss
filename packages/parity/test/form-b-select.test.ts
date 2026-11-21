@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic } from 'dragon';
 import * as dragon from 'dragon';
 import type { ControlBox, LayoutBox } from '@dragon/layout';
-import { ahemMeasurer, layout as engineLayout, menuListArrow } from '@dragon/layout';
+import { ahemMeasurer, layout as engineLayout, menuListArrow, menuListArrows, snapEdges } from '@dragon/layout';
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { fixtureToInput } from '../src/fixture-reader.ts';
@@ -17,6 +17,7 @@ import { arrowSegments, selectArrows } from '../src/paint-samples/control.ts';
 import { SVG_CLEAR_DEVICE_PX } from '../src/samples.ts';
 import { arrowPixelProblems } from '../../dragon/src/forms/index.ts';
 import { caseBoxes, committedPixels } from '../src/pixel-reference.ts';
+import { expectedEngine } from '../src/native-host.ts';
 
 const page = (css: string, body: string): string => `<!DOCTYPE html>
 <html data-dragon-id="html">
@@ -119,9 +120,8 @@ const button = (css: string): string => `select { display: block; width: 100px; 
 
 describe('FORM-b select S2: menulist-button', () => {
   it('devolves auto to menulist-button for an author background, border or box-shadow, and refuses the themed menulist', () => {
-    const arrow = (t: string): string => `${t} DRAGON_UNSUPPORTED_VALUE <select> s draws Chrome's drop-down arrow (appearance: auto with an author background, border or box-shadow), which the native hosts draw from FORM-b select S3`;
     for (const css of ['background-color: #fff;', 'border: 1px solid #036;', 'box-shadow: 0 0 0 1px #036;', 'border-top-left-radius: 2px;']) {
-      expect(errors(compile('sel-devolve', button(css), sel('s', '<option>A</option>'), false)).sort(), css).toEqual([arrow('android'), arrow('ios')]);
+      expect(errors(compile('sel-devolve', button(css), sel('s', '<option>A</option>'), false)), css).toEqual([]);
       expect(errors(compile('sel-devolve-lanes', button(css), sel('s', '<option>A</option>'), false, true)), css).toEqual([]);
     }
     for (const css of ['', 'box-shadow: none;']) {
@@ -205,6 +205,90 @@ describe('FORM-b select S2: menulist-button', () => {
     expect(shape(6, 200)).toEqual([178, 0, 184, 6, 190, 0]);
     expect(shape(28, 20)).toEqual([-2, 11, 4, 17, 10, 11]);
     expect(menuListArrow(0, 0, 200, 28, 1, 1, 60, 15, false).strokeWidth).toBe(2);
+  });
+});
+
+describe('FORM-b select S3: the native hosts', () => {
+  const spec = FIXTURES.find((f) => f.id === 'controls-select-button');
+  if (spec === undefined) throw new Error('no controls-select-button fixture');
+  const cases = casesOf(spec, fixtureInput(spec));
+  const programsOf = (c: (typeof cases)[number]): ReturnType<typeof dragon.nativePrograms> & { kind: 'ready' } => {
+    const p = dragon.nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+    if (p.kind !== 'ready') throw new Error(`${c.id}: ${p.reason}`);
+    return p;
+  };
+
+  it("emits the arrow in the engine's own paint output, the arrow proven against Chrome's pixels, at every DPR", () => {
+    let n = 0;
+    for (const c of cases) {
+      const program = programsOf(c).programs.uikit;
+      for (const dpr of [1, ...DPRS]) {
+        const input = dragon.programInput(program, c.environment.viewport, dpr);
+        const r = engineLayout(input, ahemMeasurer);
+        if (r.kind !== 'ok') throw new Error(`${c.id}@${dpr}: ${r.unsupported.code}`);
+        const ours = menuListArrows(input, r.boxes);
+        expect(ours, `${c.id}@${dpr}`).toEqual(selectArrows(program, caseBoxes(program, c.environment.viewport, dpr), dpr));
+        n += ours.length;
+      }
+    }
+    expect(n).toBeGreaterThan(20);
+  });
+
+  it('compiles for iOS and Android with no lane-only native refusal, one arrow write per select in its colour', () => {
+    for (const c of cases) {
+      const compiled = nativeCompile(spec, c.environment.direction);
+      expect(errors(compiled), c.id).toEqual([]);
+      expect(dragon.laneOnlyNative(compiled, 'ios'), c.id).toBe(false);
+      expect(dragon.laneOnlyNative(compiled, 'android'), c.id).toBe(false);
+      const colors = dragon.resolvedColors(compiled, c.assignment);
+      if (colors === null) throw new Error(`${c.id}: no resolved colours`);
+      const p = programsOf(c);
+      for (const program of [p.programs.uikit, p.programs['android-views']]) {
+        const arrows = program.nodes.flatMap((node) => node.writes.flatMap((w) => (w.kind === 'select-arrow' ? [{ id: node.id, w }] : [])));
+        const selects: string[] = [];
+        const walk = (b: LayoutBox | ControlBox): void => {
+          if (b.kind === 'control' && b.control.kind === 'select-menulist' && b.control.arrowWidth > 0) selects.push(b.id);
+          for (const k of b.children) if (k.kind === 'box' || k.kind === 'control') walk(k);
+        };
+        walk(program.root);
+        expect(arrows.map((a) => a.id), `${c.id} ${program.backend}`).toEqual(selects);
+        expect(arrows.length, `${c.id} ${program.backend}`).toBeGreaterThan(5);
+        for (const { id, w } of arrows) {
+          if (w.kind !== 'select-arrow') throw new Error('not an arrow write');
+          const want = colors.get(id)?.color;
+          expect({ r: w.color.r, g: w.color.g, b: w.color.b, alpha: w.color.alpha }, `${c.id} ${id}`).toEqual(want === undefined ? null : { r: want.r, g: want.g, b: want.b, alpha: want.alpha });
+          expect(w.key).toBe('dragonSelectArrow');
+        }
+      }
+    }
+  });
+
+  it("projects each arrow's path, 2 device px stroke and colour into the expected dump, relative to the select's snapped box", () => {
+    const engine = expectedEngine();
+    for (const c of cases) {
+      const p = programsOf(c);
+      for (const program of [p.programs.uikit, p.programs['android-views']]) {
+        for (const dpr of DPRS) {
+          const dump = dragon.expectedDump(program, c.id, c.environment.viewport, dpr, engine);
+          const input = dragon.programInput(program, c.environment.viewport, dpr);
+          const r = engine.layout(input, engine.measurer);
+          if (r.kind !== 'ok') throw new Error(`${c.id}@${dpr}: refused`);
+          const boxes = new Map(snapEdges(r.boxes).map((b) => [b.id, b]));
+          const arrows = menuListArrows(input, r.boxes);
+          const byId = new Map(dump.nodes.map((node) => [node.id, node]));
+          for (const a of arrows) {
+            const box = boxes.get(a.id);
+            const node = byId.get(a.id);
+            if (box === undefined || node === undefined) throw new Error(`${c.id}@${dpr}: ${a.id} has no box or dump node`);
+            const path = a.arrow.shape.segments.flatMap((g) => (g.kind === 'move' || g.kind === 'line' ? [g.kind === 'move' ? 0 : 1, g.x - box.left, g.y - box.top] : [Number.NaN]));
+            const applied = node.applied['dragonSelectArrow'] as { path: number[]; stroke: number; color: number[] } | undefined;
+            expect(applied?.path, `${c.id} ${program.backend}@${dpr} ${a.id}`).toEqual(path);
+            expect(applied?.stroke).toBe(2);
+          }
+          expect(dump.nodes.filter((node) => node.applied['dragonSelectArrow'] !== undefined).length, `${c.id} ${program.backend}@${dpr}`).toBe(arrows.length);
+        }
+      }
+    }
   });
 });
 
