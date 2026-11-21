@@ -383,6 +383,14 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(range({}, [thumb]))).toEqual(['$.root.children[0].children[0].control a slider thumb is a block-flow child: its parent is a block container']);
     const button = control('b', { kind: 'button-block' }, { display: 'flex' });
     expect(codes({ ...range({}, []), root: { ...box('root', {}), children: [button] } })).toEqual(['$.root.children[0].style.display a block button control is a block container']);
+    const legend = control('l', { kind: 'legend' }, {});
+    const fieldset = (children: (LayoutBox | ControlBox)[], style: Partial<LayoutStyle> = {}): ControlBox => control('f', { kind: 'fieldset' }, style, children);
+    const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
+    expect(codes(under(fieldset([legend])))).toEqual([]);
+    expect(codes(under(box('d', {}, [legend])))).toEqual(['$.root.children[0].children[0].control a legend control is the rendered legend of a fieldset control: its parent is one']);
+    expect(codes(under(fieldset([legend, { ...legend, id: 'l2' }])))).toEqual(['$.root.children[0].children[1].control a fieldset control has at most one rendered legend']);
+    expect(codes(under(fieldset([], { display: 'flex' })))).toEqual(['$.root.children[0].style.display a fieldset control is a block container']);
+    expect(codes(under(fieldset([{ ...legend, style: { ...legend.style, float: 'left' } }])))).toEqual(['$.root.children[0].children[0].style.float a legend control is in flow']);
   });
 
   it('a control holds inline content with a strut as a box does, and is laid out as a block-flow or flex child (FORM-a with INL1a)', () => {

@@ -61,10 +61,10 @@ public final class Fit {
 
 // ts: packages/layout/src/truncate.ts:34
 public func truncate_ellipsisOf(_ ctx: Ctx, _ nodeId: JsString, _ font: TextFont) throws -> EllipsisRun {
-  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s1203, font)
+  let one: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s1205, font)
   // ts: packages/layout/src/truncate.ts:36
   if one.ok {
-    return EllipsisRun(S.s1203, (one as! MeasureResult_okTrue).measure.width)
+    return EllipsisRun(S.s1205, (one as! MeasureResult_okTrue).measure.width)
   }
   // ts: packages/layout/src/truncate.ts:37
   if ((one as! MeasureResult_okFalse).code != S.s_text_glyph) {
@@ -85,11 +85,11 @@ public func truncate_codePoints(_ text: JsString, _ start: Double, _ end: Double
   var k: Double = 0.0
   // ts: packages/layout/src/truncate.ts:49
   do {
-    let _a377 = jsCodePoints(text)
-    var _i377 = 0
-    while _i377 < _a377.items.count {
-      let ch: JsString = _a377.items[_i377]
-      _i377 += 1
+    let _a379 = jsCodePoints(text)
+    var _i379 = 0
+    while _i379 < _a379.items.count {
+      let ch: JsString = _a379.items[_i379]
+      _i379 += 1
       // ts: packages/layout/src/truncate.ts:50
       if ((k >= start) && (k < end)) {
         out += ch
@@ -142,18 +142,18 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   var clusterEnd: Double = 0.0
   // ts: packages/layout/src/truncate.ts:85
   do {
-    let _a378 = result.runs
-    var _i378 = 0
-    while _i378 < _a378.items.count {
-      let run: ShapingRun = _a378.items[_i378]
-      _i378 += 1
+    let _a380 = result.runs
+    var _i380 = 0
+    while _i380 < _a380.items.count {
+      let run: ShapingRun = _a380.items[_i380]
+      _i380 += 1
       // ts: packages/layout/src/truncate.ts:86
       do {
-        let _a379 = run.glyphs
-        var _i379 = 0
-        while _i379 < _a379.items.count {
-          let g: ShapingGlyph = _a379.items[_i379]
-          _i379 += 1
+        let _a381 = run.glyphs
+        var _i381 = 0
+        while _i381 < _a381.items.count {
+          let g: ShapingGlyph = _a381.items[_i381]
+          _i381 += 1
           let at: Double = (run.start + g.ci)
           // ts: packages/layout/src/truncate.ts:88
           if ((at < s.start) || (at >= s.end)) {

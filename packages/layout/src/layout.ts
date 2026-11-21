@@ -1,5 +1,6 @@
 // Entry point: lays out a validated LayoutInput and returns boxes relative to the parent border box, in LU: the in-flow boxes in
 // preorder, then each absolutely positioned box (after its parent and containing block) with its subtree.
+import { plainBox } from './controls.ts';
 import type { InsetValue, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sub, ZERO } from './units.ts';
@@ -200,14 +201,14 @@ function stickyOffset(st: StickyIndex, s: Sticky, x: LU, y: LU, width: LU, heigh
   return { dx, dy };
 }
 
-/** Every box's parent in the input tree. */
+/** Every box's parent in the input tree; a control (a fieldset holding positioned boxes) is its plain box. */
 function parents(root: LayoutBox): Map<string, LayoutBox> {
   const out = new Map<string, LayoutBox>();
   const walk = (b: LayoutBox): void => {
     for (const c of b.children) {
-      if (c.kind !== 'box') continue;
+      if (c.kind !== 'box' && c.kind !== 'control') continue;
       out.set(c.id, b);
-      walk(c);
+      walk(plainBox(c));
     }
   };
   walk(root);

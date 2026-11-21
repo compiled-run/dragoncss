@@ -42,10 +42,11 @@ export function blockifiedDisplay(display: ResolvedValue, faults: CompilerFaults
 const layoutParentDisplay = new WeakMap<ReadonlyMap<Longhand, ResolvedValue>, string | null>();
 
 /**
- * Blockifies props' display in place when the element is the root, a flex or grid item, floated or absolutely positioned, and records
- * what its children's layout parent is. parent: the element's parent's props, or null at the root.
+ * Blockifies props' display in place when the element is the root, a flex or grid item, floated or absolutely positioned, or a legend
+ * (StyleAdjuster::AdjustStyleForHTMLElement blockifies every legend), and records what its children's layout parent is. parent: the
+ * element's parent's props, or null at the root.
  */
-export function blockify(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, faults: CompilerFaults): void {
+export function blockify(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMap<Longhand, ResolvedValue> | null, faults: CompilerFaults, legend = false): void {
   const display = props.get('display') as ResolvedValue;
   if (parent !== null && !layoutParentDisplay.has(parent)) throw new Error('blockify: the parent was not blockified first');
   const layoutParent = parent === null ? null : (layoutParentDisplay.get(parent) as string | null);
@@ -55,7 +56,7 @@ export function blockify(props: Map<Longhand, ResolvedValue>, parent: ReadonlyMa
   const float = props.get('float') as ResolvedValue;
   if (outOfFlow && keysOf(float) !== 'none') props.set('float', { ...float, value: { kind: 'keyword', value: 'none' } });
   const floating = keysOf(props.get('float') as ResolvedValue) !== 'none';
-  const blockifies = parent === null || (layoutParent !== null && BLOCKIFYING_PARENTS.has(layoutParent)) || outOfFlow || floating;
+  const blockifies = parent === null || (layoutParent !== null && BLOCKIFYING_PARENTS.has(layoutParent)) || outOfFlow || floating || legend;
   // Blink leaves display: contents unblockified; its box does not exist.
   if (blockifies && keysOf(display) !== 'contents' && !faults.blockifySkipped) {
     const to = blockifiedDisplay(display, faults);
