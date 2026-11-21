@@ -263,7 +263,7 @@ export const replacedLeafSchema = obj({
 });
 
 /** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
-export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {} });
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema }, 'select-inner': {} });
 
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
@@ -651,6 +651,19 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
       if (part === 'text-editor' || part === 'text-placeholder') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: `a ${part} control is a part of a text field control: its parent is one` });
     });
   }
+  // A single select holds its inner element, and nothing else (resolve.ts builds it; environment.ts sets its line height).
+  if (controlKind === 'select-menulist') {
+    let inners = 0;
+    children.forEach((child: unknown, i: number) => {
+      if (fieldPart(child) === 'select-inner') inners++;
+      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a select-menulist control holds only its select-inner control' });
+    });
+    if (inners !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a select-menulist control holds exactly one select-inner control' });
+  } else {
+    children.forEach((child: unknown, i: number) => {
+      if (fieldPart(child) === 'select-inner') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a select-inner control is the inner element of a select-menulist control: its parent is one' });
+    });
+  }
   // Only a block container's flow moves a slider thumb by its value (block.ts layoutBlockFlow); in a flex track it would sit at 0.
   children.forEach((child: unknown, i: number) => {
     if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'slider-thumb') return;
@@ -839,6 +852,8 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
   if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
   if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
   if ((control['kind'] === 'text-field' || control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'a text field and its parts are block containers');
+  if (control['kind'] === 'select-menulist' && style['display'] !== 'flex') bad('style.display', 'a select is a flex container');
+  if (control['kind'] === 'select-inner' && style['display'] !== 'block') bad('style.display', 'a select inner element is a block container');
   if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['display'] !== 'block') bad('style.display', `a ${control['kind']} control is a block container`);
   if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['float'] !== 'none') bad('style.float', `a ${control['kind']} control is in flow`);
   if (control['kind'] === 'slider-thumb' && typeof control['ratio'] === 'number' && control['ratio'] > 1) bad('control.ratio', 'a slider thumb ratio is at most 1');
@@ -914,11 +929,12 @@ function checkStrut(box: Record<string, unknown>, children: readonly unknown[], 
   }
   const strut = box['strut'];
   const inline = children.some(isInlineLevel);
-  // FORM-b: an empty inner editor keeps its strut, whose one empty line it lays out (block.ts).
-  const emptyEditor = isRecord(box['control']) && box['control']['kind'] === 'text-editor' && children.length === 0;
+  // FORM-b: an empty inner editor or select inner element keeps its strut, whose one empty line it lays out (block.ts).
+  const emptyKind = isRecord(box['control']) && children.length === 0 ? box['control']['kind'] : null;
+  const emptyEditor = emptyKind === 'text-editor' || emptyKind === 'select-inner';
   if (strut === null) {
     if (inline) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box with inline content has a strut' });
-    else if (emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: 'an empty text-editor control has a strut, whose one empty line it lays out' });
+    else if (emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: `an empty ${String(emptyKind)} control has a strut, whose one empty line it lays out` });
     return;
   }
   checkRule(strut, strutSchema, `${path}.strut`, errors);

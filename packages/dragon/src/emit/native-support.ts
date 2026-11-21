@@ -3323,7 +3323,11 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
                 ? `ControlKind_textPlaceholder(${str('text-placeholder')})`
                 : c.kind === 'fieldset'
                   ? `ControlKind_fieldset(${str('fieldset')})`
-                  : `ControlKind_legend(${str('legend')})`;
+                  : c.kind === 'legend'
+                    ? `ControlKind_legend(${str('legend')})`
+                    : c.kind === 'select-menulist'
+                      ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+                      : `ControlKind_selectInner(${str('select-inner')})`;
   const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));

@@ -495,8 +495,8 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const floatEnd = a.formattingContextRoot ? floatsBottom(ctx, box, r.placed, contentWidth) : null;
   const withFloats = floatEnd === null ? flowEnd : max(flowEnd, sub(floatEnd, add(bor.top, pad.top)));
   // css-contain-2 §3.1: under size containment the content height is contain-intrinsic-height (none is 0), whatever the contents.
-  // FORM-b: an empty inner editor holds one empty line, its strut's (Blink gives an editable block a line when empty, for its caret).
-  const empty = control !== null && control.kind === 'text-editor' && box.children.length === 0 && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
+  // FORM-b: an empty inner editor or select inner element holds one empty line, its strut's (Blink's has-line-if-empty).
+  const empty = control !== null && (control.kind === 'text-editor' || control.kind === 'select-inner') && box.children.length === 0 && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
   const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : empty !== null ? add(empty.above, empty.below) : withFloats;
   // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
   const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;

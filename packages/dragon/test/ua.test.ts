@@ -135,7 +135,7 @@ describe('dependency boundaries', () => {
       "import { markerOf } from '../analysis/resolve.ts';",
       // FORM-a A4: which resolved elements are a range's shadow parts, a fact of the resolved tree (no matching).
       // FORM-b: a text field's parts and the placeholder its value hides, facts of the resolved tree (no matching).
-      "import { hiddenPlaceholderOf, rangePartOf, textFieldPartOf } from '../analysis/resolve.ts';",
+      "import { hiddenPlaceholderOf, rangePartOf, selectOptionsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';",
       "import { serializeColor } from '../css/color.ts';",
       // CSSOM string serialization for family names (PR #28 round 2); no parsing or matching.
       "import { serializeString } from '../css/escapes.ts';",
@@ -213,6 +213,9 @@ describe('UA longhands of the element keys (ELB-2)', () => {
       'a[href]': ['color'],
       img: ['overflow-x', 'overflow-y'],
       span: [],
+      // FORM-b: a select (html.css select and select:disabled).
+      select: ['align-items', 'appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'text-wrap-mode', 'white-space-collapse'],
+      'select[disabled]': ['align-items', 'appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'box-sizing', 'color', 'font-family', 'font-size', 'opacity', 'text-wrap-mode', 'white-space-collapse'],
     });
     for (const key of Object.keys(elementKeyComputed) as (keyof typeof elementKeyComputed)[]) {
       for (const p of CAPTURED_LONGHANDS) expect(elementKeyComputed[key][p], `${key} ${p}`).toBeTypeOf('string');

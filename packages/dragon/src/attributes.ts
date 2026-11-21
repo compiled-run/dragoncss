@@ -51,6 +51,9 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   // field's value is its editor's text and placeholder its placeholder's (forms/text-field.ts), size its default width
   // (lower/ios-layout.ts textFieldSize), and readonly only stops editing (no html.css rule reads it; controls-text-field).
   input: ['type', 'min', 'max', 'value', 'step', 'size', 'placeholder', 'readonly'],
+  // FORM-b: multiple and a size above 1 (a list box) are refused in computed-checks.ts; an option's value is never drawn.
+  select: ['disabled', 'multiple', 'size'],
+  option: ['selected', 'disabled', 'label', 'value'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */

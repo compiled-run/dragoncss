@@ -599,7 +599,10 @@ export type ReplacedLeaf = {
  * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow;
  * - fieldset: a block fieldset, whose rendered legend sits in its block-start border and whose other contents flow in an anonymous
  *   new formatting context that carries its padding (HTML §15.3.13, FieldsetLayoutAlgorithm);
- * - legend: a fieldset's rendered legend, its first in-flow legend child, sized to fit its content.
+ * - legend: a fieldset's rendered legend, its first in-flow legend child, sized to fit its content;
+ * - select-menulist (FORM-b): a single select, a flex row container of its inner element. font and lineHeight are the select's
+ *   own: while its line height is normal, the inner element's is the primary font's ascent + descent (environment.ts);
+ * - select-inner: the inner element, a block container holding the shown option's label; empty, it still holds one line.
  */
 export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
@@ -609,7 +612,9 @@ export type ControlKind =
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }
-  | { readonly kind: 'legend' };
+  | { readonly kind: 'legend' }
+  | { readonly kind: 'select-menulist'; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'select-inner' };
 
 /** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
 export type ControlBox = {

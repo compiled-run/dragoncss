@@ -415,6 +415,25 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
   });
 
+  it('the validator refuses a select without exactly one inner element, a stray inner element, and an empty one without a strut', () => {
+    const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
+    const inner = control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')]);
+    const empty = control('s::inner', { kind: 'select-inner' }, {}, [], strut);
+    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'flex' }, children);
+    const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
+    expect(codes(under(select([inner])))).toEqual([]);
+    expect(codes(under(select([empty])))).toEqual([]);
+    expect(codes(under(select([])))).toEqual(['$.root.children[0].children a select-menulist control holds exactly one select-inner control']);
+    expect(codes(under(select([box('d', {})])))).toEqual([
+      '$.root.children[0].children[0] a select-menulist control holds only its select-inner control',
+      '$.root.children[0].children a select-menulist control holds exactly one select-inner control',
+    ]);
+    expect(codes(under(select([inner, { ...empty, id: 'i2' }])))).toEqual(['$.root.children[0].children a select-menulist control holds exactly one select-inner control']);
+    expect(codes(under(box('d', {}, [inner])))).toEqual(['$.root.children[0].children[0].control a select-inner control is the inner element of a select-menulist control: its parent is one']);
+    expect(codes(under(select([{ ...empty, strut: null }])))).toEqual(['$.root.children[0].children[0].strut an empty select-inner control has a strut, whose one empty line it lays out']);
+    expect(codes(under({ ...select([inner]), style: { ...select([inner]).style, display: 'block' } }))).toEqual(['$.root.children[0].style.display a select is a flex container']);
+  });
+
   it('a control holds inline content with a strut as a box does, and is laid out as a block-flow or flex child (FORM-a with INL1a)', () => {
     const env = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1 };
     const button = control('b', { kind: 'button-block' }, { height: px(40) }, [text('b:text0', 'XX '), span('s', [text('s:text0', 'Y')])]);

@@ -29,7 +29,7 @@
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';
 import { markerOf } from '../analysis/resolve.ts';
-import { hiddenPlaceholderOf, rangePartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { hiddenPlaceholderOf, rangePartOf, selectOptionsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -303,6 +303,9 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
+/** The class of every option (FORM-b), which no rule names. */
+const OPTION_CLASS = 'dg-option';
+
 export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false, imageUrls: ReadonlyMap<string, string> = new Map()): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
@@ -384,7 +387,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const fx = resolutions.some(writesFx);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
-      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || textFieldPartOf(el)?.part === null || resolutions.some(writesAppearance);
+      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || textFieldPartOf(el)?.part === null || selectPartOf(el)?.part === null || resolutions.some(writesAppearance);
       const breaks = resolutions.some(writesBreaks);
       const intrinsicInline = resolutions.every((r) => isNoneValue(r, 'contain-intrinsic-width'));
       const intrinsicBlock = resolutions.every((r) => isNoneValue(r, 'contain-intrinsic-height'));
@@ -464,7 +467,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch) && (rangePartOf(ch)?.part ?? null) === null && (textFieldPartOf(ch)?.part ?? null) === null) visit(ch, below);
+      // FORM-b: an option takes Chrome's own UA style (an author style on one is refused), so its class has no rule.
+      for (const o of selectOptionsOf(el)) map.set(o.element.address, OPTION_CLASS);
+      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch) && (rangePartOf(ch)?.part ?? null) === null && (textFieldPartOf(ch)?.part ?? null) === null && (selectPartOf(ch)?.part ?? null) === null) visit(ch, below);
     };
     visit(c.root, false);
   }
