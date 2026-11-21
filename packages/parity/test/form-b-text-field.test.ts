@@ -65,6 +65,12 @@ describe('FORM-b text fields', () => {
     expect(b.get('l::editor')?.width).toBe(41);
   });
 
+  it('refuses a float before a block field, which Chrome moves beside the float as a new formatting context', () => {
+    // The engine moves no in-flow box around a float, so the compiler refuses what follows one on every target (FLT).
+    const c = compile('tf-float-beside', '.fl { float: left; width: 100px; height: 40px; }', '<div data-dragon-id="w"><div data-dragon-id="fl" class="fl"></div><input data-dragon-id="t" readonly="" value="XX"></div>');
+    expect(errors(c)).toEqual(['android', 'ios', 'web'].map((t) => expect.stringMatching(new RegExp(`^${t} DRAGON_UNSUPPORTED_VALUE float: left on fl is followed in its formatting context by t, which is in flow`))));
+  });
+
   it('centres the editor unsafely in a fixed height and gives it line-height normal when the height exceeds the line height', () => {
     const b = boxes(compile('tf-centre', '.a { height: 41px; line-height: 30px; } .b { height: 4px; } .c { line-height: 30px; } .d { line-height: 4px; }', ['a', 'b', 'c', 'd'].map((k) => `<input data-dragon-id="${k}" readonly="" class="${k}" value="XX">`).join('\n')));
     expect(['a', 'b', 'c', 'd'].map((k) => b.get(`${k}::editor`)?.y)).toEqual([18.5, 0, 3, 3]);

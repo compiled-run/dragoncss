@@ -925,9 +925,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let inline: BlockLevelInline;
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
-    // a block button too: its UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext).
-    // css-multicol-1 §2: a multi-column container establishes a new block formatting context too.
-    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && (kid.control.kind === 'button-block' || kid.control.kind === 'fieldset')) || kid.style.multicol !== null;
+    // so does a form control, which LayoutBox::ShouldBeConsideredAsReplaced (a block button, a text field; a range is a flex
+    // container), and a fieldset (LayoutFieldset). css-multicol-1 §2: a multi-column container establishes one too.
+    const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && (kid.control.kind === 'button-block' || kid.control.kind === 'text-field' || kid.control.kind === 'fieldset')) || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext, textAlign: box.style.textAlign };
     if (kid.kind === 'replaced') {
       // CSS 2.2 §10.3.4 and §10.6.2: a block-level replaced box sizes itself and never collapses through (replaced.ts).
