@@ -1,6 +1,6 @@
 // The environment pass: the input with every length resolved for its device environment, as Blink's style resolution leaves it
 // (css_length_resolver.cc, css_math_expression_node.cc and css_math_function_value.cc at 145.0.7632.6). It runs once per layout
-// (layout.ts zoomInput) at every device pixel ratio.
+// (layout.ts resolvedInput) at every device pixel ratio.
 //
 // Device zoom (vectors/README.md, Device pixel ratios): at DPR N every CSS length and font size is multiplied by N, the font rules
 // apply to the zoomed size, and the engine lays out in zoomed px, where borders snap to whole px. An initial line width (R5) is
@@ -140,8 +140,8 @@ function viewportBase(width: number, height: number, z: number, faults: EngineFa
 }
 
 /**
- * The input resolved for its environment with the reference Ahem measurer and the planted font rules (layout.ts zoomInput): the
- * engine lays out only Ahem, and a device's bridge measurer is self-checked equal to the Ahem constants.
+ * The input resolved for its environment with the reference Ahem measurer and the planted font rules (layout.ts zoomInput), for
+ * an Ahem input or a planted-fault one; any other input resolves with its layout's measurer (layout.ts resolvedInput).
  */
 export function applyEnvironment(input: LayoutInput, faults: EngineFaults): LayoutInput {
   return resolveEnvironment(input, faults, ahemMeasurerWith({ metricHalfUp: faults.metricHalfUp, untruncatedFontSize: faults.untruncatedFontSize }));

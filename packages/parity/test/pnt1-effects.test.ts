@@ -109,7 +109,7 @@ function boxes(p: NativeProgram, viewport: { width: number; height: number }, dp
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error('the engine refused the case');
   const snapped = snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input);
+  const borders = borderDevicePx(engine, input, engine.measurer);
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const list: Box[] = [];
   out.boxes.forEach((r, i) => {

@@ -7,12 +7,13 @@ import { resolveBorder } from './box.ts';
 import type { MenuListArrow } from './controls.ts';
 import { menuListArrow, menuListArrowBox } from './controls.ts';
 import type { LayoutRect } from './layout.ts';
-import { absoluteRects, zoomInput } from './layout.ts';
+import { absoluteRects, resolvedInput } from './layout.ts';
 import { snapRect } from './snap.ts';
 import { effectiveZoom, toPx } from './units.ts';
 import type { ObjectRect, PixelRect } from './replaced.ts';
 import { drawnObjectRect, naturalSizingOf, objectFitRect, pixelSnappedRect } from './replaced.ts';
 import { floorOf, froundOf } from './rt-easing.ts';
+import type { TextMeasurer } from './text.ts';
 
 /** A box's paint shape in device px: the snapped border-box edges, the border widths and the eight corner radii (horizontal then vertical, top-left first). */
 export type BoxShape = {
@@ -51,15 +52,16 @@ export type MenuListArrowPaint = { readonly id: string; readonly arrow: MenuList
 
 /**
  * FORM-b: every menulist-button select's drop-down arrow (controls.ts menuListArrow) from a layout of the input: the select's
- * snapped border box, its whole device px borders and the arrow box at its effective zoom. The device calls this through the
- * translated engine after layout, so it never measures the arrow itself; the host lanes call it too.
+ * snapped border box, its whole device px borders and the arrow box at its effective zoom, with the input resolved by the layout's
+ * measurer. The device calls this through the translated engine after layout, so it never measures the arrow itself; the host
+ * lanes call it too.
  */
-export function menuListArrows(input: LayoutInput, boxes: readonly LayoutRect[]): MenuListArrowPaint[] {
+export function menuListArrows(input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): MenuListArrowPaint[] {
   const zooms = new Map<string, number>();
   const out: MenuListArrowPaint[] = [];
   const selects = collectArrowZooms(input.root, input.devicePixelRatio, zooms);
   if (selects === 0) return out;
-  const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+  const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
   collectArrows(zoomed.root, zoomed.devicePixelRatio, input.devicePixelRatio, zooms, absoluteRects(boxes), out);
   if (out.length !== selects) throw new Error(`FORM-b: ${selects} menulist-button selects but ${out.length} arrows in the zoomed input`);
   return out;

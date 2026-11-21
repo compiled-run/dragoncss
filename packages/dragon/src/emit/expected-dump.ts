@@ -35,6 +35,8 @@ export type ExpectedEngine = {
   readonly measurer: TextMeasurer;
   readonly snapEdges: (boxes: readonly LayoutRect[]) => SnappedRect[];
   readonly zoomInput: (input: LayoutInput, faults: EngineFaults) => LayoutInput;
+  /** The input resolved for its environment with the layout's measurer (layout.ts resolvedInput), as the device resolves it. */
+  readonly resolvedInput: (input: LayoutInput, measurer: TextMeasurer, faults: EngineFaults) => LayoutInput;
   readonly noFaults: EngineFaults;
   readonly resolveBorder: (style: LayoutStyle, devicePixelRatio: number) => Edges;
   /** REPL-a: padding against a containing block's content width, and a replaced box's paint rects (layout paint.ts). */
@@ -47,7 +49,7 @@ export type ExpectedEngine = {
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
   /** FORM-b: every menulist-button select's drop-down arrow in absolute device px (layout paint.ts). */
-  readonly menuListArrows: (input: LayoutInput, boxes: readonly LayoutRect[]) => MenuListArrowPaint[];
+  readonly menuListArrows: (input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer) => MenuListArrowPaint[];
   /** OVFL-B: every element scroll container's offset range in device px (layout overflow.ts). */
   readonly scrollRanges: (input: LayoutInput, measurer: TextMeasurer) => ScrollRangesResult;
   /** The TS paint references (paint-*.ts) whose translations the device runs. */
@@ -107,8 +109,8 @@ export function programInput(p: NativeProgram, viewport: { readonly width: numbe
 }
 
 /** The computed font size in device px of every text leaf and text marker of the resolved input (environment.ts writes it). */
-export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput): Map<string, number> {
-  const zoomed = engine.zoomInput(input, engine.noFaults);
+export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput, measurer: TextMeasurer): Map<string, number> {
+  const zoomed = engine.resolvedInput(input, measurer, engine.noFaults);
   const out = new Map<string, number>();
   const inline = (c: InlineChild): void => {
     if (c.kind === 'text') out.set(c.id, c.font.size);
@@ -126,8 +128,8 @@ export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput): M
 }
 
 /** Border widths of every box of the zoomed input, in whole device px (box.ts resolveBorder at zoomed ratio 1). */
-export function borderDevicePx(engine: ExpectedEngine, input: LayoutInput): Map<string, readonly [number, number, number, number]> {
-  const zoomed = engine.zoomInput(input, engine.noFaults);
+export function borderDevicePx(engine: ExpectedEngine, input: LayoutInput, measurer: TextMeasurer): Map<string, readonly [number, number, number, number]> {
+  const zoomed = engine.resolvedInput(input, measurer, engine.noFaults);
   const lu = engine.luPerPx;
   const out = new Map<string, readonly [number, number, number, number]>();
   const walk = (b: LayoutBox | ControlBox): void => {
@@ -151,8 +153,8 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
  * The paint rects of every replaced leaf of the zoomed input, from its content box in absolute LU: the border box less its
  * borders and its padding against the parent's content width (the viewport's for the root), as the device computes them.
  */
-export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[]): Map<string, ReplacedPaint> {
-  const zoomed = engine.zoomInput(input, engine.noFaults);
+export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): Map<string, ReplacedPaint> {
+  const zoomed = engine.resolvedInput(input, measurer, engine.noFaults);
   const abs = new Map<string, { x: number; y: number; width: number; height: number }>();
   for (const b of boxes) {
     const p = b.parent === null ? undefined : abs.get(b.parent);
@@ -187,10 +189,10 @@ export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, b
 }
 
 /** Each select's arrow relative to its snapped border box, by id, as DragonTree.apply stores it on the device. */
-export function selectArrowGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[], snapped: readonly SnappedRect[]): Map<string, SelectArrowGeometry> {
+export function selectArrowGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[], snapped: readonly SnappedRect[], measurer: TextMeasurer): Map<string, SelectArrowGeometry> {
   const at = new Map(snapped.map((s) => [s.id, s]));
   const out = new Map<string, SelectArrowGeometry>();
-  for (const a of engine.menuListArrows(input, boxes)) {
+  for (const a of engine.menuListArrows(input, boxes, measurer)) {
     const box = at.get(a.id);
     if (box === undefined) throw new Error(`the engine gives an arrow for ${a.id}, which it did not lay out`);
     const path = a.arrow.shape.segments.flatMap((g) => {
@@ -211,10 +213,10 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the case (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const snapped = engine.snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input);
-  const fontSizes = resolvedFontSizes(engine, input);
-  const replaced = replacedGeometries(engine, input, out.boxes);
-  const arrows = selectArrowGeometries(engine, input, out.boxes, snapped);
+  const borders = borderDevicePx(engine, input, engine.measurer);
+  const fontSizes = resolvedFontSizes(engine, input, engine.measurer);
+  const replaced = replacedGeometries(engine, input, out.boxes, engine.measurer);
+  const arrows = selectArrowGeometries(engine, input, out.boxes, snapped, engine.measurer);
   const ranges = engine.scrollRanges(input, engine.measurer);
   if (ranges.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
   const scroll = new Map(ranges.ranges.map((r) => [r.id, [r.minX, r.maxX, r.minY, r.maxY] as const]));

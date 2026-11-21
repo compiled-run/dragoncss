@@ -61,7 +61,7 @@ function compareAll(faults: GradientFaults, libmTableIgnored = false, rootScroll
       const chrome = committedPixels(n.case.id, dpr);
       if (chrome === null) throw new Error(`${n.case.id}: no committed Chrome PNG at DPR ${dpr} (pnpm run parity:pixel-capture)`);
       const viewport = n.case.environment.viewport;
-      const borders = borderDevicePx(engine, programInput(program, viewport, dpr));
+      const borders = borderDevicePx(engine, programInput(program, viewport, dpr), engine.measurer);
       // Chrome's border and rounded clip decide the pixels under a border and near or past a rounded corner, not the background.
       const only = backgroundOnly(program, viewport, caseBoxes(program, viewport, dpr), dpr);
       for (const { id, plan } of backgroundPlans(program, viewport, dpr, borders, faults)) {
@@ -128,7 +128,8 @@ describe('the reference keeps to the pixels the background alone decides (backgr
       const boxes = caseBoxes(program, viewport, dpr);
       const only = backgroundOnly(program, viewport, boxes, dpr);
       const at = (x: number, y: number): string => [...chrome.data.subarray((y * chrome.width + x) * 4, (y * chrome.width + x) * 4 + 3)].join(',');
-      const plans = backgroundPlans(program, viewport, dpr, borderDevicePx(expectedEngine(), programInput(program, viewport, dpr)));
+      const engine = expectedEngine();
+      const plans = backgroundPlans(program, viewport, dpr, borderDevicePx(engine, programInput(program, viewport, dpr), engine.measurer));
       let glyphsOver = 0;
       for (const g of glyphLines(program, viewport, dpr).flatMap((l) => l.glyphs)) {
         const x = Math.floor((g.left + g.right) / 2);
@@ -188,7 +189,7 @@ describe('the dormant gradient-unpremultiplied-upload plant (DORMANT_PLANTS) is 
       if (!program.nodes.some((node) => node.writes.some((w) => w.kind === 'background-layers'))) continue;
       for (const dpr of DPRS) {
         const viewport = n.case.environment.viewport;
-        for (const { id, plan } of backgroundPlans(program, viewport, dpr, borderDevicePx(engine, programInput(program, viewport, dpr)))) {
+        for (const { id, plan } of backgroundPlans(program, viewport, dpr, borderDevicePx(engine, programInput(program, viewport, dpr), engine.measurer))) {
           for (let y = plan.top; y < plan.bottom; y++) {
             const row = backgroundRow(plan, y, gradientFaults('none'));
             for (let k = 3; k < row.length; k += 4) {

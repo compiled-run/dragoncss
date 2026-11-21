@@ -226,7 +226,7 @@ describe('FORM-b select S3: the native hosts', () => {
         const input = dragon.programInput(program, c.environment.viewport, dpr);
         const r = engineLayout(input, ahemMeasurer);
         if (r.kind !== 'ok') throw new Error(`${c.id}@${dpr}: ${r.unsupported.code}`);
-        const ours = menuListArrows(input, r.boxes);
+        const ours = menuListArrows(input, r.boxes, ahemMeasurer);
         expect(ours, `${c.id}@${dpr}`).toEqual(selectArrows(program, caseBoxes(program, c.environment.viewport, dpr), dpr));
         n += ours.length;
       }
@@ -274,7 +274,7 @@ describe('FORM-b select S3: the native hosts', () => {
           const r = engine.layout(input, engine.measurer);
           if (r.kind !== 'ok') throw new Error(`${c.id}@${dpr}: refused`);
           const boxes = new Map(snapEdges(r.boxes).map((b) => [b.id, b]));
-          const arrows = menuListArrows(input, r.boxes);
+          const arrows = menuListArrows(input, r.boxes, engine.measurer);
           const byId = new Map(dump.nodes.map((node) => [node.id, node]));
           for (const a of arrows) {
             const box = boxes.get(a.id);

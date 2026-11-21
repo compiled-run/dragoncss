@@ -20,7 +20,7 @@ describe('FORM-b select S3: the arrows in the engine result', () => {
         const input = (JSON.parse(v.line) as { input: LayoutInput }).input;
         const r = layout(input, ahemMeasurer);
         if (r.kind !== 'ok') throw new Error(`${dir}/${file}: refused`);
-        const arrows = menuListArrows(input, r.boxes);
+        const arrows = menuListArrows(input, r.boxes, ahemMeasurer);
         expect(arrows.length, `${dir}/${file}`).toBeGreaterThan(5);
         const out = JSON.parse(runEngineCase(v.line)) as unknown[];
         expect(out[0]).toBe('ok');

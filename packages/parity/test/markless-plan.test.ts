@@ -1,6 +1,8 @@
 // The layout plan of a Markless export: the device's function (harness.ts runMarklessLayout, translated to Swift and Kotlin)
 // gives exactly the geometry the export computes at build time, at the proof devices and at other sizes and ratios.
 import { readFileSync } from 'node:fs';
+import type { ControlBox, LayoutBox } from '@dragon/layout';
+import { menuListArrow, menuListArrowBox } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
 import { checkMarklessExport, marklessStyleExport } from '../src/markless-style-input.ts';
 import { paintRows } from '../src/markless-style-compare.ts';
@@ -133,6 +135,51 @@ describe('the layout plan of a Markless export', () => {
     expect(w).toContain(411);
     expect(w).toContain(1080 / 2.625);
     expect(w[w.length - 1]).toBe(1400);
+  });
+
+  it("gives each menulist-button select's arrow after the nodes, from its snapped border box, and a page without one as it was", () => {
+    const lato = new Uint8Array(readFileSync(repoPath('packages/dragon/test/fonts/woff/Lato-Regular.woff2')));
+    const css = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); }\nbody { margin: 0; font-family: 'Harbour Lato'; }\nselect { font: inherit; }\n.page { padding: 24px; }\n.field { display: block; width: 100%; padding: 12px 14px; border: 1px dashed #c9c2ad; background: #fffdf7; }\n";
+    const nodes = [
+      { kind: 'element', id: 'h0', element: 'main', parent: null, attributes: { class: 'page' } },
+      { kind: 'element', id: 'h3', element: 'select', parent: 'h0', attributes: { class: 'field', 'aria-label': 'Tag' } },
+      { kind: 'element', id: 'h4', element: 'option', parent: 'h3', attributes: {} },
+      { kind: 'text', id: 'h4:text0', parent: 'h4', text: 'Work' },
+    ];
+    const text = JSON.stringify({ version: 'markless.native-style-input/0', component: 'Tagging', nodes, css, states: [], fonts: [{ url: './fonts/Lato-Regular.woff2', file: 'Lato-Regular.woff2' }] });
+    const { exported } = marklessStyleExport(text, 'select.json', () => lato, 'system', undefined, true);
+    const selects = (b: LayoutBox | ControlBox): ControlBox[] => [...(b.kind === 'control' && b.control.kind === 'select-menulist' ? [b] : []), ...b.children.flatMap((k) => (k.kind === 'box' || k.kind === 'control' ? selects(k) : []))];
+    let arrows = 0;
+    for (const t of ['ios', 'android'] as const) {
+      const x = exported.targets[t]!;
+      const { width, height } = x.viewport;
+      const names = new Map(x.planNames?.[0] ?? []);
+      const out = deviceLayout(x.plan!, 0, width, height, x.dpr);
+      expect(out[0], t).toBe('ok');
+      // The device's borders (and every other part of a node) are the export's, whose border operations read the Lato-resolved device borders.
+      const got = new Map((out[2] as unknown[][]).map((n) => [names.get(n[0] as string) ?? (n[0] as string), decode(n.slice(1))]));
+      const select = x.assignments[0]!.nodes.find((n) => n.id === 'h3')!;
+      expect(select.borderOps, t).toBeDefined();
+      expect(got.get('h3'), t).toEqual(exportGeometry(select));
+      // The host's arrow: the export's snapped border box and whole device px borders (its border operations), at the select's arrow width.
+      const v = x.plan!.variants[(x.plan!.assignments[0] as unknown as { variant: number }).variant] as unknown as { root: LayoutBox };
+      const expected = selects(v.root).map((c) => {
+        const id = names.get(c.id) ?? c.id;
+        const ops = x.assignments[0]!.nodes.find((n) => n.id === id)!.borderOps!;
+        const arrowWidth = c.control.kind === 'select-menulist' ? c.control.arrowWidth : 0;
+        const a = menuListArrow(0, 0, ops.size.width, ops.size.height, ops.widths[3] as number, ops.widths[1] as number, menuListArrowBox(arrowWidth, x.dpr, x.dpr), arrowWidth, false);
+        return [id, a.strokeWidth, a.shape.segments.map((g) => (g.kind === 'move' || g.kind === 'line' ? [g.kind, g.x, g.y] : [g.kind]))];
+      });
+      expect(out.length, t).toBe(4);
+      const suffix = decode(out[3]) as [string, unknown[][]];
+      expect(suffix[0], t).toBe('menulist-arrows');
+      expect(suffix[1].map((a) => [names.get(a[0] as string) ?? a[0], ...a.slice(1)]), t).toEqual(expected);
+      expect(expected.map((a) => a[0]), t).toEqual(['h3']);
+      arrows += expected.length;
+    }
+    expect(arrows).toBe(2);
+    const plain = marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true).exported.targets.ios!;
+    expect(deviceLayout(plain.plan!, 0, plain.viewport.width, plain.viewport.height, plain.dpr).length).toBe(3);
   });
 
   it('keeps the font mode and each assignment\'s canvas, body background and colour scheme beside the plan, for the paint checks', () => {

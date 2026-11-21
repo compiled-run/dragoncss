@@ -903,9 +903,9 @@ public final class DragonTree {
     let abs = try layout_absoluteRects(ok.boxes)
     // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint.ts menuListArrows.
     var arrows: [String: MenuListArrow] = [:]
-    for a in try paint_menuListArrows(input, ok.boxes).items { arrows[a.id.description] = a.arrow }
+    for a in try paint_menuListArrows(input, ok.boxes, measurer).items { arrows[a.id.description] = a.arrow }
     // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
-    let zoomed = try lineClamp_clampedInput(try layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
+    let zoomed = try lineClamp_clampedInput(try layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     var zBoxes: [String: LayoutBox] = [:]
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
@@ -2166,7 +2166,7 @@ import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
-import dev.dragon.layout.layout_zoomInput
+import dev.dragon.layout.layout_resolvedInput
 import dev.dragon.layout.lineClamp_clampedInput
 import dev.dragon.layout.overflow_scrollRanges
 import dev.dragon.layout.ScrollRangesResult_ok
@@ -2334,9 +2334,9 @@ class DragonTree(val context: Context) {
     val abs = layout_absoluteRects(ok.boxes)
     // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint.ts menuListArrows.
     val arrows = HashMap<String, MenuListArrow>()
-    for (a in paint_menuListArrows(input, ok.boxes)) arrows[a.id] = a.arrow
+    for (a in paint_menuListArrows(input, ok.boxes, measurer)) arrows[a.id] = a.arrow
     // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
-    val zoomed = lineClamp_clampedInput(layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
+    val zoomed = lineClamp_clampedInput(layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     val zBoxes = HashMap<String, LayoutBox>()
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()

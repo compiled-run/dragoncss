@@ -686,6 +686,18 @@ export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: read
   return [...out];
 }
 
+/** Whether a node is an option or optgroup inside a select, or a node inside such an option: Chrome's closed control draws only the shown label, so it has no box. */
+export function inSelectOptions(byId: ReadonlyMap<string, MarklessStyleInput['nodes'][number]>, n: MarklessStyleInput['nodes'][number]): boolean {
+  let at: MarklessStyleInput['nodes'][number] | undefined = n;
+  let listed = false;
+  while (at !== undefined) {
+    if (at.kind === 'element' && at.element === 'select') return listed;
+    if (at.kind === 'element' && (at.element === 'option' || at.element === 'optgroup')) listed = true;
+    at = at.parent === null ? undefined : byId.get(at.parent);
+  }
+  return false;
+}
+
 /** The media features whose value changes with the viewport's height. */
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
@@ -748,6 +760,8 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
     (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
   }
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
+  const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
@@ -755,7 +769,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const boxed = parsed.nodes.filter((n) => boxless(n) && have.has(n.id)).map((n) => n.id);
     if (boxed.length > 0) fail(`${t}: ${boxed.join(', ')} must generate no box (an ancestor in the markup, there for selectors and inheritance), but the CSS gives it a display other than contents`);
     // Whitespace-only text Dragon drops where it collapses away, as Chrome generates no box for it.
-    const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
+    const missing = parsed.nodes.filter((n) => !boxless(n) && !inSelectList(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
   if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
