@@ -69,7 +69,7 @@ public func units_saturate(_ v: Double) throws -> Double {
 public func units_fromRaw(_ raw: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:25
   if (!jsIsInteger(raw)) {
-    throw JsError(message: jsConcat(S.s380, jsNumberToString(raw)))
+    throw JsError(message: jsConcat(S.s385, jsNumberToString(raw)))
   }
   return try units_saturate(raw)
 }
@@ -135,7 +135,7 @@ public func units_fromFloatRound(_ px: Double) throws -> Double {
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:95
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s1128, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1135, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -180,11 +180,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:137
   do {
-    let _a365 = values
-    var _i365 = 0
-    while _i365 < _a365.items.count {
-      let v: Double = _a365.items[_i365]
-      _i365 += 1
+    let _a367 = values
+    var _i367 = 0
+    while _i367 < _a367.items.count {
+      let v: Double = _a367.items[_i367]
+      _i367 += 1
       try total = units_add(total, v)
     }
   }
@@ -215,7 +215,7 @@ public func units_clampNegativeToZero(_ a: Double) throws -> Double {
 public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:159
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s792, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s797, jsNumberToString(n)))
   }
   return try units_saturate((a * n))
 }
@@ -224,7 +224,7 @@ public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
 public func units_divInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:165
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s891, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s897, jsNumberToString(n)))
   }
   return try units_saturate(jsTrunc((a / n)))
 }
@@ -238,7 +238,7 @@ public func units_floatToInlineRaw(_ px: Double) throws -> Double {
 public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:176
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s891, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s897, jsNumberToString(n)))
   }
   return jsTrunc((raw / n))
 }
@@ -247,7 +247,7 @@ public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
 public func units_divLu(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:182
   if (b == 0.0) {
-    throw JsError(message: S.s379)
+    throw JsError(message: S.s384)
   }
   return try units_saturate(jsTrunc(((a * units_LU_PER_PX) / b)))
 }
@@ -389,7 +389,7 @@ public func units_isFiniteFactorSum(_ total: Double) throws -> Bool {
 public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:328
   if ((total < 0.0) || (parts <= 0.0)) {
-    throw JsError(message: S.s677)
+    throw JsError(message: S.s682)
   }
   return try units_saturate(jsFloor(((((2.0 * total) * k) + parts) / (2.0 * parts))))
 }
@@ -398,7 +398,7 @@ public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: 
 public func units_cumulativeShareTruncated(_ total: Double, _ numerator: Double, _ denominator: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:334
   if ((total < 0.0) || (denominator <= 0.0)) {
-    throw JsError(message: S.s678)
+    throw JsError(message: S.s683)
   }
   return try units_saturate(jsTrunc(((total * numerator) / denominator)))
 }
@@ -420,7 +420,7 @@ public func units_distributedOffset(_ mode: JsString, _ free: Double, _ n: Doubl
 public func units_intDiv(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:352
   if (((!jsIsInteger(a)) || (!jsIsInteger(b))) || (b == 0.0)) {
-    throw JsError(message: jsConcat(S.s791, jsNumberToString(a), S.s12, jsNumberToString(b)))
+    throw JsError(message: jsConcat(S.s796, jsNumberToString(a), S.s12, jsNumberToString(b)))
   }
   return jsTrunc((a / b))
 }
@@ -540,7 +540,7 @@ public func units_mod32(_ x: Double) throws -> Double {
 public func units_equalShare(_ extra: Double, _ setTrackCount: Double, _ growableTrackCount: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:467
   if (((!jsIsInteger(setTrackCount)) || (!jsIsInteger(growableTrackCount))) || (growableTrackCount <= 0.0)) {
-    throw JsError(message: jsConcat(S.s711, jsNumberToString(setTrackCount), S.s12, jsNumberToString(growableTrackCount)))
+    throw JsError(message: jsConcat(S.s716, jsNumberToString(setTrackCount), S.s12, jsNumberToString(growableTrackCount)))
   }
   let a: Double = try units_mod32(extra)
   let high: Double = jsFloor((a / units_TWO_16))
@@ -764,11 +764,11 @@ public func units_effectiveZoom(_ deviceZoom: Double, _ zooms: JsArray<Double>) 
   var z: Double = deviceZoom
   // ts: packages/layout/src/units.ts:687
   do {
-    let _a366 = zooms
-    var _i366 = 0
-    while _i366 < _a366.items.count {
-      let own: Double = _a366.items[_i366]
-      _i366 += 1
+    let _a368 = zooms
+    var _i368 = 0
+    while _i368 < _a368.items.count {
+      let own: Double = _a368.items[_i368]
+      _i368 += 1
       let zoomed: Double = jsFround((z * jsFround(own)))
       z = ((zoomed < 0.000001) ? 0.000001 : ((zoomed > 1000000.0) ? 1000000.0 : zoomed))
     }
@@ -851,7 +851,7 @@ public func units_calcEvaluateFloat(_ value: Double, _ nonNegative: Bool) throws
 public func units_mulDiv(_ v: Double, _ m: Double, _ d: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:763
   if ((((d <= 0.0) || (m < 0.0)) || (!jsIsInteger(m))) || (!jsIsInteger(d))) {
-    throw JsError(message: S.s859)
+    throw JsError(message: S.s865)
   }
   let negative: Bool = (v < 0.0)
   let a: Double = (negative ? (-v) : v)

@@ -13,6 +13,16 @@ public final class MenuListInsets {
   }
 }
 
+// ts: packages/layout/src/controls.ts:108
+public final class MenuListArrow {
+  public let shape: SvgPathShape
+  public let strokeWidth: Double
+  public init(_ shape: SvgPathShape, _ strokeWidth: Double) {
+    self.shape = shape
+    self.strokeWidth = strokeWidth
+  }
+}
+
 // ts: packages/layout/src/controls.ts:26
 public func controls_zoomTrackLength(_ px: Double, _ zoom: Double) throws -> Double {
   return try units_floatMul(px, units_float32(zoom))
@@ -72,4 +82,50 @@ public func controls_menuListInnerInsets(_ arrowWidth: Double, _ zoom: Double, _
   let z: Double = try units_float32(zoom)
   let block: Double = try units_truncPxToInt(z)
   return try MenuListInsets(units_truncPxToInt(units_floatMul(4.0, z)), units_truncPxToInt(units_floatAdd(z, controls_menuListArrowBox(arrowWidth, zoom, device))), block, block)
+}
+
+// ts: packages/layout/src/controls.ts:110
+public func controls_minInt(_ a: Double, _ b: Double) throws -> Double {
+  return ((a < b) ? a : b)
+}
+
+// ts: packages/layout/src/controls.ts:114
+public func controls_maxInt(_ a: Double, _ b: Double) throws -> Double {
+  return ((a > b) ? a : b)
+}
+
+// ts: packages/layout/src/controls.ts:124
+public func controls_menuListArrow(_ left: Double, _ top: Double, _ width: Double, _ height: Double, _ borderLeft: Double, _ borderRight: Double, _ arrowBox: Double, _ arrowWidth: Double, _ inlineEndLeft: Bool) throws -> MenuListArrow {
+  let innerLeft: Double = try (left + units_truncPxToInt(borderLeft))
+  let innerRight: Double = try ((left + width) - units_truncPxToInt(borderRight))
+  let middle: Double = try (top + units_intDiv(height, 2.0))
+  let size: Double = try units_floatMul(8.0, units_floatDiv(arrowBox, arrowWidth))
+  let arrowX: Double = try units_truncPxToInt((inlineEndLeft ? (innerLeft + ((arrowBox - size) / 2.0)) : (innerRight - ((arrowBox + size) / 2.0))))
+  let wantW: Double = try units_truncPxToInt(size)
+  let wantH: Double = try units_intDiv(wantW, 2.0)
+  let wantY: Double = try (middle - units_intDiv(wantH, 2.0))
+  var x: Double = try controls_maxInt(arrowX, left)
+  var y: Double = try controls_maxInt(wantY, top)
+  var w: Double = try (controls_minInt((arrowX + wantW), (left + width)) - x)
+  var h: Double = try (controls_minInt((wantY + wantH), (top + height)) - y)
+  // ts: packages/layout/src/controls.ts:137
+  if ((w <= 0.0) || (h <= 0.0)) {
+    x = 0.0
+    y = 0.0
+    w = 0.0
+    h = 0.0
+  }
+  // ts: packages/layout/src/controls.ts:143
+  if ((w != wantW) || (h != wantH)) {
+    // ts: packages/layout/src/controls.ts:144
+    if (((wantH - h) * 2.0) > (wantW - w)) {
+      w = (h * 2.0)
+    } else {
+      try h = units_intDiv(w, 2.0)
+    }
+    try x = (arrowX + units_intDiv((wantW - w), 2.0))
+    try y = (middle - units_intDiv(h, 2.0))
+  }
+  let segments: JsArray<any U_SvgClose_SvgCubic_SvgLine_SvgMove_SvgQuad> = try JsArray<any U_SvgClose_SvgCubic_SvgLine_SvgMove_SvgQuad>([SvgMove(S.s_move, x, y), SvgLine(S.s_line, (x + units_intDiv(w, 2.0)), (y + h)), SvgLine(S.s_line, (x + w), y)])
+  return MenuListArrow(SvgPathShape(S.s_path, segments), 2.0)
 }

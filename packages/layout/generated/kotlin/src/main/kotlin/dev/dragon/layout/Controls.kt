@@ -9,6 +9,12 @@ class MenuListInsets(
   val bottom: Double,
 )
 
+// ts: packages/layout/src/controls.ts:108
+class MenuListArrow(
+  val shape: SvgPathShape,
+  val strokeWidth: Double,
+)
+
 // ts: packages/layout/src/controls.ts:26
 fun controls_zoomTrackLength(px: Double, zoom: Double): Double {
   return units_floatMul(px, units_float32(zoom))
@@ -68,4 +74,50 @@ fun controls_menuListInnerInsets(arrowWidth: Double, zoom: Double, device: Doubl
   val z: Double = units_float32(zoom)
   val block: Double = units_truncPxToInt(z)
   return MenuListInsets(units_truncPxToInt(units_floatMul(4.0, z)), units_truncPxToInt(units_floatAdd(z, controls_menuListArrowBox(arrowWidth, zoom, device))), block, block)
+}
+
+// ts: packages/layout/src/controls.ts:110
+fun controls_minInt(a: Double, b: Double): Double {
+  return (if ((a < b)) a else b)
+}
+
+// ts: packages/layout/src/controls.ts:114
+fun controls_maxInt(a: Double, b: Double): Double {
+  return (if ((a > b)) a else b)
+}
+
+// ts: packages/layout/src/controls.ts:124
+fun controls_menuListArrow(left: Double, top: Double, width: Double, height: Double, borderLeft: Double, borderRight: Double, arrowBox: Double, arrowWidth: Double, inlineEndLeft: Boolean): MenuListArrow {
+  val innerLeft: Double = (left + units_truncPxToInt(borderLeft))
+  val innerRight: Double = ((left + width) - units_truncPxToInt(borderRight))
+  val middle: Double = (top + units_intDiv(height, 2.0))
+  val size: Double = units_floatMul(8.0, units_floatDiv(arrowBox, arrowWidth))
+  val arrowX: Double = units_truncPxToInt((if (inlineEndLeft) (innerLeft + ((arrowBox - size) / 2.0)) else (innerRight - ((arrowBox + size) / 2.0))))
+  val wantW: Double = units_truncPxToInt(size)
+  val wantH: Double = units_intDiv(wantW, 2.0)
+  val wantY: Double = (middle - units_intDiv(wantH, 2.0))
+  var x: Double = controls_maxInt(arrowX, left)
+  var y: Double = controls_maxInt(wantY, top)
+  var w: Double = (controls_minInt((arrowX + wantW), (left + width)) - x)
+  var h: Double = (controls_minInt((wantY + wantH), (top + height)) - y)
+  // ts: packages/layout/src/controls.ts:137
+  if (((w <= 0.0) || (h <= 0.0))) {
+    x = 0.0
+    y = 0.0
+    w = 0.0
+    h = 0.0
+  }
+  // ts: packages/layout/src/controls.ts:143
+  if (((w != wantW) || (h != wantH))) {
+    // ts: packages/layout/src/controls.ts:144
+    if ((((wantH - h) * 2.0) > (wantW - w))) {
+      w = (h * 2.0)
+    } else {
+      h = units_intDiv(w, 2.0)
+    }
+    x = (arrowX + units_intDiv((wantW - w), 2.0))
+    y = (middle - units_intDiv(h, 2.0))
+  }
+  val segments: JsArray<U_SvgClose_SvgCubic_SvgLine_SvgMove_SvgQuad> = jsArrayOf<U_SvgClose_SvgCubic_SvgLine_SvgMove_SvgQuad>(SvgMove("move", x, y), SvgLine("line", (x + units_intDiv(w, 2.0)), (y + h)), SvgLine("line", (x + w), y))
+  return MenuListArrow(SvgPathShape("path", segments), 2.0)
 }
