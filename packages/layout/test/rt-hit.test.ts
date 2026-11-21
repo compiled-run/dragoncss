@@ -146,13 +146,13 @@ describe('hitTableOf hit-tests a replaced element as a childless box', () => {
 
 // SELD-R2b: the facts' px radii are CSS px and the table is in device px, and a line is rounded on its own rect with its block's radii.
 describe('hitTableOf rounds boxes and lines as Blink does', () => {
-  const table = async (dpr: number, p: Record<string, unknown>, children: unknown[], radius: number) => {
+  const table = async (dpr: number, p: Record<string, unknown>, children: unknown[], radius: number | readonly number[]) => {
     const { hitTableOf } = await import('../src/rt-hit.ts');
     const { ahemMeasurer } = await import('../src/index.ts');
     const { box, neutralEnvironment } = await import('./helpers.ts');
     const root = { ...box('html', {}), children: [box('p', p, children as Parameters<typeof box>[2])] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: dpr, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const r = Array.from({ length: 8 }, () => ({ percent: false, value: radius }));
+    const r = Array.from({ length: 8 }, (_, i) => ({ percent: false, value: typeof radius === 'number' ? radius : radius[i] }));
     const facts = new Map([['html', { pointerEvents: 'auto', inherited: false, activation: false, radii: [] }], ['p', { pointerEvents: 'auto', inherited: true, activation: false, radii: r }]]) as unknown as Parameters<typeof hitTableOf>[2];
     return hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
   };
@@ -168,23 +168,46 @@ describe('hitTableOf rounds boxes and lines as Blink does', () => {
     expect(idAt(t, 12, 12)).toBe('p');
   });
 
-  it('samples each rounded corner along its arc: every column\'s first pixel inside the box and the one before it, in few points', async () => {
+  // Where a corner's curve decides a row's or column's first or last pixel hitting p (inset from the box's straight edge), that pixel
+  // and the one just outside it are grid points; straight edges are sampled per box, not per pixel.
+  const arcCovered = async (t: Awaited<ReturnType<typeof table>>, w: number, h: number): Promise<number> => {
+    const { hitGrid } = await import('../src/rt-hit.ts');
+    const grid = hitGrid(t, 400 * t.dpr * PX, 300 * t.dpr * PX);
+    const has = new Set(grid.map((g) => `${g.x},${g.y}`));
+    const on = (x: number, y: number) => has.has(`${x * PX},${y * PX}`);
+    const hits = (xs: number[], ys: number[]) => xs.flatMap((x) => ys.filter((y) => idAt(t, x, y) === 'p').map((y) => [x, y] as const));
+    const all = hits(Array.from({ length: w }, (_, x) => x), Array.from({ length: h }, (_, y) => y));
+    const [top, bottom] = [Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[1]))];
+    const [left, right] = [Math.min(...all.map((p) => p[0])), Math.max(...all.map((p) => p[0]))];
+    let checked = 0;
+    for (let x = left; x <= right; x++) {
+      const ys = all.filter((p) => p[0] === x).map((p) => p[1]);
+      const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+      if (y0 > top) { expect(on(x, y0) && on(x, y0 - 1), `column ${x}: first hit ${y0}`).toBe(true); checked++; }
+      if (y1 < bottom) { expect(on(x, y1) && on(x, y1 + 1), `column ${x}: last hit ${y1}`).toBe(true); checked++; }
+    }
+    for (let y = top; y <= bottom; y++) {
+      const xs = all.filter((p) => p[1] === y).map((p) => p[0]);
+      const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+      if (x0 > left) { expect(on(x0, y) && on(x0 - 1, y), `row ${y}: first hit ${x0}`).toBe(true); checked++; }
+      if (x1 < right) { expect(on(x1, y) && on(x1 + 1, y), `row ${y}: last hit ${x1}`).toBe(true); checked++; }
+    }
+    return checked;
+  };
+
+  it('samples a rounded corner along its arc: each row\'s and column\'s edge pixels, in few points', async () => {
     const { px } = await import('./helpers.ts');
     const { hitGrid } = await import('../src/rt-hit.ts');
     const t = await table(3, { width: px(60), height: px(60) }, [], 12);
-    const grid = hitGrid(t, 180 * PX, 180 * PX);
-    const has = new Set(grid.map((g) => `${g.x},${g.y}`));
-    for (let x = 0; x < 36; x++) {
-      let y = 0;
-      while (idAt(t, x, y) !== 'p') y++;
-      expect(has.has(`${x * PX},${y * PX}`) && (y === 0 || has.has(`${x * PX},${(y - 1) * PX}`)), `column ${x}: first hit at ${y}`).toBe(true);
-    }
-    for (let x = 144; x < 180; x++) {
-      let y = 179;
-      while (idAt(t, x, y) !== 'p') y--;
-      expect(has.has(`${x * PX},${y * PX}`) && (y === 179 || has.has(`${x * PX},${(y + 1) * PX}`)), `column ${x}: last hit at ${y}`).toBe(true);
-    }
-    expect(grid.filter((g) => g.x < 36 * PX && g.y < 36 * PX).length).toBeLessThan(1000);
+    expect(await arcCovered(t, 190, 190)).toBeGreaterThan(200);
+    expect(hitGrid(t, 1200 * PX, 900 * PX).filter((g) => g.x < 36 * PX && g.y < 36 * PX).length).toBeLessThan(1000);
+  });
+
+  it('samples elliptical, fractional corners of a bordered box at DPR 2.625 along their arcs', async () => {
+    const { px } = await import('./helpers.ts');
+    const bordered = { width: px(57), height: px(41), borderTopWidth: px(3), borderTopStyle: 'solid', borderRightWidth: px(1), borderRightStyle: 'solid', borderBottomWidth: px(2), borderBottomStyle: 'solid', borderLeftWidth: px(4), borderLeftStyle: 'solid' };
+    const t = await table(2.625, bordered, [], [9.5, 3.25, 14, 0.5, 4.75, 11, 6.5, 0.75]);
+    expect(await arcCovered(t, 190, 140)).toBeGreaterThan(50);
   });
 
   it('hits a line that overflows its rounded block by less than the block\'s top padding, inside the rounded line rect', async () => {
