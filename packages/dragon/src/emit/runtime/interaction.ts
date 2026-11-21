@@ -370,8 +370,11 @@ public final class DragonInteractionMachine {
       if n.kind == "text" {
         let v = t.textNode(n.id, parent: n.parent, kind: n.kind)
         for w in n.writes {
-          guard case let .text(s, family, color) = w else { fatalError("dragon: text \(n.id) holds a box write") }
-          v.dragonSetText(s, family: family, color: color)
+          switch w {
+          case let .text(s, family, color): v.dragonSetText(s, family: family, color: color)
+          case let .syntheticBold(keys, values): v.dragonSetSyntheticBold(keys: keys, values: values)
+          default: fatalError("dragon: text \(n.id) holds a box write")
+          }
         }
         continue
       }
@@ -382,8 +385,11 @@ public final class DragonInteractionMachine {
         case .borderStyles(let s): v.dragonBorderStyles = s
         case .borderColors(let c): v.dragonBorderColors = c
         case .clip: v.dragonEnableClip()
+        case .clipPath(let insets): dragonSetClipPath(v, insets)
+        case .clipText: dragonClipText(v)
         case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
-        case .text: fatalError("dragon: box \(n.id) holds a text write")
+        case .radii(let lengths): dragonSetRadii(v, lengths)
+        case .text, .syntheticBold: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
     }
@@ -705,8 +711,11 @@ class DragonInteractionMachine(
       if (n.kind == "text") {
         val v = t.textNode(n.id, n.parent, n.kind)
         for (w in n.writes) {
-          if (w !is DragonStateWrite.Text) throw IllegalStateException("dragon: text " + n.id + " holds a box write")
-          v.dragonSetText(w.text, w.family, w.color)
+          when (w) {
+            is DragonStateWrite.Text -> v.dragonSetText(w.text, w.family, w.color)
+            is DragonStateWrite.SyntheticBold -> v.dragonSetSyntheticBold(w.keys, w.values)
+            else -> throw IllegalStateException("dragon: text " + n.id + " holds a box write")
+          }
         }
         continue
       }
@@ -717,8 +726,11 @@ class DragonInteractionMachine(
           is DragonStateWrite.BorderStyles -> v.dragonBorderStyles = w.s
           is DragonStateWrite.BorderColors -> v.dragonBorderColors = w.c
           is DragonStateWrite.Clip -> v.dragonEnableClip()
+          is DragonStateWrite.ClipPath -> dragonSetClipPath(v, w.insets)
+          is DragonStateWrite.ClipText -> dragonClipText(v)
           is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
-          is DragonStateWrite.Text -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
+          is DragonStateWrite.Radii -> dragonSetRadii(v, w.lengths)
+          is DragonStateWrite.Text, is DragonStateWrite.SyntheticBold -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
     }

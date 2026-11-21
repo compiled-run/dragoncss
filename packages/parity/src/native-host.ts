@@ -141,10 +141,10 @@ export function engineCases(): readonly EngineCase[] {
 /**
  * The device apps' measurer on the host (TXT1a-2 phase R): deviceShapedMeasurer over the FontData of every face the apps bundle
  * (Ahem and the real faces, native-shim.ts shimFaces) and the WASM HarfBuzz, as each app's bridge composes it over its own shim. A
- * fresh measurer per call: its shaped items are cached per layout.
+ * fresh measurer per call: its shaped items are cached per layout. `extra`: faces an app bundles beside those, registered (registerFace).
  */
-export function referenceMeasurer(): TextMeasurer {
-  return deviceShapedMeasurer(new Map(shimFaces().map((f) => [f.id, fontDataOf(f.id)] as const)), hostShaper);
+export function referenceMeasurer(extra: readonly string[] = []): TextMeasurer {
+  return deviceShapedMeasurer(new Map([...shimFaces().map((f) => f.id), ...extra].map((id) => [id, fontDataOf(id)] as const)), hostShaper);
 }
 
 /**
@@ -217,9 +217,9 @@ function computeEmitCases(target: NativeTarget): EmitCase[] {
 }
 
 /** The TS engine's boxes for a program at a DPR (check (d)'s reference). */
-export function engineBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number): readonly LayoutRect[] {
+export function engineBoxes(p: NativeProgram, viewport: { readonly width: number; readonly height: number }, dpr: number, measurer: TextMeasurer = referenceMeasurer()): readonly LayoutRect[] {
   const input: LayoutInput = programInput(p, viewport, dpr);
-  const out = layout(input, referenceMeasurer());
+  const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
   return out.boxes;
 }
@@ -792,7 +792,10 @@ class DragonActivity : Activity() {
     // An env phase's case is its own id at the size the root settled at; its expected dump is judged on the host from that size.
     val c = if (envPhase != null && envMounted != null) DragonCase(id, base.fixture, base.direction, base.compilerDigest, envMounted.machine.viewport.first, envMounted.machine.viewport.second, mapOf(scale to "device-env"), base.input, base.build) else base
     val t0: Long
-    val tree: DragonTree
+    var tree: DragonTree
+    // The state mount the tree comes from: its safe-area probe can render it again while the case settles (the insets measured
+    // once it is attached), and the case then settles and dumps the views now on screen.
+    var source: DragonStateMount? = null
     // A state mount on screen: its media root leaves the frame, and it stops observing the platform readings, after the dump.
     var mounted: DragonStateMount? = null
     var environment: DumpEnvironment? = null
@@ -801,6 +804,7 @@ class DragonActivity : Activity() {
       t0 = SystemClock.elapsedRealtimeNanos()
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
       if (envPhase == "scheme-back") {
         mounted = mount
         envMount = null
@@ -814,6 +818,7 @@ class DragonActivity : Activity() {
       // MQ-R1 (T067 R6): the environment record, as the root view observed it and the machine took it.
       environment = dragonEnvironment(mount, scale)
       tree = mount.tree
+      source = mount
     } else {
       tree = DragonTree(this)
       c.build(tree)
@@ -910,6 +915,7 @@ class DragonActivity : Activity() {
     var drawnAt = -1
     fun settle(frames: Int) {
       Choreographer.getInstance().postFrameCallback {
+        source?.tree?.let { if (it !== tree) { tree = it; drawnAt = -1 } }
         if (drawnAt < 0 && tree.root.isLaidOut && tree.root.width > 0 && tree.root.isAttachedToWindow && !tree.root.isDirty) drawnAt = frames
         if (drawnAt < 0 || frames < drawnAt + 2) {
           if (frames > 6000) throw IllegalStateException("dragon host: " + id + " was not laid out after " + frames + " frames (attached " + tree.root.isAttachedToWindow + ", laid out " + tree.root.isLaidOut + ", layout requested " + tree.root.isLayoutRequested + ", size " + tree.root.width + "x" + tree.root.height + ", window focus " + hasWindowFocus() + ", window visibility " + window.decorView.windowVisibility + ", stage " + frame.width + "x" + frame.height + ")")

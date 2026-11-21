@@ -14,6 +14,7 @@ import {
   inlineMinMaxOf,
   isScrollContainer,
   lengthWidth,
+  NO_STRETCH,
   resolveBorder,
   resolveInlineLengthWith,
   resolveMarginWith,
@@ -82,6 +83,7 @@ export function layoutFloat(ctx: Ctx, node: LayoutBox | ReplacedLeaf, cbInline: 
     heightBasis: basis,
     formattingContextRoot: true,
     bfcLineOffset: ZERO,
+    blockStretch: NO_STRETCH,
   });
   return { frag: r.frag, marginLeft, marginRight, marginTop, marginBottom };
 }

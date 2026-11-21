@@ -3,6 +3,8 @@
 import { REFERENCE_PLATFORM } from './reference-platform.ts';
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
+import * as darwinArm64TopLayer from './chrome-145.darwin-arm64.top-layer.generated.ts';
+import type { TopLayerKey, TopLayerRows } from './chrome-145.darwin-arm64.top-layer.generated.ts';
 import type { CapturedTag, ElementKey, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
 import { UNSTYLED_TAGS } from '../analysis/elements.ts';
 import { TEXT_FONT_LONGHANDS } from './uncaptured.ts';
@@ -15,6 +17,10 @@ type DirRows = { readonly ltr: { readonly [property: string]: string }; readonly
 export type UaDataset = {
   readonly platform: string;
   readonly chromeVersion: string;
+  /** The root's used colour scheme the capture ran under (light, or dark under html{color-scheme:dark}). */
+  readonly colorScheme: string;
+  /** The computed value of each system colour in that scheme (null where Chrome has none). */
+  readonly systemColors: { readonly [name: string]: string | null };
   readonly computed: { readonly [T in CapturedTag]: { readonly [property: string]: string } };
   readonly userAgentLonghands: { readonly [T in CapturedTag]: readonly string[] };
   readonly borderWidthKeywords: { readonly [keyword: string]: string };
@@ -50,15 +56,18 @@ export type UaDataset = {
   readonly elementKeyTextFonts: { readonly [K in ElementKey]: { readonly [property: string]: string } };
   /** ELB-2 userAgentForced for every captured key, by key name. */
   readonly userAgentForced: { readonly [key: string]: DirRows };
+  /** The top-layer keys (scripts/capture-top-layer-ua.ts): a <dialog> shown with showModal() and its ::backdrop, in this colour scheme. */
+  readonly topLayer: { readonly [K in TopLayerKey]: TopLayerRows };
 };
 
 type TextFontRow = { readonly [property: string]: string };
 
 /** The element keys of the form controls Dragon lays out (FORM-a). */
-export type ControlKey = Extract<ElementKey, 'button' | 'input' | 'input[type=range]'>;
+export type ControlKey = Extract<ElementKey, 'button' | 'button[disabled]' | 'input' | 'input[type=range]'>;
 
-/** A row key of the UA dataset: a captured tag, a replaced key (REPL-0) or a control key (FORM-a). */
-export type UaKey = CapturedTag | ReplacedKey | ControlKey;
+/** A row key of the UA dataset: a captured tag, a replaced key (REPL-0), a control key (FORM-a) or a top-layer key. */
+export type UaKey = CapturedTag | ReplacedKey | ControlKey | TopLayerKey;
+export type { TopLayerKey } from './chrome-145.darwin-arm64.top-layer.generated.ts';
 
 /** The UA rows of one key. forced: values Chrome forces whatever the cascade says (ELB-2 userAgentForced); none for a captured tag. */
 export type UaRows = {
@@ -77,7 +86,7 @@ function isReplacedKey(key: UaKey): key is ReplacedKey {
 }
 
 function isControlKey(key: UaKey): key is ControlKey {
-  return key === 'button' || key === 'input' || key === 'input[type=range]';
+  return key === 'button' || key === 'button[disabled]' || key === 'input' || key === 'input[type=range]';
 }
 
 /**
@@ -109,6 +118,10 @@ function controlRows(ua: UaDataset, key: ControlKey): UaRows {
 /** The UA rows of a key, from the element tables or the replaced-key tables. */
 export function uaRows(ua: UaDataset, key: UaKey): UaRows {
   if (isControlKey(key)) return controlRows(ua, key);
+  if (key === 'dialog' || key === 'backdrop') {
+    const rows = ua.topLayer[key];
+    return { computed: rows.computed, longhands: rows.longhands, declared: rows.declared, contexts: rows.contexts, textFonts: {}, forced: rows.forced };
+  }
   if (isReplacedKey(key)) {
     return { computed: ua.replacedKeyComputed[key], longhands: ua.replacedKeyLonghands[key], declared: ua.replacedKeyDeclared[key], contexts: ua.replacedKeyContexts[key], textFonts: ua.replacedKeyTextFonts[key], forced: ua.replacedKeyForced[key] };
   }
@@ -134,7 +147,7 @@ export const UA_TEXT_FONT_RULES: { readonly [tag: string]: TextFontRow } = {
  * that reads dragon-unstyled. A captured row that sets a property no rule above names (or the reverse) throws, so a new capture
  * cannot be read through a stale rule table.
  */
-function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark): UaDataset {
+function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark, topLayer: UaDataset['topLayer']): UaDataset {
   const captured: [string, TextFontRow][] = [...Object.entries(ds.userAgentTextFonts), ...Object.entries(ds.phrasingKeyTextFonts).filter(([tag]) => UNSTYLED_TAGS.has(tag))];
   const rows = captured.map(([tag, row]): [string, TextFontRow] => {
     const rule = UA_TEXT_FONT_RULES[tag] ?? {};
@@ -147,13 +160,13 @@ function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark)
   const declared = ds.elementKeyDeclared['a[href]'];
   const line = ds.userAgentUnmodelled['a[href]']?.ltr['text-decoration-line'];
   if (declared.ltr['color'] === undefined || declared.rtl['color'] === undefined || line === undefined) throw new Error(`${ds.platform}: the a[href] capture has no color or text-decoration-line`);
-  return { ...ds, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line } };
+  return { ...ds, topLayer, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line } };
 }
 
-const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withSpecifiedTextFonts(darwinArm64)]]);
+const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withSpecifiedTextFonts(darwinArm64, darwinArm64TopLayer.light)]]);
 
 /** The same capture under html{color-scheme:dark}, keyed by the same platforms. */
-const DARK_DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64Dark.platform, withSpecifiedTextFonts(darwinArm64Dark)]]);
+const DARK_DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64Dark.platform, withSpecifiedTextFonts(darwinArm64Dark, darwinArm64TopLayer.dark)]]);
 
 /** The text font a UA rule gives an element's tag (userAgentTextFonts); empty for a tag no such rule names. */
 export function textFontsOf(ua: UaDataset, tag: string): TextFontRow {

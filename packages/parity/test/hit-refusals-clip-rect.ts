@@ -4,5 +4,5 @@
 export const CLIP_RECT_OUT: readonly string[] = ['clip-rect-basic', 'clip-rect-basic-rtl', 'clip-rect-nested', 'clip-rect-nested-rtl', 'clip-rect-sr-only', 'clip-rect-sr-only-rtl'];
 export const CLIP_RECT_REASON = /^clip on .+: hit testing past a box its clip rect hides is not modelled yet \(MASK-CLIP\)$/;
 // The clip-path fixture cases: Chrome's elementFromPoint passes over what a clip-path clips away, which the hit table does not model.
-export const CLIP_PATH_OUT: readonly string[] = ['clip-path-basic', 'clip-path-basic-rtl', 'clip-path-nested', 'clip-path-nested-rtl'];
+export const CLIP_PATH_OUT: readonly string[] = ['clip-path-basic', 'clip-path-basic-rtl', 'clip-path-nested', 'clip-path-nested-rtl', 'attr-style-visually-hidden', 'attr-style-visually-hidden-rtl'];
 export const CLIP_PATH_REASON = /^clip-path on .+: hit testing past what a clip-path clips away is not modelled yet \(MASK-CLIP\)$/;

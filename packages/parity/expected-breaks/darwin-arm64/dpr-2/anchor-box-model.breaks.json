@@ -1,0 +1,9 @@
+{
+  "case": "anchor-box-model",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"m4:text0","data":"xy","lines":1,"units":[0,0],"blank":[]},
+    {"id":"m7:text0","data":"xy","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.cb { position: relative; width: 300px; height: 200px; border: 2px solid #000; margin-bottom: 4px; }
+.a1 { margin: 40px 0 0 80px; width: 64px; height: 36px; anchor-name: --a; background-color: #ccc; }
+.p { position: absolute; position-anchor: --a; background-color: #f88; top: 0; left: 0; }
+.s1 { width: anchor-size(width); height: anchor-size(height); }
+.s2 { width: anchor-size(--a height); height: anchor-size(--a width); left: 100px; }
+.s3 { width: anchor-size(inline); height: anchor-size(block); top: 100px; }
+.s4 { width: anchor-size(self-block); height: anchor-size(self-inline); top: 150px; }
+.s5 { min-width: anchor-size(width); max-height: anchor-size(height); height: 80px; left: 200px; }
+.s6 { max-width: anchor-size(--a width); min-height: anchor-size(height); width: 200px; height: 5px; top: 120px; left: 120px; }
+.s7 { width: anchor-size(); height: anchor-size(); left: 220px; top: 140px; padding: 3px; border: 2px solid #000; }
+.s8 { width: anchor-size(width); height: anchor-size(height); box-sizing: border-box; padding: 5px; left: 160px; top: 40px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="c" class="cb"><div data-dragon-id="a1" class="a1"></div><div data-dragon-id="s1" class="p s1"></div><div data-dragon-id="s2" class="p s2"></div><div data-dragon-id="s3" class="p s3"></div><div data-dragon-id="s4" class="p s4"></div><div data-dragon-id="s5" class="p s5"></div><div data-dragon-id="s6" class="p s6"></div><div data-dragon-id="s7" class="p s7"></div><div data-dragon-id="s8" class="p s8"></div></div>
+</body>
+</html>

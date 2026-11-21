@@ -34,7 +34,7 @@ export type { AhemRuleFaults, FontData } from './text.ts';
 export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, ELLIPSIS, fontDataMeasurer, letterSpacingAfter, smallCapsCodePoint, smallCapsFontSize, wordSpacingAfter } from './text.ts';
 export { resolvedInput, zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
-export { resolveBorder } from './box.ts';
+export { containsAbsolute, resolveBorder } from './box.ts';
 export { platformFontSize, snapEdge, textRunLayoutUnit, zoomFontSize } from './units.ts';
 export type { LinePiece, PlacedLine } from './inline.ts';
 export { inlineBoxes, inlineBreaks, inlineLeaves, leafFontOf, placeLines } from './inline.ts';

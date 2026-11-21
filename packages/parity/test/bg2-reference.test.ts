@@ -17,7 +17,7 @@ import { expectedEngine, nativeCases } from '../src/native-host.ts';
 import { backgroundOnly, backgroundPlans, caseRootX } from '../src/paint-samples/gradient.ts';
 import { linearSlope } from '../../dragon/src/analysis/paint-values/gradient.ts';
 import type { NativeProgram } from 'dragon';
-import { caseBoxes, committedPixels } from '../src/pixel-reference.ts';
+import { caseBoxes, committedPixels, glyphLines } from '../src/pixel-reference.ts';
 import { DORMANT_PLANTS } from '../src/device-run.ts';
 import { imageItem, translucencyRefusal } from '../../dragon/src/analysis/paint-values/gradient.ts';
 import { isLonghand } from '../../dragon/src/css/properties.ts';
@@ -63,7 +63,7 @@ function compareAll(faults: GradientFaults, libmTableIgnored = false, rootScroll
       const viewport = n.case.environment.viewport;
       const borders = borderDevicePx(engine, programInput(program, viewport, dpr));
       // Chrome's border and rounded clip decide the pixels under a border and near or past a rounded corner, not the background.
-      const only = backgroundOnly(program, caseBoxes(program, viewport, dpr), dpr);
+      const only = backgroundOnly(program, viewport, caseBoxes(program, viewport, dpr), dpr);
       for (const { id, plan } of backgroundPlans(program, viewport, dpr, borders, faults)) {
         boxes++;
         for (let y = plan.top; y < plan.bottom; y++) {
@@ -113,6 +113,47 @@ describe('BG2 reference raster against Chrome 145 (host stage of the two-stage p
     const { tally } = compareAll(gradientFaults('none'), true);
     console.log(`bg2-reference --plant libmTableIgnored: ${tally.differing} of ${tally.pixels} pixels differ, max ${tally.maxDelta}`);
     expect(tally.differing).toBeGreaterThan(0);
+  }, 600_000);
+});
+
+describe('the reference keeps to the pixels the background alone decides (backgroundOnly)', () => {
+  it('leaves out the glyphs and the nested box Chrome paints over background-blend-initial\'s gradients, and keeps the rest of each box', () => {
+    const n = nativeCases().find((c) => c.case.id === 'background-blend-initial');
+    if (n === undefined) throw new Error('background-blend-initial is not a native case');
+    const program = n.programs['android-views'];
+    const viewport = n.case.environment.viewport;
+    for (const dpr of DPRS) {
+      const chrome = committedPixels(n.case.id, dpr);
+      if (chrome === null) throw new Error(`background-blend-initial: no committed Chrome PNG at DPR ${dpr}`);
+      const boxes = caseBoxes(program, viewport, dpr);
+      const only = backgroundOnly(program, viewport, boxes, dpr);
+      const at = (x: number, y: number): string => [...chrome.data.subarray((y * chrome.width + x) * 4, (y * chrome.width + x) * 4 + 3)].join(',');
+      const plans = backgroundPlans(program, viewport, dpr, borderDevicePx(expectedEngine(), programInput(program, viewport, dpr)));
+      let glyphsOver = 0;
+      for (const g of glyphLines(program, viewport, dpr).flatMap((l) => l.glyphs)) {
+        const x = Math.floor((g.left + g.right) / 2);
+        const y = Math.floor((g.top + g.bottom) / 2);
+        for (const { id, plan } of plans) {
+          if (x < plan.left || x >= plan.right || y < plan.top || y >= plan.bottom) continue;
+          glyphsOver++;
+          // The fixture's text colour, rgb(20, 40, 160), is what Chrome paints there, not the gradient.
+          expect(at(x, y), `${id}@${dpr} (${x},${y})`).toBe('20,40,160');
+          expect(only(id, x, y), `${id}@${dpr} (${x},${y})`).toBe(false);
+        }
+      }
+      expect(glyphsOver, `DPR ${dpr}`).toBeGreaterThan(0);
+      const child = boxes.find((b) => b.id === 'n6c');
+      if (child === undefined) throw new Error('background-blend-initial has no n6c box');
+      const cx = child.left + child.border.left + 1;
+      const cy = child.bottom - child.border.bottom - 2;
+      expect(at(cx, cy), `n6c@${dpr}`).toBe('153,170,221');
+      expect(only('n6', cx, cy), `n6@${dpr} under n6c`).toBe(false);
+      for (const { id, plan } of plans) {
+        let kept = 0;
+        for (let y = plan.top; y < plan.bottom; y++) for (let x = plan.left; x < plan.right; x++) if (only(id, x, y)) kept++;
+        expect(kept, `${id}@${dpr}`).toBeGreaterThan(0);
+      }
+    }
   }, 600_000);
 });
 

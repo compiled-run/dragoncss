@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* The visually-hidden pattern of @markless/ui (base.visuallyhidden), written as its style attribute: a 1px absolutely positioned
+   box whose clip-path: inset(50%) leaves nothing, so Chrome paints none of its text and keeps it in its accessibility tree. */
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
+.stage { position: relative; height: 60px; padding: 8px 16px; background-color: rgb(236, 240, 244); }
+.t { color: rgb(20, 20, 20); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="t1" class="t">XXXX</div>
+<span data-dragon-id="vh" style="clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px;">Skip to content</span>
+<div data-dragon-id="t2" class="t">XX</div>
+</div>
+</body>
+</html>

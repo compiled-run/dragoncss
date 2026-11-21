@@ -1,0 +1,11 @@
+{
+  "case": "fieldset-positioned",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"f1l:text0","lines":[[0,2]]},
+    {"id":"f2r:text0","lines":[[0,1]]},
+    {"id":"f3l:text0","lines":[[0,3]]},
+    {"id":"f3r:text0","lines":[[0,1]]},
+    {"id":"f1h:text0","lines":[[0,1]]}
+  ]
+}

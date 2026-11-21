@@ -10,10 +10,11 @@
 // corner. Chrome's pixel there is the box's paint times the raster's alpha byte over the canvas, which the native mask keeps exactly
 // over a canvas whose every channel is 0 or 255 (dragon analysis/mask.ts; packages/parity/test/mask-gradient.test.ts).
 import type { BackgroundLayer, BackgroundPaint, BackgroundPlan, GradientFaults, GradientImage, LayoutBox, LayoutRect } from '@dragon/layout';
-import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, zoomInput } from '@dragon/layout';
+import { absoluteRects, backgroundPixelExact, LU_PER_PX, backgroundRow, fromCssPx, layout, measurerFor, NO_ENGINE_FAULTS, NO_GRADIENT_FAULTS, planBackground, referenceTileSize, resolveBorder, resolvePadding, snapEdges, zoomInput } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import { programInput } from 'dragon';
 import { REFERENCE_PLATFORM } from '../platform.ts';
+import { referenceMeasurer } from '../native-host.ts';
 import { glyphLines } from '../pixel-reference.ts';
 import type { GlyphBox, SampleBox, SamplePoint } from '../samples.ts';
 import { glyphSpanAt, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
@@ -174,13 +175,44 @@ function engineGeometry(p: NativeProgram, viewport: { readonly width: number; re
   };
 }
 
+/** A device px rect that paints over a background; grown by margin, whether the pixel at (x, y) meets it. */
+type Cover = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+const meets = (r: Cover, x: number, y: number, margin: number): boolean => x + 1 > r.left - margin && x < r.right + margin && y + 1 > r.top - margin && y < r.bottom + margin;
+
 /**
  * Whether Chrome's pixel at (x, y) is the background of box id alone: inside the box's inner border edge (the border paints over
  * the background under it), at least one device px clear inside each of its rounded corners' arcs, outer and padding-edge (the
- * rounded clip is antialiased there), and clear of every other rounded box's arcs.
+ * rounded clip is antialiased there), clear of every other rounded box's arcs, and clear of what paints over the background: every
+ * box laid out after it (its descendants and later boxes, painted later in tree order) and every line box, whose snapped edges are
+ * whole device px, and by at least one device px every glyph's ink box (text paints after the backgrounds, its glyphs may overflow
+ * their line, and a glyph edge off the pixel grid is antialiased).
  */
-export function backgroundOnly(program: NativeProgram, boxes: readonly SampleBox[], dpr: number): (id: string, x: number, y: number) => boolean {
+export function backgroundOnly(program: NativeProgram, viewport: { readonly width: number; readonly height: number }, boxes: readonly SampleBox[], dpr: number): (id: string, x: number, y: number) => boolean {
   const byId = new Map(boxes.map((b) => [b.id, b] as const));
+  // The reference measurer, which measures a case's real faces too (caseBoxes): the Ahem measurer refuses a shaped case's text.
+  const out = layout(programInput(program, viewport, dpr), referenceMeasurer());
+  if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
+  const snapped = snapEdges(out.boxes);
+  const at = new Map(out.boxes.map((r, i) => [r.id, i] as const));
+  // A line box's id is "<parent>:line<j>" (pixel-reference.ts caseBoxes).
+  const lines: readonly Cover[] = snapped.filter((_, i) => {
+    const r = out.boxes[i] as LayoutRect;
+    return r.parent !== null && r.id.startsWith(`${r.parent}:line`);
+  });
+  const glyphs: readonly Cover[] = glyphLines(program, viewport, dpr).flatMap((l) => l.glyphs);
+  // Per box, the covers that reach it: whole device px rects met exactly, glyph boxes met within one device px.
+  type Covers = { readonly exact: readonly Cover[]; readonly glyphs: readonly Cover[] };
+  const covers = new Map<string, Covers>();
+  const coversOf = (b: SampleBox): Covers => {
+    const hit = covers.get(b.id);
+    if (hit !== undefined) return hit;
+    const i = at.get(b.id);
+    if (i === undefined) throw new Error(`${b.id}: a background box the engine did not lay out at ${dpr}`);
+    const reaches = (r: Cover, margin: number): boolean => r.left - margin < b.right && r.right + margin > b.left && r.top - margin < b.bottom && r.bottom + margin > b.top;
+    const c = { exact: [...snapped.slice(i + 1), ...lines].filter((r) => reaches(r, 0)), glyphs: glyphs.filter((g) => reaches(g, 1)) };
+    covers.set(b.id, c);
+    return c;
+  };
   const rounded = boxes.flatMap((b) => {
     const r = boxRadii(program, b, dpr);
     if (r === null) return [];
@@ -195,7 +227,8 @@ export function backgroundOnly(program: NativeProgram, boxes: readonly SampleBox
     if (b === undefined) return false;
     if (x < b.left + b.border.left || x >= b.right - b.border.right || y < b.top + b.border.top || y >= b.bottom - b.border.bottom) return false;
     for (const rb of rounded) for (const a of rb.arcs) if (rb.id === id ? !clearInside(a, x, y, 1) : nearArc(a, x, y, 1)) return false;
-    return true;
+    const c = coversOf(b);
+    return !c.exact.some((r) => meets(r, x, y, 0)) && !c.glyphs.some((g) => meets(g, x, y, 1));
   };
 }
 
@@ -221,7 +254,7 @@ export function gradientPoints(ctx: PaintSampleContext): SamplePoint[] {
   const clearOfText = (x: number, y: number): boolean => (glyphs ??= glyphLines(ctx.program, ctx.viewport, ctx.dpr).flatMap((l) => l.glyphs)).every((g) => clearOfGlyph(x, y, g));
   const borders = new Map(ctx.boxes.map((b) => [b.id, [b.border.top, b.border.right, b.border.bottom, b.border.left] as [number, number, number, number]]));
   const out: SamplePoint[] = [];
-  const only = backgroundOnly(ctx.program, ctx.boxes, ctx.dpr);
+  const only = backgroundOnly(ctx.program, ctx.viewport, ctx.boxes, ctx.dpr);
   for (const { id, plan } of backgroundPlans(ctx.program, ctx.viewport, ctx.dpr, borders)) {
     const rows = new Map<number, readonly number[]>();
     const row = (y: number): readonly number[] => {

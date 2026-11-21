@@ -46,10 +46,10 @@ const complete = {
   columnGap: { kind: 'normal' },
   textAlign: 'start',
   verticalAlign: { kind: 'keyword', value: 'baseline' },
-  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' },
+  textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' }, multicol: null, textBoxTrim: null,
   aspectRatio: { kind: 'auto' },
   grid: null,
-  gridItem: null, zoom: [],
+  gridItem: null, anchor: null, zoom: [],
 } as const satisfies LayoutStyle;
 
 const { boxSizing: _dropped, ...withoutBoxSizing } = complete;

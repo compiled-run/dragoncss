@@ -1,0 +1,168 @@
+{
+ "sources": [
+  "Document.tsrx",
+  "App.tsrx",
+  "doc.css"
+ ],
+ "modules": [
+  {
+   "id": "document",
+   "source": "Document.tsrx"
+  },
+  {
+   "id": "app",
+   "source": "App.tsrx"
+  }
+ ],
+ "styles": [
+  {
+   "id": "doc",
+   "file": "doc.css",
+   "scope": "document"
+  },
+  {
+   "id": "app",
+   "file": "App.tsrx",
+   "scope": "App",
+   "block": 0
+  }
+ ],
+ "document": {
+  "root": "Document",
+  "documentElement": "html",
+  "styles": [
+   "doc",
+   "app"
+  ]
+ },
+ "components": [
+  {
+   "id": "Document",
+   "module": "document",
+   "at": "export default function Document",
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<html>",
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "call": "App",
+         "id": "app",
+         "at": "<App />"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "App",
+   "module": "app",
+   "at": "export function App",
+   "root": [
+    {
+     "el": "div",
+     "id": "label",
+     "at": "<div class=\"label\">",
+     "class": [
+      "app.label"
+     ],
+     "children": [
+      {
+       "el": "div",
+       "id": "title",
+       "at": "<div class=\"title\">",
+       "class": [
+        "app.title"
+       ],
+       "children": [
+        {
+         "text": "XX XXX",
+         "id": "t1",
+         "at": "XX XXX"
+        }
+       ]
+      },
+      {
+       "el": "div",
+       "id": "note",
+       "at": "<div class=\"note\">",
+       "class": [
+        "app.note"
+       ],
+       "children": [
+        {
+         "text": "XXXX X",
+         "id": "t2",
+         "at": "XXXX X"
+        }
+       ]
+      },
+      {
+       "el": "div",
+       "id": "plain",
+       "at": "<div>XXX",
+       "children": [
+        {
+         "text": "XXX XX",
+         "id": "t3",
+         "at": "XXX XX"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "expected": {
+  "freeStates": [],
+  "cases": 1,
+  "initial": [],
+  "textTopology": [
+   {
+    "address": "app/title:text0",
+    "component": "App",
+    "template": "t1",
+    "at": "XX XXX",
+    "ownerInstance": "doc/app",
+    "insertionParent": "app/title",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "app/note:text0",
+    "component": "App",
+    "template": "t2",
+    "at": "XXXX X",
+    "ownerInstance": "doc/app",
+    "insertionParent": "app/note",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   },
+   {
+    "address": "app/plain:text0",
+    "component": "App",
+    "template": "t3",
+    "at": "XXX XX",
+    "ownerInstance": "doc/app",
+    "insertionParent": "app/plain",
+    "context": {
+     "ltr": "text-in-block/ltr",
+     "rtl": "text-in-block/rtl"
+    }
+   }
+  ]
+ }
+}

@@ -10,7 +10,8 @@ import type { Browser } from 'playwright';
 import { absoluteRects, layout } from '@dragon/layout';
 import type { Assignment, BandRuntimeFaults, Compiled, MediaDevice, NativeBackend, NativeProgram, PointerReadings, Rgba8, StateProgram } from 'dragon';
 import { DESKTOP_DEVICE, LONGHANDS, pointerBits, nativeBandOfViewport, nativeBandProgram, nativeBandPrograms, nativeBands, NO_BAND_RUNTIME_FAULTS, computedColorMatches, parseComputedColor, programInput, stateKey, webClassMap } from 'dragon';
-import type { CapturedNode } from './capture.ts';
+import type { CapturedNode, CollectedElement, Rect } from './capture.ts';
+import { nameCollected } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
 import { CHROME_VERSION, openPage } from './chrome.ts';
@@ -221,7 +222,7 @@ export type ResizeCapture = {
 type PageStep = { readonly kind: 'dump'; readonly props: readonly string[] } | { readonly kind: 'morph'; readonly html: string };
 
 /** One page step: a morph of the body to another rendering in place (as frame-capture.ts does), or a dump of every node. */
-function pageStep(s: PageStep): CapturedNode[] {
+function pageStep(s: PageStep): CollectedElement[] {
   const idOf = (n: Node): string | null => (n.nodeType === Node.ELEMENT_NODE ? (n as Element).getAttribute('data-dragon-id') : null);
   if (s.kind === 'morph') {
     const sync = (from: Element, to: Element): void => {
@@ -250,29 +251,22 @@ function pageStep(s: PageStep): CapturedNode[] {
     getComputedStyle(document.body).width;
     return [];
   }
-  const blank = (t: string): boolean => t.replace(/[ \t\n\r\f]+/g, ' ').trim() === '';
-  const out: CapturedNode[] = [];
+  const out: CollectedElement[] = [];
+  const rect = (r: DOMRect): Rect => ({ x: r.x, y: r.y, width: r.width, height: r.height });
   for (const el of Array.from(document.querySelectorAll('[data-dragon-id]'))) {
     const id = el.getAttribute('data-dragon-id') as string;
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
     const computed: Record<string, string> = {};
     for (const p of s.props) computed[p] = cs.getPropertyValue(p);
-    out.push({ id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed });
-    let k = 0;
-    let spaces = 0;
+    const texts: CollectedElement['texts'][number][] = [];
     for (const child of Array.from(el.childNodes)) {
       if (child.nodeType !== Node.TEXT_NODE) continue;
       const range = document.createRange();
       range.selectNodeContents(child);
-      const rects = Array.from(range.getClientRects());
-      const isBlank = blank((child as Text).data);
-      const textId = isBlank ? `${id}:space${spaces++}` : `${id}:text${k++}`;
-      if (isBlank && rects.length === 0) continue;
-      const t = range.getBoundingClientRect();
-      out.push({ id: textId, kind: 'text', hasBox: rects.length > 0, x: t.x, y: t.y, width: t.width, height: t.height, computed: null });
-      rects.forEach((q, j) => out.push({ id: `${textId}:line${j}`, kind: 'line', hasBox: true, x: q.x, y: q.y, width: q.width, height: q.height, computed: null }));
+      texts.push({ data: (child as Text).data, box: rect(range.getBoundingClientRect()), rects: Array.from(range.getClientRects()).map(rect) });
     }
+    out.push({ node: { id, kind: 'element', hasBox: el.getClientRects().length > 0, x: r.x, y: r.y, width: r.width, height: r.height, computed }, lines: [], texts });
   }
   return out;
 }
@@ -303,7 +297,7 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
     const dump = async (size: Size): Promise<void> => {
       const inner = await page.evaluate(() => [window.innerWidth, window.innerHeight]);
       if (inner[0] !== size.width || inner[1] !== size.height) throw new Error(`${c.id} DPR ${dpr}: the viewport is ${inner.join('x')}, the script's ${size.width}x${size.height}`);
-      samples.push({ size, nodes: await page.evaluate(pageStep, { kind: 'dump', props } as PageStep) });
+      samples.push({ size, nodes: nameCollected(await page.evaluate(pageStep, { kind: 'dump', props } as PageStep)) });
       // MQ-R2: Chrome answers the readings the script says it emulates, or the capture is not of them.
       const device = (points[samples.length - 1] as ScriptPoint).device;
       const queries = readingQueries(device);

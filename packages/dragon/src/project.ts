@@ -2,6 +2,7 @@
 // Every reachable assignment is resolved, checked and lowered as its own case; nothing is deduplicated (docs/api.md §7).
 import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
+import { styleAttributeRules } from './analysis/style-attribute.ts';
 import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
@@ -15,7 +16,8 @@ import type { Longhand } from './css/properties.ts';
 import { PROPERTY_ROLE } from './css/properties.ts';
 import type { ContainerCondition, Declaration, EnclosedRules, LonghandValue, Rule, RuleCondition } from './css/stylesheet.ts';
 import { featureOf, parseStylesheet } from './css/stylesheet.ts';
-import { splitNotApplicable } from './css/not-applicable.ts';
+import { browserOnlyDiagnostic, splitNotApplicable, withoutRepeatedBrowserOnly } from './css/not-applicable.ts';
+import { browserOnlyEntry } from './profiles/browser-only-native.ts';
 import type { UsedKey } from './analysis/context.ts';
 import { usedKeys } from './analysis/context.ts';
 import { checkComputed, propagatedFrom } from './analysis/computed-checks.ts';
@@ -55,7 +57,8 @@ import type { PropertySource, Registrations } from './css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
-import { resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { environmentOf, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { usedColorScheme } from './css/properties/color-scheme.ts';
 import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
 import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
 import { ANDROID_VIEWS_EMITTER_VERSION } from './emit/android-views.ts';
@@ -65,19 +68,23 @@ import { emitWebCss } from './emit/web-css.ts';
 import type { WebFontContext, WebInteraction } from './emit/web-css.ts';
 import type { AtRuleContext } from './css/at-rules.ts';
 import type { FamilyKeyContext } from './css/values.ts';
-import { familyListText } from './css/values.ts';
+import { CSS_WIDE, familyListText } from './css/values.ts';
 import type { DeclaredFace, FontFaceIssue } from './fonts/font-face.ts';
 import { GENERIC_KEYS, validateFontMap } from './fonts/font-map.ts';
 import type { EntryResolution, FontMapError } from './fonts/font-map.ts';
 import type { FontSelectionRequest } from './fonts/selection.ts';
-import { foldFamily } from './fonts/selection.ts';
+import type { SfntRefusal } from './fonts/sfnt.ts';
+import type { BrotliDecompress } from './fonts/woff.ts';
+import { candidates, foldFamily } from './fonts/selection.ts';
+import { isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
+import type { SystemFaceRole } from './fonts/system-faces.ts';
 import { synthesisTraits } from './fonts/metrics.ts';
 import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
 import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from './fonts/weight.ts';
 import { synthesisAllowedOf, textFontOfProps } from './analysis/computed.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
-import { collectFontFaces, familySupport, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
+import { collectFontFaces, familySupport, isSkippedFamily, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
@@ -90,7 +97,7 @@ import type { BandAnalysis } from './lower/band-program.ts';
 import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
 import type { rtBand } from '@dragon/layout';
 import type { Band, BandPartition } from './media/index.ts';
-import { band, bandAt, evaluateInBand, featuresOfList, holdsWholePx } from './media/index.ts';
+import { band, bandAt, bandColorScheme, evaluateInBand, featuresOfList, holdsWholePx, parseMediaQueryList } from './media/index.ts';
 import { androidProfile } from './profiles/android.ts';
 import { iosProfile } from './profiles/ios.ts';
 import type { SupportProfile } from './profiles/types.ts';
@@ -247,7 +254,7 @@ export type InternalBands = {
 };
 
 /** @internal One case in one band. */
-export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null };
+export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null; readonly partition: InteractionPartition | null };
 
 const records = new WeakMap<object, InternalRecord>();
 
@@ -295,6 +302,20 @@ export type InternalOptions = {
    * of the native runtime; every other compile refuses them there unless the profile proves them (gateInteractionFeatures).
    */
   readonly interactionLanes?: boolean;
+  /**
+   * The host presents the top layer itself (a Markless host): every <dialog> is laid out as shown with showModal(), in the top
+   * layer with its ::backdrop, and the host shows or hides it. Without it <dialog> is refused, as nothing would present it.
+   */
+  readonly hostTopLayer?: boolean;
+  /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
+  readonly hostCanvas?: boolean;
+  /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
+  readonly brotliDecompress?: BrotliDecompress;
+  /**
+   * Native targets resolve the font map's platform generics, and a font-family left at its initial value, to system faces
+   * (fonts/system-faces.ts), which the export measures per target at build time. Off: native refuses them as before.
+   */
+  readonly systemFonts?: boolean;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -310,7 +331,11 @@ type Resolved = {
   readonly foldViewport: Viewport | null;
   readonly nativeRealFaces: boolean;
   readonly interactionLanes: boolean;
+  readonly hostTopLayer: boolean;
+  readonly hostCanvas: boolean;
+  readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
+  readonly brotliDecompress: BrotliDecompress | null;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -387,10 +412,12 @@ function checkTranslucentPaint(root: ResolvedElement, targets: readonly string[]
   checkTranslucentRoundedDoubles(root, targets, diagnostics, reported);
 }
 
-function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): void {
+function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], hostTopLayer: boolean): void {
   for (const n of nodes) {
     if (n.kind === 'element') {
-      if (!SUPPORTED_TAGS.has(n.tag)) {
+      if (n.tag === 'dialog' && !hostTopLayer) {
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<dialog> ${n.id} is not supported: it renders in the top layer with a ::backdrop, which Dragon lays out only when the host presents the top layer itself (compileNativeStyles topLayer: 'host')` }));
+      } else if (n.tag !== 'dialog' && !SUPPORTED_TAGS.has(n.tag)) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
       }
       for (const a of n.attributes) {
@@ -400,6 +427,8 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
         }
         for (const c of a.value) {
           if (c.value === null) continue;
+          if (a.name === 'hidden' && c.value.toLowerCase() === 'until-found')
+            diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute hidden="until-found" on ${n.id} is not supported: Chrome renders it with content-visibility: hidden (HTML §15.3.1), which keeps the box with its padding and border at size containment and skips its contents (laid out, not painted, out of the accessibility tree); no native view write skips a box's contents yet`, manual: 'Use hidden with no value (display: none), or hide the element with a class.' }));
           const dimension = dimensionRefusal(n.tag, a.name, c.value);
           if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
           const src = iframeSrcRefusal(n.tag, a.name, c.value);
@@ -408,12 +437,12 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[]): 
           if (svg !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name}="${c.value}" on ${n.id} is not supported: ${svg}`, manual: 'Write the attribute with plain numbers (or px) and the commands M, L, H, V, C, S, Q, T and Z.' }));
         }
       }
-      checkTemplates(n.children, diagnostics);
+      checkTemplates(n.children, diagnostics, hostTopLayer);
     } else if (n.kind === 'branch') {
-      checkTemplates(n.then, diagnostics);
-      checkTemplates(n.else, diagnostics);
+      checkTemplates(n.then, diagnostics, hostTopLayer);
+      checkTemplates(n.else, diagnostics, hostTopLayer);
     } else if (n.kind === 'call') {
-      for (const s of n.slots) checkTemplates(s.children, diagnostics);
+      for (const s of n.slots) checkTemplates(s.children, diagnostics, hostTopLayer);
     }
   }
 }
@@ -517,7 +546,7 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
   const seen = new Set<Declaration>();
   for (const rule of rules) {
     // A rule Chrome drops never applies (css/selectors.ts), so its values need no support.
-    if (rule.selectors.every((s) => s.dropped)) continue;
+    if (rule.selectors.length > 0 && rule.selectors.every((s) => s.dropped)) continue;
     // MQ-a: a rule is checked only for the targets whose band it applies in.
     const ruleTargets = scope === null ? targets : targets.filter((t) => scope(rule).includes(t));
     for (const [i, d] of rule.declarations.entries()) {
@@ -530,9 +559,19 @@ function checkValues(rules: readonly Rule[], targets: readonly KnownTarget[], pr
         const feature = featureOf(lh.property, lh.value, fonts);
         // checkFamilies reports an unmapped family.
         if (feature === 'font-family:<unmapped>') continue;
+        const wide = lh.value.kind === 'keyword' && CSS_WIDE.has(lh.value.value);
         for (const t of ruleTargets) {
           const profile = profileFor(profiles, t);
           if (provenContexts(profile, feature).length > 0) continue;
+          // CASC: a CSS-wide keyword's value depends on the element, so where the cases resolve it, checkContexts checks the value it
+          // computes to there; a keyword no case resolves is still refused here.
+          if (wide && (typeof used === 'function' ? used(t) : used).some((u) => u.declaration === d && u.property === lh.property && u.resolved !== undefined)) continue;
+          // BROWSER-ONLY: a listed property is an error of its own on native, never "unsupported yet".
+          const browserOnly = t === 'web' ? null : browserOnlyEntry(lh.property);
+          if (browserOnly !== null) {
+            diagnostics.push(browserOnlyDiagnostic(browserOnly, authored(d.valueSpan), t, `${lh.property}: ${valueToString(lh.value)}${setBy(d, lh.property)}`));
+            continue;
+          }
           // checkOutline refuses these outline styles on native wherever they paint; a zero-width one paints nothing.
           if (t !== 'web' && nativeOutlinePending(feature)) continue;
           const values = supportedValuesFor(profile, lh.property);
@@ -606,11 +645,17 @@ function syntheticStyle(face: DeclaredFace, request: FontSelectionRequest, allow
 const bundledFaces = (fonts: ProjectFonts): DeclaredFace[] => [...fonts.declaredFaces, ...fonts.projected.pinned.flatMap((p) => (p.result.face === null ? [] : [p.result.face]))];
 
 /** The one face Chrome draws a text with at a UA font, or why the engine cannot lay it out (engine mode, notes/T083-txt1a-1.md). */
-function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string, font: TextFont): EngineFace {
+function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string, font: TextFont, systemFonts: boolean, initial: boolean): EngineFace {
+  if (systemFonts && initial) return systemFaceFor('default', font);
   const listText = familyListText(family.value);
   const support = listText === null ? null : familySupport(listText, fonts.keys.map, fonts.keys.declared);
   if (support === null || support.kind !== 'resolved') return { kind: 'refused', reason: 'the family list does not resolve to bundled faces' };
   const request = requestOf(font.weight, font.style);
+  if (systemFonts) {
+    // The first entry that draws U+0020 decides the primary font: a family with a bundled face for it, or a platform generic.
+    const first = support.resolutions.find((r) => r.kind === 'platform' || ((r.kind === 'declared' || r.kind === 'pinned') && candidates(bundledFaces(fonts), r.family, request, 0x20).length > 0));
+    if (first?.kind === 'platform') return isSystemFaceRole(first.key) ? systemFaceFor(first.key, font) : { kind: 'refused', reason: `${first.key} is left to the platform, and no system face plays it` };
+  }
   const rendered = renderedFaces(bundledFaces(fonts), support.resolutions, text, request);
   if (rendered.length !== 1) return { kind: 'refused', reason: rendered.length === 0 ? 'no bundled face draws it' : `Chrome draws it with ${rendered.length} faces (font fallback), and the engine lays out one face per text` };
   const face = (rendered[0] as { face: DeclaredFace }).face;
@@ -621,19 +666,33 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   return { kind: 'face', id: `sha256:${sha256HexBytes(face.source.bytes)}` };
 }
 
-/** Engine mode's faces of a case, by address: each element's primary font (the strut, U+0020) and each laid-out text node's text. */
-function engineFacesOf(root: ResolvedElement, fonts: ProjectFonts): Map<string, EngineFace> {
+/** The system face of a role at a text font (fonts/system-faces.ts); a weight or style no system face is requested at is refused. */
+function systemFaceFor(role: SystemFaceRole, font: TextFont): EngineFace {
+  if (font.style.kind === 'oblique') return { kind: 'refused', reason: `font-style ${serializeFontStyle(font.style)} has no system face (normal and italic do)` };
+  const id = systemFaceId(role, font.weight, font.style.kind);
+  return id === null ? { kind: 'refused', reason: `font-weight ${serializeFontWeight(font.weight)} has no system face (the nine weights 100 to 900 do)` } : { kind: 'face', id };
+}
+
+/**
+ * Engine mode's faces of a case, by address: each element's primary font (the strut, U+0020) and each laid-out text node's text.
+ * With system fonts, a font-family that is still the initial value (inherited from a root that declares none) is the browser's default.
+ */
+function engineFacesOf(root: ResolvedElement, fonts: ProjectFonts, systemFonts = false): Map<string, EngineFace> {
   const out = new Map<string, EngineFace>();
-  const walk = (el: ResolvedElement): void => {
+  const walk = (el: ResolvedElement, parentInitial: boolean): void => {
     const own = textFontOf(el);
     const family = el.props.get('font-family') as ResolvedValue;
-    out.set(el.element.address, engineFaceFor(fonts, family, ' ', own));
+    const initial = family.origin === 'initial' || (family.origin === 'inherited' && parentInitial);
+    out.set(el.element.address, engineFaceFor(fonts, family, ' ', own, systemFonts, initial));
     for (const c of el.children) {
-      if (c.kind === 'element') walk(c);
-      else out.set(c.node.address, engineFaceFor(fonts, c.props.get('font-family') as ResolvedValue, c.text, own));
+      if (c.kind === 'element') walk(c, initial);
+      else {
+        const text = c.props.get('font-family') as ResolvedValue;
+        out.set(c.node.address, engineFaceFor(fonts, text, c.text, own, systemFonts, text.origin === 'initial' || (text.origin === 'inherited' && initial)));
+      }
     }
   };
-  walk(root);
+  walk(root, false);
   return out;
 }
 
@@ -697,6 +756,13 @@ function variableMessage(r: VariableFontRefusal): string {
   }
 }
 
+function refusalText(r: SfntRefusal): string {
+  if (r.kind === 'unsupported-container') return `unsupported-container ${r.container}`;
+  if (r.kind === 'malformed-container') return `malformed ${r.container}: ${r.reason}`;
+  if (r.kind === 'no-brotli') return 'no Brotli decoder was given to the compile';
+  return r.kind;
+}
+
 /** The diagnostic of one @font-face issue, or null for a value Chrome keeps that needs no report. */
 function fontIssueDiagnostic(issue: FontFaceIssue, origin: Origin, where: string): Diagnostic {
   switch (issue.kind) {
@@ -707,7 +773,7 @@ function fontIssueDiagnostic(issue: FontFaceIssue, origin: Origin, where: string
     case 'unresolved-asset':
       return diagnostic('DRAGON_FONT_UNRESOLVED_ASSET', { origin, message: `${where}: src url(${issue.url}) does not resolve to an asset of the source snapshot` });
     case 'unreadable-font':
-      return diagnostic('DRAGON_FONT_UNREADABLE', { origin, message: `${where}: src url(${issue.url.startsWith('data:') ? 'data:…' : issue.url}) is not a readable font (${issue.refusal.kind})` });
+      return diagnostic('DRAGON_FONT_UNREADABLE', { origin, message: `${where}: src url(${issue.url.startsWith('data:') ? 'data:…' : issue.url}) is not a readable font (${refusalText(issue.refusal)})` });
     case 'unsupported-descriptor':
       return diagnostic('DRAGON_FONT_UNSUPPORTED_DESCRIPTOR', { origin, message: `${where}: ${issue.descriptor}: ${issue.reason}` });
     case 'variable-font-refused':
@@ -746,14 +812,14 @@ function fontDiagnostics(problems: readonly FontWireProblem[], diagnostics: Diag
  * Collects the accepted @font-face rules (their src URLs resolved through the snapshot's asset resolutions from the stylesheet
  * that holds them), projects the font map and manifest, and reports every font problem.
  */
-function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly AtRuleContext[], diagnostics: Diagnostic[]): ProjectFonts {
+function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly AtRuleContext[], diagnostics: Diagnostic[], brotli: BrotliDecompress | null): ProjectFonts {
   const assets = new Map(input.snapshot.assets.map((a) => [a.id, a]));
   const collected = collectFontFaces(contexts, (specifier, context) => {
     const r = input.snapshot.resolutions.find((x) => x.kind === 'asset' && x.from.uri === context.span.source.uri && x.specifier === specifier);
     const a = r === undefined || r.to === null ? undefined : assets.get(r.to);
     return a === undefined ? null : { id: a.id, bytes: a.bytes };
-  });
-  const projected = projectFonts(rawMap, collected.results, input.snapshot.assets);
+  }, brotli);
+  const projected = projectFonts(rawMap, collected.results, input.snapshot.assets, brotli);
   fontDiagnostics([...collected.problems, ...projected.problems], diagnostics);
   const declaredFaces = collected.results.flatMap((r) => (r.face === null || r.face.source === null ? [] : [r.face]));
   const keys: FamilyKeyContext = { map: projected.map, declared: new Set(collected.results.flatMap((r) => (r.face === null ? [] : [r.face.family]))) };
@@ -762,13 +828,14 @@ function compileFonts(input: FrontEndResult, rawMap: unknown, contexts: readonly
 
 /**
  * Context-free check of every font-family declaration of a rule that applies: each entry of its list must be declared with
- * @font-face or be in the font map (pinned or platform); an unmapped entry is DRAGON_FONT_UNMAPPED_FAMILY for every target.
+ * @font-face or be in the font map (pinned or platform); an unmapped entry is DRAGON_FONT_UNMAPPED_FAMILY for every target, except
+ * a named family skipped for a later one that resolves (DRAGON_FONT_FAMILY_NOT_PROVIDED, a warning).
  * A value holding var() is keyed after substitution (computed-checks.ts).
  */
 function checkFamilies(rules: readonly Rule[], fonts: FamilyKeyContext, faults: CompilerFaults, out: Diagnostic[], scope: { readonly of: RuleScope; readonly targets: readonly KnownTarget[] } | null = null): void {
   const seen = new Set<Declaration>();
   for (const rule of rules) {
-    if (rule.selectors.every((sel) => sel.dropped)) continue;
+    if (rule.selectors.length > 0 && rule.selectors.every((sel) => sel.dropped)) continue;
     // MQ-a: a rule outside the native band blocks web only (scopedTo), one that applies in no configured output blocks nothing.
     const diagnostics: Diagnostic[] = [];
     for (const d of rule.declarations) {
@@ -818,10 +885,14 @@ function mergePasses(passes: readonly (readonly Diagnostic[])[]): Diagnostic[] {
   return out;
 }
 
-/** The unmapped-family diagnostics of one resolved font-family list, located at its value. */
+/** The unmapped-family diagnostics of one resolved font-family list, located at its value: a skipped named family warns. */
 function unmappedDiagnostics(resolutions: readonly EntryResolution[], text: string, valueSpan: Span, diagnostics: Diagnostic[]): void {
   for (const r of resolutions) {
     if (r.kind !== 'unmapped-family') continue;
+    if (r.entry.kind === 'family' && isSkippedFamily(r, resolutions)) {
+      diagnostics.push(diagnostic('DRAGON_FONT_FAMILY_NOT_PROVIDED', { origin: authored(valueSpan), message: `font-family: ${text}: the family "${r.entry.name}" is neither declared with @font-face nor in the font map, so every target skips it and draws with the next family in the list`, manual: `Declare "${r.entry.name}" with an @font-face rule whose src is a bundled font file, map it under fonts.families, or remove it from the list.` }));
+      continue;
+    }
     const name = r.entry.kind === 'generic' ? `the generic ${r.entry.keyword}` : `the family "${r.entry.name}"`;
     const fix = r.entry.kind === 'generic'
       ? `Pin ${r.entry.keyword} in the font map (fonts.generics["${r.entry.keyword}"]: { mode: "pinned", family, faces }, for example the recommended "Dragon Sans" faces), or map it with { mode: "platform" }.`
@@ -893,10 +964,10 @@ const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatM
  * TXT1a-2: the faces of a case's nodes that resolve to one real bundled static face, as engine mode resolves them, by address;
  * empty without fonts. A node in the family Ahem never reads it (it keeps AHEM_FACE).
  */
-function realFacesOf(root: ResolvedElement, fonts: ProjectFonts | null, ua: UaDataset): Map<string, EngineFace> {
+function realFacesOf(root: ResolvedElement, fonts: ProjectFonts | null, ua: UaDataset, systemFonts = false): Map<string, EngineFace> {
   const out = new Map<string, EngineFace>();
   if (fonts === null) return out;
-  for (const [address, face] of engineFacesOf(root, fonts)) if (face.kind === 'face') out.set(address, face);
+  for (const [address, face] of engineFacesOf(root, fonts, systemFonts)) if (face.kind === 'face') out.set(address, face);
   return out;
 }
 
@@ -925,15 +996,15 @@ const isFontProfileRefusal = (d: Diagnostic): boolean =>
  * proven only in other contexts blocks with the proven contexts, the alternatives in its own context (T005 rec 6) and, for a
  * shorthand-filled longhand, the shorthand and what to write instead (T005 rec 2).
  */
-function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS, containers: ContainerBand | null = null): CaseResult[] {
+function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[], projectFonts: ProjectFonts | null, seen: Reported = freshReported(), registered: Registrations = NO_REGISTRATIONS, containers: ContainerBand | null = null, colorScheme: 'light' | 'dark' | null = null): CaseResult[] {
   const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
-    const realFaces = realFacesOf(resolved, projectFonts, options.ua);
+    const realFaces = realFacesOf(resolved, projectFonts, options.ua, options.systemFonts);
     // On by default (InternalOptions.nativeRealFaces); turned off, native targets refuse real faces, and the engine lane lowers them
     // in engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
@@ -969,8 +1040,29 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
       for (const t of targets) {
         const profile = profileFor(options.supportProfiles, t);
         if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
-        const proven = provenContexts(profile, u.feature);
         const id = `${t}|${u.key}|${u.declaration.span.start}|${u.declaration.span.source.uri}`;
+        if (u.resolved !== undefined) {
+          // CASC: a CSS-wide keyword with no row of its own in this context is supported where it leaves the element's value
+          // unchanged, or where the value it computes to here has a row in this context.
+          if (u.resolved.unchanged || statusOf(profile, u.resolved.feature, u.context) !== 'unsupported') continue;
+          // BROWSER-ONLY: analysis/scroll-containment.ts reports the computed value on native as browser-only.
+          if (t !== 'web' && browserOnlyEntry(u.property) !== null) continue;
+          const key = `${id}|${u.resolved.feature}`;
+          if (reported.has(key)) continue;
+          reported.add(key);
+          const inCtx = supportedValuesIn(profile, u.property, u.context);
+          const where = provenContexts(profile, u.resolved.feature);
+          diagnostics.push(diagnostic(where.length > 0 ? 'DRAGON_UNPROVEN_CONTEXT' : 'DRAGON_UNSUPPORTED_VALUE', {
+            origin: authored(u.declaration.valueSpan),
+            target: t,
+            message: `${u.property}: ${u.feature.slice(u.property.length + 1)}${setBy(u.declaration, u.property)} on ${u.address} computes to ${valueToString(u.resolved.value)}, which is ${where.length > 0 ? `not proven in the ${u.context} context (proven: ${where.join(', ')})` : `unsupported (support profile ${profile.revision})`}; ${inCtx.length > 0 ? `in ${u.context} use ${list(inCtx)}` : `no ${u.property} value is proven in ${u.context}`}`,
+            manual: inCtx.length > 0 ? `Use one of: ${inCtx.join(', ')}.` : `Remove ${u.declaration.alias ?? u.declaration.property}; ${t} supports no value of ${u.property} in ${u.context} yet.`,
+            related: [{ origin: authored(u.declaration.span), message: `declaration ${u.declaration.alias ?? u.declaration.property}: ${u.declaration.text} applied to ${u.address}` }],
+            profile: { target: t, profileRevision: profile.revision, feature: u.resolved.feature, context: u.context, status: 'unsupported' },
+          }));
+          continue;
+        }
+        const proven = provenContexts(profile, u.feature);
         // checkValues reports a CSS value no context proves; an SVG presentation attribute has no rule, so it is reported here.
         if (proven.length === 0 && u.declaration.presentationHint === true && !reported.has(id)) {
           reported.add(id);
@@ -1198,6 +1290,25 @@ function rulesIn(rules: readonly Rule[], bands: Bands | null, b: Band | null, fa
   }));
 }
 
+/** (prefers-color-scheme: dark) where a case's root names light and dark in a band that does not fix the preference; else null. */
+function preferenceCondition(linked: Linked | null, rules: readonly Rule[], bands: Bands | null, options: Resolved, registered: Registrations): RuleCondition | null {
+  if (linked === null) return null;
+  for (const b of bands === null ? [null] : bands.partition.bands) {
+    const colorScheme = b === null || bands === null ? null : bandColorScheme(bands.partition, b);
+    if (colorScheme !== null) continue;
+    const inBand = rulesIn(rules, bands, b, options.faults);
+    for (const c of linked.cases) {
+      const v = resolveTree(c.root, inBand, options.faults, { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered }).props.get('color-scheme') as ResolvedValue;
+      if (usedColorScheme(v.value, null) !== null) continue;
+      const span = v.declaration?.valueSpan ?? v.span;
+      if (span === null) throw new Error(`${c.root.address}: a color-scheme naming light and dark with no declaration`);
+      const text = '(prefers-color-scheme: dark)';
+      return { list: parseMediaQueryList(text), text, span };
+    }
+  }
+  return null;
+}
+
 /** The band the native output is resolved in: the one holding the fold viewport, else the first. */
 function nativeBandIndex(bands: Bands | null, fold: Viewport | null, faults: CompilerFaults): number {
   if (bands === null || fold === null) return 0;
@@ -1355,13 +1466,22 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const interactionRules = [...rules];
     const conditions = conditionsOf(rules);
     let partition = conditions.length === 0 ? null : band(conditions.map((c) => c.list));
+    const schemeFatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
+    if (options.hostCanvas && partition?.kind !== 'refused' && !schemeFatal && rules.some((r) => r.declarations.some((d) => d.property === 'color-scheme' || d.longhands.some((l) => l.property === 'color-scheme')))) {
+      preLinked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, preLinkDiagnostics);
+      const scheme = preferenceCondition(preLinked, rules, partition === null ? null : { partition, conditions }, options, registered);
+      if (scheme !== null) {
+        conditions.push(scheme);
+        partition = band(conditions.map((c) => c.list));
+      }
+    }
     // CQ: each width a @container query compares with its container's adds a viewport atom; the containers come from resolving
     // every case in every @media band without the @container rules (analysis/container-rules.ts).
     const containerConditions = containerConditionsOf(rules);
     if (containerConditions.length > 0) refuseContainerAnimations(rules, diagnostics);
     const preFatal = diagnostics.some((d) => d.severity === 'error' && d.target === null && d.code !== 'DRAGON_UNSUPPORTED_AT_RULE');
     if (containerConditions.length > 0 && partition?.kind !== 'refused' && !preFatal) {
-      preLinked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, preLinkDiagnostics);
+      if (preLinked === undefined) preLinked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, preLinkDiagnostics);
       const mediaBands: Bands | null = partition === null ? null : { partition, conditions };
       const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered };
       const found = preLinked;
@@ -1395,8 +1515,11 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') gateMediaFeatures(conditions, targets, profiles, diagnostics);
     }
     if (options.profiles === 'enforce' && rules.some((r) => r.container !== undefined)) gateContainerRules(containerConditions, targets, profiles, diagnostics);
-    for (const c of valid.components.values()) checkTemplates(c.root, diagnostics);
-    checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics);
+    for (const c of valid.components.values()) checkTemplates(c.root, diagnostics, options.hostTopLayer);
+    // css-style-attr: each style attribute value's declarations take every support check a stylesheet rule's take.
+    const styleRules = styleAttributeRules(valid.components.values(), diagnostics);
+    const withStyles = [...rules, ...styleRules];
+    checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics, options.hostTopLayer);
     checkSvgContent(valid, diagnostics);
     checkFormButtons(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
@@ -1404,9 +1527,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const bandList = bands === null ? [null] : bands.partition.bands;
     const passTargets = (_k: number): readonly KnownTarget[] => targets;
     const bandRules = bandList.map((b) => new Set(rulesIn(rules, bands, b, options.faults)));
-    const scopeOf: RuleScope = (r) => targets.filter((t) => bandRules.some((set, k) => passTargets(k).includes(t) && set.has(r)));
-    fonts = compileFonts(input, config.fonts, fontFaces, diagnostics);
-    checkFamilies(rules, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
+    const styleRuleSet = new Set<Rule>(styleRules);
+    const scopeOf: RuleScope = (r) => (styleRuleSet.has(r) ? targets : targets.filter((t) => bandRules.some((set, k) => passTargets(k).includes(t) && set.has(r))));
+    fonts = compileFonts(input, config.fonts, fontFaces, diagnostics, options.brotliDecompress);
+    checkFamilies(withStyles, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
     const keys = fonts.keys;
     let valuesAt = diagnostics.length;
     if (preLinked === undefined) linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
@@ -1436,7 +1560,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const bandTargets = passTargets(k);
         // CQ: cqw and cqi resolve against each element's query container, which the same pass finds. Every pass looks, since a unit
         // may appear only after var() substitution (a custom property, a registered initial value, an escaped unit).
-        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, containerBand(b, containerRefusals, unitRefusals)) };
+        const scheme = b === null || bands === null ? null : bandColorScheme(bands.partition, b);
+        const result = { band: b, cases: checkCases(found, [...(bandRules[k] as Set<Rule>)], bandTargets, options, own, projectFonts, freshReported(fontDeferrals), registered, containerBand(b, containerRefusals, unitRefusals), scheme) };
         return { result, diagnostics: scopedTo(own, bandTargets, targets) };
       });
       bandCases = passes.map((p) => p.result);
@@ -1529,8 +1654,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.
         const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
-        checkValues(rules, targets, profiles, usedOf, values, keys, scopeOf);
-        diagnostics.splice(valuesAt, 0, ...values);
+        checkValues(withStyles, targets, profiles, usedOf, values, keys, scopeOf);
+        diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
@@ -1579,14 +1704,14 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     } else if (linked !== null) {
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
-        checkValues(rules, targets, profiles, [], values, keys, scopeOf);
+        checkValues(withStyles, targets, profiles, [], values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...values);
       }
       cases = linked.cases.map((c) => ({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved: null, used: [], partition: null, interaction: [] }));
       bandCases = [{ band: null, cases }];
     } else if (options.profiles === 'enforce') {
       const values: Diagnostic[] = [];
-      checkValues(rules, targets, profiles, [], values, keys, scopeOf);
+      checkValues(withStyles, targets, profiles, [], values, keys, scopeOf);
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
@@ -1618,6 +1743,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     // MF2: a result compiled without enforcing the profiles must never share a digest with an enforced one.
     profilesMode: options.profiles,
     ...(options.nativeRealFaces ? { nativeRealFaces: true } : {}),
+    ...(options.systemFonts ? { systemFonts: true } : {}),
     direction: options.direction,
     config,
     input: canonicalInput(input),
@@ -1648,9 +1774,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           // font (its strut) counts, not only its text. A compile given the lanes verdict (a user's, whose output can be ready) refuses
           // them too: a ready output's support files bundle no faces and no shim, so its app could not draw them.
           const userOutput = options.nativeLanes !== null;
-          const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua) : new Map<string, EngineFace>();
+          const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua, options.systemFonts) : new Map<string, EngineFace>();
           const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
-          const tree = lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
+          const tree = lowerTree(c.resolved, options.faults, environmentOf(c.resolved).ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
           // may refuse is refused here, naming the engine's reason.
@@ -1686,7 +1812,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (c.resolved === null) continue;
       const faces = engineFacesOf(c.resolved, engineFonts);
       try {
-        engineLowered.set(c.key, lowerTree(c.resolved, options.faults, options.ua, images === null ? new Map() : images.naturals, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
+        engineLowered.set(c.key, lowerTree(c.resolved, options.faults, environmentOf(c.resolved).ua, images === null ? new Map() : images.naturals, { kind: 'engine', faceOf: (address) => faces.get(address) ?? { kind: 'refused', reason: `${address} has no resolved font` } }));
       } catch (e) {
         if (!(e instanceof LoweringError)) throw e;
         engineRefusals.set(c.key, `${e.nodeId} ${e.property}: ${e.message}`);
@@ -1743,7 +1869,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         conditions: bands.partition.bands.map((b) => b.condition),
         initial: nativeBand,
         container: containerQueries,
-        cases: bandCases.map((r, k) => r.cases.map((c) => ({ key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? ((loweredByBand[k] as Map<string, LayoutBox>).get(c.key) ?? null) : null }))),
+        cases: bandCases.map((r, k) => r.cases.map((c) => ({ key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? ((loweredByBand[k] as Map<string, LayoutBox>).get(c.key) ?? null) : null, partition: c.partition }))),
       },
       laneOnlyNative,
       focusReachable: focusable,
@@ -1888,7 +2014,11 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     foldViewport: options.foldViewport === undefined ? null : checkedViewport(options.foldViewport),
     nativeRealFaces: options.nativeRealFaces !== false,
     interactionLanes: options.interactionLanes === true,
+    hostTopLayer: options.hostTopLayer === true,
+    hostCanvas: options.hostCanvas === true,
+    systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
+    brotliDecompress: options.brotliDecompress ?? null,
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap };

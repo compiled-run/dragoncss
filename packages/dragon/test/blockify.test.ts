@@ -240,6 +240,12 @@ describe('blockification in the resolver', () => {
     blockify(child, parent, NO_FAULTS);
     expect(valueToString((child.get('display') as ResolvedValue).value)).toBe('block');
   });
+  it('every legend takes the block-level equivalent of its display, anywhere, and display: contents stays (StyleAdjuster::AdjustStyleForHTMLElement)', () => {
+    expect(displayOf((r) => [el(r, 'c', 'div', [], [el(r, 'l', 'legend', ['ib'])])], 'l')).toBe('block');
+    expect(displayOf((r) => [el(r, 'c', 'fieldset', [], [el(r, 'l', 'legend', ['if'])])], 'l')).toBe('flex');
+    expect(displayOf((r) => [el(r, 'c', 'fieldset', [], [el(r, 'l', 'legend', ['ct'])])], 'l')).toBe('contents');
+    expect(displayOf((r) => [el(r, 'c', 'fieldset', [], [el(r, 'l', 'span', ['ib'])])], 'l')).toBe('inline-block');
+  });
   it('inlineFlexToBlock makes a blockified inline-flex a block', () => {
     expect(displayOf((r) => [el(r, 'c', 'div', ['f'], [el(r, 's', 'span', ['if'])])], 's', { ...NO_FAULTS, inlineFlexToBlock: true })).toBe('block');
   });

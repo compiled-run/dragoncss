@@ -20,6 +20,7 @@
 import type { InlineBox, InlineChild, LayoutBox, LayoutNode, LineBreak, ListMarker } from '@dragon/layout';
 import { markerTextId } from './list-marker.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
+import { isTopLayer } from '../../analysis/top-layer.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
 import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
 import { elementMaskGradient } from '../../analysis/mask.ts';
@@ -54,12 +55,14 @@ export type StackNode = {
    * context's z-index 0 layer, and makes no stacking context. Absent means false.
    */
   readonly layered?: boolean;
+  /** A box of the top layer (css-position-4 §3): a stacking context painted after every layer of the root's, in tree order. */
+  readonly topLayer?: boolean;
   /** Text leaves and boxes, in tree order; a text leaf is a StackNode with no children that is never positioned. */
   readonly children: readonly StackNode[];
   readonly text: boolean;
 };
 
-export type StackLayer = 'flow' | 'negative' | 'normal-flow' | 'positioned' | 'positive';
+export type StackLayer = 'flow' | 'negative' | 'normal-flow' | 'positioned' | 'positive' | 'top-layer';
 
 /** The paint facts of a node (rt-hit.ts reads them). */
 export type StackingFacts = {
@@ -77,7 +80,7 @@ export type StackingFacts = {
   readonly underClip: boolean;
 };
 
-/** A node's placement among its host's children: bucket -1 (z < 0), 0 (flow), 1 (auto or 0), 2 (z > 0), then rank. */
+/** A node's placement among its host's children: bucket -1 (z < 0), 0 (flow), 1 (auto or 0), 2 (z > 0, then the top layer), then rank. */
 export type Placement = { readonly host: string; readonly bucket: number; readonly rank: number };
 
 /** A placement with the node's index among the box views its host ends up with. */
@@ -108,14 +111,15 @@ type Info = {
   readonly item: boolean;
 };
 
-const createsContext = (n: StackNode, root: boolean): boolean => root || (!n.text && (n.z !== null || n.opacity < 1 || n.transformed || n.position === 'fixed' || n.position === 'sticky'));
+const createsContext = (n: StackNode, root: boolean): boolean => root || (!n.text && (n.topLayer === true || n.z !== null || n.opacity < 1 || n.transformed || n.position === 'fixed' || n.position === 'sticky'));
 /** A normal-flow layer: a layered box that is neither positioned nor a stacking context. */
 const normalFlowLayer = (n: StackNode, root: boolean): boolean => !root && !n.text && n.layered === true && n.position === 'static' && !createsContext(n, root);
-const isItem = (n: StackNode, root: boolean): boolean => !root && !n.text && (n.position !== 'static' || n.z !== null || n.opacity < 1 || n.transformed || normalFlowLayer(n, root));
+const isItem = (n: StackNode, root: boolean): boolean => !root && !n.text && (n.topLayer === true || n.position !== 'static' || n.z !== null || n.opacity < 1 || n.transformed || normalFlowLayer(n, root));
 
 function layerOf(i: Info): StackLayer {
   if (!i.item) return 'flow';
   if (normalFlowLayer(i.node, i.parent === null)) return 'normal-flow';
+  if (i.node.topLayer === true) return 'top-layer';
   const z = i.node.z ?? 0;
   return z < 0 ? 'negative' : z > 0 ? 'positive' : 'positioned';
 }
@@ -177,6 +181,7 @@ export function stackingOf(root: StackNode): Stacking {
     // (PaintLayerPaintOrderIterator walks the normal-flow children by FirstChild and NextSibling).
     const key = (i: Info): [number, number] => {
       const l = layerOf(i);
+      if (l === 'top-layer') return [3, 0];
       return [l === 'negative' ? 0 : l === 'normal-flow' || l === 'positioned' ? 1 : 2, l === 'normal-flow' ? -1 : l === 'positioned' ? 0 : (i.node.z as number)];
     };
     return out.sort((a, b) => {
@@ -413,6 +418,7 @@ export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, 
       transformed: el !== null && transformedForStacking(el),
       ...(el !== null && containsDescendants(el) ? { containsAbsolute: true } : {}),
       ...(el !== null && backfaceHidden(el) ? { layered: true } : {}),
+      ...(el !== null && isTopLayer(el) ? { topLayer: true } : {}),
       // The native tree's clip (clip.ts): any overflow but visible clips (OVFL), as paint containment's does (lowered to clip), and
       // overflow never applies to an inline box.
       clips: b.kind !== 'inline' && clipsChildren(b),

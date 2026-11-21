@@ -1,12 +1,17 @@
 // A read-only TrueType and OpenType table reader: the facts the font manifest, matching and metrics need, and typed refusals for
-// what Dragon cannot measure yet (WOFF containers, CFF glyph bounds, variable-font metrics).
+// what Dragon cannot measure yet (collections, CFF glyph bounds, variable-font metrics).
+import { sanitize } from './ots/sanitize.ts';
 
 /** Why a font file, or one quantity of it, cannot be used. The manifest still hashes the bytes of every refused file. */
 export type SfntRefusal =
   | { readonly kind: 'unsupported-container'; readonly container: 'woff' | 'woff2' | 'collection' | 'unknown' }
+  /** Glyph bounds of outlines Dragon does not read: CFF, CFF2 or bitmap-only. */
   | { readonly kind: 'cff-bounds'; readonly glyph: number }
   | { readonly kind: 'variable-font' }
-  | { readonly kind: 'malformed'; readonly reason: string };
+  | { readonly kind: 'malformed'; readonly reason: string }
+  | { readonly kind: 'malformed-container'; readonly container: 'woff' | 'woff2'; readonly reason: string }
+  /** WOFF2 needs a Brotli decoder, which the host gives the compile (InternalOptions.brotliDecompress); without one it is refused. */
+  | { readonly kind: 'no-brotli' };
 
 export type Head = {
   readonly unitsPerEm: number;
@@ -43,7 +48,7 @@ export type GlyphBounds = { readonly xMin: number; readonly yMin: number; readon
 
 /** The table facts the manifest records for one face. */
 export type TableFacts = {
-  readonly outlines: 'truetype' | 'cff' | 'cff2';
+  readonly outlines: 'truetype' | 'cff' | 'cff2' | 'bitmap';
   readonly variable: boolean;
   readonly unitsPerEm: number;
   readonly numGlyphs: number;
@@ -58,10 +63,10 @@ export type SfntFont = {
   readonly numGlyphs: number;
   readonly post: Post | null;
   readonly names: Names;
-  readonly outlines: 'truetype' | 'cff' | 'cff2';
+  readonly outlines: 'truetype' | 'cff' | 'cff2' | 'bitmap';
   /** An fvar table is present. */
   readonly variable: boolean;
-  /** The glyph a code point maps to through cmap (format 12 preferred, then 4); 0 when it has none. */
+  /** The glyph a code point maps to through the cmap subtable Chrome uses (readCmap); 0 when it has none. */
   glyphForCodePoint(codePoint: number): number;
   /** The advance width of a glyph in font units (hmtx). */
   advance(glyph: number): number;
@@ -76,7 +81,7 @@ const tag = (d: DataView, at: number): string => String.fromCharCode(d.getUint8(
 
 class Malformed extends Error {}
 
-/** Reads an sfnt file. WOFF, WOFF2 and collections are refused with unsupported-container. */
+/** Reads an sfnt file. Collections, and WOFF or WOFF2 not decoded first (woff.ts), are refused with unsupported-container. */
 export function readSfnt(bytes: Uint8Array): SfntResult {
   if (bytes.length < 12) return { ok: false, refusal: { kind: 'malformed', reason: 'shorter than an sfnt header' } };
   const d = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -97,14 +102,28 @@ export function readSfnt(bytes: Uint8Array): SfntResult {
 
 function parse(d: DataView): SfntFont {
   const numTables = d.getUint16(4);
+  const dataStart = 12 + 16 * numTables;
+  if (dataStart > d.byteLength) throw new Malformed('the table directory runs past the end of the file');
   const tables = new Map<string, { offset: number; length: number }>();
+  // As Chrome 145's sanitizer judges the directory: each table 4-byte aligned after the directory, not empty, inside the file and
+  // overlapping no other; a tag listed twice takes its last entry.
+  const bounds: [number, number][] = [];
   for (let i = 0; i < numTables; i++) {
     const rec = 12 + i * 16;
     const offset = d.getUint32(rec + 8);
     const length = d.getUint32(rec + 12);
+    if (offset % 4 !== 0) throw new Malformed(`table ${tag(d, rec)} does not start on a 4-byte boundary`);
+    if (offset < dataStart || offset >= d.byteLength) throw new Malformed(`table ${tag(d, rec)} starts outside the table data`);
+    if (length === 0) throw new Malformed(`table ${tag(d, rec)} is empty`);
     if (offset + length > d.byteLength) throw new Malformed(`table ${tag(d, rec)} runs past the end of the file`);
+    bounds.push([offset, 1], [offset + length, 0]);
     tables.set(tag(d, rec), { offset, length });
   }
+  let open = 0;
+  for (const [, starts] of bounds.sort((x, y) => x[0] - y[0] || x[1] - y[1])) if ((open += starts === 1 ? 1 : -1) > 1) throw new Malformed('two tables overlap');
+  const sanitized = sanitize(d, tables);
+  if ('refused' in sanitized) throw new Malformed(sanitized.refused);
+  const kept = sanitized.kept;
   const need = (name: string): number => {
     const t = tables.get(name);
     if (t === undefined) throw new Malformed(`no ${name} table`);
@@ -132,9 +151,9 @@ function parse(d: DataView): SfntFont {
     isFixedPitch: d.getUint32(postT.offset + 12) !== 0,
   };
   const names = readNames(d, tables.get('name'));
-  const outlines = tables.has('CFF2') ? 'cff2' : tables.has('CFF ') ? 'cff' : 'truetype';
+  const outlines = kept.has('glyf') && kept.has('loca') ? 'truetype' : kept.has('CFF2') ? 'cff2' : kept.has('CFF ') ? 'cff' : 'bitmap';
   const variable = tables.has('fvar');
-  const cmap = readCmap(d, tables.get('cmap'));
+  const cmap = readCmap(d, tables.get('cmap'), os2);
   const hmtx = need('hmtx');
   const advance = (glyph: number): number => {
     const i = Math.min(glyph, hhea.numberOfHMetrics - 1);
@@ -187,7 +206,7 @@ function readOs2(d: DataView, t: { offset: number; length: number } | undefined)
   if (t === undefined || t.length < 78) return null;
   const o = t.offset;
   const version = d.getUint16(o);
-  const v2 = version >= 2 && t.length >= 90;
+  const v2 = version >= 2 && t.length >= 96;
   return {
     version,
     usWeightClass: d.getUint16(o + 4),
@@ -217,7 +236,7 @@ function readNames(d: DataView, t: { offset: number; length: number } | undefine
     const id = d.getUint16(r + 6);
     const length = d.getUint16(r + 8);
     const at = strings + d.getUint16(r + 10);
-    if (id !== 1 && id !== 2 && id !== 6) continue;
+    if ((id !== 1 && id !== 2 && id !== 6) || at + length > t.offset + t.length) continue;
     let value: string;
     let rank: number;
     if (platform === 3 && (encoding === 1 || encoding === 10) || platform === 0) {
@@ -237,64 +256,73 @@ function readNames(d: DataView, t: { offset: number; length: number } | undefine
   return { postScriptName: found.get(6)?.value ?? null, family: found.get(1)?.value ?? null, subfamily: found.get(2)?.value ?? null };
 }
 
-/** cmap: the Unicode subtable of format 12 if present, else format 4 (platform 3 encodings 10 and 1, platform 0). */
-function readCmap(d: DataView, t: { offset: number; length: number } | undefined): (cp: number) => number {
+/**
+ * cmap as Chrome reads it. OTS keeps the last subtable of each kind in table order (3-0-4; 0-0-4, 0-1-4 and 3-1-4 as one 3-1-4,
+ * written only without a 3-0-4; 0-3-4; 0-3-12, 0-4-12 and 3-10-12 as one 3-10-12; 3-10-13), and HarfBuzz then takes 3-0, else 3-10
+ * (12 before 13), else 3-1, else 0-3. In a 3-0 subtable it retries U+0000..U+00FF at U+F000 up, except where an OS/2 version 0
+ * fsSelection names a font page (OTS keeps only bits 8 and 9 of that byte, so no Arabic page survives to remap).
+ */
+function readCmap(d: DataView, t: { offset: number; length: number } | undefined, os2: Os2 | null): (cp: number) => number {
   if (t === undefined) throw new Malformed('no cmap table');
-  const n = d.getUint16(t.offset + 2);
-  let f12: number | null = null;
-  let f4: number | null = null;
-  for (let i = 0; i < n; i++) {
+  const kept = new Map<string, number>();
+  for (let i = 0; i < d.getUint16(t.offset + 2); i++) {
     const r = t.offset + 4 + i * 8;
-    const platform = d.getUint16(r);
-    const encoding = d.getUint16(r + 2);
-    const sub = t.offset + d.getUint32(r + 4);
-    const unicode = platform === 0 || (platform === 3 && (encoding === 1 || encoding === 10));
-    if (!unicode) continue;
-    const format = d.getUint16(sub);
-    if (format === 12 && f12 === null) f12 = sub;
-    if (format === 4 && f4 === null) f4 = sub;
+    const [p, e, sub] = [d.getUint16(r), d.getUint16(r + 2), t.offset + d.getUint32(r + 4)];
+    const f = d.getUint16(sub);
+    const kind = f === 4 && (p === 0 || p === 3) && (e === 0 || e === 1) ? (p === 3 && e === 0 ? '3-0-4' : '3-1-4')
+      : f === 4 && p === 0 && e === 3 ? '0-3-4'
+      : f === 12 && ((p === 0 && (e === 3 || e === 4)) || (p === 3 && e === 10)) ? '3-10-12'
+      : f === 13 && p === 3 && e === 10 ? '3-10-13'
+      : null;
+    if (kind !== null) kept.set(kind, sub);
   }
-  if (f12 !== null) {
-    const sub = f12;
-    const groups = d.getUint32(sub + 12);
-    return (cp) => {
-      let lo = 0;
-      let hi = groups - 1;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        const g = sub + 16 + mid * 12;
-        const start = d.getUint32(g);
-        const end = d.getUint32(g + 4);
-        if (cp < start) hi = mid - 1;
-        else if (cp > end) lo = mid + 1;
-        else return d.getUint32(g + 8) + (cp - start);
-      }
-      return 0;
-    };
-  }
-  if (f4 !== null) {
-    const sub = f4;
-    const segX2 = d.getUint16(sub + 6);
-    const ends = sub + 14;
-    const starts = ends + segX2 + 2;
-    const deltas = starts + segX2;
-    const rangeOffsets = deltas + segX2;
-    return (cp) => {
-      if (cp > 0xffff) return 0;
-      for (let s = 0; s < segX2; s += 2) {
-        if (cp > d.getUint16(ends + s)) continue;
-        const start = d.getUint16(starts + s);
-        if (cp < start) return 0;
-        const delta = d.getInt16(deltas + s);
-        const ro = d.getUint16(rangeOffsets + s);
-        if (ro === 0) return (cp + delta) & 0xffff;
-        const g = d.getUint16(rangeOffsets + s + ro + (cp - start) * 2);
-        return g === 0 ? 0 : (g + delta) & 0xffff;
-      }
-      return 0;
-    };
-  }
-  throw new Malformed('no Unicode cmap subtable of format 4 or 12');
+  const symbol = kept.get('3-0-4');
+  const best = symbol ?? kept.get('3-10-12') ?? kept.get('3-10-13') ?? kept.get('3-1-4') ?? kept.get('0-3-4');
+  if (best === undefined) throw new Malformed('no cmap subtable Chrome keeps');
+  const lookup = d.getUint16(best) === 4 ? format4(d, best) : groupLookup(d, best, d.getUint16(best) === 13);
+  const fontPage = os2 !== null && os2.version === 0 ? os2.fsSelection & 0x0300 : 0;
+  if (symbol === undefined || fontPage !== 0) return lookup;
+  return (cp) => lookup(cp) || (cp <= 0xff ? lookup(0xf000 + cp) : 0);
+}
+
+/** Format 12 (consecutive glyphs per group) or 13 (one glyph per group); OTS has checked the groups are sorted and disjoint. */
+function groupLookup(d: DataView, sub: number, constant: boolean): (cp: number) => number {
+  const groups = d.getUint32(sub + 12);
+  return (cp) => {
+    let lo = 0;
+    let hi = groups - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const g = sub + 16 + mid * 12;
+      const start = d.getUint32(g);
+      if (cp < start) hi = mid - 1;
+      else if (cp > d.getUint32(g + 4)) lo = mid + 1;
+      else return d.getUint32(g + 8) + (constant ? 0 : cp - start);
+    }
+    return 0;
+  };
+}
+
+function format4(d: DataView, sub: number): (cp: number) => number {
+  const segX2 = d.getUint16(sub + 6);
+  const ends = sub + 14;
+  const starts = ends + segX2 + 2;
+  const deltas = starts + segX2;
+  const rangeOffsets = deltas + segX2;
+  return (cp) => {
+    if (cp > 0xffff) return 0;
+    for (let s = 0; s < segX2; s += 2) {
+      if (cp > d.getUint16(ends + s)) continue;
+      const start = d.getUint16(starts + s);
+      if (cp < start) return 0;
+      const delta = d.getInt16(deltas + s);
+      const ro = d.getUint16(rangeOffsets + s);
+      if (ro === 0) return (cp + delta) & 0xffff;
+      const g = d.getUint16(rangeOffsets + s + ro + (cp - start) * 2);
+      return g === 0 ? 0 : (g + delta) & 0xffff;
+    }
+    return 0;
+  };
 }
 
 const X_SHORT = 2;

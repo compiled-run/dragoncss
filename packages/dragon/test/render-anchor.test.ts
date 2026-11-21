@@ -51,6 +51,9 @@ function errorsAt(decl: string, faults: CompilerFaults = NO_FAULTS, child = ''):
 }
 
 const REFUSED = ['android DRAGON_UNSUPPORTED_VALUE', 'ios DRAGON_UNSUPPORTED_VALUE', 'web DRAGON_UNSUPPORTED_VALUE'];
+// BROWSER-ONLY: a view-transition value is a browser-only error on native (profiles/browser-only-native.ts).
+const BROWSER_ONLY = ['android DRAGON_BROWSER_ONLY_NATIVE', 'ios DRAGON_BROWSER_ONLY_NATIVE', 'web DRAGON_UNSUPPORTED_VALUE'];
+const refusedFor = (d: string): string[] => (d.startsWith('view-transition-') ? BROWSER_ONLY : REFUSED);
 const INITIAL_DECLS = [
   'image-rendering: auto',
   'image-rendering: AUTO; anchor-name: none; anchor-scope: None; position-anchor: none; position-area: none',
@@ -81,16 +84,22 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     expect(parsed('position-try: none')).toEqual(['position-try-order: normal', 'position-try-fallbacks: none']);
     expect(parsed('position-try: normal none')).toEqual(['position-try-order: normal', 'position-try-fallbacks: none']);
     // A leading try-order keyword is the order, and the rest the fallbacks, as Chrome 145 expands it.
-    expect(parsed('position-try: most-width --a')).toEqual(['position-try-order: ?most-width', 'position-try-fallbacks: ?--a']);
-    expect(parsed('position-try: flip-block')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?flip-block']);
-    expect(parsed('position-try: normal --a, flip-inline')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?--a , flip-inline']);
-    expect(parsed('position-try: most-height none')).toEqual(['position-try-order: ?most-height', 'position-try-fallbacks: none']);
+    expect(parsed('position-try: most-width --a')).toEqual(['position-try-order: most-width', 'position-try-fallbacks: --a']);
+    expect(parsed('position-try: flip-block')).toEqual(['position-try-order: normal', 'position-try-fallbacks: flip-block']);
+    expect(parsed('position-try: normal --a, flip-inline')).toEqual(['position-try-order: normal', 'position-try-fallbacks: --a, flip-inline']);
+    expect(parsed('position-try: most-height none')).toEqual(['position-try-order: most-height', 'position-try-fallbacks: none']);
     expect(parsed('position-try: none normal')).toEqual(['position-try-order: normal', 'position-try-fallbacks: ?none normal']);
     // An order with no fallbacks is dropped, as Chrome 145 drops it.
     expect(parsed('position-try: normal')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
     expect(parsed('position-try: most-width')).toEqual(['DRAGON_CSS_INVALID_VALUE']);
-    expect(parsed('position-anchor: auto')).toEqual(['position-anchor: ?auto']);
-    expect(parsed('anchor-name: --a')).toEqual(['anchor-name: ?--a']);
+    expect(parsed('position-anchor: auto')).toEqual(['position-anchor: auto']);
+    expect(parsed('anchor-name: --a')).toEqual(['anchor-name: --a']);
+    // css-anchor-position-1's grammar is typed in its canonical spelling; any other value is kept as written and refused.
+    expect(parsed('anchor-name: --a,--b')).toEqual(['anchor-name: --a, --b']);
+    expect(parsed('position-area: Block-End')).toEqual(['position-area: block-end']);
+    expect(parsed('position-try-fallbacks: FLIP-Y flip-x, top')).toEqual(['position-try-fallbacks: flip-y flip-x, top']);
+    expect(parsed('position-area: left right')).toEqual(['position-area: ?left right']);
+    expect(parsed('anchor-name: a')).toEqual(['anchor-name: ?a']);
     expect(parsed('baseline-shift: 0')).toEqual(['baseline-shift: 0px']);
     expect(parsed('baseline-shift: sub')).toEqual(['baseline-shift: ?sub']);
     // baseline, a zero length in any unit and a zero length calculation compute to 0px; a zero percentage computes to 0%.
@@ -115,28 +124,29 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
   });
 
   it('refuse every other value on every target, once per element and family, computed', () => {
-    for (const d of ['anchor-name: --a', 'anchor-scope: all', 'position-anchor: auto',
-      'position-area: top', 'position-try: flip-block', 'position-try-order: most-width', 'position-try-fallbacks: --a', 'position-visibility: always', 'baseline-shift: 2px',
+    for (const d of ['anchor-name: a', 'position-area: left right', 'position-try-fallbacks: flip-block flip-block', 'position-visibility: always', 'baseline-shift: 2px',
       'shape-rendering: crispEdges', 'color-interpolation: linearRGB',
       'color-interpolation-filters: sRGB', 'color-rendering: optimizeSpeed', 'buffered-rendering: static', 'view-transition-name: card', 'view-transition-class: a b', 'view-transition-group: contain',
       'interpolate-size: allow-keywords', 'timeline-scope: --t']) {
       // An inherited one is refused on the child as well.
-      expect(errorsAt(d), d).toEqual(INHERITED.has(d.split(':')[0] as never) ? [...REFUSED, ...REFUSED].sort() : REFUSED);
+      expect(errorsAt(d), d).toEqual(INHERITED.has(d.split(':')[0] as never) ? [...refusedFor(d), ...refusedFor(d)].sort() : refusedFor(d));
     }
-    expect(errorsAt('anchor-name: --a; position-area: top')).toEqual(REFUSED);
+    expect(errorsAt('anchor-name: a; position-area: left right')).toEqual(REFUSED);
+    // The values Dragon lays out compile on every target; on a box that is not absolutely positioned they place nothing.
+    expect(errorsAt('anchor-name: --a; anchor-scope: all; position-anchor: --a; position-area: top; position-try: most-width flip-block')).toEqual([]);
     const at = (decl: string): string[] => {
       const c = project(NO_FAULTS).compile(inputFor(`body { font-family: Ahem; font-size: 10px; } .s { ${decl}; }`, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
       return [...new Set(c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0] as string))];
     };
-    expect(at('position-try: flip-block')).toEqual(['position-try-fallbacks: flip-block on <div> a']);
-    expect(at('position-try: most-width --a')).toEqual(['position-try-order: most-width on <div> a']);
-    expect(errorsAt('anchor-name: --a; shape-rendering: crispEdges; interpolate-size: allow-keywords')).toEqual(Array(5).fill(REFUSED).flat().sort());
-    expect(errorsAt('--r: --a; anchor-name: var(--r)')).toEqual(REFUSED);
-    const css = 'body { font-family: Ahem; font-size: 10px; } .s { anchor-name: --a; }';
+    expect(at('position-try: flip-block flip-block')).toEqual(['position-try-fallbacks: flip-block flip-block on <div> a']);
+    expect(at('position-try: most-width x')).toEqual(['position-try-fallbacks: x on <div> a']);
+    expect(errorsAt('position-visibility: always; shape-rendering: crispEdges; interpolate-size: allow-keywords')).toEqual(Array(5).fill(REFUSED).flat().sort());
+    expect(errorsAt('--r: always; position-visibility: var(--r)')).toEqual(REFUSED);
+    const css = 'body { font-family: Ahem; font-size: 10px; } .s { position-visibility: always; }';
     const c = project(NO_FAULTS).compile(inputFor(css, (r) => [el(r, 'a', 'div', ['s'], [text(r, 't', 'XX')])]));
     const errors = c.diagnostics.filter((x) => x.severity === 'error');
     expect(errors).toHaveLength(3);
-    for (const d of errors) expect(d.message).toMatch(/^anchor-name: --a on <div> a is unsupported: Dragon implements no anchor positioning yet; only none is accepted$/);
+    for (const d of errors) expect(d.message).toMatch(/^position-visibility: always on <div> a is unsupported: Dragon lays out the css-anchor-position-1 grammar it reads and hides no anchored box \(position-visibility\); only anchors-visible is accepted$/);
   });
 
   it('accept the UA view-transition-name: root on the root, and refuse an author one', () => {
@@ -146,8 +156,8 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
     const errors = (decl: string) => doc(decl).diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.code}`).sort();
     expect(errors('')).toEqual([]);
     expect(errors('html { view-transition-name: none; }')).toEqual([]);
-    expect(errors('html { view-transition-name: root; }')).toEqual(REFUSED);
-    expect(errors('.s { view-transition-name: root; }')).toEqual(REFUSED);
+    expect(errors('html { view-transition-name: root; }')).toEqual(BROWSER_ONLY);
+    expect(errors('.s { view-transition-name: root; }')).toEqual(BROWSER_ONLY);
   });
 
   it('refuse an inherited value on the child too, and a non-inherited one only where it is set', () => {
@@ -156,15 +166,15 @@ describe('the image-rendering, anchor-position, svg-extra, view-transition and a
       return [...new Set(c.diagnostics.filter((x) => x.severity === 'error').map((d) => d.message.split(' is unsupported')[0] as string))].sort();
     };
     expect(at('.s { shape-rendering: crispEdges; }')).toEqual(['shape-rendering: crispEdges on <div> a', 'shape-rendering: crispEdges on <div> b']);
-    expect(at('.s { anchor-name: --a; }')).toEqual(['anchor-name: --a on <div> a']);
+    expect(at('.s { position-visibility: always; }')).toEqual(['position-visibility: always on <div> a']);
   });
 
   it('plant each family\'s fault: its non-initial value compiles, and only its own', () => {
-    expect(errorsAt('position-area: top', { ...NO_FAULTS, anchorPositionAccepted: true })).toEqual([]);
+    expect(errorsAt('position-visibility: always', { ...NO_FAULTS, anchorPositionAccepted: true })).toEqual([]);
     expect(errorsAt('shape-rendering: crispEdges', { ...NO_FAULTS, svgExtraAccepted: true })).toEqual([]);
     expect(errorsAt('view-transition-name: card', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([]);
     expect(errorsAt('timeline-scope: --t', { ...NO_FAULTS, animationExtraAccepted: true })).toEqual([]);
     expect(errorsAt('interpolate-size: allow-keywords', { ...NO_FAULTS, viewTransitionAccepted: true })).toEqual([...REFUSED, ...REFUSED].sort());
-    expect(errorsAt('anchor-name: --a', { ...NO_FAULTS, viewTransitionAccepted: true, svgExtraAccepted: true })).toEqual(REFUSED);
+    expect(errorsAt('position-visibility: always', { ...NO_FAULTS, viewTransitionAccepted: true, svgExtraAccepted: true })).toEqual(REFUSED);
   });
 });

@@ -1,0 +1,339 @@
+{
+ "gateDevicePx": 1,
+ "targets": {
+  "ios": {
+   "viewport": {
+    "width": 402,
+    "height": 778
+   },
+   "dpr": 3,
+   "assignments": [
+    {
+     "values": {},
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 192
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 192
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 192
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1206,
+        "height": 192
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/label",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 624,
+        "height": 192
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 624,
+        "height": 192
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/title",
+       "chrome": {
+        "x": 12,
+        "y": 12,
+        "width": 600,
+        "height": 72
+       },
+       "dragon": {
+        "x": 12,
+        "y": 12,
+        "width": 600,
+        "height": 72
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/title:text0",
+       "chrome": {
+        "x": 12,
+        "y": 18,
+        "width": 360,
+        "height": 60
+       },
+       "dragon": {
+        "x": 12,
+        "y": 18,
+        "width": 360,
+        "height": 60
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/note",
+       "chrome": {
+        "x": 12,
+        "y": 84,
+        "width": 600,
+        "height": 48
+       },
+       "dragon": {
+        "x": 12,
+        "y": 84,
+        "width": 600,
+        "height": 48
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/note:text0",
+       "chrome": {
+        "x": 12,
+        "y": 90,
+        "width": 216,
+        "height": 36
+       },
+       "dragon": {
+        "x": 12,
+        "y": 90,
+        "width": 216,
+        "height": 36
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/plain",
+       "chrome": {
+        "x": 12,
+        "y": 132,
+        "width": 600,
+        "height": 48
+       },
+       "dragon": {
+        "x": 12,
+        "y": 132,
+        "width": 600,
+        "height": 48
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/plain:text0",
+       "chrome": {
+        "x": 12,
+        "y": 138,
+        "width": 216,
+        "height": 36
+       },
+       "dragon": {
+        "x": 12,
+        "y": 138,
+        "width": 216,
+        "height": 36
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    }
+   ]
+  },
+  "android": {
+   "viewport": {
+    "width": 411,
+    "height": 818
+   },
+   "dpr": 2.625,
+   "assignments": [
+    {
+     "values": {},
+     "rows": [
+      {
+       "id": "html",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 168
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 168
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "body",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 1079.0000495910645,
+        "height": 168
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 1079,
+        "height": 168
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/label",
+       "chrome": {
+        "x": 0,
+        "y": 0,
+        "width": 546,
+        "height": 168
+       },
+       "dragon": {
+        "x": 0,
+        "y": 0,
+        "width": 546,
+        "height": 168
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/title",
+       "chrome": {
+        "x": 10.5,
+        "y": 10.5,
+        "width": 525,
+        "height": 63
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 10.5,
+        "width": 525,
+        "height": 63
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/title:text0",
+       "chrome": {
+        "x": 10.5,
+        "y": 15.499999701976776,
+        "width": 315,
+        "height": 52.00000190734863
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 15.5,
+        "width": 315,
+        "height": 52
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/note",
+       "chrome": {
+        "x": 10.5,
+        "y": 73.5,
+        "width": 525,
+        "height": 42
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 73.5,
+        "width": 525,
+        "height": 42
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/note:text0",
+       "chrome": {
+        "x": 10.5,
+        "y": 78.50000095367432,
+        "width": 189,
+        "height": 31.000001907348633
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 78.5,
+        "width": 189,
+        "height": 31
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/plain",
+       "chrome": {
+        "x": 10.5,
+        "y": 115.5,
+        "width": 525,
+        "height": 42
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 115.5,
+        "width": 525,
+        "height": 42
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      },
+      {
+       "id": "app/plain:text0",
+       "chrome": {
+        "x": 10.5,
+        "y": 120.50000095367432,
+        "width": 189,
+        "height": 31.000001907348633
+       },
+       "dragon": {
+        "x": 10.5,
+        "y": 120.5,
+        "width": 189,
+        "height": 31
+       },
+       "maxDeltaDevicePx": 0,
+       "pass": true
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

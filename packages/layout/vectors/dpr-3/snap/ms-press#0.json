@@ -1,0 +1,93 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 7680
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 7680
+  },
+  {
+   "id": "app/bar",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 7680
+  },
+  {
+   "id": "app/press",
+   "parent": "app/bar",
+   "x": 768,
+   "y": 768,
+   "width": 21120,
+   "height": 6144
+  },
+  {
+   "id": "app/icon",
+   "parent": "app/press",
+   "x": 1920,
+   "y": 768,
+   "width": 1920,
+   "height": 1920
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 120,
+   "width": 1200,
+   "height": 120
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 120,
+   "width": 1200,
+   "height": 120
+  },
+  {
+   "id": "app/bar",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 120,
+   "width": 1200,
+   "height": 120
+  },
+  {
+   "id": "app/press",
+   "left": 12,
+   "top": 12,
+   "right": 342,
+   "bottom": 108,
+   "width": 330,
+   "height": 96
+  },
+  {
+   "id": "app/icon",
+   "left": 42,
+   "top": 24,
+   "right": 72,
+   "bottom": 54,
+   "width": 30,
+   "height": 30
+  }
+ ]
+}

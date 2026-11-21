@@ -28,14 +28,16 @@ export type Candidate = {
 };
 
 /**
- * css-cascade-5 §6.2-§6.5: importance (author !important over author normal), cascade layers (a later layer wins for normal
- * declarations and an earlier one for !important ones; unlayered declarations rank above every layer), specificity, then order
- * of appearance.
+ * css-cascade-5 §6.2-§6.5: importance (author !important over author normal), element-attached declarations (a style attribute's)
+ * over those a selector maps, cascade layers (a later layer wins for normal declarations and an earlier one for !important ones;
+ * unlayered declarations rank above every layer), specificity, then order of appearance.
  */
 export function beats(a: Pick<Candidate, 'declaration' | 'specificity'>, b: Pick<Candidate, 'declaration' | 'specificity'>): boolean {
   const ia = a.declaration.important === true;
   const ib = b.declaration.important === true;
   if (ia !== ib) return ia;
+  const aa = a.declaration.attached === true;
+  if (aa !== (b.declaration.attached === true)) return aa;
   const la = a.declaration.layer ?? Number.POSITIVE_INFINITY;
   const lb = b.declaration.layer ?? Number.POSITIVE_INFINITY;
   if (la !== lb) return ia ? la < lb : la > lb;
@@ -68,12 +70,14 @@ export type CascadeResult = {
 };
 
 /** GEN-a (notes/T151-gen-spec.md R6): the cascade of a ::before, ::after or ::marker box, and its host's direction, which it takes. */
-export type CascadePseudo = { readonly name: GeneratedPseudo | 'marker'; readonly direction: Direction };
+export type CascadePseudo = { readonly name: GeneratedPseudo | 'marker' | 'backdrop'; readonly direction: Direction };
 
 /** A range part's cascade: the part's pseudo-element (null for the container, which no author selector reaches) and its direction. */
 export type CascadePart = { readonly name: RangePart | null; readonly direction: Direction };
 
 /** css-variables-1 §3.1: a longhand of a declaration holding var() competes with this value until substitution. */
+const NO_ATTACHED: readonly Declaration[] = [];
+
 const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var()', text: d.text });
 
 /**
@@ -81,7 +85,9 @@ const pendingValue = (d: Declaration): CssValue => ({ kind: 'other', type: 'var(
  * order: custom properties first (over the parent's, inherited), then direction with var() substituted, then every other
  * longhand with each flow-relative declaration mapped to the physical side of that direction.
  */
-export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION, registered: Registrations = NO_REGISTRATIONS, pseudo: CascadePseudo | null = null, part: CascadePart | null = null): CascadeResult {
+export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedElement[], faults: CompilerFaults, direction: DirectionContext, inheritedCustoms: CustomProperties, ix: InteractionState = NO_INTERACTION, registered: Registrations = NO_REGISTRATIONS, pseudo: CascadePseudo | null = null, part: CascadePart | null = null, attached: readonly Declaration[] = NO_ATTACHED): CascadeResult {
+  // css-style-attr §4: the element's style attribute declarations apply to it alone, matched by no selector.
+  const own: { readonly declarations: readonly Declaration[]; readonly specificity: readonly [number, number, number] }[] = attached.length === 0 ? [] : [{ declarations: attached, specificity: [0, 0, 0] }];
   // GEN-a: a generated box cascades only its own pseudo-element's selectors, matched on its host's chain (chain ends with the host).
   // FORM-a A4: a range part (::-webkit-slider-thumb, ::-webkit-slider-runnable-track) cascades only its own pseudo-element
   // selectors, matched on the input's chain; the element's cascade never takes them (match.ts selectorMatches).
@@ -90,42 +96,39 @@ export function cascadeElement(rules: readonly Rule[], chain: readonly LinkedEle
       : part !== null ? part.name !== null && partSelectorMatches(rule, sel, chain, part.name, faults, ix)
       : selectorMatches(rule, sel, chain, chain.length - 1, 0, faults, ix);
   const customs = new Map<string, { declaration: Declaration; specificity: readonly [number, number, number] }>();
-  for (const rule of rules) {
-    for (const sel of rule.selectors) {
-      if (!matches(rule, sel)) continue;
-      const specificity = specificityFor(sel, faults);
-      for (const d of rule.declarations) {
-        if (d.custom === undefined) continue;
-        const cand = { declaration: d, specificity };
-        const prev = customs.get(d.custom.name);
-        if (prev === undefined || beats(cand, prev)) customs.set(d.custom.name, cand);
-      }
+  const groups = [
+    ...rules.flatMap((rule) => rule.selectors.flatMap((sel) => (matches(rule, sel) ? [{ declarations: rule.declarations, specificity: specificityFor(sel, faults) }] : []))),
+    ...own,
+  ];
+  for (const { declarations, specificity } of groups) {
+    for (const d of declarations) {
+      if (d.custom === undefined) continue;
+      const cand = { declaration: d, specificity };
+      const prev = customs.get(d.custom.name);
+      if (prev === undefined || beats(cand, prev)) customs.set(d.custom.name, cand);
     }
   }
   const scope: VarScope = { customs: computeCustoms(new Map([...customs].map(([name, c]) => [name, c.declaration])), inheritedCustoms, registered), memo: new Map<Declaration, SubstitutedDeclaration>() };
   // css-logical-1 §4: flow-relative declarations take part as the physical longhands of the element's direction (logical.ts).
   // A generated box takes its host's direction (R6), and a range part the one it inherits from the input; computed-checks.ts
   // refuses an authored direction on either.
-  const own = !hasDirectionalValues(rules) ? null : pseudo !== null ? pseudo.direction : part !== null ? part.direction : elementDirection(rules, chain, faults, direction, scope);
+  const directional = hasDirectionalValues(rules) || attached.some((d) => d.pending?.sides !== undefined || d.longhands.some((lh) => lh.direction !== undefined));
+  const dir = !directional ? null : pseudo !== null ? pseudo.direction : part !== null ? part.direction : elementDirection(rules, chain, faults, direction, scope);
   const winners = new Map<Longhand, Candidate>();
   const matched = new Map<Longhand, Declaration[]>();
   const candidates: (readonly [Longhand, Candidate])[] = [];
-  for (const rule of rules) {
-    for (const sel of rule.selectors) {
-      if (!matches(rule, sel)) continue;
-      const specificity = specificityFor(sel, faults);
-      for (const declared of rule.declarations) {
-        const d = own === null ? declared : inDirection(declared, own, faults);
-        const pending = (d.pending?.longhands ?? []).map((property) => ({ property, value: pendingValue(d) }));
-        for (const lh of [...d.longhands, ...pending]) {
-          const cand: Candidate = { declaration: d, value: lh.value, specificity };
-          candidates.push([lh.property, cand]);
-          const prev = winners.get(lh.property);
-          if (prev === undefined || beats(cand, prev)) winners.set(lh.property, cand);
-          const all = matched.get(lh.property) ?? [];
-          if (!all.includes(d)) all.push(d);
-          matched.set(lh.property, all);
-        }
+  for (const { declarations, specificity } of groups) {
+    for (const declared of declarations) {
+      const d = dir === null ? declared : inDirection(declared, dir, faults);
+      const pending = (d.pending?.longhands ?? []).map((property) => ({ property, value: pendingValue(d) }));
+      for (const lh of [...d.longhands, ...pending]) {
+        const cand: Candidate = { declaration: d, value: lh.value, specificity };
+        candidates.push([lh.property, cand]);
+        const prev = winners.get(lh.property);
+        if (prev === undefined || beats(cand, prev)) winners.set(lh.property, cand);
+        const all = matched.get(lh.property) ?? [];
+        if (!all.includes(d)) all.push(d);
+        matched.set(lh.property, all);
       }
     }
   }
