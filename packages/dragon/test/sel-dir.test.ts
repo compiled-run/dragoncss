@@ -14,7 +14,7 @@ import { DIR_UNICODE_BIDI_REVERTED, DIR_ATTRIBUTE_UNICODE_BIDI } from '../src/cs
 import { createProject } from '../src/index.ts';
 import type { AttributeBinding, ElementNode } from '../src/index.ts';
 import { referenceDataset } from '../src/ua/datasets.ts';
-import { always, div, eq, inputFor } from './helpers.ts';
+import { always, div, eq, inputFor, text } from './helpers.ts';
 
 const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
 const parse = (css: string): { selectors: Selector[]; diagnostics: Diagnostic[] } => {
@@ -191,4 +191,12 @@ describe('dir refusals (DRAGON_UNSUPPORTED_ATTRIBUTE)', () => {
     const arms = compile([{ when: eq('s', 'a'), value: 'rtl' }, { when: always, value: 'auto' }]).diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_ATTRIBUTE');
     expect(arms.map((x) => x.message)).toEqual([expect.stringContaining('dir="auto"')]);
   });
+  it('an inline <span dir=rtl> takes html.css\'s isolate in a right-to-left context, which native refuses (analysis/bidi.ts) and the web compiles', () => {
+    const project = createProject({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } });
+    const compile = (dir: string) => project.compile(inputFor('.p { width: 100px; }', (r) => [{ ...div(r, 'p', ['p']), children: [{ ...div(r, 's', []), tag: 'span', attributes: [{ name: 'dir', value: [{ when: always, value: dir }], origin }], children: [text(r, 't', 'XX')] } as ElementNode] }]));
+    const refused = compile('rtl').diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE');
+    expect(refused.map((d) => [d.target, d.message.slice(0, 50)])).toEqual([['ios', "The UA's unicode-bidi: isolate on <span> s can reo"]]);
+    expect(compile('ltr').diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
+  });
 });
+

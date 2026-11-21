@@ -1,0 +1,8 @@
+body { margin: 0; }
+.frame { width: 333px; padding: 1px 0; background-color: #eee; }
+.frame:dir(rtl) { padding-top: 3px; }
+.kid { width: 10px; height: 3px; margin-inline-start: 5px; background-color: #ccc; }
+.kid:dir(rtl) { width: 21px; }
+.kid:dir(ltr) { height: 4px; }
+.own { width: 60%; padding-inline-start: 2px; background-color: #ddd; }
+.own:dir(ltr) { margin-top: 1px; }
