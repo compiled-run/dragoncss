@@ -19,10 +19,14 @@ import { androidProfile, borderDevicePx, createProjectWith, engineLayoutProjecti
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
+import { PLANT_CASES, PLANT_RULES } from '../src/device-run.ts';
 import { expectedEngine, nativeCompile, nativeCompileOnce } from '../src/native-host.ts';
 import { casePoints, committedPixels, devicePoints, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
+import type { Rings } from './outline-model.ts';
+import { opsOver, outlines } from './outline-model.ts';
+import { insideRounded } from './paint-model.ts';
 
 type Px = [number, number, number, number];
 type FilterFunction = { readonly name: Parameters<typeof filterPairs>[0][number]['name']; readonly amount: number };
@@ -122,9 +126,10 @@ function boxes(p: NativeProgram, viewport: { width: number; height: number }, dp
   return list;
 }
 
-type Stacking = { paintOrder: number; clipChain: readonly string[] };
+type Stacking = { paintOrder: number; clipChain: readonly string[]; paintLayer: string };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
+  | { readonly kind: 'outline'; readonly owner: ProgramNode; readonly rings: Rings }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
   | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly items: readonly Item[] };
 
@@ -136,12 +141,17 @@ const stackingOf = (n: ProgramNode): Stacking => {
 
 /**
  * Planted model faults the test must catch: the alpha ignored (alpha-ignored), tree order instead of the paint order (order-swap),
- * and a colour-matrix filter list ignored (filter-ignored).
+ * a colour-matrix filter list ignored (filter-ignored), and every outline painted last over the whole case (outline-root-hosted).
  */
-type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean };
+type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean; readonly outlinesLast?: boolean };
 const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
 
-/** The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. */
+/**
+ * The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. A box's outline paints in
+ * its paint layer (stacking facts paintLayer) after the layer's flow content and before its other layer items, in outline-phase
+ * order (outline-model.ts outlineOrder): Chrome 145 PaintLayerPainter::PaintLayerContents paints a layer's foreground phases, ending
+ * with kDescendantOutlinesOnly, then kSelfOutlineOnly, then kNormalFlowAndPositiveZOrderChildren.
+ */
 function paintItems(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, faults: ModelFaults = NO_MODEL_FAULTS): Item[] {
   const list = boxes(p, viewport, dpr);
   const byId = new Map(list.map((b) => [b.node.id, b]));
@@ -157,30 +167,64 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
   const item = (n: ProgramNode): Item => (n.kind === 'text' ? { kind: 'text', node: n, glyphs: glyphsOf.get(n.id) ?? [] } : { kind: 'box', box: byId.get(n.id) as Box });
   // A text leaf paints right after its box (a box's children are all boxes or all text leaves), so only boxes are sorted.
   const withText = (n: ProgramNode): Item[] => [item(n), ...(children.get(n.id) ?? []).filter((c) => c.kind === 'text').map(item)];
-  const build = (nodes: readonly ProgramNode[]): Item[] => {
-    const tree = new Map(p.nodes.map((x, k) => [x.id, k]));
-    const rank = (x: ProgramNode): number => (faults.treeOrder ? (tree.get(x.id) as number) : stackingOf(x).paintOrder);
-    const sorted = nodes.filter((x) => x.kind !== 'text').sort((a, b) => rank(a) - rank(b));
+  const tree = new Map(p.nodes.map((x, k) => [x.id, k]));
+  const rank = (x: ProgramNode): number => (faults.treeOrder ? (tree.get(x.id) as number) : stackingOf(x).paintOrder);
+  // Each paint layer's last flow node: the outlines of the layer paint right after it.
+  const layerEnd = new Map<string, number>();
+  for (const n of p.nodes) if (n.kind !== 'text') layerEnd.set(stackingOf(n).paintLayer, Math.max(layerEnd.get(stackingOf(n).paintLayer) ?? -1, rank(n)));
+  const owners = new Map(p.nodes.map((n) => [n.id, n]));
+  const rings = outlines(p, list.map((b) => ({ ...b, radii: null })), dpr, 0);
+  type Entry = { readonly node: ProgramNode; readonly rank: number; readonly rings: Rings | null };
+  const entries: Entry[] = [
+    ...p.nodes.filter((x) => x.kind !== 'text').map((n) => ({ node: n, rank: rank(n), rings: null })),
+    ...rings.map((r, k) => {
+      const owner = owners.get(r.box.node.id) as ProgramNode;
+      if (owner.writes.some((w) => w.kind === 'border-radius')) throw new Error(`${owner.id}: the model draws square outlines only`);
+      return { node: owner, rank: faults.outlinesLast ? p.nodes.length + k : (layerEnd.get(stackingOf(owner).paintLayer) as number) + 0.5 + k / (2 * rings.length), rings: r };
+    }),
+  ];
+  const build = (es: readonly Entry[]): Item[] => {
+    const sorted = [...es].sort((a, b) => a.rank - b.rank);
     const out: Item[] = [];
     for (let k = 0; k < sorted.length; k++) {
-      const n = sorted[k] as ProgramNode;
+      const e = sorted[k] as Entry;
+      const n = e.node;
+      if (e.rings !== null) {
+        out.push({ kind: 'outline', owner: n, rings: e.rings });
+        continue;
+      }
       const effects = n.facts['effects'] as { opacity: number; filter?: readonly FilterFunction[] } | undefined;
       if (effects === undefined) {
         out.push(...withText(n));
         continue;
       }
       const inside = new Set(subtree(n).map((x) => x.id));
-      const members = sorted.filter((x) => inside.has(x.id));
-      // A stacking context is atomic: its subtree is contiguous in the paint order.
-      if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
+      const members = sorted.filter((x) => inside.has(x.node.id));
+      // A stacking context is atomic: its subtree (and the outlines it paints) is contiguous in the paint order.
+      if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.node.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
       const filter = effects.filter ?? [];
       const matrices = filter.length === 0 ? null : groupFilterMatrices(faults.filterIgnored ? [] : filterPairs(filter));
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== e))] });
       k += members.length - 1;
     }
     return out;
   };
-  return build(p.nodes);
+  return build(entries);
+}
+
+/** An outline painted onto a premultiplied pixel at its centre: a ring as a solid colour blit, a side painter's operations over an opaque pixel. */
+function paintOutline(dst: Px, o: Rings, cx: number, cy: number): Px {
+  if (o.ops !== null) {
+    if (dst[3] !== 255) throw new Error(`${o.box.node.id}: the model paints a side painter outline over an opaque pixel only`);
+    return opsOver(dst, o.ops, o.palette, cx, cy) as Px;
+  }
+  const r = o.rings;
+  let out = dst;
+  for (let k = 0; k + 24 <= r.length; k += 24) {
+    const v = (j: number): number => r[k + j] as number;
+    if (insideRounded(cx, cy, v(0), v(1), v(2), v(3), r.slice(k + 8, k + 16)) && !insideRounded(cx, cy, v(4), v(5), v(6), v(7), r.slice(k + 16, k + 24))) out = color32(out, { r: o.color[0], g: o.color[1], b: o.color[2] }, o.color[3]);
+  }
+  return out;
 }
 
 const inside = (x: number, y: number, l: number, t: number, r: number, b: number): boolean => x >= l && x < r && y >= t && y < b;
@@ -216,6 +260,7 @@ function tileItems(items: readonly Item[], tile: Tile): { direct: Item[]; nested
   for (const it of items) {
     if (it.kind === 'box' && boxOps(it.box).count > 0 && meets(tile, it.box.l, it.box.t, it.box.r, it.box.b)) direct.push(it);
     if (it.kind === 'text' && it.glyphs.some((g) => meets(tile, Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom)))) direct.push(it);
+    if (it.kind === 'outline' && meets(tile, it.rings.rings[0] as number, it.rings.rings[1] as number, it.rings.rings[2] as number, it.rings.rings[3] as number)) direct.push(it);
     if (it.kind === 'group') {
       const inner = tileItems(it.items, tile);
       nested += inner.direct.length + inner.nested;
@@ -246,6 +291,7 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
     return color32(dst, c.color, c.color.alpha);
   }
   if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, null);
+  if (it.kind === 'outline') return clippedOut(it.owner, byId, cx, cy) ? dst : paintOutline(dst, it.rings, cx, cy);
   if (it.alpha8 === 0) return dst;
   // A filtered group is a layer drawn through the filter's colour matrices, then composited at its alpha; it never folds
   // (paint-group.ts groupFilterComposite, measured against Chrome 145).
@@ -315,6 +361,8 @@ function groupPlanOf(n: ProgramNode): GroupPlan | null {
 function itemsById(items: readonly Item[], into = new Map<string, Item>()): Map<string, Item> {
   for (const it of items) {
     // A group's own box is the first of its items; the id names the group.
+    // An outline is drawn by its own view, never a group painter, so the id keeps naming its box.
+    if (it.kind === 'outline') continue;
     if (it.kind === 'group') itemsById(it.items, into);
     into.set(it.kind === 'text' ? it.node.id : it.box.node.id, it);
   }
@@ -384,6 +432,7 @@ function groupDraws(items: readonly Item[], nested = false, colours: Rgba[] = []
       for (const _ of it.glyphs) colours.push(c !== undefined && c.kind === 'text-color' ? c.color : { r: 0, g: 0, b: 0, alpha: 0 });
       return it.glyphs.flatMap((g) => [Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom), 0]);
     }
+    if (it.kind === 'outline') throw new Error(`${it.owner.id}: an outline in a pre-composited group is not modelled (the native targets refuse it)`);
     return groupDraws(it.items, true, colours);
   });
 }
@@ -421,6 +470,7 @@ function deviceSoftware(dst: Px, items: readonly Item[], opacity: number, alpha8
   for (const it of items) {
     if (it.kind === 'box') layer = softwareBox(layer, it.box, x, y);
     else if (it.kind === 'text') layer = paintItem(layer, it, x, y, tile, byId);
+    else if (it.kind === 'outline') throw new Error(`${it.owner.id}: an outline in a software group is not modelled (the native targets refuse it)`);
     // The device builds a nested group's layer over the nested group's own extent only; outside it the layer is clear.
     else if (inExtent(it.items, x, y)) layer = deviceSoftware(layer, it.items, it.opacity, it.alpha8, null, x, y, tile, byId);
   }
@@ -436,7 +486,10 @@ function deviceSoftware(dst: Px, items: readonly Item[], opacity: number, alpha8
 
 /** Whether a pixel lies in a group's extent: its boxes and its glyphs, widened to whole device px. */
 function inExtent(items: readonly Item[], x: number, y: number): boolean {
-  return items.some((it) => (it.kind === 'box' ? x >= it.box.l && x < it.box.r && y >= it.box.t && y < it.box.b : it.kind === 'text' ? it.glyphs.some((g) => x >= Math.floor(g.left) && x < Math.ceil(g.right) && y >= Math.floor(g.top) && y < Math.ceil(g.bottom)) : inExtent(it.items, x, y)));
+  return items.some((it) => {
+    if (it.kind === 'outline') throw new Error(`${it.owner.id}: an outline in a pre-composited group is not modelled (the native targets refuse it)`);
+    return it.kind === 'box' ? x >= it.box.l && x < it.box.r && y >= it.box.t && y < it.box.b : it.kind === 'text' ? it.glyphs.some((g) => x >= Math.floor(g.left) && x < Math.ceil(g.right) && y >= Math.floor(g.top) && y < Math.ceil(g.bottom)) : inExtent(it.items, x, y);
+  });
 }
 
 /**
@@ -459,7 +512,7 @@ function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: num
       d = deviceQ(it, inner, x, y, tile, all, byId, programs) ?? d;
       continue;
     }
-    if (it.kind === 'text') throw new Error(`${id}: a text painter`);
+    if (it.kind === 'text' || it.kind === 'outline') throw new Error(`${id}: a ${it.kind} painter`);
     d = backdropBox(d, it.box, x + 0.5, y + 0.5);
   }
   if (softwareGroup(members)) return deviceSoftware(d, members, plan.opacity, plan.alpha8, plan.matrices, x, y, tile, byId);
@@ -920,6 +973,45 @@ const OUT = [
   'transform-origin', 'transform-perspective', 'transform-perspective-rtl', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
   'var-logical-rtl',
 ];
+
+// PNT1-outline-layer: outline-layers (outlines under and inside sticky, fixed, relative, absolute, negative and positive z-index
+// layers, beside an opacity group) against Chrome, with every outline in its paint layer's outline phase. The twin paints every
+// outline last over the whole case (master's root-view order, the outline-root-hosted plant's device order): it must differ from the
+// model at points of the plant's rules at every DPR, so the device plant is visible where the lanes look for it.
+describe('PNT1 outline-layer: outlines paint in their paint layer, as Chrome paints outline-layers', () => {
+  const spec = FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures.find((f) => f.id === 'outline-layers');
+  if (spec === undefined) throw new Error('no outline-layers fixture');
+  it('is the outline-root-hosted plant case', () => {
+    expect(PLANT_CASES['outline-root-hosted']).toEqual(['outline-layers']);
+  });
+  for (const c of casesOf(spec, fixtureInput(spec))) {
+    it(`${c.id}: every sample point equals Chrome, outline points included, and the root-hosted twin differs at the plant's rules`, () => {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      const p = r.programs.uikit;
+      expect(modelOut(p, c.environment.viewport)).toBe(null);
+      const { problems, compared } = modelProblems(c.id, p, c.environment.viewport);
+      expect(problems).toEqual([]);
+      expect(compared).toBeGreaterThan(0);
+      for (const dpr of DPRS) {
+        const items = paintItems(p, c.environment.viewport, dpr);
+        const twin = paintItems(p, c.environment.viewport, dpr, { ...NO_MODEL_FAULTS, outlinesLast: true });
+        const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
+        let outlinePoints = 0;
+        let caught = 0;
+        for (const pt of casePoints(p, c.environment.viewport, dpr)) {
+          if (ruleKind(pt.rule) === 'edge') continue;
+          if (pt.rule.includes(':outline-')) outlinePoints++;
+          const want = effectsModelAt(items, byId, pt.x, pt.y, dpr);
+          const planted = effectsModelAt(twin, byId, pt.x, pt.y, dpr);
+          if (PLANT_RULES['outline-root-hosted'].test(pt.rule) && planted.some((v, k) => v !== want[k])) caught++;
+        }
+        expect(outlinePoints, `outline points @${dpr}`).toBeGreaterThan(0);
+        expect(caught, `points of the plant's rules the twin gets wrong @${dpr}`).toBeGreaterThan(0);
+      }
+    });
+  }
+});
 
 describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'s order', () => {
   // A case native refuses only for its real faces (deferred to TXT1a-2 phase R) gets the engine lowering instead; it is left out here.

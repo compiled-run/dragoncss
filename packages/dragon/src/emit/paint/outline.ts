@@ -1,13 +1,16 @@
 // Outlines on the native tree (T046 §1, lower/paint/outline.ts): the case code writes a box's outline through dragonSetOutline, which
-// puts a DragonOutlineView in the tree's root view. After every layout the translated paint-radius.ts outlineRings gives the rings at
+// puts a DragonOutlineView in the view of the outline's paint layer (the write's layer). After every layout the translated paint-radius.ts outlineRings gives the rings at
 // the device scale (Blink's snapped width and truncated offset, the radii outset), and the view draws a solid or double outline's
 // rings with an even-odd fill; a dotted, dashed or 3D outline is the translated paint-dash.ts outlinePaintOps around the ring's outer
-// rect, each operation in the outline colour or a 3D style's lighter or darker colour. The root view's outline views stay after its content in Blink's outline-phase order (each box's
-// descendants' outlines, then its own; boxes in tree order), so they paint as Chrome's root stacking context paints its outline phase. The readback is every ring's outer and inner rect in
-// device px from the root, from the view's live frame, or null when the view is not after the root's content.
+// rect, each operation in the outline colour or a 3D style's lighter or darker colour. Once a layout has placed every view, a layer
+// view's outline views go after its flow children and before its layer items, in Blink's outline-phase order (each box's
+// descendants' outlines, then its own; boxes in tree order), as PaintLayerPainter::PaintLayerContents paints a layer. The readback is
+// every ring's outer and inner rect in device px from the root, from the view's live frame, or null when the view is not in its
+// layer's view between the flow children and the layer items.
 import type { OutlineWrite } from '../../lower/paint/outline.ts';
 import type { PaintEmitter } from './types.ts';
 import { keywordLit, NO_NATIVE_PAINT, rgbaLit } from './types.ts';
+import { nativeString } from './stacking.ts';
 
 const num = (v: number, what: string): string => {
   if (!Number.isFinite(v)) throw new Error(`outline ${what} ${v} is not finite`);
@@ -15,8 +18,10 @@ const num = (v: number, what: string): string => {
   return /[.eE]/.test(n) ? n.replace(/e\+?/, 'E') : `${n}.0`;
 };
 
-const SWIFT_MEMBERS = String.raw`  /// The outline view of the box, when it has an outline; it sits in the tree's root view.
+const SWIFT_MEMBERS = String.raw`  /// The outline view of the box, when it has an outline; it sits in its paint layer's view.
   public var dragonOutlineView: DragonOutlineView? = nil
+  /// The node id of the outline's paint layer.
+  public var dragonOutlineLayer = ""
   /// The outline write: the style, width and offset in css px.
   public var dragonOutlineStyle = "solid"
   public var dragonOutlineWidth: Double = 0
@@ -31,6 +36,8 @@ public let dragonOutlinePlantDevicePx: Double = 0
 public let dragonOutlineGapUnfitted = false
 /// Whether a 3D outline swaps its lighter and darker colours; false except in the outline-tones-swapped raster plant build.
 public let dragonOutlineTonesSwapped = false
+/// Whether outline views go in the tree's root view, after all its content; false except in the outline-root-hosted raster plant build.
+public let dragonOutlinesInRoot = false
 
 /// An outline's view: its rings in device px relative to the view (24 numbers each: outer rect, inner rect, outer and inner radii),
 /// filled even-odd in the outline colour, or for a dotted, dashed or 3D outline the side painter's operations in device px from the
@@ -115,40 +122,90 @@ func dragonDrawOutlineOps(_ ctx: CGContext, _ ops: [BorderOp], _ tones: [DragonR
   ctx.restoreGState()
 }
 
-/// Moves every outline view of the root after the root's other views, in Blink's outline-phase order: a box paints its
-/// descendants' outlines before its own (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order.
-public func dragonRaiseOutlines(_ root: UIView) {
-  func visit(_ view: UIView) {
-    for child in view.subviews where !(child is DragonOutlineView) { visit(child) }
-    if let b = view as? DragonBoxView, let o = b.dragonOutlineView, o.superview === root { root.bringSubviewToFront(o) }
-  }
-  visit(root)
+/// Whether a view of a layer's view paints after its outline phase: a layer item of bucket 1 or 2 (stacking.ts), a group's overlay,
+/// or the outer shadow view of the layer item after it.
+func dragonPaintsAfterOutlines(_ subs: [UIView], _ i: Int) -> Bool {
+  let s = subs[i]
+  if s is DragonGroupView { return true }
+  if let b = s as? DragonBoxView { return b.dragonPaintBucket >= 1 }
+  if s is DragonShadowView, i + 1 < subs.count, let b = subs[i + 1] as? DragonBoxView, b.dragonShadowView === s { return b.dragonPaintBucket >= 1 }
+  return false
 }
 
-/// The outline write of a box (runtime writer): its style, width and offset in css px, colour, and a 3D style's lighter and darker
-/// colours. The first write puts the view last in the tree's root view; every after-layout hook then re-applies the paint.
-public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ style: String, _ width: Double, _ offset: Double, _ color: DragonRGBA8, _ light: DragonRGBA8, _ dark: DragonRGBA8) {
+/// The outline views a view hosts in Blink's outline-phase order: a box paints its descendants' outlines before its own
+/// (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order. While a layout is still adding the
+/// box views, an outline whose box is not yet in the host's subtree keeps its place after them; the after-tree hook orders it.
+func dragonHostedOutlines(_ host: UIView) -> [DragonOutlineView] {
+  var out: [DragonOutlineView] = []
+  func visit(_ view: UIView) {
+    for child in view.subviews where !(child is DragonOutlineView) { visit(child) }
+    if let b = view as? DragonBoxView, let o = b.dragonOutlineView, o.superview === host { out.append(o) }
+  }
+  visit(host)
+  for case let o as DragonOutlineView in host.subviews where !out.contains(where: { $0 === o }) { out.append(o) }
+  return out
+}
+
+/// Puts a view's outline views after its flow children and before its layer items, in outline-phase order. Only moves views when
+/// the order changes.
+public func dragonRaiseOutlines(_ host: UIView) {
+  let outlines = dragonHostedOutlines(host)
+  if outlines.isEmpty { return }
+  let rest = host.subviews.filter { !($0 is DragonOutlineView) }
+  let cut = rest.indices.first(where: { dragonPaintsAfterOutlines(rest, $0) }) ?? rest.count
+  let want: [UIView] = Array(rest[..<cut]) + outlines + Array(rest[cut...])
+  if zip(want, host.subviews).allSatisfy({ $0 === $1 }) { return }
+  for (i, v) in want.enumerated() { host.insertSubview(v, at: i) }
+}
+
+/// After a layout has placed every view: each layer view's outline views in place (a view the layout added went last).
+public func dragonAfterTreeOutline(_ root: DragonRootView) {
+  var hosts: [UIView] = []
+  func visit(_ view: UIView) {
+    if let b = view as? DragonBoxView, let o = b.dragonOutlineView, let h = o.superview, !hosts.contains(where: { $0 === h }) { hosts.append(h) }
+    for child in view.subviews where !(child is DragonOutlineView) { visit(child) }
+  }
+  visit(root)
+  for h in hosts { dragonRaiseOutlines(h) }
+}
+
+/// The outline write of a box (runtime writer): its paint layer, its style, width and offset in css px, colour, and a 3D style's
+/// lighter and darker colours. The first write puts the view in the layer's view; every after-layout hook then re-applies the paint.
+public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ layer: String, _ style: String, _ width: Double, _ offset: Double, _ color: DragonRGBA8, _ light: DragonRGBA8, _ dark: DragonRGBA8) {
   if !(width > 0) || !offset.isFinite { fatalError("dragon: \(v.dragonId): outline width \(width) or offset \(offset) is out of range") }
   if !["solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset"].contains(style) { fatalError("dragon: \(v.dragonId): outline style \(style) has no native paint") }
+  guard let layerView = t.node(layer) as? DragonBoxView else { fatalError("dragon: \(v.dragonId): its outline's layer \(layer) has no built box view") }
+  if layerView.dragonClipView != nil { fatalError("dragon: \(v.dragonId): its outline's layer \(layer) clips the views it hosts") }
+  let host: UIView = dragonOutlinesInRoot ? t.root : layerView
+  v.dragonOutlineLayer = layer
   v.dragonOutlineStyle = style
   v.dragonOutlineWidth = width
   v.dragonOutlineOffset = offset
   let o = v.dragonOutlineView ?? DragonOutlineView()
   o.color = color
   o.tones = dragonOutlineTonesSwapped ? [color, dark, light] : [color, light, dark]
-  if o.superview !== t.root {
+  if o.superview !== host {
     o.removeFromSuperview()
-    t.root.addSubview(o)
+    host.addSubview(o)
   }
   v.dragonOutlineView = o
   dragonAfterLayout(v, v.dragonShape, v.dragonScale)
 }
 
-/// After every layout: the rings from the translated paint-radius.ts at the device scale and the view's frame in the root view, with
-/// implicit actions disabled; the root's outline views then move after any view the layout added.
+/// The device px origin from the root of the view an outline view is in: its box's snapped border box (a layer view clips nothing,
+/// so it hosts its children in itself), or the root's.
+func dragonOutlineHostOrigin(_ host: UIView) -> [Double] {
+  if let b = host as? DragonBoxView { return [b.dragonShape.edges[0], b.dragonShape.edges[1]] }
+  if host is DragonRootView { return [0, 0] }
+  fatalError("dragon: an outline view is in a view that is neither a box nor the root")
+}
+
+/// After every layout: the rings from the translated paint-radius.ts at the device scale and the view's frame in its layer's view,
+/// with implicit actions disabled; the layer's outline views then move after any view the layout added.
 public func dragonAfterLayoutOutline(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
   guard let o = v.dragonOutlineView else { return }
-  guard let root = o.superview as? DragonRootView else { fatalError("dragon: \(v.dragonId): the outline view is not in the root view") }
+  guard let host = o.superview else { fatalError("dragon: \(v.dragonId): the outline view is in no view") }
+  let at = dragonOutlineHostOrigin(host)
   let e = v.dragonShape.edges
   let style = v.dragonOutlineStyle
   let rings: [Double]
@@ -176,20 +233,29 @@ public func dragonAfterLayoutOutline(_ v: DragonBoxView, _ shape: DragonBoxShape
   o.ops = ops
   o.origin = [bx, by]
   o.scaleFactor = scale
-  o.frame = CGRect(x: CGFloat(bx / scale), y: CGFloat(by / scale), width: CGFloat((rings[2] - bx) / scale), height: CGFloat((rings[3] - by) / scale))
+  o.frame = CGRect(x: CGFloat((bx - at[0]) / scale), y: CGFloat((by - at[1]) / scale), width: CGFloat((rings[2] - bx) / scale), height: CGFloat((rings[3] - by) / scale))
   CATransaction.commit()
-  dragonRaiseOutlines(root)
+  dragonRaiseOutlines(host)
   o.setNeedsDisplay()
 }
 
 /// The readback of the outline module: every ring's outer and inner rect in device px from the root, from the view's live frame;
-/// null when the view is not in the root view after all of the root's other views.
+/// null when the view is not in its layer's view, among the outline views between the flow children and the layer items.
 public func dragonAppliedOutline(_ v: DragonBoxView) -> DumpJsonObject {
   guard let o = v.dragonOutlineView else { return [] }
-  guard let root = o.superview as? DragonRootView, let i = root.subviews.firstIndex(of: o), root.subviews[(i + 1)...].allSatisfy({ $0 is DragonOutlineView }) else { return [("dragonOutline.rings", .null)] }
+  guard let host = o.superview as? DragonBoxView, host.dragonId == v.dragonOutlineLayer else { return [("dragonOutline.rings", .null)] }
+  let subs = host.subviews
+  let rest = subs.filter { !($0 is DragonOutlineView) }
+  let cut = rest.indices.first(where: { dragonPaintsAfterOutlines(rest, $0) }) ?? rest.count
+  let block = subs.count - rest.count
+  guard let i = subs.firstIndex(of: o), i >= cut, i < cut + block, subs[cut..<(cut + block)].allSatisfy({ $0 is DragonOutlineView }) else { return [("dragonOutline.rings", .null)] }
   let s = v.dragonScale
-  let x0 = dragonWholeDevicePx(Double(o.frame.minX) * s, "\(v.dragonId) outline left")
-  let y0 = dragonWholeDevicePx(Double(o.frame.minY) * s, "\(v.dragonId) outline top")
+  var root: UIView? = host
+  while let r = root, !(r is DragonRootView) { root = r.superview }
+  guard let rootView = root else { fatalError("dragon: \(v.dragonId): the outline view is not inside a root view") }
+  let live = dragonLayoutRect(o, in: rootView)
+  let x0 = dragonWholeDevicePx(Double(live.minX) * s, "\(v.dragonId) outline left")
+  let y0 = dragonWholeDevicePx(Double(live.minY) * s, "\(v.dragonId) outline top")
   var out: [DumpJson] = []
   var k = 0
   while k + 24 <= o.rings.count {
@@ -200,8 +266,10 @@ public func dragonAppliedOutline(_ v: DragonBoxView) -> DumpJsonObject {
 }
 `;
 
-const KOTLIN_MEMBERS = String.raw`  /** The outline view of the box, when it has an outline; it sits in the tree's root view. */
+const KOTLIN_MEMBERS = String.raw`  /** The outline view of the box, when it has an outline; it sits in its paint layer's view. */
   var dragonOutlineView: DragonOutlineView? = null
+  /** The node id of the outline's paint layer. */
+  var dragonOutlineLayer = ""
   /** The outline write: the style, width and offset in css px. */
   var dragonOutlineStyle = "solid"
   var dragonOutlineWidth = 0.0
@@ -236,6 +304,8 @@ const val DRAGON_OUTLINE_PLANT_DEVICE_PX = 0.0
 const val DRAGON_OUTLINE_GAP_UNFITTED = false
 /** Whether a 3D outline swaps its lighter and darker colours; false except in the outline-tones-swapped raster plant build. */
 const val DRAGON_OUTLINE_TONES_SWAPPED = false
+/** Whether outline views go in the tree's root view, after all its content; false except in the outline-root-hosted raster plant build. */
+const val DRAGON_OUTLINES_IN_ROOT = false
 
 /**
  * An outline's view: its rings in device px relative to the view (24 numbers each: outer rect, inner rect, outer and inner radii),
@@ -297,46 +367,105 @@ fun dragonDrawOutlineOps(canvas: Canvas, ops: List<BorderOp>, tones: Array<Drago
 }
 
 /**
- * Moves every outline view of the root after the root's other views, in Blink's outline-phase order: a box paints its descendants'
- * outlines before its own (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order.
+ * Whether a view of a layer's view paints after its outline phase: a layer item of bucket 1 or 2 (stacking.kt), a group's overlay,
+ * or the outer shadow view of the layer item after it.
  */
-fun dragonRaiseOutlines(root: ViewGroup) {
-  fun visit(view: View) {
-    if (view is ViewGroup) for (child in (0 until view.childCount).map { view.getChildAt(it) }) if (child !is DragonOutlineView) visit(child)
-    val o = (view as? DragonBoxView)?.dragonOutlineView
-    if (o != null && o.parent === root) root.bringChildToFront(o)
-  }
-  visit(root)
+fun dragonPaintsAfterOutlines(subs: List<View>, i: Int): Boolean {
+  val s = subs[i]
+  if (s is DragonGroupView) return true
+  if (s is DragonBoxView) return s.dragonPaintBucket >= 1
+  val next = subs.getOrNull(i + 1) as? DragonBoxView
+  return s is DragonShadowView && next != null && next.dragonShadowView === s && next.dragonPaintBucket >= 1
 }
 
 /**
- * The outline write of a box (runtime writer): its style, width and offset in css px, colour, and a 3D style's lighter and darker
- * colours. The first write puts the view last in the tree's root view; every after-layout hook then re-applies the paint.
+ * The outline views a view hosts in Blink's outline-phase order: a box paints its descendants' outlines before its own
+ * (BoxFragmentPainter, kDescendantOutlinesOnly then kSelfOutlineOnly), boxes in tree order. While a layout is still adding the
+ * box views, an outline whose box is not yet in the host's subtree keeps its place after them; the after-tree hook orders it.
  */
-fun dragonSetOutline(t: DragonTree, v: DragonBoxView, style: String, width: Double, offset: Double, color: DragonRGBA8, light: DragonRGBA8, dark: DragonRGBA8) {
+fun dragonHostedOutlines(host: ViewGroup): List<DragonOutlineView> {
+  val out = ArrayList<DragonOutlineView>()
+  fun visit(view: View) {
+    if (view is ViewGroup) for (child in (0 until view.childCount).map { view.getChildAt(it) }) if (child !is DragonOutlineView) visit(child)
+    val o = (view as? DragonBoxView)?.dragonOutlineView
+    if (o != null && o.parent === host) out.add(o)
+  }
+  visit(host)
+  for (i in 0 until host.childCount) {
+    val o = host.getChildAt(i)
+    if (o is DragonOutlineView && out.none { it === o }) out.add(o)
+  }
+  return out
+}
+
+/** Puts a view's outline views after its flow children and before its layer items, in outline-phase order. Only moves views when the order changes. */
+fun dragonRaiseOutlines(host: ViewGroup) {
+  val outlines = dragonHostedOutlines(host)
+  if (outlines.isEmpty()) return
+  val subs = (0 until host.childCount).map { host.getChildAt(it) }
+  val rest = subs.filter { it !is DragonOutlineView }
+  val cut = rest.indices.firstOrNull { dragonPaintsAfterOutlines(rest, it) } ?: rest.size
+  val want = rest.subList(0, cut) + outlines + rest.subList(cut, rest.size)
+  if (want.indices.all { want[it] === subs[it] }) return
+  for ((i, s) in want.withIndex()) {
+    if (host.getChildAt(i) === s) continue
+    host.removeView(s)
+    host.addView(s, i)
+  }
+}
+
+/** After a layout has placed every view: each layer view's outline views in place (a view the layout added went last). */
+fun dragonAfterTreeOutline(root: DragonRootView) {
+  val hosts = ArrayList<ViewGroup>()
+  fun visit(view: View) {
+    val h = (view as? DragonBoxView)?.dragonOutlineView?.parent as? ViewGroup
+    if (h != null && hosts.none { it === h }) hosts.add(h)
+    if (view is ViewGroup) for (child in (0 until view.childCount).map { view.getChildAt(it) }) if (child !is DragonOutlineView) visit(child)
+  }
+  visit(root)
+  for (h in hosts) dragonRaiseOutlines(h)
+}
+
+/** The device px origin from the root of the view an outline view is in: its box's snapped border box, or the root's. */
+fun dragonOutlineHostOrigin(host: ViewGroup): DoubleArray = when (host) {
+  is DragonBoxView -> doubleArrayOf(host.dragonShape.edges[0], host.dragonShape.edges[1])
+  is DragonRootView -> doubleArrayOf(0.0, 0.0)
+  else -> throw IllegalStateException("dragon: an outline view is in a view that is neither a box nor the root")
+}
+
+/**
+ * The outline write of a box (runtime writer): its paint layer, its style, width and offset in css px, colour, and a 3D style's
+ * lighter and darker colours. The first write puts the view in the layer's view; every after-layout hook then re-applies the paint.
+ */
+fun dragonSetOutline(t: DragonTree, v: DragonBoxView, layer: String, style: String, width: Double, offset: Double, color: DragonRGBA8, light: DragonRGBA8, dark: DragonRGBA8) {
   if (!(width > 0.0) || !offset.isFinite()) throw IllegalStateException("dragon: " + v.dragonId + ": outline width " + width + " or offset " + offset + " is out of range")
   if (style !in listOf("solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset")) throw IllegalStateException("dragon: " + v.dragonId + ": outline style " + style + " has no native paint")
+  val layerView = t.node(layer) as? DragonBoxView ?: throw IllegalStateException("dragon: " + v.dragonId + ": its outline's layer " + layer + " has no built box view")
+  if (layerView.dragonClipView != null) throw IllegalStateException("dragon: " + v.dragonId + ": its outline's layer " + layer + " clips the views it hosts")
+  val host: ViewGroup = if (DRAGON_OUTLINES_IN_ROOT) t.root else layerView
+  v.dragonOutlineLayer = layer
   v.dragonOutlineStyle = style
   v.dragonOutlineWidth = width
   v.dragonOutlineOffset = offset
   val o = v.dragonOutlineView ?: DragonOutlineView(v.context)
   o.color = color
   o.tones = if (DRAGON_OUTLINE_TONES_SWAPPED) arrayOf(color, dark, light) else arrayOf(color, light, dark)
-  if (o.parent !== t.root) {
+  if (o.parent !== host) {
     (o.parent as? ViewGroup)?.removeView(o)
-    t.root.addView(o)
+    host.addView(o)
   }
   v.dragonOutlineView = o
   dragonAfterLayout(v, v.dragonShape, v.dragonOutlineScale)
 }
 
 /**
- * After every layout: the rings from the translated paint-radius.ts at the device scale and the view's frame in the root view; the
- * root's outline views then move after any view the layout added.
+ * After every layout: the rings from the translated paint-radius.ts at the device scale and the view's frame in its layer's view;
+ * the layer's outline views then move after any view the layout added.
  */
 fun dragonAfterLayoutOutline(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
   val o = v.dragonOutlineView ?: return
-  val root = o.parent as? DragonRootView ?: throw IllegalStateException("dragon: " + v.dragonId + ": the outline view is not in the root view")
+  val host = o.parent as? ViewGroup ?: throw IllegalStateException("dragon: " + v.dragonId + ": the outline view is in no view")
+  val at = dragonOutlineHostOrigin(host)
   v.dragonOutlineScale = scale
   val e = shape.edges
   val w = paintRadius_outlineWidthPx(v.dragonOutlineWidth, scale)
@@ -359,23 +488,32 @@ fun dragonAfterLayoutOutline(v: DragonBoxView, shape: DragonBoxShape, scale: Dou
   o.rings = DoubleArray(rings.size) { k -> if (k % 24 < 8) rings[k] - (if (k % 2 == 0) bx else by) else rings[k] }
   o.ops = ops
   o.origin = doubleArrayOf(bx, by)
-  dragonSetFrame(o.dragonFrame, bx, by, rings[2], rings[3], v.dragonId + " outline")
-  dragonRaiseOutlines(root)
-  root.requestLayout()
+  dragonSetFrame(o.dragonFrame, bx - at[0], by - at[1], rings[2] - at[0], rings[3] - at[1], v.dragonId + " outline")
+  dragonRaiseOutlines(host)
+  host.requestLayout()
   o.invalidate()
 }
 
 /**
  * The readback of the outline module: every ring's outer and inner rect in device px from the root, from the view's live position;
- * null when the view is not in the root view after all of the root's other views.
+ * null when the view is not in its layer's view, among the outline views between the flow children and the layer items.
  */
 fun dragonAppliedOutline(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val o = v.dragonOutlineView ?: return emptyList()
-  val root = o.parent as? DragonRootView
-  val i = root?.indexOfChild(o) ?: -1
-  if (root == null || i < 0 || (i + 1 until root.childCount).any { root.getChildAt(it) !is DragonOutlineView }) return listOf(Pair("dragonOutline.rings", DumpJson.Null))
-  val x0 = o.left.toDouble()
-  val y0 = o.top.toDouble()
+  val host = o.parent as? DragonBoxView
+  if (host == null || host.dragonId != v.dragonOutlineLayer) return listOf(Pair("dragonOutline.rings", DumpJson.Null))
+  val subs = (0 until host.childCount).map { host.getChildAt(it) }
+  val rest = subs.filter { it !is DragonOutlineView }
+  val cut = rest.indices.firstOrNull { dragonPaintsAfterOutlines(rest, it) } ?: rest.size
+  val block = subs.size - rest.size
+  val i = subs.indexOfFirst { it === o }
+  if (i < cut || i >= cut + block || (cut until cut + block).any { subs[it] !is DragonOutlineView }) return listOf(Pair("dragonOutline.rings", DumpJson.Null))
+  var root: View? = host
+  while (root != null && root !is DragonRootView) root = root.parent as? View
+  if (root == null) throw IllegalStateException("dragon: " + v.dragonId + ": the outline view is not inside a root view")
+  val live = dragonLayoutOffset(o, root)
+  val x0 = live[0].toDouble()
+  val y0 = live[1].toDouble()
   val out = ArrayList<DumpJson>()
   var k = 0
   while (k + 24 <= o.rings.size) {
@@ -387,17 +525,17 @@ fun dragonAppliedOutline(v: DragonBoxView): List<Pair<String, DumpJson>> {
 `;
 
 /** The runtime writer call of an outline write, the same on both backends: a 3D style's two colours, or the outline colour twice. */
-const setOutline = (v: string, w: OutlineWrite): string[] => {
+const setOutline = (lang: 'swift' | 'kotlin', v: string, w: OutlineWrite): string[] => {
   const [light, dark] = w.tones ?? [w.color, w.color];
-  return [`  dragonSetOutline(t, ${v}, ${keywordLit(w.style)}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)}, ${rgbaLit(light)}, ${rgbaLit(dark)})`];
+  return [`  dragonSetOutline(t, ${v}, ${nativeString(lang, w.layer)}, ${keywordLit(w.style)}, ${num(w.width, 'width')}, ${num(w.offset, 'offset')}, ${rgbaLit(w.color)}, ${rgbaLit(light)}, ${rgbaLit(dark)})`];
 };
 
-export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped'> = {
+export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outline-dash-unfitted' | 'outline-root-hosted' | 'outline-tones-swapped'> = {
   name: 'outline',
   kinds: ['outline'],
   lines: {
-    uikit: (v, _n, w) => setOutline(v, w),
-    'android-views': (v, _n, w) => setOutline(v, w),
+    uikit: (v, _n, w) => setOutline('swift', v, w),
+    'android-views': (v, _n, w) => setOutline('kotlin', v, w),
   },
   applied: (e, _b, w, dpr, g) => {
     const b = g.box;
@@ -408,8 +546,8 @@ export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outl
     return out;
   },
   native: {
-    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, afterLayout: 'dragonAfterLayoutOutline', applied: 'dragonAppliedOutline' },
-    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutOutline', applied: 'dragonAppliedOutline' },
+    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, afterLayout: 'dragonAfterLayoutOutline', applied: 'dragonAppliedOutline', afterTree: 'dragonAfterTreeOutline' },
+    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutOutline', applied: 'dragonAppliedOutline', afterTree: 'dragonAfterTreeOutline' },
   },
   plants: [
     {
@@ -424,6 +562,13 @@ export const OUTLINE_EMITTER: PaintEmitter<'outline', 'outline-offset-1' | 'outl
       replace: {
         uikit: ['public let dragonOutlineGapUnfitted = false\n', 'public let dragonOutlineGapUnfitted = true\n'],
         'android-views': ['const val DRAGON_OUTLINE_GAP_UNFITTED = false\n', 'const val DRAGON_OUTLINE_GAP_UNFITTED = true\n'],
+      },
+    },
+    {
+      name: 'outline-root-hosted',
+      replace: {
+        uikit: ['public let dragonOutlinesInRoot = false\n', 'public let dragonOutlinesInRoot = true\n'],
+        'android-views': ['const val DRAGON_OUTLINES_IN_ROOT = false\n', 'const val DRAGON_OUTLINES_IN_ROOT = true\n'],
       },
     },
     {

@@ -1,9 +1,10 @@
 // Outlines (css-ui-4 §3): Dragon drawing (T046 §1). An outline is one write with its style, the computed width and offset (css px
 // at zoom 1), its colour, a 3D style's lighter and darker colours, and the box's radius lengths (the outline follows the border
-// radius). The device paints it in a view of its own in the root view, after all the case's content, each box's descendants'
-// outlines before its own: Chrome's outline phase of the root stacking context.
-// analysis/paint-values/outline.ts refuses what that order cannot match without stacking (an overflow clip around the outline, a
-// positioned or transformed box in the case), auto, and a rounded outline in a style other than solid or double; outside the parity
+// radius), and the node whose paint layer paints it (stacking facts paintLayer). The device paints it in a view of its own in that
+// layer's view, after the layer's flow content and before its layer items, each box's descendants' outlines before its own:
+// Chrome's outline phases of the layer (PaintLayerPainter::PaintLayerContents).
+// analysis/paint-values/outline.ts refuses what that view cannot paint (an overflow clip around the outline, an outline inside a
+// group such as opacity or a transform), auto, and a rounded outline in a style other than solid or double; outside the parity
 // lanes it also refuses a translucent dotted, dashed or 3D one, whose transparency layer the platforms composite unlike Skia. The device resolves
 // the rings with the translated paint-radius.ts outlineRings at its scale, and draws a dotted, dashed or 3D outline with the
 // translated paint-dash.ts outlinePaintOps. An outline that paints nothing (style none, a zero width, a transparent colour) has no
@@ -17,6 +18,7 @@ import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from './colors.ts';
 import type { RadiusLengthValue } from './radius.ts';
 import { radiusLengths, roundsAnyCorner } from './radius.ts';
+import type { StackingFacts } from './stacking.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
 
@@ -37,9 +39,11 @@ export type OutlineWrite = {
   readonly tones: readonly [Rgba8, Rgba8] | null;
   /** The eight radius components of the box, or null for square corners. */
   readonly radii: readonly RadiusLengthValue[] | null;
+  /** The node whose paint layer paints the outline (stacking facts paintLayer): its view hosts the outline's. */
+  readonly layer: string;
 };
 
-const OUTLINE_PAINT = "Dragon draws an outline in a view of its own in the root view, after the case's content, a box's descendants' outlines before its own (the root stacking context's outline phase); its rings come from the translated paint-radius.ts outlineRings: Blink 145's snapped width and truncated offset, the radii outset, double bands of round(width / 3). A dotted, dashed, groove, ridge, inset or outset outline (square corners only) is drawn around the ring's outer rect by Blink's side painter (translated paint-dash.ts outlinePaintOps), a 3D style in its lighter and darker colours";
+const OUTLINE_PAINT = "Dragon draws an outline in a view of its own in its paint layer's view, after the layer's flow content and before its layer items, a box's descendants' outlines before its own (the layer's outline phases); its rings come from the translated paint-radius.ts outlineRings: Blink 145's snapped width and truncated offset, the radii outset, double bands of round(width / 3). A dotted, dashed, groove, ridge, inset or outset outline (square corners only) is drawn around the ring's outer rect by Blink's side painter (translated paint-dash.ts outlinePaintOps), a 3D style in its lighter and darker colours";
 
 const px = (v: ResolvedValue | undefined, what: string, address: string): number => {
   if (v === undefined || v.value.kind !== 'length' || v.value.unit !== 'px' || !Number.isFinite(v.value.value)) throw new ProgramError(`${address}: ${what} did not compute to px`);
@@ -54,7 +58,7 @@ export const OUTLINE_LOWERING: PaintLowering<OutlineWrite> = {
   },
   css: { outline: [...OUTLINE_LONGHANDS] },
   // An anonymous box takes the initial outline (CSS2 §9.2.1.1): none, so no write.
-  lower: ({ el }) => {
+  lower: ({ el, facts }) => {
     if (el === null) return [];
     const address = el.element.address;
     const visibility = el.props.get('visibility');
@@ -78,6 +82,8 @@ export const OUTLINE_LOWERING: PaintLowering<OutlineWrite> = {
     // The side painter styles: a corner with either component positive is rounded for Blink (Radii::IsZero is both zero), and
     // analysis/paint-values/outline.ts refuses it.
     if (style.value !== 'solid' && style.value !== 'double' && lengths.some((l) => l.value > 0)) throw new ProgramError(`${address}: a rounded ${style.value} outline has no native paint technique`);
-    return [{ kind: 'outline', style: style.value as OutlineStyle, width, offset, color, tones: THREE_D.includes(style.value) ? insetOutsetTones(color) : null, radii }];
+    const stacking = facts['stacking'] as StackingFacts | undefined;
+    if (stacking === undefined) throw new ProgramError(`${address}: the stacking lowering gave no facts before the outline's`);
+    return [{ kind: 'outline', style: style.value as OutlineStyle, width, offset, color, tones: THREE_D.includes(style.value) ? insetOutsetTones(color) : null, radii, layer: stacking.paintLayer }];
   },
 };

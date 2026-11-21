@@ -154,7 +154,7 @@ describe('outline: the native targets draw every style but auto, the side painte
     for (const overflow of ['hidden', 'clip', 'auto']) {
       const c = tree(`.p { height: 20px; overflow: ${overflow}; } .b { height: 5px; outline: 2px solid red; }`, (r) => [div(r, 'p', ['p'], [div(r, 'b', ['b'])])]);
       const outline = errors(c).filter((d) => d.message.includes('outline'));
-      expect(outline.map((d) => [d.target, d.message]), overflow).toEqual([['ios', `b has an outline inside the overflow clip of p, and Dragon draws native outlines in the root view, outside that clip, until it hosts them in their stacking context${SUFFIX}`]]);
+      expect(outline.map((d) => [d.target, d.message]), overflow).toEqual([['ios', `b has an outline inside the overflow clip of p, and Dragon draws native outlines in their paint layer's view, outside that clip${SUFFIX}`]]);
       expect(outline[0]?.origin.kind, overflow).toBe('authored');
       expectCatalogued(outline);
     }
@@ -162,36 +162,75 @@ describe('outline: the native targets draw every style but auto, the side painte
     const propagated = tree('body { overflow: hidden; } .b { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'b', ['b'])]);
     expect(errors(propagated)).toEqual([]);
   });
-  it('an outline in a case with a layer item of the stacking tree is refused on ios (Chrome paints its layer above the outlines); web compiles', () => {
+  it('an outline beside or inside a positioned layer compiles on ios (Dragon hosts it in its paint layer, as Chrome paints it)', () => {
+    const outlineErrors = (c: { diagnostics: readonly Diagnostic[] }) => errors(c).filter((d) => d.message.includes('outline'));
     const layers = [
-      ['.q { position: relative; top: 2px; height: 5px; }', 'q has position: relative'],
-      ['.q { position: absolute; width: 5px; height: 5px; }', 'q has position: absolute'],
-      ['.q { height: 5px; transform: translateX(2px); }', 'q has a transform'],
-      // Master's stacking tree (lower/paint/stacking.ts) also makes these layer items: opacity below 1, will-change: opacity, and
-      // a z-index on a flex or grid item.
-      ['.q { height: 5px; opacity: 0.5; }', 'q has opacity: 0.5'],
-      ['.q { height: 5px; will-change: opacity; }', 'q has will-change: opacity'],
-      ['body { display: flex; } .q { height: 5px; z-index: 2; }', 'q has z-index: 2 on a flex or grid item'],
-      ['body { display: grid; } .q { height: 5px; z-index: 2; }', 'q has z-index: 2 on a flex or grid item'],
-    ] as const;
-    for (const [css, what] of layers) {
-      const c = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
-      const outline = errors(c).filter((d) => d.message.includes('outline'));
-      expect(outline.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline, and ${what}, which Chrome paints in a layer of its own, above the outlines of its stacking context (CSS2 Appendix E); Dragon draws native outlines after all the content until it hosts them in their stacking context${SUFFIX}`]]);
-      expectCatalogued(outline);
+      '.q { position: relative; top: 2px; height: 5px; }',
+      '.q { position: relative; z-index: 2; height: 5px; }',
+      '.q { position: absolute; width: 5px; height: 5px; }',
+      '.q { position: fixed; top: 0; width: 5px; height: 5px; }',
+      '.q { position: sticky; top: 0; height: 5px; }',
+      'body { display: flex; } .q { height: 5px; z-index: 2; }',
+      'body { display: grid; } .q { height: 5px; z-index: 2; }',
+    ];
+    for (const css of layers) {
+      // Beside the layer, inside it, and on the layer box itself.
+      const beside = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
+      expect(outlineErrors(beside), css).toEqual([]);
+      const inside = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+      expect(outlineErrors(inside), css).toEqual([]);
+      const own = tree(`.q { outline: 3px double blue; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+      expect(outlineErrors(own), css).toEqual([]);
     }
-    // A z-index on a static box outside a flex container makes no layer (CSS2 §9.9.1), so the outline stays in the root's flow.
-    const flat = tree('.b { height: 5px; outline: 2px solid red; } .q { height: 5px; z-index: 2; }', (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
-    expect(errors(flat).filter((d) => d.message.includes('outline'))).toEqual([]);
-    // A positioned box leaves a case alone when no outline paints: none, a zero width, or a style of none.
-    for (const b of ['.b { height: 5px; }', '.b { height: 5px; outline: 0 solid red; }', '.b { height: 5px; outline: 2px none red; }']) {
-      const c = tree(`${b} .q { position: relative; top: 2px; height: 5px; }`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
-      expect(errors(c), b).toEqual([]);
+    // Beside a layer that paints as a group (not inside it), the outline paints before the group, so it compiles.
+    for (const css of ['.q { height: 5px; opacity: 0.5; }', '.q { height: 5px; transform: translateX(2px); }', '.q { height: 5px; will-change: opacity; }']) {
+      const c = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'b', ['b']), div(r, 'q', ['q'])]);
+      expect(outlineErrors(c), css).toEqual([]);
     }
   });
+  it('an outline inside a layer made by opacity, a transform, will-change, isolation or containment is refused on ios by name, on the box itself too; web compiles', () => {
+    const groups = [
+      ['.q { opacity: 0.5; }', 'opacity: 0.5'],
+      ['.q { transform: translateX(2px); }', 'a transform'],
+      ['.q { will-change: opacity; }', 'will-change: opacity'],
+      ['.q { isolation: isolate; }', 'isolation: isolate'],
+      ['.q { contain: layout; }', 'contain: layout'],
+    ] as const;
+    for (const [css, why] of groups) {
+      const inside = tree(`.b { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+      const got = errors(inside).filter((d) => d.message.startsWith('b has an outline'));
+      expect(got.map((d) => [d.target, d.message]), css).toEqual([['ios', `b has an outline inside q, which has ${why}, and Dragon draws native outlines only in the layer of a positioned box, a z-index or the root, not yet inside a layer made by ${why}${SUFFIX}`]]);
+      expectCatalogued(got);
+      const own = tree(`.q { height: 5px; outline: 2px solid red; } ${css}`, (r) => [div(r, 'q', ['q'])]);
+      expect(errors(own).filter((d) => d.message.startsWith('q has an outline')).map((d) => d.message), css).toEqual([`q has an outline and has ${why}, and Dragon draws native outlines only in the layer of a positioned box, a z-index or the root, not yet inside a layer made by ${why}${SUFFIX}`]);
+      // A positioned layer between the box and the group does not lift it out of the group.
+      const nested = tree(`.b { height: 5px; outline: 2px solid red; } .m { position: relative; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'm', ['m'], [div(r, 'b', ['b'])])])]);
+      expect(errors(nested).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0]), css).toEqual(['b has an outline inside q']);
+    }
+    // Web paints every outline itself.
+    const web = tree('.b { height: 5px; outline: 2px solid red; } .q { opacity: 0.5; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])], { web: {} });
+    expect(errors(web)).toEqual([]);
+  });
+  it("a layer item's own outline is refused when it clips its overflow (its view clips the views it hosts)", () => {
+    const c = tree('.q { position: relative; height: 5px; overflow: hidden; outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]);
+    const got = errors(c).filter((d) => d.message.includes('outline'));
+    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `q has an outline and position: relative, and clips its overflow; Dragon draws a layer's own outline in its view, inside that clip${SUFFIX}`]]);
+    expectCatalogued(got);
+    // A flow box clipping itself keeps its outline: its paint layer is the root's view.
+    expect(errors(tree('.q { height: 5px; overflow: hidden; outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]))).toEqual([]);
+  });
+  it('an outline is refused on ios when a layer item stays under an overflow clip its layer would take it out of', () => {
+    const c = tree('.b { height: 5px; outline: 2px solid red; } .p { height: 20px; overflow: hidden; } .r { position: relative; height: 5px; }', (r) => [div(r, 'b', ['b']), div(r, 'p', ['p'], [div(r, 'r', ['r'])])]);
+    const got = errors(c).filter((d) => d.message.includes('outline'));
+    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `b has an outline, and r is a layer item Dragon keeps under the overflow clip of p, so it would paint beneath the outlines its layer paints before it${SUFFIX}`]]);
+    expectCatalogued(got);
+    // A positioned clip is the relative box's layer host, so nothing is kept under a clip and the outline compiles.
+    const hosted = tree('.b { height: 5px; outline: 2px solid red; } .p { position: relative; height: 20px; overflow: hidden; } .r { position: relative; height: 5px; }', (r) => [div(r, 'b', ['b']), div(r, 'p', ['p'], [div(r, 'r', ['r'])])]);
+    expect(errors(hosted).filter((d) => d.message.includes('outline'))).toEqual([]);
+  });
   it('each refusal is reported once per element and target, on both native targets', () => {
-    const c = tree('.b { height: 5px; outline: 2px solid red; } .q { position: relative; } .r { position: relative; }', (r) => [div(r, 'b', ['b']), div(r, 'q', ['q']), div(r, 'r', ['r'])], { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
-    expect(errors(c).filter((d) => d.message.includes('outline')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    const c = tree('.b { height: 5px; outline: 2px solid red; } .q { opacity: 0.5; } .r { opacity: 0.5; }', (r) => [div(r, 'q', ['q'], [div(r, 'r', ['r'], [div(r, 'b', ['b'])])])], { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} });
+    expect(errors(c).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.target).sort()).toEqual(['android', 'ios']);
   });
   it('native claims no row for auto, which it refuses wherever it paints, and a zero-width one still compiles there', () => {
     expect(nativeOutlinePending('outline-style:auto')).toBe(true);
@@ -388,8 +427,8 @@ describe('outline: lowering and emission', () => {
       return OUTLINE_EMITTER.lines[b]('v1', n, w);
     };
     for (const b of ['uikit', 'android-views'] as const) {
-      expect(line(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, "solid", 3.0, -2.0, DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255))']);
-      expect(line(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, "double", 1.5, 0.0, DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255))']);
+      expect(line(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, "html", "solid", 3.0, -2.0, DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255), DragonRGBA8(1, 2, 3, 255))']);
+      expect(line(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, "html", "double", 1.5, 0.0, DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255), DragonRGBA8(255, 0, 0, 255))']);
     }
     const q = programs('.a { height: 20px; outline: 4px groove rgb(20, 40, 60); } .b { outline: 2px dashed rgba(255, 0, 0, 0.5); outline-offset: 1px; }', undefined, true);
     const at = (b: 'uikit' | 'android-views', id: string): string[] => {
@@ -400,8 +439,15 @@ describe('outline: lowering and emission', () => {
     };
     for (const b of ['uikit', 'android-views'] as const) {
       // rgb(20, 40, 60) is dark: its darker tone is black, and it contrasts with black by less than 1.75, so its lighter one is Color::Light.
-      expect(at(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, "groove", 4.0, 0.0, DragonRGBA8(20, 40, 60, 255), DragonRGBA8(48, 96, 144, 255), DragonRGBA8(0, 0, 0, 255))']);
-      expect(at(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, "dashed", 2.0, 1.0, DragonRGBA8(255, 0, 0, 128), DragonRGBA8(255, 0, 0, 128), DragonRGBA8(255, 0, 0, 128))']);
+      expect(at(b, 'a'), b).toEqual(['  dragonSetOutline(t, v1, "html", "groove", 4.0, 0.0, DragonRGBA8(20, 40, 60, 255), DragonRGBA8(48, 96, 144, 255), DragonRGBA8(0, 0, 0, 255))']);
+      expect(at(b, 'b'), b).toEqual(['  dragonSetOutline(t, v1, "html", "dashed", 2.0, 1.0, DragonRGBA8(255, 0, 0, 128), DragonRGBA8(255, 0, 0, 128), DragonRGBA8(255, 0, 0, 128))']);
+    }
+  });
+  it("the write names the outline's paint layer: the root for a flow box, the nearest layer item above it, or its own box", () => {
+    const p = programs('.a { position: relative; height: 20px; outline: 1px solid red; } .b { height: 5px; outline: 2px solid red; } .c { height: 5px; outline: 2px solid red; }', (r) => [div(r, 'a', ['a'], [div(r, 'm', [], [div(r, 'b', ['b'])])]), div(r, 'c', ['c'])]);
+    for (const b of ['uikit', 'android-views'] as const) {
+      const layer = (id: string) => (p[b].nodes.find((n) => n.id === id)?.writes.find((x) => x.kind === 'outline') as { layer?: string } | undefined)?.layer;
+      expect(['a', 'b', 'c'].map(layer), b).toEqual(['a', 'a', 'html']);
     }
   });
   it('a 3D style writes its tones, the other styles none', () => {
