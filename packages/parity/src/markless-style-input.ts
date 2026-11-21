@@ -436,7 +436,8 @@ export function marklessNodeId(input: MarklessStyleInput, elementId: (id: string
     if (e.kind !== 'element') continue;
     elementOf.set(elementId(e.id), e.id);
     const address = textAddresser(elementId(e.id));
-    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id) textOf.set(address(shownText(c, values)), c.id);
+    // Only the texts this assignment shows are numbered: a sibling in an arm it does not show has no box, so no address.
+    for (const c of input.nodes) if (c.kind === 'text' && c.parent === e.id && armShown(input, c.arm, values)) textOf.set(address(shownText(c, values)), c.id);
   }
   return (address) => textOf.get(address) ?? rehostAddress(address, (tree) => elementOf.get(tree));
 }
@@ -726,7 +727,9 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       if (have.has(n.id)) return [];
       const byState = n.kind === 'element' ? n.attributesByState?.['hidden'] : undefined;
       // The boxless rule's display: contents !important beats hidden's UA display: none, so a boxless element hides nothing.
-      const own = n.kind === 'element' && n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id));
+      const own = n.kind === 'element'
+        ? n.boxless !== true && ('hidden' in n.attributes || (byState !== undefined && valueUnder(byState, values, n.id) !== null) || shown.has(n.id))
+        : !armShown(parsed, n.arm, values);
       if (!own && !hiddenHere.has(n.parent ?? '')) return [];
       hiddenHere.add(n.id);
       if (n.kind === 'element' && n.boxless === true) return [];
