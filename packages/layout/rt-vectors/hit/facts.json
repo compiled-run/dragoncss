@@ -1277,6 +1277,8 @@
     "transform-flex": "transform on i1, i2, i3, i4: hit testing through transforms is SELD-R2b (T146)",
     "transform-grid": "transform on g1, g2, b2, g3: hit testing through transforms is SELD-R2b (T146)",
     "transform-grid-rtl": "transform on g1, g2, b2, g3: hit testing through transforms is SELD-R2b (T146)",
+    "transform-inline-flex": "transform on b1, b2, c1, c2: hit testing through transforms is SELD-R2b (T146)",
+    "transform-inline-flex-rtl": "transform on b1, b2, c1, c2: hit testing through transforms is SELD-R2b (T146)",
     "transform-direction": "transform on a0, a1, a2, a3: hit testing through transforms is SELD-R2b (T146)",
     "transform-direction-rtl": "transform on a0, a1, a2, a3: hit testing through transforms is SELD-R2b (T146)",
     "transform-individual": "transform on a0, a1, a2, a3, a4, b0, b1, b2, b3, b4, c0, c1, c1i: hit testing through transforms is SELD-R2b (T146)",

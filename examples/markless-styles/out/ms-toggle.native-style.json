@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "24e1a950802d0e6598fe9b0e7f9afcb75e66fa448b5f1ba0af129b5636b1eff5",
+ "compiler": "8fdc279c67d08291db5c72dcafe92f377ad0b258764fca560959793635dfd8e9",
  "component": "Toggle",
  "source": "packages/parity/fixtures/ms-toggle",
  "warnings": [],
