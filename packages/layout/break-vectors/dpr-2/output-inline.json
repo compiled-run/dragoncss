@@ -1,0 +1,13 @@
+{
+  "case": "output-inline",
+  "dpr": 2,
+  "texts": [
+    {"id":"d:text0","lines":[[0,3]]},
+    {"id":"o1:text0","lines":[[0,2]]},
+    {"id":"d:text1","lines":[[0,3]]},
+    {"id":"t2:text0","lines":[[0,3]]},
+    {"id":"o2:text0","lines":[[0,3],[3,5]]},
+    {"id":"t2:text1","lines":[[1,3]]},
+    {"id":"o3:text0","lines":[[0,5]]}
+  ]
+}
