@@ -98,6 +98,11 @@ const BACKEND: { readonly [T in NativeStyleTarget]: NativeBackend } = { ios: 'ui
  * code; nothing is dropped silently.
  */
 export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndResult): NativeStyles {
+  return compileNativeStylesWith(config, input).styles;
+}
+
+/** compileNativeStyles with the compile result it read, for the internal facts of its cases (internal.ts). */
+export function compileNativeStylesWith(config: NativeStylesConfig, input: FrontEndResult): { readonly styles: NativeStyles; readonly compiled: object } {
   const targets = (['ios', 'android'] as const).filter((t) => config.targets[t] !== undefined);
   if (targets.length === 0) throw new Error('compileNativeStyles needs at least one native target (ios or android)');
   if (!/^[A-Z][A-Za-z0-9]*$/.test(config.name)) throw new Error(`compileNativeStyles: the name ${JSON.stringify(config.name)} is not an identifier starting with an ASCII capital`);
@@ -125,7 +130,7 @@ export function compileNativeStyles(config: NativeStylesConfig, input: FrontEndR
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
   const out: { [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked } = {};
   for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport, output === 'program-and-sources');
-  return { ok: targets.every((t) => out[t]?.kind === 'emitted'), digest: compiled.digest, diagnostics: compiled.diagnostics, targets: out };
+  return { styles: { ok: targets.every((t) => out[t]?.kind === 'emitted'), digest: compiled.digest, diagnostics: compiled.diagnostics, targets: out }, compiled };
 }
 
 function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean): NativeStyleOutput | NativeStyleBlocked {
