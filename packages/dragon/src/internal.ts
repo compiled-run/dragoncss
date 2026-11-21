@@ -212,10 +212,12 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   return out;
 }
 
-/** Each element's computed text-transform in one case, by element address; null when the case did not resolve. */
-export function resolvedTextTransforms(compiled: object, assignment: Assignment): ReadonlyMap<string, TextTransform> | null {
-  const c = caseOf(compiled, assignment);
-  if (typeof c === 'string' || c.resolved === null) return null;
+/** Each element's computed text-transform in one case in one @media band (0 without bands), by element address; null when the case did not resolve there. */
+export function resolvedTextTransforms(compiled: object, assignment: Assignment, band: number): ReadonlyMap<string, TextTransform> | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  if (c === undefined || c.resolved === null) return null;
   const out = new Map<string, TextTransform>();
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, textTransformOf(el.props));

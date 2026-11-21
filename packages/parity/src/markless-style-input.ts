@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -797,6 +797,17 @@ type ParsedSelector = ParsedRule['selectors'][number];
 type ParsedCompound = ParsedSelector['parts'][number]['compound'];
 type InputElement = Extract<MarklessStyleInput['nodes'][number], { readonly kind: 'element' }>;
 
+/** The compounds an element must match, all of them, for one part of a selector; an :is(), :where() or "of S" argument's subject also its host's. */
+type Subject = readonly ParsedCompound[];
+
+/** Part j's subject in `sel`: an argument's subject (j 0) is also its `host`, unless the argument is negated (:not()), when only the host's. */
+function subjectAt(sel: ParsedSelector, host: Subject | null, negated: boolean): (j: number) => Subject {
+  return (j) => {
+    const own = (sel.parts[j] as ParsedSelector['parts'][number]).compound;
+    return j === 0 && host !== null ? (negated ? host : [...host, own]) : [own];
+  };
+}
+
 /** Whether a compound may match an element in some state: its type, and each class and id it names among those the element takes. */
 function mayMatch(c: ParsedCompound, n: InputElement): boolean {
   if (c.tag !== null && c.tag !== n.element) return false;
@@ -817,16 +828,15 @@ function mayMatch(c: ParsedCompound, n: InputElement): boolean {
 function checkRowPositions(parsed: MarklessStyleInput, rules: readonly ParsedRule[]): void {
   const parents = new Set((parsed.repeats ?? []).map((r) => r.parent));
   const children = parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && parents.has(n.parent));
-  const reaches = (c: ParsedCompound): string[] => children.filter((n) => mayMatch(c, n)).map((n) => n.id);
-  // host: the compound an :is(), :not() or "of S" argument's subject stands for.
-  const positional = (sel: ParsedSelector, host: ParsedCompound | null): string[] => {
-    const at = (j: number): ParsedCompound => (j === 0 && host !== null ? host : (sel.parts[j] as ParsedSelector['parts'][number]).compound);
+  const reaches = (c: Subject): string[] => children.filter((n) => c.every((x) => mayMatch(x, n))).map((n) => n.id);
+  const positional = (sel: ParsedSelector, host: Subject | null, negated = false): string[] => {
+    const at = subjectAt(sel, host, negated);
     return sel.parts.flatMap((p, i) => [
       ...(p.combinator === '+' || p.combinator === '~' ? [...reaches(at(i)), ...reaches(at(i - 1))] : []),
       ...p.compound.pseudos.flatMap((ps) => {
         if (ps.kind === 'nth') return [...reaches(at(i)), ...(ps.of ?? []).flatMap((s) => positional(s, at(i)))];
         if (ps.kind === 'only') return reaches(at(i));
-        if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => positional(s, at(i)));
+        if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => positional(s, at(i), ps.kind === 'not'));
         if (ps.kind === 'has') return ps.selectors.flatMap((s) => [...(s.anchor === '+' || s.anchor === '~' ? reaches(at(i)) : []), ...positional(s, null)]);
         return [];
       }),
@@ -849,32 +859,39 @@ function inputRules(parsed: MarklessStyleInput): ParsedRule[] {
 const mayMatchDocument = (c: ParsedCompound, tag: 'html' | 'body'): boolean => (c.tag === null || c.tag === tag) && c.classes.length === 0 && c.ids.length === 0;
 
 /**
- * Refuses a selector that tests whether a list holds rows, which a phone's 0 rows and the build's one template answer differently:
- * :empty on a list's parent, or :has() on a list's parent or an ancestor of it whose argument may match an element of a row.
+ * Refuses a selector that tests whether a list holds rows, or what a row's text holds, which a phone's rows and the build's one
+ * template answer differently: :empty on a list's parent or on a row's element that holds a row's text, or :has() (on any subject)
+ * whose argument may match an element of a row and may reach one from its subject: down from a list's parent or an ancestor, or,
+ * through + or ~, from beside one of those. A :has() on a row's element that only descends stays in that row.
  */
 function checkRowCount(parsed: MarklessStyleInput, rules: readonly ParsedRule[]): void {
   const byId = new Map(parsed.nodes.map((n) => [n.id, n] as const));
-  const holders = new Set<string | null>();
   const above = new Set<string | null>();
   for (const r of parsed.repeats ?? []) {
-    holders.add(r.parent);
     for (let at: string | null = r.parent; ; at = byId.get(at)?.parent ?? null) {
       above.add(at);
       if (at === null) break;
     }
   }
-  const elementsIn = (ids: ReadonlySet<string | null>): InputElement[] => parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && ids.has(n.id));
-  const reaches = (c: ParsedCompound, ids: ReadonlySet<string | null>): string[] => [...elementsIn(ids).filter((n) => mayMatch(c, n)).map((n) => n.id), ...(ids.has(null) && mayMatchDocument(c, 'body') ? ['body'] : []), ...(ids === above && mayMatchDocument(c, 'html') ? ['html'] : [])];
-  const rowElements = parsed.nodes.filter((n): n is InputElement => n.kind === 'element' && n.row !== undefined);
-  const counted = (sel: ParsedSelector, host: ParsedCompound | null): string[] => {
-    const at = (j: number): ParsedCompound => (j === 0 && host !== null ? host : (sel.parts[j] as ParsedSelector['parts'][number]).compound);
+  const elements = parsed.nodes.filter((n): n is InputElement => n.kind === 'element');
+  const rowTexts = new Set(parsed.nodes.filter((n) => n.kind === 'text' && n.row !== undefined).map((n) => n.parent));
+  const holders = new Set<string | null>([...(parsed.repeats ?? []).map((r) => r.parent), ...rowTexts]);
+  const beside = new Set(elements.filter((n) => above.has(n.parent)).map((n) => n.id));
+  // null is the document's body, which holds every list; html is above it.
+  const reaches = (c: Subject, ids: ReadonlySet<string | null>, document: boolean): string[] => [...elements.filter((n) => ids.has(n.id) && c.every((x) => mayMatch(x, n))).map((n) => n.id), ...(document && c.every((x) => mayMatchDocument(x, 'body')) ? ['body'] : []), ...(document && c.every((x) => mayMatchDocument(x, 'html')) ? ['html'] : [])];
+  const rowElements = elements.filter((n) => n.row !== undefined);
+  const counted = (sel: ParsedSelector, host: Subject | null, negated = false): string[] => {
+    const at = subjectAt(sel, host, negated);
     return sel.parts.flatMap((p, i) => p.compound.pseudos.flatMap((ps) => {
-      if (ps.kind === 'empty') return reaches(at(i), holders);
+      if (ps.kind === 'empty') return reaches(at(i), holders, holders.has(null));
       if (ps.kind === 'nth') return (ps.of ?? []).flatMap((s) => counted(s, at(i)));
-      if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => counted(s, at(i)));
+      if (ps.kind === 'is' || ps.kind === 'not') return ps.selectors.flatMap((s) => counted(s, at(i), ps.kind === 'not'));
       if (ps.kind === 'has') {
-        const row = ps.selectors.some((s) => s.parts.some((q) => rowElements.some((n) => mayMatch(q.compound, n))));
-        return [...(row ? reaches(at(i), above) : []), ...ps.selectors.flatMap((s) => counted(s, null))];
+        return ps.selectors.flatMap((s) => {
+          const row = s.parts.some((q) => rowElements.some((n) => mayMatch(q.compound, n)));
+          const sideways = s.anchor === '+' || s.anchor === '~' || s.parts.some((q) => q.combinator === '+' || q.combinator === '~');
+          return [...(row ? [...reaches(at(i), above, true), ...(sideways ? reaches(at(i), beside, false) : [])] : []), ...counted(s, null)];
+        });
       }
       return [];
     }));
@@ -882,7 +899,7 @@ function checkRowCount(parsed: MarklessStyleInput, rules: readonly ParsedRule[])
   for (const rule of rules) {
     if (rule.declarations.length === 0) continue;
     const ids = [...new Set(rule.selectors.filter((sel) => !sel.dropped).flatMap((sel) => counted(sel, null)))];
-    if (ids.length > 0) fail(`a selector tests whether a list holds rows from ${ids.join(', ')} (:empty, or :has() reaching a row); a style that depends on how many rows a list has is not supported yet`);
+    if (ids.length > 0) fail(`a selector tests whether a list holds rows from ${ids.join(', ')} (:empty, or :has() reaching a row); a style that depends on how many rows a list has, or on a row's text, is not supported yet`);
   }
 }
 
@@ -903,13 +920,16 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
   checkRowPositions(parsed, rules);
   const mainIds = dragonNodeIds(parsed);
   // The build lays out a text transformed (resolve.ts transformRun); a phone gets a row's text as typed.
-  for (const c of compiledCases(compiled)) {
-    const transforms = resolvedTextTransforms(compiled, c.assignment);
-    if (transforms === null) return fail(`a case of ${parsed.component} did not resolve`);
-    for (const n of parsed.nodes) {
-      if (n.kind !== 'text' || n.row === undefined) continue;
-      const transform = transforms.get(mainIds.get(n.parent) as string);
-      if (transform !== undefined && transform !== 'none') fail(`${n.id}: a row's text with text-transform: ${transform} is not supported yet; a phone lays out the text it is given`);
+  const bands = nativeBands(compiled);
+  for (let band = 0; band < (bands === null ? 1 : bands.table.bands.length); band++) {
+    for (const c of compiledCases(compiled)) {
+      const transforms = resolvedTextTransforms(compiled, c.assignment, band);
+      if (transforms === null) return fail(`a case of ${parsed.component} did not resolve in band ${band}`);
+      for (const n of parsed.nodes) {
+        if (n.kind !== 'text' || n.row === undefined) continue;
+        const transform = transforms.get(mainIds.get(n.parent) as string);
+        if (transform !== undefined && transform !== 'none') fail(`${n.id}: a row's text with text-transform: ${transform}${bands === null ? '' : ` (under ${bands.conditions[band] ?? `band ${band}`})`} is not supported yet; a phone lays out the text it is given`);
+      }
     }
   }
   const rowStates = new Set(parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell));

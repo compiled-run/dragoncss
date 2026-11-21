@@ -179,7 +179,7 @@ describe('styled @for rows', () => {
   });
 
   it('refuses a position a third row or later first reaches, and a position under a row state other than the initial one', () => {
-    for (const css of ['.note:nth-child(3) { margin-top: 40px; }', '.note:nth-child(n+3) { margin-top: 40px; }', '.note ~ .note ~ .note { margin-top: 40px; }', '.note:not(.pinned):first-child { background: #ff0000; }', '.notes > :is(:nth-last-child(4)) { padding: 30px; }', '.note:has(~ .note:not(.pinned)) { background: #ff0000; }']) {
+    for (const css of ['.note:nth-child(3) { margin-top: 40px; }', '.note:nth-child(n+3) { margin-top: 40px; }', '.note ~ .note ~ .note { margin-top: 40px; }', '.note:not(.pinned):first-child { background: #ff0000; }', '.notes > :is(:nth-last-child(4)) { padding: 30px; }', '.note:has(~ .note:not(.pinned)) { background: #ff0000; }', '@media (min-width: 600px) { .note:nth-child(3) { margin-top: 40px; } }']) {
       expect(() => marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true), css).toThrow("a style that depends on a row's position");
     }
   });
@@ -211,13 +211,17 @@ describe('styled @for rows', () => {
     expect(() => marklessStyleExport(withCss('.title.mk-1gmxfth { text-transform: uppercase; }'), PATH, undefined, 'system', undefined, true)).toThrow('text-transform: uppercase is not supported yet');
     expect(() => marklessStyleExport(withCss('.notes.mk-1gmxfth { text-transform: lowercase; }'), PATH, undefined, 'system', undefined, true)).toThrow('text-transform: lowercase is not supported yet');
     expect(() => marklessStyleExport(withCss('.heading.mk-1gmxfth { text-transform: uppercase; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
+    // Only in an @media band the phone switches to at run time, not the one the build lays out in.
+    for (const css of ['@media (prefers-color-scheme: dark) { .title.mk-1gmxfth { text-transform: uppercase; } }', '@media (min-width: 600px) { .title.mk-1gmxfth { text-transform: uppercase; } }']) {
+      expect(() => marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true), css).toThrow('text-transform: uppercase');
+    }
   });
 
   it('refuses a style that depends on how many rows a list holds, and keeps a :has() inside a row', () => {
-    for (const css of ['.notes.mk-1gmxfth:has(> .note) { padding: 12px; }', '.notes:empty { display: none; }', '.page:not(:has(.note)) { padding: 0; }', 'main:has(.title) { padding: 30px; }', 'body:has(.note) { margin: 4px; }']) {
+    for (const css of ['.notes.mk-1gmxfth:has(> .note) { padding: 12px; }', '.notes:empty { display: none; }', '.page:not(:has(.note)) { padding: 0; }', 'main:has(.title) { padding: 30px; }', 'body:has(.note) { margin: 4px; }', '.heading.mk-1gmxfth:has(~ .notes .note) { margin-bottom: 20px; }', '.empty:has(+ .notes > .note) { display: none; }', ':is(.heading:has(~ .notes li)) { margin-bottom: 20px; }', '.notes:empty + .action { margin-top: 0; }', '.title:empty { display: none; }', '@media (prefers-color-scheme: dark) { .notes:has(> .note) { padding: 12px; } }']) {
       expect(() => marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true), css).toThrow('a style that depends on how many rows a list has');
     }
-    expect(() => marklessStyleExport(withCss('.note:has(.title) { gap: 4px; } .page:has(.heading) { padding: 20px; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
+    expect(() => marklessStyleExport(withCss('.note:has(.title) { gap: 4px; } .page:has(.heading) { padding: 20px; } .notes ~ .action { margin-top: 14px; } .heading:has(~ .action) { margin-bottom: 6px; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
   });
 
   it('refuses two lists in one parent by name', () => {
