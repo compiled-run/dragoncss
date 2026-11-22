@@ -1043,7 +1043,6 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
     else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
-    else if (c.kind === 'control' && c.style.display === 'inline-block') throw new HitError(controlRefusal(c.id));
     else if ((c.kind === 'box' || c.kind === 'replaced') && (c.style.position === 'fixed' || c.style.position === 'sticky')) throw new HitError(fixedRefusal(c.id, c.style.position));
     else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) throw new HitError(floatRefusal(c.id));
     else kids++;
