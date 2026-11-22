@@ -50,8 +50,8 @@ Every number below was measured in the pinned Chrome 145.0.7632.6 headless shell
   - `checkRange` no longer names search.
   - An editable search field is refused by the editing refusal.
   - `::-webkit-search-cancel-button` author styles are refused.
-  - Centred and end `text-align` on the field, and centred `text-align` on its `::placeholder`, are refused (`reject-controls-search-align`, `reject-controls-search-placeholder-align`).
-  - A `::placeholder` margin is refused (`reject-controls-search-placeholder-margin`).
+  - Centred and end `text-align` on the field, and centred `text-align` on its `::placeholder`, are refused on the phones, as the web output still compiles (`form-search.test.ts`).
+  - A `::placeholder` margin is refused on the phones (`form-search.test.ts`).
 - Hit: no dedicated hit fixture yet. With no button box (R4), a search field's hits are a text field's, which the existing hit lanes cover.
 - The Markless notes list page's search field compiles readonly through `markless-style-input`. It compiles editable once editing lands.
 
