@@ -94,7 +94,7 @@ import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
 import type { Edges } from '../../layout/src/box.ts';
 import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
-import { controlAsBox } from '../../layout/src/controls.ts';
+import { checkboxMarks, controlAsBox } from '../../layout/src/controls.ts';
 import { markerTextId } from '../../layout/src/marker.ts';
 import type { LinePiece } from '../../layout/src/inline.ts';
 import { inlineLeaves, leafFontOf, placeLines } from '../../layout/src/inline.ts';
@@ -190,8 +190,8 @@ import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import { symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
-import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
-import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape, textShadowLayerOver } from '../../layout/src/paint-shadow.ts';
+import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape, ShadowTransform } from '../../layout/src/paint-shadow.ts';
+import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerMapped, outerShadowLayerOver, outerShadowLayerOverMapped, platformOver, shadowTransform, shapeCoverage, shapeType, spreadShape, textShadowLayerOver } from '../../layout/src/paint-shadow.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -1047,8 +1047,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   };
 }
 
-function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
+function decodeText(v: JsonValue, path: string): TextLeaf {
+  const o = obj(v, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -1125,6 +1125,10 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     const o = obj(v, ['kind', 'size', 'font', 'lineHeight', 'searchCancel'], path);
     return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), searchCancel: bool(field(o, 'searchCancel', path), `${path}.searchCancel`) };
   }
+  if (k === 'text-area') {
+    const o = obj(v, ['kind', 'cols', 'rows', 'font', 'lineHeight'], path);
+    return { kind: 'text-area', cols: numField(o, 'cols', path), rows: numField(o, 'rows', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
   if (k === 'text-editor') {
     obj(v, ['kind'], path);
     return { kind: 'text-editor' };
@@ -1142,8 +1146,9 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'legend' };
   }
   if (k === 'select-menulist') {
-    const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth'], path);
-    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path) };
+    const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth', 'options'], path);
+    const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => decodeText(x, `${path}.options[${i}]`));
+    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path), options };
   }
   if (k === 'select-inner') {
     obj(v, ['kind'], path);
@@ -1278,7 +1283,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1370,6 +1375,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
     containedContentSized: b('containedContentSized'),
+    menuListShownLabelOnly: b('menuListShownLabelOnly'),
     containerJoinsFlow: b('containerJoinsFlow'),
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
@@ -1596,6 +1602,31 @@ function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: str
 /** FORM-b: the drop-down arrow of every menulist-button select (paint-menulist.ts menuListArrows), only in a result that has one. */
 function arrowSuffix(input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): string {
   return arrowsJson(menuListArrows(input, boxes, measurer), null);
+}
+
+/**
+ * FORM-checkbox: ["checkbox-marks", [[id, x, y, side, plain, radius, backgroundInset, borderInset, borderWidth, [check x, y pairs],
+ * checkWidth]]], each checkbox's theme marks (controls.ts checkboxMarks) in device px from its snapped border box, at the ratio.
+ */
+function checkboxesJson(ids: readonly string[], abs: Map<string, LayoutRect>, dpr: number): string {
+  if (ids.length === 0) return '';
+  let out = ',["checkbox-marks",[';
+  ids.forEach((id, i) => {
+    const r = abs.get(id);
+    if (r === undefined) fail(`the checkbox ${id} has no laid-out box; a checkbox in a list row is not supported`);
+    else {
+      const b = snapRect(r);
+      const m = checkboxMarks(b.width, b.height, dpr);
+      if (i > 0) out += ',';
+      out += `[${q(id)},${h(m.x)},${h(m.y)},${h(m.side)},${m.plain ? 'true' : 'false'},${h(m.radius)},${h(m.backgroundInset)},${h(m.borderInset)},${h(m.borderWidth)},[`;
+      m.check.forEach((v, k) => {
+        if (k > 0) out += ',';
+        out += h(v);
+      });
+      out += `],${h(m.checkWidth)}]`;
+    }
+  });
+  return `${out}]]`;
 }
 
 /** The arrows in absolute device px, or with abs (absolute LU rects) relative to each select's snapped border box, as DragonTree stores them. */
@@ -1885,6 +1916,11 @@ function readByte(b: Uint8Array, i: number): number {
   return v === undefined ? -1 : v;
 }
 
+/** A shadow transform from arguments i (sx, sy, tx, ty, then layered as 0 or 1). */
+function shadowTransformArg(a: readonly JsonValue[], i: number): ShadowTransform {
+  return { sx: arg(a, i), sy: arg(a, i + 1), tx: arg(a, i + 2), ty: arg(a, i + 3), layered: arg(a, i + 4) !== 0 };
+}
+
 /** A shape result: its edges then its eight radii. */
 function shapeResult(s: ShadowShape): string {
   const xs: number[] = [s.left, s.top, s.right, s.bottom];
@@ -1976,6 +2012,16 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:shadow:outerShadowLayer') return layerResult(outerShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14))));
   if (name === 'paint:shadow:insetShadowLayer') return layerResult(insetShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17))));
   if (name === 'paint:shadow:outerShadowLayerOver') return layerResult(outerShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), backdropFills(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayerMapped') return layerResult(outerShadowLayerMapped(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), shadowTransformArg(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayerOverMapped') {
+    const n = arg(a, 14);
+    const fills = 19 + 9 * n;
+    return layerResult(outerShadowLayerOverMapped(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * n), shadowFaults(a, 16 + 9 * n), backdropFills(a, fills), shadowTransformArg(a, fills + 1 + 16 * arg(a, fills))));
+  }
+  if (name === 'paint:shadow:shadowTransform') {
+    const m = shadowTransform(decodeOps(item(a, 1, '$'), '$[1]'), decodeOrigin(item(a, 2, '$'), '$[2]'), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), tableTrig(item(a, 8, '$'), '$[8]'));
+    return numList([m.sx, m.sy, m.tx, m.ty, m.layered ? 1 : 0]);
+  }
   if (name === 'paint:shadow:insetShadowLayerOver') return layerResult(insetShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17)), backdropFills(a, 22 + 9 * arg(a, 17))));
   if (name === 'paint:shadow:textShadowLayerOver') {
     // A glyph count n, n code points, n pen xs, size, baseline, the shadows, dpr, the faults and the backdrop.
@@ -3608,7 +3654,7 @@ function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]):
 }
 
 type PlanVariant = { readonly rootFontSize: number; readonly root: LayoutBox };
-type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly fields: readonly SlotField[]; readonly writes: readonly SlotWrite[]; readonly refusals: readonly SlotRefusal[] };
+type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly checkboxes: readonly string[]; readonly fields: readonly SlotField[]; readonly writes: readonly SlotWrite[]; readonly refusals: readonly SlotRefusal[] };
 
 // ---------------------------------------------------------------- typed slots: style values that follow state (markless-slots.ts)
 
@@ -3894,7 +3940,15 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   const count = planSlots(plan).length;
   const slotted = (assignments[k] as JsonValue).kind === 'obj' && (assignments[k] as JsonObj).values.has('slotFields');
   if (slotted !== count > 0) fail(`${path}: ${count > 0 ? 'the plan has slots and the assignment binds none' : 'the assignment binds slots the plan does not have'}`);
-  const ao = obj(assignments[k] as JsonValue, slotted ? ['variant', 'dashed', 'scroll', 'slotFields', 'slotWrites', 'slotRefusals'] : ['variant', 'dashed', 'scroll'], path);
+  const boxed = (assignments[k] as JsonValue).kind === 'obj' && (assignments[k] as JsonObj).values.has('checkboxes');
+  const keys: string[] = ['variant', 'dashed', 'scroll'];
+  if (boxed) keys.push('checkboxes');
+  if (slotted) {
+    keys.push('slotFields');
+    keys.push('slotWrites');
+    keys.push('slotRefusals');
+  }
+  const ao = obj(assignments[k] as JsonValue, keys, path);
   const variant = numField(ao, 'variant', path);
   const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
   if (!Number.isInteger(variant) || variant < 0 || variant >= variants.length) fail(`${path}.variant: ${variant} is not a variant`);
@@ -3909,10 +3963,14 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   });
   const scrollers = new Map<string, boolean>();
   for (const s of arr(field(ao, 'scroll', path), `${path}.scroll`)) scrollers.set(str(s, `${path}.scroll`), true);
+  const checkboxes: string[] = [];
+  if (boxed) {
+    for (const c of arr(field(ao, 'checkboxes', path), `${path}.checkboxes`)) checkboxes.push(str(c, `${path}.checkboxes`));
+  }
   const fields = slotted ? slotFields(field(ao, 'slotFields', path), count, `${path}.slotFields`) : [];
   const writes = slotted ? slotWrites(field(ao, 'slotWrites', path), count, `${path}.slotWrites`) : [];
   const refusals = slotted ? slotRefusals(field(ao, 'slotRefusals', path), count, `${path}.slotRefusals`) : [];
-  return { variant, dashed, scrollers, fields, writes, refusals };
+  return { variant, dashed, scrollers, checkboxes, fields, writes, refusals };
 }
 
 /**
@@ -3942,8 +4000,8 @@ export function checkMarklessPlan(line: string): string {
  * result is ["ok", pageScroll, nodes] with every number as its bit pattern: pageScroll [minX, maxX, minY, maxY] or ["undecided",
  * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
  * left] or null, lines or null, borderOps or null, scrollRange or null]; on a slotted page ("slots" given), then the slot
- * writes; with a menulist-button select, last, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
- * its select's snapped border box.
+ * writes; with a menulist-button select, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
+ * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson).
  */
 export function runMarklessLayout(line: string): string {
   try {
@@ -4297,7 +4355,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       const range = rangeOf.get(b.id);
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
-    const arrows = arrowsJson(menuListArrows(input, boxes, measurer), abs);
+    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}`;
     if (!o.values.has('slots')) return `${out}]${arrows}]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
     if (spliced === null) return `${out}${arrows}]`;

@@ -6,9 +6,13 @@
 // The hit lane hit-tests grid items in order-modified document order (GRID G-HIT, rt-hit.ts gridOrders), so native :hover, :active
 // and :focus rules compile in a case with a grid container.
 import type { FixtureSpec } from '../fixtures.ts';
-import { both, reject } from './define.ts';
+import { both, layout, reject } from './define.ts';
 
 export const GRID: readonly FixtureSpec[] = [
+  // FORM: block buttons and selects as grid items, in fixed, fr and auto tracks, stretched and aligned; with readonly text fields
+  // in ltr only, since an rtl text field's preserved editor text is refused (FORM-b).
+  both('grid-controls'),
+  layout('grid-controls-fields'),
   both('grid-inert-placement'),
   both('grid-inert-templates'),
   // GRID G1a: grid layout in block flow and as a flex item, each exact against Chrome 145 in both directions.

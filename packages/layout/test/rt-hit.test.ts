@@ -244,17 +244,43 @@ describe('hitTableOf and hitRefusal refuse a form control by name', () => {
   };
   const REASON = 'btn is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)';
 
-  it('throws the named HitError for a block button and a range, in block and flex parents', async () => {
+  it('throws the named HitError for a range, in block and flex parents', async () => {
     const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
     const { ahemMeasurer, validateLayoutInput } = await import('../src/index.ts');
-    for (const kind of ['button', 'range'] as const) {
-      for (const display of ['block', 'flex'] as const) {
-        const { input, facts } = await setup(display, true, kind);
-        expect(validateLayoutInput(JSON.parse(JSON.stringify(input))).ok, `${kind} ${display}`).toBe(true);
-        expect(hitRefusal(input), `${kind} ${display}`).toBe(REASON);
-        expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS), `${kind} ${display}`).toThrow(new HitError(REASON));
-      }
+    for (const display of ['block', 'flex'] as const) {
+      const { input, facts } = await setup(display, true, 'range');
+      expect(validateLayoutInput(JSON.parse(JSON.stringify(input))).ok, display).toBe(true);
+      expect(hitRefusal(input), display).toBe(REASON);
+      expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS), display).toThrow(new HitError(REASON));
     }
+  });
+
+  it('hits a block button as the box it lays out as, with its own children, in block and flex parents', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    for (const display of ['block', 'flex'] as const) {
+      const { input, facts } = await setup(display, true, 'button');
+      expect(hitRefusal(input), display).toBeNull();
+      const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+      expect(t.ids.filter((id) => !id.includes(':')), display).toEqual(['html', 'p', 'wrap', 'btn', 'label', 'icon', 'after']);
+      expect(t.activation[t.ids.indexOf('btn')], display).toBe(true);
+    }
+  });
+
+  it('hits a select, a text field and a textarea as one box, retargeting their UA shadow parts to the control', async () => {
+    const { box, control, neutralEnvironment, px, text, ahemFont } = await import('./helpers.ts');
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
+    const select = control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [] }, { display: 'flex', width: px(60) }, [control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')], strut)]);
+    const field = control('f', { kind: 'text-field', size: 4, font: ahemFont(10), lineHeight: { kind: 'normal' }, searchCancel: false }, { display: 'block', width: px(60) }, [control('f::editor', { kind: 'text-editor' }, {}, [text('f::editor:text0', 'XX')], strut)], null);
+    const area = control('a', { kind: 'text-area', cols: 4, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'block' }, [control('a::editor', { kind: 'text-editor' }, {}, [text('a::editor:text0', 'XX XX')], strut)], null);
+    const root = { ...box('html', { width: px(100) }), children: [select, field, area] };
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    expect(hitRefusal(input)).toBeNull();
+    const facts = new Map(['html', 's', 'f', 'a'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
+    const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    expect(t.ids).toEqual(['html', 's', 'f', 'a']);
   });
 
   it('leaves the same tree with a plain box in the control\'s place unaffected', async () => {
