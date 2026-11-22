@@ -42,7 +42,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-select-natural-width'),
   reject('reject-controls-select-multiple', 'DRAGON_UNSUPPORTED_ELEMENT', '<select data-dragon-id="s" multiple=""><option data-dragon-id="o">A</option></select>', '<select multiple> s is a list box, which waits for the FORM-b listbox package'),
   reject('reject-controls-select-appearance', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', '<select> s with appearance: auto and no author background, border or box-shadow is Chrome\'s themed menulist'),
-  reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
+  reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s" data-dragon-listed-options=""><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
   reject('reject-controls-select-optgroup', 'DRAGON_UNSUPPORTED_ELEMENT', '<optgroup data-dragon-id="g"><option data-dragon-id="o">A</option></optgroup>', '<optgroup> g is not supported: an option group waits for FORM-b select'),
   // GRID-items: a range stays refused as a grid item; a fieldset's refusal is reject-fieldset-grid-item.
   reject('reject-grid-control-range', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input> r is a grid item, and a form control as a grid item is not supported yet'),
