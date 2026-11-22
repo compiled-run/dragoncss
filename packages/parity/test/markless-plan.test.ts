@@ -129,6 +129,21 @@ describe('the layout plan of a Markless export', () => {
     expect(JSON.parse(checkMarklessPlan(JSON.stringify(unread)))).toEqual(['harness-error', `$.plan.variants[${last}].root.style.position: unexpected running`]);
   });
 
+  it('records the same plan in worker threads as in this thread', () => {
+    const text = readFileSync(repoPath(FLUID), 'utf8');
+    const before = process.env['DRAGON_PLAN_WORKERS'];
+    try {
+      process.env['DRAGON_PLAN_WORKERS'] = '1';
+      const serial = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      process.env['DRAGON_PLAN_WORKERS'] = '4';
+      const workers = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      expect(JSON.stringify(workers)).toBe(JSON.stringify(serial));
+    } finally {
+      if (before === undefined) delete process.env['DRAGON_PLAN_WORKERS'];
+      else process.env['DRAGON_PLAN_WORKERS'] = before;
+    }
+  });
+
   it('records every root width a phone from 320 to 1400 css px can have, in whole device and whole css px', () => {
     const w = planWidths(2.625);
     expect(w[0]).toBeCloseTo(320, 9);
