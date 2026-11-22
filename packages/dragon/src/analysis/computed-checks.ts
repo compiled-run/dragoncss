@@ -1924,6 +1924,10 @@ const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue, fieldText: Rgba
   ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
 ];
 
+// Neither the closed menulist (the shown label in the select's style) nor Chrome's picker item (internal_popup_menu.cc reads an option's
+// colour, background, font, text-transform, direction, visibility and display) reads an option's box-sizing, as an app's * rule sets it.
+const OPTION_UNDRAWN: ReadonlySet<Longhand> = new Set<Longhand>(['box-sizing']);
+
 /**
  * FORM-b: a single select with appearance: none, or auto devolved to menulist-button (Chrome's menulist, resolve.ts); everything
  * else about one is refused by name.
@@ -1952,7 +1956,7 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
     }
   }
   for (const o of selectOptionsOf(el)) {
-    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([, v]) => v.declaration !== null);
+    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([p, v]) => v.declaration !== null && !OPTION_UNDRAWN.has(p));
     if (styled !== undefined) refuseOn(o, styled[1], 'option-style', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${styled[0]} on <option> ${o.element.address} is not supported: Chrome draws only its label in the closed select, and Dragon writes no rule for an option`, `Style <select> ${address} instead of <option> ${o.element.address}.`);
   }
   const appearance = el.props.get('appearance') as ResolvedValue;
