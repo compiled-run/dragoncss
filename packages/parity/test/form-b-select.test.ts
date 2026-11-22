@@ -104,6 +104,22 @@ describe('FORM-b select S1', () => {
     expect(errors(compile('sel-align', 'select { align-items: start; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/align-items: start on <select> s is not supported/));
   });
 
+  // Blink LayoutBox::HasControlClip and OverflowClipRect: a menulist clips its inner element to its content box whatever its overflow.
+  it('clips the inner element to the select natively, and refuses a vertical padding where the select can be shorter than its line', () => {
+    const c = compile('sel-clip', '.short { height: 4px; }', sel('s', '<option>AA</option>', ' class="short"'));
+    expect(errors(c)).toEqual([]);
+    const r = dragon.nativePrograms(c, []);
+    if (r.kind !== 'ready') throw new Error(r.reason);
+    for (const p of [r.programs.uikit, r.programs['android-views']]) {
+      expect(p.nodes.find((n) => n.id === 's')?.clips).toBe(true);
+      expect(p.nodes.find((n) => n.id === 's::inner')?.facts['stacking']).toMatchObject({ clipChain: expect.arrayContaining(['s']) });
+    }
+    expect(errors(compile('sel-pad-h', 'select { height: 4px; padding: 1px 0; }', sel('s', '<option>AA</option>')))).toContainEqual(expect.stringMatching(/padding-top: 1px on <select> s is not supported where its height can be less than its label's line/));
+    expect(errors(compile('sel-pad-grid', '.g { display: grid; } select { padding-bottom: 2px; }', `<div data-dragon-id="g" class="g">${sel('s', '<option>AA</option>')}</div>`))).toContainEqual(expect.stringMatching(/padding-bottom: 2px on <select> s is not supported/));
+    expect(errors(compile('sel-pad-row', '.r { display: flex; height: 24px; } select { padding-bottom: 4px; }', `<div data-dragon-id="r" class="r">${sel('s', '<option>AA</option>')}</div>`))).toContainEqual(expect.stringMatching(/padding-bottom: 4px on <select> s is not supported/));
+    expect(errors(compile('sel-pad-auto', 'select { padding: 2px 3px; }', sel('s', '<option>AA</option>')))).toEqual([]);
+  });
+
   it('names the change that clears a width refusal on a row flex item with min-width: auto: min-width: 0 and a px flex basis', () => {
     const c = compile('sel-manual', '.w { display: flex; width: 300px; } select { width: 100%; }', `<div data-dragon-id="w" class="w"><div data-dragon-id="c">${sel('s', '<option>A</option>')}</div></div>`);
     const d = c.diagnostics.find((x: Diagnostic) => x.message.includes('width: 100% on <select> s'));
