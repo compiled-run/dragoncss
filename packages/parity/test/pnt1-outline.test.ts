@@ -163,9 +163,9 @@ describe('PNT1 outline: a ring inside a transformed layer is where Chrome draws 
         for (let n = byId.get(id); n !== undefined; n = n.parent === null ? undefined : byId.get(n.parent)) if (((n.facts['transform'] as { ops: readonly unknown[] } | undefined)?.ops.length ?? 0) > 0) return true;
         return false;
       };
-      const owners = new Set<string>();
       const problems: string[] = [];
       for (const dpr of DPRS) {
+        const owners = new Set<string>();
         const chrome = committedPixels(c.id, dpr);
         if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
         const flat = outlines(p, boxes(p, c.environment.viewport, dpr), dpr, 0);
@@ -188,10 +188,11 @@ describe('PNT1 outline: a ring inside a transformed layer is where Chrome draws 
           if (ring === undefined || ringsOver([0, 0, 0, 0], [ring], pt.x, pt.y)[3] === 0) missed++;
         }
         expect(points, `transformed outline points @${dpr}`).toBeGreaterThan(0);
+        // Every transformed outline is compared at every DPR, the double ring and the transform-origin case included.
+        expect([...owners].sort(), `transformed outlines with points @${dpr}`).toEqual(['grow', 'kid', 'press', 'turn']);
         expect(missed, `points the untransformed rings miss @${dpr}`).toBeGreaterThan(0);
       }
       expect(problems).toEqual([]);
-      expect([...owners].sort()).toEqual(['grow', 'kid', 'press', 'turn']);
     });
   }
 });

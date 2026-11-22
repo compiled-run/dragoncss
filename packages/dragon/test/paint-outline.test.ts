@@ -223,10 +223,12 @@ describe('outline: the native targets draw every style but auto, the side painte
         expect(errors(own).filter((d) => d.message.includes('outline')), `${css} ${outline}`).toEqual([]);
       }
     }
-    const dashed = tree('.b { height: 5px; outline: 2px dashed red; } .q { transform: scale(0.97); }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
-    const got = errors(dashed).filter((d) => d.message.startsWith('b has a dashed outline'));
-    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `b has a dashed outline inside q, which has a transform, and Dragon draws only solid and double outlines inside a transformed layer${SUFFIX}`]]);
-    expectCatalogued(got);
+    for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) {
+      const sided = tree(`.b { height: 5px; outline: 3px ${style} red; } .q { transform: scale(0.97); }`, (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+      const got = errors(sided).filter((d) => d.message.startsWith(`b has a ${style} outline`));
+      expect(got.map((d) => [d.target, d.message]), style).toEqual([['ios', `b has a ${style} outline inside q, which has a transform, and Dragon draws only solid and double outlines inside a transformed layer${SUFFIX}`]]);
+      expectCatalogued(got);
+    }
     // A transform with opacity is still a layer the outline would have to join the composite of.
     const both = tree('.b { height: 5px; outline: 2px solid red; } .q { transform: scale(0.97); opacity: 0.85; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
     expect(errors(both).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0])).toEqual(['b has an outline inside q']);
