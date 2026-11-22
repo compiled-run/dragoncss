@@ -1138,12 +1138,12 @@ function refuseSizeKeywords(el: ResolvedElement, where: string, manual: string, 
 // css-sizing-4 §5.1: the engine takes aspect-ratio as Blink's raw layout ratio. A ratio whose parts are not whole 64ths needs
 // Blink's float continued fraction, which the compiler does not run, and a percentage block size beside a ratio has no
 // percentage basis in the engine (packages/layout/src/validate.ts); both are refused on every target at the declaration.
-function checkAspectRatio(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkAspectRatio(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const ratio = el.props.get('aspect-ratio') as ResolvedValue;
   if (ratio.value.kind !== 'ratio') return;
-  const refuse = (source: ResolvedValue, what: string, message: string, manual: string): void => {
+  const refuse = (source: ResolvedValue, what: string, message: string, manual: string, on: readonly string[] = targets): void => {
     const origin = source.declaration === null ? el.element.node.origin : authored(source.declaration.valueSpan);
-    for (const t of targets) {
+    for (const t of on) {
       const id = `${t}|aspect-ratio-${what}|${JSON.stringify(origin)}|${el.element.address}`;
       if (reported.has(id)) continue;
       reported.add(id);
@@ -1159,12 +1159,32 @@ function checkAspectRatio(el: ResolvedElement, targets: readonly string[], diagn
   }
   // A replaced box resolves a percentage block size against its basis itself (packages/layout/src/replaced.ts).
   if (raw === 'degenerate' || isReplacedTag(el.element.tag)) return;
+  if (layoutParent !== null) refuseGridRatioItem(el, layoutParent, parentDisplay, shown, (v, what, message, manual) => refuse(v, what, message, manual, targets.filter((t) => t !== 'web')));
   for (const p of RATIO_BLOCK_SIZES) {
     const v = el.props.get(p) as ResolvedValue;
     const percent = v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
     if (!percent) continue;
     refuse(v, p, `${p}: ${valueToString(v.value)} beside aspect-ratio: ${shown} on ${el.element.address} is unsupported: the layout engine has no percentage basis for a block size it transfers through a ratio`, `Use a px ${p} beside aspect-ratio, or remove ${p}.`);
   }
+}
+
+/** Native: grid.ts never transfers a size through a non-replaced item's ratio, so these two auto-width shapes differ from Chrome 145. */
+function refuseGridRatioItem(el: ResolvedElement, parent: ResolvedElement, parentDisplay: string | null, shown: string, refuse: (v: ResolvedValue, what: string, message: string, manual: string) => void): void {
+  if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
+  const v = (p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
+  if (keywordOf(v('position')) === 'absolute' || keywordOf(v('position')) === 'fixed' || keywordOf(v('width')) !== 'auto') return;
+  const ratio = v('aspect-ratio');
+  const address = el.element.address;
+  const self = (own: Longhand, items: Longhand): string => {
+    const s = valueToString(v(own).value);
+    return s === 'auto' ? valueToString((parent.props.get(items) as ResolvedValue).value) : s;
+  };
+  const justify = self('justify-self', 'justify-items');
+  const minHeight = v('min-height');
+  const block = keywordOf(v('height')) !== 'auto' ? `height: ${valueToString(v('height').value)}` : keywordOf(minHeight) !== 'auto' && !isZeroLength(minHeight.value) ? `min-height: ${valueToString(minHeight.value)}` : self('align-self', 'align-items') === 'stretch' ? 'align-self: stretch' : null;
+  if (justify !== 'stretch' && block !== null) refuse(ratio, 'grid-transfer', `aspect-ratio: ${shown} on ${address}, a grid item with an auto width, ${block} and justify-self: ${justify}, is not laid out yet: the engine does not transfer a grid item's block size through its ratio to its width`, `Give ${address} a width, or justify-self: stretch.`);
+  const sides = (['top', 'bottom'] as const).filter((side) => !isZeroLength(v(`padding-${side}`).value) || (!isZeroLength(v(`border-${side}-width`).value) && !['none', 'hidden'].includes(keywordOf(v(`border-${side}-style`)))));
+  if (keywordOf(v('box-sizing')) === 'border-box' && sides.length > 0) refuse(ratio, 'grid-border-box', `aspect-ratio: ${shown} on ${address}, a border-box grid item with an auto width and a ${sides.join(' and ')} border or padding, is not laid out yet: the engine does not widen a grid item past its column when its vertical border and padding exceed the height its ratio gives`, `Give ${address} a width, or box-sizing: content-box.`);
 }
 
 const BORDER_STYLES: readonly Longhand[] = ['border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style'];
@@ -2271,7 +2291,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
-    if (!here) checkAspectRatio(el, targets, diagnostics, reported);
+    if (!here) checkAspectRatio(el, layoutParent, parentDisplay, targets, diagnostics, reported);
     if (!here && el.element.tag === 'fieldset') checkFieldset(el, parentDisplay, targets, diagnostics, reported);
     if (!here) checkInsideFieldset(el, chain, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
