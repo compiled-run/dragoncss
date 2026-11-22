@@ -51,6 +51,9 @@ function boxes(c: Compiled<string>): Map<string, { x: number; y: number; width: 
 }
 
 /** A select with its options given as '<option ...>' markup; each option is given the id "<select id>-o<k>". */
+// A select whose options are a host list's rows (the Markless export marks it): Dragon cannot read its other labels.
+const LISTED = ' data-dragon-listed-options=""';
+
 const sel = (id: string, options: string, attrs = ''): string => {
   let k = 0;
   return `<select data-dragon-id="${id}"${attrs}>${options.replace(/<option(?![^>]*data-dragon-id)/g, () => `<option data-dragon-id="${id}-o${k++}"`)}</select>`;
@@ -108,8 +111,11 @@ describe('FORM-b select S1', () => {
     expect(errors(compile('sel-inline', 'select { display: inline-block; }', `<div data-dragon-id="d">${sel('s', '<option>A</option>')}</div>`))).toContainEqual(expect.stringMatching(/display: inline-block on <select> s makes it an inline-level control/));
     expect(errors(compile('sel-float', 'select { float: left; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/float: left on <select> s is not supported/));
     expect(errors(compile('sel-abs', 'select { position: absolute; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/position: absolute on <select> s is not supported/));
-    expect(errors(compile('sel-width', 'select { width: auto; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/width: auto on <select> s is not supported: Chrome sizes a select to its widest option/));
-    expect(errors(compile('sel-flex-min', '.row { display: flex; }', `<div data-dragon-id="r" class="row">${sel('s', '<option>A</option>')}</div>`))).toContainEqual(expect.stringMatching(/<select> s is a flex item with min-width: auto/));
+    expect(errors(compile('sel-width', 'select { width: auto; }', sel('s', '<option>A</option>', LISTED)))).toContainEqual(expect.stringMatching(/width: auto on <select> s is not supported: Chrome sizes a select to its widest option/));
+    expect(errors(compile('sel-flex-min', '.row { display: flex; }', `<div data-dragon-id="r" class="row">${sel('s', '<option>A</option>', LISTED)}</div>`))).toContainEqual(expect.stringMatching(/<select> s is a flex item with min-width: auto/));
+    // FORM-b S4: with every option listed, the engine measures the widest one, so neither width is refused.
+    expect(errors(compile('sel-width-s4', 'select { width: auto; }', sel('s', '<option>A</option>')))).toEqual([]);
+    expect(errors(compile('sel-flex-min-s4', '.row { display: flex; }', `<div data-dragon-id="r" class="row">${sel('s', '<option>A</option>')}</div>`))).toEqual([]);
     expect(errors(compile('sel-flex-min0', '.row { display: flex; } select { min-width: 0; }', `<div data-dragon-id="r" class="row">${sel('s', '<option>A</option>')}</div>`))).toEqual([]);
     expect(errors(compile('sel-font', 'select { font-family: revert; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/<select> s uses Chrome's user-agent control font/));
     expect(errors(compile('sel-dir', 'select { flex-direction: column; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/flex-direction: column on <select> s is not supported/));
@@ -127,22 +133,26 @@ describe('FORM-b select S1', () => {
       expect(p.nodes.find((n) => n.id === 's::inner')?.facts['stacking']).toMatchObject({ clipChain: expect.arrayContaining(['s']) });
     }
     expect(errors(compile('sel-pad-h', 'select { height: 4px; padding: 1px 0; }', sel('s', '<option>AA</option>')))).toContainEqual(expect.stringMatching(/padding-top: 1px on <select> s is not supported where its height can be less than its label's line/));
-    expect(errors(compile('sel-pad-grid', '.g { display: grid; } select { padding-bottom: 2px; }', `<div data-dragon-id="g" class="g">${sel('s', '<option>AA</option>')}</div>`))).toContainEqual(expect.stringMatching(/padding-bottom: 2px on <select> s is not supported/));
+    // A grid item in implicit auto rows is at least its content's height, so its padding is laid out.
+    expect(errors(compile('sel-pad-grid-auto', '.g { display: grid; } select { padding-bottom: 2px; }', `<div data-dragon-id="g" class="g">${sel('s', '<option>AA</option>')}</div>`))).toEqual([]);
+    expect(errors(compile('sel-pad-grid', '.g { display: grid; grid-template-rows: 6px; } select { padding-bottom: 2px; }', `<div data-dragon-id="g" class="g">${sel('s', '<option>AA</option>')}</div>`))).toContainEqual(expect.stringMatching(/padding-bottom: 2px on <select> s is not supported/));
     expect(errors(compile('sel-pad-row', '.r { display: flex; height: 24px; } select { padding-bottom: 4px; }', `<div data-dragon-id="r" class="r">${sel('s', '<option>AA</option>')}</div>`))).toContainEqual(expect.stringMatching(/padding-bottom: 4px on <select> s is not supported/));
     expect(errors(compile('sel-pad-auto', 'select { padding: 2px 3px; }', sel('s', '<option>AA</option>')))).toEqual([]);
   });
 
   it('names the change that clears a width refusal on a row flex item with min-width: auto: min-width: 0 and a px flex basis', () => {
-    const c = compile('sel-manual', '.w { display: flex; width: 300px; } select { width: 100%; }', `<div data-dragon-id="w" class="w"><div data-dragon-id="c">${sel('s', '<option>A</option>')}</div></div>`);
+    const c = compile('sel-manual', '.w { display: flex; width: 300px; } select { width: 100%; }', `<div data-dragon-id="w" class="w"><div data-dragon-id="c">${sel('s', '<option>A</option>', LISTED)}</div></div>`);
     const d = c.diagnostics.find((x: Diagnostic) => x.message.includes('width: 100% on <select> s'));
     expect(d?.fix !== null && d?.fix !== undefined && 'manual' in d.fix ? d.fix.manual : null).toBe('Set min-width: 0 and a flex-basis in px on <div> c (flex: 1 1 0px; min-width: 0). Or give <select> s a width in px.');
-    const fixed = compile('sel-manual-fixed', '.w { display: flex; width: 300px; } .c { flex: 1 1 0px; min-width: 0; } select { width: 100%; }', `<div data-dragon-id="w" class="w"><div data-dragon-id="c" class="c">${sel('s', '<option>A</option>')}</div></div>`);
+    const fixed = compile('sel-manual-fixed', '.w { display: flex; width: 300px; } .c { flex: 1 1 0px; min-width: 0; } select { width: 100%; }', `<div data-dragon-id="w" class="w"><div data-dragon-id="c" class="c">${sel('s', '<option>A</option>', LISTED)}</div></div>`);
     expect(errors(fixed)).toEqual([]);
   });
 
   // Blink LayoutBox::DefaultIntrinsicContentInlineSize: a select's min-content and max-content widths are its widest option's.
   it('refuses a percentage width or flex basis that a content-sized box reads, and an intrinsic min-width, max-width or flex basis', () => {
-    const wide = sel('s', '<option>A</option><option>AAAAAAAAAAAAAAAAAAAA</option>');
+    const wide = sel('s', '<option>A</option><option>AAAAAAAAAAAAAAAAAAAA</option>', LISTED);
+    // FORM-b S4: every refusal below holds for a select whose options are a list's rows; with every option listed it compiles.
+    expect(errors(compile('sel-pct-s4', 'select { width: 100%; } .w { float: left; }', `<div data-dragon-id="w" class="w">${sel('s', '<option>A</option><option>AAAAAAAAAAAAAAAAAAAA</option>')}</div>`)).filter((e) => e.includes('<select>'))).toEqual([]);
     const inside = (css: string, wrap = '', item = ''): string[] => errors(compile('sel-pct', `select { width: 100%; ${item} } ${css}`, wrap === '' ? wide : `<div data-dragon-id="w" class="w">${wrap === 'two' ? `<div data-dragon-id="c" class="c">${wide}</div>` : wide}</div>`));
     const content = (at: string, why: string): RegExp => new RegExp(`DRAGON_UNSUPPORTED_VALUE width: 100% on <select> s is not supported here: <div> ${at} takes its width from its content \\(${why.replace(/[()]/g, '\\$&')}\\)`);
     expect(inside('.w { float: left; }', 'one')).toContainEqual(expect.stringMatching(content('w', 'float: left with an auto width')));

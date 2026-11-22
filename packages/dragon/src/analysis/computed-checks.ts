@@ -2029,7 +2029,11 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
   const padded = (['padding-top', 'padding-bottom'] as const).find((p) => !isZeroLength((el.props.get(p) as ResolvedValue).value));
   // Any flex item: a column item's main size and a stretched row item's cross size both come from its container.
   const flexItem = parentDisplay === 'flex' || parentDisplay === 'inline-flex';
-  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || parentDisplay === 'grid' || parentDisplay === 'inline-grid' || flexItem;
+  // A grid item in implicit auto rows is at least its content's height (the row's base size is its min-content contribution).
+  const container = chain.filter((a) => !isContents(a)).at(-1);
+  const autoRows = container !== undefined && keywordOf(container.props.get('grid-template-rows') as ResolvedValue) === 'none' && keywordOf(container.props.get('grid-auto-rows') as ResolvedValue) === 'auto';
+  const gridItem = (parentDisplay === 'grid' || parentDisplay === 'inline-grid') && !autoRows;
+  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || gridItem || flexItem;
   if (padded !== undefined && capped) {
     const v = el.props.get(padded) as ResolvedValue;
     refuse(v, 'padding-clip', `${padded}: ${valueToString(v.value)} on <select> ${address} is not supported where its height can be less than its label's line: Chrome clips the label to the select's content box, and Dragon clips it to the padding box`, `Remove the vertical padding from <select> ${address}, or leave its height auto outside a grid or flex container.`);
