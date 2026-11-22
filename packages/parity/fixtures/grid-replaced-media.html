@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.g { display: grid; grid-template-columns: 200px; grid-template-rows: 120px; width: 200px; margin-bottom: 4px; background-color: #eee; }
+.a { grid-template-columns: auto; grid-template-rows: auto; width: 360px; }
+iframe, video { background-color: #cdf; }
+iframe { border: 0; }
+.ps { place-self: stretch; }
+.c { place-self: center; }
+.w50 { width: 50%; }
+.r { aspect-ratio: 2 / 1; width: 80px; }
+.bp { border: 2px solid #036; padding: 3px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g1" class="g"><iframe data-dragon-id="f1"></iframe></div>
+<div data-dragon-id="g2" class="g"><iframe data-dragon-id="f2" class="ps"></iframe></div>
+<div data-dragon-id="g3" class="g"><iframe data-dragon-id="f3" class="c w50"></iframe></div>
+<div data-dragon-id="g4" class="g"><iframe data-dragon-id="f4" class="r ps"></iframe></div>
+<div data-dragon-id="g5" class="g a"><iframe data-dragon-id="f5" class="bp"></iframe></div>
+<div data-dragon-id="g6" class="g"><video data-dragon-id="v1"></video></div>
+<div data-dragon-id="g7" class="g"><video data-dragon-id="v2" class="ps"></video></div>
+<div data-dragon-id="g8" class="g a"><video data-dragon-id="v3" width="120" height="60"></video></div>
+</body>
+</html>

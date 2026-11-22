@@ -22,6 +22,7 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
   { name: 'role', exceptOn: [], html: 'role (HTML §3.2.8) is accessibility semantics; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-role' },
   { name: 'title', exceptOn: [], html: 'title (HTML §3.2.6.1) is advisory information shown as a tooltip; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-title' },
   { name: 'ui-', exceptOn: [], html: 'ui-* is Dragon\'s state-attribute convention; HTML defines no such attribute, so HTML §15 has no rule keyed on it.', proof: 'attr-neutral-ui' },
+  { name: 'overlay', exceptOn: [], html: 'HTML defines no overlay attribute (HTML §16 Index lists none), so HTML §15 has no rule keyed on it; @markless/ui families set it on an open overlay for their own selectors.', proof: 'attr-neutral-overlay' },
   { name: 'rel', exceptOn: ['a', 'area', 'link'], html: 'rel is defined only on a, area, link and form (HTML §4.6.6); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-rel' },
   { name: 'target', exceptOn: ['a', 'area', 'link'], html: 'target is defined only on a, area and form (HTML §4.6.5); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-target' },
 ];
@@ -47,8 +48,13 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   ol: ['start', 'reversed'],
   li: ['value'],
   // FORM-a A4: an input's type picks its control (only range is laid out, computed-checks.ts refuses the others); min, max, value
-  // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures).
-  input: ['type', 'min', 'max', 'value', 'step'],
+  // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures). FORM-b: a text
+  // field's value is its editor's text and placeholder its placeholder's (forms/text-field.ts), size its default width
+  // (lower/ios-layout.ts textFieldSize), and readonly only stops editing (no html.css rule reads it; controls-text-field).
+  input: ['type', 'min', 'max', 'value', 'step', 'size', 'placeholder', 'readonly'],
+  // FORM-b: multiple and a size above 1 (a list box) are refused in computed-checks.ts; an option's value is never drawn.
+  select: ['disabled', 'multiple', 'size'],
+  option: ['selected', 'disabled', 'label', 'value'],
 };
 
 /** The package that owns the rendering effect of a refused attribute. */

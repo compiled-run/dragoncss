@@ -294,10 +294,10 @@ export function swiftExec(binary: string): Exec {
  */
 export const KOTLIN_HEAP = '-Xmx2g';
 
-export function kotlinExec(tool: KotlinTool, jar: string): Exec {
+export function kotlinExec(tool: KotlinTool, jar: string, heap: string = KOTLIN_HEAP): Exec {
   return (mode, input, output) => {
     touch(dirname(jar));
-    return execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', KOTLIN_HEAP, '-jar', jar, mode, input, output]);
+    return execSuite(join(tool.javaHome, 'bin/java'), ['-Xss64m', heap, '-jar', jar, mode, input, output]);
   };
 }
 

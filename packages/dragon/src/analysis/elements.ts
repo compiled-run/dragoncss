@@ -13,6 +13,7 @@ export const SUPPORTED_TAGS: ReadonlySet<string> = new Set([
   ...REPLACED_TAGS,
   ...SVG_SHAPE_TAGS,
   ...CONTROL_TAGS,
+  'option',
   'b', 'strong', 'em', 'i',
 ]);
 
@@ -41,6 +42,8 @@ export function uaTagOf(tag: string, type?: string, disabled = false): UaKey {
   if (tag === 'dialog') return 'dialog';
   if (tag === BACKDROP_TAG) return 'backdrop';
   if (GENERATED_TAGS.has(tag) || tag === MARKER_TAG) return 'dragon-unstyled';
+  // FORM-b: an option has no box; of its style only colour, direction, unicode-bidi and text-align are read, set as on a div.
+  if (tag === 'option') return 'div';
   const control = controlUaKey(tag, type, disabled);
   if (control !== null) return control;
   return (UNSTYLED_TAGS.has(tag) ? 'dragon-unstyled' : tag) as CapturedTag;

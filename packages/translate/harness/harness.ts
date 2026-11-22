@@ -1118,6 +1118,18 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     obj(v, ['kind'], path);
     return { kind: 'button-block' };
   }
+  if (k === 'text-field') {
+    const o = obj(v, ['kind', 'size', 'font', 'lineHeight'], path);
+    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
+  if (k === 'text-editor') {
+    obj(v, ['kind'], path);
+    return { kind: 'text-editor' };
+  }
+  if (k === 'text-placeholder') {
+    obj(v, ['kind'], path);
+    return { kind: 'text-placeholder' };
+  }
   if (k === 'fieldset') {
     obj(v, ['kind'], path);
     return { kind: 'fieldset' };
@@ -1125,6 +1137,14 @@ function controlKind(v: JsonValue, path: string): ControlKind {
   if (k === 'legend') {
     obj(v, ['kind'], path);
     return { kind: 'legend' };
+  }
+  if (k === 'select-menulist') {
+    const o = obj(v, ['kind', 'font', 'lineHeight'], path);
+    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
+  if (k === 'select-inner') {
+    obj(v, ['kind'], path);
+    return { kind: 'select-inner' };
   }
   return fail(`${path}: unknown kind ${k}`);
 }
@@ -1790,6 +1810,21 @@ function backdropFills(a: readonly JsonValue[], i: number): BackdropFill[] {
   return out;
 }
 
+/** Uint8Array semantics: a buffer of length n with v stored at index i, as its elements then the element read at i (-1 when absent). */
+function bytesStore(n: number, i: number, v: number): string {
+  const b = new Uint8Array(n);
+  b[i] = v;
+  const out: number[] = [];
+  for (let k = 0; k < b.length; k++) out.push(readByte(b, k));
+  out.push(readByte(b, i));
+  return numList(out);
+}
+
+function readByte(b: Uint8Array, i: number): number {
+  const v = b[i];
+  return v === undefined ? -1 : v;
+}
+
 /** A shape result: its edges then its eight radii. */
 function shapeResult(s: ShadowShape): string {
   const xs: number[] = [s.left, s.top, s.right, s.bottom];
@@ -2128,6 +2163,7 @@ export function runUnitsCase(line: string): string {
     if (first === undefined) return fail('empty case');
     const name = str(first, '$[0]');
     try {
+      if (name === 'bytes:store') return bytesStore(arg(a, 1), arg(a, 2), arg(a, 3));
       const paint = paintResult(name, a);
       if (paint !== null) return paint;
       return `["ok",${h(unitsResult(name, a))}]`;
@@ -3563,17 +3599,22 @@ function planSlots(plan: JsonObj): PlanSlot[] {
 
 /** The line's slot values, one per slot of the plan; a fraction for an integer slot, which the build sampled at whole numbers only, is refused. */
 function slotValues(o: JsonObj, slots: readonly PlanSlot[]): number[] {
-  const values: number[] = [];
   if (!o.values.has('slots')) {
     if (slots.length > 0) fail('$: the plan has slots and the line gives no values for them');
-    return values;
+    return [];
   }
-  const given = arr(field(o, 'slots', '$'), '$.slots');
-  if (given.length !== slots.length) fail(`$.slots: the line gives ${given.length} values and the plan has ${slots.length} slots`);
-  given.forEach((v, i) => {
-    const s = hexBits(str(v, `$.slots[${i}]`));
+  return slotList(field(o, 'slots', '$'), slots, '$.slots');
+}
+
+/** One value per plan slot, each its bit pattern in hex; a fraction for an integer slot is refused by name. */
+function slotList(v: JsonValue, slots: readonly PlanSlot[], path: string): number[] {
+  const values: number[] = [];
+  const given = arr(v, path);
+  if (given.length !== slots.length) fail(`${path}: the line gives ${given.length} values and the plan has ${slots.length} slots`);
+  given.forEach((g, i) => {
+    const s = hexBits(str(g, `${path}[${i}]`));
     const slot = slots[i] as PlanSlot;
-    if (slot.integer && Number.isFinite(s) && !Number.isInteger(s)) fail(`$.slots: ${slot.id} at ${s} is not a whole number, and it is declared integer (the build sampled it at whole numbers only)`);
+    if (slot.integer && Number.isFinite(s) && !Number.isInteger(s)) fail(`${path}: ${slot.id} at ${s} is not a whole number, and it is declared integer (the build sampled it at whole numbers only)`);
     values.push(s);
   });
   return values;
@@ -3649,9 +3690,9 @@ function slotRefusals(v: JsonValue, count: number, path: string): SlotRefusal[] 
   return out;
 }
 
-function refusedPiece(refusals: readonly SlotRefusal[], slot: number, piece: number): never {
-  for (const r of refusals) if (r.slot === slot && r.piece === piece) return fail(`$.slots: ${r.reason}`);
-  return fail(`$.slots: slot ${slot} has no rule for its value`);
+function refusedPiece(refusals: readonly SlotRefusal[], slot: number, piece: number, path: string): never {
+  for (const r of refusals) if (r.slot === slot && r.piece === piece) return fail(`${path}: ${r.reason}`);
+  return fail(`${path}: slot ${slot} has no rule for its value`);
 }
 
 function jsonAt(v: JsonValue, path: readonly JsonValue[], at: string): JsonValue {
@@ -3729,7 +3770,7 @@ function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: re
   for (const f of fields) {
     const s = slotAt(values, f.slot, path);
     const piece = f.pieces[slotPiece(s)] as SlotPiece;
-    if (piece.refused) refusedPiece(refusals, f.slot, slotPiece(s));
+    if (piece.refused) refusedPiece(refusals, f.slot, slotPiece(s), path);
     let patched = piece.template;
     for (const l of piece.leaves) {
       patched = jsonWith(patched, l.path, 0, { kind: 'num', num: slotValue(l.value, slotPiece(s), s) });
@@ -3740,10 +3781,21 @@ function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: re
 }
 
 function planObj(v: JsonValue): JsonObj {
-  const slotted = v.kind === 'obj' && v.values.has('slots');
-  const plan = obj(v, slotted ? ['version', 'faces', 'densities', 'variants', 'assignments', 'slots'] : ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
+  const keys: string[] = ['version', 'faces', 'densities', 'variants', 'assignments'];
+  if (v.kind === 'obj' && v.values.has('slots')) keys.push('slots');
+  if (v.kind === 'obj' && v.values.has('transformed')) keys.push('transformed');
+  const plan = obj(v, keys, '$.plan');
   if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
+  planTransformed(plan);
   return plan;
+}
+
+/** The text leaves the build lays out with a text-transform ($.plan.transformed), which a page text may not replace. */
+function planTransformed(plan: JsonObj): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  if (!plan.values.has('transformed')) return out;
+  for (const leaf of arr(field(plan, 'transformed', '$.plan'), '$.plan.transformed')) out.set(str(leaf, '$.plan.transformed'), true);
+  return out;
 }
 
 function planFaces(plan: JsonObj): Map<string, FontData> {
@@ -3841,11 +3893,16 @@ export function runMarklessLayout(line: string): string {
 /**
  * One Markless layout with the rows of its lists: as runMarklessLayout, with "rows": per list {"parent", "template": the ids of a
  * row's top boxes, in order, "rows": [{"key", "assignment" (whose variant the row's boxes are taken from), "texts": [[leaf id,
- * text]]}]}. Each row is a copy of the template named "<id>@<key>"; `shaper` shapes the text the build did not record.
+ * text]], "slots": one value per plan slot, required when the plan has slots}]}. Each row is a copy of the template named "<id>@<key>";
+ * `shaper` shapes the text the build did not record.
  */
 export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
   try {
-    return marklessLayout(obj(parseJson(line), ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'], '$'), shaper);
+    const parsed = parseJson(line);
+    const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'];
+    if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
+    if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
+    return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -3955,7 +4012,7 @@ function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, b
   return { kind: 'obj', keys: v.keys, values };
 }
 
-type RowEntry = { readonly key: string; readonly at: string; readonly parts: PlanAssignmentParts; readonly variant: JsonValue; readonly texts: Map<string, string>; readonly leaves: readonly string[] };
+type RowEntry = { readonly key: string; readonly at: string; readonly parts: PlanAssignmentParts; readonly variant: JsonValue; readonly texts: Map<string, string>; readonly leaves: readonly string[]; readonly values: readonly number[] };
 type RowList = { readonly parent: string; readonly template: readonly string[]; readonly rows: readonly RowEntry[] };
 
 /** The variant's tree with each list's template children replaced by one copy per row, in row order. */
@@ -4034,7 +4091,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density, live);
     const parts = planAssignment(plan, numField(o, 'assignment', '$'));
-    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'));
+    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null);
     const variant = spliced === null ? slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
@@ -4098,18 +4155,30 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
     if (!o.values.has('slots')) return `${out}]]`;
-    out += '],[';
-    parts.writes.forEach((w, i) => {
-      const s = slotAt(values, w.slot, '$.slots');
-      let path = '';
-      w.path.forEach((p, j) => {
-        path += `${j === 0 ? '' : ','}${p.kind === 'str' ? q(p.text) : p.kind === 'num' ? `${p.num}` : 'null'}`;
-      });
-      const rule = w.pieces[slotPiece(s)] as SlotRule;
-      if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s));
-      out += `${i === 0 ? '' : ','}[${q(w.node)},${q(w.write)},[${path}],${h(slotValue(rule, slotPiece(s), s))}]`;
+    out += `],${writeNumbers(parts, values, '$.slots')}`;
+    if (spliced === null) return `${out}]`;
+    // Each row's write numbers at its own values, for every node of its assignment; the host applies those of its copy.
+    out += ',[';
+    spliced.rows.forEach((row, i) => {
+      out += `${i === 0 ? '' : ','}[${q(row.key)},${writeNumbers(row.parts, row.values, `${row.at}.slots`)}]`;
     });
     return `${out}]]`;
+}
+
+/** Every bound write number of an assignment at these slot values: [[node, write kind, path, value], ...]. */
+function writeNumbers(parts: PlanAssignmentParts, values: readonly number[], at: string): string {
+  let out = '[';
+  parts.writes.forEach((w, i) => {
+    const s = slotAt(values, w.slot, at);
+    let path = '';
+    w.path.forEach((p, j) => {
+      path += `${j === 0 ? '' : ','}${p.kind === 'str' ? q(p.text) : p.kind === 'num' ? `${p.num}` : 'null'}`;
+    });
+    const rule = w.pieces[slotPiece(s)] as SlotRule;
+    if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s), at);
+    out += `${i === 0 ? '' : ','}[${q(w.node)},${q(w.write)},[${path}],${h(slotValue(rule, slotPiece(s), s))}]`;
+  });
+  return `${out}]`;
 }
 
 /** Whether `s` holds the character `c`. */
@@ -4118,14 +4187,71 @@ function holds(s: string, c: string): boolean {
   return false;
 }
 
-type RowsVariant = { readonly variant: PlanVariant; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean> };
+type RowsVariant = { readonly variant: PlanVariant; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly rows: readonly RowEntry[] };
+
+/** Whether the plan's style reads slots. */
+function slotted(plan: JsonObj): boolean {
+  return planSlots(plan).length > 0;
+}
+
+/** The page's own texts a host gives at run time ($.texts): each text leaf's current string, by leaf id. */
+function pageTexts(textsValue: JsonValue | null): Map<string, string> {
+  const texts = new Map<string, string>();
+  if (textsValue === null) return texts;
+  const pairs = arr(textsValue, '$.texts');
+  for (let pi = 0; pi < pairs.length; pi++) {
+    const p = arr(pairs[pi] as JsonValue, `$.texts[${pi}]`);
+    if (p.length !== 2) fail(`$.texts[${pi}]: expected [leaf id, text]`);
+    const leaf = str(p[0] as JsonValue, `$.texts[${pi}][0]`);
+    if (texts.has(leaf)) fail(`$.texts[${pi}]: ${leaf} is given twice`);
+    texts.set(leaf, str(p[1] as JsonValue, `$.texts[${pi}][1]`));
+  }
+  return texts;
+}
+
+/** `v` with each page text leaf named in `texts` holding its given string, white space processed as the build processes it. */
+function withPageTexts(v: JsonValue, texts: ReadonlyMap<string, string>, used: Map<string, boolean>, alone: boolean): JsonValue {
+  if (v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    for (const item of v.items) items.push(withPageTexts(item, texts, used, alone));
+    return { kind: 'arr', items };
+  }
+  if (v.kind !== 'obj') return v;
+  const id = v.values.get('id');
+  const kind = v.values.get('kind');
+  const values = new Map<string, JsonValue>();
+  for (const k of v.keys) {
+    const value = v.values.get(k) as JsonValue;
+    if (k === 'text' && kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str' && texts.has(id.text)) {
+      const mode = v.values.get('whiteSpaceCollapse');
+      used.set(id.text, true);
+      values.set(k, { kind: 'str', text: rowText(texts.get(id.text) as string, mode !== undefined && mode.kind === 'str' ? mode.text : '', `$.texts: ${id.text}`, alone) });
+    } else values.set(k, withPageTexts(value, texts, used, k === 'children' && kind !== undefined && kind.kind === 'str' && kind.text === 'box' && value.kind === 'arr' && value.items.length === 1));
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+/** The id of every text leaf in `v`. */
+function textLeafIds(v: JsonValue, into: Map<string, boolean>): void {
+  if (v.kind === 'arr') {
+    for (const item of v.items) textLeafIds(item, into);
+    return;
+  }
+  if (v.kind !== 'obj') return;
+  const id = v.values.get('id');
+  const kind = v.values.get('kind');
+  if (kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str') into.set(id.text, true);
+  for (const k of v.keys) textLeafIds(v.values.get(k) as JsonValue, into);
+}
 
 /** The page variant with each list's rows in place of its template ($.rows), with the page's and each row copy's dashed borders and scrolling. */
-function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue): RowsVariant {
+function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null): RowsVariant {
+  const slots = planSlots(plan);
   const vi = parts.variant;
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
   const lists = new Map<string, RowList>();
   const parents: string[] = [];
+  const all: RowEntry[] = [];
   const given = arr(rowsValue, '$.rows');
   for (let li = 0; li < given.length; li++) {
     const at = `$.rows[${li}]`;
@@ -4139,7 +4265,10 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
     const entries = arr(field(lo, 'rows', at), `${at}.rows`);
     for (let ri = 0; ri < entries.length; ri++) {
       const rat = `${at}.rows[${ri}]`;
-      const ro = obj(entries[ri] as JsonValue, ['key', 'assignment', 'texts'], rat);
+      const withSlots = (entries[ri] as JsonValue).kind === 'obj' && (entries[ri] as JsonObj).values.has('slots');
+      if (withSlots && slots.length === 0) fail(`${rat}.slots: the plan has no slots`);
+      if (!withSlots && slots.length > 0) fail(`${rat}.slots: the plan has slots and the row gives no values for them`);
+      const ro = obj(entries[ri] as JsonValue, withSlots ? ['key', 'assignment', 'texts', 'slots'] : ['key', 'assignment', 'texts'], rat);
       const k = numField(ro, 'assignment', rat);
       if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`${rat}.assignment: ${k} is not an assignment`);
       const texts = new Map<string, string>();
@@ -4158,7 +4287,11 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
       if (keys.has(key)) fail(`${rat}.key: row key ${key} is listed twice`);
       keys.set(key, true);
       const own = planAssignment(plan, k);
-      rows.push({ key, at: rat, parts: own, variant: variantRootJson(plan, own.variant), texts, leaves });
+      const rowValues = withSlots ? slotList(field(ro, 'slots', rat), slots, `${rat}.slots`) : [];
+      const variant = slotted(plan) ? slottedRoot(variantRootJson(plan, own.variant), own.fields, own.refusals, rowValues, `${rat}.slots`) : variantRootJson(plan, own.variant);
+      const entry: RowEntry = { key, at: rat, parts: own, variant, texts, leaves, values: rowValues };
+      rows.push(entry);
+      all.push(entry);
     }
     const parent = str(field(lo, 'parent', at), `${at}.parent`);
     if (lists.has(parent)) fail(`${at}.parent: ${parent} holds two lists, which is not supported`);
@@ -4171,8 +4304,16 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   const sink: RowSink = { dashed: new Map<string, PlanDashed>(), scrollers: new Map<string, boolean>(), placed: new Map<string, boolean>() };
   for (const [id, d] of parts.dashed) sink.dashed.set(id, d);
   for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
-  const root = withRows(variantRootJson(plan, vi), lists, sink);
+  const page = slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
+  const texts = pageTexts(textsValue);
+  const transformed = planTransformed(plan);
+  for (const [leaf, _text] of texts) if (transformed.has(leaf)) fail(`$.texts: ${leaf} is laid out with a text-transform, which a phone does not apply to the text it is given`);
+  const usedTexts = new Map<string, boolean>();
+  const root = withRows(withPageTexts(page, texts, usedTexts, false), lists, sink);
+  const kept = new Map<string, boolean>();
+  textLeafIds(root, kept);
+  for (const [leaf, _text] of texts) if (!usedTexts.has(leaf) || !kept.has(leaf)) fail(`$.texts: ${leaf} is no text leaf of the page outside its lists' rows`);
   for (const parent of parents) if (!sink.placed.has(parent) && (lists.get(parent) as RowList).rows.length > 0) fail(`$.rows: the page has no box ${parent} to hold its list's rows`);
   if (root.kind !== 'obj' || kindOf(root, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
-  return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers };
+  return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers, rows: all };
 }

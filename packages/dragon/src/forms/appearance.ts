@@ -1,12 +1,12 @@
-// The used appearance of a button or range, per css-ui-4's devolvable widgets and the devolve probe captured from Chrome
+// The used appearance of a button, range or text field, per css-ui-4's devolvable widgets and the devolve probe captured from Chrome
 // (appearance.generated.ts; Chrome decides this in layout_theme.cc). A push button with an author background or border devolves
-// to CSS painting; a slider never does. A range's thumb has its own
+// to CSS painting, and so does a text field (FORM-c); a slider never does. A range's thumb has its own
 // appearance (html.css gives ::-webkit-slider-thumb appearance:auto), so the whole range is CSS-painted only when the input and the
 // thumb are both appearance:none.
 import { NO_FORM_FAULTS } from './faults.ts';
 import type { FormFaults } from './faults.ts';
 
-export type Control = 'button' | 'range';
+export type Control = 'button' | 'range' | 'textfield';
 
 export type AuthorControlStyle = {
   readonly appearance: 'auto' | 'none';

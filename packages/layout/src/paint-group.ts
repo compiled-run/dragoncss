@@ -90,7 +90,7 @@ export function groupTileSpan(i: number, tileSize: number): number[] {
  * flat groups of five (left, top, right, bottom in device px, then 1 for an item of one draw op cc folds, or 0 for anything else: a
  * box with a background and a border, a text run, whose DrawTextBlob cc never folds, or a box of a group nested in it, whose
  * SaveLayerAlpha follows the group's own, so cc folds the inner group and never the outer: cc/paint/paint_op_buffer_iterator.cc:96-146).
- * The group folds when exactly one item meets the tile and it folds; the result is that item's index (its first number / 5). A box's
+ * The group folds when exactly one item meets the tile, outset by one pixel, and it folds; the result is that item's index (its first number / 5). A box's
  * one op is its background alone, its border alone when all four sides are solid in one colour (Blink box_border_painter.cc:261-279,
  * 1255-1278: one stroked rect or FillDRRect), or a lone solid side (one FillRect, :841-866).
  */
@@ -104,7 +104,9 @@ export function groupTileFoldIndex(draws: readonly number[], tileLeft: number, t
     const t = at(draws, k + 1);
     const r = at(draws, k + 2);
     const b = at(draws, k + 3);
-    if (!(l < tileRight && r > tileLeft && t < tileBottom && b > tileTop)) continue;
+    // cc searches its rtree with the tile canvas's local clip bounds, which Skia outsets by one pixel for antialiasing
+    // (cc/paint/display_item_list.cc:28-34, 120-129 OffsetsOfOpsToRaster; Skia src/core/SkCanvas.cpp:1621-1625 getLocalClipBounds).
+    if (!(l < tileRight + 1 && r > tileLeft - 1 && t < tileBottom + 1 && b > tileTop - 1)) continue;
     met += 1;
     foldable = at(draws, k + 4) === 1;
     index = floorOf(k / 5);

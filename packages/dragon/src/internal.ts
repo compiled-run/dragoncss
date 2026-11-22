@@ -5,7 +5,7 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
-import { environmentOf, markerStyleOf } from './analysis/resolve.ts';
+import { environmentOf, markerStyleOf, selectOptionsOf } from './analysis/resolve.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -198,7 +198,7 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
     items.set(el.element.address, el);
-    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+    for (const ch of [...el.children, ...selectOptionsOf(el)]) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
   // GEN-c: a ::marker box takes its color from its ::marker rules or its item, and has its initial background (transparent) and
@@ -306,7 +306,7 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
   const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     elements.set(el.element.address, el);
-    for (const ch of el.children) {
+    for (const ch of [...el.children, ...selectOptionsOf(el)]) {
       if (ch.kind === 'element') walk(ch);
       else {
         // A text node takes its element's fill (the property is inherited and text nodes carry only the text longhands).
@@ -608,7 +608,7 @@ export function nativeBandProgram(compiled: object, backend: NativeBackend, faul
 
 // SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
 export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
-export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledBox, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledBox, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
 // SELD-R2 PR 5: the native interaction gate's profile row keys (profile-rows.ts deriveInteractionRows).
 export { interactionContext, interactionRowFeature } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';

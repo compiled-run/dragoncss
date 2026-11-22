@@ -4,11 +4,15 @@
 // alpha, a float32 on both (CALayer.opacity backs UIView.alpha; View alpha is a Float).
 // PNT1-opacity-b: a group the compiler pre-composites (lower/paint/effects.ts opacity-group) is written through
 // dragonSetOpacityGroup instead. The view keeps alpha 1 and gets a DragonGroupView overlay as its last child, which shows Q:
-// the group's layer (the platform's own rendering of the group, the overlay hidden) over a software backdrop (white, then each
-// listed painter's square opaque fill and solid border sides, or an earlier group's Q), blitted per cc raster tile with the
-// translated paint-group.ts groupComposite. Q covers the group's extent at whole device px with nearest filtering. Any box layout
-// or paint change marks every overlay stale; each recomputes once in its next layout (iOS) or pre-draw (Android) pass. The
-// overlay is not interactive, hidden from accessibility, never a dump node and sorted after every other child.
+// the group's layer (the platform's own rendering of the group, the overlay hidden) over its backdrop, blitted per cc raster tile
+// with the translated paint-group.ts groupComposite, and clear where the layer is clear. PNT1-opacity-d: the backdrop is the
+// platform's own drawing of the root over the canvas white, with the group's view and every view painted after it hidden (iOS
+// CALayer.isHidden, restored exactly; Android DragonGroup.drawChild skips them), after each listed earlier group's Q is computed;
+// under the group's own scale or translate it is read at each local pixel centre mapped by the platform's transform. Q covers the
+// group's extent at whole device px with nearest filtering. Any box or text layout or paint change and any transform write marks
+// every overlay stale, and a recomputed overlay marks the groups that list it; each recomputes once in its next layout (iOS) or
+// pre-draw (Android) pass. The overlay is not interactive, hidden from accessibility, never a dump node and sorted after every
+// other child.
 // PNT1-filter: a group with a colour-matrix filter is written through dragonSetFilterGroup with its functions as (code, amount)
 // pairs; its overlay builds the matrices once (paint-group.ts groupFilterMatrices) and composites every pixel with
 // groupFilterComposite instead (the filter, then the opacity; a filtered layer never folds).
@@ -60,6 +64,10 @@ import CoreText
 
 /// Whether the opacity writer ignores the alpha; false except in the alpha-ignored plant build.
 public let dragonAlphaPlantIgnored = false
+/// Whether a group's fold leaves its outline rings out; false except in the outline-fold-ignored raster plant build.
+public let dragonOutlineFoldIgnored = false
+/// Whether the backdrop capture leaves the group and the views after it visible; false except in the group-backdrop-unhidden plant build.
+public let dragonBackdropPlantUnhidden = false
 
 /// The opacity write of a box (runtime writer): the computed opacity, shown as UIView.alpha = Chrome's alpha byte / 255 (group
 /// opacity).
@@ -100,8 +108,8 @@ public func dragonGroupsChanged() {
   for g in DragonGroups.all.allObjects { g.dragonMarkDirty() }
 }
 
-/// The group write of a box (runtime writer): the computed opacity, its backdrop box (nil for the canvas) and the painters before it
-/// there in paint order. The view keeps alpha 1; the overlay shows Chrome's composite.
+/// The group write of a box (runtime writer): the computed opacity, its backdrop box (always nil: the platform draws the backdrop) and
+/// the earlier groups its backdrop holds. The view keeps alpha 1; the overlay shows Chrome's composite.
 public func dragonSetOpacityGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity: Double, _ backdrop: String?, _ painters: [String]) {
   if !(opacity > 0 && opacity < 1) { fatalError("dragon: \(v.dragonId): group opacity \(opacity) is not in (0, 1)") }
   let raw: Double
@@ -276,6 +284,8 @@ public final class DragonGroupView: UIView {
     if !dragonDirty { return }
     guard let g = dragonGroupBox, let t = dragonTree, let host = superview else { return }
     dragonDirty = false
+    // A group painted after this one captures this overlay in its backdrop.
+    defer { for o in DragonGroups.all.allObjects where o !== self && o.dragonPainters.contains(g.dragonId) { o.dragonMarkDirty() } }
     DragonGroups.computing += 1
     defer { DragonGroups.computing -= 1 }
     CATransaction.begin()
@@ -336,50 +346,61 @@ public final class DragonGroupView: UIView {
       g.layer.render(in: ctx)
     } }
     isHidden = false
-    // The backdrop: the white canvas, then each painter before the group in its backdrop box, in paint order.
-    var bp = [UInt8](repeating: 255, count: w * h * 4)
-    func fill(_ l: Int, _ tp: Int, _ r: Int, _ b: Int, _ c: DragonRGBA8) {
-      let x0 = max(l, ext[0]), y0 = max(tp, ext[1]), x1 = min(r, ext[2]), y1 = min(b, ext[3])
-      if x0 >= x1 || y0 >= y1 { return }
-      for y in y0..<y1 {
-        var i = ((y - ext[1]) * w + (x0 - ext[0])) * 4
-        for _ in x0..<x1 {
-          bp[i] = UInt8(c.r); bp[i + 1] = UInt8(c.g); bp[i + 2] = UInt8(c.b); bp[i + 3] = 255
-          i += 4
-        }
-      }
-    }
+    // The backdrop: the platform's own drawing of what paints before the group, over the canvas white. Each earlier group's Q is
+    // computed first; the group's view and every view painted after it are hidden for the capture, then restored exactly.
     for id in dragonPainters {
-      guard let p = t.node(id) as? DragonBoxView else { fatalError("dragon: \(g.dragonId): backdrop painter \(id) is not a built box") }
-      if let pg = p.dragonGroup {
-        pg.dragonComputeIfNeeded()
-        let q = pg.dragonQRect
-        let qw = q[2] - q[0]
-        let x0 = max(q[0], ext[0]), y0 = max(q[1], ext[1]), x1 = min(q[2], ext[2]), y1 = min(q[3], ext[3])
-        if x0 >= x1 || y0 >= y1 { continue }
-        for y in y0..<y1 {
-          for x in x0..<x1 {
-            let i = ((y - ext[1]) * w + (x - ext[0])) * 4
-            let j = ((y - q[1]) * qw + (x - q[0])) * 4
-            for k in 0..<4 { bp[i + k] = pg.dragonQ[j + k] }
-          }
-        }
-        continue
+      guard let p = t.node(id) as? DragonBoxView, let pg = p.dragonGroup else { fatalError("dragon: \(g.dragonId): earlier group \(id) is not a built group") }
+      pg.dragonComputeIfNeeded()
+    }
+    // The group's transform to the root, from the platform: a root point of each local layout point.
+    let gl = g.layer
+    func toRoot(_ x: Double, _ y: Double) -> CGPoint { gl.convert(CGPoint(x: x - Double(gr.minX), y: y - Double(gr.minY)), to: root.layer) }
+    let transformed = !CATransform3DIsIdentity(gl.transform)
+    var bext = ext
+    if transformed {
+      let cs = [(ext[0], ext[1]), (ext[2], ext[1]), (ext[2], ext[3]), (ext[0], ext[3])].map { toRoot(Double($0.0) / s, Double($0.1) / s) }
+      let xs = cs.map { Double($0.x) * s }, ys = cs.map { Double($0.y) * s }
+      bext = [Int((xs.min() ?? 0).rounded(.down)), Int((ys.min() ?? 0).rounded(.down)), Int((xs.max() ?? 0).rounded(.up)), Int((ys.max() ?? 0).rounded(.up))]
+      bext = [max(bext[0], rootEdges[0]), max(bext[1], rootEdges[1]), min(bext[2], rootEdges[2]), min(bext[3], rootEdges[3])]
+    }
+    let bw = max(bext[2] - bext[0], 0), bh = max(bext[3] - bext[1], 0)
+    var bb = [UInt8](repeating: 255, count: bw * bh * 4)
+    if bw > 0 && bh > 0 {
+      var hidden: [(CALayer, Bool)] = []
+      func hide(_ l: CALayer) { hidden.append((l, l.isHidden)); l.isHidden = true }
+      hide(gl)
+      var v: UIView = g
+      while v !== root, let p = v.superview {
+        if let k = p.subviews.firstIndex(of: v) { for later in p.subviews[(k + 1)...] { hide(later.layer) } }
+        v = p
       }
-      if !p.dragonVisible { continue }
-      let e = p.dragonShape.edges.map { dragonCheckedInt($0, "\(id) backdrop edge") }
-      let c = p.dragonBackgroundColor
-      if c.a == 255 { fill(e[0], e[1], e[2], e[3], c) } else if c.a != 0 { fatalError("dragon: \(id): a translucent backdrop fill, which the compiler refuses under a group") }
-      let bw = p.dragonShape.borders.map { dragonCheckedInt($0, "\(id) backdrop border") }
-      for k in 0..<4 where bw[k] > 0 && p.dragonBorderStyles[k] != "none" && p.dragonBorderStyles[k] != "hidden" {
-        let bc = p.dragonBorderColors[k]
-        if p.dragonBorderStyles[k] != "solid" || (bc.a != 0 && bc.a != 255) { fatalError("dragon: \(id): a backdrop border side that is not solid and opaque, which the compiler refuses under a group") }
-        if bc.a == 0 { continue }
-        switch k {
-        case 0: fill(e[0], e[1], e[2], e[1] + bw[0], bc)
-        case 1: fill(e[2] - bw[1], e[1], e[2], e[3], bc)
-        case 2: fill(e[0], e[3] - bw[2], e[2], e[3], bc)
-        default: fill(e[0], e[1], e[0] + bw[3], e[3], bc)
+      if !dragonBackdropPlantUnhidden { dragonDisplayTree(root.layer) } else { for (l, was) in hidden.reversed() { l.isHidden = was }; hidden = []; dragonDisplayTree(root.layer) }
+      bb.withUnsafeMutableBytes { raw in
+        guard let ctx = CGContext(data: raw.baseAddress, width: bw, height: bh, bitsPerComponent: 8, bytesPerRow: bw * 4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("dragon: no RGBA8 context for a group backdrop") }
+        ctx.interpolationQuality = .none
+        ctx.translateBy(x: 0, y: CGFloat(bh))
+        ctx.scaleBy(x: CGFloat(s), y: -CGFloat(s))
+        ctx.translateBy(x: -CGFloat(Double(bext[0]) / s), y: -CGFloat(Double(bext[1]) / s))
+        root.layer.render(in: ctx)
+      }
+      for (l, was) in hidden.reversed() { l.isHidden = was }
+    }
+    // B in the group's local device px: the pixel under each local pixel centre once the platform maps the overlay.
+    var bp: [UInt8]
+    if !transformed {
+      bp = bb
+    } else {
+      bp = [UInt8](repeating: 255, count: w * h * 4)
+      let o = toRoot(0, 0), ux = toRoot(1, 0), uy = toRoot(0, 1)
+      let ax = Double(ux.x - o.x), bx = Double(ux.y - o.y), cx = Double(uy.x - o.x), dx = Double(uy.y - o.y)
+      for y in 0..<h {
+        for x in 0..<w {
+          let lx = (Double(ext[0] + x) + 0.5) / s, ly = (Double(ext[1] + y) + 0.5) / s
+          let px = Int(((Double(o.x) + ax * lx + cx * ly) * s).rounded(.down)) - bext[0]
+          let py = Int(((Double(o.y) + bx * lx + dx * ly) * s).rounded(.down)) - bext[1]
+          if px < 0 || py < 0 || px >= bw || py >= bh { continue }
+          let i = (y * w + x) * 4, j = (py * bw + px) * 4
+          for k in 0..<4 { bp[i + k] = bb[j + k] }
         }
       }
     }
@@ -397,6 +418,11 @@ public final class DragonGroupView: UIView {
       // each text line's ink (a DrawTextBlob, which cc never folds).
       var draws: [Double] = []
       for b in boxes where b.dragonVisible {
+        // PNT1-opacity-c C1: each outline ring is a display item at its outer rect; a solid outline's one ring folds alone in a tile.
+        if let o = b.dragonOutlineView, !dragonOutlineFoldIgnored {
+          let n = o.rings.count / 24
+          for k in 0..<n { draws += [o.origin[0] + o.rings[k * 24], o.origin[1] + o.rings[k * 24 + 1], o.origin[0] + o.rings[k * 24 + 2], o.origin[1] + o.rings[k * 24 + 3], n == 1 ? 1 : 0] }
+        }
         let fillsBg = b.dragonBackgroundColor.a > 0
         let sides = (0..<4).filter { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }.count
         let ops = dragonGroupBoxOps(fillsBg, sides)
@@ -439,7 +465,10 @@ public final class DragonGroupView: UIView {
           for x in 0..<w {
             let i = (y * w + x) * 4
             let packed: Double
-            if let m = dragonMatrices {
+            if lp[i + 3] == 0 {
+              // The group drew nothing here: the platform's own backdrop shows through.
+              packed = 0
+            } else if let m = dragonMatrices {
               packed = try paintGroup_groupFilterComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), m, a8)
             } else {
               packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
@@ -682,6 +711,10 @@ import java.nio.ByteBuffer
 
 /** Whether the opacity writer ignores the alpha; false except in the alpha-ignored plant build. */
 const val DRAGON_ALPHA_PLANT_IGNORED = false
+/** Whether a group's fold leaves its outline rings out; false except in the outline-fold-ignored raster plant build. */
+const val DRAGON_OUTLINE_FOLD_IGNORED = false
+/** Whether the backdrop capture leaves the group and the views after it drawn; false except in the group-backdrop-unhidden plant build. */
+const val DRAGON_BACKDROP_PLANT_UNHIDDEN = false
 
 /** The opacity write of a box (runtime writer): the computed opacity, shown as View.setAlpha(Chrome's alpha byte / 255f) (group opacity). */
 fun dragonSetOpacity(v: DragonBoxView, opacity: Double) {
@@ -719,6 +752,8 @@ fun dragonAfterLayoutEffects(v: DragonBoxView, shape: DragonBoxShape, scale: Dou
 object DragonGroups {
   val all = java.util.WeakHashMap<DragonGroupView, Boolean>()
   var computing = 0
+  /** The views a backdrop capture leaves out (DragonGroup.drawChild skips them); empty outside a capture. */
+  var backdropSkip: Set<View> = emptySet()
 }
 
 /** A box's layout or paint changed: every overlay's composite is stale (DragonBoxView.invalidate calls this). */
@@ -909,6 +944,8 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     } finally {
       DragonGroups.computing--
     }
+    // A group painted after this one captures this overlay in its backdrop.
+    for (o in DragonGroups.all.keys.toList()) if (o !== this && o.dragonPainters.contains(g.dragonId)) o.dragonMarkDirty()
   }
 
   private fun dragonCompute(g: DragonBoxView, t: DragonTree, host: ViewGroup) {
@@ -974,50 +1011,66 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       try { g.draw(canvas) } finally { skipping = false }
       layerBitmap.copyPixelsToBuffer(ByteBuffer.wrap(lp))
     }
-    // The backdrop: the white canvas, then each painter before the group in its backdrop box, in paint order.
-    val bp = ByteArray(w * h * 4) { 255.toByte() }
-    fun fill(l: Int, tp: Int, r: Int, b: Int, c: DragonRGBA8) {
-      val x0 = maxOf(l, ext[0]); val y0 = maxOf(tp, ext[1]); val x1 = minOf(r, ext[2]); val y1 = minOf(b, ext[3])
-      for (y in y0 until y1) {
-        var i = ((y - ext[1]) * w + (x0 - ext[0])) * 4
-        for (x in x0 until x1) {
-          bp[i] = c.r.toByte(); bp[i + 1] = c.g.toByte(); bp[i + 2] = c.b.toByte(); bp[i + 3] = 255.toByte()
-          i += 4
-        }
-      }
-    }
+    // The backdrop: the platform's own drawing of what paints before the group, over the canvas white. Each earlier group's Q is
+    // computed first; the group's view and every view drawn after it are skipped for the capture (DragonGroup.drawChild).
     for (id in dragonPainters) {
-      val p = t.node(id) as? DragonBoxView ?: throw IllegalStateException("dragon: " + g.dragonId + ": backdrop painter " + id + " is not a built box")
-      val pg = p.dragonGroup
-      if (pg != null) {
-        pg.dragonComputeIfNeeded()
-        val q = pg.dragonQRect
-        val qw = q[2] - q[0]
-        for (y in maxOf(q[1], ext[1]) until minOf(q[3], ext[3])) {
-          for (x in maxOf(q[0], ext[0]) until minOf(q[2], ext[2])) {
-            val i = ((y - ext[1]) * w + (x - ext[0])) * 4
-            val j = ((y - q[1]) * qw + (x - q[0])) * 4
-            for (k in 0 until 4) bp[i + k] = pg.dragonQ[j + k]
-          }
-        }
-        continue
+      val pg = (t.node(id) as? DragonBoxView)?.dragonGroup ?: throw IllegalStateException("dragon: " + g.dragonId + ": earlier group " + id + " is not a built group")
+      pg.dragonComputeIfNeeded()
+    }
+    // The group's transform to the root, from the platform: its layout offset plus its view matrix (pivot, scale, translation).
+    val go0 = dragonLayoutOffset(g, root)
+    val gm = g.matrix
+    val transformed = !gm.isIdentity
+    fun toRoot(x: Float, y: Float): FloatArray {
+      val pt = floatArrayOf(x, y)
+      gm.mapPoints(pt)
+      return floatArrayOf(go0[0] + pt[0], go0[1] + pt[1])
+    }
+    var bext = ext
+    if (transformed) {
+      val cs = listOf(toRoot((ext[0] - go0[0]).toFloat(), (ext[1] - go0[1]).toFloat()), toRoot((ext[2] - go0[0]).toFloat(), (ext[1] - go0[1]).toFloat()), toRoot((ext[2] - go0[0]).toFloat(), (ext[3] - go0[1]).toFloat()), toRoot((ext[0] - go0[0]).toFloat(), (ext[3] - go0[1]).toFloat()))
+      bext = intArrayOf(maxOf(kotlin.math.floor(cs.minOf { it[0].toDouble() }).toInt(), 0), maxOf(kotlin.math.floor(cs.minOf { it[1].toDouble() }).toInt(), 0), minOf(kotlin.math.ceil(cs.maxOf { it[0].toDouble() }).toInt(), root.width), minOf(kotlin.math.ceil(cs.maxOf { it[1].toDouble() }).toInt(), root.height))
+    }
+    val bw = maxOf(bext[2] - bext[0], 0)
+    val bh = maxOf(bext[3] - bext[1], 0)
+    val bb = ByteArray(bw * bh * 4) { 255.toByte() }
+    if (bw > 0 && bh > 0) {
+      val skip = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<View, Boolean>())
+      skip.add(g)
+      var v: View = g
+      while (v !== root) {
+        val p = v.parent as? ViewGroup ?: break
+        val k = p.indexOfChild(v)
+        for (i in k + 1 until p.childCount) skip.add(p.getChildAt(i))
+        v = p
       }
-      if (!p.dragonVisible) continue
-      val e = IntArray(4) { dragonCheckedInt(p.dragonShape.edges[it], id + " backdrop edge") }
-      val c = p.dragonBackgroundColor
-      if (c.a == 255) fill(e[0], e[1], e[2], e[3], c) else if (c.a != 0) throw IllegalStateException("dragon: " + id + ": a translucent backdrop fill, which the compiler refuses under a group")
-      val bw = IntArray(4) { dragonCheckedInt(p.dragonShape.borders[it], id + " backdrop border") }
-      for (k in 0 until 4) {
-        val st = p.dragonBorderStyles[k]
-        if (bw[k] <= 0 || st == "none" || st == "hidden") continue
-        val bc = p.dragonBorderColors[k]
-        if (st != "solid" || (bc.a != 0 && bc.a != 255)) throw IllegalStateException("dragon: " + id + ": a backdrop border side that is not solid and opaque, which the compiler refuses under a group")
-        if (bc.a == 0) continue
-        when (k) {
-          0 -> fill(e[0], e[1], e[2], e[1] + bw[0], bc)
-          1 -> fill(e[2] - bw[1], e[1], e[2], e[3], bc)
-          2 -> fill(e[0], e[3] - bw[2], e[2], e[3], bc)
-          else -> fill(e[0], e[1], e[0] + bw[3], e[3], bc)
+      val backdropBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
+      backdropBitmap.eraseColor(0xffffffff.toInt())
+      val canvas = Canvas(backdropBitmap)
+      canvas.translate(-bext[0].toFloat(), -bext[1].toFloat())
+      DragonGroups.backdropSkip = if (DRAGON_BACKDROP_PLANT_UNHIDDEN) emptySet() else skip
+      try { root.draw(canvas) } finally { DragonGroups.backdropSkip = emptySet() }
+      backdropBitmap.copyPixelsToBuffer(ByteBuffer.wrap(bb))
+      backdropBitmap.recycle()
+    }
+    // B in the group's local device px: the pixel under each local pixel centre once the platform maps the overlay.
+    val bp: ByteArray
+    if (!transformed) {
+      bp = bb
+    } else {
+      bp = ByteArray(w * h * 4) { 255.toByte() }
+      val o = toRoot(0f, 0f); val ux = toRoot(1f, 0f); val uy = toRoot(0f, 1f)
+      val ax = (ux[0] - o[0]).toDouble(); val bx = (ux[1] - o[1]).toDouble(); val cx = (uy[0] - o[0]).toDouble(); val dx = (uy[1] - o[1]).toDouble()
+      for (y in 0 until h) {
+        for (x in 0 until w) {
+          val lx = ext[0] - go0[0] + x + 0.5
+          val ly = ext[1] - go0[1] + y + 0.5
+          val px = kotlin.math.floor(o[0] + ax * lx + cx * ly).toInt() - bext[0]
+          val py = kotlin.math.floor(o[1] + bx * lx + dx * ly).toInt() - bext[1]
+          if (px < 0 || py < 0 || px >= bw || py >= bh) continue
+          val i = (y * w + x) * 4
+          val j = (py * bw + px) * 4
+          for (k in 0 until 4) bp[i + k] = bb[j + k]
         }
       }
     }
@@ -1035,6 +1088,15 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       val draws = ArrayList<Double>()
       for (b in boxes) {
         if (!b.dragonVisible) continue
+        // PNT1-opacity-c C1: each outline ring is a display item at its outer rect; a solid outline's one ring folds alone in a tile.
+        val o = b.dragonOutlineView
+        if (o != null && !DRAGON_OUTLINE_FOLD_IGNORED) {
+          val n = o.rings.size / 24
+          for (k in 0 until n) {
+            draws.add(o.origin[0] + o.rings[k * 24]); draws.add(o.origin[1] + o.rings[k * 24 + 1]); draws.add(o.origin[0] + o.rings[k * 24 + 2]); draws.add(o.origin[1] + o.rings[k * 24 + 3])
+            draws.add(if (n == 1) 1.0 else 0.0)
+          }
+        }
         val fillsBg = b.dragonBackgroundColor.a > 0
         val sides = (0 until 4).count { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
         val ops = dragonGroupBoxOps(fillsBg, sides)
@@ -1077,7 +1139,8 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
         for (x in 0 until w) {
           val i = (y * w + x) * 4
           val m = dragonMatrices
-          val v = (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
+          // The group drew nothing here: the platform's own backdrop shows through.
+          val v = if (lp[i + 3].toInt() == 0) 0L else (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
           q[i] = (v and 0xffL).toByte(); q[i + 1] = ((v shr 8) and 0xffL).toByte(); q[i + 2] = ((v shr 16) and 0xffL).toByte(); q[i + 3] = ((v shr 24) and 0xffL).toByte()
         }
       }
@@ -1294,7 +1357,7 @@ const lineOf = (lang: 'swift' | 'kotlin', v: string, w: EffectsWrite): string =>
   return `  dragonSetFilterGroup(t, ${v}, ${w.opacity === 1 ? '1.0' : opacityLit(w.opacity)}, ${pairsLit(lang, w.filter)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
 };
 
-export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group' | 'opacity-nested', 'alpha-ignored'> = {
+export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group' | 'opacity-nested', 'alpha-ignored' | 'outline-fold-ignored' | 'group-backdrop-unhidden'> = {
   name: 'effects',
   kinds: ['opacity', 'opacity-group', 'filter-group', 'opacity-nested'],
   lines: {
@@ -1311,10 +1374,24 @@ export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter
   },
   plants: [
     {
+      name: 'outline-fold-ignored',
+      replace: {
+        uikit: ['public let dragonOutlineFoldIgnored = false\n', 'public let dragonOutlineFoldIgnored = true\n'],
+        'android-views': ['const val DRAGON_OUTLINE_FOLD_IGNORED = false\n', 'const val DRAGON_OUTLINE_FOLD_IGNORED = true\n'],
+      },
+    },
+    {
       name: 'alpha-ignored',
       replace: {
         uikit: ['public let dragonAlphaPlantIgnored = false\n', 'public let dragonAlphaPlantIgnored = true\n'],
         'android-views': ['const val DRAGON_ALPHA_PLANT_IGNORED = false\n', 'const val DRAGON_ALPHA_PLANT_IGNORED = true\n'],
+      },
+    },
+    {
+      name: 'group-backdrop-unhidden',
+      replace: {
+        uikit: ['public let dragonBackdropPlantUnhidden = false\n', 'public let dragonBackdropPlantUnhidden = true\n'],
+        'android-views': ['const val DRAGON_BACKDROP_PLANT_UNHIDDEN = false\n', 'const val DRAGON_BACKDROP_PLANT_UNHIDDEN = true\n'],
       },
     },
   ],
