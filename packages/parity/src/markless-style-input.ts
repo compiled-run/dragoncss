@@ -11,6 +11,7 @@ import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
@@ -782,6 +783,36 @@ export function inSelectOptions(byId: ReadonlyMap<string, MarklessStyleInput['no
   return false;
 }
 
+type PlanNode = { readonly id: string; readonly kind: string; readonly children?: readonly PlanNode[] };
+
+/**
+ * The plan with every text leaf the build lays out with a text-transform in any case and band (resolve.ts transformRun) listed in
+ * `transformed`, which the phone refuses to replace with a page text, as it would lay out that text as typed.
+ */
+function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
+  const on = new Set<string>();
+  const elements = new Set<string>();
+  const bands = nativeBands(compiled);
+  for (let band = 0; band < (bands === null ? 1 : bands.table.bands.length); band++) {
+    for (const c of compiledCases(compiled)) {
+      const transforms = resolvedTextTransforms(compiled, c.assignment, band);
+      if (transforms === null) return fail(`a case did not resolve in band ${band}`);
+      for (const [address, transform] of transforms) {
+        elements.add(address);
+        if (transform !== 'none') on.add(address);
+      }
+    }
+  }
+  const leaves = new Set<string>();
+  const walk = (n: PlanNode, element: string | null): void => {
+    const own = elements.has(n.id) ? n.id : element;
+    if (n.kind === 'text' && own !== null && on.has(own)) leaves.add(n.id);
+    for (const child of n.children ?? []) walk(child, own);
+  };
+  for (const v of plan.variants) walk(v.root as unknown as PlanNode, null);
+  return leaves.size === 0 ? plan : { ...plan, transformed: [...leaves].sort() };
+}
+
 /** The media features whose value changes with the viewport's height. */
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
@@ -802,7 +833,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       ...x,
       assignments: x.assignments.map(renamed),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-      ...(x.plan === undefined ? {} : { planNames: x.assignments.map((a) => {
+      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: x.assignments.map((a) => {
         const rename = renameIn(a);
         return a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
       }), planRepeats: planRepeats(parsed, dragonIds) }),

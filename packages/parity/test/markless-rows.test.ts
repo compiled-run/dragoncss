@@ -196,6 +196,20 @@ describe('styled @for rows', () => {
 
   const withCss = (css: string): string => JSON.stringify({ ...JSON.parse(TEXT), css: `${input.css}\n${css}` });
 
+  it('refuses a page text for a leaf the build lays out with a text-transform, in any band, and keeps the others', () => {
+    expect(exported.targets.ios!.plan!.transformed).toBeUndefined();
+    for (const css of ['.heading.mk-1gmxfth { text-transform: uppercase; }', '@media (min-width: 600px) { .heading.mk-1gmxfth { text-transform: uppercase; } }']) {
+      const x = marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true).exported.targets.ios!;
+      const page = x.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === rowState.initial);
+      const names = new Map((x.planNames?.[page] ?? []).map(([d, m]) => [m, d]));
+      const run = (id: string): unknown[] =>
+        JSON.parse(runMarklessRowsLayout(JSON.stringify({ assignment: page, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan, rows: x.planRepeats!.map((r) => ({ parent: r.parent, template: r.template, rows: [] })), texts: [[names.get(id) ?? id, 'Notes about the kitchen']] }), systemFontsFor('ios', x.dpr).shaper as never)) as unknown[];
+      const heading = names.get(pageText('Notes')) ?? pageText('Notes');
+      expect(run(pageText('Notes')), css).toEqual(['harness-error', `$.texts: ${heading} is laid out with a text-transform, which a phone does not apply to the text it is given`]);
+      expect(run(pageText('Add note'))[0], css).toBe('ok');
+    }
+  });
+
   it('refuses a style that depends on a row\'s position, and a style outside the rows that follows a row\'s own state', () => {
     expect(() => marklessStyleExport(withCss('.note:first-child { padding: 30px; }'), PATH, undefined, 'system', undefined, true)).toThrow("a style that depends on a row's position");
     expect(() => marklessStyleExport(withCss('.note + .note { margin-top: 30px; }'), PATH, undefined, 'system', undefined, true)).toThrow("a style that depends on a row's position");

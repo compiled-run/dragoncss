@@ -3848,10 +3848,21 @@ function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: re
 }
 
 function planObj(v: JsonValue): JsonObj {
-  const slotted = v.kind === 'obj' && v.values.has('slots');
-  const plan = obj(v, slotted ? ['version', 'faces', 'densities', 'variants', 'assignments', 'slots'] : ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
+  const keys: string[] = ['version', 'faces', 'densities', 'variants', 'assignments'];
+  if (v.kind === 'obj' && v.values.has('slots')) keys.push('slots');
+  if (v.kind === 'obj' && v.values.has('transformed')) keys.push('transformed');
+  const plan = obj(v, keys, '$.plan');
   if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
+  planTransformed(plan);
   return plan;
+}
+
+/** The text leaves the build lays out with a text-transform ($.plan.transformed), which a page text may not replace. */
+function planTransformed(plan: JsonObj): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  if (!plan.values.has('transformed')) return out;
+  for (const leaf of arr(field(plan, 'transformed', '$.plan'), '$.plan.transformed')) out.set(str(leaf, '$.plan.transformed'), true);
+  return out;
 }
 
 function planFaces(plan: JsonObj): Map<string, FontData> {
@@ -4442,6 +4453,8 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
   const page = slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
   const texts = pageTexts(textsValue);
+  const transformed = planTransformed(plan);
+  for (const [leaf, _text] of texts) if (transformed.has(leaf)) fail(`$.texts: ${leaf} is laid out with a text-transform, which a phone does not apply to the text it is given`);
   const usedTexts = new Map<string, boolean>();
   const root = withRows(withPageTexts(page, texts, usedTexts, false), lists, sink);
   const kept = new Map<string, boolean>();
