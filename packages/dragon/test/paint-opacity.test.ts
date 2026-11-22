@@ -311,6 +311,64 @@ describe('opacity: a group native pre-composites', () => {
     const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { painters: readonly string[] } | undefined;
     expect(w?.painters).toEqual(['p']);
   });
+  it('admits a group in one sticky or fixed box whose opaque square background holds it, naming that box; the device reads back that it held', () => {
+    for (const css of ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', '.w { position: fixed; top: 0; width: 50px; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }']) {
+      const c = build(css);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const g = p.programs.uikit.nodes.find((n) => n.id === 'g');
+      const w = g?.writes.find((x) => x.kind === 'opacity-group');
+      expect((w as { backdrop: string | null } | undefined)?.backdrop, css).toBe('w');
+      expect(EFFECTS_EMITTER.applied({ opacityAlpha8, float32: Math.fround } as never, 'uikit', w as never, 2, {} as never), css).toEqual([1, opacityAlpha8(0.4), 'w', true]);
+    }
+    const cases: [string, string][] = [
+      ['.w { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky and no opaque background colour alone under it'],
+      ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); border-radius: 4px; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky and a background that is not its square border box'],
+      ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; }', 'it may be in the compositor layer of w and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
+    ];
+    for (const [css, why] of cases) {
+      const errs = errors(build(css)).filter((m) => / has opacity 0\.4;/.test(m));
+      expect(errs, css).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: ${why.replace(/[.()]/g, (x) => `\\${x}`)}$`))));
+    }
+  });
+  it('admits a group painted right after one sticky box, naming it for the device\'s two-step composite when the page scrolls', () => {
+    const c = build('.u { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const g = p.programs.uikit.nodes.find((n) => n.id === 'g');
+    const w = g?.writes.find((x) => x.kind === 'opacity-group');
+    expect(w).toEqual(expect.objectContaining({ backdrop: null, after: 'u' }));
+    expect(EFFECTS_EMITTER.lines.uikit('v0', g as never, w as never)[0]).toBe('  dragonSetOpacityGroup(t, v0, 0.4, nil, [], after: "u")');
+    expect(EFFECTS_EMITTER.lines['android-views']('v0', g as never, w as never)[0]).toBe('  dragonSetOpacityGroup(t, v0, 0.4, null, listOf<String>(), after = "u")');
+    const cases: [string, string][] = [
+      ['.u { position: fixed; top: 0; width: 5px; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'u has position fixed and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
+      ['.u { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'u has position sticky and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
+      ['.u { position: sticky; top: 0; } .g { opacity: 0.4; }', 'it may be in a compositor layer of its own after u and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
+      ['.u { position: sticky; top: 0; } .g { opacity: 0.4; filter: grayscale(1); } .k { border: 1px solid rgb(0, 0, 0); }', 'it has a filter and paints after u, which has position sticky, a composite in a layer of its own Dragon has not measured'],
+      ['.u { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); background-color: rgba(0, 0, 0, 0.5); }', 'it paints after u, which has position sticky, and Dragon builds its layer in software (translucent paint or a nested group inside it)'],
+    ];
+    // Two sticky boxes: the second case adds a sticky p (labelled) before the group.
+    for (const [k, [css, why]] of cases.entries()) {
+      const label = k === 1;
+      const all = label ? `${css} .p { position: sticky; top: 0; }` : css;
+      const errs = errors(build(all, label)).filter((m) => / has opacity 0\.4;/.test(m));
+      const want = label ? 'u and p have position sticky or fixed and paint before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know' : why;
+      expect(errs, all).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: ${want.replace(/[.()]/g, (x) => `\\${x}`)}$`))));
+    }
+    // Something painted between the sticky box and the group would be in the group's layer under it.
+    const between = errors(build('.u { position: sticky; top: 0; } .p { position: relative; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', true)).filter((m) => / has opacity 0\.4;/.test(m));
+    expect(between).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: p paints between u, which has position sticky, and it, in the compositor layer Chrome may give it$`))));
+  });
+  it('admits a <button> Chrome paints as CSS boxes (an author background or border) as a group, and refuses a themed one', () => {
+    const run = (css: string) => {
+      const input = inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } ${css}`, (r) => [{ ...div(r, 'g', ['g'], [text(r, 'gt', 'Ab')]), tag: 'button' }]);
+      return errors(createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input)).filter((m) => / has opacity 0\.4;/.test(m));
+    };
+    expect(run('.g { opacity: 0.4; background-color: rgb(250, 250, 250); border: 1px solid rgb(0, 0, 0); }')).toEqual([]);
+    expect(run('.g { opacity: 0.4; }')).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: g is a <button>, a control, replaced or svg box$`))));
+  });
   it('admits a group\'s own scale (at most 1) and translate when no item in it is one draw op', () => {
     for (const css of ['.g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; transform: translate(3px, 2px) scale(0.9); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; scale: 0.9; } .k { border: 1px solid rgb(0, 0, 0); }']) {
       const c = build(css);
@@ -331,7 +389,7 @@ describe('opacity: a group native pre-composites', () => {
       ['.g { opacity: 0.4; border-left-color: rgb(1, 2, 3); }', false, 'g has border sides in more than one colour, which meet on a diagonal'],
       ['.g { opacity: 0.4; } .u { overflow: hidden; border-radius: 2px; }', false, 'u paints before it with a rounded overflow clip, a mask the backdrop capture does not draw'],
       ['.g { opacity: 0.4; } .u { clip-path: inset(1px); }', false, 'u paints before it with a clip-path, which the backdrop capture is not proven to draw as the screen does'],
-      ['.g { opacity: 0.4; } .u { position: sticky; top: 0; }', false, 'u has position sticky and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
+      ['.g { opacity: 0.4; } .u { position: sticky; top: 0; }', false, 'it may be in a compositor layer of its own after u and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
       ['.g { opacity: 0.4; } .u { position: fixed; top: 0; width: 5px; }', false, 'u has position fixed and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
       ['.g { opacity: 0.4; } .w { overflow: hidden; border-radius: 3px; }', false, 'it is inside w, a rounded overflow clip'],
       ['.g { opacity: 0.4; } .u { overflow: auto; }', false, 'u paints before it and scrolls (overflow-x: auto), which the backdrop capture does not follow'],

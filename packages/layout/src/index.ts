@@ -27,7 +27,7 @@ export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, Objec
 export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
 export type { MenuListArrowPaint, ReplacedPaint } from './paint.ts';
 export { menuListArrows, opacityAlpha8, replacedPaint } from './paint.ts';
-export { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';
+export { groupComposite, groupCompositeLayered, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
