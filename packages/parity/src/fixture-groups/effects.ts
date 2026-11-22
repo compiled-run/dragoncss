@@ -24,7 +24,8 @@
 // with an opaque background holding a rounded link, a translucent bordered tag and a scaled pressed button after brand text, on a page
 // that overflows (Chrome gives the header a compositor layer) and on one that does not (-sticky, -sticky-short). A scaled pressed
 // button painted right after a sticky header, over text and a card, on a page that overflows (Chrome composites it in a layer of its
-// own, in two steps: groupCompositeLayered) and on one that does not (-after-sticky, -after-sticky-short). Every group sits clear of the cc raster tile seams at DPR 2, 3
+// own, in two steps: groupCompositeLayered) and on one that does not (-after-sticky, -after-sticky-short). A pressed button
+// in a rounded opaque dialog inside a fixed translucent backdrop (-modal). Every group sits clear of the cc raster tile seams at DPR 2, 3
 // and 2.625 in both directions (x in 16-48, 64-96 or 104-136 css px, y below 168). opacity-web holds the fractional cases (0.3,
 // 45%, an inherited 0.5, translucent groups with a child, text and a border): the lanes compile it on native as a lane-only case
 // (project.ts), so it proves web rows only, and the device pixel lanes skip what its groups paint (pixel-reference.ts devicePoints).
@@ -71,6 +72,7 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-group-after-sticky'),
   both('opacity-group-after-sticky-short'),
   both('opacity-group-button'),
+  both('opacity-group-modal'),
   reject('opacity-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(50% + 10%)', 'opacity: calc(50% + 10%) is unsupported:'),
   both('stacking-basic'),
   both('stacking-context'),
