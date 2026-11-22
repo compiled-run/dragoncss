@@ -59,8 +59,8 @@ export function boxes(p: NativeProgram, viewport: { width: number; height: numbe
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error('the engine refused the case');
   const snapped = snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input);
-  const paints = replacedGeometries(engine, input, out.boxes);
+  const borders = borderDevicePx(engine, input, engine.measurer);
+  const paints = replacedGeometries(engine, input, out.boxes, engine.measurer);
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
   const list: Box[] = [];
   out.boxes.forEach((r, i) => {

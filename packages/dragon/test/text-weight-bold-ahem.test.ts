@@ -173,7 +173,7 @@ describe('font-weight over Ahem on native', () => {
       if (w === undefined) throw new Error('no synthetic-bold write');
       expect(w.key).toBe('syntheticBold');
       expect(w.css).toEqual(['font-weight', 'font-synthesis-weight']);
-      expect(appliedValue({} as Parameters<typeof appliedValue>[0], prog.backend, w, 2, { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 } as never, size: [0, 0], fontSize: 20, replaced: null, scroll: null })).toEqual(SKIA);
+      expect(appliedValue({} as Parameters<typeof appliedValue>[0], prog.backend, w, 2, { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 } as never, size: [0, 0], fontSize: 20, replaced: null, scroll: null, selectArrow: null })).toEqual(SKIA);
     }
     const node = p.uikit.nodes.find((n) => n.id === 'a:text0');
     if (node === undefined) throw new Error('no text node a:text0');

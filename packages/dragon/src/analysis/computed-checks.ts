@@ -99,7 +99,7 @@ import { checkInlineLevel } from './blockify.ts';
 import { isTopLayer, topLayerAncestorsOf } from './top-layer.ts';
 import { uaTagOf } from './elements.ts';
 import { isDisabled } from './match.ts';
-import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, textFieldAppearance } from './elements/controls.ts';
+import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, selectAppearance, textFieldAppearance } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -1894,7 +1894,10 @@ const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue, fieldText: Rgba
   ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
 ];
 
-/** FORM-b S1: a single select with appearance: none (Chrome's menulist, resolve.ts); everything else about one is refused by name. */
+/**
+ * FORM-b: a single select with appearance: none, or auto devolved to menulist-button (Chrome's menulist, resolve.ts); everything
+ * else about one is refused by name.
+ */
 function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
   const address = el.element.address;
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
@@ -1923,8 +1926,13 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
     if (styled !== undefined) refuseOn(o, styled[1], 'option-style', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${styled[0]} on <option> ${o.element.address} is not supported: Chrome draws only its label in the closed select, and Dragon writes no rule for an option`, `Style <select> ${address} instead of <option> ${o.element.address}.`);
   }
   const appearance = el.props.get('appearance') as ResolvedValue;
-  if (keywordOf(appearance) !== 'none') {
-    refuse(appearance, 'appearance', `<select> ${address} with appearance: ${valueToString(appearance.value)} draws Chrome's drop-down arrow and internal paddings, which wait for FORM-b select S2; only appearance: none is laid out`, `Set appearance: none on <select> ${address}.`);
+  const used = selectAppearance(el.props);
+  if (used === 'theme' && keywordOf(appearance) === 'auto') {
+    refuse(appearance, 'appearance', `<select> ${address} with appearance: auto and no author background, border or box-shadow is Chrome's themed menulist, which the platform theme paints; only appearance: none or a select styled with one of them (menulist-button) is laid out`, `Give <select> ${address} a background or border, or set appearance: none.`);
+  } else if (used === 'theme') {
+    refuse(appearance, 'appearance', `<select> ${address} with appearance: ${valueToString(appearance.value)} is not supported; only appearance: none or auto is laid out`, `Set appearance: none (or remove appearance) on <select> ${address}.`);
+  } else if (used === 'menulist-button') {
+    if (ua.menuListArrowWidth === null) refuse(appearance, 'arrow-width', `<select> ${address} draws Chrome's drop-down arrow, whose width no capture holds for ${ua.platform} (scripts/capture-form-data.ts)`, `Set appearance: none on <select> ${address}.`);
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);

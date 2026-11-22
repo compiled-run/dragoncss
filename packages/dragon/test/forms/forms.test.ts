@@ -11,7 +11,10 @@ import {
   rangeValue,
   thumbOffset,
 } from '../../src/forms/index.ts';
-import type { ButtonCapture, Captures, DevolveCapture, RangeGeometryCapture, RangeValueCapture } from '../../src/forms/index.ts';
+import type { ButtonCapture, Captures, DevolveCapture, MenuListCapture, RangeGeometryCapture, RangeValueCapture } from '../../src/forms/index.ts';
+import { menuListArrow, menuListArrowBox, menuListInnerInsets } from '@dragon/layout';
+import { menuListArrowWidthOf } from '../../src/forms/index.ts';
+import { menuListArrowWidth } from '../../src/forms/chrome-145.darwin-arm64.forms.generated.ts';
 import { RANGE_NONE_THUMB, RANGE_THEME_THUMB, RANGE_UA_SHADOW } from '../../src/forms/ua-shadow.generated.ts';
 
 const read = <T>(name: string): T => JSON.parse(readFileSync(new URL(`./chrome-145/${name}`, import.meta.url), 'utf8')) as T;
@@ -21,28 +24,40 @@ const captures: Captures = {
   rangeGeometry: read<RangeGeometryCapture>('range-geometry.json'),
   button: read<ButtonCapture>('button.json'),
   devolve: read<DevolveCapture>('devolve.json'),
+  menuList: read<MenuListCapture>('menulist.json'),
 };
+
+const MENU_LIST = { insets: menuListInnerInsets, box: menuListArrowBox, arrow: menuListArrow };
 
 describe('forms reference functions against Chrome 145', () => {
   it('captures come from Chrome 145.0.7632.6', () => {
-    for (const c of [captures.rangeValue, captures.rangeGeometry, captures.button, captures.devolve]) expect(c.chrome).toBe('145.0.7632.6');
+    for (const c of [captures.rangeValue, captures.rangeGeometry, captures.button, captures.devolve, captures.menuList]) expect(c.chrome).toBe('145.0.7632.6');
   });
 
   it('equals Chrome on every comparison, N/N', () => {
-    const r = compareForms(captures);
+    const r = compareForms(captures, MENU_LIST);
     expect(r.mismatches).toEqual([]);
+    expect(r.counts.menulist).toBe(captures.menuList.cases.length + captures.menuList.pixels.length);
+    expect(captures.menuList.pixels.length).toBe(6);
     expect(r.counts['range-value']).toBe(captures.rangeValue.rows.length + captures.rangeGeometry.cases.length);
     expect(r.counts['range-geometry']).toBe(2 * captures.rangeGeometry.cases.length);
     expect(r.counts['button-inner']).toBeGreaterThan(1000);
     expect(r.counts.appearance).toBe(13);
   });
 
-  it('plants the three faults', () => {
-    expect(FORM_FAULT_NAMES).toEqual(['thumbUnmirrored', 'stepTieDown', 'devolveIgnored']);
+  it('plants the four faults', () => {
+    expect(FORM_FAULT_NAMES).toEqual(['thumbUnmirrored', 'stepTieDown', 'devolveIgnored', 'arrowUnmirrored']);
   });
 
   it.each(FORM_FAULT_NAMES)('%s flips at least one captured comparison', (name) => {
-    expect(compareForms(captures, { ...NO_FORM_FAULTS, [name]: true }).mismatches.length).toBeGreaterThan(0);
+    expect(compareForms(captures, MENU_LIST, { ...NO_FORM_FAULTS, [name]: true }).mismatches.length).toBeGreaterThan(0);
+  });
+
+  it('the generated arrow width is the captured end margin less 1, mirrored in rtl', () => {
+    expect(menuListArrowWidthOf(captures.menuList)).toBe(menuListArrowWidth);
+    const one = captures.menuList.cases.filter((c) => c.dpr === 1 && c.zoom === 1);
+    expect(one.length).toBe(6);
+    for (const c of one) expect(c.direction === 'ltr' ? [c.margin[3], c.margin[1]] : [c.margin[1], c.margin[3]]).toEqual([4, menuListArrowWidth + 1]);
   });
 
   it('the matrix tells the block-centred and container button models apart', () => {
@@ -53,7 +68,7 @@ describe('forms reference functions against Chrome 145', () => {
         computed: { ...c.computed, display: c.computed.display === 'flex' ? 'block' : 'flex', flexDirection: c.computed.display === 'flex' ? c.computed.flexDirection : 'row' },
       })),
     };
-    expect(compareForms({ ...captures, button: swapped }).mismatches.length).toBeGreaterThan(100);
+    expect(compareForms({ ...captures, button: swapped }, MENU_LIST).mismatches.length).toBeGreaterThan(100);
   });
 
   it('the matrix sees the safe clamp and the truncating half', () => {

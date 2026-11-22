@@ -419,7 +419,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const inner = control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')]);
     const empty = control('s::inner', { kind: 'select-inner' }, {}, [], strut);
-    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'flex' }, children);
+    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0 }, { display: 'flex' }, children);
     const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
     expect(codes(under(select([inner])))).toEqual([]);
     expect(codes(under(select([empty])))).toEqual([]);

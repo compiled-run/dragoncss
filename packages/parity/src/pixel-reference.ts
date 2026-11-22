@@ -441,7 +441,7 @@ export function caseBoxes(p: NativeProgram, viewport: { readonly width: number; 
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${dpr}`);
   const snapped = snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input);
+  const borders = borderDevicePx(engine, input, engine.measurer);
   const nodes = new Map(p.nodes.map((n) => [n.id, n]));
   const boxes: SampleBox[] = [];
   out.boxes.forEach((r, i) => {
