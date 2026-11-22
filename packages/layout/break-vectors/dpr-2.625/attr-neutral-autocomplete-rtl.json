@@ -1,9 +1,0 @@
-{
-  "case": "attr-neutral-autocomplete-rtl",
-  "dpr": 2.625,
-  "texts": [
-    {"id":"div:text0","lines":[[0,5]]},
-    {"id":"p:text0","lines":[[0,7],[7,9]]},
-    {"id":"button:text0","lines":[[0,2]]}
-  ]
-}
