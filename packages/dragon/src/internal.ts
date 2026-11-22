@@ -15,7 +15,7 @@ import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativeProgram, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
-import type { InteractionPartition } from './analysis/interaction.ts';
+import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -635,16 +635,41 @@ const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 
 export function interactionLevelInput(compiled: object, assignment: Assignment, backend: NativeBackend): LevelInput | string {
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string') return c;
-  if (c.partition === null || c.resolved === null) return 'the case did not resolve';
+  return levelInputOf(c.partition, c.resolved, c.interaction, (key) => nativePrograms(compiled, assignment, key), backend);
+}
+
+/** interactionLevelInput in one @media band: the band's own partition and each state's lowering in that band. */
+export function interactionLevelInputIn(compiled: object, assignment: Assignment, band: number, backend: NativeBackend): LevelInput | string {
+  const record = internalRecord(compiled);
+  if (record === undefined) return 'not a compiled result from this package';
+  if (record.bands === null) return band === 0 ? interactionLevelInput(compiled, assignment, backend) : `the compile has no @media bands, so no band ${band}`;
+  const key = keyOfAssignment(assignment);
+  const c = record.bands.cases[band]?.find((x) => x.key === key);
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}`;
+  const lower = (state: string): NativePrograms => {
+    const i = c.interaction.find((x) => x.value.key === state);
+    if (i === undefined || i.nativeLowered === null) return { kind: 'blocked', reason: `interaction state ${state} has no native lowering in band ${band}` };
+    try {
+      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants) };
+    } catch (e) {
+      if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+      throw e;
+    }
+  };
+  return levelInputOf(c.partition, c.resolved, c.interaction, lower, backend);
+}
+
+function levelInputOf(partition: InteractionPartition | null, resolved: ResolvedElement | null, interaction: readonly { readonly value: InteractionValue }[], lower: (state: string) => NativePrograms, backend: NativeBackend): LevelInput | string {
+  if (partition === null || resolved === null) return 'the case did not resolve';
   const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     elements.set(el.element.address, el);
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
-  walk(c.resolved);
+  walk(resolved);
   const programs: NativeProgram[] = [];
-  for (const i of c.interaction) {
-    const p = nativePrograms(compiled, assignment, i.value.key);
+  for (const i of interaction) {
+    const p = lower(i.value.key);
     if (p.kind === 'blocked') return `interaction state ${i.value.key}: ${p.reason}`;
     programs.push(p.programs[backend]);
   }
@@ -655,7 +680,7 @@ export function interactionLevelInput(compiled: object, assignment: Assignment, 
     return el.tag === 'input' ? (el.attributes.get('type')?.trim().toLowerCase() || 'text') : null;
   };
   return {
-    partition: c.partition,
+    partition,
     programs,
     touchConsumesTap: (address) => typeOf(address) === 'range',
     keyboardInput: (address) => {
