@@ -17,17 +17,13 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 .big { width: 40px; height: 20px; margin: 20px 30px 0; background-color: #cf222e; transform: scale(1.5); }
 .next { width: 80px; height: 20px; margin: 0 10px; background-color: #0a3069; }
 .half { width: 80px; height: 40px; margin: 10px; background-color: #fff8c5; font-size: 20px; transform: scale(0.5); }
-.flipy { width: 60px; height: 14px; margin: 10px; border-top: 6px solid #111111; background-color: #953800; transform: scaleY(-1); }
-.flipx { width: 54px; height: 20px; margin: 10px; border-left: 6px solid #111111; background-color: #6639ba; transform: scale(-1, 1); }
 .o00 { width: 80px; height: 30px; margin: 10px; background-color: #116329; transform-origin: 0 0; transform: scale(0.97); }
 .oxy { width: 50px; height: 20px; margin: 10px 20px; background-color: #a40e26; transform-origin: 10px 20px; transform: scale(1.25); }
 .tsc { width: 60px; height: 20px; margin: 10px; background-color: #57606a; transform: translate(10.5px, 3.25px) scale(0.8); }
 .pct { width: 60px; height: 20px; margin: 10px 30px; background-color: #0969da; transform: translate(-25%, 10%) scale(1.1); }
-.clip { width: 80px; height: 30px; margin: 10px; border: 3px solid #111111; overflow: hidden; background-color: #ddf4ff; transform: scale(0.75); }
+.clip { width: 80px; height: 30px; margin: 10px; border: 3px solid #111111; border-radius: 10px; overflow: hidden; background-color: #ddf4ff; transform: scale(0.75); }
 .spill { width: 120px; height: 10px; background-color: #cf222e; }
 .roundp { width: 76px; height: 26px; margin: 10px; border: 2px solid #111111; border-radius: 12px; background-color: #1f6feb; transform: scale(0.97); opacity: 0.85; }
-.roundc { width: 60px; height: 40px; margin: 10px 20px; border-radius: 20px 10px; overflow: hidden; background-color: #ddf4ff; transform: scale(1.25) translate(4px, 2px); }
-.fill { width: 80px; height: 40px; background-color: #8250df; }
 .outer { width: 90px; height: 60px; margin: 10px 5px; background-color: #ddf4ff; transform: scale(0.9); }
 .inner { width: 40px; height: 20px; margin: 10px; background-color: #cf222e; transform: translate(5px, 5px) scale(1.2); }
 .leaf { width: 20px; height: 10px; margin: 2px; background-color: #1a7f37; }
@@ -42,8 +38,8 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 <body data-dragon-id="body">
 <div data-dragon-id="cols" class="cols">
 <div data-dragon-id="ca" class="col"><div data-dragon-id="a1" class="card"></div><div data-dragon-id="a2" class="btn pressed">XX X</div><div data-dragon-id="a3" class="under"></div><div data-dragon-id="a4" class="ghost"></div><div data-dragon-id="a5" class="over"></div><div data-dragon-id="a6" class="zero"></div><div data-dragon-id="a7" class="plain"></div><div data-dragon-id="a8" class="lifted"></div></div>
-<div data-dragon-id="cb" class="col"><div data-dragon-id="b1" class="big"></div><div data-dragon-id="b2" class="next"></div><div data-dragon-id="b3" class="half">XXX X</div><div data-dragon-id="b4" class="flipy"></div><div data-dragon-id="b5" class="flipx"></div></div>
-<div data-dragon-id="cc" class="col"><div data-dragon-id="c1" class="o00"></div><div data-dragon-id="c2" class="oxy"></div><div data-dragon-id="c3" class="tsc"></div><div data-dragon-id="c4" class="pct"></div><div data-dragon-id="c5" class="clip"><div data-dragon-id="c5a" class="spill"></div><div data-dragon-id="c5b" class="spill"></div></div><div data-dragon-id="c6" class="roundp"></div><div data-dragon-id="c7" class="roundc"><div data-dragon-id="c7a" class="fill"></div></div></div>
+<div data-dragon-id="cb" class="col"><div data-dragon-id="b1" class="big"></div><div data-dragon-id="b2" class="next"></div><div data-dragon-id="b3" class="half">XXX X</div></div>
+<div data-dragon-id="cc" class="col"><div data-dragon-id="c1" class="o00"></div><div data-dragon-id="c2" class="oxy"></div><div data-dragon-id="c3" class="tsc"></div><div data-dragon-id="c4" class="pct"></div><div data-dragon-id="c5" class="clip"><div data-dragon-id="c5a" class="spill"></div><div data-dragon-id="c5b" class="spill"></div></div><div data-dragon-id="c6" class="roundp"></div></div>
 <div data-dragon-id="cd" class="col"><div data-dragon-id="d1" class="outer"><div data-dragon-id="d1a" class="inner"><div data-dragon-id="d1b" class="leaf"></div></div></div><div data-dragon-id="d2" class="rel"><div data-dragon-id="d2a" class="nudge"></div><div data-dragon-id="d2b" class="abs"></div></div><div data-dragon-id="d3" class="items"><div data-dragon-id="d3a" class="item tap"></div><div data-dragon-id="d3b" class="item"></div></div></div>
 </div>
 </body>

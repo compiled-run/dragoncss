@@ -110,7 +110,7 @@ describe('the host hit lane at a fractional device DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
     expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip']);
+      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'opacity-group-transform']);
       const mismatches: string[] = [];
       for (const id of ids) {
         const n = byId.get(id);
@@ -176,10 +176,10 @@ describe('planted hit faults (T047 §3.3 item 12, host half)', () => {
     return cases.filter((n) => count(n, { ...NO_HIT_TABLE_FAULTS, ...tableFaults }) > count(n, NO_HIT_TABLE_FAULTS)).map((n) => n.case.id);
   };
   it('transformIgnored fails exactly the scale and translate transform cases', () => {
-    expect(beyondClean({ transformIgnored: true })).toEqual(['opacity-group-transform', 'opacity-group-transform-rtl', 'transform-translate', 'transform-hit-scale']);
+    expect(beyondClean({ transformIgnored: true })).toEqual(['opacity-group-transform', 'opacity-group-transform-rtl', 'transform-translate', 'transform-hit-scale', 'transform-hit-subpixel']);
   });
-  it('contextNotLayered fails the cases where a stacking context overlaps later flow content', () => {
-    expect(beyondClean({ contextNotLayered: true })).toEqual(expect.arrayContaining(['opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'transform-hit-scale']));
+  it('contextNotLayered fails exactly the cases where a stacking context overlaps later flow content', () => {
+    expect(beyondClean({ contextNotLayered: true })).toEqual(['opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'opacity-group-rounded', 'opacity-group-rounded-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl', 'transform-hit-scale', 'transform-hit-subpixel']);
   });
 });
 

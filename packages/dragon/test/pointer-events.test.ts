@@ -25,6 +25,7 @@ function parse(value: string): Diagnostic[] {
   return diagnostics;
 }
 
+const ORIGIN = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 describe('pointer-events: registry', () => {
   it('follows grid before the paint families, inherited, with no layout or paint aspect, and webref\'s grammar', () => {
     expect([...POINTER_LONGHANDS]).toEqual(['pointer-events']);
@@ -77,15 +78,15 @@ describe('pointer-events: compile and hit facts', () => {
     expect(c.outputs.web.kind).toBe('ready');
     const px = { percent: false, value: 4 };
     const pc = { percent: true, value: 10 };
-    expect(hitFacts(c, [])?.get('a')).toMatchObject({ pointerEvents: 'none', inherited: false, activation: false, radii: [px, pc, px, pc, px, pc, px, pc], context: false, transform: [] });
+    expect(hitFacts(c, [])?.get('a')).toEqual({ pointerEvents: 'none', inherited: false, activation: false, radii: [px, pc, px, pc, px, pc, px, pc], context: false, transform: [], origin: ORIGIN });
     for (const [id, f] of hitFacts(c, []) ?? []) if (id !== 'a') expect(f, id).toEqual(hitFacts(plain, [])?.get(id));
   });
 
   it('carries the computed value, its inheritance and the activation handler', () => {
     const c = project().compile(inputFor('.a { pointer-events: none; }', tree));
     const facts = hitFacts(c, []);
-    expect(facts?.get('a')).toMatchObject({ pointerEvents: 'none', inherited: false, activation: false, radii: [], context: false, transform: [] });
-    expect(facts?.get('b')).toMatchObject({ pointerEvents: 'none', inherited: true, activation: false, radii: [], context: false, transform: [] });
+    expect(facts?.get('a')).toEqual({ pointerEvents: 'none', inherited: false, activation: false, radii: [], context: false, transform: [], origin: ORIGIN });
+    expect(facts?.get('b')).toEqual({ pointerEvents: 'none', inherited: true, activation: false, radii: [], context: false, transform: [], origin: ORIGIN });
     for (const [id, f] of facts ?? []) if (id !== 'a' && id !== 'b') expect(f.pointerEvents, id).toBe('auto');
     expect([...ACTIVATION_TAGS]).toEqual(['a', 'button']);
     expect(hitFacts({}, [])).toBeNull();

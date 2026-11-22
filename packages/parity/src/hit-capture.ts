@@ -30,10 +30,11 @@ export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/
  * every DPR capture is), so it lays out and snaps text rects in device px, against the TS hit test at that DPR (expectedHitRuns, the
  * device-hit lane's and the device-traces reference's model). interaction-combo's step point (2, 30) is on c's bottom edge, which at
  * 2.625 is 78.75 device px, inside c's text rect snapped to device px (53 to 79): Chrome names c there, not DPR 1's d. The radius
- * cases check that px radii (CSS px in the hit facts) scale to device px, on the border box and on a rounded clip's padding edge.
+ * cases check that px radii (CSS px in the hit facts) scale to device px, on the border box and on a rounded clip's padding edge. The
+ * transform cases check that a scaled box's paint offset rounds to whole device px, which at 2.625 is almost every box.
  */
 export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
-  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip'] },
+  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'opacity-group-transform'] },
 ];
 export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
 export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;
@@ -217,7 +218,7 @@ export function hitRefusal(n: NativeCase): string | null {
   // rt-hit.ts orders only z-index 0 contexts its hit facts name; other contexts and normal-flow layers stay refused.
   const ordered = (id: string, f: { readonly createsContext?: boolean; readonly layer?: string }): boolean => f.layer === 'positioned' && facts?.get(id)?.context === true;
   const contexts = nodes.filter((x) => x.parent !== null && ((f) => f !== undefined && ((f.createsContext === true && !ordered(x.id, f)) || f.layer === 'normal-flow'))(x.facts['stacking'] as { readonly createsContext?: boolean; readonly layer?: string } | undefined)).map((x) => x.id);
-  if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)`;
+  if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet (rt-hit.ts orders z-index 0 contexts and positioned boxes as z-index auto)`;
   // T150a: Chrome's elementFromPoint passes over a box that is not visible (its visible descendants still hit), which the hit test
   // does not model yet.
   const hidden = nodes.filter((x) => x.writes.some((w) => w.kind === 'visibility')).map((x) => x.id);

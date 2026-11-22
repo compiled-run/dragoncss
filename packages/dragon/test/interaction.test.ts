@@ -481,7 +481,7 @@ describe('interaction states: hit model (R13)', () => {
     const pressed = `${BODY}.card { height: 20px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); } .k { height: 20px; } .k:active { transform: scale(0.97); opacity: 0.85; } .k:focus-visible { outline: 2px solid #0969da; }`;
     const two = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'card', ['card']), div(r, 'k', ['k'])];
     expect(errors(compile({}, pressed, two, TARGETS, 'derive').diagnostics).filter((m) => m.includes('needs Dragon hit testing'))).toEqual([]);
-    for (const t of ['translate(10px, 5%)', 'scale(1.5) translateY(-4px)', 'scaleX(-1)', 'matrix(2, 0, 0, 0.5, 3, 4)', 'rotate(0deg) scale(0.5)']) {
+    for (const t of ['translate(10px, 5%)', 'translateY(-4px) scale(1.5)', 'matrix(2, 0, 0, 0.5, 3, 4)', 'rotate(0deg) scale(0.5)']) {
       const found = errors(compile({}, css.replace('rotate(5deg)', t), body, TARGETS, 'derive').diagnostics);
       expect(found.filter((m) => m.includes('needs Dragon hit testing')), t).toEqual([]);
     }
@@ -503,8 +503,15 @@ describe('interaction states: hit model (R13)', () => {
     ]);
   });
 
+  it('refuses a flip and a translate after a scale by name, and models a translate before a scale', () => {
+    const ops = (fn: 'scale' | 'translate', a: number, b: number) => ({ fn, x: { kind: 'px', px: fn === 'translate' ? a : 0, percent: 0 }, y: { kind: 'px', px: fn === 'translate' ? b : 0, percent: 0 }, angle: 0, sx: fn === 'scale' ? a : 1, sy: fn === 'scale' ? b : 1 }) as never;
+    expect(hitTransformRefusal('h', [ops('scale', 1, -1)])).toBe('h flips, and the hit table models scales by positive factors only (SELD-R2b)');
+    expect(hitTransformRefusal('h', [ops('scale', 1.25, 1.25), ops('translate', 4, 2)])).toBe('h translates after it scales, and the hit table models a translate before a scale only (SELD-R2b)');
+    expect(hitTransformRefusal('h', [ops('translate', 4, 2), ops('scale', 1.25, 1.25)])).toBeNull();
+  });
+
   it('models a transform exactly when rt-hit.ts does, over the functions the lowering writes', () => {
-    for (const t of ['none', 'translate(10px, 5%)', 'scale(0.97)', 'scaleY(-1) translateX(3px)', 'matrix(2, 0, 0, 0.5, 3, 4)', 'matrix(-1, 0, 0, 1, 0, 0)', 'rotate(0deg)', 'rotate(90deg)', 'rotate(360deg)', 'scale(2) rotate(-30deg)', 'matrix(0, 1, -1, 0, 0, 0)']) {
+    for (const t of ['none', 'translate(10px, 5%)', 'scale(0.97)', 'scaleY(-1) translateX(3px)', 'matrix(2, 0, 0, 0.5, 3, 4)', 'matrix(-1, 0, 0, 1, 0, 0)', 'rotate(0deg)', 'rotate(90deg)', 'rotate(360deg)', 'scale(2) rotate(-30deg)', 'matrix(0, 1, -1, 0, 0, 0)', 'scale(-1, 1)', 'scale(0.5) translate(2px, 1px)', 'translate(2px, 1px) scale(0.5)', 'scale(1) translate(2px)', 'scale(0)']) {
       const root = internalRecord(compile({}, css.replace('rotate(5deg)', t), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
       const h = elementAt(root, 'h');
       const v = h?.props.get('transform')?.value;

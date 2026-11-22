@@ -111,7 +111,18 @@ type HitLocation = {
   readonly qx1: number;
   readonly qy0: number;
   readonly qy1: number;
+  /** The origin pixel snapping is relative to: the nearest space whose box Chrome put at a whole device px (roundsOffset), or 0. */
+  readonly sx: number;
+  readonly sy: number;
 };
+
+/** LayoutUnit::Round of v in the location's space, whose snapping origin may sit at a fraction of a page px. */
+function snapX(l: HitLocation, v: number): number {
+  return l.sx + roundPx(v - l.sx);
+}
+function snapY(l: HitLocation, v: number): number {
+  return l.sy + roundPx(v - l.sy);
+}
 
 /** The location's box intersects [x, x + w) x [y, y + h) exclusively; an empty rect or box never does. */
 function intersects(l: HitLocation, x: number, y: number, w: number, h: number): boolean {
@@ -121,18 +132,18 @@ function intersects(l: HitLocation, x: number, y: number, w: number, h: number):
 
 /** The same box against the pixel-snapped rect, exclusively (ComputeTextBoundsRectForHitTest). */
 function intersectsSnapped(l: HitLocation, x: number, y: number, w: number, h: number): boolean {
-  const x0 = roundPx(x);
-  const y0 = roundPx(y);
-  return intersects(l, x0, y0, roundPx(x + w) - x0, roundPx(y + h) - y0);
+  const x0 = snapX(l, x);
+  const y0 = snapY(l, y);
+  return intersects(l, x0, y0, snapX(l, x + w) - x0, snapY(l, y + h) - y0);
 }
 
 /** The same box against the pixel-snapped rect, inclusively (the contoured border test through gfx::QuadF::IntersectsRect). */
 function touchesSnapped(l: HitLocation, x: number, y: number, w: number, h: number): boolean {
   if (l.x1 <= l.x0 || l.y1 <= l.y0) return false;
-  const x0 = roundPx(x);
-  const y0 = roundPx(y);
-  const x1 = roundPx(x + w);
-  const y1 = roundPx(y + h);
+  const x0 = snapX(l, x);
+  const y0 = snapY(l, y);
+  const x1 = snapX(l, x + w);
+  const y1 = snapY(l, y + h);
   return x0 <= l.x1 && l.x0 <= x1 && y0 <= l.y1 && l.y0 <= y1;
 }
 
@@ -365,27 +376,27 @@ function insidePadding(ctx: HitCtx, n: HitNode, i: number): boolean {
 function insideRoundedBorder(ctx: HitCtx, n: HitNode, i: number): boolean {
   if (n.radii.length === 0) return true;
   const l = locationOf(ctx, i);
-  const x = roundPx(n.x);
-  const y = roundPx(n.y);
-  return boxMeetsRounded(quadOf(l), (x - l.ox) / LU_PX, (y - l.oy) / LU_PX, (roundPx(n.x + n.width) - x) / LU_PX, (roundPx(n.y + n.height) - y) / LU_PX, n.radii, 0);
+  const x = snapX(l, n.x);
+  const y = snapY(l, n.y);
+  return boxMeetsRounded(quadOf(l), (x - l.ox) / LU_PX, (y - l.oy) / LU_PX, (snapX(l, n.x + n.width) - x) / LU_PX, (snapY(l, n.y + n.height) - y) / LU_PX, n.radii, 0);
 }
 
 /** HitTestClippedOutByBorder of a line's block at the line's ink offset: the block's snapped border box moved there, rounded as the block. */
 function touchesBlockBorder(l: HitLocation, x: number, y: number, block: HitNode): boolean {
   if (block.radii.length === 0) return touchesSnapped(l, x, y, block.width, block.height);
-  const x0 = roundPx(x);
-  const y0 = roundPx(y);
-  return boxMeetsRounded(quadOf(l), (x0 - l.ox) / LU_PX, (y0 - l.oy) / LU_PX, (roundPx(x + block.width) - x0) / LU_PX, (roundPx(y + block.height) - y0) / LU_PX, block.radii, 0);
+  const x0 = snapX(l, x);
+  const y0 = snapY(l, y);
+  return boxMeetsRounded(quadOf(l), (x0 - l.ox) / LU_PX, (y0 - l.oy) / LU_PX, (snapX(l, x + block.width) - x0) / LU_PX, (snapY(l, y + block.height) - y0) / LU_PX, block.radii, 0);
 }
 
 /** Whether the hit box meets a rounded clipping box's pixel-snapped padding edge (PixelSnappedContouredInnerBorder). */
 function insideRoundedPadding(ctx: HitCtx, n: HitNode, i: number): boolean {
   if (n.radii.length === 0) return true;
   const l = locationOf(ctx, i);
-  const x = roundPx(n.x + n.borderLeft);
-  const y = roundPx(n.y + n.borderTop);
-  const w = maxOf0(roundPx(n.x + n.width - n.borderRight) - x);
-  const h = maxOf0(roundPx(n.y + n.height - n.borderBottom) - y);
+  const x = snapX(l, n.x + n.borderLeft);
+  const y = snapY(l, n.y + n.borderTop);
+  const w = maxOf0(snapX(l, n.x + n.width - n.borderRight) - x);
+  const h = maxOf0(snapY(l, n.y + n.height - n.borderBottom) - y);
   return boxMeetsRounded(quadOf(l), (x - l.ox) / LU_PX, (y - l.oy) / LU_PX, w / LU_PX, h / LU_PX, n.radii, 8);
 }
 
@@ -612,7 +623,10 @@ const FLOAT_MIN_NORMAL = 1.1754943508222875e-38;
 function mappedLocation(from: HitLocation, n: HitNode): HitLocation {
   const det = froundOf(n.scaleX * n.scaleY);
   const a = det < 0 ? -det : det;
-  if (!(a >= FLOAT_MIN_NORMAL && Number.isFinite(a))) return { ox: n.x, oy: n.y, x0: 0, x1: 0, y0: 0, y1: 0, qx0: 0, qx1: 0, qy0: 0, qy1: 0 };
+  const rounds = !(n.scaleX === 1 && n.scaleY === 1);
+  const sx = rounds ? n.x : from.sx;
+  const sy = rounds ? n.y : from.sy;
+  if (!(a >= FLOAT_MIN_NORMAL && Number.isFinite(a))) return { ox: n.x, oy: n.y, x0: 0, x1: 0, y0: 0, y1: 0, qx0: 0, qx1: 0, qy0: 0, qy1: 0, sx, sy };
   const ix = froundOf(1 / n.scaleX);
   const iy = froundOf(1 / n.scaleY);
   const tx = froundOf(n.offsetX * -ix);
@@ -625,12 +639,12 @@ function mappedLocation(from: HitLocation, n: HitNode): HitLocation {
   const qx1 = ax < bx ? bx : ax;
   const qy0 = ay < by ? ay : by;
   const qy1 = ay < by ? by : ay;
-  return { ox: n.x, oy: n.y, x0: n.x + fromPxFloor(qx0), x1: n.x + fromPxCeil(qx1), y0: n.y + fromPxFloor(qy0), y1: n.y + fromPxCeil(qy1), qx0, qx1, qy0, qy1 };
+  return { ox: n.x, oy: n.y, x0: n.x + fromPxFloor(qx0), x1: n.x + fromPxCeil(qx1), y0: n.y + fromPxFloor(qy0), y1: n.y + fromPxCeil(qy1), qx0, qx1, qy0, qy1, sx, sy };
 }
 
 /** The location of a point in every space of a prepared table: the 1x1 px box in the root's, mapped down each transform. */
 function locationsAt(prepared: HitPrepared, px: number, py: number): HitLocation[] {
-  const out: HitLocation[] = [{ ox: 0, oy: 0, x0: px, x1: px + LU_PX, y0: py, y1: py + LU_PX, qx0: px / LU_PX, qx1: (px + LU_PX) / LU_PX, qy0: py / LU_PX, qy1: (py + LU_PX) / LU_PX }];
+  const out: HitLocation[] = [{ ox: 0, oy: 0, x0: px, x1: px + LU_PX, y0: py, y1: py + LU_PX, qx0: px / LU_PX, qx1: (px + LU_PX) / LU_PX, qy0: py / LU_PX, qy1: (py + LU_PX) / LU_PX, sx: 0, sy: 0 }];
   prepared.spaces.boxes.forEach((b, k) => {
     const from = out[prepared.spaces.containers[k] as number];
     const n = prepared.nodes[b];
@@ -690,11 +704,15 @@ export type HitFact = {
   readonly transform: readonly TransformOp[];
   readonly origin: TransformOrigin;
 };
-/** Why the hit table does not model a transform, or null: it models scale and translate functions (a rotate by 0 is the identity). */
+/** Why the hit table does not model a transform, or null: it models translate and positive scale functions (a rotate by 0 is the identity). */
 export function hitTransformRefusal(id: string, ops: readonly TransformOp[]): string | null {
   for (const o of ops) {
     if (o.fn === 'rotate' && o.angle !== 0) return `${id} rotates, and the hit table models scale and translate transforms only (SELD-R2b)`;
+    if (o.sx < 0 || o.sy < 0) return `${id} flips, and the hit table models scales by positive factors only (SELD-R2b)`;
   }
+  // Measured at DPR 2.625: Chrome's mapping through a translate after a scale differs from this float mapping at an exact edge.
+  const scaled = ops.findIndex((o) => o.fn.startsWith('scale') && (o.sx !== 1 || o.sy !== 1));
+  if (scaled >= 0 && ops.slice(scaled + 1).some((o) => o.fn.startsWith('translate'))) return `${id} translates after it scales, and the hit table models a translate before a scale only (SELD-R2b)`;
   return null;
 }
 
@@ -722,7 +740,11 @@ function paintOf(id: string, f: HitFact, r: LayoutRect, zoom: number, ox: number
   const origin: TransformOrigin = { x: zoomedLength(f.origin.x, zoom), y: zoomedLength(f.origin.y, zoom) };
   const m = paintTransformMatrix(ops, origin, r.width / LU_PX, r.height / LU_PX, NO_ROTATION);
   if (m.full || m.b !== 0 || m.c !== 0) throw new HitError(`${id}: a scale and translate transform did not stay axis-aligned`);
-  return { context: true, transformed: true, scaleX: m.a, scaleY: m.d, offsetX: froundOf((r.x - ox) / LU_PX + m.e), offsetY: froundOf((r.y - oy) / LU_PX + m.f) };
+  // Chrome rounds the paint offset of a box whose transform is not a translation to whole device px (paint_property_tree_builder.cc).
+  // Chrome rounds the paint offset of a box whose transform is not a translation to whole device px (paint_property_tree_builder.cc).
+  const translates = m.a === 1 && m.d === 1;
+  const at = (lu: number): number => (translates ? lu / LU_PX : Math.floor((lu + LU_PX / 2) / LU_PX));
+  return { context: true, transformed: true, scaleX: m.a, scaleY: m.d, offsetX: froundOf(at(r.x - ox) + m.e), offsetY: froundOf(at(r.y - oy) + m.f) };
 }
 
 

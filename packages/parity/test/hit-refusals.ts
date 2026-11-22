@@ -84,7 +84,7 @@ export const STACKING_OUT: readonly string[] = [
   // Positioned boxes with a z-index and fixed or sticky boxes make stacking contexts below the root.
   ...['fixed-probe', 'fixed-viewport', 'fixed-in-grid', 'anchor-containing-blocks', 'sticky-probe', 'sticky-viewport'].flatMap((n) => [n, `${n}-rtl`]),
 ];
-export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
+export const STACKING_REASON = /^stacking context on .+: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
 // VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
 export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl', 'inline-replaced-svg', 'inline-replaced-svg-rtl'];

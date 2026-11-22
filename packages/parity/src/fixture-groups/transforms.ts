@@ -32,6 +32,7 @@ export const TRANSFORMS: readonly FixtureSpec[] = [
   both('transform-indiv-values'),
   layout('transform-indiv-compose'),
   layout('transform-hit-scale'),
+  layout('transform-hit-subpixel'),
   reject('reject-transform-skew', 'DRAGON_UNSUPPORTED_VALUE', 'skewX(10deg)', `transform: skewX(10deg) is unsupported: ${M}`),
   reject('reject-transform-3d', 'DRAGON_UNSUPPORTED_VALUE', 'rotateY(20deg)', `transform: rotateY(20deg) is unsupported: ${M}`),
   reject('reject-transform-perspective', 'DRAGON_UNSUPPORTED_VALUE', 'perspective(200px)', `transform: perspective(200px) is unsupported: ${M}`),
