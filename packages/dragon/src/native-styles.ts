@@ -3,7 +3,9 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
+import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
+import type { InteractionProgram } from './lower/interaction-program.ts';
+import { deriveInteractionProgram } from './lower/interaction-program.ts';
 import type { AnimProgram } from './lower/anim-program.ts';
 import type { rtBand } from '@dragon/layout';
 import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
@@ -82,6 +84,11 @@ export type NativeStyleOutput = {
    */
   readonly anim?: AnimProgram;
   /**
+   * With support 'lanes' only: the interaction program over `program` (lower/interaction-program.ts), for the host to run with
+   * Dragon's interaction runtime (layout/src/rt-interaction.ts); absent when no assignment has an interaction state.
+   */
+  readonly interaction?: InteractionProgram;
+  /**
    * The sheet's @media bands, or null without @media: each atom is one media feature the device evaluates, each band the truth
    * vector of every atom; the program's env#band state selects one, so a band change is a setter like any other.
    */
@@ -146,6 +153,19 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
   return { styles: { ok: targets.every((t) => out[t]?.kind === 'emitted'), digest: compiled.digest, diagnostics: compiled.diagnostics, targets: out }, compiled };
 }
 
+/** The interaction program over a target's state program: one level per program assignment, from its case in its band. */
+function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend): InteractionProgram | string {
+  const isBand = (x: StateProgram['assignments'][number]['assignment'][number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
+  const inputs = [];
+  for (const { assignment } of program.assignments) {
+    const band = (assignment.find(isBand)?.value ?? 0) as number;
+    const input = interactionLevelInputIn(compiled, assignment.filter((x) => !isBand(x)), band, backend);
+    if (typeof input === 'string') return input;
+    inputs.push(input);
+  }
+  return deriveInteractionProgram(program, inputs);
+}
+
 function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean, hostAnimates: boolean): NativeStyleOutput | NativeStyleBlocked {
   if (compiled.targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} compile has errors; see the diagnostics` };
   const record = internalRecord(compiled);
@@ -158,10 +178,15 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   if (animated && bands !== null) return { kind: 'blocked', reason: `the ${t} output has transitions or animations under @media, which a host does not run yet` };
   const count = bands === null ? 1 : bands.table.bands.length;
   const cases = [];
+  let interactive = false;
   for (const c of compiledCases(compiled)) {
     for (let band = 0; band < count; band++) {
       const partition = interactionPartitionIn(compiled, c.assignment, band);
-      if (partition !== null && partition.states.length > 0) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
+      if (partition !== null && partition.states.length > 0) {
+        // A host that runs Dragon's interaction runtime itself (support 'lanes', program only) gets the interaction program.
+        if (!hostAnimates) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
+        interactive = true;
+      }
       const p = nativeBandProgramFor(compiled, c.assignment, band, t);
       if (p.kind === 'blocked') return { kind: 'blocked', reason: p.reason };
       cases.push({ assignment: c.assignment, isInitial: c.isInitial, band, program: p.program });
@@ -177,7 +202,9 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
       return s;
     });
     const anim = animated ? animProgramOf(compiled, program.assignments.map((a) => a.assignment)) : null;
-    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }) };
+    const interaction = interactive ? interactionProgramOf(compiled, program, backend) : null;
+    if (typeof interaction === 'string') return { kind: 'blocked', reason: interaction };
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction }) };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);

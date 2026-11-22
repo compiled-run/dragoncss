@@ -5,9 +5,9 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import type { BorderOp, LayoutBox, LU, ScrollRange, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
-import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
-import { animTablesOf, borderDevicePx, isScalar, programAt, programInput } from 'dragon';
-import type { AnimTables } from '@dragon/layout';
+import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar, StateProgram } from 'dragon';
+import { animTablesOf, borderDevicePx, interactionProgramAt, isScalar, programAt, programInput } from 'dragon';
+import type { AnimTables, InteractionTables } from '@dragon/layout';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdge } from '../../layout/src/units.ts';
 import { cssFontSizes } from './ahem-lines.ts';
@@ -98,9 +98,18 @@ export type ExportTarget = {
    * program's assignments, by Dragon id, which a phone runs with the plan's layout as the page moves between assignments.
    */
   readonly anim?: AnimTables;
+  /**
+   * Only when an assignment has interaction states (:hover, :active, :focus, :focus-visible), one level per assignment: Dragon's
+   * interaction runtime tables (layout/src/rt-interaction.ts), the node each table index addresses, and each interaction state's
+   * assignment, laid out as `assignments` are. The host runs the tables on touch, pointer and focus and shows the state's nodes.
+   */
+  readonly interaction?: { readonly levels: readonly ExportInteractionLevel[] };
   /** With a plan: each list's parent box and the ids of a row's top boxes, which a phone copies once per row. */
   readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
 };
+/** One assignment's interaction states: the runtime's tables, the node per table index, and per state its laid-out assignment. */
+export type ExportInteractionLevel = { readonly tables: InteractionTables; readonly addresses: readonly string[]; readonly states: readonly ExportAssignment[] };
+
 export type NativeStyleExport = {
   readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;
   readonly units: string;
@@ -263,8 +272,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const system = systemFonts === null ? null : systemFonts(t, d.dpr);
     const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr, new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])));
     const measurer = (): TextMeasurer => shared ?? referenceMeasurer([...inputFaces.keys()]);
-    const assignments = sp.assignments.map((a, i): ExportAssignment => {
-      const program = programAt(sp, i);
+    const exportAt = (program: NativeProgram, a: StateProgram['assignments'][number]): ExportAssignment => {
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
       const boxes = new Map(laid.map((b) => [b.id, b]));
       const absolute = absoluteRects(laid);
@@ -306,7 +314,19 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       if ('undecided' in scroll.page) undecided.add(`${t}: ${scroll.page.undecided}`);
       if ('undecided' in scroll.page) return { values: valuesOf(a.assignment), pageScroll: null, pageScrollUndecided: { nodeId: scroll.page.nodeId, detail: scroll.page.detail }, nodes };
       return { values: valuesOf(a.assignment), pageScroll: scroll.page, nodes };
-    });
+    };
+    const assignments = sp.assignments.map((a, i) => exportAt(programAt(sp, i), a));
+    // Each assignment's interaction states, laid out as the assignments are; the host selects one with Dragon's interaction runtime.
+    const ip = o.interaction;
+    const interaction = ip === undefined ? {} : {
+      interaction: {
+        levels: ip.levels.map((l, i): ExportInteractionLevel => ({
+          tables: l.tables,
+          addresses: l.addresses,
+          states: l.deltas.map((_, k) => exportAt(interactionProgramAt(ip, i, k), sp.assignments[i] as StateProgram['assignments'][number])),
+        })),
+      },
+    };
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
@@ -314,7 +334,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
     const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height) } : {};
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated };
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated, ...interaction };
   }
   const files = vendoredFaces();
   return {
