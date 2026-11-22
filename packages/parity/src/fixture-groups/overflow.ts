@@ -52,10 +52,8 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // less the adjacent border widths): one border, uneven borders, elliptical and per-corner radii, an inner corner made square by a
   // thick border, a hidden x axis with overflow-y auto, padding, content that fits, and one inside another. No scroller paints a
   // background, so both directions run; the background twin is ltr only, since an rtl scroller with a background is refused
-  // natively. The textarea fixture is the Markless notes form's field (1px border, 10px radius, padding 12px 14px, a background),
-  // and the same field with a 4px border, whose corners the sampler can reach), which the native lowering clips at rest rather than scrolls.
+  // natively. The rounded textarea of the Markless notes form is controls-textarea-rounded (controls.ts).
   both('overflow-rounded'),
   layout('overflow-rounded-background', ['ltr']),
-  layout('overflow-rounded-textarea', ['ltr']),
   reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
 ];
