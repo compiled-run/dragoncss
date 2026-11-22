@@ -108,4 +108,10 @@ describe('FORM-a controls', () => {
     expect(errors(compile(css, (r) => [range(r), div(r, 'a', ['a'])], NATIVE, true).diagnostics)).toContainEqual(expect.stringMatching(/:hover needs Dragon hit testing through the form control /));
     expect(errors(compile(css, (r) => [button(r), div(r, 'a', ['a'])], NATIVE, true).diagnostics).filter((m) => m.includes('hit testing through the form control'))).toEqual([]);
   });
+
+  it('reads no paint fact of a text field\'s UA shadow parts for the hit model, as Chrome retargets them to the field', () => {
+    const field = (r: SourceRef) => ({ ...div(r, 't', ['t']), tag: 'input', attributes: [attr('type', 'search'), attr('readonly', '')] });
+    const out = compile(`${BODY}input { display: block; font-family: Ahem; appearance: none; } .a { width: 10px; height: 10px; } .a:hover { width: 20px; }`, (r) => [field(r), div(r, 'a', ['a'])], NATIVE, true);
+    expect(errors(out.diagnostics).filter((e) => e.includes('t::'))).toEqual([]);
+  });
 });
