@@ -46,7 +46,7 @@ public func paint_menuListArrows(_ input: LayoutInput, _ boxes: JsArray<LayoutRe
   try paint_collectArrows(zoomed.root, zoomed.devicePixelRatio, input.devicePixelRatio, zooms, layout_absoluteRects(boxes), out)
   // ts: packages/layout/src/paint.ts:66
   if (jsLength(out) != selects) {
-    throw JsError(message: jsConcat(S.s345, jsNumberToString(selects), S.s142, jsNumberToString(jsLength(out)), S.s18))
+    throw JsError(message: jsConcat(S.s348, jsNumberToString(selects), S.s144, jsNumberToString(jsLength(out)), S.s18))
   }
   return out
 }
@@ -56,7 +56,7 @@ public func paint_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ device: D
   var found: Double = 0.0
   // ts: packages/layout/src/paint.ts:73
   if (b.kind == S.s_control) {
-    let c: any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as! ControlBox).control
+    let c: any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as! ControlBox).control
     // ts: packages/layout/src/paint.ts:75
     if ((c.kind == S.s_select_menulist) && ((c as! ControlKind_selectMenulist).arrowWidth > 0.0)) {
       _ = try out.set((b as! ControlBox).id, units_effectiveZoom(device, (b as! ControlBox).style.zoom))
@@ -65,11 +65,11 @@ public func paint_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ device: D
   }
   // ts: packages/layout/src/paint.ts:80
   do {
-    let _a235 = b.children
-    var _i235 = 0
-    while _i235 < _a235.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a235.items[_i235]
-      _i235 += 1
+    let _a241 = b.children
+    var _i241 = 0
+    while _i241 < _a241.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a241.items[_i241]
+      _i241 += 1
       // ts: packages/layout/src/paint.ts:81
       if ((k.kind == S.s_box) || ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         try found = (found + paint_collectArrowZooms((k as! any U_ControlBox_LayoutBox), device, out))
@@ -83,14 +83,14 @@ public func paint_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ device: D
 public func paint_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoomedRatio: Double, _ device: Double, _ zooms: JsStringMap<Double>, _ abs: JsStringMap<LayoutRect>, _ out: JsArray<MenuListArrowPaint>) throws -> Void {
   // ts: packages/layout/src/paint.ts:88
   if (b.kind == S.s_control) {
-    let c: any U_ControlKind_buttonBlock_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as! ControlBox).control
+    let c: any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as! ControlBox).control
     let zoom: Double? = zooms.get((b as! ControlBox).id)
     // ts: packages/layout/src/paint.ts:91
     if ((c.kind == S.s_select_menulist) && (zoom != nil)) {
       let r: LayoutRect? = abs.get((b as! ControlBox).id)
       // ts: packages/layout/src/paint.ts:93
       if (r == nil) {
-        throw JsError(message: jsConcat(S.s346, (b as! ControlBox).id, S.s55))
+        throw JsError(message: jsConcat(S.s349, (b as! ControlBox).id, S.s55))
       }
       let s: SnappedRect = try snap_snapRect(jsUnwrap(r))
       let border: Edges = try box_resolveBorder((b as! ControlBox).style, zoomedRatio)
@@ -100,11 +100,11 @@ public func paint_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoomedRatio: 
   }
   // ts: packages/layout/src/paint.ts:100
   do {
-    let _a236 = b.children
-    var _i236 = 0
-    while _i236 < _a236.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a236.items[_i236]
-      _i236 += 1
+    let _a242 = b.children
+    var _i242 = 0
+    while _i242 < _a242.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a242.items[_i242]
+      _i242 += 1
       // ts: packages/layout/src/paint.ts:101
       if ((k.kind == S.s_box) || ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         try paint_collectArrows((k as! any U_ControlBox_LayoutBox), zoomedRatio, device, zooms, abs, out)

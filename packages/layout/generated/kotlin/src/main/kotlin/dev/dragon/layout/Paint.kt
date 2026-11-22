@@ -49,7 +49,7 @@ fun paint_collectArrowZooms(b: U_ControlBox_LayoutBox, device: Double, out: JsSt
   var found: Double = 0.0
   // ts: packages/layout/src/paint.ts:73
   if (jsStrEq(b.kind, "control")) {
-    val c: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as ControlBox).control
+    val c: U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as ControlBox).control
     // ts: packages/layout/src/paint.ts:75
     if ((jsStrEq(c.kind, "select-menulist") && ((c as ControlKind_selectMenulist).arrowWidth > 0.0))) {
       out.set((b as ControlBox).id, units_effectiveZoom(device, (b as ControlBox).style.zoom))
@@ -58,11 +58,11 @@ fun paint_collectArrowZooms(b: U_ControlBox_LayoutBox, device: Double, out: JsSt
   }
   // ts: packages/layout/src/paint.ts:80
   run {
-    val _a235 = b.children
-    var _i235 = 0
-    while (_i235 < _a235.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a235[_i235]
-      _i235++
+    val _a241 = b.children
+    var _i241 = 0
+    while (_i241 < _a241.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a241[_i241]
+      _i241++
       // ts: packages/layout/src/paint.ts:81
       if ((jsStrEq(k.kind, "box") || jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         found = (found + paint_collectArrowZooms((k as U_ControlBox_LayoutBox), device, out))
@@ -76,7 +76,7 @@ fun paint_collectArrowZooms(b: U_ControlBox_LayoutBox, device: Double, out: JsSt
 fun paint_collectArrows(b: U_ControlBox_LayoutBox, zoomedRatio: Double, device: Double, zooms: JsStringMap<Double>, abs: JsStringMap<LayoutRect>, out: JsArray<MenuListArrowPaint>): Unit {
   // ts: packages/layout/src/paint.ts:88
   if (jsStrEq(b.kind, "control")) {
-    val c: U_ControlKind_buttonBlock_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as ControlBox).control
+    val c: U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField_ControlKind_textPlaceholder = (b as ControlBox).control
     val zoom: Double? = zooms.get((b as ControlBox).id)
     // ts: packages/layout/src/paint.ts:91
     if ((jsStrEq(c.kind, "select-menulist") && (zoom != null))) {
@@ -93,11 +93,11 @@ fun paint_collectArrows(b: U_ControlBox_LayoutBox, zoomedRatio: Double, device: 
   }
   // ts: packages/layout/src/paint.ts:100
   run {
-    val _a236 = b.children
-    var _i236 = 0
-    while (_i236 < _a236.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a236[_i236]
-      _i236++
+    val _a242 = b.children
+    var _i242 = 0
+    while (_i242 < _a242.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a242[_i242]
+      _i242++
       // ts: packages/layout/src/paint.ts:101
       if ((jsStrEq(k.kind, "box") || jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         paint_collectArrows((k as U_ControlBox_LayoutBox), zoomedRatio, device, zooms, abs, out)
