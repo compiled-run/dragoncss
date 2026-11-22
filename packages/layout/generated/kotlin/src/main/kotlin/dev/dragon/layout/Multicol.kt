@@ -158,11 +158,11 @@ fun multicol_balanceColumns(heights: JsArray<Double>, count: Double): ColumnBrea
   var tallest: Double = units_ZERO
   // ts: packages/layout/src/multicol.ts:142
   run {
-    val _a177 = heights
-    var _i177 = 0
-    while (_i177 < _a177.size) {
-      val h: Double = _a177[_i177]
-      _i177++
+    val _a178 = heights
+    var _i178 = 0
+    while (_i178 < _a178.size) {
+      val h: Double = _a178[_i178]
+      _i178++
       content = units_add(content, h)
       tallest = units_max(tallest, h)
     }
