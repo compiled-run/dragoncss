@@ -126,6 +126,8 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     // the outline in its layer (opacity-group); a translucent member makes the layer software-built, which draws no outline.
     for (const outline of ['outline: 1px solid rgb(0, 0, 0);', 'outline: 6px double rgb(0, 90, 0); outline-offset: 2px;']) expect(errors(`.b { ${leaf} ${outline} opacity: 0.3; }`), outline).toEqual([]);
     expect(errors(`.a { ${leaf} outline: 1px solid rgb(0, 0, 0); opacity: 0.3; } .b { height: 2px; background-color: rgba(0, 0, 0, 0.5); }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
+    // Every outlined member's style is checked, not only the first's: a dashed ring on a later member is side-painter ops cc never folds.
+    expect(errors(`.a { ${leaf} outline: 1px solid rgb(0, 0, 0); opacity: 0.3; } .b { height: 2px; background-color: rgb(0, 0, 200); outline: 3px dashed rgb(0, 0, 0); }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
     // A box with a child is a group of more than one draw: it does not fold, and native pre-composites it (opacity-group).
     expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; }`)).toEqual([]);
     expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; border-radius: 1px; }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
