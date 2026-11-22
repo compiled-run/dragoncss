@@ -66,7 +66,7 @@ export type UaDataset = {
 type TextFontRow = { readonly [property: string]: string };
 
 /** The element keys of the form controls Dragon lays out (FORM-a). */
-export type ControlKey = Extract<ElementKey, 'button' | 'button[disabled]' | 'input' | 'input[type=range]' | 'select' | 'select[disabled]' | 'textarea'>;
+export type ControlKey = Extract<ElementKey, 'button' | 'button[disabled]' | 'input' | 'input[type=range]' | 'select' | 'select[disabled]' | 'input[type=search]' | 'textarea'>;
 
 /** A row key of the UA dataset: a captured tag, a replaced key (REPL-0), a control key (FORM-a) or a top-layer key. */
 export type UaKey = CapturedTag | ReplacedKey | ControlKey | TopLayerKey;
@@ -89,7 +89,7 @@ function isReplacedKey(key: UaKey): key is ReplacedKey {
 }
 
 function isControlKey(key: UaKey): key is ControlKey {
-  return key === 'button' || key === 'button[disabled]' || key === 'input' || key === 'input[type=range]' || key === 'select' || key === 'select[disabled]' || key === 'textarea';
+  return key === 'button' || key === 'button[disabled]' || key === 'input' || key === 'input[type=range]' || key === 'select' || key === 'select[disabled]' || key === 'input[type=search]' || key === 'textarea';
 }
 
 /**

@@ -68,8 +68,9 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
+import { inputTypeState, isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
 import { rangePartOf, selectOptionLabelsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { SEARCH_CANCEL_BUTTON } from '../forms/text-field.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
@@ -1027,7 +1028,7 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
       const clip: LayoutStyle = { ...style, overflowX: 'clip', overflowY: 'clip' };
       return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight }, strut, children };
     }
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight }, strut, children };
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, cancelButton: inputTypeState(el.element.attributes.get('type')) === 'search' ? SEARCH_CANCEL_BUTTON : null }, strut, children };
   }
   if (field !== undefined) {
     // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at

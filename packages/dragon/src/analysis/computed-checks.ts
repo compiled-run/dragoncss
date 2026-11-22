@@ -1765,10 +1765,11 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
- * positioned one; one whose font is Chrome's UA control font; and on iOS and Android an editable field, as
- * Dragon has no caret or keyboard input there yet (the FORM-b editing slice). A readonly field shows its value as drawn text.
+ * positioned one or a grid item; one whose font is Chrome's UA control font; on iOS and Android a right-to-left search field; and
+ * on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the
+ * host edits it (hostEdits: the compile's textEditing 'host'; never a textarea). A readonly field shows its value as drawn text.
  */
-function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
   const address = el.element.address;
   const tag = el.element.tag;
   const state = inputTypeState(el.element.attributes.get('type'));
@@ -1814,7 +1815,11 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   if (family.origin !== 'user-agent' && first !== 'ahem') {
     refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
   }
-  if (!el.element.attributes.has('readonly')) {
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (state === 'search' && keywordOf(direction) === 'rtl') {
+    refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+  if ((!hostEdits || tag === 'textarea') && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
@@ -2334,7 +2339,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
-      checkTextField(el, parentDisplay, targets, diagnostics, reported);
+      checkTextField(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
       checkRange(el, parentDisplay, targets, diagnostics, reported);
