@@ -1091,6 +1091,8 @@
     "multicol-ahem-rtl": "h1 is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "outline-rounded": "border-radius on r1, r2, r3, r4, r5, r6: hit testing through rounded corners is not modelled yet (PNT1)",
     "outline-rounded-rtl": "border-radius on r1, r2, r3, r4, r5, r6: hit testing through rounded corners is not modelled yet (PNT1)",
+    "outline-layers": "stacking context on bar, neg, z1, op, fixed: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "outline-layers-rtl": "stacking context on bar, neg, z1, op, fixed: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "overflow-text-cards": "border-radius on r1, r2, g1, g2: hit testing through rounded corners is not modelled yet (PNT1)",
     "overflow-text-cards-rtl": "border-radius on r1, r2, g1, g2: hit testing through rounded corners is not modelled yet (PNT1)",
     "overflow-controls": "b1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
