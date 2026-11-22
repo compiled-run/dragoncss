@@ -1858,15 +1858,20 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
 function checkSearchField(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
   const address = el.element.address;
   const align = el.props.get('text-align') as ResolvedValue;
-  const a = keywordOf(align);
   const rtl = keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl';
-  if (!(a === 'start' || (a === 'left' && !rtl) || (a === 'right' && rtl))) {
+  const startAligned = (v: ResolvedValue): boolean => {
+    const a = keywordOf(v);
+    return a === 'start' || (a === 'left' && !rtl) || (a === 'right' && rtl);
+  };
+  if (!startAligned(align)) {
     refuse(align, 'search-align', `text-align: ${valueToString(align.value)} on the search field ${address} is not supported: its cancel button narrows the editor, which moves centred and end-aligned text in a way no fixture measures yet`, `Keep text-align: start on <input type=search> ${address}.`);
   }
   for (const c of el.children) {
     if (c.kind !== 'element') continue;
     const part = textFieldPartOf(c as ResolvedElement);
     if (part === undefined || part.part !== 'placeholder') continue;
+    const own = (c as ResolvedElement).props.get('text-align') as ResolvedValue;
+    if (startAligned(align) && !startAligned(own)) refuse(own, 'search-placeholder-align', `text-align: ${valueToString(own.value)} on the placeholder of the search field ${address} is not supported: the cancel button narrows the placeholder's box, which moves centred and end-aligned text in a way no fixture measures yet`, `Keep text-align: start on the ::placeholder of <input type=search> ${address}.`);
     for (const side of ['margin-left', 'margin-right'] as const) {
       const m = (c as ResolvedElement).props.get(side) as ResolvedValue;
       if (valueToString(m.value) !== '0px') refuse(m, `search-placeholder-${side}`, `${side}: ${valueToString(m.value)} on the placeholder of the search field ${address} is not supported: the cancel button takes the placeholder's inline end, which no fixture measures with an author margin`, `Remove the ::placeholder ${side} for <input type=search> ${address}.`);

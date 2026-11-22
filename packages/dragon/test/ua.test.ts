@@ -213,6 +213,8 @@ describe('UA longhands of the element keys (ELB-2)', () => {
       // FORM-checkbox: html.css's checkbox margins and box-sizing.
       'input[type=checkbox]': ['appearance', 'box-sizing', 'font-family', 'font-size', 'margin-bottom', 'margin-left', 'margin-right', 'margin-top'],
       textarea: ['appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'font-family', 'font-size', 'overflow-wrap', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top', 'resize', 'white-space-collapse'],
+      // FORM-search: html.css's input longhands plus box-sizing: border-box.
+      'input[type=search]': ['appearance', 'background-color', 'border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'box-sizing', 'font-family', 'font-size', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],
       a: [],
       'a[href]': ['color'],
       img: ['overflow-x', 'overflow-y'],

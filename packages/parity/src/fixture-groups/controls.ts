@@ -49,6 +49,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="c" type="radio">', '<input> c of type radio is not supported'),
   layout('controls-search'),
   reject('reject-controls-search-align', 'DRAGON_UNSUPPORTED_VALUE', 'center', 'text-align: center on the search field s is not supported'),
+  reject('reject-controls-search-placeholder-align', 'DRAGON_UNSUPPORTED_VALUE', 'center', 'text-align: center on the placeholder of the search field s is not supported'),
   reject('reject-controls-search-placeholder-margin', 'DRAGON_UNSUPPORTED_VALUE', '4px', 'margin-left: 4px on the placeholder of the search field s is not supported'),
   reject('reject-controls-search-editable', 'DRAGON_UNSUPPORTED_VALUE', null, '<input> s is an editable text control'),
   both('controls-select-none'),
