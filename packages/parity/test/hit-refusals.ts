@@ -78,6 +78,8 @@ export const TRANSFORM_REASON = /^transform on .+: hit testing through a rotated
 // z-index 0 layer are in the hit lane (rt-hit.ts orders them as their own layers); these hold one in another layer (an integer
 // z-index), a normal-flow layer, or one their hit facts do not name (opacity-group-clipped's clip has z-index: 0).
 export const STACKING_OUT: readonly string[] = [
+  // A sticky box (POSX-s) or a z-index layer keeps the notes header and modal fixtures out.
+  'opacity-group-sticky', 'opacity-group-sticky-rtl', 'opacity-group-sticky-short', 'opacity-group-sticky-short-rtl', 'opacity-group-after-sticky', 'opacity-group-after-sticky-rtl', 'opacity-group-after-sticky-short', 'opacity-group-after-sticky-short-rtl', 'opacity-group-modal', 'opacity-group-modal-rtl', 'opacity-group-modal-sticky', 'opacity-group-modal-sticky-rtl',
   'opacity-group-clipped', 'opacity-group-clipped-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
   'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl',
@@ -85,8 +87,6 @@ export const STACKING_OUT: readonly string[] = [
   'stacking-transform', 'stacking-transform-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
   // Positioned boxes with a z-index and fixed or sticky boxes make stacking contexts below the root.
   ...['fixed-probe', 'fixed-viewport', 'fixed-in-grid', 'anchor-containing-blocks', 'sticky-probe', 'sticky-viewport'].flatMap((n) => [n, `${n}-rtl`]),
-  // The notes sticky bar and modal fixtures: a sticky bar or a z-index backdrop keeps them out.
-  ...['opacity-group-sticky', 'opacity-group-sticky-short', 'opacity-group-after-sticky', 'opacity-group-after-sticky-short', 'opacity-group-modal', 'opacity-group-modal-sticky'].flatMap((n) => [n, `${n}-rtl`]),
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
