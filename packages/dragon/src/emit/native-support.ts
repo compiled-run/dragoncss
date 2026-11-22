@@ -324,6 +324,11 @@ public final class DragonTextView: UIView, DragonNodeView {
   public let dragonId: String
   public let dragonKind: String
   public let dragonParent: String?
+  /// PNT1-opacity-d: a group's backdrop capture draws text painted before it, so a text change marks every overlay stale.
+  public override func setNeedsDisplay() {
+    super.setNeedsDisplay()
+    dragonGroupsChanged()
+  }
   public private(set) var dragonText = ""
   public private(set) var dragonFamily = ""
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
@@ -1540,6 +1545,10 @@ open class DragonGroup(ctx: Context) : ViewGroup(ctx) {
     clipToPadding = false
     setWillNotDraw(false)
   }
+  override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
+    if (DragonGroups.backdropSkip.contains(child)) return false
+    return super.drawChild(canvas, child, drawingTime)
+  }
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
     for (i in 0 until childCount) {
       val c = getChildAt(i)
@@ -1636,6 +1645,11 @@ const val DRAGON_SINGLE_RUN_BASELINE_PLANT = 0.0
  */
 class DragonTextView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : View(ctx), DragonNodeView {
   val dragonFrame = IntArray(4)
+  /** PNT1-opacity-d: a group's backdrop capture draws text painted before it, so a text change marks every overlay stale. */
+  override fun invalidate() {
+    super.invalidate()
+    dragonGroupsChanged()
+  }
   val paint = TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.LINEAR_TEXT_FLAG or Paint.SUBPIXEL_TEXT_FLAG)
   var dragonText = ""
     private set

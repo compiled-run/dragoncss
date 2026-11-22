@@ -271,33 +271,48 @@ describe('opacity: a group native pre-composites', () => {
     return createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
   };
   const errors = (c: ReturnType<typeof build>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target} ${d.message}`);
-  it('admits a group with text, a border and a child over an earlier rect, with an opacity-group write naming the painters', () => {
+  it('admits a group with text, a border and a child over an earlier rect, with an opacity-group write naming no earlier group', () => {
     const c = build('.g { opacity: 0.4; }');
     expect(errors(c)).toEqual([]);
     const p = nativePrograms(c, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     for (const program of [p.programs.uikit, p.programs['android-views']]) {
       const g = program.nodes.find((n) => n.id === 'g');
-      expect(g?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'opacity-group')).toEqual([expect.objectContaining({ kind: 'opacity-group', key: 'dragonGroup', technique: 'dragon-owned-paint', opacity: 0.4, backdrop: null, painters: expect.arrayContaining(['u']) })]);
+      expect(g?.writes.filter((w) => w.kind === 'opacity' || w.kind === 'opacity-group')).toEqual([expect.objectContaining({ kind: 'opacity-group', key: 'dragonGroup', technique: 'dragon-owned-paint', opacity: 0.4, backdrop: null, painters: [] })]);
       expect(g?.facts['effects']).toEqual({ opacity: 0.4 });
       const w = g?.writes.find((x) => x.kind === 'opacity-group');
       if (w === undefined) throw new Error('no group write');
-      const painters = (w as { painters: readonly string[] }).painters;
-      expect(painters.includes('g') || painters.includes('k'), 'a painter inside the group').toBe(false);
     }
     const g = p.programs.uikit.nodes.find((n) => n.id === 'g');
     const w = g?.writes.find((x) => x.kind === 'opacity-group');
-    expect(EFFECTS_EMITTER.lines.uikit('v0', g as never, w as never)[0]).toMatch(/^ {2}dragonSetOpacityGroup\(t, v0, 0\.4, nil, \[.*"u".*\]\)$/);
-    expect(EFFECTS_EMITTER.lines['android-views']('v0', g as never, w as never)[0]).toMatch(/^ {2}dragonSetOpacityGroup\(t, v0, 0\.4, null, listOf<String>\(.*"u".*\)\)$/);
+    expect(EFFECTS_EMITTER.lines.uikit('v0', g as never, w as never)[0]).toBe('  dragonSetOpacityGroup(t, v0, 0.4, nil, [])');
+    expect(EFFECTS_EMITTER.lines['android-views']('v0', g as never, w as never)[0]).toBe('  dragonSetOpacityGroup(t, v0, 0.4, null, listOf<String>())');
   });
-  it('takes an opaque clipping ancestor as the backdrop, and paints the canvas white without one', () => {
-    const c = build('.w { overflow: hidden; background-color: rgb(255, 255, 255); } .g { opacity: 0.4; }');
+  it('composites over the platform\'s own drawing of what paints before it (text and rounded boxes too), listing earlier groups', () => {
+    for (const [css, label] of [['.w { overflow: hidden; background-color: rgb(255, 255, 255); } .g { opacity: 0.4; }', false], ['.g { opacity: 0.4; }', true], ['.g { opacity: 0.4; } .u { border-radius: 2px; }', false]] as const) {
+      const c = build(css, label);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { backdrop: string | null; painters: readonly string[] } | undefined;
+      expect([w?.backdrop, w?.painters], css).toEqual([null, []]);
+    }
+    // An earlier group's composite is in the capture, so the device computes it first.
+    const c = build('.g { opacity: 0.4; } .p { opacity: 0.5; }', true);
     expect(errors(c)).toEqual([]);
     const p = nativePrograms(c, []);
     if (p.kind !== 'ready') throw new Error(p.reason);
-    const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { backdrop: string | null; painters: readonly string[] } | undefined;
-    expect(w?.backdrop).toBe('w');
-    expect(w?.painters[0]).toBe('w');
+    const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { painters: readonly string[] } | undefined;
+    expect(w?.painters).toEqual(['p']);
+  });
+  it('admits a group\'s own scale (at most 1) and translate when no item in it is one draw op', () => {
+    for (const css of ['.g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; transform: translate(3px, 2px) scale(0.9); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; scale: 0.9; } .k { border: 1px solid rgb(0, 0, 0); }']) {
+      const c = build(css);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      expect(p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.map((w) => w.kind), css).toEqual(expect.arrayContaining(['opacity-group', 'transform']));
+    }
   });
   it('refuses on native a group whose content or backdrop the overlay cannot draw as Chrome does, naming why', () => {
     const cases: [string, boolean, string][] = [
@@ -308,8 +323,16 @@ describe('opacity: a group native pre-composites', () => {
       ['.g { opacity: 0.4; text-shadow: 1px 1px rgb(0, 0, 0); }', false, 'the text of g has a text-shadow'],
       ['.g { opacity: 0.4; color: rgba(0, 0, 0, 0.5); }', false, 'the text of g is not opaque'],
       ['.g { opacity: 0.4; border-left-color: rgb(1, 2, 3); }', false, 'g has border sides in more than one colour, which meet on a diagonal'],
-      ['.g { opacity: 0.4; }', true, 'the text of p paints before it in its backdrop the canvas'],
-      ['.g { opacity: 0.4; } .u { border-radius: 2px; }', false, 'a painter before it in its backdrop: u has a border radius'],
+      ['.g { opacity: 0.4; } .u { overflow: hidden; border-radius: 2px; }', false, 'u paints before it with a rounded overflow clip, a mask the backdrop capture does not draw'],
+      ['.g { opacity: 0.4; } .u { clip-path: inset(1px); }', false, 'u paints before it with a clip-path, which the backdrop capture is not proven to draw as the screen does'],
+      ['.g { opacity: 0.4; } .u { position: sticky; top: 0; }', false, 'u has position sticky and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
+      ['.g { opacity: 0.4; } .u { position: fixed; top: 0; width: 5px; }', false, 'u has position fixed and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
+      ['.g { opacity: 0.4; } .w { overflow: hidden; border-radius: 3px; }', false, 'it is inside w, a rounded overflow clip'],
+      ['.g { opacity: 0.4; transform: rotate(5deg); } .k { border: 1px solid rgb(0, 0, 0); }', false, "it has rotate(5deg), and Dragon samples a transformed group's backdrop for scale and translate only"],
+      ['.g { opacity: 0.4; transform: scale(1.2); } .k { border: 1px solid rgb(0, 0, 0); }', false, "it has scale(1.2), and Dragon samples a transformed group's backdrop for scales up to 1 only"],
+      ['.g { opacity: 0.4; transform: scale(0.9); }', false, 'it is transformed and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
+      ['.g { opacity: 0.4; transform: scale(0.9); border: none; } .k { border: 1px solid rgb(0, 0, 0); }', false, 'it is transformed and its own box is not a fill and a border, so cc may fold its alpha into one op in a tile Dragon cannot place'],
+      ['.g { opacity: 0.4; transform: scale(0.9); } .k { border: 1px solid rgb(0, 0, 0); background-color: rgba(0, 0, 0, 0.5); }', false, "it is transformed, and Dragon builds its layer in software (translucent paint or a nested group inside it)"],
       ['.g { opacity: 0.4; } .w { overflow: auto; }', false, 'it is inside w, a scroller'],
       ['.g { opacity: 0.4; } .w { text-decoration: underline; }', false, 'it is inside w, whose text decoration reaches its text'],
     ];
@@ -372,13 +395,15 @@ describe('opacity: a group native pre-composites', () => {
     expect(run(input)).toEqual([]);
     expect(run(decorated)).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: g has a text-decoration-line, which reaches the text inside it$`))));
   });
-  it('refuses on native an animation or transition on a member or a backdrop painter', () => {
+  it('refuses on native an animation or transition on a member or on anything painted before the group', () => {
     const motion = (who: string) => `on ${who}, which a pre-composited opacity or filter group draws or composites over: the group's composite is recomputed on layout and paint changes, not on animation frames (package PNT1-opacity-b)`;
     const all = (c: ReturnType<typeof build>): string[] => c.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message);
     expect(all(build('.g { opacity: 0.4; } .k { animation: k 1s infinite; } @keyframes k { from { height: 4px } to { height: 6px } }'))).toEqual([`an animation ${motion('k')}`, `an animation ${motion('k')}`]);
     expect(all(build('.g { opacity: 0.4; } .u { transition: height 1s; }'))).toEqual([`a transition ${motion('u')}`, `a transition ${motion('u')}`]);
     // An ancestor before the group in its backdrop is a painter too.
     expect(all(build('.g { opacity: 0.4; } .w { transition: height 1s; }'))).toEqual([`a transition ${motion('w')}`, `a transition ${motion('w')}`]);
+    // The backdrop capture draws everything painted before the group: a box holding earlier text too.
+    expect(all(build('.g { opacity: 0.4; } .p { transition: height 1s; }', true))).toEqual([`a transition ${motion('p')}`, `a transition ${motion('p')}`]);
     // Without the group, nothing is refused.
     expect(all(build('.w { transition: height 1s; }'))).toEqual([]);
   });

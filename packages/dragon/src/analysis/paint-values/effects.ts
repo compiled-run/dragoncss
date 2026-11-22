@@ -25,7 +25,7 @@ import type { ResolvedElement } from '../resolve.ts';
 import { paintedOutlineStyle, rounds } from './outline.ts';
 import type { PaintValues } from './types.ts';
 import type { AnimationAnalysis } from '../animations.ts';
-import { elementWillChange } from './transform.ts';
+import { elementTransform, elementWillChange } from './transform.ts';
 import { stackingOf, transformedForStacking } from '../../lower/paint/stacking.ts';
 import { resolvedStackTree } from './stacking.ts';
 
@@ -138,10 +138,11 @@ function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: 
 
 // ---------------------------------------------------------------- pre-composited groups (PNT1-opacity-b, S1)
 // Native keeps a group G at alpha 1 and covers it with an overlay that shows Q, Chrome's composite: G's layer (rendered by the
-// platform) over a software backdrop, blitted per cc raster tile as Chrome does (@dragon/layout paint-group.ts). The backdrop
-// is modelled from G's backdrop box B (the nearest ancestor that clips and has an opaque background, or the canvas) and the
-// painters before G inside it, so each of them must be a square opaque fill, solid border sides in one opaque colour, or an earlier
-// such group. G's own content must be what the platform renders exactly at whole device px: square opaque fills and solid
+// platform) over its backdrop, blitted per cc raster tile as Chrome does (@dragon/layout paint-group.ts). PNT1-opacity-d: the
+// backdrop is the platform's own drawing of everything painted before G, which equals Chrome's wherever the device does; paint whose
+// capture is not proven equal to the screen is refused before G (a platform blend, a mask, a clip path, a rounded overflow clip, a
+// filter, a blend mode), and so is G after or inside a sticky or fixed box (Chrome may give it a compositor layer of unknown tiles).
+// G may have its own scale (at most 1) and translate when no item of it is one draw op, so cc never folds it on any tiling. G's own content must be what the platform renders exactly at whole device px: square opaque fills and solid
 // opaque borders, and opaque text, with nothing that composites, moves or animates. PNT1-filter: G may instead (or as well) have a
 // colour-matrix filter, which the overlay applies to G's layer before its opacity (layout paint-group.ts groupFilterComposite).
 // S2: G's content may also hold translucent square fills, translucent solid borders on all four sides in one colour or on one side,
@@ -152,11 +153,11 @@ function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: 
 // text blit to replace it. Translucent borders on two or three sides are refused: Chrome draws them otherwise (measured one off).
 
 /**
- * An admitted group: its colour-matrix filter (empty for none), its backdrop box (null for the canvas) and the painters before it
- * there, in paint order; a group nested in an admitted group (its outer group's overlay composites it); or why not.
+ * An admitted group: its colour-matrix filter (empty for none), its backdrop box (null: the device captures the platform's drawing),
+ * the admitted groups painted before it (their composites are in that capture) and every id painted before it; a group nested in an admitted group (its outer group's overlay composites it); or why not.
  */
 export type GroupPlan =
-  | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[] }
+  | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[]; readonly before: readonly string[] }
   | { readonly kind: 'nested'; readonly outer: string }
   | { readonly kind: 'refused'; readonly reason: string };
 
@@ -168,6 +169,7 @@ export function groupPlanAt(el: ResolvedElement): GroupPlan | null {
   return planByElement.get(el) ?? null;
 }
 
+const GROUP_TRANSFORMS: readonly string[] = ['transform', 'rotate', 'scale', 'translate'];
 const GROUP_KEYWORDS = FOLD_KEYWORDS.filter(([p]) => p !== 'position' && p !== 'overflow-x' && p !== 'overflow-y');
 const keywordAt = (el: ResolvedElement, p: string): string | null => {
   const v = el.props.get(p as never)?.value;
@@ -194,6 +196,8 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   for (const [p, ok] of GROUP_KEYWORDS) {
     // The group's own filter is what the overlay applies (matrixFilterOf admits it).
     if (p === 'filter' && role === 'group') continue;
+    // The group's own 2D transform: the platform maps its overlay by it (DragonGroupView samples the backdrop through it).
+    if (role === 'group' && GROUP_TRANSFORMS.includes(p)) continue;
     const k = keywordAt(el, p);
     if (k !== null && !ok.includes(k)) return `${a} has a ${p} (a shadow, image, filter, clip, transform or will-change)`;
   }
@@ -336,30 +340,67 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       if (a !== propagated) for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(a, p) ?? 'visible')) return refused(`it is inside ${at}, a scroller`);
       if ((keywordAt(a, 'text-decoration-line') ?? 'none') !== 'none') return refused(`it is inside ${at}, whose text decoration reaches its text`);
     }
-    // The backdrop box and the painters before the group inside it.
-    const b = up.find((a) => a !== propagated && clipsAt(a) && keywordAt(a, 'display') !== 'inline' && usedColors(a)['background-color'].alpha === 255) ?? null;
+    // A rounded overflow clip above it is a mask, which the backdrop capture does not draw (CALayer.render(in:)).
+    const roundedClip = up.find((a) => a !== propagated && clipsAt(a) && rounds(a));
+    if (roundedClip !== undefined) return refused(`it is inside ${roundedClip.element.address}, a rounded overflow clip`);
+    // Its own 2D transform: scale (at most 1) and translate; the platform maps the overlay, sampling the backdrop through it.
+    const own = elementTransform(g);
+    if (own.length > 0) {
+      const turn = own.find((f) => f.kind === 'rotate' || f.kind === 'matrix');
+      if (turn !== undefined) return refused(`it has ${turn.text}, and Dragon samples a transformed group's backdrop for scale and translate only`);
+      const up1 = own.find((f) => f.kind === 'scale' && (f.sx > 1 || f.sy > 1 || f.sx <= 0 || f.sy <= 0));
+      if (up1 !== undefined) return refused(`it has ${up1.text}, and Dragon samples a transformed group's backdrop for scales up to 1 only`);
+      if (members.some((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m))) return refused('it is transformed, and Dragon builds its layer in software (translucent paint or a nested group inside it)');
+    }
     const gi = index.get(g.element.address);
-    const bi = b === null ? 0 : index.get(b.element.address);
-    if (gi === undefined || bi === undefined) throw new Error(`${g.element.address}: the group or its backdrop is not in the paint order`);
-    const painters: string[] = [];
-    for (const id of order.slice(bi, gi)) {
+    if (gi === undefined) throw new Error(`${g.element.address}: the group is not in the paint order`);
+    const before = order.slice(0, gi);
+    const elementOf = (id: string): ResolvedElement => {
       const text = id.indexOf(':text#');
       const el = byId.get(text < 0 ? id : id.slice(0, text));
       if (el === undefined) throw new Error(`${id}: a painter that is not an element of the case`);
-      if (b !== null && !within(el, b)) return refused(`${id} paints between its backdrop ${b.element.address} and it, outside the backdrop`);
-      // Inside an earlier group: that group's composite covers it.
-      if ([el, ...ancestors(el)].some((x) => x !== el && admitted(x)) || (text >= 0 && admitted(el))) continue;
-      if (text >= 0) return refused(`the text of ${el.element.address} paints before it in its backdrop ${b === null ? 'the canvas' : b.element.address}`);
+      return el;
+    };
+    // Chrome composites a box painted after a sticky or fixed box into a compositor layer of its own when the page scrolls, whose
+    // tiles start at what that layer paints (measured), so the per-tile fold of the group is unknown; a box inside one is in that
+    // box's layer.
+    const layered = [...up.filter((a) => ['sticky', 'fixed'].includes(keywordAt(a, 'position') ?? 'static')), ...before.filter((id) => !id.includes(':text#')).map(elementOf).filter((el) => ['sticky', 'fixed'].includes(keywordAt(el, 'position') ?? 'static'))];
+    const firstLayer = layered[0];
+    if (firstLayer !== undefined) return refused(`${firstLayer.element.address} has position ${keywordAt(firstLayer, 'position')} and ${up.includes(firstLayer) ? 'holds it' : 'paints before it'}, so Chrome may composite it in a compositor layer whose tiles Dragon does not know`);
+    // Every member's one-op item is safe from cc's fold under any tiling when a transform moves the tiles it meets (rule N).
+    if (own.length > 0) {
+      const ops = (el: ResolvedElement): number => {
+        const fills = usedColors(el)['background-color'].alpha > 0 ? 1 : 0;
+        const sides = SIDES.filter((side) => {
+          const style = keywordAt(el, `border-${side}-style`);
+          const w = el.props.get(`border-${side}-width` as never)?.value;
+          return style !== null && style !== 'none' && style !== 'hidden' && w !== undefined && w.kind === 'length' && w.value > 0;
+        }).length;
+        return fills + (sides === 4 ? 1 : sides);
+      };
+      if (ops(g) < 2) return refused('it is transformed and its own box is not a fill and a border, so cc may fold its alpha into one op in a tile Dragon cannot place');
+      const lone = members.find((m) => m !== g && ops(m) === 1);
+      if (lone !== undefined) return refused(`it is transformed and ${lone.element.address} inside it is one draw op, which cc may fold in a tile Dragon cannot place`);
+    }
+    // The backdrop is the platform's own drawing of what paints before it (DragonGroupView captures it), except paint whose capture
+    // is not proven equal to the screen: a platform blend, a mask, a clip path, a rounded overflow clip, a filter or a blend mode.
+    const painters: string[] = [];
+    for (const id of before) {
+      if (id.includes(':text#')) continue;
+      const el = elementOf(id);
+      if ([el, ...ancestors(el)].some((x) => x !== el && admitted(x))) continue;
       if (admitted(el)) {
         painters.push(id);
         continue;
       }
       if (opacityAt(el) < 1) return refused(`${id} paints before it with opacity ${opacityAt(el)}`);
-      const bad = boxProblem(el, up.includes(el) ? 'ancestor-painter' : 'painter', el === propagated);
-      if (bad !== null) return refused(`a painter before it in its backdrop: ${bad}`);
-      painters.push(id);
+      if (clipsAt(el) && rounds(el) && !up.includes(el)) return refused(`${id} paints before it with a rounded overflow clip, a mask the backdrop capture does not draw`);
+      for (const [p, ok] of [['clip-path', ['none']], ['mask-image', ['none']], ['filter', ['none']], ['backdrop-filter', ['none']], ['mix-blend-mode', ['normal']]] as const) {
+        const k = keywordAt(el, p);
+        if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with a ${p}, which the backdrop capture is not proven to draw as the screen does`);
+      }
     }
-    return { kind: 'group', filter, backdrop: b === null ? null : b.element.address, painters };
+    return { kind: 'group', filter, backdrop: null, painters, before };
   };
 
   for (const id of order) {
@@ -389,7 +430,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
   return plans;
 }
 
-/** Every address an admitted group's overlay reads: the groups' members and their backdrop painters (animations.ts refuses motion there). */
+/** Every address an admitted group's overlay reads: the groups' members and every box painted before them (animations.ts refuses motion there). */
 export function groupScope(root: ResolvedElement): ReadonlySet<string> {
   const out = new Set<string>();
   const plans = opacityGroupPlans(root);
@@ -399,7 +440,8 @@ export function groupScope(root: ResolvedElement): ReadonlySet<string> {
     for (const c of el.children) if (c.kind === 'element') visit(c, g);
   };
   visit(root, false);
-  for (const p of plans.values()) if (p.kind === 'group') for (const id of p.painters) out.add(id);
+  // The backdrop capture draws whatever paints before a group, so motion anywhere before it would go stale.
+  for (const p of plans.values()) if (p.kind === 'group') for (const id of p.before) if (!id.includes(':text#')) out.add(id);
   return out;
 }
 
