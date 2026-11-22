@@ -2140,6 +2140,19 @@ function checkCheckbox(el: ResolvedElement, parentDisplay: string | null, chain:
     refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
   }
   refuseGridItem(el, parentDisplay, refuse);
+  // The engine gives an auto size the 13px part size, but Chrome 145 stretches it as a natural size: an auto-width checkbox in a
+  // 100px column flex is 93px wide (controls-checkbox, refused case p).
+  const container = chain.filter((a) => !isContents(a)).at(-1);
+  if (container !== undefined && (parentDisplay === 'flex' || parentDisplay === 'inline-flex')) {
+    const column = (keywordOf(container.props.get('flex-direction') as ResolvedValue) ?? 'row').startsWith('column');
+    const self = keywordOf(el.props.get('align-self') as ResolvedValue);
+    const align = self === 'auto' || self === null ? keywordOf(container.props.get('align-items') as ResolvedValue) : self;
+    const cross = column ? 'width' : 'height';
+    const size = el.props.get(cross) as ResolvedValue;
+    if ((align === 'normal' || align === 'stretch') && keywordOf(size) === 'auto') {
+      refuse(size, 'checkbox-stretch', `<input type=checkbox> ${address} with ${cross}: auto is stretched by its flex container, as Chrome stretches a checkbox's natural size, which Dragon does not lay out yet`, `Give <input> ${address} a ${cross}, or set align-self: center on it.`);
+    }
+  }
   for (const [p, used] of CHECKBOX_THEMED_BOX) {
     const v = el.props.get(p) as ResolvedValue;
     if (used(v.value)) continue;

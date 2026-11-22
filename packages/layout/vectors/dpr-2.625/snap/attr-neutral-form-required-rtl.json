@@ -8,7 +8,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 4512
+   "height": 4864
   },
   {
    "id": "body",
@@ -16,7 +16,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 4512
+   "height": 4528
   },
   {
    "id": "form",
@@ -24,7 +24,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 4512
+   "height": 4528
   },
   {
    "id": "button",
@@ -53,18 +53,34 @@
   {
    "id": "field",
    "parent": "form",
-   "x": 46112,
-   "y": 2256,
-   "width": 21088,
-   "height": 2256
+   "x": 46448,
+   "y": 2592,
+   "width": 20416,
+   "height": 1936
   },
   {
-   "id": "field::editor",
+   "id": "field::container",
    "parent": "field",
-   "x": 464,
-   "y": 296,
+   "x": 128,
+   "y": 128,
    "width": 20160,
-   "height": 1664
+   "height": 1680
+  },
+  {
+   "id": "field::track",
+   "parent": "field::container",
+   "x": 0,
+   "y": 0,
+   "width": 20160,
+   "height": 1680
+  },
+  {
+   "id": "field::thumb",
+   "parent": "field::track",
+   "x": 9240,
+   "y": 0,
+   "width": 1680,
+   "height": 1680
   }
  ],
  "output": [
@@ -73,9 +89,9 @@
    "left": 0,
    "top": 0,
    "right": 1050,
-   "bottom": 71,
+   "bottom": 76,
    "width": 1050,
-   "height": 71
+   "height": 76
   },
   {
    "id": "body",
@@ -124,20 +140,38 @@
   },
   {
    "id": "field",
-   "left": 721,
-   "top": 35,
-   "right": 1050,
+   "left": 726,
+   "top": 41,
+   "right": 1045,
    "bottom": 71,
-   "width": 329,
-   "height": 36
+   "width": 319,
+   "height": 30
   },
   {
-   "id": "field::editor",
+   "id": "field::container",
    "left": 728,
-   "top": 40,
+   "top": 43,
    "right": 1043,
-   "bottom": 66,
+   "bottom": 69,
    "width": 315,
+   "height": 26
+  },
+  {
+   "id": "field::track",
+   "left": 728,
+   "top": 43,
+   "right": 1043,
+   "bottom": 69,
+   "width": 315,
+   "height": 26
+  },
+  {
+   "id": "field::thumb",
+   "left": 872,
+   "top": 43,
+   "right": 898,
+   "bottom": 69,
+   "width": 26,
    "height": 26
   }
  ]
