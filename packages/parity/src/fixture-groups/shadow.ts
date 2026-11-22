@@ -16,6 +16,7 @@ export const SHADOW: readonly FixtureSpec[] = [
   both('shadow-cascade'),
   both('shadow-webkit-alias'),
   both('shadow-transform'),
+  both('shadow-transform-order'),
   both('calib-shadow-blur'),
   both('calib-shadow-colors'),
   reject('reject-shadow-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(1px + 1px)', 'box-shadow: calc(1px + 1px) is unsupported: a calculation in a shadow is not supported'),

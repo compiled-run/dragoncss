@@ -1765,9 +1765,9 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
- * positioned one; one whose font is Chrome's UA control font; on iOS and Android a right-to-left search field; and on iOS
- * and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the host
- * edits an <input> (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
+ * positioned one or a grid item; one whose font is Chrome's UA control font; on iOS and Android a right-to-left search field; and
+ * on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the
+ * host edits it (hostEdits: the compile's textEditing 'host'; never a textarea). A readonly field shows its value as drawn text.
  */
 function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
   const address = el.element.address;

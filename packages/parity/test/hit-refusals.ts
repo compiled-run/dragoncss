@@ -1,8 +1,10 @@
-// The hit lane leaves out, each by name, PNT2's transform-writing cases (until SELD-R2b T146), these PNT1 cases with a stacking
-// context below the root (until rt-hit.ts orders z-index and opacity layers), these INL1a inline-box and <br> cases and INL2a atomic-inline cases (rt-hit.ts
+// The hit lane leaves out, each by name, PNT2's cases that write a rotated transform (until SELD-R2b T146), these PNT1 cases with a
+// stacking context below the root that rt-hit.ts does not order (an integer z-index, a context its hit facts do not name), these INL1a inline-box and <br> cases and INL2a atomic-inline cases (rt-hit.ts
 // hitRefusal) and the SVG-a1 svg cases (hit-capture.ts hitRefusal). Shared by hit-report.test.ts and lanes.test.ts so both judge
 // the same exact union.
 export const INLINE_OUT: readonly string[] = [
+  // contain-intrinsic-ahem and containment-layout hold inline-blocks (their contained boxes' stacking contexts are ordered now).
+  'contain-intrinsic-ahem', 'contain-intrinsic-ahem-rtl', 'containment-layout', 'containment-layout-rtl',
   // GRID-controls: the fixtures' inline-grid container sits on its line as an atomic inline.
   'grid-controls', 'grid-controls-rtl', 'grid-controls-fields',
   // GEN and TABLE (#443): an inline ::before or ::after box, and table-properties' inline boxes.
@@ -68,23 +70,25 @@ export const MARKER_REASON = /^outside text marker on .+: Chrome hits a list ite
 export const CLAMP_OUT: readonly string[] = ['line-clamp-lines', 'line-clamp-nested'];
 export const CLAMP_REASON = /^.+ clamps its lines \(-webkit-line-clamp\), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet \(TXT2-g\)$/;
 export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
-// ALIAS-2's alias-paint writes -webkit-transform and backface-values transforms its boxes, so the hit lane refuses them with the transform
-// reason though their names are not transform-.
+// ALIAS-2's alias-paint writes a rotating -webkit-transform and backface-values rotates its boxes, so the hit lane refuses them with the
+// transform reason though their names are not transform-.
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint', 'backface-values', 'backface-values-rtl'];
-export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;
+export const TRANSFORM_REASON = /^transform on .+: hit testing through a rotated transform is SELD-R2b \(T146\)$/;
+// The opacity, filter, isolation, backdrop-filter, mix-blend-mode, mask and containment cases whose every stacking context is in the
+// z-index 0 layer are in the hit lane (rt-hit.ts orders them as their own layers); these hold one in another layer (an integer
+// z-index), a normal-flow layer, or one their hit facts do not name (opacity-group-clipped's clip has z-index: 0).
 export const STACKING_OUT: readonly string[] = [
-  'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-clipped', 'opacity-group-clipped-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'stacking-basic',
+  // A z-index layer (the modal's backdrop) keeps the notes modal fixtures out.
+  'opacity-group-modal', 'opacity-group-modal-rtl', 'opacity-group-modal-sticky', 'opacity-group-modal-sticky-rtl',
+  'opacity-group-clipped', 'opacity-group-clipped-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
-  'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl',
-  // isolation-values and isolation-stacking: isolation: isolate makes a stacking context below the root.
-  'isolation-values', 'isolation-values-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
-  // fx-backdrop-* and fx-blend-*: a backdrop-filter or a mix-blend-mode makes a stacking context below the root.
-  'fx-backdrop-canvas', 'fx-backdrop-canvas-rtl', 'fx-backdrop-white', 'fx-backdrop-white-rtl', 'fx-blend-multiply', 'fx-blend-multiply-rtl',
-  'fx-blend-darken', 'fx-blend-darken-rtl',
-  // Positioned boxes with a z-index, fixed or sticky boxes, containment and masks make stacking contexts below the root.
-  ...['contain-intrinsic-ahem', 'fixed-probe', 'fixed-viewport', 'fixed-in-grid', 'mask-gradient', 'containment-layout', 'scroll-contain-layout', 'anchor-containing-blocks', 'sticky-probe', 'sticky-viewport'].flatMap((n) => [n, `${n}-rtl`]),
+  'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl',
+  // stacking-transform's transforms translate only, and its t-r2 has an integer z-index; isolation-stacking holds negative and positive z-index layers.
+  'stacking-transform', 'stacking-transform-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
+  // Positioned boxes with a z-index and fixed boxes make stacking contexts below the root.
+  ...['fixed-probe', 'fixed-viewport', 'fixed-in-grid', 'anchor-containing-blocks'].flatMap((n) => [n, `${n}-rtl`]),
 ];
-export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
+export const STACKING_REASON = /^stacking context on .+: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
 // VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
 export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl', 'inline-replaced-svg', 'inline-replaced-svg-rtl'];

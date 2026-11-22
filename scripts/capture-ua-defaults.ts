@@ -43,7 +43,7 @@ const KEY_SPECS = {
   // FORM-checkbox: a checkbox, whose html.css and theme rules (margins, box-sizing, cursor) differ from a text input's.
   'input[type=checkbox]': { tag: 'input', attrs: { type: 'checkbox' } },
   textarea: { tag: 'textarea', attrs: {} },
-  // FORM-search: html.css gives a search field box-sizing: border-box.
+  // FORM-b: a search field, whose html.css rule adds box-sizing: border-box to the input's.
   'input[type=search]': { tag: 'input', attrs: { type: 'search' } },
   a: { tag: 'a', attrs: {} },
   // A fresh profile has no history, so the link is unvisited (:link).

@@ -1314,6 +1314,8 @@ func dragonViewportScrolls(_ boxes: [(String, String?, [Double]?)], _ fixed: (St
   var parentOf: [String: String] = [:]
   for (id, p, _) in boxes { if let p { parentOf[id] = p } }
   func depth(_ id: String) -> Int { var d = 0; var p = parentOf[id]; while let q = p { d += 1; p = parentOf[q] }; return d }
+  // The engine's rects are in device px already (the input carries the scale); the viewport is in CSS px.
+  func px(_ v: Double) -> Double { return (v / lu + 0.5).rounded(.down) }
   func snap(_ css: Double) -> Double { return (css * scale + 0.5).rounded(.down) }
   for (id, _, rect) in boxes {
     if fixed(id) { continue }
@@ -1324,7 +1326,7 @@ func dragonViewportScrolls(_ boxes: [(String, String?, [Double]?)], _ fixed: (St
       p = parentOf[q]
     }
     guard !out, let r = rect else { continue }
-    if snap(r[3] / lu) > snap(height) || (rtl ? snap(-r[0] / lu) > 0 : snap(r[2] / lu) > snap(width)) { return true }
+    if px(r[3]) > snap(height) || (rtl ? px(-r[0]) > 0 : px(r[2]) > snap(width)) { return true }
   }
   return false
 }
@@ -2811,6 +2813,8 @@ fun dragonViewportScrolls(boxes: List<Pair<String, String?>>, rect: (String) -> 
   val parentOf = HashMap<String, String>()
   for ((id, p) in boxes) if (p != null) parentOf[id] = p
   fun depth(id: String): Int { var d = 0; var p = parentOf[id]; while (p != null) { d++; p = parentOf[p] }; return d }
+  // The engine's rects are in device px already (the input carries the scale); the viewport is in CSS px.
+  fun px(v: Double): Double = kotlin.math.floor(v / lu + 0.5)
   fun snap(css: Double): Double = kotlin.math.floor(css * scale + 0.5)
   for ((id, _) in boxes) {
     if (fixed(id)) continue
@@ -2822,7 +2826,7 @@ fun dragonViewportScrolls(boxes: List<Pair<String, String?>>, rect: (String) -> 
     }
     val r = rect(id)
     if (out || r == null) continue
-    if (snap(r[3] / lu) > snap(height) || (if (rtl) snap(-r[0] / lu) > 0 else snap(r[2] / lu) > snap(width))) return true
+    if (px(r[3]) > snap(height) || (if (rtl) px(-r[0]) > 0 else px(r[2]) > snap(width))) return true
   }
   return false
 }
