@@ -799,16 +799,16 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
 }
 
 /**
- * A block container's inline-level child: an atomic inline is a box (INL2a) or a replaced leaf (RF-INL) among its inline content,
- * the rest lowerInline.
+ * A block container's inline-level child: an atomic inline is a box (INL2a), a replaced leaf (RF-INL) or an inline-block text
+ * field among its inline content, the rest lowerInline.
  */
-function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ReplacedLeaf | InlineChild {
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
   const el = c as ResolvedElement;
   if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l, null);
   const box = lowerBox(el, l, null);
-  // An inline-level control waits for RF-INL (analysis/computed-checks.ts checkButton refuses it).
-  if (box.kind !== 'box') throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out (RF-INL)`);
+  // Of the inline-level controls only an inline-block text field is laid out (analysis/computed-checks.ts refuses the rest).
+  if (box.kind === 'control' && (box.control.kind !== 'text-field' || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
   return box;
 }
 
@@ -1011,7 +1011,7 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   flush();
   // A line strut only when the box holds inline content: a block-level replaced leaf is a box of its own, not a line (REPL-a with
   // INL1a); an atomic inline is on a line (INL2a, RF-INL).
-  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || ((c.kind === 'box' || c.kind === 'control') && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
   const strut = strutOf(el, inlineContent, l.mode, zoom);
   // HTML §15.3.13: a block fieldset lays out its rendered legend, its first in-flow legend child, in its block-start border.
   if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
