@@ -1,0 +1,161 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 49728
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 49728
+  },
+  {
+   "id": "stage",
+   "parent": "body",
+   "x": 9408,
+   "y": 0,
+   "width": 57792,
+   "height": 49728
+  },
+  {
+   "id": "plain",
+   "parent": "stage",
+   "x": 32256,
+   "y": 4032,
+   "width": 21504,
+   "height": 9408
+  },
+  {
+   "id": "s98",
+   "parent": "stage",
+   "x": 4032,
+   "y": 4032,
+   "width": 21504,
+   "height": 9408
+  },
+  {
+   "id": "s90",
+   "parent": "stage",
+   "x": 32256,
+   "y": 20160,
+   "width": 21504,
+   "height": 9408
+  },
+  {
+   "id": "shift",
+   "parent": "stage",
+   "x": 4032,
+   "y": 20160,
+   "width": 21504,
+   "height": 9408
+  },
+  {
+   "id": "aniso",
+   "parent": "stage",
+   "x": 32256,
+   "y": 36288,
+   "width": 21504,
+   "height": 9408
+  },
+  {
+   "id": "corner",
+   "parent": "stage",
+   "x": 4032,
+   "y": 36288,
+   "width": 21504,
+   "height": 9408
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 777,
+   "width": 1050,
+   "height": 777
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 777,
+   "width": 1050,
+   "height": 777
+  },
+  {
+   "id": "stage",
+   "left": 147,
+   "top": 0,
+   "right": 1050,
+   "bottom": 777,
+   "width": 903,
+   "height": 777
+  },
+  {
+   "id": "plain",
+   "left": 651,
+   "top": 63,
+   "right": 987,
+   "bottom": 210,
+   "width": 336,
+   "height": 147
+  },
+  {
+   "id": "s98",
+   "left": 210,
+   "top": 63,
+   "right": 546,
+   "bottom": 210,
+   "width": 336,
+   "height": 147
+  },
+  {
+   "id": "s90",
+   "left": 651,
+   "top": 315,
+   "right": 987,
+   "bottom": 462,
+   "width": 336,
+   "height": 147
+  },
+  {
+   "id": "shift",
+   "left": 210,
+   "top": 315,
+   "right": 546,
+   "bottom": 462,
+   "width": 336,
+   "height": 147
+  },
+  {
+   "id": "aniso",
+   "left": 651,
+   "top": 567,
+   "right": 987,
+   "bottom": 714,
+   "width": 336,
+   "height": 147
+  },
+  {
+   "id": "corner",
+   "left": 210,
+   "top": 567,
+   "right": 546,
+   "bottom": 714,
+   "width": 336,
+   "height": 147
+  }
+ ]
+}

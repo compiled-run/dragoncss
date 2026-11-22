@@ -1158,6 +1158,8 @@
     "shadow-rounded-rtl": "border-radius on simple, pill, circle, mixed, spread, ring, bordered: hit testing through rounded corners is not modelled yet (PNT1)",
     "shadow-inset": "border-radius on round, both, circle: hit testing through rounded corners is not modelled yet (PNT1)",
     "shadow-inset-rtl": "border-radius on round, both, circle: hit testing through rounded corners is not modelled yet (PNT1)",
+    "shadow-transform": "transform on s98, s90, shift, aniso, corner: hit testing through transforms is SELD-R2b (T146)",
+    "shadow-transform-rtl": "transform on s98, s90, shift, aniso, corner: hit testing through transforms is SELD-R2b (T146)",
     "calib-shadow-blur": "border-radius on r4, r12, o12: hit testing through rounded corners is not modelled yet (PNT1)",
     "calib-shadow-blur-rtl": "border-radius on r4, r12, o12: hit testing through rounded corners is not modelled yet (PNT1)",
     "sticky-probe": "stacking context on u: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
