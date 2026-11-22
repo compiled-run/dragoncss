@@ -8,7 +8,7 @@ Carries #572 (the owner's FORM-attrs lane, 2026-10-26) onto master, for the Mark
 - A `<button>` whose form owner is an ancestor `<form>` and whose type is submit (missing or invalid) or reset is refused (`project.ts` checkFormButtons): activating it submits or resets the form, which the native outputs do not do. `rel` and `target` on a form are refused (they govern submission).
 
 ## Added here
-- **`maxlength`** is rendering-neutral: a constraint on editing and validation (HTML §4.10.19.3), with no HTML §15 rule or presentational hint. Proof: `attr-neutral-maxlength` against `attr-neutral-none`, the same pair shape as `minlength`.
+- **`maxlength`** is rendering-neutral: a constraint on editing and validation (HTML §4.10.18.2), with no HTML §15 rule or presentational hint. Proof: `attr-neutral-maxlength` against `attr-neutral-none`, the same pair shape as `minlength`.
 - **A host that runs forms.** `compileNativeStyles` takes `forms: 'host'` (internal option `hostForms`), as it takes `topLayer: 'host'` and `canvas: 'host'`. It means the host app implements submission and reset itself: the Markless runtime runs a form's submit and reset on the phone as on the web (its `onSubmit` handlers, FormData, `preventDefault`). Under it, checkFormButtons does not refuse a submit or reset button inside a form. Nothing about the button's layout or paint changes: its type is already a handled attribute that Chrome's UA rules do not read (`controls-button-type`). The Markless style export (`parity/src/markless-style-input.ts`) sets it beside `topLayer` and `canvas`.
   - Without `forms: 'host'`, the refusal stays as #572 wrote it.
   - Any other value of `forms` throws, as `topLayer` and `canvas` do.
