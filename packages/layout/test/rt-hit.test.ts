@@ -370,3 +370,45 @@ describe('grid containers', () => {
     expect(hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS).ids).toEqual(['html', 'body', 'g', 'a', 'b']);
   });
 });
+
+// HIT-atomic-inline (notes/HIT-atomic-inline-spec.md): Blink tests an atomic inline in all its phases at its place among its line's
+// items, last first, so it is above the text before it and below the text after it; the line's own area hits the block.
+describe('atomic inlines on their lines', () => {
+  const inlineInput = async (pad: 'px' | 'percent' = 'px') => {
+    const { box, neutralEnvironment, pct, px, text } = await import('./helpers.ts');
+    const ib = box('c1', { display: 'inline-block', width: px(20), height: px(8), marginLeft: px(-25) }, [box('k', { width: px(10), height: px(4) })]);
+    const p = box('p', { width: px(200), paddingLeft: pad === 'px' ? px(0) : pct(5) }, [text('t1', 'aaaa'), ib, text('t2', 'bb')]);
+    const root = box('html', {}, [box('body', {}, [p])]);
+    const facts = new Map(['html', 'body', 'p', 'c1', 'k'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
+  };
+
+  it('hits an atomic inline over the text before it and under the text after it, and its child within it', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, layout } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput();
+    expect(layout(input, ahemMeasurer).kind).toBe('ok');
+    expect(hitRefusal(input)).toBeNull();
+    const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    const c1 = t.nodes[t.ids.indexOf('c1')] as HitNode;
+    expect([c1.atomic, c1.line, c1.x / PX, c1.width / PX]).toEqual([true, 0, 15, 20]);
+    const at = (x: number, y: number) => t.ids[t.nodes[hitTest(t.nodes, x * PX, c1.y + y * PX, NO_HIT_FAULTS)]?.target ?? -1];
+    expect(at(20, 6)).toBe('c1');
+    expect(at(16, 1)).toBe('k');
+    expect(at(34, 6)).toBe('c1');
+    // t2 starts at 35: a 1x1 px box at 34.25 reaches it.
+    expect(at(34.25, 6)).toBe('p');
+    expect(at(120, 6)).toBe('p');
+    expect(at(250, 6)).toBe('body');
+    // Planted fault reversedOrder tests the line's items first to last, so the text before c1 wins over it.
+    expect(t.ids[hitTest(t.nodes, 20 * PX, c1.y + 6 * PX, { ignorePointerEventsNone: false, reversedOrder: true })]).toBe('p');
+  });
+
+  it('refuses by name a block of atomic inlines with percentage padding', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput('percent');
+    expect(hitRefusal(input)).toBe('p has percentage padding around atomic inlines, whose lines the hit table does not place yet (INL2a)');
+    expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(/percentage padding around atomic inlines/);
+  });
+});

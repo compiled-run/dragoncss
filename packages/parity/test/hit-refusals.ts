@@ -1,5 +1,5 @@
 // The hit lane leaves out, each by name, PNT2's transform-writing cases (until SELD-R2b T146), these PNT1 cases with a stacking
-// context below the root (until rt-hit.ts orders z-index and opacity layers), these INL1a inline-box and <br> cases and INL2a atomic-inline cases (rt-hit.ts
+// context below the root (until rt-hit.ts orders z-index and opacity layers), these INL1a inline-box and <br> cases (rt-hit.ts
 // hitRefusal) and the SVG-a1 svg cases (hit-capture.ts hitRefusal). Shared by hit-report.test.ts and lanes.test.ts so both judge
 // the same exact union.
 export const INLINE_OUT: readonly string[] = [
@@ -11,7 +11,7 @@ export const INLINE_OUT: readonly string[] = [
   'float-clear-inert', 'float-clear-inert-rtl',
   // TXT2-b's text-spacing-ahem and text-word-spacing-ahem hold an inline box.
   'text-spacing-ahem', 'text-spacing-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl',
-  // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
+  // #266's vertical-align-inert holds an inline box (s); GRID_OUT listed it for its grid container before G-HIT.
   'vertical-align-inert', 'vertical-align-inert-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's text-break-ahem hold an inline box.
@@ -39,15 +39,15 @@ export const INLINE_OUT: readonly string[] = [
   'text-fill-stroke-colors', 'text-fill-stroke-colors-rtl',
   // LEGACY-BOX's box-decoration-initial (#458) holds inline boxes (s2s, a slice across lines) and COLOR-SCHEME's color-scheme-plain (#455) inline boxes (s1e, s3a).
   'box-decoration-initial', 'box-decoration-initial-rtl', 'color-scheme-plain', 'color-scheme-plain-rtl',
-  // GEN-c (#469): display-contents holds an inline box (a2), link-pseudos inline links (a1) and list-markers-disc an inline-block first
-  // child (i1s, an atomic inline).
+  // GEN-c (#469): display-contents holds an inline box (a2), link-pseudos inline links (a1) and list-markers-disc a <br> (i1br).
   'display-contents', 'display-contents-rtl', 'link-pseudos', 'link-pseudos-rtl', 'list-markers-disc', 'list-markers-disc-rtl',
   // multicol-ahem holds <br>s (h1-h3, n1-n5).
   'multicol-ahem', 'multicol-ahem-rtl',
   // text-box-ahem holds inline boxes (h1, h2) and a <br> (i1).
   'text-box-ahem', 'text-box-ahem-rtl',
-  // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
-  ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
+  // HIT-atomic-inline: rt-hit.ts models an atomic inline on its line, so atomic-inline-breaks, -shrink, -north-star, -links and
+  // -disclosure hit; atomic-inline-block, -flex and -grid still hold a <br> inside an atomic inline (text-br, row-br).
+  ...['block', 'flex', 'grid'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]),
 ];
 // GEN-c: the cases with an outside text ::marker (decimal and string markers), through whose box Chrome hits the list item
 // (hit-capture.ts hitRefusal); list-markers-text holds an inline box (p1s) as well, and the marker reason comes first.
@@ -57,7 +57,7 @@ export const MARKER_REASON = /^outside text marker on .+: Chrome hits a list ite
 // before its inline box l9s).
 export const CLAMP_OUT: readonly string[] = ['line-clamp-lines', 'line-clamp-nested'];
 export const CLAMP_REASON = /^.+ clamps its lines \(-webkit-line-clamp\), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet \(TXT2-g\)$/;
-export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
+export const INLINE_REASON = /is (an inline box|a <br>), which the hit table does not model yet/;
 // ALIAS-2's alias-paint writes -webkit-transform, so the hit lane refuses it with the transform reason though its name is not transform-.
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;

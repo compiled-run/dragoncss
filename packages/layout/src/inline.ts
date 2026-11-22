@@ -2065,6 +2065,25 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
   return placeAtomicLines(ctx, box, ifc, layoutAtomics(ctx, ifc, available), available).map((l) => l.line);
 }
 
+/** A line box with its atomic inlines (by index into the formatting context's atomics), their border boxes and inline margins. */
+export type HitLine = { readonly line: PlacedLine; readonly atomics: readonly number[]; readonly atomicRects: readonly Rect[]; readonly marginLefts: readonly LU[]; readonly marginRights: readonly LU[] };
+
+/** placeLines with each line's atomic inlines, as layoutInline places them (a multi-column container refuses atomic inlines). */
+export function placeHitLines(ctx: Ctx, box: LayoutBox, available: LU): HitLine[] {
+  const ifc = buildIfc(ctx, box);
+  const atoms = layoutAtomics(ctx, ifc, available);
+  const lines = box.style.multicol === null ? placeAtomicLines(ctx, box, ifc, atoms, available) : multicolLines(ctx, box, ifc, available).lines;
+  return lines.map((l): HitLine => {
+    const lefts: LU[] = [];
+    const rights: LU[] = [];
+    for (const a of l.atomics) {
+      lefts.push((atoms[a] as AtomicLayout).marginLeft);
+      rights.push((atoms[a] as AtomicLayout).marginRight);
+    }
+    return { line: l.line, atomics: l.atomics, atomicRects: l.atomicRects, marginLefts: lefts, marginRights: rights };
+  });
+}
+
 /** The lines of a multi-column container in their columns (multicol.ts), and the block size of its columns. */
 type ColumnLines = { readonly lines: readonly AtomicLine[]; readonly height: LU };
 
