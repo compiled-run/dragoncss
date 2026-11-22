@@ -112,7 +112,7 @@ import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, textFieldPartOf, valueToString } from './resolve.ts';
-import { selectDisplaySize } from '../forms/select.ts';
+import { LISTED_OPTIONS_ATTRIBUTE, selectDisplaySize } from '../forms/select.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { parseComputedColor, serializeColor } from '../css/color.ts';
@@ -1680,7 +1680,7 @@ function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], dia
   }
 }
 
-/** A range or fieldset as a grid item: the engine places neither in a grid (grid-control); a block or flex button is a grid item. */
+/** A range or fieldset as a grid item: the engine places only a block button, a select and a text field in a grid (grid-control). */
 function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
   if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
   const tag = el.element.tag;
@@ -1795,7 +1795,6 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   if (pos === 'absolute' || pos === 'fixed') {
     refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
   }
-  refuseGridItem(el, parentDisplay, refuse);
   const float = el.props.get('float') as ResolvedValue;
   if (keywordOf(float) !== 'none') {
     refuse(float, 'float', `float: ${valueToString(float.value)} on <input> ${address} is not supported on a text field: the engine lays out only an in-flow field`, `Float a wrapper element and keep <input> ${address} in its flow.`);
@@ -1893,6 +1892,10 @@ const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue, fieldText: Rgba
   ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
 ];
 
+// Neither the closed menulist (the shown label in the select's style) nor Chrome's picker item (internal_popup_menu.cc reads an option's
+// colour, background, font, text-transform, direction, visibility and display) reads an option's box-sizing, as an app's * rule sets it.
+const OPTION_UNDRAWN: ReadonlySet<Longhand> = new Set<Longhand>(['box-sizing']);
+
 /**
  * FORM-b: a single select with appearance: none, or auto devolved to menulist-button (Chrome's menulist, resolve.ts); everything
  * else about one is refused by name.
@@ -1921,7 +1924,7 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
     }
   }
   for (const o of selectOptionsOf(el)) {
-    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([, v]) => v.declaration !== null);
+    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([p, v]) => v.declaration !== null && !OPTION_UNDRAWN.has(p));
     if (styled !== undefined) refuseOn(o, styled[1], 'option-style', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${styled[0]} on <option> ${o.element.address} is not supported: Chrome draws only its label in the closed select, and Dragon writes no rule for an option`, `Style <select> ${address} instead of <option> ${o.element.address}.`);
   }
   const appearance = el.props.get('appearance') as ResolvedValue;
@@ -1946,36 +1949,39 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
   const float = el.props.get('float') as ResolvedValue;
   if (keywordOf(float) !== 'none') refuse(float, 'float', `float: ${valueToString(float.value)} on <select> ${address} is not supported: the engine lays out only an in-flow select`, `Float a wrapper element and keep <select> ${address} in its flow.`);
   const width = el.props.get('width') as ResolvedValue;
-  if (width.value.kind === 'keyword') refuse(width, 'width', `width: ${valueToString(width.value)} on <select> ${address} is not supported: Chrome sizes a select to its widest option, which Dragon does not measure`, `Give <select> ${address} a width (a length or percentage).`);
-  const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
-  const minWidth = el.props.get('min-width') as ResolvedValue;
-  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width', `<select> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from its widest option, which Dragon does not measure`, `Set min-width (0 is fine) on <select> ${address}.`);
-  // Blink LayoutBox::DefaultIntrinsicContentInlineSize: a menulist's min-content and max-content widths are its widest option's
-  // (MenuListIntrinsicInlineSize), and Dragon's inner element holds only the shown one, so every width that reads them is refused.
-  for (const p of ['min-width', 'max-width'] as const) {
-    const v = el.props.get(p) as ResolvedValue;
-    if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, p, `${p}: ${keywordOf(v)} on <select> ${address} is not supported: Chrome sizes a select's content to its widest option, which Dragon does not measure`, `Give <select> ${address} a ${p} in px or %, or remove it.`);
-  }
-  const rowItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !keywordOf((chain.filter((a) => !isContents(a)).at(-1) as ResolvedElement).props.get('flex-direction') as ResolvedValue).startsWith('column');
-  const basis = el.props.get('flex-basis') as ResolvedValue;
-  const b = keywordOf(basis);
-  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis', `flex-basis: ${b} on <select> ${address} is not supported: Chrome takes it from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
-  // Blink FlexLayoutAlgorithm::ComputeMinMaxSizeOfRowContainer: a row item's contribution is its content-based one (a percentage
-  // width is indefinite there) unless it cannot flex, so a length basis keeps a percentage width out of the walk only then.
-  const number = (p: Longhand): number => { const v = (el.props.get(p) as ResolvedValue).value; return v.kind === 'number' ? v.value : 1; };
-  const rigid = rowItem && b === '' && !hasPercentage(basis) && number('flex-grow') === 0 && number('flex-shrink') === 0;
-  const percentWidth = width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
-  const relative = rowItem && hasPercentage(basis) ? basis : rigid ? null : percentWidth;
-  if (relative !== null) {
-    const what = relative === basis ? 'flex-basis' : 'width';
-    const said = `${what}: ${valueToString(relative.value)} on <select> ${address} is not supported`;
-    const sized = contentSizedAncestor(chain);
-    if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') {
-      refuse(relative, 'width-content', `${said} on a grid item: Chrome resolves it against the grid area, whose tracks can be sized from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a ${what} in px.`);
-    } else if (sized !== null) {
-      const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
-      const own = relative === basis || !rowItem || b === 'auto' ? `give <select> ${address} a ${what} in px` : `give <select> ${address} a width in px, or flex-grow: 0 and flex-shrink: 0`;
-      refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, and Dragon does not measure that option`, `${contentSizedFix(at, sized.why)} Or ${own}.`);
+  // FORM-b S4: a menulist's min- and max-content widths are its widest option's (Blink MenuListIntrinsicInlineSize), which the engine
+  // measures from every option's label; a select whose options are a list's rows (LISTED_OPTIONS_ATTRIBUTE) has labels Dragon cannot
+  // read, so every width that reads them is refused for it.
+  if (el.element.attributes.has(LISTED_OPTIONS_ATTRIBUTE)) {
+    if (width.value.kind === 'keyword') refuse(width, 'width', `width: ${valueToString(width.value)} on <select> ${address} is not supported: Chrome sizes a select to its widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a width (a length or percentage).`);
+    const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
+    const minWidth = el.props.get('min-width') as ResolvedValue;
+    if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width', `<select> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from its widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Set min-width (0 is fine) on <select> ${address}.`);
+    for (const p of ['min-width', 'max-width'] as const) {
+      const v = el.props.get(p) as ResolvedValue;
+      if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, p, `${p}: ${keywordOf(v)} on <select> ${address} is not supported: Chrome sizes a select's content to its widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a ${p} in px or %, or remove it.`);
+    }
+    const rowItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !keywordOf((chain.filter((a) => !isContents(a)).at(-1) as ResolvedElement).props.get('flex-direction') as ResolvedValue).startsWith('column');
+    const basis = el.props.get('flex-basis') as ResolvedValue;
+    const b = keywordOf(basis);
+    if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis', `flex-basis: ${b} on <select> ${address} is not supported: Chrome takes it from the select's widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
+    // Blink FlexLayoutAlgorithm::ComputeMinMaxSizeOfRowContainer: a row item's contribution is its content-based one (a percentage
+    // width is indefinite there) unless it cannot flex, so a length basis keeps a percentage width out of the walk only then.
+    const number = (p: Longhand): number => { const v = (el.props.get(p) as ResolvedValue).value; return v.kind === 'number' ? v.value : 1; };
+    const rigid = rowItem && b === '' && !hasPercentage(basis) && number('flex-grow') === 0 && number('flex-shrink') === 0;
+    const percentWidth = width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
+    const relative = rowItem && hasPercentage(basis) ? basis : rigid ? null : percentWidth;
+    if (relative !== null) {
+      const what = relative === basis ? 'flex-basis' : 'width';
+      const said = `${what}: ${valueToString(relative.value)} on <select> ${address} is not supported`;
+      const sized = contentSizedAncestor(chain);
+      if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') {
+        refuse(relative, 'width-content', `${said} on a grid item: Chrome resolves it against the grid area, whose tracks can be sized from the select's widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a ${what} in px.`);
+      } else if (sized !== null) {
+        const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
+        const own = relative === basis || !rowItem || b === 'auto' ? `give <select> ${address} a ${what} in px` : `give <select> ${address} a width in px, or flex-grow: 0 and flex-shrink: 0`;
+        refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, whose labels Dragon cannot read, as its options are rows of a list`, `${contentSizedFix(at, sized.why)} Or ${own}.`);
+      }
     }
   }
   const align = el.props.get('align-items') as ResolvedValue;
@@ -1991,7 +1997,12 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
   const padded = (['padding-top', 'padding-bottom'] as const).find((p) => !isZeroLength((el.props.get(p) as ResolvedValue).value));
   // Any flex item: a column item's main size and a stretched row item's cross size both come from its container.
   const flexItem = parentDisplay === 'flex' || parentDisplay === 'inline-flex';
-  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || parentDisplay === 'grid' || parentDisplay === 'inline-grid' || flexItem;
+  // A grid item in implicit auto rows with min-height: auto is at least its content's height (the row's base size is its automatic
+  // minimum); with min-height: 0 a definite-height grid shrinks it below its label (Chrome 145: 10px in a 10px grid, not 20px).
+  const container = chain.filter((a) => !isContents(a)).at(-1);
+  const autoRows = container !== undefined && keywordOf(container.props.get('grid-template-rows') as ResolvedValue) === 'none' && keywordOf(container.props.get('grid-auto-rows') as ResolvedValue) === 'auto' && keywordOf(el.props.get('min-height') as ResolvedValue) === 'auto';
+  const gridItem = (parentDisplay === 'grid' || parentDisplay === 'inline-grid') && !autoRows;
+  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || gridItem || flexItem;
   if (padded !== undefined && capped) {
     const v = el.props.get(padded) as ResolvedValue;
     refuse(v, 'padding-clip', `${padded}: ${valueToString(v.value)} on <select> ${address} is not supported where its height can be less than its label's line: Chrome clips the label to the select's content box, and Dragon clips it to the padding box`, `Remove the vertical padding from <select> ${address}, or leave its height auto outside a grid or flex container.`);

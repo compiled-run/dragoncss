@@ -69,7 +69,7 @@ import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
-import { rangePartOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { rangePartOf, selectOptionLabelsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
@@ -1035,7 +1035,10 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   if (select !== undefined && select.part === null) {
     // FORM-b: a single select is a flex row container whatever its display; its font and line height decide its inner element's.
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: menuListArrowWidthOf(el, l.ua) }, strut, children };
+    // FORM-b S4: every option's label as a text leaf in the select's own face, which the engine measures for the natural width.
+    const labelMode: LowerMode = { kind: l.mode.kind, faceOf: () => l.mode.faceOf(id) };
+    const options = selectOptionLabelsOf(el).flatMap((o) => o.children.filter((k): k is ResolvedText => k.kind === 'text').map((t) => lowerText(t, labelMode, zoom)));
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: menuListArrowWidthOf(el, l.ua), options }, strut, children };
   }
   // An empty inner element still lays out one line of its own font, so it always carries its strut.
   if (select !== undefined) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'select-inner' }, strut: strut ?? strutOf(el, true, l.mode, zoom), children };
