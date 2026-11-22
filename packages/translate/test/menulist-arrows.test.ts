@@ -1,11 +1,11 @@
-// FORM-b select S3: the translated harness reports each menulist-button select's arrow (layout paint.ts menuListArrows) in its
+// FORM-b select S3: the translated harness reports each menulist-button select's arrow (layout paint-menulist.ts menuListArrows) in its
 // engine result, so the vectors suites hold the Swift and Kotlin engines to the TypeScript engine on the controls-select-button
 // fixtures at every DPR.
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { LayoutInput } from '../../layout/src/input.ts';
 import { layout } from '../../layout/src/layout.ts';
-import { menuListArrows } from '../../layout/src/paint.ts';
+import { menuListArrows } from '../../layout/src/paint-menulist.ts';
 import { ahemMeasurer } from '../../layout/src/text.ts';
 import { runEngineCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';

@@ -7,7 +7,7 @@ import { ProgramError } from './types.ts';
 
 export type ControlWrite = { readonly kind: 'select-arrow'; readonly color: Rgba8 };
 
-const ARROW_PAINT = "Dragon strokes the arrow in the select's box view after every layout: the translated paint.ts menuListArrows gives the open three-point path of layout controls.ts menuListArrow in device px from the snapped border box and whole device px borders, stroked 2 device px wide, antialiased, with butt caps and miter joins, after the background and before the inset shadow and border";
+const ARROW_PAINT = "Dragon strokes the arrow in the select's box view after every layout: the translated paint-menulist.ts menuListArrows gives the open three-point path of layout controls.ts menuListArrow in device px from the snapped border box and whole device px borders, stroked 2 device px wide, antialiased, with butt caps and miter joins, after the background and before the inset shadow and border";
 
 export const CONTROL_LOWERING: PaintLowering<ControlWrite> = {
   name: 'control',

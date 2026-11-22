@@ -66,6 +66,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
     // OVFL-B: each scroll container's offset range in device px, which the native scroll views clamp to.
     { file: at('overflow.ts'), name: 'scrollRanges' },
+    // FORM-b: each menulist-button select's drop-down arrow, which the native select views stroke after layout.
+    { file: at('paint-menulist.ts'), name: 'menuListArrows' },
     // TXT2-g: the line-clamp containers' children as the layout clamped them, whose lines the native text views place.
     { file: at('line-clamp.ts'), name: 'clampedInput' },
   ];
