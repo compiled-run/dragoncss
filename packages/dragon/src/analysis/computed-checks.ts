@@ -1981,11 +1981,12 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
   // Blink LayoutBox::OverflowClipRect: a menulist clips the inner element to its content box, and Dragon's clip view is the padding
   // box, so a vertical padding is refused wherever the select can be shorter than its inner element.
   const padded = (['padding-top', 'padding-bottom'] as const).find((p) => !isZeroLength((el.props.get(p) as ResolvedValue).value));
-  const columnItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !rowItem;
-  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || parentDisplay === 'grid' || parentDisplay === 'inline-grid' || columnItem;
+  // Any flex item: a column item's main size and a stretched row item's cross size both come from its container.
+  const flexItem = parentDisplay === 'flex' || parentDisplay === 'inline-flex';
+  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || parentDisplay === 'grid' || parentDisplay === 'inline-grid' || flexItem;
   if (padded !== undefined && capped) {
     const v = el.props.get(padded) as ResolvedValue;
-    refuse(v, 'padding-clip', `${padded}: ${valueToString(v.value)} on <select> ${address} is not supported where its height can be less than its label's line: Chrome clips the label to the select's content box, and Dragon clips it to the padding box`, `Remove the vertical padding from <select> ${address}, or leave its height auto outside a grid or column flex container.`);
+    refuse(v, 'padding-clip', `${padded}: ${valueToString(v.value)} on <select> ${address} is not supported where its height can be less than its label's line: Chrome clips the label to the select's content box, and Dragon clips it to the padding box`, `Remove the vertical padding from <select> ${address}, or leave its height auto outside a grid or flex container.`);
   }
   noteStaticOnNative(el, targets, diagnostics, reported);
   const fieldText = parseComputedColor(ua.systemColors['FieldText'] ?? '');

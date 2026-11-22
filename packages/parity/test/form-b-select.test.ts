@@ -116,6 +116,7 @@ describe('FORM-b select S1', () => {
     }
     expect(errors(compile('sel-pad-h', 'select { height: 4px; padding: 1px 0; }', sel('s', '<option>AA</option>')))).toContainEqual(expect.stringMatching(/padding-top: 1px on <select> s is not supported where its height can be less than its label's line/));
     expect(errors(compile('sel-pad-grid', '.g { display: grid; } select { padding-bottom: 2px; }', `<div data-dragon-id="g" class="g">${sel('s', '<option>AA</option>')}</div>`))).toContainEqual(expect.stringMatching(/padding-bottom: 2px on <select> s is not supported/));
+    expect(errors(compile('sel-pad-row', '.r { display: flex; height: 24px; } select { padding-bottom: 4px; }', `<div data-dragon-id="r" class="r">${sel('s', '<option>AA</option>')}</div>`))).toContainEqual(expect.stringMatching(/padding-bottom: 4px on <select> s is not supported/));
     expect(errors(compile('sel-pad-auto', 'select { padding: 2px 3px; }', sel('s', '<option>AA</option>')))).toEqual([]);
   });
 
