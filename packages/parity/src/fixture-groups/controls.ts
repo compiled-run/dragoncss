@@ -4,7 +4,8 @@
 // A3 refuses: a themed button (FORM-b), an inline-level one (RF-INL), the UA control font, an absolutely positioned button, an
 // auto-width flex button in block flow, and an inline element that appearance makes inline-block. A fieldset lays out its rendered
 // legend in its block-start border (HTML §15.3.13); the rejects name the legend cutout paint, a non-block fieldset and the UA groove.
-// FORM-b adds a single select with appearance: none, and refuses a list box, any other appearance, a shrink-to-fit width and an optgroup.
+// FORM-b adds a single select with appearance: none or devolved to menulist-button, and refuses a list box, a themed menulist, a
+// shrink-to-fit width and an optgroup.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -36,9 +37,10 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-flex'),
   layout('controls-text-field'),
   both('controls-select-none'),
+  both('controls-select-button'),
   layout('controls-select-label'),
   reject('reject-controls-select-multiple', 'DRAGON_UNSUPPORTED_ELEMENT', '<select data-dragon-id="s" multiple=""><option data-dragon-id="o">A</option></select>', '<select multiple> s is a list box, which waits for the FORM-b listbox package'),
-  reject('reject-controls-select-appearance', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', '<select> s with appearance: auto draws Chrome\'s drop-down arrow and internal paddings, which wait for FORM-b select S2'),
+  reject('reject-controls-select-appearance', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', '<select> s with appearance: auto and no author background, border or box-shadow is Chrome\'s themed menulist'),
   reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
   reject('reject-controls-select-optgroup', 'DRAGON_UNSUPPORTED_ELEMENT', '<optgroup data-dragon-id="g"><option data-dragon-id="o">A</option></optgroup>', '<optgroup> g is not supported: an option group waits for FORM-b select'),
   // GRID-items: a range stays refused as a grid item; a fieldset's refusal is reject-fieldset-grid-item.

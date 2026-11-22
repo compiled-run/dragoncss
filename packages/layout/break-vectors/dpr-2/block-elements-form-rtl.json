@@ -1,0 +1,8 @@
+{
+  "case": "block-elements-form-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"p1:text0","lines":[[0,5]]},
+    {"id":"p-last:text0","lines":[[0,1]]}
+  ]
+}

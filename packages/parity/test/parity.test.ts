@@ -21,7 +21,7 @@ import { compilerChromeDeviations } from '../src/compiler-deviations.ts';
 import { readTreeExpectation } from '../src/tree-fixture.ts';
 import { prepareOf } from '../src/forced-pseudo.ts';
 import { ANIMATION_CONTEXT, deriveRows } from '../src/profile-rows.ts';
-import { animFixtures } from '../src/anim-cases.ts';
+import { animEventFixtures, animFixtures } from '../src/anim-cases.ts';
 import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts';
 
 // T065: the row checks here are about rows proven by layout cases. Animation rows (context animation) are proven by frame cases
@@ -89,7 +89,7 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     const dir = repoPath('packages/parity/fixtures');
     const entries = readdirSync(dir).sort();
     // Frame fixtures (T065) are registered by their frames.json sidecar (anim-cases.ts animFixtures) and are not layout fixtures.
-    const frames = animFixtures().map((f) => f.id);
+    const frames = [...animFixtures(), ...animEventFixtures()].map((f) => f.id);
     for (const id of frames) expect(FIXTURES.some((f) => f.id === id), `${id} is both a frame fixture and in FIXTURES`).toBe(false);
     // MQ-R2's media-environment fixtures run only as their resize scripts (resize-capture.ts ENV_SCRIPTS), so they are not in FIXTURES.
     const webOnly = [...[...FONT_FIXTURES, ...ENV_FIXTURES].map((f) => f.spec), ...MEDIA_ENVIRONMENT_FIXTURES];

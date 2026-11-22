@@ -6,7 +6,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { BorderOp, LayoutBox, LU, ScrollRange, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
 import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
-import { borderDevicePx, isScalar, programAt, programInput } from 'dragon';
+import { animTablesOf, borderDevicePx, isScalar, programAt, programInput } from 'dragon';
+import type { AnimTables } from '@dragon/layout';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdge } from '../../layout/src/units.ts';
 import { cssFontSizes } from './ahem-lines.ts';
@@ -92,6 +93,11 @@ export type ExportTarget = {
   readonly plan?: MarklessPlan;
   /** With a plan, from a Markless input, per assignment: each Dragon id the plan's geometry names, with the input's id for it. */
   readonly planNames?: readonly (readonly (readonly [string, string])[])[];
+  /**
+   * With a plan, when the sheet has transitions or animations: Dragon's animator tables (layout/src/rt-animator.ts) over the
+   * program's assignments, by Dragon id, which a phone runs with the plan's layout as the page moves between assignments.
+   */
+  readonly anim?: AnimTables;
   /** With a plan: each list's parent box and the ids of a row's top boxes, which a phone copies once per row. */
   readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
 };
@@ -164,12 +170,19 @@ function dashedBorder(id: string, writes: readonly Write[], rect: { readonly x: 
   return { borderOps: { origin: { x: b.left - rect.x / LU_PER_PX, y: b.top - rect.y / LU_PER_PX }, size: { width: b.width, height: b.height }, widths: [...widths], ops } };
 }
 
+/** The refused ranges of nodes with a scroll-container write: a clipping box that is none (a select's inner element) never scrolls on a phone. */
+export function scrollerRefusals<R extends { readonly id: string }>(program: Pick<NativeProgram, 'nodes'>, refused: readonly R[]): R[] {
+  const scrollers = new Set(program.nodes.filter((n) => n.writes.some((w) => w.kind === 'scroll-container')).map((n) => n.id));
+  return refused.filter((r) => scrollers.has(r.id));
+}
+
 /** The viewport's and every scroll container's offset range for one assignment's layout; a range the engine does not decide throws, naming it. */
 function scrollOffsets(component: string, program: NativeProgram, viewport: ExportDevice['viewport'], dpr: number, measurer: () => TextMeasurer): { readonly page: ScrollOffsets | { readonly undecided: string; readonly nodeId: string; readonly detail: string }; readonly containers: ReadonlyMap<string, ScrollOffsets> } {
   const input = programInput(program, viewport, dpr);
   const ranges = scrollRanges(input, measurer());
   if (ranges.kind === 'refused') throw new Error(`${component}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
-  if (ranges.refused.length > 0) throw new Error(`${component}: no scroll range for ${ranges.refused.map((r) => `${r.id} (at ${r.nodeId}: ${r.detail})`).join('; ')}`);
+  const refused = scrollerRefusals(program, ranges.refused);
+  if (refused.length > 0) throw new Error(`${component}: no scroll range for ${refused.map((r) => `${r.id} (at ${r.nodeId}: ${r.detail})`).join('; ')}`);
   const metrics = scrollMetricsWithFaults(input, measurer(), viewportDirectionOf(input), NO_ENGINE_FAULTS);
   const containers = new Map(ranges.ranges.map((r) => [r.id, offsetsOf(r)]));
   if (metrics.kind === 'refused') return { page: { undecided: `the page's scroll range is not decided at ${metrics.nodeId}: ${metrics.detail}`, nodeId: metrics.nodeId, detail: metrics.detail }, containers };
@@ -255,7 +268,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
       const boxes = new Map(laid.map((b) => [b.id, b]));
       const absolute = absoluteRects(laid);
-      const deviceBorders = borderDevicePx(expectedEngine(), programInput(program, d.viewport, d.dpr));
+      const deviceBorders = borderDevicePx(expectedEngine(), programInput(program, d.viewport, d.dpr), measurer());
       const style = boxStyles(program.root);
       const scroll = scrollOffsets(component, program, d.viewport, d.dpr, measurer);
       const px = (v: number): number => v / LU_PER_PX;
@@ -298,8 +311,10 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
     if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
+    if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
+    const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
     const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height) } : {};
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut };
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated };
   }
   const files = vendoredFaces();
   return {
