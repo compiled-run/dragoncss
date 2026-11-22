@@ -12,7 +12,7 @@ import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts
 import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, TransformOp, ValueRange } from './rt-interpolate.ts';
 import { colorRgba8, intToString, legacyColor, lengthPercent, lengthPx, TRANSPARENT, ZERO_PX } from './rt-interpolate.ts';
 import type { AnimationEntry, KeyframesRule, RunningAnimation } from './rt-animations.ts';
-import { advanceAnimation, animationFinished, composeAnimations, updateAnimations } from './rt-animations.ts';
+import { advanceAnimation, animationFinished, composeAnimations, findRunning, updateAnimations } from './rt-animations.ts';
 import type { RuleKeyframe } from './rt-keyframes.ts';
 import type { TransformOrigin } from './paint-transform.ts';
 import type { FillMode, PlaybackDirection } from './rt-timing.ts';
@@ -464,10 +464,11 @@ function sameAnimation(list: readonly RunningAnimation[] | undefined, a: Running
 }
 
 /**
- * The animation events between two animator states, in the order css-animations-1 §4.2's table dispatches them for each
- * animation: start when it leaves the before phase (with end too when it skips past the active phase), iteration when its
- * current iteration changes while active, end when it reaches the after phase, cancel when it stops running before its end.
- * The elapsed time is the interval start for start, the iteration's start for iteration and the interval end for end.
+ * The animation events between two animator states, in the order Chrome 145 dispatches them for each animation
+ * (CSSAnimations::AnimationEventDelegate::OnEventCondition): start on a change from none or before to active or after (elapsed
+ * time the interval start) or from after to active or before (the interval end); end, after any start, on a change to after (the
+ * interval end) or from active or after to before (the interval start); iteration when the current iteration changes within the
+ * active phase (the boundary crossed); cancel when it stops running outside its after phase (its current time).
  */
 export function animationEvents(before: AnimatorState, after: AnimatorState, t: AnimTables, faults: RtFaults): AnimationEventRecord[] {
   const out: AnimationEventRecord[] = [];
@@ -481,7 +482,7 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
       for (const b of was) {
         if (now !== undefined && sameAnimation(now, b, faults) !== null) continue;
         const from = computeSecondsTiming(b.timing, b.held.seconds, faults);
-        if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: from.activeTime === null ? 0 : from.activeTime });
+        if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: b.held.seconds });
       }
     }
     if (now !== undefined) {
@@ -498,7 +499,9 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
           out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
           out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
         } else if (fromPhase === 'active' && to.phase === 'active' && from !== null && from.currentIteration !== null && to.currentIteration !== null && to.currentIteration !== from.currentIteration) {
-          out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: to.currentIteration * norm.iterationDuration });
+          // A kept animation whose iteration went backwards reports the start of the iteration after it (Blink OnEventCondition).
+          const boundary = from.currentIteration > to.currentIteration ? to.currentIteration + 1 : to.currentIteration;
+          out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: boundary * norm.iterationDuration });
         } else if (fromPhase === 'active' && to.phase === 'after') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
         else if (fromPhase === 'active' && to.phase === 'before') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
         else if (fromPhase === 'after' && to.phase === 'active') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
