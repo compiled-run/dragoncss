@@ -145,7 +145,7 @@ public func units_anchorPercentOffset(_ size: Double, _ fraction: Double) throws
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:108
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s1192, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1194, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -190,11 +190,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:150
   do {
-    let _a379 = values
-    var _i379 = 0
-    while _i379 < _a379.items.count {
-      let v: Double = _a379.items[_i379]
-      _i379 += 1
+    let _a381 = values
+    var _i381 = 0
+    while _i381 < _a381.items.count {
+      let v: Double = _a381.items[_i381]
+      _i381 += 1
       try total = units_add(total, v)
     }
   }
@@ -234,7 +234,7 @@ public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
 public func units_divInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:178
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s940, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s942, jsNumberToString(n)))
   }
   return try units_saturate(jsTrunc((a / n)))
 }
@@ -248,7 +248,7 @@ public func units_floatToInlineRaw(_ px: Double) throws -> Double {
 public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:189
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s940, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s942, jsNumberToString(n)))
   }
   return jsTrunc((raw / n))
 }
@@ -779,11 +779,11 @@ public func units_effectiveZoom(_ deviceZoom: Double, _ zooms: JsArray<Double>) 
   var z: Double = deviceZoom
   // ts: packages/layout/src/units.ts:705
   do {
-    let _a380 = zooms
-    var _i380 = 0
-    while _i380 < _a380.items.count {
-      let own: Double = _a380.items[_i380]
-      _i380 += 1
+    let _a382 = zooms
+    var _i382 = 0
+    while _i382 < _a382.items.count {
+      let own: Double = _a382.items[_i382]
+      _i382 += 1
       let zoomed: Double = jsFround((z * jsFround(own)))
       z = ((zoomed < 0.000001) ? 0.000001 : ((zoomed > 1000000.0) ? 1000000.0 : zoomed))
     }

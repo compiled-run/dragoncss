@@ -24,7 +24,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/intrinsic.ts:35
   if (box.style.multicol != nil) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s685, jsConcat(S.s1137, kind, S.s228, box.id, S.s122))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s685, jsConcat(S.s1139, kind, S.s228, box.id, S.s122))
   }
   // ts: packages/layout/src/intrinsic.ts:36
   if (box.style.display == S.s_flex) {
@@ -177,7 +177,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let gap: any U_LengthCalc_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:121
   if try ((gap.kind != S.s_normal) && box_hasPercent((gap as! any U_LengthCalc_Percent_Px))) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s668, S.s997)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s668, S.s999)
   }
   let gapLu: Double = try ((gap.kind == S.s_normal) ? units_ZERO : box_resolveLength((gap as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults))
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)

@@ -433,7 +433,7 @@ public func block_layoutOwnContents(_ ctx: Ctx, _ node: any U_ControlBox_LayoutB
   let s: LayoutStyle = box.style
   // ts: packages/layout/src/block.ts:413
   if ((s.containSize == S.s_size) && ((s.display != S.s_block) || (!s.containLayout))) {
-    try unsupported_unsupported(S.s_size_containment, box.id, S.s673, jsConcat(S.s1067, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s226), S.s198))
+    try unsupported_unsupported(S.s_size_containment, box.id, S.s673, jsConcat(S.s1069, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s226), S.s198))
   }
   try position_checkOutOfFlowSiblings(ctx, box)
   // ts: packages/layout/src/block.ts:418
@@ -793,7 +793,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/block.ts:858
   if ((box.style.multicol != nil) && (((box.strut == nil) && (jsLength(kids) > 0.0)) || (a.marker != nil))) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s684, jsConcat(S.s1153, box.id, S.s3, ((a.marker != nil) ? S.s844 : S.s812), S.s216))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s684, jsConcat(S.s1155, box.id, S.s3, ((a.marker != nil) ? S.s844 : S.s812), S.s216))
   }
   // ts: packages/layout/src/block.ts:861
   if (box.strut != nil) {
@@ -815,7 +815,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   }
   // ts: packages/layout/src/block.ts:874
   if ((box.style.textBoxTrim != nil) && (jsLength(kids) > 0.0)) {
-    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s683, jsConcat(S.s1119, box.id, S.s214))
+    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s683, jsConcat(S.s1121, box.id, S.s214))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Box_Placed> = JsArray<Box_Placed>([])
@@ -840,12 +840,12 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   // ts: packages/layout/src/block.ts:896
   do {
     var k: Double = 0.0
-    loop30: while (k < jsLength(kids)) {
-      loop30_body: do {
+    loop31: while (k < jsLength(kids)) {
+      loop31_body: do {
         let child: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = try jsUnwrap(jsAt(kids, k))
         // ts: packages/layout/src/block.ts:898
         if (((child.kind != S.s_box) && ((child as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((child as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
-          break loop30_body
+          break loop31_body
         }
         var kid: any U_ControlBox_LayoutBox_ReplacedLeaf = (child as! any U_ControlBox_LayoutBox_ReplacedLeaf)
         // ts: packages/layout/src/block.ts:900
@@ -853,7 +853,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
           let rtl: Bool = ((direction == S.s_rtl) && (!ctx.faults.staticPosLtr))
           let sy: Double = try (((!seen) && a.canCollapseTop) ? units_ZERO : units_add(cursor, block_collapsed(strut)))
           _ = try jsPush(outOfFlow, OutOfFlow((kid as! LayoutBox), (rtl ? StaticAxis(units_add(a.origin.x, a.contentWidth), S.s_far) : StaticAxis(a.origin.x, S.s_near)), StaticAxis(units_add(a.origin.y, sy), S.s_near), nil))
-          break loop30_body
+          break loop31_body
         }
         // ts: packages/layout/src/block.ts:913
         if try float_isFloat(ctx, kid) {
@@ -866,7 +866,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
           let area: FloatArea = try float_placeFloat(floats, (kid as! any U_LayoutBox_ReplacedLeaf).style.float, units_add(units_add(f.marginLeft, f.frag.width), f.marginRight), units_add(units_add(f.marginTop, f.frag.height), f.marginBottom), top, a.contentWidth)
           _ = jsPush(floats, area)
           _ = try jsPush(placed, Box_Placed(f.frag, units_add(units_add(a.origin.x, area.x), f.marginLeft), units_add(units_add(a.origin.y, area.y), f.marginTop)))
-          break loop30_body
+          break loop31_body
         }
         inflow = true
         var inline: BlockLevelInline

@@ -152,7 +152,7 @@ public func layout_layoutWithInflow(_ given: LayoutInput, _ measurer: TextMeasur
     let offset: RelativeOffset = try position_relativeOffsetWith(root, icbWidth, HeightBasis_definite(S.s_definite, icbHeight), icbDirection, ctx.faults)
     // ts: packages/layout/src/layout.ts:98
     if (root.style.position == S.s_sticky) {
-      try unsupported_unsupported(S.s_sticky, root.id, S.s688, jsConcat(S.s1160, root.id, S.s52))
+      try unsupported_unsupported(S.s_sticky, root.id, S.s688, jsConcat(S.s1162, root.id, S.s52))
     }
     let sticky: JsStringMap<Sticky> = JsStringMap<Sticky>()
     try layout_collectSticky(root, nil, nil, sticky)
@@ -229,15 +229,15 @@ public func layout_collectSticky(_ b: LayoutBox, _ scroller: JsString?, _ within
         let spec: JsString = S.s688
         // ts: packages/layout/src/layout.ts:140
         if (scroller != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1161, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s79, jsUnwrap(scroller), S.s184))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1163, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s79, jsUnwrap(scroller), S.s184))
         }
         // ts: packages/layout/src/layout.ts:141
         if (within != nil) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1161, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s80, jsUnwrap(within)))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1163, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s80, jsUnwrap(within)))
         }
         // ts: packages/layout/src/layout.ts:142
         if ((((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_block) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_flex)) && ((c as! any U_LayoutBox_ReplacedLeaf).style.display != S.s_grid)) {
-          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1161, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s75, b.id))
+          try unsupported_unsupported(S.s_sticky, (c as! any U_LayoutBox_ReplacedLeaf).id, spec, jsConcat(S.s1163, (c as! any U_LayoutBox_ReplacedLeaf).id, S.s75, b.id))
         }
         let s: LayoutStyle = b.style
         // ts: packages/layout/src/layout.ts:144
@@ -395,8 +395,8 @@ public func layout_placeOutOfFlow(_ ctx: Ctx, _ input: LayoutInput, _ out: Place
   // ts: packages/layout/src/layout.ts:262
   do {
     var i: Double = 0.0
-    loop26: while (i < jsLength(out.pending)) {
-      loop26_body: do {
+    loop27: while (i < jsLength(out.pending)) {
+      loop27_body: do {
         let p: Pending = try jsUnwrap(jsAt(out.pending, i))
         // ts: packages/layout/src/layout.ts:265
         if try (!anchor_anchorsPlaced(p.oof.box.style, out.absolute)) {
@@ -405,7 +405,7 @@ public func layout_placeOutOfFlow(_ ctx: Ctx, _ input: LayoutInput, _ out: Place
             try unsupported_unsupported(S.s_anchor_order, p.oof.box.id, S.s671, jsConcat(S.s580, p.oof.box.id, S.s105))
           }
           _ = jsPush(out.pending, Pending(p.oof, p.parent, p.originX, p.originY, placed))
-          break loop26_body
+          break loop27_body
         }
         placed += 1.0
         let area: AreaRect? = p.oof.area
@@ -415,7 +415,7 @@ public func layout_placeOutOfFlow(_ ctx: Ctx, _ input: LayoutInput, _ out: Place
         let staticY: StaticAxis = try StaticAxis(units_add(p.originY, p.oof.y.offset), p.oof.y.edge)
         // ts: packages/layout/src/layout.ts:277
         if ((p.oof.box.style.anchor != nil) && (area != nil)) {
-          try unsupported_unsupported(S.s_anchor_order, p.oof.box.id, S.s672, jsConcat(S.s1139, p.oof.box.id, S.s41))
+          try unsupported_unsupported(S.s_anchor_order, p.oof.box.id, S.s672, jsConcat(S.s1141, p.oof.box.id, S.s41))
         }
         let r: AbsoluteResult = try ((p.oof.box.style.anchor == nil) ? position_layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY) : anchor_layoutAnchored(ctx, p.oof.box, cb, staticX, staticY, out.absolute))
         try layout_flatten(r.frag, p.parent, units_sub(r.x, p.originX), units_sub(r.y, p.originY), p.originX, p.originY, out)

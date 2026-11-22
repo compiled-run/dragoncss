@@ -559,11 +559,11 @@ public func rtInterpolate_applyTransformOps(_ start: Matrix2D, _ ops: JsArray<Tr
   var m: Matrix2D = start
   // ts: packages/layout/src/rt-interpolate.ts:353
   do {
-    let _a307 = ops
-    var _i307 = 0
-    while _i307 < _a307.items.count {
-      let op: TransformOp = _a307.items[_i307]
-      _i307 += 1
+    let _a309 = ops
+    var _i309 = 0
+    while _i309 < _a309.items.count {
+      let op: TransformOp = _a309.items[_i309]
+      _i309 += 1
       let fam: JsString = try rtInterpolate_family(op.fn)
       // ts: packages/layout/src/rt-interpolate.ts:355
       if (fam == S.s_translate) {
@@ -659,11 +659,11 @@ public func rtInterpolate_multiplySmall(_ digits: JsArray<Double>, _ factor: Dou
   var carry: Double = 0.0
   // ts: packages/layout/src/rt-interpolate.ts:410
   do {
-    let _a308 = digits
-    var _i308 = 0
-    while _i308 < _a308.items.count {
-      let d: Double = _a308.items[_i308]
-      _i308 += 1
+    let _a310 = digits
+    var _i310 = 0
+    while _i310 < _a310.items.count {
+      let d: Double = _a310.items[_i310]
+      _i310 += 1
       let t: Double = ((d * factor) + carry)
       let q: Double = try rtEasing_floorOf((t / 10.0))
       _ = jsPush(out, (t - (q * 10.0)))
@@ -987,7 +987,7 @@ public func rtInterpolate_colorRgba8(_ c: LegacyColor) throws -> Rgba8Value {
 // ts: packages/layout/src/rt-interpolate.ts:609
 public func rtInterpolate_serializeColor(_ c: LegacyColor) throws -> JsString {
   let opaque: Bool = (c.alpha >= 1.0)
-  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s1035 : S.s1036), rtInterpolate_channel(c.r)), S.s204), rtInterpolate_channel(c.g)), S.s204), rtInterpolate_channel(c.b))
+  let head: JsString = try jsConcat(jsConcat(jsConcat(jsConcat(jsConcat((opaque ? S.s1037 : S.s1038), rtInterpolate_channel(c.r)), S.s204), rtInterpolate_channel(c.g)), S.s204), rtInterpolate_channel(c.b))
   // ts: packages/layout/src/rt-interpolate.ts:612
   if opaque {
     return jsConcat(head, S.s193)

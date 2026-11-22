@@ -777,11 +777,11 @@ fun paintShadow_tileCrop(m: A8Mask, i: Double, j: Double): A8Mask {
   // ts: packages/layout/src/paint-shadow.ts:612
   run {
     var x: Double = b.left
-    loop27@ while ((x < b.right)) {
-      loop27_body@ do {
+    loop28@ while ((x < b.right)) {
+      loop28_body@ do {
         // ts: packages/layout/src/paint-shadow.ts:613
         if ((paintDither_ccTileIndex(x, paintShadow_TILE) != i)) {
-          break@loop27_body
+          break@loop28_body
         }
         left = paintShadow_minNum(left, x)
         right = (x + 1.0)
@@ -792,11 +792,11 @@ fun paintShadow_tileCrop(m: A8Mask, i: Double, j: Double): A8Mask {
   // ts: packages/layout/src/paint-shadow.ts:617
   run {
     var y: Double = b.top
-    loop28@ while ((y < b.bottom)) {
-      loop28_body@ do {
+    loop29@ while ((y < b.bottom)) {
+      loop29_body@ do {
         // ts: packages/layout/src/paint-shadow.ts:618
         if ((paintDither_ccTileIndex(y, paintShadow_TILE) != j)) {
-          break@loop28_body
+          break@loop29_body
         }
         top = paintShadow_minNum(top, y)
         bottom = (y + 1.0)
