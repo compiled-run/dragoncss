@@ -170,9 +170,9 @@ describe('hitTableOf rounds boxes and lines as Blink does', () => {
 
   // Where a corner's curve decides a row's or column's first or last pixel hitting p (inset from the box's straight edge), that pixel
   // and the one just outside it are grid points; straight edges are sampled per box, not per pixel.
-  const arcCovered = async (t: Awaited<ReturnType<typeof table>>, w: number, h: number): Promise<number> => {
+  const arcCovered = async (t: Awaited<ReturnType<typeof table>>, dpr: number, w: number, h: number): Promise<number> => {
     const { hitGrid } = await import('../src/rt-hit.ts');
-    const grid = hitGrid(t, 400 * t.dpr * PX, 300 * t.dpr * PX);
+    const grid = hitGrid(t, 400 * dpr * PX, 300 * dpr * PX);
     const has = new Set(grid.map((g) => `${g.x},${g.y}`));
     const on = (x: number, y: number) => has.has(`${x * PX},${y * PX}`);
     const hits = (xs: number[], ys: number[]) => xs.flatMap((x) => ys.filter((y) => idAt(t, x, y) === 'p').map((y) => [x, y] as const));
@@ -199,7 +199,7 @@ describe('hitTableOf rounds boxes and lines as Blink does', () => {
     const { px } = await import('./helpers.ts');
     const { hitGrid } = await import('../src/rt-hit.ts');
     const t = await table(3, { width: px(60), height: px(60) }, [], 12);
-    expect(await arcCovered(t, 190, 190)).toBeGreaterThan(200);
+    expect(await arcCovered(t, 3, 190, 190)).toBeGreaterThan(200);
     expect(hitGrid(t, 1200 * PX, 900 * PX).filter((g) => g.x < 36 * PX && g.y < 36 * PX).length).toBeLessThan(1000);
   });
 
@@ -207,7 +207,7 @@ describe('hitTableOf rounds boxes and lines as Blink does', () => {
     const { px } = await import('./helpers.ts');
     const bordered = { width: px(57), height: px(41), borderTopWidth: px(3), borderTopStyle: 'solid', borderRightWidth: px(1), borderRightStyle: 'solid', borderBottomWidth: px(2), borderBottomStyle: 'solid', borderLeftWidth: px(4), borderLeftStyle: 'solid' };
     const t = await table(2.625, bordered, [], [9.5, 3.25, 14, 0.5, 4.75, 11, 6.5, 0.75]);
-    expect(await arcCovered(t, 190, 140)).toBeGreaterThan(50);
+    expect(await arcCovered(t, 2.625, 190, 140)).toBeGreaterThan(50);
   });
 
   it('hits a line that overflows its rounded block by less than the block\'s top padding, inside the rounded line rect', async () => {
