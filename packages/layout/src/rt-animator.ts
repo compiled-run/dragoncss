@@ -12,11 +12,11 @@ import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts
 import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, TransformOp, ValueRange } from './rt-interpolate.ts';
 import { colorRgba8, intToString, legacyColor, lengthPercent, lengthPx, TRANSPARENT, ZERO_PX } from './rt-interpolate.ts';
 import type { AnimationEntry, KeyframesRule, RunningAnimation } from './rt-animations.ts';
-import { advanceAnimation, animationFinished, composeAnimations, updateAnimations } from './rt-animations.ts';
+import { advanceAnimation, animationFinished, composeAnimations, findRunning, updateAnimations } from './rt-animations.ts';
 import type { RuleKeyframe } from './rt-keyframes.ts';
 import type { TransformOrigin } from './paint-transform.ts';
 import type { FillMode, PlaybackDirection } from './rt-timing.ts';
-import { computeSecondsTiming } from './rt-timing.ts';
+import { computeSecondsTiming, normalizeSeconds } from './rt-timing.ts';
 import type { RunningTransition, TransitionListing } from './rt-transition.ts';
 import { advanceTransition, transitionFinished, transitionValue, updateTransition } from './rt-transition.ts';
 
@@ -439,6 +439,80 @@ export function animatorAdvance(s: AnimatorState, t: AnimTables, inputs: readonl
   const lists = s.lists.map((l) => l.map((a) => advanceAnimation(a, ms, faults)));
   const next: AnimatorState = { current: s.current, transitions: transitions, lists: lists, composed: s.composed };
   return { current: s.current, transitions: transitions, lists: lists, composed: recompose(next, t, inputs, initial, false, faults, anim) };
+}
+
+/** One CSS animation event (css-animations-1 §4.2): its type, the element, the animation's name and its elapsed time in seconds. */
+export type AnimationEventRecord = {
+  readonly type: 'animationstart' | 'animationiteration' | 'animationend' | 'animationcancel';
+  readonly node: string;
+  readonly name: string;
+  readonly elapsedTime: number;
+};
+
+/** max(min(t, activeDuration), 0): an interval start or end (css-animations-1 §4.2). */
+function clampInterval(t: number, activeDuration: number): number {
+  const m = t < activeDuration ? t : activeDuration;
+  return m > 0 ? m : 0;
+}
+
+/** The running animation of a list with this name and the same place among animations of that name, or null: the one the
+ * restyle kept (rt-animations.ts findRunning, as Blink's CSSAnimations matches by name), wherever the list moved it. */
+function sameAnimation(list: readonly RunningAnimation[] | undefined, a: RunningAnimation, faults: RtFaults): RunningAnimation | null {
+  if (list === undefined) return null;
+  for (const b of list) if (faults.nameChangeKeepsAnimation ? b.listIndex === a.listIndex : b.name === a.name && b.nameIndex === a.nameIndex) return b;
+  return null;
+}
+
+/**
+ * The animation events between two animator states, in the order Chrome 145 dispatches them for each animation
+ * (CSSAnimations::AnimationEventDelegate::OnEventCondition): start on a change from none or before to active or after (elapsed
+ * time the interval start) or from after to active or before (the interval end); end, after any start, on a change to after (the
+ * interval end) or from active or after to before (the interval start); iteration when the current iteration changes within the
+ * active phase (the boundary crossed); cancel when it stops running outside its after phase (its current time).
+ */
+export function animationEvents(before: AnimatorState, after: AnimatorState, t: AnimTables, faults: RtFaults): AnimationEventRecord[] {
+  const out: AnimationEventRecord[] = [];
+  for (let i = 0; i < t.animations.length; i++) {
+    const table = t.animations[i];
+    if (table === undefined) continue;
+    const was = before.lists[i];
+    const now = after.lists[i];
+    // A removed animation's cancel comes before the new list's events, as Chrome dispatches them.
+    if (was !== undefined) {
+      for (const b of was) {
+        if (now !== undefined && sameAnimation(now, b, faults) !== null) continue;
+        const from = computeSecondsTiming(b.timing, b.held.seconds, faults);
+        if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: b.held.seconds });
+      }
+    }
+    if (now !== undefined) {
+      for (const a of now) {
+        const norm = normalizeSeconds(a.timing);
+        const start = clampInterval(-norm.startDelay, norm.activeDuration);
+        const end = clampInterval(norm.endTime - norm.startDelay, norm.activeDuration);
+        const b = sameAnimation(was, a, faults);
+        const from = b === null ? null : computeSecondsTiming(b.timing, b.held.seconds, faults);
+        const to = computeSecondsTiming(a.timing, a.held.seconds, faults);
+        const fromPhase = from === null ? 'none' : from.phase;
+        if ((fromPhase === 'none' || fromPhase === 'before') && to.phase === 'active') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
+        else if ((fromPhase === 'none' || fromPhase === 'before') && to.phase === 'after') {
+          out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
+          out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
+        } else if (fromPhase === 'active' && to.phase === 'active' && from !== null && from.currentIteration !== null && to.currentIteration !== null && to.currentIteration !== from.currentIteration) {
+          // A kept animation whose iteration went backwards reports the start of the iteration after it (Blink OnEventCondition).
+          const boundary = from.currentIteration > to.currentIteration ? to.currentIteration + 1 : to.currentIteration;
+          out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: boundary * norm.iterationDuration });
+        } else if (fromPhase === 'active' && to.phase === 'after') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
+        else if (fromPhase === 'active' && to.phase === 'before') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
+        else if (fromPhase === 'after' && to.phase === 'active') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+        else if (fromPhase === 'after' && to.phase === 'before') {
+          out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+          out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** True while a transition runs or an animation is relevant: the display driver runs only then (R3). */

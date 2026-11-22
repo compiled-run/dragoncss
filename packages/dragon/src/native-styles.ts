@@ -3,7 +3,8 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { BAND_STATE, compiledCases, ENV_INSTANCE, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
+import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
+import type { AnimProgram } from './lower/anim-program.ts';
 import type { rtBand } from '@dragon/layout';
 import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
 import type { NativeBackend } from './lower/native-program.ts';
@@ -76,6 +77,11 @@ export type NativeStyleOutput = {
   /** Whether the target's committed device lanes all pass: only 'ready' is a shipping output (docs/api.md §2.2). */
   readonly readiness: ArtifactState;
   /**
+   * With support 'lanes' only: the transitions and animations of the program's assignments, in its assignment order, for the
+   * host to run with Dragon's animator (layout/src/rt-animator.ts); absent when the sheet has none.
+   */
+  readonly anim?: AnimProgram;
+  /**
    * The sheet's @media bands, or null without @media: each atom is one media feature the device evaluates, each band the truth
    * vector of every atom; the program's env#band state selects one, so a band change is a setter like any other.
    */
@@ -136,17 +142,20 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
   if (output !== 'program-and-sources' && output !== 'program') throw new Error(`compileNativeStyles: output ${JSON.stringify(output)} is neither 'program-and-sources' nor 'program'`);
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
   const out: { [T in NativeStyleTarget]?: NativeStyleOutput | NativeStyleBlocked } = {};
-  for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport, output === 'program-and-sources');
+  for (const t of targets) out[t] = targetOutput(compiled, t, config.name, config.viewport, output === 'program-and-sources', support === 'lanes' && output === 'program');
   return { styles: { ok: targets.every((t) => out[t]?.kind === 'emitted'), digest: compiled.digest, diagnostics: compiled.diagnostics, targets: out }, compiled };
 }
 
-function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean): NativeStyleOutput | NativeStyleBlocked {
+function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean, hostAnimates: boolean): NativeStyleOutput | NativeStyleBlocked {
   if (compiled.targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} compile has errors; see the diagnostics` };
   const record = internalRecord(compiled);
   if (record === undefined) throw new Error('compileNativeStyles: the compile result carries no internal record');
-  if (record.animation !== null && record.animation.features.length > 0) return { kind: 'blocked', reason: `the ${t} output has transitions or animations, which this entry point does not emit yet` };
+  const animated = record.animation !== null && record.animation.features.length > 0;
+  // A host that runs Dragon's animator itself (support 'lanes', program only) gets the tables; generated sources do not run them yet.
+  if (animated && !hostAnimates) return { kind: 'blocked', reason: `the ${t} output has transitions or animations, which this entry point does not emit yet` };
   const backend = BACKEND[t];
   const bands = nativeBands(compiled);
+  if (animated && bands !== null) return { kind: 'blocked', reason: `the ${t} output has transitions or animations under @media, which a host does not run yet` };
   const count = bands === null ? 1 : bands.table.bands.length;
   const cases = [];
   for (const c of compiledCases(compiled)) {
@@ -167,7 +176,8 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
       if (typeof s === 'string') throw new Error(`compileNativeStyles: ${s}`);
       return s;
     });
-    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes };
+    const anim = animated ? animProgramOf(compiled, program.assignments.map((a) => a.assignment)) : null;
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }) };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);

@@ -157,7 +157,7 @@ import {
   zoomViewportPx,
   ZERO,
 } from '../../layout/src/units.ts';
-import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
+import type { AnimationEntry, AnimationState, KeyframesRule, RunningAnimation } from '../../layout/src/rt-animations.ts';
 import { runAnimationScript } from '../../layout/src/rt-animations.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
 import { cubicBezier, easingFromSpec, froundOf, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
@@ -169,14 +169,14 @@ import type { RuleKeyframe } from '../../layout/src/rt-keyframes.ts';
 import { groupFromRule, sampleKeyframeEffect } from '../../layout/src/rt-keyframes.ts';
 import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../../layout/src/rt-timing.ts';
 import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../../layout/src/rt-timing.ts';
-import type { ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
+import type { RunningTransition, ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { SelectFacts } from '../../layout/src/rt-select.ts';
 import { selectAnswers, selectionTableOf } from '../../layout/src/rt-select.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, OriginTable, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
-import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
+import { animationEvents, animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
 import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
@@ -3909,6 +3909,83 @@ export function runMarklessLayout(line: string): string {
  * text]], "slots": one value per plan slot, required when the plan has slots}]}. Each row is a copy of the template named "<id>@<key>";
  * `shaper` shapes the text the build did not record.
  */
+/**
+ * A Markless page's transitions and animations on the device: the export's animator tables run over the plan's assignments from
+ * `initial` through `steps` (["event", assignment] for a style change, ["advance", ms] for time), as rtAnimatorResult runs them.
+ * The answer is ["ok", events, colours, transforms, lengths, busy]: each CSS animation event as [step, type, node, name,
+ * elapsedTime] (step -1 for the first style), then the frame now: the colour writes the device draws, the transform writes its
+ * views take, each animated length as [node, property, kind, px, percent], and whether the animator still runs.
+ */
+export function runMarklessAnimation(line: string): string {
+  try {
+    return marklessAnimation(obj(parseJson(line), ['dpr', 'viewport', 'plan', 'anim', 'initial', 'steps'], '$'));
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/** `out` with the animation events between two animator states appended, each as `[step, type, node, name, elapsedTime]`. */
+function eventsJson(out: string, step: number, before: AnimatorState, after: AnimatorState, t: AnimTables): string {
+  let all = out;
+  for (const e of animationEvents(before, after, t, RT_NO_FAULTS)) all += `${all === '' ? '' : ','}[${h(step)},${q(e.type)},${q(e.node)},${q(e.name)},${h(e.elapsedTime)}]`;
+  return all;
+}
+
+function marklessAnimation(o: JsonObj): string {
+  const plan = planObj(field(o, 'plan', '$'));
+  const dpr = numField(o, 'dpr', '$');
+  const faces = planFaces(plan);
+  let density: PlanDensity | null = null;
+  const densities = arr(field(plan, 'densities', '$.plan'), '$.plan.densities');
+  for (let i = 0; i < densities.length; i++) {
+    const at = `$.plan.densities[${i}]`;
+    const d = densities[i] as JsonValue;
+    if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+  }
+  if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
+  const measurer = planMeasurer(faces, density, null);
+  const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
+  const t = anTables(field(o, 'anim', '$'), '$.anim');
+  const count = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments').length;
+  if (t.assignments !== count) fail(`$.anim: the tables hold ${t.assignments} assignments, the plan ${count}`);
+  // Every assignment's engine input at DPR 1, where length endpoints come from (anim-cases.ts resolvedInputs).
+  const inputs: LayoutInput[] = [];
+  for (let k = 0; k < count; k++) {
+    const v = planVariant(plan, planAssignment(plan, k).variant);
+    inputs.push(resolvedInput({ viewport: viewport, devicePixelRatio: 1, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: v.rootFontSize, root: v.root }, measurer, NO_ENGINE_FAULTS));
+  }
+  const initial = numField(o, 'initial', '$');
+  if (!Number.isInteger(initial) || initial < 0 || initial >= count) fail(`$.initial: ${initial} is not an assignment`);
+  let s: AnimatorState = animatorStart(t, inputs, initial, RT_NO_FAULTS, AN_NO_FAULTS);
+  const none: AnimatorState = { current: initial, transitions: s.transitions.map((): RunningTransition | null => null), lists: s.lists.map((): RunningAnimation[] => []), composed: s.composed };
+  let events = '';
+  events = eventsJson(events, -1, none, s, t);
+  const steps = arr(field(o, 'steps', '$'), '$.steps');
+  for (let i = 0; i < steps.length; i++) {
+    const path = `$.steps[${i}]`;
+    const g = arr(steps[i] as JsonValue, path);
+    const op = str(item(g, 0, path), path);
+    const before = s;
+    if (op === 'event') s = animatorEvent(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else if (op === 'advance') s = animatorAdvance(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else fail(`${path}: unknown step ${op}`);
+    events = eventsJson(events, i, before, s, t);
+  }
+  const frame = animatorFrame(s, t, RT_NO_FAULTS);
+  let colors = '';
+  for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
+  let transforms = '';
+  for (const w of frameTransforms(s, t, frame)) {
+    let ops = '';
+    for (const p of w.ops) ops += `${ops === '' ? '' : ','}[${q(p.fn)},[${q(p.x.kind)},${h(p.x.px)},${h(p.x.percent)}],[${q(p.y.kind)},${h(p.y.px)},${h(p.y.percent)}],${h(p.angle)},${h(p.sx)},${h(p.sy)}]`;
+    transforms += `${transforms === '' ? '' : ','}[${q(w.node)},[${ops}],[${q(w.origin.x.kind)},${h(w.origin.x.px)},${h(w.origin.x.percent)}],[${q(w.origin.y.kind)},${h(w.origin.y.px)},${h(w.origin.y.percent)}]]`;
+  }
+  let lengths = '';
+  for (const e of frame) if (e.value.kind === 'length') lengths += `${lengths === '' ? '' : ','}[${q(e.node)},${q(e.property)},${q(e.value.length.kind)},${h(e.value.length.px)},${h(e.value.length.percent)}]`;
+  return `["ok",[${events}],[${colors}],[${transforms}],[${lengths}],${animatorBusy(s) ? 'true' : 'false'}]`;
+}
+
 export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
   try {
     const parsed = parseJson(line);
