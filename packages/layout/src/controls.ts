@@ -187,11 +187,14 @@ export type CheckboxMarks = {
   readonly checkWidth: number;
 };
 
-/** The checkbox marks of a border box width x height device px at zoom (the device pixel ratio). */
+/** The checkbox marks of a snapped border box width x height device px at zoom (the device pixel ratio). */
 export function checkboxMarks(width: number, height: number, zoom: number): CheckboxMarks {
-  const side = width < height ? width : height;
-  const x = (width - side) / 2;
-  const y = (height - side) / 2;
+  // The theme paints at zoom 1 in a whole-px rect, the border box divided by the zoom and truncated (measured at DPR 2.625).
+  const w = Math.trunc(width / zoom);
+  const h = Math.trunc(height / zoom);
+  const side = (w < h ? w : h) * zoom;
+  const x = (w * zoom - side) / 2;
+  const y = (h * zoom - side) / 2;
   const check: number[] = [x + side * 0.2, y + side / 2, x + side * 0.4, y + side * 0.7, x + side * 0.8, y + side * 0.2];
   return { x: x, y: y, side: side, plain: side <= 2 * zoom, radius: 2 * zoom, backgroundInset: 0.2 * zoom, borderInset: 0.5 * zoom, borderWidth: zoom, check: check, checkWidth: side * 0.16 };
 }

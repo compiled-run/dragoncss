@@ -39,8 +39,10 @@ The theme draws in the checkbox's border box, as `NativeThemeBase::PaintCheckbox
 (`ui/native_theme/native_theme_base.cc`, BSD, Chromium at the tag) do, scaled by the zoom (the device pixel ratio), so every
 length below is in CSS px times the DPR:
 
-6. The drawn square is the largest square centred in the border box (a 30x22 box draws the same 22px square as a 22x22 box,
-   centred).
+6. The theme paints at zoom 1 in a whole-px rect: the snapped border box in device px divided by the zoom and truncated, then
+   scaled back by the zoom (at DPR 2.625 a 13px box is 34 device px, painted as 12 x 2.625 = 31.5). The drawn square is the
+   largest square centred in that rect (a 30x22 box draws the same 22px square as a 22x22 box, centred). The drawing is not
+   mirrored in rtl.
 7. Unchecked: the background, a rounded rect inset 0.2px with radius 2, in the checkbox background colour; then the border, a
    1px stroke of the square inset 0.5px, radius 2, in the border colour.
 8. Checked: the background as above, then the square filled with radius 2 in the accent colour, with no border; then the check, a
@@ -60,9 +62,21 @@ length below is in CSS px times the DPR:
 
 12. A click toggles `checked`. A checkbox's paint follows the element's checkedness, which starts from the `checked` attribute.
     Dragon compiles both drawings (checked and unchecked) for each checkbox and draws the attribute's state at first; the host
-    app owns checkedness (a Markless app keeps it in its state) and sets it on the view (`dragonSetCheckboxChecked`), which
-    redraws. Dragon does not toggle it on a tap. `:checked` in a stylesheet stays refused, as it would need the state in the
-    style partition.
+    app owns checkedness and sets it on the view (`dragonSetCheckboxChecked`), which redraws. `:checked` in a stylesheet stays
+    refused, as it would need the state in the style partition.
+
+    The tap path (Judge amendment 1): a tap on the checkbox's border box, or anywhere in its wrapping `<label>` (HTML label
+    activation), reaches the host as a tap whose hit target is the checkbox or an element inside the label; Dragon's hit table
+    names the same element as Chrome's `elementFromPoint` there (the checkbox is a plain box in the layout input, so the table
+    models it; `controls-checkbox` carries a label row through the hit lane). Markless's native runtime then runs label activation
+    (the label's labeled control is its first labelable descendant, or its `for` target), toggles the control's checkedness and
+    calls `dragonSetCheckboxChecked`; a form's data reads the current checkedness at submit. Measured in Chrome on the notes row: a
+    tap on the label's text gives `pinned=on`, a second tap gives no `pinned`, and a tap on the label outside its text and on the
+    box toggle it too.
+
+    Dirty checkedness (Judge amendment 2, HTML §4.10.5.1.15): measured in Chrome, after a user toggle, setting or removing the
+    `checked` attribute changes nothing, while on a checkbox no one has toggled it still does. `dragonSetCheckboxChecked` marks the
+    view dirty, after which a later `dragonSetCheckbox` write (a re-render) keeps the host's state and takes only its colours.
 13. While the pointer is down Chrome draws the pressed colours: unchecked border `#8d8d8d`; checked, the accent with its HSL
     lightness raised 0.11 (`#0075ff` to `#3793ff`, `#c2410c` to `#f15516`), or lowered 0.11 when the dark colours are in use
     (`#fb923c` to `#fa7305`). Hover darkens instead; the phones have no hover. This slice does not draw the pressed colours, so a
@@ -72,6 +86,8 @@ length below is in CSS px times the DPR:
 
 ## Refused (unchanged or new)
 
+- Author `:hover` and `:active` rules on a themed checkbox (Judge amendment 3), while the pressed and hovered colours are not
+  drawn: Chrome would show them under the author's style.
 - `color-scheme` that makes the used scheme dark, on the checkbox or inherited (the dark theme colours are measured in part only).
 - A translucent `accent-color`.
 - Author padding, border, or `box-sizing: content-box` on a themed checkbox.
@@ -87,10 +103,17 @@ length below is in CSS px times the DPR:
 - A parity fixture `controls-checkbox` (both directions) with the measured layout cases: alone in a block, between text in a line
   at two font sizes, the notes flex row, author widths and heights per axis, a non-square box. Its boxes are compared to Chrome
   by the capture lanes as every fixture's are.
-- A Chrome pixel test (`packages/parity/test/form-checkbox.test.ts`) at DPR 1, 2 and 3, checked and unchecked, accent auto,
+- A Chrome pixel test (`packages/parity/test/form-checkbox.test.ts`) at DPR 1, 2, 3 and 2.625 (Judge amendment 4), checked and unchecked, accent auto,
   `#c2410c`, `#fb923c`, 13px and 22px and 30x22: every device pixel fully inside a drawn shape (by at least one device px from
   every edge of it) is that shape's colour exactly, every pixel fully outside every shape is the page's, and the check's covered
   pixels are the check colour; the same test fails a planted fault that draws the check white under a light accent.
-- Refusal tests for every item in Refused.
+- Refusal tests for every item in Refused, and the tap-path test: tap the label text, then again, with the form data and the
+  hit table's target checked against Chrome, and dirty checkedness measured.
 - The native lanes inherit the paint through the translated geometry (`packages/layout/src/paint.ts`), the device pixel lanes
   run it on the phones after landing.
+
+## Judge ruling
+
+APPROVED WITH AMENDMENTS: (1) specify the tap path through the label to the host and test it against Chrome; (2) measure and keep
+dirty checkedness; (3) refuse author `:active` and `:hover` on a themed checkbox while the pressed colours are not drawn; (4) prove a
+fractional device pixel ratio. Each is met above: items 6, 12, the Refused list and the Proof list.
