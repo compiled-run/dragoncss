@@ -1,0 +1,10 @@
+{
+  "case": "bidi-dir-attribute",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"lp:text0","data":"AA ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"lp:text1","data":" CC","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"ls:text0","data":"BB","lines":1,"units":[0,0],"blank":[]}
+  ]
+}
