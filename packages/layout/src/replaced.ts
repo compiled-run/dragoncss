@@ -257,7 +257,7 @@ export function replacedBorderPadding(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU
 /** Whether a block length of the style depends on its percentage basis (a stretch one is refused when the size is resolved). */
 function blockLengthsHavePercent(s: LayoutStyle): boolean {
   if (s.height.kind === 'stretch' || s.minHeight.kind === 'stretch' || s.maxHeight.kind === 'stretch') return false;
-  return (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
+  return ((s.height.kind === 'percent' || s.height.kind === 'calc') && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
 }
 
 /** The percentage basis of the leaf's block lengths, null when indefinite; a flexed size that §9.8 does not make definite is refused. */

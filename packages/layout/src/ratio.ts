@@ -88,7 +88,7 @@ function clampTo(v: LU, mm: MinMax): LU {
 
 /** Whether a length depends on a percentage basis the block axis may lack, or is stretch: the validator refuses these beside a ratio. */
 function blockLengthsHavePercent(s: LayoutStyle): boolean {
-  const h = s.height.kind === 'stretch' || (s.height.kind !== 'auto' && hasPercent(s.height));
+  const h = s.height.kind === 'stretch' || ((s.height.kind === 'percent' || s.height.kind === 'calc') && hasPercent(s.height));
   const lo = s.minHeight.kind === 'stretch' || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight));
   const hi = s.maxHeight.kind === 'stretch' || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
   return h || lo || hi;
@@ -229,7 +229,10 @@ export function ratioAbsoluteInlineSize(ctx: Ctx, box: LayoutBox, cbWidth: LU, s
   return max(clampTo(extent, mm), e.hbp);
 }
 
-/** Whether an absolutely positioned box's auto height comes from its ratio rather than stretching between its block insets. */
-export function ratioSetsAbsoluteHeight(box: LayoutBox): boolean {
-  return hasAspectRatio(box.style) && box.style.height.kind === 'auto';
+/**
+ * Whether an absolutely positioned box's auto height comes from its ratio rather than stretching between its block insets: only
+ * when its width stretches between its inline insets too (Chrome 145 stretches a width: 30px box with top and bottom set).
+ */
+export function ratioSetsAbsoluteHeight(box: LayoutBox, inlineStretches: boolean): boolean {
+  return hasAspectRatio(box.style) && box.style.height.kind === 'auto' && inlineStretches;
 }

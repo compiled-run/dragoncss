@@ -4,7 +4,7 @@
 import { generate, parse, tokenize, tokenTypes } from 'css-tree';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
-import type { Diagnostic, Span } from '../types.ts';
+import type { Diagnostic, Origin, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import type { AliasValueParser } from './aliases.ts';
 import { aliasValueParser, legacyAliasRefusal, legacyAliasValue, resolveAlias } from './aliases.ts';
@@ -87,6 +87,8 @@ export type Declaration = {
   readonly presentationHint?: true;
   /** CASC 3: the cascade rank of the declaration's layer (layerRanks); absent when unlayered, which ranks above every layer. */
   readonly layer?: number;
+  /** css-cascade-5 §6.2: a declaration of the element's style attribute, attached to it rather than mapped by a selector. */
+  readonly attached?: true;
 };
 
 /** A class selector in this rule matches only class symbols with this owner and sheet (docs/api.md §3.1). */
@@ -168,6 +170,40 @@ export function parseStylesheet(authoredText: string, base: Span, use: SheetUse,
   }
   diagnostics.push(...parsed);
   return rules;
+}
+
+/**
+ * css-style-attr §3: a style attribute's value is the contents of a declaration block, parsed as one (an at-rule or a stray token
+ * drops only itself, and a "}" is an invalid token, not the end). Every declaration is element-attached (css-cascade-5 §6.2). The
+ * value's place inside its start tag is not known, so every declaration's span, and every diagnostic's, is the attribute's (`at`).
+ */
+export function parseStyleAttribute(authoredText: string, at: Span, diagnostics: Diagnostic[]): Declaration[] {
+  const text = preprocessInput(authoredText);
+  const base: Span = { source: at.source, start: at.start, end: at.start + text.length };
+  const local: Diagnostic[] = [];
+  if (authoredText.includes('\u0000')) local.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: 'the style attribute holds a U+0000 code point, which Chrome 145 reads differently by position', manual: 'Remove the U+0000, or write the escape \\FFFD for U+FFFD.' }));
+  const errors: string[] = [];
+  const ast = parseCss(text, { context: 'declarationList', positions: true, parseValue: true, onParseError: (e) => errors.push(e.message) });
+  if (text.includes('\\')) canonicalizeEscapes(ast);
+  const out: Declaration[] = [];
+  let order = 0;
+  for (const d of list(ast, 'children')) {
+    if (d.type !== 'Declaration') {
+      local.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `the style attribute holds ${d.type === 'Atrule' ? 'an at-rule' : 'a rule or a stray token'}, which Chrome drops; a style attribute holds declarations only (css-style-attr §3)` }));
+      continue;
+    }
+    const parsed = parseDeclaration(d, base, text, order++, local);
+    if (parsed !== null) out.push({ ...parsed, span: at, valueSpan: at, attached: true });
+  }
+  for (const e of errors) local.push(diagnostic('DRAGON_CSS_PARSE', { origin: authored(at), message: `CSS parse error in the style attribute: ${e}` }));
+  const here = (o: Origin): Origin => (o.kind === 'authored' ? { kind: 'authored', span: at } : o);
+  for (const x of local) {
+    const related = x.related.map((r) => ({ ...r, origin: here(r.origin) }));
+    // An edit fix needs the declaration's own span, which the attribute does not give, so the refusal names the attribute instead.
+    if (x.fix !== null && 'edits' in x.fix) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: authored(at), target: x.target, message: `the style attribute holds a declaration Dragon refuses: ${x.message}`, manual: `${x.fix.title} from the style attribute.`, related, ...(x.profile === null ? {} : { profile: x.profile }) }));
+    else diagnostics.push({ ...x, origin: here(x.origin), related });
+  }
+  return out;
 }
 
 /** The children of the stylesheet or of a conditional at-rule's block: style rules, and every other node through refuseNode. */
@@ -1057,7 +1093,13 @@ export function parseSubstitutedValue(property: Longhand | Shorthand, text: stri
   // Substitution can nest brackets past MAX_NESTING, which the css-tree parser would recurse through.
   if (nestingDepth(text) > MAX_NESTING) return { kind: 'refused', diagnostic: tooDeep(property, base) };
   let failed = false;
-  const node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  let node: CssNode;
+  try {
+    node = parse(text, { context: 'value', positions: true, onParseError: () => { failed = true; } });
+  } catch {
+    // css-tree throws on some token runs Chrome only fails to match (an ident before a "%" delim: "NaN%").
+    return { kind: 'invalid' };
+  }
   if (failed) return { kind: 'invalid' };
   if (text.includes('\\')) canonicalizeEscapes(node);
   const tokens = list(node, 'children').filter((n) => n.type !== 'WhiteSpace');

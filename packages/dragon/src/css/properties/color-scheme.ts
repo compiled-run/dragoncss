@@ -54,4 +54,12 @@ export function namesDark(v: CssValue): boolean {
   return v.value.split(' ').includes('dark');
 }
 
+/** The used scheme as Chrome 145 picks it: the preferred one where both are named (null if unknown), else the one named, else light. */
+export function usedColorScheme(v: CssValue, preferred: 'light' | 'dark' | null): 'light' | 'dark' | null {
+  if (v.kind !== 'keyword') throw new Error(`color-scheme ${JSON.stringify(v)} is not a keyword`);
+  const names = v.value.split(' ').filter((n): n is 'light' | 'dark' => n === 'light' || n === 'dark');
+  if (names.includes('light') && names.includes('dark')) return preferred;
+  return names[0] ?? 'light';
+}
+
 export const COLOR_SCHEME_VALUE_PARSERS: { readonly [P in (typeof COLOR_SCHEME_LONGHANDS)[number]]: (tokens: readonly CssNode[], base: Span) => ParsedValue } = { 'color-scheme': parseColorScheme };

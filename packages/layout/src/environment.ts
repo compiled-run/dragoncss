@@ -15,8 +15,10 @@
 // size, the font's metrics from the measurer, and the line height, each unzoomed by the font's zoom and zoomed by the conversion
 // zoom as CSSToLengthConversionData does. Every environment input is explicit in the LayoutInput.
 import type {
+  AnchorOption,
   BlockSizeValue,
   MaxBlockSizeValue,
+  MinBlockSizeValue,
   BorderWidthValue,
   CalcExpr,
   ControlBox,
@@ -173,7 +175,7 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
  */
 function boxNeedsEnvironment(b: LayoutBox | ControlBox, faults: EngineFaults): boolean {
   // FORM-b: a text field's editor line height is decided by the pass (editorLineHeightIsNormal).
-  if (b.kind === 'control' && b.control.kind === 'text-field') return true;
+  if (b.kind === 'control' && (b.control.kind === 'text-field' || b.control.kind === 'select-menulist')) return true;
   // A textarea's own font and line height, which size it, are resolved by the pass like a strut's.
   if (b.kind === 'control' && b.control.kind === 'text-area') return true;
   if (styleNeedsEnvironment(b.style)) return true;
@@ -233,6 +235,7 @@ function styleNeedsEnvironment(s: LayoutStyle): boolean {
   for (const v of [s.containIntrinsicWidth, s.containIntrinsicHeight]) if (v.kind === 'px' && !inCssLengthRange(v.value)) return true;
   const m = s.multicol;
   if (m !== null && m.width.kind === 'px' && !inCssLengthRange(m.width.value)) return true;
+  if (s.anchor !== null) for (const o of s.anchor.options) for (const v of anchorOptionLengths(o)) if (v.kind === 'calc' || (v.kind === 'px' && !inCssLengthRange(v.value))) return true;
   return gridNeedsEnvironment(s.grid);
 }
 
@@ -271,6 +274,12 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
     return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-area', cols: c.cols, rows: c.rows, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
   }
+  if (c.kind === 'select-menulist') {
+    const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
+    const children = resolveChildren(b.children, env);
+    const lh = own.lineHeight.kind === 'normal' ? menuListLineHeight(own.font, env) : null;
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: lh === null ? children : children.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withLineHeight(k, lh) : k)) };
+  }
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
   return { kind: 'control', id: b.id, boxType: b.boxType, style, control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
 }
@@ -289,6 +298,19 @@ function editorLineHeightIsNormal(c: Extract<ControlKind, { kind: 'text-field' }
   if (computedSize(c.font, env) >= lh) return true;
   const h = style.height;
   return h.kind === 'percent' || (h.kind === 'calc' && calcHasPercent(h.expr)) || (h.kind === 'px' && h.value > lh);
+}
+
+/** FORM-b: while a select's line height is normal its inner element's is the font's ascent + descent (menu_list_inner_element.cc:45-55). */
+function menuListLineHeight(font: FontSpec, env: Env): LineHeightValue {
+  refuseUnknownFace(env.measurer, font, env);
+  const m = env.measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+  return { kind: 'px', value: toPx(add(m.ascent, m.descent)) };
+}
+
+/** A resolved box whose strut and text take a resolved line height. */
+function withLineHeight(e: ControlBox, lineHeight: LineHeightValue): ControlBox {
+  const strut: LineStrut | null = e.strut === null ? null : { font: e.strut.font, lineHeight };
+  return { ...e, strut, children: e.children.map((k) => withNormalLeaf(k, lineHeight)) };
 }
 
 /** An inner editor whose strut and text take line-height normal (editorLineHeightIsNormal). */
@@ -387,7 +409,7 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     width: resolveInlineSize(s.width, env),
     height: resolveBlockSize(s.height, env),
     minWidth: resolveInlineSize(s.minWidth, env),
-    minHeight: resolveBlockSize(s.minHeight, env),
+    minHeight: resolveMinBlock(s.minHeight, env),
     maxWidth: resolveMaxInline(s.maxWidth, env),
     maxHeight: resolveMaxBlock(s.maxHeight, env),
     marginTop: envMargin(s.marginTop, env),
@@ -413,8 +435,35 @@ function resolveStyle(s: LayoutStyle, env: Env): LayoutStyle {
     textWrapStyle: resolveTextWrapStyle(s.textWrapStyle, env),
     multicol: s.multicol === null ? null : resolveMulticol(s.multicol, env),
     grid: s.grid === null ? null : resolveGrid(s.grid, env),
+    anchor: s.anchor === null ? null : { anchor: s.anchor.anchor, options: s.anchor.options.map((o) => resolveAnchorOption(o, env)), order: s.anchor.order },
     zoom: [],
   };
+}
+
+/** A position option's lengths at the element's environment, as its style's (css-anchor-position-1 §6). */
+function resolveAnchorOption(o: AnchorOption, env: Env): AnchorOption {
+  return {
+    ...o,
+    top: resolveInset(o.top, env),
+    right: resolveInset(o.right, env),
+    bottom: resolveInset(o.bottom, env),
+    left: resolveInset(o.left, env),
+    marginTop: envMargin(o.marginTop, env),
+    marginRight: envMargin(o.marginRight, env),
+    marginBottom: envMargin(o.marginBottom, env),
+    marginLeft: envMargin(o.marginLeft, env),
+    width: resolveInlineSize(o.width, env),
+    height: resolveBlockSize(o.height, env),
+    minWidth: resolveInlineSize(o.minWidth, env),
+    minHeight: resolveMinBlock(o.minHeight, env),
+    maxWidth: resolveMaxInline(o.maxWidth, env),
+    maxHeight: resolveMaxBlock(o.maxHeight, env),
+  };
+}
+
+/** The lengths of a position option, for the checks a style's lengths take. */
+function anchorOptionLengths(o: AnchorOption): (InsetValue | MarginValue | InlineSizeValue | BlockSizeValue | MaxInlineSizeValue | MaxBlockSizeValue)[] {
+  return [o.top, o.right, o.bottom, o.left, o.marginTop, o.marginRight, o.marginBottom, o.marginLeft, o.width, o.height, o.minWidth, o.minHeight, o.maxWidth, o.maxHeight];
 }
 
 /** text-wrap-style balance and pretty at the block's effective zoom, a float: the device pixel ratio (ComputedStyle::EffectiveZoom). */
@@ -531,6 +580,12 @@ function resolveMax(v: MaxSizeValue, env: Env): MaxSizeValue {
 
 /** An inline size: lengths as resolveSize; the intrinsic size keywords are resolved in layout. */
 function resolveBlockSize(v: BlockSizeValue, env: Env): BlockSizeValue {
+  if (v.kind === 'px') return lengthPx(v, env.zoom);
+  if (v.kind === 'calc') return resolveLengthCalc(v, env);
+  return v;
+}
+
+function resolveMinBlock(v: MinBlockSizeValue, env: Env): MinBlockSizeValue {
   if (v.kind === 'px') return lengthPx(v, env.zoom);
   if (v.kind === 'calc') return resolveLengthCalc(v, env);
   return v;
@@ -1159,6 +1214,7 @@ function styleDependencies(s: LayoutStyle, out: DependencyFlags): void {
   if (s.verticalAlign.kind === 'calc') calcDependencies(s.verticalAlign.expr, out);
   if (s.textIndent.kind === 'calc') calcDependencies(s.textIndent.expr, out);
   if (s.grid !== null) gridDependencies(s.grid, out);
+  if (s.anchor !== null) for (const o of s.anchor.options) for (const v of anchorOptionLengths(o)) if (v.kind === 'calc') calcDependencies(v.expr, out);
 }
 
 /** The environment inputs a grid container's track sizes read. */

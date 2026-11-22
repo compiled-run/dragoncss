@@ -1,0 +1,97 @@
+{
+ "sources": [
+  "Document.tsrx",
+  "App.tsrx",
+  "doc.css"
+ ],
+ "modules": [
+  {
+   "id": "document",
+   "source": "Document.tsrx"
+  },
+  {
+   "id": "app",
+   "source": "App.tsrx"
+  }
+ ],
+ "styles": [
+  {
+   "id": "doc",
+   "file": "doc.css",
+   "scope": "document"
+  },
+  {
+   "id": "app",
+   "file": "App.tsrx",
+   "scope": "App",
+   "block": 0
+  }
+ ],
+ "document": {
+  "root": "Document",
+  "documentElement": "html",
+  "styles": [
+   "doc",
+   "app"
+  ]
+ },
+ "components": [
+  {
+   "id": "Document",
+   "module": "document",
+   "at": "export default function Document",
+   "root": [
+    {
+     "el": "html",
+     "id": "html",
+     "at": "<html>",
+     "children": [
+      {
+       "el": "body",
+       "id": "body",
+       "at": "<body>",
+       "children": [
+        {
+         "call": "App",
+         "id": "app",
+         "at": "<App />"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "App",
+   "module": "app",
+   "at": "export function App",
+   "root": [
+    {
+     "el": "div",
+     "id": "card",
+     "at": "<div class=\"card\">",
+     "class": [
+      "app.card"
+     ],
+     "children": [
+      {
+       "el": "div",
+       "id": "swatch",
+       "at": "<div class=\"swatch\">",
+       "class": [
+        "app.swatch"
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "expected": {
+  "freeStates": [],
+  "cases": 1,
+  "initial": [],
+  "textTopology": []
+ }
+}

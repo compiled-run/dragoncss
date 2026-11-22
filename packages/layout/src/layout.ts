@@ -1,5 +1,6 @@
 // Entry point: lays out a validated LayoutInput and returns boxes relative to the parent border box, in LU: the in-flow boxes in
 // preorder, then each absolutely positioned box (after its parent and containing block) with its subtree.
+import { plainBox } from './controls.ts';
 import type { InsetValue, LayoutBox, LayoutInput, LayoutNode } from './input.ts';
 import type { LU } from './units.ts';
 import { add, fromCssPx, max, min, sub, ZERO } from './units.ts';
@@ -13,6 +14,8 @@ import type { GridFaults } from './grid.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import type { ContainingBlock, RelativeOffset } from './position.ts';
 import { layoutAbsolute, relativeOffsetWith } from './position.ts';
+import type { AnchorRect } from './anchor.ts';
+import { anchorsPlaced, layoutAnchored } from './anchor.ts';
 import type { TextMeasurer } from './text.ts';
 import { ahemMeasurerWith } from './text.ts';
 import type { LayoutUnsupported } from './unsupported.ts';
@@ -33,10 +36,11 @@ export function layout(input: LayoutInput, measurer: TextMeasurer): LayoutResult
 }
 
 /** An absolutely positioned box waiting for placement: its parent's absolute border-box origin and its static position there. */
-type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly originX: LU; readonly originY: LU };
+/** deferredAt: how many boxes were placed when an anchored box was put back to wait for its anchor, else -1. */
+type Pending = { readonly oof: OutOfFlow; readonly parent: string; readonly originX: LU; readonly originY: LU; readonly deferredAt: number };
 
 /** A border box in absolute LU. */
-type AbsoluteRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
+type AbsoluteRect = AnchorRect;
 
 /** A sticky box and its parent, whose content box is its containing block (css-position-3 §3.4). */
 type Sticky = { readonly box: LayoutNode; readonly parent: LayoutBox };
@@ -79,7 +83,7 @@ export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, fau
     const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults };
     const icbDirection = directionOf(ctx, root);
     // The root element establishes a block formatting context in the initial containing block.
-    const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection, { bfcLineOffset: ZERO, borderBoxWidth: icbWidth, lineLeft: ZERO, newFormattingContext: true });
+    const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection, { bfcLineOffset: ZERO, borderBoxWidth: icbWidth, lineLeft: ZERO, newFormattingContext: true, textAlign: 'start' });
     const r = layoutContents(ctx, root, {
       cbInline: icbWidth,
       borderBoxWidth: inline.borderBoxWidth,
@@ -118,7 +122,7 @@ function flatten(frag: Frag, parent: string | null, inFlowX: LU, inFlowY: LU, pa
   out.boxes.push({ id: frag.id, parent, x, y, width: frag.width, height: frag.height });
   out.absolute.set(frag.id, { x: absX, y: absY, width: frag.width, height: frag.height });
   if (frag.inflow !== null) out.inflow.push({ id: frag.id, x: frag.inflow.x, y: frag.inflow.y, width: frag.inflow.width, height: frag.inflow.height });
-  for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY });
+  for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY, deferredAt: -1 });
   for (const c of frag.children) flatten(c.frag, frag.id, c.x, c.y, absX, absY, out);
 }
 
@@ -197,14 +201,14 @@ function stickyOffset(st: StickyIndex, s: Sticky, x: LU, y: LU, width: LU, heigh
   return { dx, dy };
 }
 
-/** Every box's parent in the input tree. */
+/** Every box's parent in the input tree; a control (a fieldset holding positioned boxes) is its plain box. */
 function parents(root: LayoutBox): Map<string, LayoutBox> {
   const out = new Map<string, LayoutBox>();
   const walk = (b: LayoutBox): void => {
     for (const c of b.children) {
-      if (c.kind !== 'box') continue;
+      if (c.kind !== 'box' && c.kind !== 'control') continue;
       out.set(c.id, b);
-      walk(c);
+      walk(plainBox(c));
     }
   };
   walk(root);
@@ -254,15 +258,24 @@ export function resolvedInput(given: LayoutInput, measurer: TextMeasurer, faults
 /** Places each pending absolutely positioned box in order; boxes found inside one are queued after it. */
 function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: ContainingBlock): void {
   const parentOf = parents(input.root);
+  let placed = 0;
   for (let i = 0; i < out.pending.length; i++) {
     const p = out.pending[i] as Pending;
+    // An anchored box waits for an anchor inside an absolutely positioned box queued after it, which Chrome lays out first.
+    if (!anchorsPlaced(p.oof.box.style, out.absolute)) {
+      if (p.deferredAt === placed) unsupported('anchor-order', p.oof.box.id, 'css-anchor-position-1 §2.3', `an anchor of ${p.oof.box.id} is never laid out before it`);
+      out.pending.push({ oof: p.oof, parent: p.parent, originX: p.originX, originY: p.originY, deferredAt: placed });
+      continue;
+    }
+    placed++;
     const area = p.oof.area;
     const own = containingBlock(ctx, p.oof.box, parentOf, out, icb);
     // css-grid-2 §9.1: a positioned grid parent is the containing block, and the child's grid area its rectangle.
     const cb: ContainingBlock = area === null ? own : { x: add(p.originX, area.x), y: add(p.originY, area.y), width: area.width, height: area.height, direction: own.direction };
     const staticX: StaticAxis = { offset: add(p.originX, p.oof.x.offset), edge: p.oof.x.edge };
     const staticY: StaticAxis = { offset: add(p.originY, p.oof.y.offset), edge: p.oof.y.edge };
-    const r = layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY);
+    if (p.oof.box.style.anchor !== null && area !== null) unsupported('anchor-order', p.oof.box.id, 'css-anchor-position-1 §3', `the anchored ${p.oof.box.id} has a grid area as its containing block, which is not laid out yet`);
+    const r = p.oof.box.style.anchor === null ? layoutAbsolute(ctx, p.oof.box, cb, staticX, staticY) : layoutAnchored(ctx, p.oof.box, cb, staticX, staticY, out.absolute);
     flatten(r.frag, p.parent, sub(r.x, p.originX), sub(r.y, p.originY), p.originX, p.originY, out);
   }
 }

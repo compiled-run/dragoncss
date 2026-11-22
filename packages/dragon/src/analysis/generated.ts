@@ -56,10 +56,10 @@ export function generatedText(content: ResolvedValue, display: CssValue, faults:
 }
 
 /** The address and template node id of a generated box: "<host>::before" (R2). */
-export const generatedAddress = (host: string, pseudo: GeneratedPseudo): string => `${host}::${pseudo}`;
+export const generatedAddress = (host: string, pseudo: GeneratedPseudo | 'backdrop'): string => `${host}::${pseudo}`;
 
 /** The element resolve.ts builds for a host's ::before or ::after box: located at the host, with no class or attribute (R2). */
-export function generatedElement(host: LinkedElement, pseudo: GeneratedPseudo, children: readonly LinkedText[]): LinkedElement {
+export function generatedElement(host: LinkedElement, pseudo: GeneratedPseudo | 'backdrop', children: readonly LinkedText[]): LinkedElement {
   return { kind: 'element', address: generatedAddress(host.address, pseudo), node: host.node, instance: host.instance, owner: host.owner, tag: `::${pseudo}`, classes: [], attributes: new Map(), children };
 }
 

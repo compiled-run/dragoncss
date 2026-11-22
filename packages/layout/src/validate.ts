@@ -75,7 +75,8 @@ const calc = { calc: { expr: calcExpr, range: lit('all', 'non-negative') } } as 
 const size = tagged({ ...px(0), ...percent(0), ...auto, ...calc });
 const maxSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc });
 const intrinsic = { 'min-content': {}, 'max-content': {}, 'fit-content': {}, stretch: {} } as const;
-const blockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, stretch: {} });
+const minBlockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, stretch: {} });
+const blockSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxBlockSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, stretch: {} });
 const inlineSize = tagged({ ...px(0), ...percent(0), ...auto, ...calc, ...intrinsic });
 const maxInlineSize = tagged({ ...px(0), ...percent(0), none: {}, ...calc, ...intrinsic });
@@ -121,6 +122,41 @@ const gridContainer = obj({
 });
 const gridItem = obj({ column: gridSpan, row: gridSpan, justifySelf: lit('auto', ...gridSelfAlignValues) });
 
+// css-anchor-position-1: a position option (input.ts AnchorOption) and an anchored box's anchor and options.
+const areaTrack = lit('start', 'center', 'end');
+const anchorEdge = nullable(obj({ anchor: str, fraction: num(0) }));
+const anchorSize = nullable(obj({ anchor: str, axis: lit('width', 'height') }));
+const anchorOption = obj({
+  area: nullable(obj({ rowStart: areaTrack, rowEnd: areaTrack, columnStart: areaTrack, columnEnd: areaTrack })),
+  top: inset,
+  right: inset,
+  bottom: inset,
+  left: inset,
+  topAnchor: anchorEdge,
+  rightAnchor: anchorEdge,
+  bottomAnchor: anchorEdge,
+  leftAnchor: anchorEdge,
+  marginTop: margin,
+  marginRight: margin,
+  marginBottom: margin,
+  marginLeft: margin,
+  width: inlineSize,
+  height: blockSize,
+  minWidth: inlineSize,
+  minHeight: minBlockSize,
+  maxWidth: maxInlineSize,
+  maxHeight: maxBlockSize,
+  widthAnchor: anchorSize,
+  heightAnchor: anchorSize,
+  minWidthAnchor: anchorSize,
+  minHeightAnchor: anchorSize,
+  maxWidthAnchor: anchorSize,
+  maxHeightAnchor: anchorSize,
+  justifySelf: lit('normal', 'anchor-center'),
+  alignSelf: lit('normal', 'anchor-center'),
+});
+const anchorStyle = obj({ anchor: nullable(str), options: arr(anchorOption, 1), order: lit('normal', 'most-width', 'most-height') });
+
 export const styleSchema = obj({
   display: lit('block', 'flex', 'grid', 'inline', 'inline-block', 'inline-flex', 'inline-grid'),
   position: lit('static', 'relative', 'absolute', 'fixed', 'sticky'),
@@ -136,7 +172,7 @@ export const styleSchema = obj({
   width: inlineSize,
   height: blockSize,
   minWidth: inlineSize,
-  minHeight: blockSize,
+  minHeight: minBlockSize,
   maxWidth: maxInlineSize,
   maxHeight: maxBlockSize,
   marginTop: margin,
@@ -167,7 +203,7 @@ export const styleSchema = obj({
   ),
   rowGap: gap,
   columnGap: gap,
-  textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify'),
+  textAlign: lit('start', 'end', 'left', 'right', 'center', 'justify', '-webkit-center'),
   aspectRatio,
   verticalAlign: tagged({
     keyword: { value: lit('baseline', 'sub', 'super', 'text-top', 'text-bottom', 'middle', 'top', 'bottom') },
@@ -188,6 +224,7 @@ export const styleSchema = obj({
   textBoxTrim: nullable(obj({ start: bool, end: bool, alphabetic: bool })),
   grid: nullable(gridContainer),
   gridItem: nullable(gridItem),
+  anchor: nullable(anchorStyle),
   zoom: arr({ t: 'number', min: 0, exclusiveMin: true, integer: false }, 0),
 });
 
@@ -226,7 +263,7 @@ export const replacedLeafSchema = obj({
 });
 
 /** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
-export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-area': { cols: num(1), rows: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {} });
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-area': { cols: num(1), rows: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema }, 'select-inner': {} });
 
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
@@ -583,7 +620,50 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   if (isRecord(style)) checkFloat(value, style, path, parentId, errors);
   const children = childrenOf(value, path, errors);
   if (children === null) return;
-  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || isControl));
+  const controlKind = isControl && isRecord(value['control']) ? value['control']['kind'] : null;
+  // A fieldset and its legend hold positioned descendants as any block container does; the other controls fence theirs.
+  const fences = isControl && controlKind !== 'fieldset' && controlKind !== 'legend';
+  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || fences));
+  // The rendered legend is the one first in-flow legend of its fieldset (block.ts layoutFieldset).
+  let legends = 0;
+  children.forEach((child: unknown, i: number) => {
+    if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'legend') return;
+    legends++;
+    if (controlKind !== 'fieldset') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a legend control is the rendered legend of a fieldset control: its parent is one' });
+    else if (legends > 1) errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a fieldset control has at most one rendered legend' });
+  });
+  // A text field holds its inner editor and at most one placeholder, and nothing else (block.ts layoutTextField).
+  const fieldPart = (c: unknown): unknown => (isRecord(c) && c['kind'] === 'control' && isRecord(c['control']) ? c['control']['kind'] : null);
+  if (controlKind === 'text-field') {
+    let editors = 0;
+    let placeholders = 0;
+    children.forEach((child: unknown, i: number) => {
+      const part = fieldPart(child);
+      if (part === 'text-editor') editors++;
+      else if (part === 'text-placeholder') placeholders++;
+      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a text field control holds only its text-editor control and at most one text-placeholder control' });
+    });
+    if (editors !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds exactly one text-editor control' });
+    if (placeholders > 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds at most one text-placeholder control' });
+  } else {
+    children.forEach((child: unknown, i: number) => {
+      const part = fieldPart(child);
+      if (part === 'text-editor' || part === 'text-placeholder') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: `a ${part} control is a part of a text field control: its parent is one` });
+    });
+  }
+  // A single select holds its inner element, and nothing else (resolve.ts builds it; environment.ts sets its line height).
+  if (controlKind === 'select-menulist') {
+    let inners = 0;
+    children.forEach((child: unknown, i: number) => {
+      if (fieldPart(child) === 'select-inner') inners++;
+      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a select-menulist control holds only its select-inner control' });
+    });
+    if (inners !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a select-menulist control holds exactly one select-inner control' });
+  } else {
+    children.forEach((child: unknown, i: number) => {
+      if (fieldPart(child) === 'select-inner') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a select-inner control is the inner element of a select-menulist control: its parent is one' });
+    });
+  }
   // Only a block container's flow moves a slider thumb by its value (block.ts layoutBlockFlow); in a flex track it would sit at 0.
   children.forEach((child: unknown, i: number) => {
     if (!isRecord(child) || child['kind'] !== 'control' || !isRecord(child['control']) || child['control']['kind'] !== 'slider-thumb') return;
@@ -772,6 +852,10 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
   if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
   if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
   if ((control['kind'] === 'text-field' || control['kind'] === 'text-area' || control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'a text field and its parts are block containers');
+  if (control['kind'] === 'select-menulist' && style['display'] !== 'flex') bad('style.display', 'a select is a flex container');
+  if (control['kind'] === 'select-inner' && style['display'] !== 'block') bad('style.display', 'a select inner element is a block container');
+  if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['display'] !== 'block') bad('style.display', `a ${control['kind']} control is a block container`);
+  if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['float'] !== 'none') bad('style.float', `a ${control['kind']} control is in flow`);
   if (control['kind'] === 'slider-thumb' && typeof control['ratio'] === 'number' && control['ratio'] > 1) bad('control.ratio', 'a slider thumb ratio is at most 1');
   if (style['position'] === 'absolute') bad('style.position', 'an absolutely positioned form control is not supported');
   const ratio = style['aspectRatio'];
@@ -845,13 +929,15 @@ function checkStrut(box: Record<string, unknown>, children: readonly unknown[], 
   }
   const strut = box['strut'];
   const inline = children.some(isInlineLevel);
+  // FORM-b: an empty inner editor or select inner element keeps its strut, whose one empty line it lays out (block.ts).
+  const emptyKind = isRecord(box['control']) && children.length === 0 ? box['control']['kind'] : null;
+  const emptyEditor = emptyKind === 'text-editor' || emptyKind === 'select-inner';
   if (strut === null) {
     if (inline) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box with inline content has a strut' });
+    else if (emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: `an empty ${String(emptyKind)} control has a strut, whose one empty line it lays out` });
     return;
   }
   checkRule(strut, strutSchema, `${path}.strut`, errors);
-  // FORM-b: an empty inner editor keeps its strut, whose one empty line it lays out (block.ts).
-  const emptyEditor = isRecord(box['control']) && box['control']['kind'] === 'text-editor' && children.length === 0;
   if (!inline && !emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box without inline content has a null strut' });
   else if (isRecord(strut)) checkLeafFonts(children, strut['font'], strut['lineHeight'], path, errors);
 }
@@ -987,6 +1073,7 @@ const ANONYMOUS_INITIAL: { readonly [K in Exclude<keyof LayoutStyle, 'direction'
   multicol: null,
   textBoxTrim: null,
   grid: null,
+  anchor: null,
 };
 
 // CSS2 §9.2.1.1 and css-flexbox-1 §4: an anonymous box wraps a run of text only. It holds at least one text leaf and no box, its

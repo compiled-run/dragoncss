@@ -7,6 +7,7 @@
 // but not a symbol marker's ("• "), which Dragon draws without a text node.
 import type { CDPSession, Page } from 'playwright';
 import type { CapturedNode } from './capture.ts';
+import { generatedTextId, lineId, pseudoId } from './node-ids.ts';
 
 /** The capture plants: each must make a GEN-a lane fail. */
 export type PseudoCaptureFaults = {
@@ -24,8 +25,7 @@ export const CROSS_CHECK_CSS_PX = 1 / 1024;
 /** The pseudo-elements GEN-a and GEN-c generate; any other pseudo-element node in a captured page is an error. */
 export const GENERATED_PSEUDO_TYPES: readonly string[] = ['before', 'after', 'marker'];
 
-/** A captured generated box's id: "<host>::before" (the address Dragon gives it, analysis/generated.ts). */
-export const pseudoId = (host: string, type: string): string => `${host}::${type}`;
+export { pseudoId } from './node-ids.ts';
 
 const GENERATED_ID = /::(?:before|after|marker)$/;
 
@@ -240,12 +240,13 @@ export function generatedNodes(p: { readonly host: string; readonly type: string
   const box = quads === null ? null : unionRects(quads);
   out.push({ id, kind: 'element', hasBox: box !== null, x: box?.[0] ?? 0, y: box?.[1] ?? 0, width: box?.[2] ?? 0, height: box?.[3] ?? 0, computed });
   // As capture.ts records an inline element: one "<id>:line<j>" per fragment.
-  if (quads !== null && computed['display'] === 'inline') quads.forEach((q, j) => out.push({ id: `${id}:line${j}`, kind: 'line', hasBox: true, x: q[0], y: q[1], width: q[2], height: q[3], computed: null }));
+  if (quads !== null && computed['display'] === 'inline') quads.forEach((q, j) => out.push({ id: lineId(id, j), kind: 'line', hasBox: true, x: q[0], y: q[1], width: q[2], height: q[3], computed: null }));
   if (text !== undefined) {
     const rects = text.boxes.map((b) => b.rect);
     const u = unionRects(rects) as Rect4;
-    out.push({ id: `${id}:text0`, kind: 'text', hasBox: true, x: u[0], y: u[1], width: u[2], height: u[3], computed: null });
-    rects.forEach((r, j) => out.push({ id: `${id}:text0:line${j}`, kind: 'line', hasBox: true, x: r[0], y: r[1], width: r[2], height: r[3], computed: null }));
+    const textId = generatedTextId(id);
+    out.push({ id: textId, kind: 'text', hasBox: true, x: u[0], y: u[1], width: u[2], height: u[3], computed: null });
+    rects.forEach((r, j) => out.push({ id: lineId(textId, j), kind: 'line', hasBox: true, x: r[0], y: r[1], width: r[2], height: r[3], computed: null }));
   }
   return out;
 }

@@ -97,8 +97,11 @@ export type Stretch = { readonly kind: 'stretch' };
 export type SizeKeyword = MinContent | MaxContent | FitContent | Stretch;
 export type InlineSizeValue = SizeValue | SizeKeyword;
 export type MaxInlineSizeValue = MaxSizeValue | SizeKeyword;
-/** css-sizing-4 §3.1: height, min-height and max-height also take stretch, read only on a block-level box in block flow. */
-export type BlockSizeValue = SizeValue | Stretch;
+/**
+ * css-sizing-4 §3.1: height, min-height and max-height also take stretch, read only on a block-level box in block flow; height also
+ * takes min-content, max-content and fit-content, read only on an absolutely positioned box (css-sizing-3 §3.2: the content's block size).
+ */
+export type BlockSizeValue = SizeValue | Stretch | MinContent | MaxContent | FitContent;
 export type MinBlockSizeValue = MinSizeValue | Stretch;
 export type MaxBlockSizeValue = MaxSizeValue | Stretch;
 export type MarginValue = Px | Percent | Auto | LengthCalc;
@@ -209,7 +212,8 @@ export type AlignContent =
   | 'baseline'
   | 'start'
   | 'end';
-export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify';
+/** -webkit-center is <center>'s UA value: lines centre as center does, and block children with no auto margin centre too. */
+export type TextAlign = 'start' | 'end' | 'left' | 'right' | 'center' | 'justify' | '-webkit-center';
 /** css-overflow-4 §3.1 text-overflow: an ellipsis on each overflowing line of a block container whose overflow is not visible. */
 export type TextOverflow = 'clip' | 'ellipsis';
 /**
@@ -342,6 +346,65 @@ export type GridItemStyle = {
   readonly justifySelf: 'auto' | GridSelfAlign;
 };
 
+/** css-anchor-position-1 §3.1.2: one physical track of the position-area grid: before the anchor, the anchor's own, or after it. */
+export type AreaTrack = 'start' | 'center' | 'end';
+
+/**
+ * css-anchor-position-1 §3.1: the physical region of the position-area grid, the rows (top to bottom) and the columns (left to
+ * right) it spans; the compiler resolves the logical keywords against the containing block (Blink PositionArea::ToPhysical).
+ */
+export type PositionArea = { readonly rowStart: AreaTrack; readonly rowEnd: AreaTrack; readonly columnStart: AreaTrack; readonly columnEnd: AreaTrack };
+
+/** css-anchor-position-1 §3.2: anchor() in an inset, a position along the anchor box in its physical axis (0 the top or left edge, 1 the bottom or right). */
+export type AnchorEdge = { readonly anchor: string; readonly fraction: number };
+
+/** css-anchor-position-1 §5.1: anchor-size(), the anchor box's width or height. */
+export type AnchorSizeRef = { readonly anchor: string; readonly axis: 'width' | 'height' };
+
+/** The self-alignment an anchored box takes in one axis: normal (the position-area's default, §4.1) or anchor-center (§4.2). */
+export type AnchorSelfAlign = 'normal' | 'anchor-center';
+
+/**
+ * css-anchor-position-1 §6: one position option, the accepted @position-try properties in physical terms. An inset, margin or size
+ * whose anchor field is not null is that anchor() or anchor-size(); otherwise its value is the length.
+ */
+export type AnchorOption = {
+  readonly area: PositionArea | null;
+  readonly top: InsetValue;
+  readonly right: InsetValue;
+  readonly bottom: InsetValue;
+  readonly left: InsetValue;
+  readonly topAnchor: AnchorEdge | null;
+  readonly rightAnchor: AnchorEdge | null;
+  readonly bottomAnchor: AnchorEdge | null;
+  readonly leftAnchor: AnchorEdge | null;
+  readonly marginTop: MarginValue;
+  readonly marginRight: MarginValue;
+  readonly marginBottom: MarginValue;
+  readonly marginLeft: MarginValue;
+  readonly width: InlineSizeValue;
+  readonly height: BlockSizeValue;
+  readonly minWidth: InlineSizeValue;
+  readonly minHeight: MinBlockSizeValue;
+  readonly maxWidth: MaxInlineSizeValue;
+  readonly maxHeight: MaxBlockSizeValue;
+  readonly widthAnchor: AnchorSizeRef | null;
+  readonly heightAnchor: AnchorSizeRef | null;
+  readonly minWidthAnchor: AnchorSizeRef | null;
+  readonly minHeightAnchor: AnchorSizeRef | null;
+  readonly maxWidthAnchor: AnchorSizeRef | null;
+  readonly maxHeightAnchor: AnchorSizeRef | null;
+  readonly justifySelf: AnchorSelfAlign;
+  readonly alignSelf: AnchorSelfAlign;
+};
+
+/**
+ * css-anchor-position-1 on an absolutely positioned box: its default anchor box (the target anchor element the compiler found, §2.3),
+ * null when it has none, and its position options, the base style first and then each position-try-fallbacks entry (§6.1), tried in
+ * position-try-order (§6.2, physical).
+ */
+export type AnchorStyle = { readonly anchor: string | null; readonly options: readonly AnchorOption[]; readonly order: 'normal' | 'most-width' | 'most-height' };
+
 export type LayoutStyle = {
   readonly display: Display;
   readonly position: Position;
@@ -423,6 +486,8 @@ export type LayoutStyle = {
   readonly grid: GridContainerStyle | null;
   /** Written for the children of a grid container only (absolutely positioned ones too); null otherwise. */
   readonly gridItem: GridItemStyle | null;
+  /** css-anchor-position-1: written for an absolutely positioned box placed against an anchor; null otherwise. */
+  readonly anchor: AnchorStyle | null;
   /**
    * ZOOM (css-viewport-1 §5): the zoom of each element from the root down to this one that is not 1, root first; an anonymous box
    * takes its parent's. Its lengths and its text's font sizes and spacings are CSS px at zoom 1, which the environment pass
@@ -534,7 +599,13 @@ export type ReplacedLeaf = {
  *   start. Its intrinsic content inline size is cols x the advance of 0, rounded up to a whole px, and its auto content height is
  *   rows x its line height, whatever its text; font and lineHeight are the textarea's own;
  * - text-editor: the inner editor, a block container holding the value's text;
- * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow.
+ * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow;
+ * - fieldset: a block fieldset, whose rendered legend sits in its block-start border and whose other contents flow in an anonymous
+ *   new formatting context that carries its padding (HTML §15.3.13, FieldsetLayoutAlgorithm);
+ * - legend: a fieldset's rendered legend, its first in-flow legend child, sized to fit its content;
+ * - select-menulist (FORM-b): a single select, a flex row container of its inner element. font and lineHeight are the select's
+ *   own: while its line height is normal, the inner element's is the primary font's ascent + descent (environment.ts);
+ * - select-inner: the inner element, a block container holding the shown option's label; empty, it still holds one line.
  */
 export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
@@ -543,7 +614,11 @@ export type ControlKind =
   | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
   | { readonly kind: 'text-area'; readonly cols: number; readonly rows: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
   | { readonly kind: 'text-editor' }
-  | { readonly kind: 'text-placeholder' };
+  | { readonly kind: 'text-placeholder' }
+  | { readonly kind: 'fieldset' }
+  | { readonly kind: 'legend' }
+  | { readonly kind: 'select-menulist'; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'select-inner' };
 
 /** A form control's box: a box with the same fields as LayoutBox plus its control facts. */
 export type ControlBox = {

@@ -16,6 +16,7 @@ import type { Longhand } from '../css/properties.ts';
 import type { CssValue } from '../css/values.ts';
 import type { Diagnostic } from '../types.ts';
 import type { AnimationAnalysis } from './animations.ts';
+import { topLayerAncestorsOf } from './top-layer.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 import { valueToString } from './resolve.ts';
 
@@ -29,18 +30,31 @@ export const ZOOM_SCALED: ReadonlySet<Longhand> = new Set<Longhand>([
   'font-size', 'line-height', 'letter-spacing', 'word-spacing',
 ]);
 
-/** The effective zoom of an element whose parent's is parentZoom: its own computed zoom times it (1 for a value zoomOf rejects). */
+/**
+ * The zoom chain el inherits: its box parent's (boxParentZooms), except for a top-layer box, which inherits from its DOM ancestors
+ * though its box is the root's child (Chrome 145).
+ */
+export function parentZoomsOf(el: ResolvedElement, boxParentZooms: readonly number[]): readonly number[] {
+  const up = topLayerAncestorsOf(el);
+  return up === undefined ? boxParentZooms : up.reduce<readonly number[]>((z, a) => zoomChain(a, z), []);
+}
+
+/** The effective zoom el inherits: its box parent's (boxParentZoom), or for a top-layer box its DOM parent's. */
+export const parentZoomOf = (el: ResolvedElement, boxParentZoom: number): number => (topLayerAncestorsOf(el) === undefined ? boxParentZoom : zoomProduct(parentZoomsOf(el, [])));
+
+/** The effective zoom of an element whose box parent's is parentZoom: its own computed zoom times the zoom it inherits (1 for a value zoomOf rejects). */
 export function effectiveZoom(el: ResolvedElement, parentZoom: number): number {
   const v = el.props.get('zoom') as ResolvedValue | undefined;
   const own = v === undefined ? 1 : zoomOf(v.value);
-  return parentZoom * (own === null ? 1 : own);
+  return parentZoomOf(el, parentZoom) * (own === null ? 1 : own);
 }
 
-/** The zooms that are not 1 from the root down to el, root first, where its parent's are parentZooms (layout input.ts LayoutStyle.zoom). */
+/** The zooms that are not 1 from the root down to el, root first, where its box parent's are parentZooms (layout input.ts LayoutStyle.zoom). */
 export function zoomChain(el: ResolvedElement, parentZooms: readonly number[]): readonly number[] {
   const v = el.props.get('zoom') as ResolvedValue | undefined;
   const own = v === undefined ? 1 : zoomOf(v.value);
-  return own === null || own === 1 ? parentZooms : [...parentZooms, own];
+  const inherited = parentZoomsOf(el, parentZooms);
+  return own === null || own === 1 ? inherited : [...inherited, own];
 }
 
 /** The effective zoom of a zoom chain at device scale 1, as effectiveZoom multiplies it. */

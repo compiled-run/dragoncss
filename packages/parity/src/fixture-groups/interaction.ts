@@ -23,4 +23,4 @@ export const INTERACTION: readonly FixtureSpec[] = [
  * The fixtures whose interaction states get forced cases: one case per distinct state but none, its Chrome reference taken with
  * CSS.forcePseudoState through the capture's prepare hook. Kept outside FixtureSpec, so no existing case or count moves.
  */
-export const INTERACTION_FORCED: ReadonlySet<string> = new Set(['interaction-hover', 'interaction-focus', 'interaction-active', 'interaction-combo']);
+export const INTERACTION_FORCED: ReadonlySet<string> = new Set(['interaction-hover', 'interaction-focus', 'interaction-active', 'interaction-combo', 'ms-press']);

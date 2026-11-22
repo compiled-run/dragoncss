@@ -51,6 +51,11 @@ export function ceilFloatToWholePx(px: number): LU {
   return saturate(Math.ceil(Math.fround(px)) * LU_PER_PX);
 }
 
+/** C roundf of a non-negative float px: the nearest whole px, a half away from zero. */
+export function roundfPx(px: number): number {
+  return Math.floor(Math.fround(px) + 0.5);
+}
+
 /** A px value as an int, toward zero (Blink's int ComputedLineHeight). */
 export function truncPxToInt(px: number): number {
   return Math.trunc(px);
@@ -88,6 +93,14 @@ export function zoomFontSize(sizePx: number, zoom: number): number {
 /** Blink LayoutUnit::FromFloatRound(float): round(float(v) * 64), halves away from zero. R2: a px line-height (ComputedLineHeightAsFixed). */
 export function fromFloatRound(px: number): LU {
   return saturate(roundHalfAwayFromZero(Math.fround(px) * LU_PER_PX));
+}
+
+/**
+ * css-anchor-position-1 §3.2 anchor(<percentage>): Blink LayoutUnit::FromFloatRound(size * percentage / 100), each step in float
+ * (anchor_evaluator_impl.cc ResolveAnchorValue); fraction is the percentage over 100.
+ */
+export function anchorPercentOffset(size: LU, fraction: number): LU {
+  return fromFloatRound(Math.fround(Math.fround(toFloat(size) * Math.fround(fraction * 100)) / 100));
 }
 
 /** Whole CSS px as LU, for integer-pixel metrics such as rounded font ascent. */

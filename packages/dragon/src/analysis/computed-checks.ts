@@ -55,7 +55,7 @@ import { TXT_W_FAULTS } from '../faults/txt-w.ts';
 import type { TransformExtraFaults } from '../faults/transform-extra.ts';
 import { TRANSFORM_EXTRA_FAULTS } from '../faults/transform-extra.ts';
 import { checkTransformExtra } from './transform-extra.ts';
-import { checkZoom, effectiveZoom } from './zoom.ts';
+import { checkZoom, effectiveZoom, parentZoomOf } from './zoom.ts';
 import { checkFontUnits } from './font-units.ts';
 import { checkIntrinsicSize } from './contain-intrinsic.ts';
 import type { ContainIntrinsicFaults } from '../faults/contain-intrinsic.ts';
@@ -65,7 +65,7 @@ import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import { checkImageRendering, checkPixelatedTransformed } from './image-rendering.ts';
 import { checkScrollContainment, checkScrollSnap } from './scroll-containment.ts';
 import { checkColorScheme } from './color-scheme.ts';
-import { paintContained } from './containment.ts';
+import { containsDescendants, paintContained } from './containment.ts';
 import { checkContainment } from './containment-checks.ts';
 import type { MulticolFaults } from '../faults/multicol.ts';
 import { MULTICOL_FAULTS } from '../faults/multicol.ts';
@@ -96,7 +96,9 @@ import { checkBackgroundBlend } from './background-blend.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { uaRows } from '../ua/datasets.ts';
 import { checkInlineLevel } from './blockify.ts';
+import { isTopLayer, topLayerAncestorsOf } from './top-layer.ts';
 import { uaTagOf } from './elements.ts';
+import { isDisabled } from './match.ts';
 import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, textAreaAppearance, textFieldAppearance } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
@@ -109,9 +111,11 @@ import { isRefusedMath, synthesisAllowedOf, synthesizesBold, textFontOfProps } f
 import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
-import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, textFieldPartOf, valueToString } from './resolve.ts';
+import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, textFieldPartOf, valueToString } from './resolve.ts';
+import { selectDisplaySize } from '../forms/select.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
-import { serializeColor } from '../css/color.ts';
+import type { Rgba8 } from '../css/color.ts';
+import { parseComputedColor, serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
 import { glyphFill, usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
@@ -999,6 +1003,33 @@ function checkFixedContainingBlocks(root: ResolvedElement, propagated: ResolvedE
   walk(root, null, null);
 }
 
+// css-position-4 §3: the engine has no initial containing block for a top-layer box, which Chrome places against it.
+function checkTopLayer(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  const positioned = keywordOf(root.props.get('position') as ResolvedValue) !== 'static' || containsDescendants(root);
+  for (const el of root.children) {
+    if (el.kind !== 'element' || !isTopLayer(el) || displayKeyword(el) === 'none') continue;
+    const v = el.props.get('position') as ResolvedValue;
+    const pos = keywordOf(v);
+    const auto = (p: Longhand): boolean => keywordOf(el.props.get(p) as ResolvedValue) === 'auto';
+    const axes = [auto('left') && auto('right') ? 'left and right' : null, auto('top') && auto('bottom') ? 'top and bottom' : null].filter((a) => a !== null);
+    const area = keywordOf(el.props.get('position-area') as ResolvedValue) !== 'none';
+    const messages = [
+      ...(pos === 'absolute' && positioned ? [`the top-layer box ${el.element.address} is position: absolute while the root ${root.element.address} is positioned or contained: Chrome places it against the initial containing block, Dragon would place it against the root's padding box`] : []),
+      ...(axes.length > 0 && !area ? [`${axes.join(', and ')} are auto on the top-layer box ${el.element.address}: Chrome places it at the initial containing block's start corner, Dragon would place it after the root's contents`] : []),
+    ];
+    const origin = v.declaration === null ? el.element.node.origin : authored(v.declaration.valueSpan);
+    for (const message of messages) {
+      for (const t of native) {
+        const id = `${t}|top-layer|${message}`;
+        if (reported.has(id)) continue;
+        reported.add(id);
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin, target: t, message, manual: 'Give the top-layer box position: fixed and insets that are not auto, as the UA style does.', basis: 'computed-value' }));
+      }
+    }
+  }
+}
+
 // POSX-s (css-position-3 §3.4): the engine offsets a sticky box after layout against the viewport at scroll offset 0, inside its
 // parent's content box (packages/layout/src/layout.ts stickyOffset). It refuses a sticky root, an inline-level sticky box (placed by
 // a line box), a sticky box inside another, and a percentage padding on the parent (its containing block): refused here on every
@@ -1231,7 +1262,7 @@ function checkUserAgentDefaults(root: ResolvedElement, targets: readonly string[
     const declared = size.origin === 'author' ? size.declared : null;
     const relative = declared !== null && (declared.kind === 'percentage' || isPercentFontSizeMath(declared) || (declared.kind === 'keyword' && (declared.value === 'smaller' || declared.value === 'larger')) || (declared.kind === 'length' && PARENT_RELATIVE_FONT_UNITS.has(declared.unit.toLowerCase())));
     const absolute = relative || size.origin === 'inherited' || size.origin === 'user-agent' ? parentAbsolute : declared !== null && (declared.kind === 'length' || isMathValue(declared));
-    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'))).contexts;
+    const keyed = uaRows(ua, uaTagOf(tag, el.element.attributes.get('type'), isDisabled([...ancestors.map((a) => a.element), el.element]))).contexts;
     const ancestor = [...ancestors].reverse().find((a) => keyed.includes(a.element.tag));
     if (ancestor !== undefined) {
       once(`ua-context|${el.element.address}`, () => diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', {
@@ -1640,7 +1671,8 @@ function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, co
 
 /** FORM-a: on a native target a button or range is drawn but not interactive, and its view has no control accessibility role yet. */
 function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  const what = el.element.tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
+  const tag = el.element.tag;
+  const what = tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : tag === 'select' ? `<select> ${el.element.address} shows its compiled option with no picker, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
   for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
     const id = `${t}|control-static|${el.element.address}`;
     if (reported.has(id)) continue;
@@ -1656,9 +1688,9 @@ function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refus
   refuse(null, 'grid-item', `<${tag}> ${el.element.address} is a grid item, and a form control as a grid item is not supported yet`, `Wrap <${tag}> ${el.element.address} in a div, which becomes the grid item.`);
 }
 
-/** The text longhands Chrome's UA button rule resets (html.css), with whether a computed value equals the reset. */
-const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
-  ['color', (v) => v.kind === 'color' && v.value.r === 0 && v.value.g === 0 && v.value.b === 0 && v.value.alpha === 255],
+/** The text longhands Chrome's UA button rule resets (html.css), with whether a computed value equals the reset; color's is ButtonText. */
+const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue, buttonText: Rgba8) => boolean])[] = [
+  ['color', (v, t) => v.kind === 'color' && v.value.r === t.r && v.value.g === t.g && v.value.b === t.b && v.value.alpha === t.alpha],
   ['line-height', (v) => v.kind === 'keyword' && v.value === 'normal'],
   ['font-weight', (v) => (v.kind === 'number' && v.value === 400) || (v.kind === 'keyword' && v.value === 'normal')],
   ['letter-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
@@ -1679,7 +1711,7 @@ const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue) => boolean])[] 
  * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
  * display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control font (R13).
  */
-function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
   const tag = el.element.tag;
   const address = el.element.address;
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
@@ -1711,12 +1743,14 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   noteStaticOnNative(el, targets, diagnostics, reported);
   refuseScrollInControl(el, el, targets, diagnostics, reported);
   // The UA reset rows are not captured yet (#78's inherited-reset capture), so a button inheriting anything but the reset is refused.
+  const buttonText = parseComputedColor(ua.systemColors['ButtonText'] ?? '');
+  if (buttonText === null) throw new Error(`the ${ua.platform} UA dataset has no ButtonText colour`);
   for (const [p, isReset] of BUTTON_RESETS) {
     const v = el.props.get(p) as ResolvedValue;
     // revert and revert-layer roll back to the UA rule Dragon lacks, so Dragon resolves them to the inherited value too.
     const reverted = v.declared !== null && v.declared.kind === 'keyword' && (v.declared.value === 'revert' || v.declared.value === 'revert-layer');
     if ((v.origin !== 'inherited' || v.declaration !== null) && !reverted) continue;
-    if (isReset(v.value)) continue;
+    if (isReset(v.value, buttonText)) continue;
     const how = reverted ? `resolves ${p}: ${valueToString(v.declared as CssValue)} to ${valueToString(v.value)}` : `inherits ${p}: ${valueToString(v.value)}`;
     refuse(v, `reset-${p}`, `<${tag}> ${address} ${how}, which Chrome's user-agent button rule resets; Dragon does not model that reset yet`, `Set ${p} on <${tag}> ${address} to a value (inherit is fine).`);
   }
@@ -1816,6 +1850,184 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
   }
 }
 
+/** css-sizing-3 §3.2: the keywords that size a box from its content. */
+const INTRINSIC_SIZES: ReadonlySet<string> = new Set(['min-content', 'max-content', 'fit-content']);
+
+/** A width's shape for intrinsic sizing: an intrinsic keyword, auto (or stretch), a percentage of the containing block, or a fixed length. */
+function widthShape(v: ResolvedValue): 'intrinsic' | 'auto' | 'percent' | 'fixed' {
+  if (v.value.kind === 'keyword') return INTRINSIC_SIZES.has(v.value.value) ? 'intrinsic' : 'auto';
+  return hasPercentage(v) ? 'percent' : 'fixed';
+}
+
+/**
+ * Where box's used width comes from, for a descendant whose min-content and max-content contributions it may read: fixed (its own
+ * width, or a containing block its content cannot widen), parent (its layout parent's width), or why Chrome sizes it from its content.
+ */
+function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fixed' | 'parent' | string {
+  if (parent === null) return 'fixed';
+  const kw = (p: Longhand): string => keywordOf(box.props.get(p) as ResolvedValue);
+  const width = widthShape(box.props.get('width') as ResolvedValue);
+  for (const p of ['width', 'min-width', 'max-width'] as const) if (INTRINSIC_SIZES.has(kw(p))) return `${p}: ${kw(p)}`;
+  const pos = kw('position');
+  if (pos === 'absolute' || pos === 'fixed') return width === 'auto' && (kw('left') === 'auto' || kw('right') === 'auto') ? `position: ${pos} with an auto width` : 'fixed';
+  const step = (auto: string): 'fixed' | 'parent' | string => (width === 'fixed' ? 'fixed' : width === 'percent' ? 'parent' : auto);
+  if (kw('float') !== 'none') return step(`float: ${kw('float')} with an auto width`);
+  const d = kw('display');
+  if (d === 'table' || d === 'inline-table' || d.startsWith('table-')) return `display: ${d}`;
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid') return step(`display: ${d} with an auto width`);
+  const tag = box.element.tag;
+  if (tag === 'button' || (tag === 'legend' && parent.element.tag === 'fieldset')) return step(tag === 'button' ? 'a button with an auto width' : 'a fieldset legend with an auto width');
+  const pd = keywordOf(parent.props.get('display') as ResolvedValue);
+  if (pd === 'grid' || pd === 'inline-grid') return width === 'fixed' ? 'fixed' : 'a grid item';
+  if (pd === 'flex' || pd === 'inline-flex') {
+    if (keywordOf(parent.props.get('flex-direction') as ResolvedValue).startsWith('column')) {
+      const self = kw('align-self') === 'auto' ? keywordOf(parent.props.get('align-items') as ResolvedValue) : kw('align-self');
+      const stretched = (self === 'stretch' || self === 'normal') && kw('margin-left') !== 'auto' && kw('margin-right') !== 'auto';
+      // css-flexbox-1 §9.4: a multi-line container's line is as wide as its items' contributions, which a stretched item fills.
+      const wrap = keywordOf(parent.props.get('flex-wrap') as ResolvedValue);
+      if (stretched && wrap !== 'nowrap') return step(`a stretched column flex item in a flex-wrap: ${wrap} container`);
+      return step(stretched ? 'parent' : `a column flex item with align-self: ${self} and an auto width`);
+    }
+    const scroller = !['visible', 'clip'].includes(kw('overflow-x'));
+    if (kw('min-width') === 'auto' && !scroller) return 'a row flex item with min-width: auto';
+    const basis = box.props.get('flex-basis') as ResolvedValue;
+    const b = keywordOf(basis);
+    if (b === 'content' || INTRINSIC_SIZES.has(b)) return `a flex item with flex-basis: ${b}`;
+    if (b === 'auto' && width === 'auto') return 'a flex item with an auto flex basis and width';
+    return 'parent';
+  }
+  return step('parent');
+}
+
+/** How to clear a refusal whose content-sized box is at, by why widthSource named it. */
+function contentSizedFix(at: string, why: string): string {
+  if (why === 'a row flex item with min-width: auto' || why.startsWith('a flex item with')) return `Set min-width: 0 and a flex-basis in px on ${at} (flex: 1 1 0px; min-width: 0).`;
+  if (why.startsWith('a stretched column flex item')) return `Give ${at} a width in px, or set flex-wrap: nowrap on its flex container.`;
+  if (why.startsWith('min-width') || why.startsWith('max-width')) return `Give ${at} a ${why.slice(0, why.indexOf(':'))} in px, or remove it.`;
+  return `Give ${at} a width in px.`;
+}
+
+/** The first box from the select's layout parent outward whose width Chrome takes from its content, with why, or null. */
+function contentSizedAncestor(chain: readonly ResolvedElement[]): { readonly box: ResolvedElement; readonly why: string } | null {
+  const boxes = chain.filter((a) => !isContents(a));
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const box = boxes[i] as ResolvedElement;
+    const source = widthSource(box, boxes[i - 1] ?? null);
+    if (source === 'fixed') return null;
+    if (source !== 'parent') return { box, why: source };
+  }
+  return null;
+}
+
+/** The text longhands html.css resets on a select as on a button (color to FieldText), and its text-align: start and text-shadow: none. */
+const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue, fieldText: Rgba8) => boolean])[] = [
+  ...BUTTON_RESETS,
+  ['text-align', (v) => v.kind === 'keyword' && v.value === 'start'],
+  ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
+];
+
+/** FORM-b S1: a single select with appearance: none (Chrome's menulist, resolve.ts); everything else about one is refused by name. */
+function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE'): void =>
+    refuseOn(el, v, what, code, targets, diagnostics, reported, message, manual);
+  const element = (what: string, origin: Origin, message: string, manual: string): void => {
+    const id = `select-${what}|${address}`;
+    if (reported.has(id)) return;
+    reported.add(id);
+    diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin, message, manual }));
+  };
+  const attrs = el.element.attributes;
+  if (attrs.has('multiple') || selectDisplaySize(attrs.get('size')) > 1) {
+    element('listbox', el.element.node.origin, `<select${attrs.has('multiple') ? ' multiple' : ` size=${attrs.get('size') ?? ''}`}> ${address} is a list box, which waits for the FORM-b listbox package; only a single select (no multiple, a size of 1) is laid out`, `Remove ${attrs.has('multiple') ? 'multiple' : 'size'} from <select> ${address}.`);
+  }
+  for (const c of el.element.children) {
+    if (c.kind === 'text') {
+      if (c.text.trim() !== '') element('text', c.node.origin, `text directly in <select> ${address} is not supported: only option elements are laid out`, `Put the text in an <option> of <select> ${address}.`);
+    } else if (c.tag !== 'option' && c.tag !== 'optgroup') {
+      element(`child-${c.address}`, c.node.origin, `<${c.tag}> ${c.address} in <select> ${address} is not supported: only option elements are laid out`, `Remove <${c.tag}> ${c.address} from <select> ${address}.`);
+    } else if (c.children.some((k) => k.kind === 'element')) {
+      element(`option-${c.address}`, c.node.origin, `<option> ${c.address} holds elements, which is not supported: only an option of text is laid out`, `Write the label of <option> ${c.address} as text.`);
+    }
+  }
+  for (const o of selectOptionsOf(el)) {
+    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([, v]) => v.declaration !== null);
+    if (styled !== undefined) refuseOn(o, styled[1], 'option-style', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${styled[0]} on <option> ${o.element.address} is not supported: Chrome draws only its label in the closed select, and Dragon writes no rule for an option`, `Style <select> ${address} instead of <option> ${o.element.address}.`);
+  }
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  if (keywordOf(appearance) !== 'none') {
+    refuse(appearance, 'appearance', `<select> ${address} with appearance: ${valueToString(appearance.value)} draws Chrome's drop-down arrow and internal paddings, which wait for FORM-b select S2; only appearance: none is laid out`, `Set appearance: none on <select> ${address}.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <select> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <select> ${address}, or make it a flex item.`);
+  } else if (d !== 'block' && d !== 'flex') {
+    refuse(display, 'display', `display: ${d} on <select> ${address} is not supported; only a block-level select is laid out`, `Set display: block on <select> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos === 'absolute' || pos === 'fixed') refuse(position, 'position', `position: ${pos} on <select> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <select> ${address} in its flow.`);
+  const float = el.props.get('float') as ResolvedValue;
+  if (keywordOf(float) !== 'none') refuse(float, 'float', `float: ${valueToString(float.value)} on <select> ${address} is not supported: the engine lays out only an in-flow select`, `Float a wrapper element and keep <select> ${address} in its flow.`);
+  const width = el.props.get('width') as ResolvedValue;
+  if (width.value.kind === 'keyword') refuse(width, 'width', `width: ${valueToString(width.value)} on <select> ${address} is not supported: Chrome sizes a select to its widest option, which Dragon does not measure`, `Give <select> ${address} a width (a length or percentage).`);
+  const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
+  const minWidth = el.props.get('min-width') as ResolvedValue;
+  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width', `<select> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from its widest option, which Dragon does not measure`, `Set min-width (0 is fine) on <select> ${address}.`);
+  // Blink LayoutBox::DefaultIntrinsicContentInlineSize: a menulist's min-content and max-content widths are its widest option's
+  // (MenuListIntrinsicInlineSize), and Dragon's inner element holds only the shown one, so every width that reads them is refused.
+  for (const p of ['min-width', 'max-width'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, p, `${p}: ${keywordOf(v)} on <select> ${address} is not supported: Chrome sizes a select's content to its widest option, which Dragon does not measure`, `Give <select> ${address} a ${p} in px or %, or remove it.`);
+  }
+  const rowItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !keywordOf((chain.filter((a) => !isContents(a)).at(-1) as ResolvedElement).props.get('flex-direction') as ResolvedValue).startsWith('column');
+  const basis = el.props.get('flex-basis') as ResolvedValue;
+  const b = keywordOf(basis);
+  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis', `flex-basis: ${b} on <select> ${address} is not supported: Chrome takes it from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
+  // Blink FlexLayoutAlgorithm::ComputeMinMaxSizeOfRowContainer: a row item's contribution is its content-based one (a percentage
+  // width is indefinite there) unless it cannot flex, so a length basis keeps a percentage width out of the walk only then.
+  const number = (p: Longhand): number => { const v = (el.props.get(p) as ResolvedValue).value; return v.kind === 'number' ? v.value : 1; };
+  const rigid = rowItem && b === '' && !hasPercentage(basis) && number('flex-grow') === 0 && number('flex-shrink') === 0;
+  const percentWidth = width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
+  const relative = rowItem && hasPercentage(basis) ? basis : rigid ? null : percentWidth;
+  if (relative !== null) {
+    const what = relative === basis ? 'flex-basis' : 'width';
+    const said = `${what}: ${valueToString(relative.value)} on <select> ${address} is not supported`;
+    const sized = contentSizedAncestor(chain);
+    if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') {
+      refuse(relative, 'width-content', `${said} on a grid item: Chrome resolves it against the grid area, whose tracks can be sized from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a ${what} in px.`);
+    } else if (sized !== null) {
+      const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
+      const own = relative === basis || !rowItem || b === 'auto' ? `give <select> ${address} a ${what} in px` : `give <select> ${address} a width in px, or flex-grow: 0 and flex-shrink: 0`;
+      refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, and Dragon does not measure that option`, `${contentSizedFix(at, sized.why)} Or ${own}.`);
+    }
+  }
+  const align = el.props.get('align-items') as ResolvedValue;
+  if (valueToString(align.value) !== 'center') refuse(align, 'align-items', `align-items: ${valueToString(align.value)} on <select> ${address} is not supported: only Chrome's center, which centres the label safely, is laid out`, `Remove align-items from <select> ${address}.`);
+  const direction = el.props.get('flex-direction') as ResolvedValue;
+  if (keywordOf(direction) !== 'row') refuse(direction, 'flex-direction', `flex-direction: ${valueToString(direction.value)} on <select> ${address} is not supported: Chrome's menulist is a row`, `Remove flex-direction from <select> ${address}.`);
+  for (const p of ['overflow-x', 'overflow-y'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (keywordOf(v) !== 'visible') refuse(v, 'overflow', `${p}: ${valueToString(v.value)} on <select> ${address} is not supported: Chrome forces a select's overflow to visible`, `Remove overflow from <select> ${address}.`);
+  }
+  noteStaticOnNative(el, targets, diagnostics, reported);
+  const fieldText = parseComputedColor(ua.systemColors['FieldText'] ?? '');
+  if (fieldText === null) throw new Error(`the ${ua.platform} UA dataset has no FieldText colour`);
+  for (const [p, isReset] of SELECT_RESETS) {
+    const v = el.props.get(p) as ResolvedValue;
+    const reverted = v.declared !== null && v.declared.kind === 'keyword' && (v.declared.value === 'revert' || v.declared.value === 'revert-layer');
+    if ((v.origin !== 'inherited' || v.declaration !== null) && !reverted) continue;
+    if (isReset(v.value, fieldText)) continue;
+    const how = reverted ? `resolves ${p}: ${valueToString(v.declared as CssValue)} to ${valueToString(v.value)}` : `inherits ${p}: ${valueToString(v.value)}`;
+    refuse(v, `reset-${p}`, `<select> ${address} ${how}, which Chrome's user-agent select rule resets; Dragon does not model that reset yet`, `Set ${p} on <select> ${address} to a value (inherit is fine).`);
+  }
+  const family = el.props.get('font-family') as ResolvedValue;
+  if (family.origin === 'user-agent') {
+    refuse(family, 'font', `<select> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <select> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
+  }
+}
+
 /** The container-role longhands of a range input, which Chrome's range layout (a flex container) would read. */
 const RANGE_FLEX_LONGHANDS: readonly Longhand[] = ['flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content', 'row-gap', 'column-gap'];
 
@@ -1909,6 +2121,99 @@ function refuseScrollInControl(el: ResolvedElement, control: ResolvedElement, ta
   }
 }
 
+/**
+ * LayoutFieldset::FindInFlowLegend: a fieldset's first legend among its layout children (display: none skipped, display: contents
+ * looked through, as ios-layout.ts boxChildren lowers them) that is neither floated nor out of flow, or null.
+ */
+export function renderedLegendOf(fieldset: ResolvedElement): ResolvedElement | null {
+  for (const c of fieldset.children) {
+    if (c.kind !== 'element') continue;
+    const display = keywordOf(c.props.get('display') as ResolvedValue);
+    if (display === 'none') continue;
+    if (display === 'contents') {
+      const inner = renderedLegendOf(c);
+      if (inner !== null) return inner;
+      continue;
+    }
+    if (c.element.tag !== 'legend') continue;
+    const pos = keywordOf(c.props.get('position') as ResolvedValue);
+    if (keywordOf(c.props.get('float') as ResolvedValue) === 'none' && pos !== 'absolute' && pos !== 'fixed') return c;
+  }
+  return null;
+}
+
+/**
+ * HTML §15.3.13: a block fieldset is laid out as Blink's FieldsetLayoutAlgorithm does (block.ts layoutFieldset), its rendered legend
+ * a block. Refused: any other display, a floated or out-of-flow fieldset, overflow (Chrome moves it to the anonymous contents box,
+ * leaving the legend outside the clip), multi-column and size containment on it (the contents box's, which is not modelled), and,
+ * with a rendered legend, a painted border, background or box shadow (FieldsetPainter cuts the legend out of the top border and
+ * moves the border box to the legend's middle, which no target draws yet).
+ */
+function checkFieldset(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const refuse = (on: ResolvedElement, v: ResolvedValue, what: string, message: string, manual: string): void => refuseOn(on, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
+  refuseGridItem(el, parentDisplay, (v, what, message, manual) => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual));
+  const prop = (on: ResolvedElement, p: Longhand): ResolvedValue => on.props.get(p) as ResolvedValue;
+  const display = keywordOf(prop(el, 'display'));
+  if (display !== 'block') {
+    refuse(el, prop(el, 'display'), 'fieldset-display', `display: ${valueToString(prop(el, 'display').value)} on <fieldset> ${address} is not laid out yet; only a block fieldset is`, `Set display: block on <fieldset> ${address}, or use a div.`);
+    return;
+  }
+  const pos = keywordOf(prop(el, 'position'));
+  if (pos === 'absolute' || pos === 'fixed') refuse(el, prop(el, 'position'), 'fieldset-position', `position: ${pos} on <fieldset> ${address} is not supported yet`, `Position a wrapper element and keep <fieldset> ${address} in its flow.`);
+  if (keywordOf(prop(el, 'float')) !== 'none') refuse(el, prop(el, 'float'), 'fieldset-float', `float: ${keywordOf(prop(el, 'float'))} on <fieldset> ${address} is not supported yet`, `Float a wrapper element instead of <fieldset> ${address}.`);
+  for (const p of ['overflow-x', 'overflow-y'] as const) {
+    const k = keywordOf(prop(el, p));
+    if (k === 'visible') continue;
+    refuse(el, prop(el, p), 'fieldset-overflow', `${p}: ${k} on <fieldset> ${address}: Chrome clips or scrolls the fieldset's anonymous contents box and not its legend, which Dragon does not model`, `Put the overflow on a wrapper inside <fieldset> ${address}.`);
+    break;
+  }
+  if (keywordOf(prop(el, 'column-count')) !== 'auto' || keywordOf(prop(el, 'column-width')) !== 'auto') refuse(el, prop(el, 'column-count'), 'fieldset-columns', `columns on <fieldset> ${address} lay out its anonymous contents box, which Dragon does not model`, `Put the columns on a wrapper inside <fieldset> ${address}.`);
+  if (keywordOf(prop(el, 'contain')) !== 'none') refuse(el, prop(el, 'contain'), 'fieldset-contain', `contain on <fieldset> ${address} is not laid out yet`, `Put the containment on a wrapper inside <fieldset> ${address}.`);
+  const legend = renderedLegendOf(el);
+  if (legend === null) return;
+  const legendAddress = legend.element.address;
+  const ld = prop(legend, 'display');
+  if (keywordOf(ld) !== 'block') refuse(legend, ld, 'legend-display', `display: ${valueToString(ld.value)} on <legend> ${legendAddress}, the rendered legend of <fieldset> ${address}, is not laid out yet; only a block legend is`, `Set display: block on <legend> ${legendAddress}.`);
+  if (keywordOf(prop(legend, 'position')) === 'sticky') refuse(legend, prop(legend, 'position'), 'legend-sticky', `position: sticky on <legend> ${legendAddress}, the rendered legend of <fieldset> ${address}, is not supported yet`, `Remove position: sticky from <legend> ${legendAddress}.`);
+  refuseScrollInControl(legend, el, targets, diagnostics, reported);
+  const paint = `with the rendered legend <legend> ${legendAddress}, Chrome cuts the legend out of the fieldset's top border and moves the border box down to the legend's middle (FieldsetPainter), which no target draws yet`;
+  const colors = usedColors(el);
+  for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+    const width = prop(el, `border-${side}-width`);
+    if (width.value.kind !== 'length' || width.value.value === 0 || ['none', 'hidden'].includes(keywordOf(prop(el, `border-${side}-style`))) || colors[`border-${side}-color`].alpha === 0) continue;
+    refuse(el, width, 'fieldset-legend-border', `the ${side} border of <fieldset> ${address} ${paint}`, `Set border: none (or a transparent border colour) on <fieldset> ${address}, or draw the frame on a wrapper.`);
+    break;
+  }
+  if (colors['background-color'].alpha !== 0 || keywordOf(prop(el, 'background-image')) !== 'none') {
+    refuse(el, prop(el, 'background-color'), 'fieldset-legend-background', `the background of <fieldset> ${address} ${paint}`, `Put the background on a wrapper around <fieldset> ${address}.`);
+  }
+  if (keywordOf(prop(el, 'box-shadow')) !== 'none') refuse(el, prop(el, 'box-shadow'), 'fieldset-legend-shadow', `the box shadow of <fieldset> ${address} ${paint}`, `Put the shadow on a wrapper around <fieldset> ${address}.`);
+}
+
+/**
+ * An absolutely positioned box whose containing block is a fieldset: Chrome's containing block there is the fieldset's anonymous
+ * contents box (LayoutObject::ComputeIsAbsoluteContainer), below the rendered legend and only as tall as the contents when the
+ * fieldset's height is not definite (min-height stretches the fieldset, not that box), which Dragon does not model. So what reads
+ * that box's top or height is refused: a top, bottom or percentage size with a rendered legend, else a bottom, a percentage top
+ * or a percentage size. A px top without a legend reads the padding box's top, which the contents box shares.
+ */
+function checkInsideFieldset(el: ResolvedElement, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (keywordOf(el.props.get('position') as ResolvedValue) !== 'absolute') return;
+  const cb = [...chain].reverse().find((a) => keywordOf(a.props.get('position') as ResolvedValue) !== 'static');
+  if (cb === undefined || cb.element.tag !== 'fieldset' || keywordOf(cb.props.get('display') as ResolvedValue) !== 'block') return;
+  const legend = renderedLegendOf(cb);
+  const read = (['top', 'bottom', 'height', 'min-height', 'max-height'] as const).find((p) => {
+    const v = el.props.get(p) as ResolvedValue;
+    if (p === 'top') return legend !== null ? keywordOf(v) !== 'auto' : hasPercentage(v);
+    if (p === 'bottom') return keywordOf(v) !== 'auto';
+    return hasPercentage(v);
+  });
+  if (read === undefined) return;
+  const box = legend === null ? `the anonymous contents box of <fieldset> ${cb.element.address}, only as tall as its contents` : `the contents of <fieldset> ${cb.element.address} below its rendered legend <legend> ${legend.element.address}`;
+  refuseOn(el, el.props.get(read) as ResolvedValue, 'fieldset-contents-cb', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${read} on the absolutely positioned ${el.element.address} reads its containing block, ${box}, which Dragon does not model yet`, `Position ${el.element.address} against a wrapper inside <fieldset> ${cb.element.address} (position: relative on the wrapper).`);
+}
+
 function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   // FORM-b: a text field's inner editor scrolls in Chrome only once the user edits; at rest it is lowered as a clip (ios-layout.ts).
   if (textFieldPartOf(el)?.part !== 'editor') refuseScrollInControl(el, button, targets, diagnostics, reported);
@@ -1936,6 +2241,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // chain: el's ancestors, outermost first.
   const walk = (el: ResolvedElement, hidden: boolean, scroller: string | null, around: readonly NativePanner[], layoutParent: ResolvedElement | null, staleLh: ReadonlySet<Longhand>, button: ResolvedElement | null, parentDisplay: string | null, parentZoom: number, chain: readonly ResolvedElement[]): void => {
     const zoom = effectiveZoom(el, parentZoom);
+    const inheritedZoom = parentZoomOf(el, parentZoom);
     // SVG-a1: a shape is the content of its <svg>, never a box (elements/svg.ts), so it takes the SVG checks and the effect
     // refusals that hold on any element Chrome paints (no target draws a shape's filter or mask either, nor a non-initial 3D transform property).
     if (isSvgShapeTag(el.element.tag)) {
@@ -1943,19 +2249,21 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkFilter(el, targets, diagnostics, reported, faults);
       checkMask(el, targets, diagnostics, reported, faults, propagated, true);
       checkTransformExtra(el, targets, diagnostics, reported, faults);
-      checkZoom(el, zoom, parentZoom, true, targets, diagnostics, reported);
+      checkZoom(el, zoom, inheritedZoom, true, targets, diagnostics, reported);
       checkScrollContainment(el, targets, diagnostics, reported, faults);
       checkIntrinsicSize(el, targets, diagnostics, reported, faults);
       checkMulticol(el, chain, true, targets, diagnostics, reported, faults);
       checkMotion(el, targets, diagnostics, reported, faults);
-      checkColorScheme(el, false, targets, diagnostics, reported);
+      checkColorScheme(el, root, targets, diagnostics, reported);
       // A refusal reached through var() (an arc in d, say) is reported on shapes too; the profile pass stays with boxes.
       checkSubstitution(el, targets, diagnostics, reported, null, fonts);
       return;
     }
     if (el.element.tag === 'svg') checkSvg(el, targets, diagnostics, reported);
     const here = hidden || keywordOf(el.props.get('display') as ResolvedValue) === 'none';
-    const stale = staleInherited(el, staleLh);
+    // A top-layer box inherits from its DOM ancestors, not from the root its box sits in.
+    const up = topLayerAncestorsOf(el);
+    const stale = staleInherited(el, up === undefined ? staleLh : up.reduce<ReadonlySet<Longhand>>((s, a) => staleInherited(a, s), new Set()));
     checkOverflow(el, targets, diagnostics, reported);
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
@@ -1969,7 +2277,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkSubstitution(el, targets, diagnostics, reported, profileOf, fonts);
     checkFilter(el, targets, diagnostics, reported, faults);
     checkTransformExtra(el, targets, diagnostics, reported, faults);
-    checkZoom(el, zoom, parentZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
+    checkZoom(el, zoom, inheritedZoom, isReplacedTag(el.element.tag) || el.element.tag === 'svg', targets, diagnostics, reported);
     // Font-metric lengths taken from the parent (analysis/font-units.ts).
     checkFontUnits(el, targets, diagnostics, reported);
     // The containment family, initial values only, and container-type (analysis/scroll-containment.ts).
@@ -1982,14 +2290,19 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkMotion(el, targets, diagnostics, reported, faults);
     // field-sizing: content on a replaced element (analysis/field-sizing.ts).
     checkFieldSizing(el, targets, diagnostics, reported, faults);
-    if (!here) checkColorScheme(el, el === root, targets, diagnostics, reported);
+    if (!here) checkColorScheme(el, root, targets, diagnostics, reported);
     if (!here) checkBidi(el, diagnostics, reported);
     if (!here) checkContentsText(el, layoutParent, targets, diagnostics, reported);
     if (!here) checkPosition(el, el === root, targets, diagnostics, reported);
     if (!here) checkAspectRatio(el, targets, diagnostics, reported);
+    if (!here && el.element.tag === 'fieldset') checkFieldset(el, parentDisplay, targets, diagnostics, reported);
+    if (!here) checkInsideFieldset(el, chain, targets, diagnostics, reported);
     if (!here && isReplacedTag(el.element.tag)) checkReplaced(el, targets, diagnostics, reported);
     else if (!here && el.element.tag === 'button') {
-      checkButton(el, parentDisplay, targets, diagnostics, reported);
+      checkButton(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).ua);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+    } else if (!here && el.element.tag === 'select') {
+      checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
       checkTextField(el, parentDisplay, targets, diagnostics, reported);
@@ -2051,6 +2364,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   checkFixedContainingBlocks(root, propagated, targets, diagnostics, reported);
   // POSX-s: sticky boxes the engine does not offset (checkSticky).
   checkSticky(root, propagated, targets, diagnostics, reported);
+  checkTopLayer(root, targets, diagnostics, reported);
   // SIZE-KW: stretch heights the engine does not fill (checkStretchHeights).
   checkStretchHeights(root, targets, diagnostics, reported);
   checkUserAgentDefaults(root, targets, environmentOf(root).ua, diagnostics, reported, realFaceAt, faults);

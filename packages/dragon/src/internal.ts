@@ -1,11 +1,11 @@
 // Internal entry for the parity harness, selected by the "dragon-internal" export condition. Not a public API.
-import { TRANSPARENT } from './css/color.ts';
+import { parseComputedColor, TRANSPARENT } from './css/color.ts';
 import type { LayoutInput } from '@dragon/layout';
 import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
-import { markerStyleOf } from './analysis/resolve.ts';
+import { environmentOf, markerStyleOf, selectOptionsOf } from './analysis/resolve.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -13,7 +13,7 @@ import type { Rgba8 } from './css/color.ts';
 import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
-import { colorChannels, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
+import { colorChannels, lowerNativeProgram, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
 import type { InteractionPartition } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
@@ -24,6 +24,8 @@ import type { Assignment, Origin, Target } from './types.ts';
 // The public API without createProject, whose committed lanes verdict (create-project.ts) the harness passes itself.
 export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
+export type { NativeStyleBlocked, NativeStyleOutput, NativeStyles, NativeStylesConfig, NativeStyleTarget } from './native-styles.ts';
+export { compileNativeStyles, compileNativeStylesWith, NATIVE_STYLES_VERSION } from './native-styles.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
 export { NO_FAULTS } from './faults.ts';
@@ -36,6 +38,8 @@ export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from '.
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES, syntheticBoldStroke } from './fonts/synthetic-bold.ts';
+export { SYSTEM_FACE_ROLES, SYSTEM_FACE_WEIGHTS, SYSTEM_FACES, isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
+export type { SystemFaceRequest, SystemFaceRole, SystemFaceWeight } from './fonts/system-faces.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
 export type { UaDataset, UaDatasetChoice } from './ua/datasets.ts';
 export { REFERENCE_PLATFORM, ReferencePlatformUnavailable, referenceDataset, uaDatasetFor } from './ua/datasets.ts';
@@ -55,15 +59,20 @@ export type { AtRuleContext } from './css/at-rules.ts';
 export { preprocessInput } from './css/escapes.ts';
 export { parseStylesheet } from './css/stylesheet.ts';
 export { collectFontFaces } from './fonts/wire.ts';
+export { decodeFontFile } from './fonts/woff.ts';
+export type { BrotliDecompress, DecodedFontFile, FontContainer } from './fonts/woff.ts';
 export { CATALOGUE } from './diagnostics/catalogue.ts';
 export type { CatalogueEntry } from './diagnostics/catalogue.ts';
 export { DIAGNOSTIC_CODES } from './diagnostics/codes.ts';
 export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
-export { MAX_STATE_ASSIGNMENTS, assignmentKey } from './analysis/link.ts';
+export { MAX_STATE_ASSIGNMENTS, assignmentKey, isWhitespaceText, textAddresser } from './analysis/link.ts';
+export { isScalar, isTreeNodeId } from './analysis/input.ts';
 export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
 export { applyTextTransform } from './analysis/text-transform.ts';
 export type { TextTransform } from './analysis/text-transform.ts';
+import type { TextTransform } from './analysis/text-transform.ts';
+import { textTransformOf } from './analysis/text-transform.ts';
 export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
@@ -189,7 +198,7 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   const walk = (el: ResolvedElement): void => {
     out.set(el.element.address, usedColors(el));
     items.set(el.element.address, el);
-    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+    for (const ch of [...el.children, ...selectOptionsOf(el)]) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
   // GEN-c: a ::marker box takes its color from its ::marker rules or its item, and has its initial background (transparent) and
@@ -200,6 +209,21 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
     const color = usedColors(markerStyleOf(item)).color;
     out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
   }
+  return out;
+}
+
+/** Each element's computed text-transform in one case in one @media band (0 without bands), by element address; null when the case did not resolve there. */
+export function resolvedTextTransforms(compiled: object, assignment: Assignment, band: number): ReadonlyMap<string, TextTransform> | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  if (c === undefined || c.resolved === null) return null;
+  const out = new Map<string, TextTransform>();
+  const walk = (el: ResolvedElement): void => {
+    out.set(el.element.address, textTransformOf(el.props));
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+  };
+  walk(c.resolved);
   return out;
 }
 
@@ -282,7 +306,7 @@ export function resolvedTextColors(compiled: object, assignment: Assignment, sta
   const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     elements.set(el.element.address, el);
-    for (const ch of el.children) {
+    for (const ch of [...el.children, ...selectOptionsOf(el)]) {
       if (ch.kind === 'element') walk(ch);
       else {
         // A text node takes its element's fill (the property is inherited and text nodes carry only the text longhands).
@@ -331,6 +355,22 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
     return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+  } catch (e) {
+    if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+    throw e;
+  }
+}
+
+/** One native backend's lowered program of one case: ready when the result checks that backend's target, whatever the other's. */
+export function nativeProgramFor(compiled: object, assignment: Assignment, target: 'ios' | 'android'): { readonly kind: 'ready'; readonly program: NativeProgram } | { readonly kind: 'blocked'; readonly reason: string } {
+  const c = caseOf(compiled, assignment, null);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  const state = ((compiled as { targets?: Record<string, string> }).targets ?? {})[target];
+  if (state !== 'checked') return { kind: 'blocked', reason: `the ${target} target is ${state === undefined ? 'not configured' : state}` };
+  if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
+  try {
+    const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -482,25 +522,73 @@ export function nativeBandOfViewport(compiled: object, viewport: { readonly widt
   return partitionBandAt(record.bands.partition, viewport, undefined, device)?.index ?? null;
 }
 
+/** One case in one band, or why there is none; the targets' check is the caller's. */
+function bandCaseOf(record: NonNullable<ReturnType<typeof internalRecord>>, assignment: Assignment, band: number): { readonly nativeLowered: import('@dragon/layout').LayoutBox; readonly resolved: ResolvedElement } | string {
+  const cases = record.bands?.cases[band];
+  if (cases === undefined) return `no band ${band} (the compile has ${record.bands?.cases.length ?? 1})`;
+  const key = keyOfAssignment(assignment);
+  const c = cases.find((x) => x.key === key);
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}`;
+  if (c.nativeLowered === null || c.resolved === null) return `the case has no native lowering in band ${band}`;
+  return { nativeLowered: c.nativeLowered, resolved: c.resolved };
+}
+
 /** Both native backends' programs of one case in one band (nativePrograms for the per-case programs' own band). */
 export function nativeBandPrograms(compiled: object, assignment: Assignment, band: number): NativePrograms {
   const record = internalRecord(compiled);
   if (record === undefined) return { kind: 'blocked', reason: 'not a compiled result from this package' };
   if (record.bands === null) return band === 0 ? nativePrograms(compiled, assignment) : { kind: 'blocked', reason: `the compile has no @media bands, so no band ${band}` };
-  const cases = record.bands.cases[band];
-  if (cases === undefined) return { kind: 'blocked', reason: `no band ${band} (the compile has ${record.bands.cases.length})` };
+  if (record.bands.cases[band] === undefined) return { kind: 'blocked', reason: `no band ${band} (the compile has ${record.bands.cases.length})` };
   const targets = (compiled as { targets?: Record<string, string> }).targets ?? {};
   for (const t of ['ios', 'android']) if (targets[t] !== 'checked') return { kind: 'blocked', reason: `the ${t} target is ${targets[t] === undefined ? 'not configured' : targets[t]}` };
-  const key = keyOfAssignment(assignment);
-  const c = cases.find((x) => x.key === key);
-  if (c === undefined) return { kind: 'blocked', reason: `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}` };
-  if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: `the case has no native lowering in band ${band}` };
+  const c = bandCaseOf(record, assignment, band);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
   try {
     return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
   }
+}
+
+/** The used colour scheme of a case's root in a band (the scheme of the UA dataset it was resolved with) and that scheme's Canvas colour. */
+export function usedSchemeOf(compiled: object, assignment: Assignment, band: number): { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 } | string {
+  const record = internalRecord(compiled);
+  if (record === undefined) return 'not a compiled result from this package';
+  const key = keyOfAssignment(assignment);
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === key);
+  if (c === undefined || c.resolved === null) return `no resolved case for the assignment ${JSON.stringify(assignment)} in band ${band}`;
+  const ua = environmentOf(c.resolved).ua;
+  const canvas = ua.systemColors['Canvas'];
+  const parsed = canvas === undefined || canvas === null ? null : parseComputedColor(canvas);
+  if (parsed === null || (ua.colorScheme !== 'light' && ua.colorScheme !== 'dark')) throw new Error(`the ${ua.platform} UA dataset has no Canvas colour or scheme`);
+  return { colorScheme: ua.colorScheme, canvas: parsed };
+}
+
+/** One native backend's program of one case in one band: ready when the result checks that backend's target, whatever the other's. */
+export function nativeBandProgramFor(compiled: object, assignment: Assignment, band: number, target: 'ios' | 'android'): { readonly kind: 'ready'; readonly program: NativeProgram } | { readonly kind: 'blocked'; readonly reason: string } {
+  const record = internalRecord(compiled);
+  if (record === undefined) return { kind: 'blocked', reason: 'not a compiled result from this package' };
+  if (record.bands === null) return band === 0 ? nativeProgramFor(compiled, assignment, target) : { kind: 'blocked', reason: `the compile has no @media bands, so no band ${band}` };
+  const state = ((compiled as { targets?: Record<string, string> }).targets ?? {})[target];
+  if (state !== 'checked') return { kind: 'blocked', reason: `the ${target} target is ${state === undefined ? 'not configured' : state}` };
+  const c = bandCaseOf(record, assignment, band);
+  if (typeof c === 'string') return { kind: 'blocked', reason: c };
+  try {
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+  } catch (e) {
+    if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+    throw e;
+  }
+}
+
+/** The interaction partition of one case in one band (interactionPartitionOf for the per-case programs' own band); null when it did not resolve. */
+export function interactionPartitionIn(compiled: object, assignment: Assignment, band: number): InteractionPartition | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  if (record.bands === null) return band === 0 ? interactionPartitionOf(compiled, assignment) : null;
+  const key = keyOfAssignment(assignment);
+  return record.bands.cases[band]?.find((x) => x.key === key)?.partition ?? null;
 }
 
 /**

@@ -4,22 +4,25 @@
 // input[type=range], laid out as Chrome's UA shadow tree (container, track, thumb; analysis/resolve.ts resolves the parts).
 // FORM-c adds the single-line text fields (text, email, url, tel, password and an unknown type), laid out as Chrome's inner editor
 // and placeholder (resolve.ts) and painted as CSS boxes once devolved, as a button is (layout_theme.cc IsControlStyled). FORM-b
-// adds textarea, the same shadow tree laid out as a multi-line field.
+// adds textarea, the same shadow tree laid out as a multi-line field, and the single select, laid out as Chrome's menulist (a
+// flex row container of the inner element, resolve.ts).
 import type { Longhand } from '../../css/properties.ts';
 import { usedAppearance } from '../../forms/appearance.ts';
 import type { UsedAppearance } from '../../forms/appearance.ts';
 import type { ControlKey } from '../../ua/datasets.ts';
 import type { ResolvedValue } from '../computed.ts';
 
-export const CONTROL_TAGS: readonly string[] = ['button', 'input', 'textarea'];
+export const CONTROL_TAGS: readonly string[] = ['button', 'input', 'select', 'textarea'];
 
 /**
- * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it); an input's
- * do, and only type=range (ASCII case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is
- * refused (computed-checks.ts).
+ * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it), but do on
+ * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range (ASCII
+ * case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is refused (computed-checks.ts).
  */
-export function controlUaKey(tag: string, type: string | undefined): ControlKey | null {
-  if (tag === 'button') return 'button';
+export function controlUaKey(tag: string, type: string | undefined, disabled = false): ControlKey | null {
+  if (tag === 'button') return disabled ? 'button[disabled]' : 'button';
+  // html.css select:disabled gives opacity, border colour and colour, captured on a disabled select.
+  if (tag === 'select') return disabled ? 'select[disabled]' : 'select';
   if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : 'input';
   if (tag === 'textarea') return 'textarea';
   return null;

@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, TextLeaf, TextMeasurer } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, SLIDER_DEFAULT_TRACK_LENGTH, validateLayoutInput } from '../src/index.ts';
-import { anon, box, control, neutralEnvironment, pct, px, span, text } from './helpers.ts';
+import { ahemFont, anon, box, control, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 type Rect = readonly [number, number, number, number];
 type Box = { readonly border: Rect; readonly content: Rect };
@@ -383,6 +383,55 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(range({}, [thumb]))).toEqual(['$.root.children[0].children[0].control a slider thumb is a block-flow child: its parent is a block container']);
     const button = control('b', { kind: 'button-block' }, { display: 'flex' });
     expect(codes({ ...range({}, []), root: { ...box('root', {}), children: [button] } })).toEqual(['$.root.children[0].style.display a block button control is a block container']);
+    const legend = control('l', { kind: 'legend' }, {});
+    const fieldset = (children: (LayoutBox | ControlBox)[], style: Partial<LayoutStyle> = {}): ControlBox => control('f', { kind: 'fieldset' }, style, children);
+    const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
+    expect(codes(under(fieldset([legend])))).toEqual([]);
+    expect(codes(under(box('d', {}, [legend])))).toEqual(['$.root.children[0].children[0].control a legend control is the rendered legend of a fieldset control: its parent is one']);
+    expect(codes(under(fieldset([legend, { ...legend, id: 'l2' }])))).toEqual(['$.root.children[0].children[1].control a fieldset control has at most one rendered legend']);
+    expect(codes(under(fieldset([], { display: 'flex' })))).toEqual(['$.root.children[0].style.display a fieldset control is a block container']);
+    expect(codes(under(fieldset([{ ...legend, style: { ...legend.style, float: 'left' } }])))).toEqual(['$.root.children[0].children[0].style.float a legend control is in flow']);
+  });
+
+  it('the validator refuses a text field without exactly one inner editor, a stray field part, and an empty editor without a strut', () => {
+    const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
+    const editor = control('t::editor', { kind: 'text-editor' }, {}, [text('t::editor:text0', 'XX')]);
+    const empty = control('t::editor', { kind: 'text-editor' }, {}, [], strut);
+    const placeholder = control('t::placeholder', { kind: 'text-placeholder' }, {}, [text('t::placeholder:text0', 'PP')]);
+    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
+    const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
+    expect(codes(under(field([editor])))).toEqual([]);
+    expect(codes(under(field([placeholder, empty])))).toEqual([]);
+    expect(codes(under(field([])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
+    expect(codes(under(field([box('d', {})])))).toEqual([
+      '$.root.children[0].children[0] a text field control holds only its text-editor control and at most one text-placeholder control',
+      '$.root.children[0].children a text field control holds exactly one text-editor control',
+    ]);
+    expect(codes(under(field([editor, { ...empty, id: 'e2' }])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
+    expect(codes(under(field([placeholder, { ...placeholder, id: 'p2', children: [], strut: null }, editor])))).toEqual(['$.root.children[0].children a text field control holds at most one text-placeholder control']);
+    expect(codes(under(box('d', {}, [editor])))).toEqual(['$.root.children[0].children[0].control a text-editor control is a part of a text field control: its parent is one']);
+    expect(codes(under(field([{ ...empty, strut: null }])))).toEqual(['$.root.children[0].children[0].strut an empty text-editor control has a strut, whose one empty line it lays out']);
+    // The engine's own guard names the validator, which now rejects that input.
+    expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
+  });
+
+  it('the validator refuses a select without exactly one inner element, a stray inner element, and an empty one without a strut', () => {
+    const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
+    const inner = control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')]);
+    const empty = control('s::inner', { kind: 'select-inner' }, {}, [], strut);
+    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'flex' }, children);
+    const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
+    expect(codes(under(select([inner])))).toEqual([]);
+    expect(codes(under(select([empty])))).toEqual([]);
+    expect(codes(under(select([])))).toEqual(['$.root.children[0].children a select-menulist control holds exactly one select-inner control']);
+    expect(codes(under(select([box('d', {})])))).toEqual([
+      '$.root.children[0].children[0] a select-menulist control holds only its select-inner control',
+      '$.root.children[0].children a select-menulist control holds exactly one select-inner control',
+    ]);
+    expect(codes(under(select([inner, { ...empty, id: 'i2' }])))).toEqual(['$.root.children[0].children a select-menulist control holds exactly one select-inner control']);
+    expect(codes(under(box('d', {}, [inner])))).toEqual(['$.root.children[0].children[0].control a select-inner control is the inner element of a select-menulist control: its parent is one']);
+    expect(codes(under(select([{ ...empty, strut: null }])))).toEqual(['$.root.children[0].children[0].strut an empty select-inner control has a strut, whose one empty line it lays out']);
+    expect(codes(under({ ...select([inner]), style: { ...select([inner]).style, display: 'block' } }))).toEqual(['$.root.children[0].style.display a select is a flex container']);
   });
 
   it('a control holds inline content with a strut as a box does, and is laid out as a block-flow or flex child (FORM-a with INL1a)', () => {

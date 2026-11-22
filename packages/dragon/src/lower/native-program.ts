@@ -336,3 +336,8 @@ export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, 
   const rootFontSize = rootFontSizeOf(resolved);
   return { uikit: toBackend('uikit', root, rootFontSize, paint), 'android-views': toBackend('android-views', root, rootFontSize, paint) };
 }
+
+/** One backend's lowered program, for a compile that configures only that backend's target. */
+export function lowerNativeProgram(backend: NativeBackend, root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), plants: TextPlants = NO_TEXT_PLANTS): NativeProgram {
+  return toBackend(backend, root, rootFontSizeOf(resolved), sharedPaint(root, resolved, images, moving, plants));
+}

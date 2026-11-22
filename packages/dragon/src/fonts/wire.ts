@@ -7,12 +7,13 @@ import { sha256HexBytes } from '../digest.ts';
 import { asciiLower } from './css-tokens.ts';
 import { descriptorText } from './cssom.ts';
 import { DESCRIPTOR_NAMES, FONT_FACE_ERRORS, parseFontFace } from './font-face.ts';
-import type { DeclaredFace, FontAssetResolver, FontFaceIssue, FontFaceResult } from './font-face.ts';
+import type { DeclaredFace, FaceSource, FontAssetResolver, FontFaceIssue, FontFaceResult } from './font-face.ts';
 import { parseFamilyList, serializeString } from './family-list.ts';
 import type { FamilyList } from './family-list.ts';
 import { rewriteFamilyList, validateFontMap } from './font-map.ts';
 import type { EntryResolution, FontMap, FontMapError, PinnedFace } from './font-map.ts';
 import { buildManifest, manifestDigestInput } from './manifest.ts';
+import type { BrotliDecompress } from './woff.ts';
 import type { FontManifest } from './manifest.ts';
 import { candidates, foldFamily } from './selection.ts';
 import type { FontSelectionRequest } from './selection.ts';
@@ -44,13 +45,13 @@ export type ContextAssetResolver = (specifier: string, context: AtRuleContext) =
  * Parses the accepted @font-face at-rules in document order with font-face.ts. resolveUrl maps a relative src URL to its snapshot
  * asset. Contexts of any other at-rule are skipped.
  */
-export function collectFontFaces(contexts: readonly AtRuleContext[], resolveUrl: ContextAssetResolver): CollectedFontFaces {
+export function collectFontFaces(contexts: readonly AtRuleContext[], resolveUrl: ContextAssetResolver, brotli: BrotliDecompress | null = null): CollectedFontFaces {
   const results: FontFaceResult[] = [];
   const problems: FontWireProblem[] = [];
   for (const context of contexts) {
     if (asciiLower(context.name) !== 'font-face') continue;
     const order = results.length;
-    const result = parseFontFace(context.node, order, (specifier) => resolveUrl(specifier, context));
+    const result = parseFontFace(context.node, order, (specifier) => resolveUrl(specifier, context), undefined, brotli);
     results.push(result);
     for (const issue of result.issues) problems.push({ kind: 'font-face', blocking: FONT_FACE_ERRORS.has(issue.kind), source: { kind: 'rule', context, order }, issue });
   }
@@ -92,7 +93,7 @@ const atRuleNode = (css: string): CssNode => {
  * Validates the project font map, parses every pinned face (its src is a snapshot asset id or a data: URL; anything else is
  * unresolved-asset), and builds the manifest of the authored and pinned faces. rawMap is the untyped config value (undefined: none).
  */
-export function projectFonts(rawMap: unknown, faces: readonly FontFaceResult[], assets: readonly SnapshotAsset[]): ProjectedFonts {
+export function projectFonts(rawMap: unknown, faces: readonly FontFaceResult[], assets: readonly SnapshotAsset[], brotli: BrotliDecompress | null = null): ProjectedFonts {
   const problems: FontWireProblem[] = [];
   let map: FontMap | null = null;
   let mapInvalid = false;
@@ -121,7 +122,7 @@ export function projectFonts(rawMap: unknown, faces: readonly FontFaceResult[], 
       if (seen.has(e.family)) continue;
       seen.add(e.family);
       e.faces.forEach((f, index) => {
-        const result = parseFontFace(atRuleNode(pinnedFaceCss(e.family, f)), index, resolveId);
+        const result = parseFontFace(atRuleNode(pinnedFaceCss(e.family, f)), index, resolveId, undefined, brotli);
         pinned.push({ key, family: e.family, index, result });
         for (const issue of result.issues) problems.push({ kind: 'font-face', blocking: FONT_FACE_ERRORS.has(issue.kind), source: { kind: 'map', key, face: index }, issue });
       });
@@ -145,7 +146,15 @@ export type FamilySupport =
   | { readonly kind: 'resolved'; readonly list: FamilyList; readonly resolutions: readonly EntryResolution[]; readonly key: FamilyFeatureKey }
   | { readonly kind: 'invalid' };
 
-/** The key is the least supported kind in the list: an unmapped entry is a build error, a platform entry is caveat. */
+/**
+ * Whether an entry is skipped as Chrome skips a family it cannot load: a named family neither declared nor mapped, in a list where
+ * some entry resolves. An unmapped generic, or any entry of a list where nothing resolves, is a build error instead.
+ */
+export function isSkippedFamily(r: EntryResolution, resolutions: readonly EntryResolution[]): boolean {
+  return r.kind === 'unmapped-family' && r.entry.kind === 'family' && resolutions.some((x) => x.kind !== 'unmapped-family');
+}
+
+/** The key is the least supported kind in the list, skipped families aside: an unmapped entry is a build error, a platform entry is caveat. */
 const KEY_RANK: readonly EntryResolution['kind'][] = ['unmapped-family', 'platform', 'declared', 'pinned'];
 const KEY_OF: { readonly [K in EntryResolution['kind']]: FamilyFeatureKey } = {
   'unmapped-family': 'font-family:<unmapped>',
@@ -166,7 +175,7 @@ export function familySupport(listText: string, map: FontMap | null, declared: R
   const ahemDeclared = [...declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
   if (list.length === 1 && only?.kind === 'family' && foldFamily(only.name) === foldFamily('Ahem') && !ahemDeclared) return null;
   const { resolutions } = rewriteFamilyList(list, map ?? { generics: {} }, declared);
-  const worst = KEY_RANK.find((k) => resolutions.some((r) => r.kind === k)) ?? 'unmapped-family';
+  const worst = KEY_RANK.find((k) => resolutions.some((r) => r.kind === k && !isSkippedFamily(r, resolutions))) ?? 'unmapped-family';
   return { kind: 'resolved', list, resolutions, key: KEY_OF[worst] };
 }
 
@@ -174,9 +183,10 @@ export function familySupport(listText: string, map: FontMap | null, declared: R
 export type WebFontAsset = { readonly path: string; readonly hash: string; readonly bytes: Uint8Array };
 export type WebFontOutput = { readonly css: string; readonly assets: readonly WebFontAsset[]; readonly problems: readonly FontWireProblem[] };
 
-/** The file extension of an sfnt by its version tag. */
-function extensionOf(bytes: Uint8Array): string {
-  const tag = String.fromCharCode(bytes[0] ?? 0, bytes[1] ?? 0, bytes[2] ?? 0, bytes[3] ?? 0);
+/** The file extension of a font file: its container, or for an sfnt its version tag. */
+function extensionOf(source: FaceSource): string {
+  if (source.container !== 'sfnt') return source.container;
+  const tag = String.fromCharCode(source.file[0] ?? 0, source.file[1] ?? 0, source.file[2] ?? 0, source.file[3] ?? 0);
   return tag === 'OTTO' ? 'otf' : 'ttf';
 }
 
@@ -196,11 +206,12 @@ export function webFontOutput(usedPinned: readonly DeclaredFace[], declaredFaces
   const rules: string[] = [];
   for (const face of [...usedPinned, ...[...declaredFaces].sort((a, b) => a.order - b.order)]) {
     if (face.source === null) continue;
-    const hex = sha256HexBytes(face.source.bytes);
-    const hash = `sha256:${hex}`;
-    if (!inManifest.has(hash)) problems.push({ kind: 'face-not-in-manifest', family: face.family, hash });
-    const path = `fonts/${hex.slice(0, 16)}.${extensionOf(face.source.bytes)}`;
-    assets.set(path, { path, hash, bytes: face.source.bytes });
+    const sfnt = `sha256:${sha256HexBytes(face.source.bytes)}`;
+    if (!inManifest.has(sfnt)) problems.push({ kind: 'face-not-in-manifest', family: face.family, hash: sfnt });
+    // The web ships the file as authored: Chrome decodes a WOFF or WOFF2 itself.
+    const hex = sha256HexBytes(face.source.file);
+    const path = `fonts/${hex.slice(0, 16)}.${extensionOf(face.source)}`;
+    assets.set(path, { path, hash: `sha256:${hex}`, bytes: face.source.file });
     const parts = [`font-family:${serializeString(face.family)}`, `src:url(${serializeString(path)})`];
     for (const name of DESCRIPTOR_NAMES) {
       if (name === 'font-family' || name === 'src') continue;

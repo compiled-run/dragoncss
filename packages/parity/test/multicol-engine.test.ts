@@ -19,7 +19,7 @@ const STYLE = {
   borderTopWidth: { kind: 'px', value: 0 }, borderRightWidth: { kind: 'px', value: 0 }, borderBottomWidth: { kind: 'px', value: 0 }, borderLeftWidth: { kind: 'px', value: 0 },
   flexDirection: 'row', flexWrap: 'nowrap', flexGrow: 0, flexShrink: 1, flexBasis: { kind: 'auto' }, order: 0, justifyContent: 'normal',
   alignItems: 'normal', alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' }, multicol: null, textBoxTrim: null,
-  verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null, zoom: [],
+  verticalAlign: { kind: 'keyword', value: 'baseline' }, aspectRatio: { kind: 'auto' }, grid: null, gridItem: null, anchor: null, zoom: [],
 } as const satisfies LayoutStyle;
 
 /** A case: the block's width, columns, gap, font, line height, padding (top right bottom left), text-align, and its text, '\n' a <br>. */

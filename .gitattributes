@@ -2,6 +2,7 @@
 # from the merged sources. The driver needs `pnpm setup:git` once per clone; without it git merges these files as text.
 # packages/parity/test/regen.test.ts keeps this list equal to the regen steps' outputs, sorted, so features add lines in different places.
 THIRD_PARTY_NOTICES.md merge=dragon-generated
+examples/markless-styles/out/** merge=dragon-generated
 examples/music-player/dragon/north-star-check.json merge=dragon-generated
 packages/dragon/src/css/grammar.generated.ts merge=dragon-generated
 packages/dragon/src/profiles/android.ts merge=dragon-generated

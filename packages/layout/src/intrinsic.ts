@@ -23,7 +23,7 @@ const NONE: NoneValue = { kind: 'none' };
 // being 0.
 export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
-  // FORM-b: a text field's is size x the advance of 0, whatever its value (controls.ts textFieldInlineSize).
+  // FORM-b: a text field's is size x its average character width, whatever its value (controls.ts textFieldInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-field') return textFieldInlineSize(ctx.measurer, node.control);
   // FORM-b: a textarea's is cols x the advance of 0, whatever its text (controls.ts textAreaInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-area') return textAreaInlineSize(ctx.measurer, node.control);

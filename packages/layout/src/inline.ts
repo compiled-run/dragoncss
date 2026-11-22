@@ -364,7 +364,7 @@ export function metricsOf(ctx: Ctx, id: string, font: FontSpec, lineHeight: Line
   const lh = resolvedLineHeight(id, lineHeight);
   const height = lh.kind === 'normal' ? glyphHeight : lh.kind === 'number' ? lineHeightFromNumber(font.size, lh.value) : fromFloatRound(lh.value);
   const exact = ctx.faults.halfLeadingSpec || (inlineBox && ctx.faults.halfLeadingUnflooredPerBox);
-  const half = exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
+  const half = lh.kind === 'normal' ? m.normalGapAbove : exact ? divInt(sub(height, glyphHeight), 2) : floorToWholePx(divInt(sub(height, glyphHeight), 2));
   const above = add(m.ascent, half);
   return { above, below: sub(height, above), ascent: m.ascent, descent: m.descent };
 }
@@ -414,7 +414,7 @@ function checkAtomic(a: LayoutNode): void {
   const va = s.verticalAlign;
   if (va.kind !== 'keyword' || va.value !== 'baseline') unsupported('vertical-align', a.id, 'CSS2 §10.8.1', `vertical-align other than baseline on atomic inline ${a.id} (INL2)`);
   if (s.height.kind === 'stretch' || s.minHeight.kind === 'stretch' || s.maxHeight.kind === 'stretch') unsupported('intrinsic-size-keyword', a.id, 'css-sizing-4 §3.1', `a stretch block size on atomic inline ${a.id}, outside a block-level box in block flow`);
-  const percent = (s.height.kind !== 'auto' && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
+  const percent = ((s.height.kind === 'percent' || s.height.kind === 'calc') && hasPercent(s.height)) || (s.minHeight.kind !== 'auto' && hasPercent(s.minHeight)) || (s.maxHeight.kind !== 'none' && hasPercent(s.maxHeight));
   if (percent) unsupported('percent-height-flex', a.id, 'CSS2 §10.5', `a percentage block size on atomic inline ${a.id}, whose line boxes do not read their block container's height`);
 }
 
@@ -1473,7 +1473,7 @@ function graphemeBreakIn(ctx: Ctx, ifc: Ifc, adv: readonly LU[], start: number, 
 function needsAccurateEnd(ctx: Ctx, box: LayoutBox): boolean {
   const a = box.style.textAlign;
   const rtl = directionOf(ctx, box) === 'rtl';
-  return a === 'end' || a === 'center' || a === 'justify' || (a === 'left' && rtl) || (a === 'right' && !rtl);
+  return a === 'end' || a === 'center' || a === '-webkit-center' || a === 'justify' || (a === 'left' && rtl) || (a === 'right' && !rtl);
 }
 
 /** The next char after item i (skipping tags), or -1 at a <br> or the end. */
@@ -1809,7 +1809,7 @@ function shiftsOf(line: Line, from: number, to: number): number[] {
 function alignOffset(ctx: Ctx, box: LayoutBox, free: LU): LU {
   // A line justify does not expand (the last line, a line ending in a forced break, a full line or one without an expansion
   // opportunity) is start-aligned (Blink ApplyTextAlign, inline_layout_algorithm.cc 902-928, with text-align-last auto).
-  const align = box.style.textAlign === 'justify' ? 'start' : box.style.textAlign;
+  const align = box.style.textAlign === 'justify' ? 'start' : box.style.textAlign === '-webkit-center' ? 'center' : box.style.textAlign;
   const rtl = directionOf(ctx, box) === 'rtl';
   if (free <= 0) return rtl ? free : ZERO;
   const physical = align === 'start' ? (rtl ? 'right' : 'left') : align === 'end' ? (rtl ? 'left' : 'right') : align;

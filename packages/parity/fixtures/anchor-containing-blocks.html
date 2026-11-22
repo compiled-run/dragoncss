@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.outer { position: relative; width: 320px; height: 220px; border: 2px solid #000; margin: 10px; }
+.inner { position: absolute; left: 30px; top: 40px; width: 200px; height: 120px; border: 3px solid #555; padding: 5px; }
+.k { margin: 20px 0 0 50px; width: 40px; height: 20px; anchor-name: --a; background-color: #ccc; }
+.k2 { width: 30px; height: 10px; anchor-name: --o; background-color: #aaa; margin-left: 200px; }
+.p { background-color: #f88; width: 20px; height: 10px; }
+.fx { position: fixed; position-anchor: --a; position-area: bottom right; }
+.ab { position: absolute; position-anchor: --a; position-area: top; }
+.ao { position: absolute; position-anchor: --o; position-area: bottom; }
+.aout { position: absolute; position-anchor: --a; position-area: left; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="o" class="outer"><div data-dragon-id="k2" class="k2"></div><div data-dragon-id="i" class="inner"><div data-dragon-id="k" class="k"></div><div data-dragon-id="f" class="p fx"></div><div data-dragon-id="a" class="p ab"></div><div data-dragon-id="b" class="p ao"></div></div><div data-dragon-id="d" class="p aout"></div></div>
+</body>
+</html>
