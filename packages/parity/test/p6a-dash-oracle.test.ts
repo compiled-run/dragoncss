@@ -6,7 +6,7 @@
 // planted fault must make crisp pixels differ. T116: boxes whose visible sides are all solid use the same reference, and every case
 // with a solid side is compared the same way (border-join pins its no-miter corners).
 import { describe, expect, it } from 'vitest';
-import type { DashFaults, LayoutBox, LayoutRect } from '@dragon/layout';
+import type { ControlBox, DashFaults, LayoutBox, LayoutRect } from '@dragon/layout';
 import { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, snapEdges } from '@dragon/layout';
 import type { NativeProgram, ProgramWrite } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
@@ -51,10 +51,10 @@ function backgroundOf(p: NativeProgram, id: string): number[] {
  */
 export function positionedLayer(root: LayoutBox): Set<string> {
   const out = new Set<string>();
-  const walk = (b: LayoutBox, inLayer: boolean): void => {
+  const walk = (b: LayoutBox | ControlBox, inLayer: boolean): void => {
     const here = inLayer || b.style.position !== 'static';
     if (here) out.add(b.id);
-    for (const c of b.children) if (c.kind === 'box') walk(c, here);
+    for (const c of b.children) if (c.kind === 'box' || c.kind === 'control') walk(c, here);
   };
   walk(root, false);
   return out;
@@ -66,15 +66,16 @@ export function positionedLayer(root: LayoutBox): Set<string> {
  */
 export function paintOrder(root: LayoutBox): string[] {
   const out: string[] = [];
-  const walk = (b: LayoutBox): void => {
+  // A form control paints in its tree-order slot like any box, so a later control's background covers an earlier one's border.
+  const walk = (b: LayoutBox | ControlBox): void => {
     out.push(b.id);
-    const kids = b.children.filter((c): c is LayoutBox => c.kind === 'box');
+    const kids = b.children.filter((c): c is LayoutBox | ControlBox => c.kind === 'box' || c.kind === 'control');
     const flex = b.style.display === 'flex';
     // Only in-flow children are flex items; an absolutely positioned child keeps its slot in tree order.
-    const outOfFlow = (c: LayoutBox): boolean => c.style.position === 'absolute';
+    const outOfFlow = (c: LayoutBox | ControlBox): boolean => c.style.position === 'absolute';
     const items = kids.map((c, i) => ({ c, i })).filter((x) => !outOfFlow(x.c)).sort((x, y) => x.c.style.order - y.c.style.order || x.i - y.i).map((x) => x.c);
     let next = 0;
-    const sorted = flex ? kids.map((c) => (outOfFlow(c) ? c : (items[next++] as LayoutBox))) : kids;
+    const sorted = flex ? kids.map((c) => (outOfFlow(c) ? c : (items[next++] as LayoutBox | ControlBox))) : kids;
     for (const c of sorted) walk(c);
   };
   walk(root);
@@ -135,9 +136,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     return o === undefined ? null : intersect(o, { left: o.left + bw[3], top: o.top + bw[0], right: o.right - bw[1], bottom: o.bottom - bw[2] });
   };
   const positionOf = new Map<string, string>();
-  const walkPositions = (b: LayoutBox): void => {
+  const walkPositions = (b: LayoutBox | ControlBox): void => {
     positionOf.set(b.id, b.style.position);
-    for (const c of b.children) if (c.kind === 'box') walkPositions(c);
+    for (const c of b.children) if (c.kind === 'box' || c.kind === 'control') walkPositions(c);
   };
   walkPositions(p.root);
   /**
