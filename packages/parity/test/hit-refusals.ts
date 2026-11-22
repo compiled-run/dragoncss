@@ -78,6 +78,8 @@ export const TRANSFORM_REASON = /^transform on .+: hit testing through a rotated
 // z-index 0 layer are in the hit lane (rt-hit.ts orders them as their own layers); these hold one in another layer (an integer
 // z-index), a normal-flow layer, or one their hit facts do not name (opacity-group-clipped's clip has z-index: 0).
 export const STACKING_OUT: readonly string[] = [
+  // A sticky box (POSX-s) or a z-index layer keeps the notes header and modal fixtures out.
+  'opacity-group-sticky', 'opacity-group-sticky-rtl', 'opacity-group-sticky-short', 'opacity-group-sticky-short-rtl', 'opacity-group-after-sticky', 'opacity-group-after-sticky-rtl', 'opacity-group-after-sticky-short', 'opacity-group-after-sticky-short-rtl', 'opacity-group-modal', 'opacity-group-modal-rtl', 'opacity-group-modal-sticky', 'opacity-group-modal-sticky-rtl',
   'opacity-group-clipped', 'opacity-group-clipped-rtl', 'stacking-basic',
   'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
   'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl',

@@ -731,7 +731,7 @@ function zoomedLength(l: TransformOp['x'], zoom: number): TransformOp['x'] {
 }
 
 /** A box's paint facts: its transform at its device border-box size (paint-transform.ts), offset from the space origin (ox, oy) in float. */
-function paintOf(id: string, f: HitFact, r: LayoutRect, zoom: number, ox: number, oy: number, faults: HitTableFaults): HitPaint {
+function paintOf(id: string, f: HitFact, r: LayoutRect, zoom: number, ox: number, oy: number, sox: number, soy: number, faults: HitTableFaults): HitPaint {
   if (f.transform.length === 0 || faults.transformIgnored) return { context: f.context && !(faults.contextNotLayered && f.transform.length === 0), transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 };
   const refused = hitTransformRefusal(id, f.transform);
   if (refused !== null) throw new HitError(refused);
@@ -740,11 +740,12 @@ function paintOf(id: string, f: HitFact, r: LayoutRect, zoom: number, ox: number
   const origin: TransformOrigin = { x: zoomedLength(f.origin.x, zoom), y: zoomedLength(f.origin.y, zoom) };
   const m = paintTransformMatrix(ops, origin, r.width / LU_PX, r.height / LU_PX, NO_ROTATION);
   if (m.full || m.b !== 0 || m.c !== 0) throw new HitError(`${id}: a scale and translate transform did not stay axis-aligned`);
-  // Chrome rounds the paint offset of a box whose transform is not a translation to whole device px (paint_property_tree_builder.cc).
-  // Chrome rounds the paint offset of a box whose transform is not a translation to whole device px (paint_property_tree_builder.cc).
+  // Chrome rounds the paint offset of a box whose transform is not a translation to whole device px from the snapping origin, which
+  // a translating ancestor's subpixel fraction reaches (paint_property_tree_builder.cc CanPropagateSubpixelAccumulation).
   const translates = m.a === 1 && m.d === 1;
-  const at = (lu: number): number => (translates ? lu / LU_PX : Math.floor((lu + LU_PX / 2) / LU_PX));
-  return { context: true, transformed: true, scaleX: m.a, scaleY: m.d, offsetX: froundOf(at(r.x - ox) + m.e), offsetY: froundOf(at(r.y - oy) + m.f) };
+  const atX = translates ? (r.x - ox) / LU_PX : (sox + roundPx(r.x - sox) - ox) / LU_PX;
+  const atY = translates ? (r.y - oy) / LU_PX : (soy + roundPx(r.y - soy) - oy) / LU_PX;
+  return { context: true, transformed: true, scaleX: m.a, scaleY: m.d, offsetX: froundOf(atX + m.e), offsetY: froundOf(atY + m.f) };
 }
 
 
@@ -904,7 +905,7 @@ const LINE_PROBE_WIDTH = fromRaw(1073741824);
 /** A text piece and whether its leaf inks the whole em box. */
 type HitPiece = { readonly rect: LayoutRect; readonly full: boolean };
 
-function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[], lengths: readonly RadiusLength[]): void {
+function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, leaves: readonly TextLeaf[], lengths: readonly RadiusLength[], sox: number, soy: number): void {
   const zb = zoomedBox(s, b.id);
   const zLeaves: TextLeaf[] = [];
   for (const c of zb.children) {
@@ -949,14 +950,14 @@ function inlineNodes(s: TableState, b: LayoutBox, parent: number, target: number
       own.push(p);
       at++;
     }
-    linePieces(s, b, parent, target, pe, run, size, own, head.rect.y, k, lengths);
+    linePieces(s, b, parent, target, pe, run, size, own, head.rect.y, k, lengths, sox, soy);
     k++;
     from = at;
   }
 }
 
 /** One line of a block's inline content (its pieces, all with this top): the line node, then each text piece on it. */
-function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, own: readonly HitPiece[], top: number, k: number, lengths: readonly RadiusLength[]): void {
+function linePieces(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, run: LineMetrics, em: number, own: readonly HitPiece[], top: number, k: number, lengths: readonly RadiusLength[], sox: number, soy: number): void {
   const firstPiece = own[0];
   if (firstPiece === undefined) throw new HitError(`${b.id}: an empty line`);
   let x0 = firstPiece.rect.x;
@@ -966,7 +967,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     if (p.rect.x + p.rect.width > x1) x1 = p.rect.x + p.rect.width;
   }
   const y = top - run.halfLeading;
-  const radii = roundedOf(x0, y, x1 - x0, run.lineHeight, NO_EDGES, lengths, s.dpr);
+  const radii = roundedOf(x0, y, x1 - x0, run.lineHeight, NO_EDGES, lengths, s.dpr, sox, soy);
   pushNode(s, { kind: 'line', parent, target, x: x0, y, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }, `${b.id}:hitline${k}`, false);
   for (const p of own) {
     const q = p.rect;
@@ -989,15 +990,17 @@ const NO_EDGES: Edges = { top: ZERO, right: ZERO, bottom: ZERO, left: ZERO };
  * A box's rounded border for the hit test (ContouredBorderGeometry::PixelSnappedContouredBorder and ...InnerBorder): roundedShape on
  * its pixel-snapped border box in device px, radii resolved against the unsnapped size; empty when no corner is rounded.
  */
-function roundedOf(x: number, y: number, w: number, h: number, border: Edges, lengths: readonly RadiusLength[], dpr: number): number[] {
+function roundedOf(x: number, y: number, w: number, h: number, border: Edges, lengths: readonly RadiusLength[], dpr: number, sox: number, soy: number): number[] {
   if (lengths.length === 0) return [];
-  const shape = roundedShape(roundPx(x) / LU_PX, roundPx(y) / LU_PX, roundPx(x + w) / LU_PX, roundPx(y + h) / LU_PX, w / LU_PX, h / LU_PX, [border.top / LU_PX, border.right / LU_PX, border.bottom / LU_PX, border.left / LU_PX], lengths, dpr, NO_RADIUS_FAULTS);
+  // The radii are constrained against the border box snapped in the box's own space (from its snapping origin), as the hit is.
+  const snap = (v: number, o: number): number => o + roundPx(v - o);
+  const shape = roundedShape(snap(x, sox) / LU_PX, snap(y, soy) / LU_PX, snap(x + w, sox) / LU_PX, snap(y + h, soy) / LU_PX, w / LU_PX, h / LU_PX, [border.top / LU_PX, border.right / LU_PX, border.bottom / LU_PX, border.left / LU_PX], lengths, dpr, NO_RADIUS_FAULTS);
   const outer: number[] = [];
   for (let i = 0; i < 8; i++) outer.push(radiusAt(shape, i));
   return hasRoundedCorner(outer) ? shape : [];
 }
 
-function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents, ox: number, oy: number): void {
+function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents, ox: number, oy: number, sox: number, soy: number): void {
   const i = s.nodes.length;
   let pe = inherited;
   let own = target;
@@ -1012,17 +1015,20 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     own = i;
     act = f.activation;
     lengths = f.radii;
-    paint = paintOf(b.id, f, r, s.dpr, ox, oy, s.faults);
+    paint = paintOf(b.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
   }
   if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(b.id);
+  const rounds = paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1);
+  const snapX0 = rounds ? r.x : sox;
+  const snapY0 = rounds ? r.y : soy;
   pushNode(s, {
     kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: clipsBothAxes(b.style),
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
     absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
-    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, lengths, s.dpr),
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, lengths, s.dpr, snapX0, snapY0),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, b.id, act);
   const sx = paint.transformed ? r.x : ox;
@@ -1039,12 +1045,12 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     else kids++;
   }
   if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
-  if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves, lengths);
+  if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves, lengths, snapX0, snapY0);
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : b.style.display === 'grid' ? gridOrders(s, b) : null;
   for (const c of b.children) {
-    if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe, sx, sy);
-    else if (c.kind === 'control') boxNodes(s, hitControlBox(c), i, childOrders, own, pe, sx, sy);
-    else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders, sx, sy);
+    if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe, sx, sy, snapX0, snapY0);
+    else if (c.kind === 'control') boxNodes(s, hitControlBox(c), i, childOrders, own, pe, sx, sy, snapX0, snapY0);
+    else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders, sx, sy, snapX0, snapY0);
   }
 }
 
@@ -1058,7 +1064,7 @@ function clipsBothAxes(style: LayoutStyle): boolean {
  * replaced box like any block child (BoxFragmentPainter::HitTestBlockChildren; a flex item is painted atomically), and a point
  * inside an iframe's content box returns the iframe element itself to the outer document's elementFromPoint.
  */
-function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Map<string, number> | null, ox: number, oy: number): void {
+function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Map<string, number> | null, ox: number, oy: number, sox: number, soy: number): void {
   const f = s.facts.get(c.id);
   if (f === undefined) throw new HitError(`no hit facts for replaced element ${c.id}`);
   const pe = s.faults.pointerEventsNotInherited && f.inherited ? 'auto' : f.pointerEvents;
@@ -1067,13 +1073,13 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   if (style === undefined) throw new HitError(`no zoomed replaced element ${c.id}`);
   const border = resolveBorder(style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(c.id);
-  const paint = paintOf(c.id, f, r, s.dpr, ox, oy, s.faults);
+  const paint = paintOf(c.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
   pushNode(s, {
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
     absolute: c.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && c.style.position !== 'absolute' ? c.style.order : 0, line: -1,
-    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, f.radii, s.dpr),
+    inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, f.radii, s.dpr, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.x : sox, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.y : soy),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, c.id, f.activation);
 }
@@ -1182,7 +1188,7 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);
   const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
-  boxNodes(s, input.root, -1, null, -1, 'auto', 0, 0);
+  boxNodes(s, input.root, -1, null, -1, 'auto', 0, 0, 0, 0);
   return { nodes: s.nodes, ids: s.ids, activation: s.activation };
 }
 
