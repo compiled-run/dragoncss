@@ -2,7 +2,7 @@
 // gives exactly the geometry the export computes at build time, at the proof devices and at other sizes and ratios.
 import { readFileSync } from 'node:fs';
 import type { ControlBox, LayoutBox } from '@dragon/layout';
-import { menuListArrow, menuListArrowBox } from '@dragon/layout';
+import { checkboxMarks, fromRaw, LU_PER_PX, menuListArrow, menuListArrowBox, snapRect } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
 import { checkMarklessExport, marklessStyleExport } from '../src/markless-style-input.ts';
 import { paintRows } from '../src/markless-style-compare.ts';
@@ -10,6 +10,7 @@ import type { MarklessPlan } from '../src/markless-plan.ts';
 import { PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
+import { checkboxColors } from '../../dragon/src/forms/checkbox.ts';
 
 // The translate harness is loaded by path at run time, as text-latin-engine.test.ts does.
 const { checkMarklessPlan, runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string };
@@ -180,6 +181,51 @@ describe('the layout plan of a Markless export', () => {
     expect(arrows).toBe(2);
     const plain = marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true).exported.targets.ios!;
     expect(deviceLayout(plain.plan!, 0, plain.viewport.width, plain.viewport.height, plain.dpr).length).toBe(3);
+  });
+
+  it("gives the notes form's checkbox its theme marks last, tagged, from its snapped border box, beside a checkbox write with Chrome's colours", () => {
+    // NoteForm.tsrx's pinned field: .check { display: flex; align-items: center; gap: 10px; min-height: 44px }, a 22px input with
+    // accent-color #c2410c; form-checkbox.test.ts proves checkboxMarks and checkboxColors against Chrome's pixels at these sizes.
+    const css = 'body { margin: 0; font-family: Ahem; font-size: 16px; }\n* { box-sizing: border-box; }\n.page { padding: 24px; }\n.check { display: flex; align-items: center; gap: 10px; min-height: 44px; }\n.check input { width: 22px; height: 22px; accent-color: #c2410c; }\n';
+    const nodes = (checked: boolean) => [
+      { kind: 'element', id: 'h0', element: 'main', parent: null, attributes: { class: 'page' } },
+      { kind: 'element', id: 'h1', element: 'label', parent: 'h0', attributes: { class: 'check' } },
+      { kind: 'element', id: 'h2', element: 'input', parent: 'h1', attributes: checked ? { type: 'checkbox', name: 'pinned', checked: '' } : { type: 'checkbox', name: 'pinned' } },
+      { kind: 'text', id: 'h1:text0', parent: 'h1', text: 'Pin' },
+    ];
+    for (const checked of [false, true]) {
+      const text = JSON.stringify({ version: 'markless.native-style-input/0', component: 'Pinning', nodes: nodes(checked), css, states: [] });
+      const { exported } = marklessStyleExport(text, 'checkbox.json', undefined, 'system', undefined, true);
+      for (const t of ['ios', 'android'] as const) {
+        const x = exported.targets[t]!;
+        const names = new Map(x.planNames?.[0] ?? []);
+        const box = x.assignments[0]!.nodes.find((n) => n.id === 'h2')!;
+        const write = box.writes.find((w) => w.kind === 'checkbox') as { checked: boolean; colors: unknown } | undefined;
+        expect(write, t).toBeDefined();
+        expect(write!.checked, t).toBe(checked);
+        expect(write!.colors, t).toEqual(checkboxColors({ r: 194, g: 65, b: 12, alpha: 255 }, { checkboxLightCheckOnLightAccent: false }));
+        // Every ratio the plan measures text at, at the proof viewport and a small phone's.
+        for (const [width, height, dpr] of PLAN_DENSITIES[t].flatMap((d) => [[x.viewport.width, x.viewport.height, d], [375, 589, d]] as const)) {
+          const out = deviceLayout(x.plan!, 0, width, height, dpr);
+          expect(out[0], `${t} ${dpr} ${JSON.stringify(out)}`).toBe('ok');
+          expect(out.length, t).toBe(4);
+          const suffix = decode(out[3]) as [string, unknown[][]];
+          expect(suffix[0], t).toBe('checkbox-marks');
+          const frames = new Map((out[2] as unknown[][]).map((n) => [names.get(n[0] as string) ?? (n[0] as string), decode(n[1]) as number[]]));
+          // The marks are of the snapped border box: the frame made absolute through its parents, in LU, snapped to device px.
+          const parents = new Map(x.assignments[0]!.nodes.map((n) => [n.id, n.parent]));
+          let [ax, ay] = [0, 0];
+          for (let id: string | null | undefined = 'h2'; id !== null && id !== undefined; id = parents.get(id)) {
+            ax += frames.get(id)![0]!;
+            ay += frames.get(id)![1]!;
+          }
+          const f = frames.get('h2')!;
+          const snapped = snapRect({ id: 'h2', parent: null, x: fromRaw(ax * LU_PER_PX), y: fromRaw(ay * LU_PER_PX), width: fromRaw(f[2]! * LU_PER_PX), height: fromRaw(f[3]! * LU_PER_PX) });
+          const m = checkboxMarks(snapped.width, snapped.height, dpr);
+          expect(suffix[1].map((c) => [names.get(c[0] as string) ?? c[0], ...c.slice(1)]), `${t} ${dpr}`).toEqual([['h2', m.x, m.y, m.side, m.plain, m.radius, m.backgroundInset, m.borderInset, m.borderWidth, [...m.check], m.checkWidth]]);
+        }
+      }
+    }
   });
 
   it('gives a slotted page with a menulist-button select its slot writes, then its arrows, tagged and last', () => {

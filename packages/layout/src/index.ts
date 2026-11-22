@@ -85,8 +85,8 @@ export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutP
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';
 // Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
-export type { MenuListArrow } from './controls.ts';
-export { buttonContentShift, controlAsBox, menuListArrow, menuListArrowBox, menuListInnerInsets, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';
+export type { CheckboxMarks, MenuListArrow } from './controls.ts';
+export { buttonContentShift, checkboxMarks, controlAsBox, menuListArrow, menuListArrowBox, menuListInnerInsets, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
 export type { SvgBounds, SvgMatrix, SvgSegment, SvgShape, ViewBox } from './svg-geometry.ts';
