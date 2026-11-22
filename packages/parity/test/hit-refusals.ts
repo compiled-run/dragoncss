@@ -85,6 +85,8 @@ export const STACKING_OUT: readonly string[] = [
   'stacking-transform', 'stacking-transform-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
   // Positioned boxes with a z-index and fixed or sticky boxes make stacking contexts below the root.
   ...['fixed-probe', 'fixed-viewport', 'fixed-in-grid', 'anchor-containing-blocks', 'sticky-probe', 'sticky-viewport'].flatMap((n) => [n, `${n}-rtl`]),
+  // The notes sticky bar and modal fixtures: a sticky bar or a z-index backdrop keeps them out.
+  ...['opacity-group-sticky', 'opacity-group-sticky-short', 'opacity-group-after-sticky', 'opacity-group-after-sticky-short', 'opacity-group-modal', 'opacity-group-modal-sticky'].flatMap((n) => [n, `${n}-rtl`]),
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in

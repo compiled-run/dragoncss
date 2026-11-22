@@ -34,7 +34,7 @@ export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/
  * transform cases check that a scaled box's paint offset rounds to whole device px, which at 2.625 is almost every box.
  */
 export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
-  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'opacity-group-transform'] },
+  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform'] },
 ];
 export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
 export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;
