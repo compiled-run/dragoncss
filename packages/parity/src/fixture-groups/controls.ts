@@ -22,6 +22,9 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-fieldset-display', 'DRAGON_UNSUPPORTED_VALUE', 'flex', 'display: flex on <fieldset> f is not laid out yet'),
   reject('reject-ua-fieldset-groove', 'DRAGON_UNSUPPORTED_VALUE', '<fieldset data-dragon-id="f"></fieldset>', 'border-top-style, border-right-style, border-bottom-style, border-left-style: groove'),
   both('controls-button-flex'),
+  // GRID-items: block buttons (contents centred in a stretched area) and flex buttons (plain flex boxes) as grid items.
+  both('grid-button-block'),
+  both('grid-button-flex'),
   both('controls-button-demo'),
   both('controls-button-type'),
   both('controls-appearance-display'),
@@ -41,6 +44,8 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-select-appearance', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', '<select> s with appearance: auto and no author background, border or box-shadow is Chrome\'s themed menulist'),
   reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
   reject('reject-controls-select-optgroup', 'DRAGON_UNSUPPORTED_ELEMENT', '<optgroup data-dragon-id="g"><option data-dragon-id="o">A</option></optgroup>', '<optgroup> g is not supported: an option group waits for FORM-b select'),
+  // GRID-items: a range stays refused as a grid item; a fieldset's refusal is reject-fieldset-grid-item.
+  reject('reject-grid-control-range', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input> r is a grid item, and a form control as a grid item is not supported yet'),
   reject('reject-controls-range-theme', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input type=range> r is painted by the platform theme'),
   reject('reject-controls-range-inline', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', 'display: inline-block on <input> r makes it an inline-level control'),
   reject('reject-controls-input-password', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="r" type="password" value="XX">', '<input type=password> r is not supported'),

@@ -5,8 +5,10 @@
 // is an equal resolution, and the committed vectors and emitted CSS are byte-identical to A2 (git diff form-a2 in the receipt).
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { ControlBox, LayoutBox } from '@dragon/layout';
-import { compiledCases, iosLayoutProjection, WEB_CSS_PATH } from 'dragon';
+import type { ControlBox, LayoutBox, LayoutNode } from '@dragon/layout';
+import { controlAsBox } from '@dragon/layout';
+import type { LayoutProjection } from 'dragon';
+import { compiledCases, engineLayoutProjection, iosLayoutProjection, NO_FAULTS, WEB_CSS_PATH } from 'dragon';
 import { internalRecord } from '../../dragon/src/project.ts';
 import type { ResolvedElement, ResolvedValue } from '../../dragon/src/analysis/resolve.ts';
 import { rangePartOf, valueToString } from '../../dragon/src/analysis/resolve.ts';
@@ -20,6 +22,8 @@ import { emittedPath } from '../src/committed.ts';
 import { CONTROLS } from '../src/fixture-groups/controls.ts';
 import { environmentsOf, FIXTURES } from '../src/fixtures.ts';
 import { repoPath } from '../src/paths.ts';
+import { committedDprCapture, DPRS, layoutCases, runDprCase } from '../src/dpr.ts';
+import type { Projection } from '../src/pipeline.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
 const controlIds = new Set(CONTROLS.map((f) => f.id));
@@ -45,9 +49,10 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('FORM-a A3 identity: every case that predates the button package is unchanged', () => {
   it('covers every earlier layout fixture, and the controls group adds only its own', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    // 14: the A3 buttons and A4 ranges, then fieldset-legend, fieldset-positioned, controls-text-field, controls-textarea and the three FORM-b selects.
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(14);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(14 + LATER_WITH_CONTROLS.length);
+    // 16: the A3 buttons and A4 ranges, then fieldset-legend, fieldset-positioned, controls-text-field, controls-textarea, the three
+    // FORM-b selects, then GRID-items' grid-button-block and -flex.
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(16);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(16 + LATER_WITH_CONTROLS.length);
   });
 
   it('no earlier element is a control, and the display adjustment leaves every one alone (appearance-values sets appearance only on displays Chrome keeps)', () => {
@@ -120,8 +125,9 @@ describe('FORM-a A4 identity: every case that predates the range package is unch
   const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-'));
   const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && (c.control.kind === 'range' || c.control.kind === 'slider-thumb') ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
   it('covers every earlier layout fixture, the A3 controls cases included', () => {
-    // 12: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, controls-textarea and the three FORM-b selects, which hold no range.
-    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(12);
+    // 14: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, controls-textarea, the three FORM-b selects
+    // and the two grid-button cases, which hold no range.
+    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(14);
     expect(FIXTURES.filter((f) => f.id.startsWith('controls-range-')).length).toBe(2);
   });
   it('no earlier case resolves a range, lowers a range or thumb box, or changes its vector input or web body', () => {
@@ -198,5 +204,65 @@ describe('FORM-a A3 helpers', () => {
     expect(buttonAppearance(props('auto', [authored('border-top-width', '0px')]))).toBe('css');
     expect(buttonAppearance(props('auto', [inherited('background-color', 'red')]))).toBe('theme');
     expect(buttonAppearance(props('button', [authored('background-color', 'red')]))).toBe('theme');
+  });
+});
+
+// GRID-items plants. Each one rewrites the engine input of the grid items it names into what the engine would lay out if it
+// had the fault, then lays it out against the committed Chrome captures, which must catch it:
+// - replacedGridItemStretches: a replaced grid item aligned normal stretches, as a box does (the engine gives it fit-content);
+// - gridButtonContentNotCentred: a block button grid item is laid out as a plain box, so its contents stay at the top.
+describe('GRID-items plants against the committed Chrome captures', () => {
+  type Plant = (node: LayoutNode, grid: LayoutBox) => LayoutNode;
+  const replacedGridItemStretches: Plant = (node, grid) => {
+    if (node.kind !== 'replaced' || node.style.gridItem === null) return node;
+    const g = grid.style.grid;
+    const justify = node.style.gridItem.justifySelf === 'auto' && g !== null ? g.justifyItems : node.style.gridItem.justifySelf;
+    const align = node.style.alignSelf === 'auto' ? grid.style.alignItems : node.style.alignSelf;
+    return { ...node, style: { ...node.style, gridItem: { ...node.style.gridItem, justifySelf: justify === 'normal' ? 'stretch' : node.style.gridItem.justifySelf }, alignSelf: align === 'normal' ? 'stretch' : node.style.alignSelf } };
+  };
+  const gridButtonContentNotCentred: Plant = (node) => (node.kind === 'control' && node.control.kind === 'button-block' ? controlAsBox(node) : node);
+  const planted = (plant: Plant, b: LayoutBox): LayoutBox => ({
+    ...b,
+    children: b.children.map((k) => {
+      const kid = b.style.display === 'grid' && (k.kind === 'box' || k.kind === 'control' || k.kind === 'replaced') ? plant(k, b) : k;
+      if (kid.kind === 'box') return planted(plant, kid);
+      if (kid.kind === 'control') return { ...kid, children: planted(plant, controlAsBox(kid)).children };
+      return kid;
+    }),
+  });
+  const projection = (plant: Plant | null): Projection => (compiled, env, assignment) => {
+    const p: LayoutProjection = engineLayoutProjection(compiled, env, assignment);
+    return plant === null || p.kind !== 'ready' ? p : { ...p, input: { ...p.input, root: planted(plant, p.input.root) } };
+  };
+  const failing = (ids: readonly string[], plant: Plant | null): string[] => {
+    const out: string[] = [];
+    for (const f of layoutCases().filter((x) => ids.includes(x.spec.id))) {
+      const compiled = new Map((['ltr', 'rtl'] as const).map((d) => [d, compileFixture(f.spec, NO_FAULTS, 'enforce', d).compiled]));
+      for (const c of f.cases) {
+        for (const dpr of [1, ...DPRS]) {
+          const o = runDprCase(c, compiled.get(c.environment.direction) as NonNullable<ReturnType<typeof compiled.get>>, dpr, committedDprCapture(c.id, dpr), undefined, projection(plant));
+          if (o.status === 'fail') out.push(`${c.id}@${dpr}`);
+        }
+      }
+    }
+    return out;
+  };
+  const REPLACED_IDS = ['grid-replaced-items', 'grid-replaced-media', 'grid-replaced-tracks', 'grid-replaced-markless'];
+  const BUTTON_IDS = ['grid-button-block', 'grid-button-flex'];
+
+  it('every GRID-items case passes unplanted at DPR 1, 2, 3 and 2.625, in both directions', () => {
+    expect(layoutCases().filter((x) => [...REPLACED_IDS, ...BUTTON_IDS].includes(x.spec.id)).length).toBe(6);
+    expect(failing([...REPLACED_IDS, ...BUTTON_IDS], null)).toEqual([]);
+  });
+
+  it('replacedGridItemStretches fails grid-replaced-items in every environment', () => {
+    const f = failing(REPLACED_IDS, replacedGridItemStretches);
+    for (const id of ['grid-replaced-items', 'grid-replaced-items-rtl']) for (const dpr of [1, ...DPRS]) expect(f).toContain(`${id}@${dpr}`);
+  });
+
+  it('gridButtonContentNotCentred fails grid-button-block in every environment, and leaves the flex buttons alone', () => {
+    const f = failing(BUTTON_IDS, gridButtonContentNotCentred);
+    for (const id of ['grid-button-block', 'grid-button-block-rtl']) for (const dpr of [1, ...DPRS]) expect(f).toContain(`${id}@${dpr}`);
+    expect(f.filter((x) => x.startsWith('grid-button-flex'))).toEqual([]);
   });
 });

@@ -31,6 +31,12 @@ export const REPLACED: readonly FixtureSpec[] = [
   // image-rendering: pixelated imgs upscaled whole and fractionally, contained, covered and rounded (nearest-neighbour texels), an
   // -webkit-optimize-contrast img Chrome draws as auto, and pixelated text and a bordered box, which paint no image layer.
   both('replaced-pixelated'),
+  // GRID-items: imgs, iframes and videos as grid items, sized in their grid areas (normal is fit-content, stretch is explicit),
+  // contributing to intrinsic tracks, and in the shapes Markless's shop and check-in apps write.
+  both('grid-replaced-items'),
+  both('grid-replaced-media'),
+  both('grid-replaced-tracks'),
+  both('grid-replaced-markless'),
   // RF-INL lays an inline img out on its block container's lines (inline-replaced); inside an inline box it stays unproven (INL2c).
   reject('reject-replaced-inline', 'DRAGON_UNPROVEN_CONTEXT', imgTag('reject-replaced-inline'), 'inline <img> a is an atomic inline inside the inline box <span> s'),
   reject('reject-replaced-remote', 'DRAGON_REMOTE_IMAGE', imgTag('reject-replaced-remote'), '<img> a: src https://example.com/a.png is a remote URL'),
