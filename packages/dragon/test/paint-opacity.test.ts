@@ -87,11 +87,11 @@ describe('opacity: parse and computed values (Chrome 145 getComputedStyle)', () 
 describe('opacity: the native targets draw 0 and 1 only', () => {
   it('a fractional opacity is refused on ios by name, at the declaration, naming PNT1-opacity-b, and compiles for web', () => {
     for (const v of ['0.5', '50%', '0.001', 'calc(0.2 * 2)']) {
-      // A rounded box is neither a fold nor a group native pre-composites.
-      const c = compile(`.a { height: 10px; border-radius: 2px; opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
+      // A rounded box with a border on one side is neither a fold nor a group native pre-composites (Chrome paints it in a clip layer).
+      const c = compile(`.a { height: 10px; border-radius: 2px; border-top: 1px solid rgb(0, 0, 0); opacity: ${v}; }`, { ios: { minimum: '15.0' }, web: {} });
       const errs = c.diagnostics.filter((d) => d.severity === 'error');
       expect(errs.map((d) => [d.code, d.target]), v).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites \(PNT1-opacity-b\), and this one is not: a has a border radius$/);
+      expect(errs[0]?.message, v).toMatch(/^a has opacity [0-9.]+; ios composites a translucent view with its own rounding, one off Chrome's Skia blend in a channel, so Dragon draws a fractional opacity only on a box whose one paint is an opaque background, which Chrome folds into the fill, or on a group it pre-composites \(PNT1-opacity-b\), and this one is not: a has a border radius with a border that is not four opaque solid sides, which Chrome paints in a clip layer$/);
       expectCatalogued(errs);
     }
     // An inherited fraction is refused where it computes; the declaration is the child's inherit (a rounded b, as a plain one is a
@@ -119,7 +119,7 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     }
   });
   it('refuses on native a fraction whose group paints more than one fill, or composites as a layer', () => {
-    for (const extra of ['border-radius: 3px;', 'border: 1px dashed rgb(0, 0, 0);', 'border: 1px solid rgb(0, 0, 0); border-left-color: rgb(9, 9, 9);', 'outline: 1px dashed rgb(0, 0, 0);', 'outline: 1px solid rgba(0, 0, 0, 0.5);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
+    for (const extra of ['border-radius: 3px; border-top: 1px solid rgb(0, 0, 0);', 'border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.5);', 'border-radius: 3px; border: 1px solid rgb(0, 0, 0); border-left-width: 2px;', 'border: 1px dashed rgb(0, 0, 0);', 'border: 1px solid rgb(0, 0, 0); border-left-color: rgb(9, 9, 9);', 'outline: 1px dashed rgb(0, 0, 0);', 'outline: 1px solid rgba(0, 0, 0, 0.5);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
       expect(errors(`.b { ${leaf} ${extra} opacity: 0.3; }`), extra).toEqual(['ios b has opacity 0.', 'android b has opacity 0.']);
     }
     // PNT1-opacity-c C1: an opaque solid or double outline is a second draw: the box does not fold, and native pre-composites it with
@@ -128,7 +128,13 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     expect(errors(`.a { ${leaf} outline: 1px solid rgb(0, 0, 0); opacity: 0.3; } .b { height: 2px; background-color: rgba(0, 0, 0, 0.5); }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
     // A box with a child is a group of more than one draw: it does not fold, and native pre-composites it (opacity-group).
     expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; }`)).toEqual([]);
-    expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; border-radius: 1px; }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
+    // A rounded box draws one DrawRRect, and with a border of four opaque solid sides in one width a fill and one DrawDRRect (Blink
+    // shrinks the background inside it): the platform renders both into the group's layer.
+    expect(errors(`.b { ${leaf} border-radius: 3px; opacity: 0.3; }`)).toEqual([]);
+    expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; border-radius: 1px; }`)).toEqual([]);
+    expect(errors(`.a { ${leaf} border-radius: 999px; border: 1px solid rgb(0, 0, 0); opacity: 0.3; } .b { height: 2px; border-radius: 1px; border: 2px solid rgb(9, 9, 9); }`)).toEqual([]);
+    // S2's software layer draws square boxes only.
+    expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; border-radius: 1px; background-color: rgba(0, 0, 0, 0.5); }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
   });
   it('refuses on native a folded fill whose background-color animates or transitions (the animator writes the colour alpha)', () => {
     const fold = 'animates the fill a fractional opacity is folded into, and the animated colour would drop the opacity: not built yet (package PNT1-opacity-b)';

@@ -205,7 +205,8 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   if ((keywordAt(el, 'visibility') ?? 'visible') !== 'visible') return `${a} is not visible`;
   // A member's outline is in the platform's rendering of the group's view (its view hosts the outline view); planOf checks it.
   if (!content && paintedOutlineStyle(el) !== null) return `${a} has an outline`;
-  if (rounds(el)) return `${a} has a border radius`;
+  const rounded = rounds(el);
+  if (rounded && !content) return `${a} has a border radius`;
   const colors = usedColors(el);
   const bg = colors['background-color'].alpha;
   if (bg !== 0 && bg !== 255 && !content) return `${a} has a translucent background`;
@@ -231,6 +232,12 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   // Chrome draws translucent sides in one colour as one op on all four sides or one, and otherwise differently (measured).
   if (translucent && sides.length !== 4 && sides.length !== 1) return `${a} has a translucent border on ${sides.length} sides, which Chrome draws otherwise than four sides or one`;
   if (canvasTag && sides.length > 0) return `${a} has a border`;
+  // Blink shrinks a rounded box's background inside a border that hides its edge, drawing a fill and one DrawDRRect
+  // (box_decoration_data.cc ComputeBleedAvoidance, box_border_painter.cc PaintBorderFastPath); any other rounded border is a clip layer.
+  if (rounded && sides.length > 0) {
+    if (sides.length !== 4 || translucent) return `${a} has a border radius with a border that is not four opaque solid sides, which Chrome paints in a clip layer`;
+    if (new Set(SIDES.map((side) => (el.props.get(`border-${side}-width` as never)?.value as { value: number }).value)).size > 1) return `${a} has a border radius with border sides of more than one width`;
+  }
   return null;
 }
 
@@ -323,6 +330,12 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       if (translucentOutline !== undefined) return refused(`${translucentOutline.element.address} has an outline that is not opaque`);
       const soft = members.find((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m));
       if (soft !== undefined) return refused(`${o.element.address} has an outline, and ${soft.element.address} makes Dragon build the group's layer in software, which draws boxes and text only`);
+    }
+    // S2's software layer draws square boxes only.
+    const roundedMember = members.find((m) => rounds(m));
+    if (roundedMember !== undefined) {
+      const soft = members.find((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m));
+      if (soft !== undefined) return refused(`${roundedMember.element.address} has a border radius, and ${soft.element.address} makes Dragon build the group's layer in software, which draws square boxes only`);
     }
     // What composites it differently: an enclosing group, layer, scroller or fixed box, or a decoration from above.
     const up = ancestors(g);
