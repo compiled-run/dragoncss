@@ -128,3 +128,9 @@ The `select` element itself stays a Markless-native control: Markless's host ope
   - A range is still refused (its touch is consumed, T064 P7), and so are a fieldset and a legend. A control that is an atomic inline is refused as any atomic inline is (INL2a).
   - `hitUnmodelledControl` refuses only the controls rt-hit.ts does not model.
 - **Proof:** the hit lane's own suite against Chrome. Every layout case the hit table no longer refuses (`controls-button-*`, `controls-select-*`, `controls-text-field`) gets its `expected-hit` capture from `document.elementFromPoint` at every point of its derived hit grid. The P1 hit suite and the host hit lane compare the table's answers with those captures.
+
+- **Judge ruling on S5 and S5b (2026-11-22): approved with amendments, all in.**
+  - `pointerFocusVisible` is the one fact for both readers: the partition's pointer focus and the runtime's `keyboardInput` table (internal.ts), which rt-interaction.ts `pointerFocus` reads. It covers a select, a textarea and the keyboard input types, as P6 and this measurement found.
+  - `form-b-select-focus.test.ts` adds a readonly text input. For each element, Chrome's focus-visible after a tap or click equals the partition's and the runtime table's.
+  - The compiler's control check and the hit table must agree. `form-controls-hit.test.ts` checks every layout case: the compiler refuses for a control exactly where rt-hit refuses one, and it skips the same retargeted shadow parts (`hitRetargetsParts`). The test found the block fieldset, which the table refused and the compiler did not, and the compiler now refuses it too.
+  - The receipt is CI green with the regenerated hit captures.
