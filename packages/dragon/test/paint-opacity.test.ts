@@ -311,8 +311,8 @@ describe('opacity: a group native pre-composites', () => {
     const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { painters: readonly string[] } | undefined;
     expect(w?.painters).toEqual(['p']);
   });
-  it('admits a group in one sticky or fixed box whose opaque square background holds it, naming that box; the device reads back that it held', () => {
-    for (const css of ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', '.w { position: fixed; top: 0; width: 50px; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }']) {
+  it('admits a group in one sticky or fixed box whose opaque background (rounded too) holds it, naming that box; the device reads back that it held', () => {
+    for (const css of ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', '.w { position: fixed; top: 0; width: 50px; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }', '.w { position: fixed; top: 0; width: 50px; background-color: rgb(250, 250, 250); border-radius: 6px; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }']) {
       const c = build(css);
       expect(errors(c), css).toEqual([]);
       const p = nativePrograms(c, []);
@@ -323,8 +323,7 @@ describe('opacity: a group native pre-composites', () => {
       expect(EFFECTS_EMITTER.applied({ opacityAlpha8, float32: Math.fround } as never, 'uikit', w as never, 2, {} as never), css).toEqual([1, opacityAlpha8(0.4), 'w', true]);
     }
     const cases: [string, string][] = [
-      ['.w { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky and no opaque background colour alone under it'],
-      ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); border-radius: 4px; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky and a background that is not its square border box'],
+      ['.w { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky, and no box at or inside it has an opaque background colour alone under it'],
       ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; }', 'it may be in the compositor layer of w and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
     ];
     for (const [css, why] of cases) {
@@ -387,14 +386,9 @@ describe('opacity: a group native pre-composites', () => {
       ['.g { opacity: 0.4; text-shadow: 1px 1px rgb(0, 0, 0); }', false, 'the text of g has a text-shadow'],
       ['.g { opacity: 0.4; color: rgba(0, 0, 0, 0.5); }', false, 'the text of g is not opaque'],
       ['.g { opacity: 0.4; border-left-color: rgb(1, 2, 3); }', false, 'g has border sides in more than one colour, which meet on a diagonal'],
-      ['.g { opacity: 0.4; } .u { overflow: hidden; border-radius: 2px; }', false, 'u paints before it with a rounded overflow clip, a mask the backdrop capture does not draw'],
-      ['.g { opacity: 0.4; } .u { clip-path: inset(1px); }', false, 'u paints before it with a clip-path, which the backdrop capture is not proven to draw as the screen does'],
       ['.g { opacity: 0.4; } .u { position: sticky; top: 0; }', false, 'it may be in a compositor layer of its own after u and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
       ['.g { opacity: 0.4; } .u { position: fixed; top: 0; width: 5px; }', false, 'u has position fixed and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
       ['.g { opacity: 0.4; } .w { overflow: hidden; border-radius: 3px; }', false, 'it is inside w, a rounded overflow clip'],
-      ['.g { opacity: 0.4; } .u { overflow: auto; }', false, 'u paints before it and scrolls (overflow-x: auto), which the backdrop capture does not follow'],
-      ['.g { opacity: 0.4; } .u { will-change: transform; }', false, 'u paints before it with will-change, a compositor layer'],
-      ['.g { opacity: 0.4; } .u { backface-visibility: hidden; }', false, 'u paints before it with backface-visibility: hidden, a compositor layer'],
       ['.g { opacity: 0.4; transform: rotate(5deg); } .k { border: 1px solid rgb(0, 0, 0); }', false, "it has rotate(5deg), and Dragon samples a transformed group's backdrop for scale and translate only"],
       ['.g { opacity: 0.4; transform: scale(1.2); } .k { border: 1px solid rgb(0, 0, 0); }', false, "it has scale(1.2), and Dragon samples a transformed group's backdrop for scales up to 1 only"],
       ['.g { opacity: 0.4; transform: scale(0.9); }', false, 'it is transformed and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
@@ -422,6 +416,21 @@ describe('opacity: a group native pre-composites', () => {
     }
     const errs = errors(build('.u { opacity: 0.3; } .g { opacity: 0.4; }')).filter((m) => / has opacity 0\.4;/.test(m));
     expect(errs).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: u paints before it with opacity 0\\.3$`))));
+  });
+  it('lists earlier paint whose capture may differ from the screen, and the device reads back that none of it met the group', () => {
+    for (const u of ['overflow: hidden; border-radius: 2px', 'clip-path: inset(1px)', 'overflow: auto', 'will-change: transform', 'backface-visibility: hidden']) {
+      const c = build(`.g { opacity: 0.4; } .u { ${u}; }`);
+      expect(errors(c), u).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const g = p.programs.uikit.nodes.find((n) => n.id === 'g');
+      const w = g?.writes.find((x) => x.kind === 'opacity-group');
+      expect((w as { unstable?: readonly string[] } | undefined)?.unstable, u).toEqual(['u']);
+      expect(EFFECTS_EMITTER.applied({ opacityAlpha8, float32: Math.fround } as never, 'uikit', w as never, 2, {} as never), u).toEqual([1, opacityAlpha8(0.4), null, true]);
+      expect(EFFECTS_EMITTER.lines.uikit('v0', g as never, w as never)[0], u).toBe('  dragonSetOpacityGroup(t, v0, 0.4, nil, [], unstable: ["u"])');
+    }
+    // A clip path on an ancestor clips the group too: still refused.
+    expect(errors(build('.g { opacity: 0.4; } .w { clip-path: inset(1px); }')).filter((m) => / has opacity 0\.4;/.test(m)).length).toBe(2);
   });
   // S2: translucent fills, translucent borders on four sides or one, and nested groups inside a group; the device builds the layer
   // in software (DragonGroupView.dragonSoftwareGroup), measured equal to Chrome 145 (pnt1-effects.test).
