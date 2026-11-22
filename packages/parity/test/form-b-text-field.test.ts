@@ -1,14 +1,21 @@
 // FORM-b: single-line text fields (text, email, url, tel and an unknown type) compile as Chrome 145's UA shadow tree, an inner
 // editor holding the value and a placeholder while the value is empty, laid out by the engine (controls.ts) and written for the
 // web with ::placeholder. Refused: a themed field, a password field, an inline-level one, and on iOS and Android an editable one.
-import { describe, expect, it } from 'vitest';
+import type { Browser } from 'playwright';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic } from 'dragon';
 import * as dragon from 'dragon';
-import { ahemMeasurer, layout as engineLayout } from '@dragon/layout';
+import { ahemMeasurer, layout as engineLayout, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
+import { captureFixture } from '../src/capture.ts';
+import { atDpr, DPRS, layoutCases, runDprCase, zoomGuard } from '../src/dpr.ts';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 import { withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
-import { ENVIRONMENT } from '../src/fixtures.ts';
+import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
+import { compileFixture, liveAuthored, runFixture } from '../src/pipeline.ts';
+import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
+import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
 const page = (css: string, body: string, base: string): string => `<!DOCTYPE html>
 <html data-dragon-id="html">
@@ -101,7 +108,145 @@ describe('FORM-b text fields', () => {
     expect(errors(compile('tf-password', '', '<input data-dragon-id="t" readonly="" type="password" value="XX">'))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <input type=password> t is not supported/)]);
     expect(errors(compile('tf-inline', 'input { display: inline-block; }', '<div data-dragon-id="d"><input data-dragon-id="t" readonly=""></div>'))).toContainEqual(expect.stringMatching(/display: inline-block on <input> t makes it an inline-level control/));
     expect(errors(compile('tf-float', 'input { float: left; }', '<input data-dragon-id="t" readonly="">'))).toContainEqual(expect.stringMatching(/float: left on <input> t is not supported on a text field/));
-    expect(errors(compile('tf-font', 'input { font-family: Lato; }', '<input data-dragon-id="t" readonly="">', BASE, true))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input> t is in font-family: Lato: Chrome sizes a text field by the face's average character width/));
-    expect(errors(compile('tf-font-width', 'input { font-family: Lato; width: 40px; }', '<input data-dragon-id="t" readonly="">', BASE, true)).filter((e) => e.includes('average character width'))).toHaveLength(2);
   });
+});
+
+describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only where its width never reads its intrinsic width', () => {
+  const avg = (c: Compiled<string>): string[] => errors(c).filter((e) => e.includes('average character width'));
+  const lato = (id: string, css: string, body: string, faults = dragon.NO_FAULTS, direction: 'ltr' | 'rtl' = 'ltr'): Compiled<'ios' | 'android' | 'web'> => {
+    const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP }, { faults, profiles: 'derive', direction, rootFont: 'ahem' });
+    return project.compile(withFontMapAssets(fixtureToInput(id, page(`input { font-family: Lato; } ${css}`, body, BASE)), FONT_REFERENCE_MAP));
+  };
+  const field = '<input data-dragon-id="t" readonly="" value="Hello">';
+  const inRow = (css: string): readonly [string, string] => [`.r { display: flex; width: 200px; } ${css}`, `<div data-dragon-id="r" class="r">${field}</div>`];
+  const inBox = (box: string, css: string): readonly [string, string] => [`.wrap { ${box.startsWith('position') ? 'position: relative; height: 60px; ' : ''}width: 300px; } .w { ${box} } ${css}`, `<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="w" class="w">${field}</div></div>`];
+
+  const ACCEPTED: readonly (readonly [string, string, string])[] = [
+    ['fw-px', 'input { width: 40px; }', field],
+    ['fw-pct', 'input { width: 100%; max-width: 50px; min-width: 10%; }', field],
+    ['fw-calc', 'input { width: calc(50% + 10px); }', field],
+    ['fw-float-cap', ...inBox('float: left;', 'input { width: 120px; max-width: 100%; }')],
+    ['fw-ib-cap', ...inBox('display: inline-block;', 'input { width: 120px; max-width: 100%; }')],
+    ['fw-float-least', ...inBox('float: left;', 'input { width: 120px; min-width: 50%; }')],
+    ['fw-row-basis', ...inRow('input { flex: 1 1 0; min-width: 0; }')],
+    ['fw-row-basis-px', ...inRow('input { flex: 0 0 80px; min-width: 10px; max-width: 50%; }')],
+    ['fw-row-fill', ...inRow('input { width: 100%; min-width: 0; }')],
+    ['fw-col', '.c { display: flex; flex-direction: column; } input { width: 100%; min-width: 0; }', `<div data-dragon-id="c" class="c">${field}</div>`],
+  ];
+  for (const [id, css, body] of ACCEPTED) {
+    it(`accepts ${id} on every target, and the engine lays out its iOS projection`, () => {
+      const c = lato(id, css, body);
+      expect(errors(c)).toEqual([]);
+      const p = dragon.iosLayoutProjection(c, ENVIRONMENT, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      expect(engineLayout(p.input, referenceShapedMeasurer()).kind).toBe('ok');
+    });
+  }
+
+  // Each refused shape, refused by name on iOS and Android only, would read the intrinsic width: with fieldWidthAnyContext the engine throws.
+  const REFUSED: readonly (readonly [string, string, string, string, string?])[] = [
+    ['fw-auto', '', field, 'width: auto on <input> t is not supported here'],
+    ['fw-margin-auto', 'input { margin: 0 auto; }', field, 'width: auto on <input> t is not supported here'],
+    ['fw-fit', 'input { width: fit-content; }', field, 'width: fit-content on <input> t is not supported here'],
+    ['fw-max-content', 'input { width: max-content; }', field, 'width: max-content on <input> t is not supported here'],
+    ['fw-min-intrinsic', 'input { width: 40px; min-width: min-content; }', field, 'min-width: min-content on <input> t is not supported here'],
+    ['fw-max-intrinsic', 'input { width: 40px; max-width: max-content; }', field, 'max-width: max-content on <input> t is not supported here'],
+    ['fw-flex-min', ...inRow('.r { width: 100px; } input { flex: 1; width: 100%; }'), '<input> t is a flex item with min-width: auto'],
+    ['fw-row-auto', ...inRow('input { min-width: 0; }'), 'width: auto on <input> t is not supported here'],
+    // The engine refuses flex-basis: content itself, before it reads the field.
+    ['fw-basis-content', ...inRow('input { flex-basis: content; width: 10px; min-width: 0; }'), 'flex-basis: content on <input> t is not supported', 'flex-basis-content'],
+    ['fw-col-auto', '.c { display: flex; flex-direction: column; align-items: start; } input { min-width: 0; }', `<div data-dragon-id="c" class="c">${field}</div>`, 'width: auto on <input> t is not supported here'],
+    ['fw-ib-pct', ...inBox('display: inline-block;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (display: inline-block with an auto width)'],
+    ['fw-float-pct', ...inBox('float: left;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (float: left with an auto width)'],
+    ['fw-abspos-pct', ...inBox('position: absolute; top: 0; left: 0;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (position: absolute with an auto width)'],
+  ];
+  for (const [id, css, body, prefix, thrown = 'text-field-avg-char'] of REFUSED) {
+    it(`refuses ${id} on iOS and Android only, and with fieldWidthAnyContext the engine throws ${thrown}`, () => {
+      const c = lato(id, css, body);
+      expect(avg(c).map((e) => e.slice(0, e.indexOf(' ', e.indexOf(' ') + 1)))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
+      expect(c.diagnostics.find((d) => d.message.includes('average character width'))?.message.startsWith(prefix)).toBe(true);
+      expect(errors(c).filter((e) => e.startsWith('web ') || e.startsWith('all '))).toEqual([]);
+      const faulted = lato(id, css, body, { ...dragon.NO_FAULTS, fieldWidthAnyContext: true });
+      expect(errors(faulted)).toEqual([]);
+      const p = dragon.iosLayoutProjection(faulted, ENVIRONMENT, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const r = engineLayout(p.input, referenceShapedMeasurer());
+      expect(r.kind === 'unsupported' ? `${r.unsupported.code} at ${r.unsupported.nodeId}` : r.kind).toBe(`${thrown} at t`);
+    });
+  }
+
+  // Refused by ruling, not because the engine reads the intrinsic width there, so no fault can make them throw.
+  const RULED: readonly (readonly [string, string, string, string])[] = [
+    ['fw-stretch', 'input { width: stretch; }', field, 'width: stretch on <input> t'],
+    ['fw-row-pct-basis', ...inRow('input { flex: 1 1 50%; min-width: 0; }'), 'width: auto on <input> t'],
+    ['fw-basis-pct-shrink', ...inBox('display: inline-flex;', 'input { flex: 0 0 50%; width: 10px; min-width: 0; }'), 'flex-basis: 50% on <input> t is not supported here: <div> w takes its width from its content (display: inline-flex with an auto width)'],
+  ];
+  for (const [id, css, body, prefix] of RULED) {
+    it(`refuses ${id} on iOS and Android only (out of FW1's scope by ruling)`, () => {
+      const c = lato(id, css, body);
+      expect(avg(c).map((e) => e.slice(0, e.indexOf(' ', e.indexOf(' ') + 1)))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
+      expect(c.diagnostics.find((d) => d.message.includes('average character width'))?.message.startsWith(prefix)).toBe(true);
+      expect(errors(c).filter((e) => e.startsWith('web ') || e.startsWith('all '))).toEqual([]);
+    });
+  }
+
+  it('reads the first listed family with its case: only Ahem first is measured', () => {
+    const auto = (id: string, family: string): number => avg(compile(id, `input { font-family: ${family}; }`, field, BASE, true)).length;
+    expect([auto('fw-ahem', 'Ahem'), auto('fw-ahem-list', 'Ahem, Lato'), auto('fw-ahem-quoted', '"Ahem", sans-serif')]).toEqual([0, 0, 0]);
+    expect([auto('fw-ahem-lower', 'ahem'), auto('fw-lato-ahem', 'Lato, Ahem'), auto('fw-generic', 'sans-serif')]).toEqual([2, 2, 2]);
+  });
+
+  it('an rtl field in Lato is refused by its editor white space (DRAGON_UNSUPPORTED_BIDI), so the fixture is ltr only', () => {
+    expect(errors(lato('fw-rtl', 'input { width: 100%; }', field, dragon.NO_FAULTS, 'rtl'))).toContainEqual(expect.stringMatching(/^all DRAGON_UNSUPPORTED_BIDI t::editor:text0 keeps its white space/));
+  });
+});
+
+const ACCEPT = 'controls-text-field-font-definite';
+const specOf = (id: string) => {
+  const f = FIXTURES.find((x) => x.id === id);
+  if (f === undefined) throw new Error(`no fixture ${id}`);
+  return f;
+};
+
+describe('the FW1 fixtures against live Chrome', () => {
+  let browser: Browser;
+  beforeAll(async () => {
+    requireReferencePlatform(hostPlatform());
+    browser = await launchChrome();
+    expect(browser.version()).toBe(CHROME_VERSION);
+  });
+  afterAll(async () => {
+    await browser.close();
+  });
+  const live = () => ({ authored: liveAuthored(browser), faults: dragon.NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' as const });
+
+  it(`${ACCEPT} passes chrome-dual and linux-dragon-layout`, async () => {
+    const out = await runFixture(specOf(ACCEPT), browser, live());
+    expect(out.reason).toBeNull();
+    expect(out.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual([['ltr', 'pass', 'pass']]);
+  }, 300_000);
+});
+
+describe(`${ACCEPT} equals live Chrome at every DPR`, () => {
+  const cases = layoutCases().filter((f) => f.spec.id === ACCEPT).flatMap((f) => f.cases);
+  const compiled = { ltr: compileFixture(specOf(ACCEPT), dragon.NO_FAULTS, 'derive', 'ltr').compiled };
+  for (const dpr of DPRS) {
+    it(`at DPR ${dpr}`, async () => {
+      expect(cases.length).toBe(1);
+      const b = await launchChrome(dpr);
+      try {
+        await zoomGuard(b, dpr);
+        const failed: string[] = [];
+        for (const c of cases) {
+          const capture = await captureFixture(b, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], c.authoredPrepare ?? undefined);
+          expect(capture.devicePixelRatio).toBe(dpr);
+          const o = runDprCase(c, compiled.ltr, dpr, capture, NO_ENGINE_FAULTS);
+          if (o.status === 'fail') failed.push(`${o.id}@${o.dpr}: ${o.reason}`);
+        }
+        expect(failed).toEqual([]);
+      } finally {
+        await b.close();
+      }
+    }, 300_000);
+  }
 });

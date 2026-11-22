@@ -1122,8 +1122,9 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'button-block' };
   }
   if (k === 'text-field') {
-    const o = obj(v, ['kind', 'size', 'font', 'lineHeight'], path);
-    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+    const o = obj(v, ['kind', 'size', 'font', 'lineHeight', 'avgChar'], path);
+    const avgChar = lit(field(o, 'avgChar', path), ['ahem', 'unmeasured'], `${path}.avgChar`) === 'ahem' ? 'ahem' : 'unmeasured';
+    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), avgChar };
   }
   if (k === 'text-editor') {
     obj(v, ['kind'], path);

@@ -43,6 +43,7 @@ import type {
   TextAlign,
   TextIndentValue,
   TextBoxTrim,
+  TextFieldAvgChar,
   TextOverflow,
   TextWrapStyle,
   TextLeaf,
@@ -56,7 +57,8 @@ import type {
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
-import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { exactLayoutRatio, familyListText, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { parseFamilyList } from '../fonts/family-list.ts';
 import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
@@ -620,6 +622,13 @@ const AHEM_EXPECTED = 'Ahem (the milestone-1 layout font)';
 /** The face id of the bundled Ahem, as the engine names it (layout text.ts AHEM_FACE_ID); other faces are sha256:<hex>. */
 export const AHEM_FACE = 'Ahem';
 
+/** Whether a text field's average character width is Ahem's: its first listed family, case preserved, is Ahem (input.ts TextFieldAvgChar). */
+export function textFieldAvgChar(family: CssValue): TextFieldAvgChar {
+  const text = familyListText(family);
+  const first = text === null ? undefined : parseFamilyList(text)?.[0];
+  return first?.kind === 'family' && first.name === 'Ahem' ? 'ahem' : 'unmeasured';
+}
+
 /** The lowering's font refusal for a text node, or null: the analysis reports it for every case before any lowering (T005 rec 3). */
 export function textFontProblem(t: ResolvedText): string | null {
   const family = (t.props.get('font-family') as ResolvedValue).value;
@@ -1021,7 +1030,7 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
     // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font
     // and line height, which decide its default width and its editor's line height (the engine's controls.ts).
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight }, strut, children };
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, avgChar: textFieldAvgChar((el.props.get('font-family') as ResolvedValue).value) }, strut, children };
   }
   if (field !== undefined) {
     // The inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at rest it

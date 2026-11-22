@@ -592,7 +592,7 @@ export type ReplacedLeaf = {
  *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
  * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent);
  * - text-field (FORM-b): a single-line text field, a block container of its placeholder (if any) and its inner editor. Its intrinsic
- *   content inline size is size x the advance of 0 in its font, rounded up to a whole px; its auto content height is the editor's,
+ *   content inline size is size x the advance of 0 in its font, rounded up to a whole px, read only when avgChar is ahem; its auto content height is the editor's,
  *   which it centres unsafely in the block axis, and the placeholder is centred on the editor. font and lineHeight are the input's
  *   own, which decide the editor's line height (controls.ts textEditorLineHeight);
  * - text-editor: the inner editor, a block container holding the value's text;
@@ -606,11 +606,18 @@ export type ReplacedLeaf = {
  *   gives its inner element the internal margins and paddings and its drop-down arrow (controls.ts), and 0 for appearance: none;
  * - select-inner: the inner element, a block container holding the shown option's label; empty, it still holds one line.
  */
+/**
+ * Where a text field's average character width is proven: ahem when its first listed family is Ahem, whose advance of 0 is Chrome's
+ * average (both 1em); unmeasured otherwise, which the compiler accepts only where the field's used width never reads its intrinsic
+ * width, and the engine refuses to read (text-field-avg-char).
+ */
+export type TextFieldAvgChar = 'ahem' | 'unmeasured';
+
 export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
   | { readonly kind: 'button-block' }
-  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly avgChar: TextFieldAvgChar }
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }

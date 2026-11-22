@@ -36,6 +36,9 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
+  // FIELD-font-width FW1: a field in a face Dragon does not measure, accepted natively only where its width never reads its intrinsic
+  // width. ltr only, as controls-text-field: an rtl field's editor keeps its white space in an rtl block (DRAGON_UNSUPPORTED_BIDI).
+  layout('controls-text-field-font-definite'),
   both('controls-select-none'),
   both('controls-select-button'),
   layout('controls-select-label'),

@@ -687,9 +687,10 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
     // css-sizing-4 §3.1: stretch fills the space the margins leave (auto margins as 0), whatever box-sizing says.
     if (k === 'stretch') return stretched;
-    const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
+    const sized = node.kind === 'control' && node.control.kind === 'text-field' ? node : box;
+    const minC = add(intrinsicContentInlineSize(ctx, sized, 'min'), hbp);
     if (k === 'min-content') return minC;
-    const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
+    const maxC = add(intrinsicContentInlineSize(ctx, sized, 'max'), hbp);
     if (k === 'max-content') return maxC;
     return min(maxC, max(minC, stretched));
   };
@@ -700,8 +701,8 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
   // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
   const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'text-field' || node.control.kind === 'legend');
-  const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
-  const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  const auto = (): LU => (fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched);
+  const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto() : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
   const mm: MinMax = { min: keywordMin !== null ? keywordMin : lengths.min, max: keywordMax !== null ? keywordMax : lengths.max };
   const width = keywordWidth === null && specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, mm), hbp);

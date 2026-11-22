@@ -267,7 +267,7 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
     const normal = editorLineHeightIsNormal(c, style, env);
     const children = normal ? b.children.map((k) => (k.kind === 'control' && k.control.kind === 'text-editor' ? withNormalLineHeight(k) : k)) : b.children;
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight, avgChar: c.avgChar }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
   }
   if (c.kind === 'select-menulist') {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
