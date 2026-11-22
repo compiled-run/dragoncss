@@ -33,6 +33,7 @@ import type { InteractionPartition, InteractionValue } from './analysis/interact
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import { isCheckboxType } from './analysis/elements/controls.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -1146,6 +1147,42 @@ const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initi
  * there) refuses every interaction rule on that target, naming SELD-R2b. Run after the value checks, so a refused value is not
  * counted as compiled.
  */
+/**
+ * FORM-checkbox: Chrome draws a themed checkbox in its pressed or hovered colours while it is :active or :hover, which Dragon does
+ * not draw yet, so an author rule that tests either on a themed checkbox is refused on native rather than shown beside the resting
+ * colours.
+ */
+function checkboxPressRefusals(cases: readonly CaseResult[], targets: readonly KnownTarget[], diagnostics: Diagnostic[]): void {
+  const seen = new Set<string>();
+  for (const c of cases) {
+    if (c.resolved === null || c.partition === null) continue;
+    const p = c.partition;
+    for (const el of themedCheckboxes(c.resolved)) {
+      for (const pseudo of ['hover', 'active'] as const) {
+        if (!p.candidates[pseudo].includes(el.element.address)) continue;
+        for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
+          const id = `${t}|${pseudo}|${el.element.address}`;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: el.element.node.origin, target: t, message: `:${pseudo} on the themed checkbox ${el.element.address} is not supported: Dragon does not draw Chrome's ${pseudo === 'hover' ? 'hovered' : 'pressed'} checkbox colours yet (FORM-checkbox)`, manual: `Style the state on a wrapper element, or with a component state.` }));
+        }
+      }
+    }
+  }
+}
+
+/** The input[type=checkbox] elements of a resolved tree whose appearance is auto, in preorder. */
+function themedCheckboxes(root: ResolvedElement): ResolvedElement[] {
+  const out: ResolvedElement[] = [];
+  const visit = (el: ResolvedElement): void => {
+    const a = el.props.get('appearance');
+    if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type')) && a !== undefined && a.value.kind === 'keyword' && a.value.value === 'auto') out.push(el);
+    for (const k of el.children) if (k.kind === 'element') visit(k);
+  };
+  visit(root);
+  return out;
+}
+
 function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): void {
   // Forced-only :focus and :focus-visible need no hit test, so outside the lanes this runs whenever gateInteractionFeatures could
   // accept a mouse or touch row: an enforced profile of a target here proves one.
@@ -1661,6 +1698,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
+      checkboxPressRefusals(cases, targets, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
       // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
       // lane-only on native and proves no native row (pipeline.ts). So is one with a unicode-bidi that can reorder text (analysis/bidi.ts).

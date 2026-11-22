@@ -168,3 +168,30 @@ export function menuListArrow(left: number, top: number, width: number, height: 
   ];
   return { shape: { kind: 'path', segments: segments }, strokeWidth: 2 };
 }
+
+/**
+ * FORM-checkbox: what Chrome's theme draws for a checkbox, in device px from its snapped border box's top left: the largest centred
+ * square, a plain square when it is at most 2 CSS px, else a background inset 0.2, a 1 px border inset 0.5 and the check's three
+ * points with its stroke width, every length scaled by zoom (native_theme_base.cc NativeThemeBase::PaintCheckbox, PaintCheckboxRadioCommon).
+ */
+export type CheckboxMarks = {
+  readonly x: number;
+  readonly y: number;
+  readonly side: number;
+  readonly plain: boolean;
+  readonly radius: number;
+  readonly backgroundInset: number;
+  readonly borderInset: number;
+  readonly borderWidth: number;
+  readonly check: readonly number[];
+  readonly checkWidth: number;
+};
+
+/** The checkbox marks of a border box width x height device px at zoom (the device pixel ratio). */
+export function checkboxMarks(width: number, height: number, zoom: number): CheckboxMarks {
+  const side = width < height ? width : height;
+  const x = (width - side) / 2;
+  const y = (height - side) / 2;
+  const check: number[] = [x + side * 0.2, y + side / 2, x + side * 0.4, y + side * 0.7, x + side * 0.8, y + side * 0.2];
+  return { x: x, y: y, side: side, plain: side <= 2 * zoom, radius: 2 * zoom, backgroundInset: 0.2 * zoom, borderInset: 0.5 * zoom, borderWidth: zoom, check: check, checkWidth: side * 0.16 };
+}

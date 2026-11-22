@@ -4364,10 +4364,17 @@
       "fileSha256": "bc7f19f1b86b74ff20f138e68f5807e288e9443ab48b9ac7be2b85e56fbcd738",
       "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
       "ranges": [
-        { "lines": "691-800", "symbol": "NativeThemeBase::PaintMenuList", "source": "cited" }
+        { "lines": "691-800", "symbol": "NativeThemeBase::PaintMenuList", "source": "cited" },
+        { "lines": "46-46", "symbol": "kCheckboxSize", "source": "located" },
+        { "lines": "600-651", "symbol": "NativeThemeBase::PaintCheckbox", "source": "located" },
+        { "lines": "1083-1139", "symbol": "NativeThemeBase::PaintCheckboxRadioCommon", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrow", "use": "port" }
+        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrow", "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "CheckboxMarks", "use": "port" },
+        { "file": "packages/dragon/src/forms/checkbox.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/forms/checkbox.ts", "symbol": "CHECKBOX_PART_SIZE", "use": "reference" },
+        { "file": "packages/dragon/src/lower/ios-layout.ts", "symbol": "lowerBox", "use": "reference" }
       ]
     },
     {

@@ -37,6 +37,15 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-flex'),
   layout('controls-text-field'),
   layout('controls-textarea'),
+  // FORM-checkbox: a themed checkbox, 13px unless sized, as a block, a flex item (the notes form's row) and a column flex item, checked
+  // and not, under a dark and a light accent; the rejects name what the slice does not draw.
+  both('controls-checkbox'),
+  reject('reject-checkbox-inline', 'DRAGON_UNSUPPORTED_VALUE', 'inline-block', 'display: inline-block on <input> c makes it an inline-level control'),
+  reject('reject-checkbox-appearance', 'DRAGON_UNSUPPORTED_VALUE', 'none', 'appearance: none on <input type=checkbox> c is not supported'),
+  reject('reject-checkbox-padding', 'DRAGON_UNSUPPORTED_VALUE', '3px', 'padding-top: 3px on <input type=checkbox> c is not supported'),
+  reject('reject-checkbox-accent-alpha', 'DRAGON_UNSUPPORTED_VALUE', 'rgb(0 0 0 / 0.5)', 'a translucent accent-color on <input type=checkbox> c'),
+  reject('reject-checkbox-disabled', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="c" type="checkbox" disabled="">', 'a disabled <input type=checkbox> c is not supported'),
+  reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="c" type="radio">', '<input> c of type radio is not supported'),
   both('controls-select-none'),
   both('controls-select-button'),
   layout('controls-select-label'),
