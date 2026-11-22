@@ -70,6 +70,27 @@ export function groupComposite(lr: number, lg: number, lb: number, la: number, d
   return groupPack(s32aChannel(dr, lr, a256, ds), s32aChannel(dg, lg, a256, ds), s32aChannel(db, lb, a256, ds), s32aChannel(da, la, a256, ds));
 }
 
+/** One channel of a groupPack value: the byte at place value unit (1, 256, 65536 or 16777216). */
+function packedChannel(p: number, unit: number): number {
+  return floorOf(p / unit) - floorOf(p / (unit * 256)) * 256;
+}
+
+/**
+ * A group in a compositor layer of its own over transparent pixels (Chrome 145 gives content painted after a composited sticky box
+ * such a layer): its layer blitted onto transparent at a8 (groupComposite), then that layer drawn over dst by the compositor, each
+ * channel p + round(d * (255 - pa) / 255). Measured equal to Chrome at 256 colour, opacity and backdrop cells at DPR 2 and 3, where
+ * groupComposite over dst differs at 190.
+ */
+export function groupCompositeLayered(lr: number, lg: number, lb: number, la: number, dr: number, dg: number, db: number, da: number, a8: number): number {
+  const p = groupComposite(lr, lg, lb, la, 0, 0, 0, 0, a8, false);
+  const pr = packedChannel(p, 1);
+  const pg = packedChannel(p, 256);
+  const pb = packedChannel(p, 65536);
+  const pa = packedChannel(p, 16777216);
+  const k = 255 - pa;
+  return groupPack(pr + mulDiv255Round(dr, k), pg + mulDiv255Round(dg, k), pb + mulDiv255Round(db, k), pa + mulDiv255Round(da, k));
+}
+
 /** cc's raster tile size in device px for the reference Chrome (Mac) at a device scale factor (paint-dither.ts ccTileSize). */
 export function groupTileSize(dpr: number): number {
   return ccTileSize(true, dpr);

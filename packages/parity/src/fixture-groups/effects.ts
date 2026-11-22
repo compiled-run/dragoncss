@@ -22,7 +22,9 @@
 // translated group with a bordered child, a translated group, a scaled group with text, a scaled rounded group over an earlier
 // rounded box, a scaled group and an unscaled one over earlier text (PNT1-opacity-d: the platform draws the backdrop). A sticky header
 // with an opaque background holding a rounded link, a translucent bordered tag and a scaled pressed button after brand text, on a page
-// that overflows (Chrome gives the header a compositor layer) and on one that does not (-sticky, -sticky-short). Every group sits clear of the cc raster tile seams at DPR 2, 3
+// that overflows (Chrome gives the header a compositor layer) and on one that does not (-sticky, -sticky-short). A scaled pressed
+// button painted right after a sticky header, over text and a card, on a page that overflows (Chrome composites it in a layer of its
+// own, in two steps: groupCompositeLayered) and on one that does not (-after-sticky, -after-sticky-short). Every group sits clear of the cc raster tile seams at DPR 2, 3
 // and 2.625 in both directions (x in 16-48, 64-96 or 104-136 css px, y below 168). opacity-web holds the fractional cases (0.3,
 // 45%, an inherited 0.5, translucent groups with a child, text and a border): the lanes compile it on native as a lane-only case
 // (project.ts), so it proves web rows only, and the device pixel lanes skip what its groups paint (pixel-reference.ts devicePoints).
@@ -66,6 +68,8 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-group-transform'),
   both('opacity-group-sticky'),
   both('opacity-group-sticky-short'),
+  both('opacity-group-after-sticky'),
+  both('opacity-group-after-sticky-short'),
   reject('opacity-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(50% + 10%)', 'opacity: calc(50% + 10%) is unsupported:'),
   both('stacking-basic'),
   both('stacking-context'),

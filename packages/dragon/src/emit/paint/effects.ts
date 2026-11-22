@@ -108,7 +108,7 @@ public func dragonGroupsChanged() {
 
 /// The group write of a box (runtime writer): the computed opacity, its backdrop box (always nil: the platform draws the backdrop) and
 /// the earlier groups its backdrop holds. The view keeps alpha 1; the overlay shows Chrome's composite.
-public func dragonSetOpacityGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity: Double, _ backdrop: String?, _ painters: [String]) {
+public func dragonSetOpacityGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity: Double, _ backdrop: String?, _ painters: [String], after: String? = nil) {
   if !(opacity > 0 && opacity < 1) { fatalError("dragon: \(v.dragonId): group opacity \(opacity) is not in (0, 1)") }
   let raw: Double
   do { raw = try paint_opacityAlpha8(opacity) } catch { fatalError("dragon: \(v.dragonId): paint_opacityAlpha8 failed: \(error)") }
@@ -117,14 +117,14 @@ public func dragonSetOpacityGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity
   v.dragonOpacity = opacity
   v.alpha = 1
   if v.dragonGroup != nil { fatalError("dragon: \(v.dragonId): a second group write") }
-  let g = DragonGroupView(tree: t, group: v, alpha8: dragonAlphaPlantIgnored ? 255 : alpha8, backdrop: backdrop, painters: painters)
+  let g = DragonGroupView(tree: t, group: v, alpha8: dragonAlphaPlantIgnored ? 255 : alpha8, backdrop: backdrop, painters: painters, after: after)
   v.dragonGroup = g
   v.dragonContainer.addSubview(g)
 }
 
 /// PNT1-filter: the group write of a box with a colour-matrix filter (runtime writer): its computed opacity (1 for none), the
 /// filter as (code, amount) pairs, its backdrop box and painters. The overlay applies the filter to the layer, then the opacity.
-public func dragonSetFilterGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity: Double, _ filter: [Double], _ backdrop: String?, _ painters: [String]) {
+public func dragonSetFilterGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity: Double, _ filter: [Double], _ backdrop: String?, _ painters: [String], after: String? = nil) {
   if !(opacity > 0 && opacity <= 1) { fatalError("dragon: \(v.dragonId): filter group opacity \(opacity) is not in (0, 1]") }
   if filter.isEmpty { fatalError("dragon: \(v.dragonId): a filter group with no filter function") }
   let raw: Double
@@ -136,7 +136,7 @@ public func dragonSetFilterGroup(_ t: DragonTree, _ v: DragonBoxView, _ opacity:
   v.dragonOpacity = opacity
   v.alpha = 1
   if v.dragonGroup != nil { fatalError("dragon: \(v.dragonId): a second group write") }
-  let g = DragonGroupView(tree: t, group: v, alpha8: dragonAlphaPlantIgnored ? 255 : alpha8, backdrop: backdrop, painters: painters, filter: filter, matrices: matrices)
+  let g = DragonGroupView(tree: t, group: v, alpha8: dragonAlphaPlantIgnored ? 255 : alpha8, backdrop: backdrop, painters: painters, after: after, filter: filter, matrices: matrices)
   v.dragonGroup = g
   v.dragonContainer.addSubview(g)
 }
@@ -222,6 +222,24 @@ func dragonGroupLineInk(_ tv: DragonTextView, _ font: UIFont, _ l: DragonLineSpe
   return [o[0].rounded(.down), o[1].rounded(.down), o[2].rounded(.up), o[3].rounded(.up)]
 }
 
+/// D3: whether the page's boxes reach past the root (the viewport), so Chrome's root scroller overflows and composites sticky boxes;
+/// boxes inside an overflow clip or scroller are not the page's overflow.
+func dragonRootOverflows(_ root: UIView) -> Bool {
+  let w = root.bounds.width, h = root.bounds.height
+  func walk(_ v: UIView) -> Bool {
+    for c in v.subviews {
+      if c is DragonBoxView {
+        let r = dragonLayoutRect(c, in: root)
+        if r.maxX > w || r.maxY > h || r.minX < 0 || r.minY < 0 { return true }
+      }
+      if c is DragonClipView { continue }
+      if walk(c) { return true }
+    }
+    return false
+  }
+  return walk(root)
+}
+
 /// Every layer's pending drawing done, so render(in:) sees this frame's contents.
 func dragonDisplayTree(_ l: CALayer) {
   l.displayIfNeeded()
@@ -236,6 +254,8 @@ public final class DragonGroupView: UIView {
   public let dragonAlpha8: Int
   public let dragonBackdrop: String?
   public let dragonPainters: [String]
+  /// D3: the sticky box painted before this group, after which Chrome composites it in a layer of its own when the page scrolls.
+  public let dragonAfter: String?
   /// PNT1-filter: the group's colour-matrix filter as (code, amount) pairs, and its matrices; empty and nil for an opacity group.
   public let dragonFilter: [Double]
   let dragonMatrices: JsArray<Double>?
@@ -246,7 +266,8 @@ public final class DragonGroupView: UIView {
   public private(set) var dragonQRect: [Int] = [0, 0, 0, 0]
   /// D2: whether the sticky or fixed box's opaque background held the group's mapped extent at the last composite (true without one).
   public private(set) var dragonContained = true
-  public init(tree: DragonTree, group: DragonBoxView, alpha8: Int, backdrop: String?, painters: [String], filter: [Double] = [], matrices: JsArray<Double>? = nil) {
+  public init(tree: DragonTree, group: DragonBoxView, alpha8: Int, backdrop: String?, painters: [String], after: String? = nil, filter: [Double] = [], matrices: JsArray<Double>? = nil) {
+    dragonAfter = after
     dragonTree = tree
     dragonGroupBox = group
     dragonAlpha8 = alpha8
@@ -461,6 +482,8 @@ public final class DragonGroupView: UIView {
       }
       q = [UInt8](repeating: 0, count: w * h * 4)
       let a8 = Double(dragonAlpha8)
+      // D3: after a sticky box on a page that scrolls, Chrome composites the group in a layer of its own over transparent pixels.
+      let layered = dragonAfter != nil && dragonRootOverflows(root)
       do {
         for y in 0..<h {
           for x in 0..<w {
@@ -471,6 +494,8 @@ public final class DragonGroupView: UIView {
               packed = 0
             } else if let m = dragonMatrices {
               packed = try paintGroup_groupFilterComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), m, a8)
+            } else if layered {
+              packed = try paintGroup_groupCompositeLayered(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8)
             } else {
               packed = try paintGroup_groupComposite(Double(lp[i]), Double(lp[i + 1]), Double(lp[i + 2]), Double(lp[i + 3]), Double(bp[i]), Double(bp[i + 1]), Double(bp[i + 2]), Double(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))
             }
@@ -697,6 +722,7 @@ import android.view.ViewTreeObserver
 import dev.dragon.dump.DumpJson
 import dev.dragon.layout.JsArray
 import dev.dragon.layout.paintGroup_groupComposite
+import dev.dragon.layout.paintGroup_groupCompositeLayered
 import dev.dragon.layout.paintGroup_groupFill
 import dev.dragon.layout.paintGroup_groupFilterComposite
 import dev.dragon.layout.paintGroup_groupFilterMatrices
@@ -755,6 +781,26 @@ object DragonGroups {
   var backdropSkip: Set<View> = emptySet()
 }
 
+/**
+ * D3: whether the page's boxes reach past the root (the viewport), so Chrome's root scroller overflows and composites sticky boxes;
+ * boxes inside an overflow clip or scroller are not the page's overflow.
+ */
+fun dragonRootOverflows(root: ViewGroup): Boolean {
+  fun walk(v: ViewGroup): Boolean {
+    for (i in 0 until v.childCount) {
+      val c = v.getChildAt(i)
+      if (c is DragonBoxView) {
+        val o = dragonLayoutOffset(c, root)
+        if (o[0] < 0 || o[1] < 0 || o[0] + c.width > root.width || o[1] + c.height > root.height) return true
+      }
+      if (c is DragonClipView) continue
+      if (c is ViewGroup && walk(c)) return true
+    }
+    return false
+  }
+  return walk(root)
+}
+
 /** A box's layout or paint changed: every overlay's composite is stale (DragonBoxView.invalidate calls this). */
 fun dragonGroupsChanged() {
   if (DragonGroups.computing > 0) return
@@ -765,14 +811,14 @@ fun dragonGroupsChanged() {
  * The group write of a box (runtime writer): the computed opacity, its backdrop box (null for the canvas) and the painters before it
  * there in paint order. The view keeps alpha 1; the overlay shows Chrome's composite.
  */
-fun dragonSetOpacityGroup(t: DragonTree, v: DragonBoxView, opacity: Double, backdrop: String?, painters: List<String>) {
+fun dragonSetOpacityGroup(t: DragonTree, v: DragonBoxView, opacity: Double, backdrop: String?, painters: List<String>, after: String? = null) {
   if (!(opacity > 0.0 && opacity < 1.0)) throw IllegalStateException("dragon: " + v.dragonId + ": group opacity " + opacity + " is not in (0, 1)")
   val alpha8 = dragonCheckedInt(paint_opacityAlpha8(opacity), v.dragonId + " alpha byte")
   v.dragonAlpha8 = alpha8
   v.dragonOpacity = opacity
   v.alpha = 1f
   if (v.dragonGroup != null) throw IllegalStateException("dragon: " + v.dragonId + ": a second group write")
-  val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters)
+  val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters, after)
   v.dragonGroup = g
   v.dragonContainer.addView(g)
 }
@@ -781,7 +827,7 @@ fun dragonSetOpacityGroup(t: DragonTree, v: DragonBoxView, opacity: Double, back
  * PNT1-filter: the group write of a box with a colour-matrix filter (runtime writer): its computed opacity (1 for none), the filter
  * as (code, amount) pairs, its backdrop box and painters. The overlay applies the filter to the layer, then the opacity.
  */
-fun dragonSetFilterGroup(t: DragonTree, v: DragonBoxView, opacity: Double, filter: List<Double>, backdrop: String?, painters: List<String>) {
+fun dragonSetFilterGroup(t: DragonTree, v: DragonBoxView, opacity: Double, filter: List<Double>, backdrop: String?, painters: List<String>, after: String? = null) {
   if (!(opacity > 0.0 && opacity <= 1.0)) throw IllegalStateException("dragon: " + v.dragonId + ": filter group opacity " + opacity + " is not in (0, 1]")
   if (filter.isEmpty()) throw IllegalStateException("dragon: " + v.dragonId + ": a filter group with no filter function")
   val alpha8 = dragonCheckedInt(paint_opacityAlpha8(opacity), v.dragonId + " alpha byte")
@@ -790,7 +836,7 @@ fun dragonSetFilterGroup(t: DragonTree, v: DragonBoxView, opacity: Double, filte
   v.dragonOpacity = opacity
   v.alpha = 1f
   if (v.dragonGroup != null) throw IllegalStateException("dragon: " + v.dragonId + ": a second group write")
-  val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters, filter, matrices)
+  val g = DragonGroupView(v.context, t, v, if (DRAGON_ALPHA_PLANT_IGNORED) 255 else alpha8, backdrop, painters, after, filter, matrices)
   v.dragonGroup = g
   v.dragonContainer.addView(g)
 }
@@ -875,7 +921,7 @@ fun dragonGroupLineInks(tv: DragonTextView, ox: Double, oy: Double): List<Double
  * A pre-composited group's overlay: the last child of the group's view, framed at the group's extent (which may reach outside the
  * group's box), drawing the composite Q pixel for pixel. It draws nothing while the group is drawn into its layer.
  */
-class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupBox: DragonBoxView, val dragonAlpha8: Int, val dragonBackdrop: String?, val dragonPainters: List<String>, val dragonFilter: List<Double> = emptyList(), private val dragonMatrices: JsArray<Double>? = null) : View(ctx), ViewTreeObserver.OnPreDrawListener {
+class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupBox: DragonBoxView, val dragonAlpha8: Int, val dragonBackdrop: String?, val dragonPainters: List<String>, val dragonAfter: String? = null, val dragonFilter: List<Double> = emptyList(), private val dragonMatrices: JsArray<Double>? = null) : View(ctx), ViewTreeObserver.OnPreDrawListener {
   /** This view's frame in the group's view: left, top, right, bottom in device px. */
   val dragonFrame = IntArray(4)
   var dragonDirty = true
@@ -1133,13 +1179,15 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       }
       q = ByteArray(w * h * 4)
       val a8 = dragonAlpha8.toDouble()
+      // D3: after a sticky box on a page that scrolls, Chrome composites the group in a layer of its own over transparent pixels.
+      val layered = dragonAfter != null && dragonRootOverflows(root)
       fun u(b: Byte): Double = (b.toInt() and 0xff).toDouble()
       for (y in 0 until h) {
         for (x in 0 until w) {
           val i = (y * w + x) * 4
           val m = dragonMatrices
           // The group drew nothing here: the platform's own backdrop shows through.
-          val v = if (lp[i + 3].toInt() == 0) 0L else (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
+          val v = if (lp[i + 3].toInt() == 0) 0L else if (layered) paintGroup_groupCompositeLayered(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8).toLong() else (if (m != null) paintGroup_groupFilterComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), m, a8) else paintGroup_groupComposite(u(lp[i]), u(lp[i + 1]), u(lp[i + 2]), u(lp[i + 3]), u(bp[i]), u(bp[i + 1]), u(bp[i + 2]), u(bp[i + 3]), a8, folds(ext[0] + x, ext[1] + y))).toLong()
           q[i] = (v and 0xffL).toByte(); q[i + 1] = ((v shr 8) and 0xffL).toByte(); q[i + 2] = ((v shr 16) and 0xffL).toByte(); q[i + 3] = ((v shr 24) and 0xffL).toByte()
         }
       }
@@ -1352,8 +1400,9 @@ const optStr = (lang: 'swift' | 'kotlin', x: string | null): string => (x === nu
 const lineOf = (lang: 'swift' | 'kotlin', v: string, w: EffectsWrite): string => {
   if (w.kind === 'opacity') return `  dragonSetOpacity(${v}, ${opacityLit(w.opacity)})`;
   if (w.kind === 'opacity-nested') return `  dragonSetNestedGroup(${v}, ${opacityLit(w.opacity)})`;
-  if (w.kind === 'opacity-group') return `  dragonSetOpacityGroup(t, ${v}, ${opacityLit(w.opacity)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
-  return `  dragonSetFilterGroup(t, ${v}, ${w.opacity === 1 ? '1.0' : opacityLit(w.opacity)}, ${pairsLit(lang, w.filter)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
+  const after = w.after === undefined ? '' : lang === 'swift' ? `, after: ${nativeString(lang, w.after)}` : `, after = ${nativeString(lang, w.after)}`;
+  if (w.kind === 'opacity-group') return `  dragonSetOpacityGroup(t, ${v}, ${opacityLit(w.opacity)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)}${after})`;
+  return `  dragonSetFilterGroup(t, ${v}, ${w.opacity === 1 ? '1.0' : opacityLit(w.opacity)}, ${pairsLit(lang, w.filter)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)}${after})`;
 };
 
 export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group' | 'opacity-nested', 'alpha-ignored' | 'group-backdrop-unhidden'> = {
