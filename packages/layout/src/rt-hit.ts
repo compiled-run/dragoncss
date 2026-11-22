@@ -14,7 +14,7 @@ import { isScrollContainer, resolveBorder } from './box.ts';
 import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
-import type { ControlBox, LayoutBox, LayoutInput, LayoutNode, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { ControlBox, InlineChild, LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
@@ -683,7 +683,7 @@ function hitModelsControl(c: ControlBox): boolean {
 function hitControlBox(c: ControlBox): LayoutBox {
   if (!hitModelsControl(c)) throw new HitError(controlRefusal(c.id));
   if (c.control.kind === 'button-block') return controlAsBox(c);
-  const none: LayoutNode[] = [];
+  const none: (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] = [];
   return { kind: 'box', id: c.id, boxType: c.boxType, style: c.style, strut: c.strut, marker: null, children: none };
 }
 
