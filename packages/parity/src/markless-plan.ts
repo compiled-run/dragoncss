@@ -7,6 +7,7 @@ import type { FontData, FontLengths, FontMetrics, LayoutInput, TextMeasurer } fr
 import { layout } from '@dragon/layout';
 import type { NativeStyleTarget, StateProgram } from 'dragon';
 import { programAt } from 'dragon';
+import type { DensityResult } from './markless-plan-workers.ts';
 import type { SlotField, SlotRefusal, SlotWrite } from './markless-slots.ts';
 import { repoPath } from './paths.ts';
 import type { MeasurerRecorder } from './system-fonts/measurer.ts';
@@ -76,7 +77,8 @@ export function planWidths(dpr: number): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
-function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number): PlanDensity {
+/** One ratio's recording: every variant at every PLAN_WIDTHS root width, then checked at PLAN_HEIGHTS' heights. */
+export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number): PlanDensity {
   const calls = new Map<string, readonly unknown[]>();
   const metrics = new Map<string, readonly unknown[]>();
   const lengths = new Map<string, readonly unknown[]>();
@@ -130,8 +132,13 @@ function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFon
  * bundled files; `height` the height every recorded layout uses. A page whose text at PLAN_HEIGHTS' heights is not the text
  * recorded at `height` is refused, and so is a plan the device's reader (harness.ts checkMarklessPlan) cannot read all of, by field.
  */
-export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number): MarklessPlan {
-  const densities = PLAN_DENSITIES[t].map((dpr) => recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height));
+export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, recorded?: readonly DensityResult[]): MarklessPlan {
+  const densities = PLAN_DENSITIES[t].map((dpr, i) => {
+    const r = recorded?.[i];
+    if (r === undefined) return recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height);
+    if ('error' in r) throw new Error(r.error);
+    return r.density;
+  });
   const faces = systemFaceData(system(PLAN_DENSITIES[t][0] as number), sp, bundled);
   const assignments = sp.assignments.map((_, i): PlanAssignment => {
     const program = programAt(sp, i);
