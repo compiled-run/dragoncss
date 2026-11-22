@@ -10,7 +10,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import { containsDescendants, paintContained } from '../containment.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
-import { selectPartOf } from '../resolve.ts';
+import { selectPartOf } from '../select-parts.ts';
 import { isTopLayer } from '../top-layer.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { PaintValues } from './types.ts';

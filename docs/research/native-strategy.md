@@ -34,10 +34,10 @@ Rule: no hand-maintained `.swift` or `.kt` file exists in the repo. Every native
 
 `pnpm run layout:subset` (also run inside `pnpm test`, and by the translator before it emits) walks every file under packages/layout/src except validate.ts. It fails with file:line on anything outside this list:
 
-- **Types:** `number`, `boolean`, `string`, string-literal unions, `readonly` arrays and arrays, `Map` and `ReadonlyMap` with string or object-reference keys, named object type aliases, discriminated unions of named object types on a string `kind`, branded numbers (`LU`, `FactorSum`), `T | null` or `T | undefined` (never both on one value), and generic functions over these.
+- **Types:** `number`, `boolean`, `string`, string-literal unions, `readonly` arrays and arrays, `Uint8Array` (for pixel buffers), `Map` and `ReadonlyMap` with string or object-reference keys, named object type aliases, discriminated unions of named object types on a string `kind`, branded numbers (`LU`, `FactorSum`), `T | null` or `T | undefined` (never both on one value), and generic functions over these.
 - **Statements:** `const`, `let`, `if`, `switch` on a string discriminant, `for`, `for...of` over arrays, `while`, `return`, `throw`, `try/catch` with `instanceof` of a subset class.
 - **Expressions:** arithmetic, comparisons, `===` and `!==` (identity on objects, value on primitives), boolean `&&`, `||` and `!` on booleans only, ternaries, closures and arrow functions (captured variables by reference), array spread, object spread into a named type, template strings interpolating strings (plus integer `toString(16)`), and object literals whose contextual type is a named type.
-- **Library:** `Math.fround`, `trunc`, `floor`, `ceil`, `round`; `Number.isNaN`, `isFinite`, `isInteger`; array `length`, `push`, `map`, `filter`, `find`, `some`, `forEach`, `slice`, `reverse`, `flatMap`, `sort` (with a comparator); string for...of and `codePointAt(0)`; `Map` `get`, `set`, `has`, iteration.
+- **Library:** `Math.fround`, `trunc`, `floor`, `ceil`, `round`; `Number.isNaN`, `isFinite`, `isInteger`; array `length`, `push`, `map`, `filter`, `find`, `some`, `forEach`, `slice`, `reverse`, `flatMap`, `sort` (with a comparator); string for...of and `codePointAt(0)`; `new Uint8Array(length)`, its `length`, element reads and `b[i] = v` stores (the only index store; a read TypeScript narrowed by a store is refused); `Map` `get`, `set`, `has`, iteration.
 - **Class:** only `class X extends Error` with readonly fields.
 - **Forbidden:** `any`, `unknown` outside validate.ts, `?.`, `??`, truthiness of numbers or strings, numeric `||`, RegExp, `Date`, `Math.random`, `JSON`, `globalThis`, `process`, bitwise operators, string `length` and index access, `in`, `delete`, `typeof` outside validate.ts, getters and setters, and declaration merging.
 
@@ -72,6 +72,7 @@ for emitter in [swift, kotlin]:
 | named object type | `final class`, identity `==` and hash | `class` (never `data class`; identity equality) |
 | discriminated union | protocol plus one final class per member | `sealed interface` plus classes |
 | array | `JsArray<T>` reference class (JS arrays alias) | `ArrayList<T>` |
+| `Uint8Array` | `JsBytes` reference class over `[UInt8]` | `ByteArray` (typealias `JsBytes`); stores wrap modulo 256 as JS does |
 | `Map` | `JsMap<K, V>`, insertion-ordered reference map | `LinkedHashMap<K, V>` |
 | `null` / `undefined` | `Optional` | nullable type |
 | `throw` / `catch` | every generated function `throws`; `JsError` and subclasses | exceptions (`RuntimeException` subclasses) |

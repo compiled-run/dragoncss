@@ -86,8 +86,9 @@ describe('isolation', () => {
     expect(errors(compile('.f { isolation: auto; }', para))).toEqual([]);
   });
 
-  it('names isolation as the reason a layer item puts an outline out of order on native', () => {
-    const errs = errors(compile('.s { isolation: isolate; } .z { outline: 2px solid red; }', tree)).filter((d) => d.message.includes('isolation: isolate'));
-    expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
+  it('names isolation as the reason an outline inside its layer is refused on native; an outline beside it compiles (PNT1-outline-layer)', () => {
+    const inside = errors(compile('.s { isolation: isolate; } .c { outline: 2px solid red; }', tree)).filter((d) => d.message.includes('isolation: isolate'));
+    expect(inside.map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    expect(errors(compile('.s { isolation: isolate; } .z { outline: 2px solid red; }', tree)).filter((d) => d.message.includes('outline'))).toEqual([]);
   });
 });

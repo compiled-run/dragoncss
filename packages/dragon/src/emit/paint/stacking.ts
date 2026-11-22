@@ -1,7 +1,8 @@
 // Paint order on the native tree (T046 §1, lower/paint/stacking.ts): the case code writes each layer item's host, bucket and rank
 // through dragonSetPaintOrder, which hosts the view under its layer's view (DragonTree.host, used when the tree places frames) and
 // stores its sort key. After every layout of a box, its host view's children are put in paint order: flow children (bucket 0) keep
-// their tree order and every view that is not a box view (a text view) sorts with them, and the layer items follow by bucket and rank
+// their tree order and every view that is not a box view (a text view) sorts with them, the host's outline views follow them
+// (outline.ts), and the layer items follow by bucket and rank
 // (z < 0 first), then a pre-composited group's overlay (bucket 3, effects.ts). Only child order changes: zPosition, translationZ and elevation are never used. The readback is the live host and the view's
 // index among the host's box views.
 import type { PaintEmitter } from './types.ts';
@@ -55,6 +56,8 @@ public func dragonSortPaintOrder(_ c: UIView) {
   func key(_ s: UIView, _ i: Int) -> [Int] {
     // PNT1-opacity-b: a group's overlay shows the whole group's composite, so it sorts after every layer item (bucket 3).
     if s is DragonGroupView { return [3, 0, i] }
+    // PNT1-outline-layer: a layer's outline views paint after its flow and before its layer items (outline.ts).
+    if s is DragonOutlineView { return [0, 1, i] }
     guard let b = s as? DragonBoxView, b.dragonPaintBucket != 0 else { return [0, 0, i] }
     let bucket = dragonOrderPlantSwapped ? -3 + b.dragonPaintBucket : b.dragonPaintBucket
     return [bucket, b.dragonPaintRank, i]
@@ -117,6 +120,8 @@ fun dragonSortPaintOrder(c: ViewGroup) {
   fun key(s: View, i: Int): IntArray {
     // PNT1-opacity-b: a group's overlay shows the whole group's composite, so it sorts after every layer item (bucket 3).
     if (s is DragonGroupView) return intArrayOf(3, 0, i)
+    // PNT1-outline-layer: a layer's outline views paint after its flow and before its layer items (outline.ts).
+    if (s is DragonOutlineView) return intArrayOf(0, 1, i)
     val b = s as? DragonBoxView
     if (b == null || b.dragonPaintBucket == 0) return intArrayOf(0, 0, i)
     val bucket = if (DRAGON_ORDER_PLANT_SWAPPED) -3 + b.dragonPaintBucket else b.dragonPaintBucket

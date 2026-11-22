@@ -1,0 +1,11 @@
+{
+  "case": "opacity-group-transform",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"ot-b:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"ot-f:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"ot-word:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"ot-word2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

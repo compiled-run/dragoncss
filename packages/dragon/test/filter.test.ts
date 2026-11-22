@@ -93,7 +93,8 @@ describe('filter', () => {
       return c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${String(d.target)} ${d.message}`);
     };
     const why = (target: string, reason: string): string => `${target} a has filter: grayscale(1); ${target} has no filter that rounds as Chrome's Skia pipeline does, so Dragon draws a colour-matrix filter only on a group it pre-composites (PNT1-filter), and this one is not: ${reason}`;
-    expect(native('.s { filter: grayscale(1); border-radius: 2px; }')).toEqual([why('ios', 'a has a border radius'), why('android', 'a has a border radius')]);
+    expect(native('.s { filter: grayscale(1); border-radius: 2px; }')).toEqual([]);
+    expect(native('.s { filter: grayscale(1); border-radius: 2px; border-top: 1px solid rgb(0, 0, 0); }')).toEqual([why('ios', 'a has a border radius with a border that is not four opaque solid sides, which Chrome paints in a clip layer'), why('android', 'a has a border radius with a border that is not four opaque solid sides, which Chrome paints in a clip layer')]);
     // S2: a nested opacity group inside a filtered group is admitted (the layer is built in software, then filtered; measured).
     expect(native('.s { filter: grayscale(1); } .k { opacity: 0.5; }')).toEqual([]);
     expect(native('.s { filter: grayscale(1); } .k { text-shadow: 1px 1px rgb(0, 0, 0); }')).toEqual([why('ios', 'the text of b has a text-shadow'), why('android', 'the text of b has a text-shadow')]);
