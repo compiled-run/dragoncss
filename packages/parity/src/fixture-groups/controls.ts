@@ -44,7 +44,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-checkbox-appearance', 'DRAGON_UNSUPPORTED_VALUE', 'none', 'appearance: none on <input type=checkbox> c is not supported'),
   reject('reject-checkbox-padding', 'DRAGON_UNSUPPORTED_VALUE', '3px', 'padding-top: 3px on <input type=checkbox> c is not supported'),
   reject('reject-checkbox-accent-alpha', 'DRAGON_UNSUPPORTED_VALUE', 'rgb(0 0 0 / 0.5)', 'a translucent accent-color on <input type=checkbox> c'),
-  reject('reject-checkbox-disabled', 'DRAGON_UNSUPPORTED_ATTRIBUTE', null, 'attribute disabled on c is not supported'),
+  reject('reject-checkbox-disabled', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<input data-dragon-id="c" type="checkbox" disabled="">', 'attribute disabled on c is not supported'),
   reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="c" type="radio">', '<input> c of type radio is not supported'),
   both('controls-select-none'),
   both('controls-select-button'),
