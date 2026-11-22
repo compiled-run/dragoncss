@@ -7,14 +7,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Browser } from 'playwright';
 import type { Assignment } from 'dragon';
 import { StateRuntime } from 'dragon';
-import { animCasesOf, animFixtures, frameScript, simulator } from '../src/anim-cases.ts';
+import { animCasesOf, animEventFixtures, animFixtures, frameScript, simulator } from '../src/anim-cases.ts';
 import { launchChrome, openFrozenPage } from '../src/chrome.ts';
 import { fixtureInput } from '../src/cases.ts';
 import { authoredModel } from '../src/render.ts';
 
 type Fired = { readonly node: string; readonly type: string; readonly name: string; readonly elapsedTime: number };
 
-const CASES = animFixtures()
+const CASES = [...animFixtures(), ...animEventFixtures()]
   .flatMap((fx) => animCasesOf(fx))
   .filter((c) => c.direction === 'ltr' && (c.ap.animations?.length ?? 0) > 0);
 

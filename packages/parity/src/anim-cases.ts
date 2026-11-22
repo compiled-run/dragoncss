@@ -57,10 +57,19 @@ export function parseFrames(text: string, where: string): FramesSpec {
 
 /** Every frame fixture, by glob: a fixture directory anim-* or motion-* with frames.json. YUI-1 adds its own the same way. */
 export function animFixtures(dir: string = FIXTURES()): AnimFixture[] {
-  return readdirSync(dir).filter((f) => /^(anim|motion)-/.test(f) && existsSync(join(dir, f, 'frames.json'))).sort().map((id) => ({
+  return sidecarFixtures(dir, 'frames.json');
+}
+
+/** Every event fixture: an anim-* fixture directory with events.json (dragon-frames/1), run only against Chrome's animation events, never captured. */
+export function animEventFixtures(dir: string = FIXTURES()): AnimFixture[] {
+  return sidecarFixtures(dir, 'events.json');
+}
+
+function sidecarFixtures(dir: string, sidecar: string): AnimFixture[] {
+  return readdirSync(dir).filter((f) => /^(anim|motion)-/.test(f) && existsSync(join(dir, f, sidecar))).sort().map((id) => ({
     id,
     spec: tree(id),
-    frames: parseFrames(readFileSync(join(dir, id, 'frames.json'), 'utf8'), `${id}/frames.json`),
+    frames: parseFrames(readFileSync(join(dir, id, sidecar), 'utf8'), `${id}/${sidecar}`),
   }));
 }
 

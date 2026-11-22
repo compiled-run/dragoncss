@@ -12,7 +12,7 @@ import { cubicBezierEasing, froundOf, LINEAR, stepsEasing } from './rt-easing.ts
 import type { AnimatedValue, LegacyColor, LengthValue, Rgba8Value, TransformOp, ValueRange } from './rt-interpolate.ts';
 import { colorRgba8, intToString, legacyColor, lengthPercent, lengthPx, TRANSPARENT, ZERO_PX } from './rt-interpolate.ts';
 import type { AnimationEntry, KeyframesRule, RunningAnimation } from './rt-animations.ts';
-import { advanceAnimation, animationFinished, composeAnimations, updateAnimations } from './rt-animations.ts';
+import { advanceAnimation, animationFinished, composeAnimations, findRunning, updateAnimations } from './rt-animations.ts';
 import type { RuleKeyframe } from './rt-keyframes.ts';
 import type { TransformOrigin } from './paint-transform.ts';
 import type { FillMode, PlaybackDirection } from './rt-timing.ts';
@@ -455,18 +455,18 @@ function clampInterval(t: number, activeDuration: number): number {
   return m > 0 ? m : 0;
 }
 
-/** The running animation of a list with this list index and name, or null. */
-function sameAnimation(list: readonly RunningAnimation[] | undefined, a: RunningAnimation): RunningAnimation | null {
+/** The animation of the other list that `a` is across a style change event: the one updateAnimations keeps for it, or null. */
+function sameAnimation(list: readonly RunningAnimation[] | undefined, a: RunningAnimation, faults: RtFaults): RunningAnimation | null {
   if (list === undefined) return null;
-  for (const b of list) if (b.listIndex === a.listIndex && b.name === a.name) return b;
-  return null;
+  return findRunning(list, a.name, a.nameIndex, a.listIndex, faults);
 }
 
 /**
- * The animation events between two animator states, in the order css-animations-1 §4.2's table dispatches them for each
- * animation: start when it leaves the before phase (with end too when it skips past the active phase), iteration when its
- * current iteration changes while active, end when it reaches the after phase, cancel when it stops running before its end.
- * The elapsed time is the interval start for start, the iteration's start for iteration and the interval end for end.
+ * The animation events between two animator states, in the order Chrome 145 dispatches them for each animation
+ * (CSSAnimations::AnimationEventDelegate::OnEventCondition): start on a change from none or before to active or after (elapsed
+ * time the interval start) or from after to active or before (the interval end); end, after any start, on a change to after (the
+ * interval end) or from active or after to before (the interval start); iteration when the current iteration changes within the
+ * active phase (the boundary crossed); cancel when it stops running outside its after phase (its current time).
  */
 export function animationEvents(before: AnimatorState, after: AnimatorState, t: AnimTables, faults: RtFaults): AnimationEventRecord[] {
   const out: AnimationEventRecord[] = [];
@@ -478,9 +478,9 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
     // A removed animation's cancel comes before the new list's events, as Chrome dispatches them.
     if (was !== undefined) {
       for (const b of was) {
-        if (now !== undefined && sameAnimation(now, b) !== null) continue;
+        if (now !== undefined && sameAnimation(now, b, faults) !== null) continue;
         const from = computeSecondsTiming(b.timing, b.held.seconds, faults);
-        if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: from.activeTime === null ? 0 : from.activeTime });
+        if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: b.held.seconds });
       }
     }
     if (now !== undefined) {
@@ -488,18 +488,19 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
         const norm = normalizeSeconds(a.timing);
         const start = clampInterval(-norm.startDelay, norm.activeDuration);
         const end = clampInterval(norm.endTime - norm.startDelay, norm.activeDuration);
-        const b = sameAnimation(was, a);
+        const b = sameAnimation(was, a, faults);
         const from = b === null ? null : computeSecondsTiming(b.timing, b.held.seconds, faults);
         const to = computeSecondsTiming(a.timing, a.held.seconds, faults);
         const fromPhase = from === null ? 'none' : from.phase;
-        if ((fromPhase === 'none' || fromPhase === 'before') && to.phase === 'active') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
-        else if ((fromPhase === 'none' || fromPhase === 'before') && to.phase === 'after') {
-          out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
-          out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
-        } else if (fromPhase === 'active' && to.phase === 'active' && from !== null && from.currentIteration !== null && to.currentIteration !== null && to.currentIteration !== from.currentIteration) {
-          out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: to.currentIteration * norm.iterationDuration });
-        } else if (fromPhase === 'active' && to.phase === 'after') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
-        else if (fromPhase === 'after' && to.phase === 'before') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+        const toPhase = to.phase;
+        if (fromPhase !== toPhase) {
+          const wasAfter = fromPhase === 'after';
+          if (((fromPhase === 'none' || fromPhase === 'before') && (toPhase === 'active' || toPhase === 'after')) || (wasAfter && (toPhase === 'active' || toPhase === 'before'))) out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: wasAfter ? end : start });
+          if (toPhase === 'after' || ((fromPhase === 'active' || wasAfter) && toPhase === 'before')) out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: toPhase === 'after' ? end : start });
+        } else if (toPhase === 'active' && from !== null && from.currentIteration !== null && to.currentIteration !== null && to.currentIteration !== from.currentIteration) {
+          const boundary = from.currentIteration > to.currentIteration ? to.currentIteration + 1 : to.currentIteration;
+          out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: boundary * norm.iterationDuration });
+        }
       }
     }
   }
