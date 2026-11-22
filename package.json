@@ -88,6 +88,7 @@
     "parity:pointer-vectors": "node --conditions=dragon-internal packages/parity/src/cli/pointer-vectors.ts",
     "parity:resize-capture": "node --conditions=dragon-internal packages/parity/src/cli/resize-capture.ts",
     "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts",
+    "parity:runtime-capture": "node --conditions=dragon-internal packages/parity/src/cli/runtime-capture.ts",
     "markless:style-compare": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-compare.ts"
   },
   "devDependencies": {

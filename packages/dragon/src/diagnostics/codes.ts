@@ -9,6 +9,7 @@ import { FONT_FALLBACK } from './codes/font-fallback.ts';
 import { FORM_A } from './codes/form-a.ts';
 import { NA_NATIVE } from './codes/na-native.ts';
 import { REPL_A } from './codes/repl-a.ts';
+import { REPL_R } from './codes/repl-r.ts';
 import { S2 } from './codes/s2.ts';
 import { S3A } from './codes/s3a.ts';
 import { S4A } from './codes/s4a.ts';
@@ -25,6 +26,7 @@ export const DIAGNOSTIC_FEATURES = {
   'form-a': FORM_A,
   'na-native': NA_NATIVE,
   'repl-a': REPL_A,
+  'repl-r': REPL_R,
   s2: S2,
   s3a: S3A,
   s4a: S4A,

@@ -178,7 +178,7 @@ describe('an image with an empty natural size (Blink ComputeObjectFitAndPosition
   // natural ratio, whatever object-fit and object-position say; it never sizes the object 0 wide.
   const content = { x: lu(10), y: lu(20), width: lu(200), height: lu(100) };
   const corner: ObjectPosition = { x: px(0), y: px(0) };
-  const leaf = (w: number, h: number) => naturalSizingOf({ kind: 'replaced', id: 'i', style: divStyle, natural: { kind: 'image', width: w, height: h }, defaultWidth: 300, defaultHeight: 150, objectFit: 'none', objectPositionX: px(0), objectPositionY: px(0) });
+  const leaf = (w: number, h: number) => naturalSizingOf({ kind: 'replaced', id: 'i', style: divStyle, natural: { kind: 'image', width: w, height: h }, defaultWidth: 300, defaultHeight: 150, objectFit: 'none', objectPositionX: px(0), objectPositionY: px(0) }) as NaturalSizing;
 
   it('has no natural ratio when a side is zero, and keeps the ratio otherwise', () => {
     expect(leaf(0, 100).ratio).toBeNull();

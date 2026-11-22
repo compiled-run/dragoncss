@@ -70,6 +70,8 @@ export const HTML_CASE_INSENSITIVE_ATTRIBUTES: ReadonlySet<string> = new Set([
  * fault attributeCaseAlwaysSensitive ignores the list.
  */
 function attributeMatches(el: LinkedElement, a: AttributeTest, faults: CompilerFaults): boolean {
+  // REPL-r1: the src of an img the app sets at run time is unknown, so any test of it holds exactly when the world gives it one.
+  if (a.name === 'src' && el !== HEAD && el.node.runtimeSrc !== undefined) return el.attributes.has('src');
   const actual = el.attributes.get(a.name);
   if (actual === undefined) return false;
   if (a.matcher === null || a.value === null) return true;
@@ -291,4 +293,42 @@ export function specificityFor(sel: Selector, faults: CompilerFaults): Specifici
   const s = faults.isSpecificityFirstArgument || faults.idSpecificityAsClass ? specificityOf(sel, faults.isSpecificityFirstArgument, faults.idSpecificityAsClass) : sel.specificity;
   // Planted fault legacyPseudoAsClass: a single-colon :before or :after weighs as the pseudo-class css-tree parses it as.
   return faults.legacyPseudoAsClass && sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' && sel.pseudoElement.legacy ? [s[0], s[1] + 1, s[2] - 1] : s;
+}
+
+/**
+ * REPL-r1: the selectors that read the src of an img the app sets at run time: on some element of the tree they match differently
+ * when every such img has a src (any test of it holds) and when none has. Each is reported once, with the first element it differs on.
+ */
+export function runtimeSrcSelectors(rules: readonly Rule[], root: LinkedElement, faults: CompilerFaults): { readonly rule: Rule; readonly selector: Selector; readonly address: string }[] {
+  const withSrc = (el: LinkedElement): LinkedElement => {
+    const children = el.children.map((c) => (c.kind === 'element' ? withSrc(c) : c));
+    const attributes = el.node.runtimeSrc === undefined ? el.attributes : new Map([...el.attributes, ['src', '']]);
+    return { ...el, attributes, children };
+  };
+  const runtime = (el: LinkedElement): boolean => el.node.runtimeSrc !== undefined || el.children.some((c) => c.kind === 'element' && runtime(c));
+  if (!runtime(root)) return [];
+  const given = withSrc(root);
+  const out: { rule: Rule; selector: Selector; address: string }[] = [];
+  const found = new Set<Selector>();
+  const walk = (a: readonly LinkedElement[], b: readonly LinkedElement[]): void => {
+    for (const rule of rules) {
+      for (const sel of rule.selectors) {
+        if (found.has(sel)) continue;
+        const differs = sel.pseudoElement === null
+          ? selectorMatches(rule, sel, a, a.length - 1, 0, faults) !== selectorMatches(rule, sel, b, b.length - 1, 0, faults)
+          : (['before', 'after', 'marker'] as const).some((p) => pseudoSelectorMatches(rule, sel, a, p, faults) !== pseudoSelectorMatches(rule, sel, b, p, faults));
+        if (!differs) continue;
+        found.add(sel);
+        out.push({ rule, selector: sel, address: last(a).address });
+      }
+    }
+    const x = last(a).children;
+    const y = last(b).children;
+    x.forEach((c, i) => {
+      const d = y[i];
+      if (c.kind === 'element' && d !== undefined && d.kind === 'element') walk([...a, c], [...b, d]);
+    });
+  };
+  walk([root], [given]);
+  return out;
 }

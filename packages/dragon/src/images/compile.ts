@@ -71,7 +71,8 @@ function imgUses(roots: readonly ResolvedElement[], sourceText: (uri: string) =>
   const out: ImgUse[] = [];
   // inherited: the parent's url() bases by src, which background-image: inherit takes, since Chrome resolves the url() at the parent.
   const walk = (el: ResolvedElement, inherited: ReadonlyMap<string, UrlBase>): void => {
-    if (el.element.tag === 'img') out.push({ kind: 'img', el, src: el.element.attributes.get('src') ?? null });
+    // REPL-r1: an img whose src is set at run time has no build-time image; images/runtime.ts checks it.
+    if (el.element.tag === 'img' && el.element.node.runtimeSrc === undefined) out.push({ kind: 'img', el, src: el.element.attributes.get('src') ?? null });
     const v = el.props.get('background-image');
     const bases = new Map<string, UrlBase>();
     // A length compute could not fold is refused at the element (CALC-p) before the layers are read.

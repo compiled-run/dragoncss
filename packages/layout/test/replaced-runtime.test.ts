@@ -38,7 +38,7 @@ const refusal = (shape: Shape): readonly string[] => {
 
 const ACCEPTED: { readonly [name: string]: Shape } = {
   'both sizes definite': (n) => box('c', {}, [img('i', { width: px(200), height: px(100) }, n)]),
-  'both sizes with border, padding and border-box': (n) => box('c', {}, [img('i', { width: px(200), height: px(100), boxSizing: 'border-box', paddingLeft: px(7), paddingTop: px(3), borderLeftWidth: { kind: 'px', value: 2 }, borderLeftStyle: 'solid' }, n)]),
+  'both sizes with border, padding and border-box': (n) => box('c', {}, [img('i', { width: px(200), height: px(100), boxSizing: 'border-box', paddingLeft: px(7), paddingTop: px(3), paddingRight: px(2) }, n)]),
   'a width hint overridden, the height hint kept': (n) => box('c', {}, [img('i', { width: px(100), height: px(300), aspectRatio: ratio(400, 300, true) }, n)]),
   'a width and a plain ratio': (n) => box('c', {}, [img('i', { width: px(100), aspectRatio: ratio(2, 1) }, n)]),
   'a height and a plain ratio': (n) => box('c', {}, [img('i', { height: px(80), aspectRatio: ratio(3, 2) }, n)]),

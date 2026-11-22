@@ -3292,9 +3292,9 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
     return f === 'grid' || f === 'gridItem' ? gridValue(lang, f, v, str) : engineValue(lang, v);
   };
   const styleOf = (st: import('@dragon/layout').LayoutStyle): string => `LayoutStyle(${STYLE_FIELDS.map((f) => fieldValue(st, f)).join(', ')})`;
-  // A replaced leaf (input.ts ReplacedLeaf): its natural size is NaturalSizeValue_image or NaturalSizeValue_none.
+  // A replaced leaf (input.ts ReplacedLeaf): its natural size is NaturalSizeValue_image, NaturalSizeValue_none or (REPL-r1) NaturalSizeValue_runtime.
   const replaced = (c: import('@dragon/layout').ReplacedLeaf): string => {
-    const natural = c.natural.kind === 'image' ? `NaturalSizeValue_image(${str('image')}, ${doubleLit(c.natural.width)}, ${doubleLit(c.natural.height)})` : `NaturalSizeValue_none(${str('none')})`;
+    const natural = c.natural.kind === 'image' ? `NaturalSizeValue_image(${str('image')}, ${doubleLit(c.natural.width)}, ${doubleLit(c.natural.height)})` : c.natural.kind === 'runtime' ? `NaturalSizeValue_runtime(${str('runtime')})` : `NaturalSizeValue_none(${str('none')})`;
     return `ReplacedLeaf(${str('replaced')}, ${str(c.id)}, ${styleOf(c.style)}, ${natural}, ${doubleLit(c.defaultWidth)}, ${doubleLit(c.defaultHeight)}, ${str(c.objectFit)}, ${engineValue(lang, c.objectPositionX)}, ${engineValue(lang, c.objectPositionY)})`;
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);

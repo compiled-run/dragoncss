@@ -68,6 +68,7 @@ export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey, isWhitespaceText, textAddresser } from './analysis/link.ts';
 export { isScalar, isTreeNodeId } from './analysis/input.ts';
+export type { LayoutDevice, RuntimeImageLayout } from './images/runtime.ts';
 export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
 export { applyTextTransform } from './analysis/text-transform.ts';
 export type { TextTransform } from './analysis/text-transform.ts';

@@ -5,7 +5,7 @@
 // them once when the view is built and draws the bitmap into the engine's destination rect, clipped to the content box (layout
 // paint.ts replacedPaint), filtered, or nearest-neighbour when pixelated. UIImageView contentMode and ImageView ScaleType are not
 // used: neither expresses object-position.
-import type { ObjectFit } from '@dragon/layout';
+import type { ObjectFit, ObjectPositionValue } from '@dragon/layout';
 import { svgPaintAlpha, type Rgba8 } from '../../css/color.ts';
 import { svgSceneOf, svgShapeEmpty } from '../../analysis/elements/svg.ts';
 import type { SvgFillRule, SvgLineCap, SvgLineJoin, SvgPaint, SvgShapeScene } from '../../analysis/elements/svg.ts';
@@ -52,6 +52,28 @@ export type SvgShapeData = {
   readonly strokeFirst: boolean;
   readonly nonScalingStroke: boolean;
 };
+
+/**
+ * REPL-r1: an img whose src the app sets at run time. The device decodes the image the app loads (setRuntimeImage) and draws it as
+ * replaced-image does, into the destination rect the translated engine computes from its size (paint.ts runtimeImagePaint), with no
+ * relayout; told there is no image, it strokes the no-image outline when the src may be missing.
+ */
+export type RuntimeImageWrite = {
+  readonly kind: 'runtime-image';
+  readonly fit: ObjectFit;
+  /** object-position, x then y, each an offset from the content box's left or top edge (input.ts ObjectPositionValue). */
+  readonly position: readonly [ObjectPositionValue, ObjectPositionValue];
+  readonly layer: boolean;
+  readonly pixelated: boolean;
+  /**
+   * Only when the src may be missing: Blink ImagePainter's no-image outline, a band width device px wide inside the snapped content
+   * box, drawn when that box is over 2 device px each way (measured in Chrome 145 at DPR 2, 2.625 and 3).
+   */
+  readonly absent: { readonly color: Rgba8; readonly width: number } | null;
+};
+
+/** The no-image outline's colour, Blink's Color::kLightGray. */
+export const NO_IMAGE_OUTLINE: { readonly color: Rgba8; readonly width: number } = { color: { r: 192, g: 192, b: 192, alpha: 255 }, width: 1 };
 
 export type SvgShapesWrite = {
   readonly kind: 'svg-shapes';
@@ -114,19 +136,23 @@ const SVG_PAINT = 'each shape filled (its fill-rule) and stroked (its stroke-lin
 
 const IMAGE_PAINT = 'the PNG decoded once at build (sRGB, unpremultiplied source); drawn into the engine destination rect snapped to device px, clipped to the snapped content box, filtered, or nearest-neighbour under image-rendering: pixelated';
 
-export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
+const RUNTIME_PAINT = 'the image the app sets (setRuntimeImage), decoded by the host into 8-bit sRGB with its EXIF orientation, drawn as a replaced image into the engine destination rect for its pixel size (paint.ts runtimeImagePaint), with no relayout; the old image stays until a new one is set; with no image and a src that may be missing, the 1 device px light gray outline inside the snapped content box';
+
+export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite | RuntimeImageWrite> = {
   name: 'image',
   vocabulary: {
     uikit: {
       'replaced-image': { key: 'dragonImage', technique: 'dragon-owned-paint', detail: `DragonBoxView CGImage drawn with UIImage.draw(in:) in the box layer (interpolationQuality .high, .none when pixelated): ${IMAGE_PAINT}; the destination rect in points` },
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView CGPaths filled and stroked with CGContext in the box layer: ${SVG_PAINT}` },
+      'runtime-image': { key: 'dragonRuntimeImage', technique: 'dragon-owned-paint', detail: `DragonBoxView CGImage drawn with UIImage.draw(in:) in the box layer: ${RUNTIME_PAINT}; the destination rect in points` },
     },
     'android-views': {
       'replaced-image': { key: 'dragonImage', technique: 'dragon-owned-paint', detail: `DragonBoxView Bitmap drawn with Canvas.drawBitmap(src, dst, Paint(FILTER_BITMAP_FLAG), unfiltered when pixelated): ${IMAGE_PAINT}; the destination rect in device px` },
       'svg-shapes': { key: 'dragonSvg', technique: 'dragon-owned-paint', detail: `DragonBoxView android.graphics.Paths drawn with Canvas.drawPath (Paint FILL and STROKE): ${SVG_PAINT}` },
+      'runtime-image': { key: 'dragonRuntimeImage', technique: 'dragon-owned-paint', detail: `DragonBoxView Bitmap drawn with Canvas.drawBitmap(src, dst, Paint(FILTER_BITMAP_FLAG)): ${RUNTIME_PAINT}; the destination rect in device px` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position', 'image-rendering'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'd'] },
+  css: { 'replaced-image': ['object-fit', 'object-position', 'image-rendering'], 'runtime-image': ['object-fit', 'object-position', 'image-rendering'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'd'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
@@ -137,6 +163,10 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite> = {
       return [{ kind: 'svg-shapes', viewBox: v === null ? null : [v.x, v.y, v.width, v.height], shapes: scene.shapes.filter((sh) => sh.painted && !svgShapeEmpty(sh.shape)).map((sh) => ({ path: svgShapePath(sh), fill: paintColor(sh.fill, sh.fillOpacity), stroke: paintColor(sh.stroke, sh.strokeOpacity), width: sh.strokeWidth, cap: sh.cap, join: sh.join, miterLimit: sh.miterLimit, fillRule: sh.fillRule, dashes: sh.dashes, dashPhase: svgDashPhase(sh.dashes, sh.dashOffset), strokeFirst: sh.strokeFirst, nonScalingStroke: sh.nonScalingStroke })) }];
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
+    const runtime = el.element.node.runtimeSrc;
+    if (box.natural.kind === 'runtime' && runtime !== undefined) {
+      return [{ kind: 'runtime-image', fit: box.objectFit, position: [box.objectPositionX, box.objectPositionY], layer: !transformMoves, pixelated: isPixelated(el.props.get('image-rendering')?.value), absent: runtime.absent ? NO_IMAGE_OUTLINE : null }];
+    }
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
     const src = el.element.attributes.get('src');
     const bytes = src === undefined ? undefined : images.get(src);
