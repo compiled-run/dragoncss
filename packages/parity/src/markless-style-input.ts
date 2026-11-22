@@ -816,6 +816,9 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
 /** The media features whose value changes with the viewport's height. */
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
+/** Every interaction state's assignment of a target, in level order. */
+const interactionStates = (x: NativeStyleExport['targets'][NativeStyleTarget] & object): readonly ExportAssignment[] => x.interaction?.levels.flatMap((l) => l.states) ?? [];
+
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
   const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
@@ -832,6 +835,11 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
       ...x,
       assignments: x.assignments.map(renamed),
+      // An interaction state is laid out under its assignment's values, so it takes that assignment's names.
+      ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => {
+        const rename = renameIn(x.assignments[i] as ExportAssignment);
+        return { ...l, addresses: l.addresses.map(rename), states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })) };
+      }) } }),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
       ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: x.assignments.map((a) => {
         const rename = renameIn(a);
@@ -839,7 +847,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       }), planRepeats: planRepeats(parsed, dragonIds) }),
     }])),
   };
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
+  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
@@ -880,12 +888,13 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     return { ...a, nodes: [...a.nodes, ...added] };
   };
   for (const x of Object.values(exported.targets)) {
-    const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
+    const shown = new Set([...x.assignments, ...interactionStates(x)].flatMap((a) => a.nodes.map((n) => n.id)));
     (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
+    if (x.interaction !== undefined) (x as { interaction: unknown }).interaction = { levels: x.interaction.levels.map((l) => ({ ...l, states: l.states.map((st) => boxless(st, shown)) })) };
   }
   const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
   const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
+  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
     const boxless = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'element' && n.boxless === true;
@@ -909,6 +918,15 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
         colorScheme: (schemes[i] as UsedScheme).colorScheme,
         ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
       })),
+      ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => ({
+        ...l,
+        states: l.states.map((a, k) => ({
+          ...a,
+          values: cellValues(a),
+          colorScheme: (schemes[i] as UsedScheme).colorScheme,
+          ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+        })),
+      })) } }),
     }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
