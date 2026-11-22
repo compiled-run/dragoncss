@@ -632,9 +632,9 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (controlKind !== 'fieldset') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a legend control is the rendered legend of a fieldset control: its parent is one' });
     else if (legends > 1) errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a fieldset control has at most one rendered legend' });
   });
-  // A text field holds its inner editor and at most one placeholder, and nothing else (block.ts layoutTextField).
+  // A text field or textarea holds its inner editor and at most one placeholder, and nothing else (block.ts layoutTextField, layoutTextArea).
   const fieldPart = (c: unknown): unknown => (isRecord(c) && c['kind'] === 'control' && isRecord(c['control']) ? c['control']['kind'] : null);
-  if (controlKind === 'text-field') {
+  if (controlKind === 'text-field' || controlKind === 'text-area') {
     let editors = 0;
     let placeholders = 0;
     children.forEach((child: unknown, i: number) => {
