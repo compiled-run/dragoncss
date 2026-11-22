@@ -25,7 +25,7 @@ import { compileFixture } from '../src/pipeline.ts';
 const controlIds = new Set(CONTROLS.map((f) => f.id));
 // Later fixtures that hold buttons by design are not earlier cases: OVFL's overflow-controls (buttons in scroll boxes), the
 // anchor group's anchor-control (a button as an anchor) and the Markless ladder's ms-button-disabled (:disabled on a button).
-const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled'];
+const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields'];
 const notEarlier = new Set([...controlIds, ...LATER_WITH_CONTROLS]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !notEarlier.has(f.id));
 
