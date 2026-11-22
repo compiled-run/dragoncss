@@ -222,3 +222,26 @@ Vectors, captures, emitted CSS, profiles and generated Swift and Kotlin are on t
 5. **The grid-item defects found by this probe:** they are unrelated to fractions and already exist. Refuse both shapes on native now, in this PR or a separate small one, or leave the claim standing until a grid package fixes them? Proposed: a separate PR that refuses them by name, then a grid fix. The `aspect-ratio:<ratio>@grid` rows should gain a non-replaced proof either way.
 6. **Profile keys:** fractional ratios share `aspect-ratio:<ratio>` (proposed), or get their own value subset (for example `<ratio-fraction>`), so a row's proofs show which conversion branch they cover?
 7. **Order:** ARAT-1 lands as one PR (engine, compiler, fixtures, then the regen). Or the engine half (items 1–3, 6, 7 and the faults) first, then the compiler half, as T050 did? One PR is proposed, because the engine half alone changes no fixture.
+
+## Judge verdict (2026-11-22)
+
+**Rulings on the open questions:**
+1. The input fields change meaning in place: `width` and `height` carry the authored parts. docs/decisions.md records this as an exception to "each gains only the new key".
+2. The computed serialisation is deferred. computed.ts keeps printing the double.
+3. A percentage height, min-height or max-height stays refused beside a ratio whose parts are both non-zero, tiny parts included.
+4. Register the Chrome deviation `aspect-ratio-continued-fraction`, with the fault `ratioExactSpec`.
+5. The grid-item defects are ARAT-0, a separate PR that lands first and refuses both shapes by name on native. The real grid fix is a later package.
+6. No new profile key. The three conversion paths (whole 64ths, equal parts, continued fraction) are branches of the deviation entry.
+7. One PR, with the regen in its own commit.
+
+**Amendments:**
+- (5) `replacedAspectRatio` falls through to the natural ratio for a degenerate `<ratio>`, and `ratioBoxSizing` returns content-box for it. replaced.test.ts covers `<img>` with `1/0.0000005` and with `auto && 1/0.0000005`.
+- (6) The migration checker proves `layoutRatio(new parts)` equals the old raw pair, and a fixture has equal non-whole parts, `1.3 / 1.3`.
+- (7) The native corpus carries the parts bit-exactly with `bitsHex`, including exactly 2^-20 and the doubles either side of it. The native run includes `1.1875626880641925` read through the harness JSON on both platforms.
+- (8) Each ratio helper (`blockFromRatio`, `inlineFromRatio`, the transferred min and max) converts the ratio once.
+- (9) The validator keeps refusing a percentage height beside a ratio of any non-auto kind, degenerate included, and checks that each part is finite and non-negative instead of at most INT_MAX.
+- (10) Faults: `ratioRoundedMulDiv` at 173.5px with 3/3.4, and one replaced case for `ratioNoTrivialClamp`, beside the six planted faults above.
+- (11) docs/ports.json gains `gfx::SizeF` (its tiny-part clamp), `LayoutRatioFromSizeF` and `StyleAspectRatio::GetType`.
+- (12) The PR body gives the refusal count of the Markless shop pages / and /categories/[slug] before and after.
+- (13) `reject-sizing-ratio-inexact` is deleted with its reason, and `reject-sizing-ratio-percent-height-fraction` is added.
+- units.ts `layoutRatio` gains the SizeF clamp: a part at or below 2^-20 after the float narrowing (which rounds ties to even) becomes 0.
