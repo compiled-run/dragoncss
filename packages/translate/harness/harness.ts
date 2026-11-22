@@ -3757,9 +3757,9 @@ function slotRefusals(v: JsonValue, count: number, path: string): SlotRefusal[] 
   return out;
 }
 
-function refusedPiece(refusals: readonly SlotRefusal[], slot: number, piece: number): never {
-  for (const r of refusals) if (r.slot === slot && r.piece === piece) return fail(`$.slots: ${r.reason}`);
-  return fail(`$.slots: slot ${slot} has no rule for its value`);
+function refusedPiece(refusals: readonly SlotRefusal[], slot: number, piece: number, path: string): never {
+  for (const r of refusals) if (r.slot === slot && r.piece === piece) return fail(`${path}: ${r.reason}`);
+  return fail(`${path}: slot ${slot} has no rule for its value`);
 }
 
 function jsonAt(v: JsonValue, path: readonly JsonValue[], at: string): JsonValue {
@@ -3837,7 +3837,7 @@ function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: re
   for (const f of fields) {
     const s = slotAt(values, f.slot, path);
     const piece = f.pieces[slotPiece(s)] as SlotPiece;
-    if (piece.refused) refusedPiece(refusals, f.slot, slotPiece(s));
+    if (piece.refused) refusedPiece(refusals, f.slot, slotPiece(s), path);
     let patched = piece.template;
     for (const l of piece.leaves) {
       patched = jsonWith(patched, l.path, 0, { kind: 'num', num: slotValue(l.value, slotPiece(s), s) });
@@ -3951,7 +3951,8 @@ export function runMarklessLayout(line: string): string {
 /**
  * One Markless layout with the rows of its lists: as runMarklessLayout, with "rows": per list {"parent", "template": the ids of a
  * row's top boxes, in order, "rows": [{"key", "assignment" (whose variant the row's boxes are taken from), "texts": [[leaf id,
- * text]]}]}. Each row is a copy of the template named "<id>@<key>"; `shaper` shapes the text the build did not record.
+ * text]], "slots": one value per plan slot, required when the plan has slots}]}. Each row is a copy of the template named "<id>@<key>";
+ * `shaper` shapes the text the build did not record.
  */
 /**
  * A Markless page's transitions and animations on the device: the export's animator tables run over the plan's assignments from
@@ -4310,7 +4311,7 @@ function writeNumbers(parts: PlanAssignmentParts, values: readonly number[], at:
       path += `${j === 0 ? '' : ','}${p.kind === 'str' ? q(p.text) : p.kind === 'num' ? `${p.num}` : 'null'}`;
     });
     const rule = w.pieces[slotPiece(s)] as SlotRule;
-    if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s));
+    if (rule.rule === 'refused') refusedPiece(parts.refusals, w.slot, slotPiece(s), at);
     out += `${i === 0 ? '' : ','}[${q(w.node)},${q(w.write)},[${path}],${h(slotValue(rule, slotPiece(s), s))}]`;
   });
   return `${out}]`;
@@ -4402,6 +4403,7 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
       const rat = `${at}.rows[${ri}]`;
       const withSlots = (entries[ri] as JsonValue).kind === 'obj' && (entries[ri] as JsonObj).values.has('slots');
       if (withSlots && slots.length === 0) fail(`${rat}.slots: the plan has no slots`);
+      if (!withSlots && slots.length > 0) fail(`${rat}.slots: the plan has slots and the row gives no values for them`);
       const ro = obj(entries[ri] as JsonValue, withSlots ? ['key', 'assignment', 'texts', 'slots'] : ['key', 'assignment', 'texts'], rat);
       const k = numField(ro, 'assignment', rat);
       if (!Number.isInteger(k) || k < 0 || k >= assignments.length) fail(`${rat}.assignment: ${k} is not an assignment`);
@@ -4421,9 +4423,8 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
       if (keys.has(key)) fail(`${rat}.key: row key ${key} is listed twice`);
       keys.set(key, true);
       const own = planAssignment(plan, k);
-      // A row's copy takes its own values of the slots its template reads; a row that gives none takes the page's.
-      const rowValues = withSlots ? slotList(field(ro, 'slots', rat), slots, `${rat}.slots`) : values;
-      const variant = slotted(plan) ? slottedRoot(variantRootJson(plan, own.variant), own.fields, own.refusals, rowValues, withSlots ? `${rat}.slots` : '$.slots') : variantRootJson(plan, own.variant);
+      const rowValues = withSlots ? slotList(field(ro, 'slots', rat), slots, `${rat}.slots`) : [];
+      const variant = slotted(plan) ? slottedRoot(variantRootJson(plan, own.variant), own.fields, own.refusals, rowValues, `${rat}.slots`) : variantRootJson(plan, own.variant);
       const entry: RowEntry = { key, at: rat, parts: own, variant, texts, leaves, values: rowValues };
       rows.push(entry);
       all.push(entry);

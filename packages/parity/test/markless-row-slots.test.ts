@@ -70,24 +70,49 @@ function writtenOut(rows: readonly Row[]): MarklessStyleInput {
 
 describe('a style number inside a styled @for row', () => {
   const { exported } = marklessStyleExport(TEXT, PATH, undefined, 'system', undefined, true);
+  const assignmentOf = (t: 'ios' | 'android', pinned: boolean): number => exported.targets[t]!.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === option(pinned));
+  const pageAssignment = (t: 'ios' | 'android'): number => assignmentOf(t, false);
+  /** The device's rows layout of ROWS, row i carrying `slots[i]` as its `slots`, or no `slots` key when that is null. */
+  const rowsLayout = (t: 'ios' | 'android', slots: readonly (readonly string[] | null)[]): unknown[] => {
+    const x = exported.targets[t]!;
+    const names = new Map((x.planNames?.[pageAssignment(t)] ?? []).map(([d, m]) => [m, d]));
+    const title = names.get(titleText) ?? titleText;
+    const line = JSON.stringify({
+      assignment: pageAssignment(t),
+      dpr: x.dpr,
+      viewport: x.viewport,
+      safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
+      plan: x.plan,
+      slots: [bitsHex(4)],
+      rows: x.planRepeats!.map((r) => ({
+        parent: r.parent,
+        template: r.template,
+        rows: ROWS.map((row, i) => ({ key: row.key, assignment: assignmentOf(t, row.pinned), texts: [[title, row.title]], ...(slots[i] === null ? {} : { slots: slots[i] }) })),
+      })),
+    });
+    return JSON.parse(runMarklessRowsLayout(line, systemFontsFor(t, x.dpr).shaper as never)) as unknown[];
+  };
+
+  it('refuses a row that gives no slot values when the plan has slots, by the row', () => {
+    expect(rowsLayout('ios', [null, null, null])).toEqual(['harness-error', '$.rows[0].rows[0].slots: the plan has slots and the row gives no values for them']);
+  });
+
+  it('refuses the one row that gives no slot values among rows that do, by the row', () => {
+    expect(rowsLayout('ios', [[bitsHex(4)], null, [bitsHex(40.25)]])).toEqual(['harness-error', '$.rows[0].rows[1].slots: the plan has slots and the row gives no values for them']);
+  });
+
+  it("names the row's slots when a row's value falls in a piece the build refused", () => {
+    const out = rowsLayout('ios', [[bitsHex(4)], [bitsHex(-3)], [bitsHex(40.25)]]);
+    expect(out[0], JSON.stringify(out)).toBe('harness-error');
+    expect(out[1] as string).toMatch(/^\$\.rows\[0\]\.rows\[1\]\.slots: slot:h5#0 at /);
+  });
 
   for (const t of ['ios', 'android'] as const) {
     it(`lays each row out on the ${t} device with its own value, as the build lays the rows out written out`, () => {
       const x = exported.targets[t]!;
-      const at = (pinned: boolean): number => x.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === option(pinned));
-      const page = at(false);
-      const names = new Map((x.planNames?.[page] ?? []).map(([d, m]) => [m, d]));
+      const names = new Map((x.planNames?.[pageAssignment(t)] ?? []).map(([d, m]) => [m, d]));
       const dragon = (id: string): string => names.get(id) ?? id;
-      const line = JSON.stringify({
-        assignment: page,
-        dpr: x.dpr,
-        viewport: x.viewport,
-        safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
-        plan: x.plan,
-        slots: [bitsHex(4)],
-        rows: x.planRepeats!.map((r) => ({ parent: r.parent, template: r.template, rows: ROWS.map((row) => ({ key: row.key, assignment: at(row.pinned), texts: [[dragon(titleText), row.title]], slots: [bitsHex(row.indent)] })) })),
-      });
-      const out = JSON.parse(runMarklessRowsLayout(line, systemFontsFor(t, x.dpr).shaper as never)) as unknown[];
+      const out = rowsLayout(t, ROWS.map((row) => [bitsHex(row.indent)]));
       expect(out[0], JSON.stringify(out)).toBe('ok');
       expect(out).toHaveLength(5);
       expect((out[4] as unknown[][]).map((r) => r[0])).toEqual(ROWS.map((r) => r.key));
