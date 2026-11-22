@@ -108,3 +108,40 @@ The `select` element itself stays a Markless-native control: Markless's host ope
   - `zoomInput` is only for Ahem or planted-fault inputs.
 - **Ruling on scroll ranges (2026-11-21).** The style export refuses a missing scroll range only for a node with a scroll-container write, as expectedDump and the harness do, because a select's inner element clips (overflow hidden) but never scrolls on a phone.
 - **Ruling on options (2026-11-21).** The Markless export check treats an `<option>` or `<optgroup>` inside a `<select>`, and its text, as having no box, read from the input's element names and tree, because Chrome's closed control draws only the shown label; an option anywhere else is still required.
+
+## S4: a select's natural width from its widest option (proposed 2026-11-22)
+
+- **Chrome fact (Blink MenuListIntrinsicInlineSize, LGPL, reference only; pinned by the fixtures below):**
+  - A menulist's min-content and max-content inline size is the widest option label, measured in the select's own font, rounded up to a whole px, plus the inner element's internal inline insets.
+  - The font measurement includes the select's letter-spacing, word-spacing and text-transform.
+  - The insets are `menuListInnerInsets` start and end for menulist-button, and 0 for `appearance: none`.
+  - Every option counts, including disabled options and the option that is not shown. Each label follows the HTML label rule (`shownLabel`).
+- **Engine:**
+  - `select-menulist` gains `optionLabels: readonly string[]`: every option's label, in tree order.
+  - `intrinsic.ts` `intrinsicContentInlineSize` measures them with the layout's measurer, so phones measure in their own fonts, as the shown label is.
+  - The grid's own `inlineContributionOf` goes through the same function. `validate.ts` checks the new field, and the translated harness decodes it.
+- **Compiler:**
+  - #618's natural-width refusals in `checkSelect` are lifted for a select whose options Dragon reads in full:
+    - intrinsic keyword widths, min-widths and max-widths;
+    - `flex-basis: content`;
+    - a percentage width on a grid item;
+    - the content-sized ancestor walk;
+    - `min-width: auto` on a flex or grid item.
+  - A select whose options are rows of a Markless list (a style input node with `row`) has options Dragon cannot list. Those refusals stay for it, saying so.
+- **Markless (separate PR):** `packages/mobile/src/style-input.ts` writes a `@for` inside a `<select>` as plain options when the payload's list is a literal array (`list.array` of literals, as `TAGS` folds to), each option's text taken from its row. Any other list keeps its rows.
+- **Proof:**
+  - Fixture `controls-select-natural-width` (both directions):
+    - options of different widths, a `label` attribute, a disabled option, inherited `text-transform: uppercase` and letter-spacing;
+    - each with `appearance: none` and devolved to menulist-button;
+    - the select as: an auto grid track item with `min-width: auto`; `width: max-content`; `width: fit-content`; a row flex item with `min-width: auto`; a child of an `inline-block` and of a float.
+  - A Lato WOFF2 case in `form-b-select-measurer.test.ts`, so a real font measures on the layout's measurer.
+- **Judge ruling on S4 (2026-11-22): approved with amendments.**
+  1. **Rows reach the compiler:** a Markless list's one template option looks like a plain option to `checkSelect`. The Markless export therefore passes the compiler the selects whose options are rows of a list (InternalOptions `listedSelectOptions`), and `checkSelect` keeps the natural-width refusals for them, naming the list. It keeps them too where any option's text or label follows state, even when the number of options is fixed. A select inside a row whose own options are constant stays allowed.
+  2. **Markless expansion** takes the literal array from the analyzer's folded payload fact (`list.array` of literals), never by re-reading source. It keeps the `value` and `selected` bindings by state, and handles static options mixed with list rows.
+  3. **More proof:**
+     - the notes shape exactly: a `width: 100%` grid item with `min-width: auto`;
+     - `width: min-content`, word-spacing, label whitespace collapsing, a select with no options, and empty labels;
+     - a planted fault that measures only the shown label, which the fixtures must catch;
+     - the Swift and Kotlin engines decoding the option labels and matching the TypeScript engine on the translate corpus;
+     - rejects for a list's options, for an option text from a row cell, and for an option text that changes by state.
+  4. The board gets S4 as a task.
