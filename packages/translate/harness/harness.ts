@@ -88,7 +88,8 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import { absoluteRects, layout, layoutWithFaults, resolvedInput } from '../../layout/src/layout.ts';
+import type { StickyConstraint } from '../../layout/src/layout.ts';
+import { absoluteRects, layout, layoutWithFaults, resolvedInput, stickyConstraints, stickyShift } from '../../layout/src/layout.ts';
 import type { Ctx } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
@@ -3962,6 +3963,37 @@ export function runMarklessLayout(line: string): string {
  * `shaper` shapes the text the build did not record.
  */
 /**
+ * POSX-s scroll on the device: {"sticky": the layout answer's sticky constraints with plain numbers (device px, null for an auto
+ * inset), "scroll": [x, y], the root scroller's offset in device px}. The answer is ["ok", [[id, dx, dy], ...]], each sticky box's
+ * shift from its in-flow place in device px (stickyShift), the host moving the box's view by its shift less its at-rest one.
+ */
+export function runMarklessSticky(line: string): string {
+  try {
+    const o = obj(parseJson(line), ['sticky', 'scroll'], '$');
+    const scroll = arr(field(o, 'scroll', '$'), '$.scroll');
+    if (scroll.length !== 2) fail('$.scroll: expected [x, y]');
+    const lu = (v: number): LU => fromRaw(Math.round(v * LU_PER_PX));
+    const sx = lu(num(scroll[0] as JsonValue, '$.scroll[0]'));
+    const sy = lu(num(scroll[1] as JsonValue, '$.scroll[1]'));
+    let out = '["ok",[';
+    arr(field(o, 'sticky', '$'), '$.sticky').forEach((v, i) => {
+      const at = `$.sticky[${i}]`;
+      const t = arr(v, at);
+      if (t.length !== 15) fail(`${at}: expected an id and 14 numbers`);
+      const n = (k: number): LU => lu(num(t[k] as JsonValue, `${at}[${k}]`));
+      const inset = (k: number): LU | null => ((t[k] as JsonValue).kind === 'null' ? null : n(k));
+      const c: StickyConstraint = { id: str(t[0] as JsonValue, `${at}[0]`), x: n(1), y: n(2), width: n(3), height: n(4), cbLeft: n(5), cbTop: n(6), cbRight: n(7), cbBottom: n(8), viewportWidth: n(9), viewportHeight: n(10), top: inset(11), right: inset(12), bottom: inset(13), left: inset(14) };
+      const d = stickyShift(c, sx, sy);
+      out += `${i === 0 ? '' : ','}[${q(c.id)},${h(d.dx / LU_PER_PX)},${h(d.dy / LU_PER_PX)}]`;
+    });
+    return `${out}]]`;
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/**
  * A Markless page's transitions and animations on the device: the export's animator tables run over the plan's assignments from
  * `initial` through `steps` (["event", assignment] for a style change, ["advance", ms] for time), as rtAnimatorResult runs them.
  * The answer is ["ok", events, colours, transforms, lengths, busy]: each CSS animation event as [step, type, node, name,
@@ -4296,7 +4328,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       const range = rangeOf.get(b.id);
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
-    const arrows = arrowsJson(menuListArrows(input, boxes, measurer), abs);
+    const arrows = arrowsJson(menuListArrows(input, boxes, measurer), abs) + stickyJson(stickyConstraints(input, measurer));
     if (!o.values.has('slots')) return `${out}]${arrows}]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
     if (spliced === null) return `${out}${arrows}]`;
@@ -4306,6 +4338,20 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       out += `${i === 0 ? '' : ','}[${q(row.key)},${writeNumbers(row.parts, row.values, `${row.at}.slots`)}]`;
     });
     return `${out}]${arrows}]`;
+}
+
+/**
+ * POSX-s scroll: each sticky box's constraint in device px, as ["sticky", [[id, x, y, width, height, cbLeft, cbTop, cbRight, cbBottom,
+ * viewportWidth, viewportHeight, top, right, bottom, left], ...]] with null for an auto inset; none when the page has no sticky box.
+ */
+function stickyJson(cs: readonly StickyConstraint[]): string {
+  if (cs.length === 0) return '';
+  const px = (v: number | null): string => (v === null ? 'null' : h(v / LU_PER_PX));
+  let out = ',["sticky",[';
+  cs.forEach((c, i) => {
+    out += `${i === 0 ? '' : ','}[${q(c.id)},${px(c.x)},${px(c.y)},${px(c.width)},${px(c.height)},${px(c.cbLeft)},${px(c.cbTop)},${px(c.cbRight)},${px(c.cbBottom)},${px(c.viewportWidth)},${px(c.viewportHeight)},${px(c.top)},${px(c.right)},${px(c.bottom)},${px(c.left)}]`;
+  });
+  return `${out}]]`;
 }
 
 /** Every bound write number of an assignment at these slot values: [[node, write kind, path, value], ...]. */

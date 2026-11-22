@@ -51,6 +51,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('layout.ts'), name: 'layout' },
     { file: at('layout.ts'), name: 'layoutWithFaults' },
     { file: at('layout.ts'), name: 'absoluteRects' },
+    { file: at('layout.ts'), name: 'stickyConstraints' },
+    { file: at('layout.ts'), name: 'stickyShift' },
     { file: at('platform.ts'), name: 'measurerFor' },
     { file: at('text.ts'), name: 'ahemMeasurer' },
     // R4: a host scopes its shaped measurer to Latin text as platform.ts shapedMeasurerFor does (the harness's replay included).
