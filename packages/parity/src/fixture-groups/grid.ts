@@ -9,6 +9,8 @@ import type { FixtureSpec } from '../fixtures.ts';
 import { both, reject } from './define.ts';
 
 export const GRID: readonly FixtureSpec[] = [
+  // FORM: block buttons, readonly text fields and selects as grid items, in fixed, fr and auto tracks, stretched and aligned.
+  both('grid-controls'),
   both('grid-inert-placement'),
   both('grid-inert-templates'),
   // GRID G1a: grid layout in block flow and as a flex item, each exact against Chrome 145 in both directions.
