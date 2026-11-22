@@ -111,8 +111,8 @@ import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import type { SnappedRect } from '../../layout/src/snap.ts';
 import { snapEdges, snapRect } from '../../layout/src/snap.ts';
-import type { MenuListArrowPaint } from '../../layout/src/paint.ts';
-import { menuListArrows } from '../../layout/src/paint.ts';
+import type { MenuListArrowPaint } from '../../layout/src/paint-menulist.ts';
+import { menuListArrows } from '../../layout/src/paint-menulist.ts';
 import type { SvgSegment } from '../../layout/src/svg-geometry.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
@@ -1592,7 +1592,7 @@ function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: str
   return `${out}]]`;
 }
 
-/** FORM-b: the drop-down arrow of every menulist-button select (paint.ts menuListArrows), only in a result that has one. */
+/** FORM-b: the drop-down arrow of every menulist-button select (paint-menulist.ts menuListArrows), only in a result that has one. */
 function arrowSuffix(input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): string {
   return arrowsJson(menuListArrows(input, boxes, measurer), null);
 }
