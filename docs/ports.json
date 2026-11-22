@@ -2207,6 +2207,7 @@
         { "lines": "2453-2463", "symbol": "ColorsMatchAtCorner", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/effects.ts", "symbol": "boxProblem", "use": "reference" },
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedElement", "use": "reference" },
         { "file": "packages/dragon/src/css/color.ts", "symbol": "insetOutsetTones", "use": "port" },
         { "file": "packages/dragon/src/emit/paint/effects.ts", "symbol": null, "use": "reference" },
@@ -2216,6 +2217,22 @@
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_decoration_data.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "1a182883c8488b3ca5037d43aec1ad2d99fa68477f9ab7800f25dfa7e49188d0",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "11-21", "symbol": "BorderObscuresBackgroundEdge", "source": "located" },
+        { "lines": "23-70", "symbol": "ComputeBleedAvoidance", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/effects.ts", "symbol": "boxProblem", "use": "reference" }
       ]
     },
     {
@@ -4272,6 +4289,21 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/triangle_f.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2021 The Chromium Authors",
+      "fileSha256": "17a6e529896bbb3c4c823de50b622551f19a81d188b129f7562ef40bc0588c90",
+      "headerSha256": "40ecbf467cce38f1e17971fdcdfe424a7eaa7178173604fc79e6715eb35f11a8",
+      "ranges": [
+        { "lines": "11-40", "symbol": "PointIsInTriangle", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": "inTriangle", "use": "port" }
       ]
     },
     {
