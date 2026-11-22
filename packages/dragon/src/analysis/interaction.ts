@@ -97,7 +97,7 @@ export const validTabindex = (v: string): boolean => /^[\t\n\f\r ]*[-+]?[0-9]/.t
  */
 const NEVER_FOCUSABLE: ReadonlySet<string> = new Set([
   'html', 'body', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
-  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'center', 'fieldset', 'legend', 'span', 'a', 'label', 'br', 'img',
+  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'center', 'fieldset', 'legend', 'form', 'span', 'a', 'label', 'br', 'img',
   'svg', 'path', 'rect', 'circle', 'b', 'strong', 'em', 'i',
 ]);
 
@@ -536,7 +536,6 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
-const zeroLength = (v: CssValue): boolean => v.kind === 'length' && v.value === 0;
 // OVFL: rt-hit clips hidden and clip at the padding box. auto and scroll are native scroll views (OVFL-B) the user scrolls, and the
 // hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
@@ -562,6 +561,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // SELD-R2b: rt-hit.ts clips a hit to the rounded border box, and a clipping box's in-flow content to its rounded padding edge.
+  ['border-top-left-radius', all],
+  ['border-top-right-radius', all],
+  ['border-bottom-right-radius', all],
+  ['border-bottom-left-radius', all],
   // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
   // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
   ['view-transition-name', all],
@@ -601,11 +605,12 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['dominant-baseline', all],
   ['alignment-baseline', all],
   ['d', all],
-  // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
-  ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
-  ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
-  ['outline-width', zeroLength],
-  ['outline-offset', zeroLength],
+  // SELD-R2b: Blink hit-tests a box by its border box and never by its outline, so no outline value moves a hit; the outline-*
+  // fixtures in the hit lane (parity hit-report.test) match Chrome with rt-hit.ts reading no outline.
+  ['outline-color', all],
+  ['outline-style', all],
+  ['outline-width', all],
+  ['outline-offset', all],
 ]);
 
 /** A select, text field or textarea (textFieldPartOf holds both), whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
