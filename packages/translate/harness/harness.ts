@@ -1047,8 +1047,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   };
 }
 
-function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
+function decodeText(v: JsonValue, path: string): TextLeaf {
+  const o = obj(v, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -1143,7 +1143,7 @@ function controlKind(v: JsonValue, path: string): ControlKind {
   }
   if (k === 'select-menulist') {
     const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth', 'options'], path);
-    const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => (x.kind === 'obj' ? decodeText(x, `${path}.options[${i}]`) : fail(`${path}.options[${i}]: expected an object`)));
+    const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => decodeText(x, `${path}.options[${i}]`));
     return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path), options };
   }
   if (k === 'select-inner') {
