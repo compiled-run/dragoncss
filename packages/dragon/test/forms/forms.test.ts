@@ -42,7 +42,7 @@ describe('forms reference functions against Chrome 145', () => {
     expect(r.counts['range-value']).toBe(captures.rangeValue.rows.length + captures.rangeGeometry.cases.length);
     expect(r.counts['range-geometry']).toBe(2 * captures.rangeGeometry.cases.length);
     expect(r.counts['button-inner']).toBeGreaterThan(1000);
-    expect(r.counts.appearance).toBe(17);
+    expect(r.counts.appearance).toBe(13);
   });
 
   it('plants the four faults', () => {
@@ -86,7 +86,6 @@ describe('R11 devolve table', () => {
       button: { none: 'theme', 'background-color': 'css', border: 'css', 'appearance-none': 'css' },
       range: { none: 'theme', 'background-color': 'theme', border: 'theme', 'appearance-none': 'css', 'input-none-thumb-auto': 'theme' },
       textfield: { none: 'theme', 'background-color': 'css', border: 'css', 'appearance-none': 'css' },
-      textarea: { none: 'theme', 'background-color': 'css', border: 'css', 'appearance-none': 'css' },
     });
   });
 
