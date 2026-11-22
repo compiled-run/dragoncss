@@ -635,20 +635,25 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   // A text field or textarea holds its inner editor and at most one placeholder, and nothing else (block.ts layoutTextField, layoutTextArea).
   const fieldPart = (c: unknown): unknown => (isRecord(c) && c['kind'] === 'control' && isRecord(c['control']) ? c['control']['kind'] : null);
   if (controlKind === 'text-field' || controlKind === 'text-area') {
+    const name = controlKind === 'text-field' ? 'a text field control' : 'a text area control';
     let editors = 0;
     let placeholders = 0;
     children.forEach((child: unknown, i: number) => {
       const part = fieldPart(child);
       // An input's empty editor lays out one empty line in its strut; a textarea's empty editor has no line (Chrome 145: 0 tall).
-      if (part === 'text-editor' && controlKind === 'text-field' && isRecord(child) && Array.isArray(child['children']) && child['children'].length === 0 && child['strut'] === null) {
+      const empty = part === 'text-editor' && isRecord(child) && Array.isArray(child['children']) && child['children'].length === 0;
+      if (empty && controlKind === 'text-field' && child['strut'] === null) {
         errors.push({ path: `${path}.children[${i}].strut`, code: 'strut', message: 'an empty text-editor control has a strut, whose one empty line it lays out' });
+      }
+      if (empty && controlKind === 'text-area' && child['strut'] !== null) {
+        errors.push({ path: `${path}.children[${i}].strut`, code: 'strut', message: "a text area control's empty text-editor control has a null strut: it has no line" });
       }
       if (part === 'text-editor') editors++;
       else if (part === 'text-placeholder') placeholders++;
-      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a text field control holds only its text-editor control and at most one text-placeholder control' });
+      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: `${name} holds only its text-editor control and at most one text-placeholder control` });
     });
-    if (editors !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds exactly one text-editor control' });
-    if (placeholders > 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds at most one text-placeholder control' });
+    if (editors !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: `${name} holds exactly one text-editor control` });
+    if (placeholders > 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: `${name} holds at most one text-placeholder control` });
   } else {
     children.forEach((child: unknown, i: number) => {
       const part = fieldPart(child);
