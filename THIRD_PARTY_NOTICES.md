@@ -38,14 +38,19 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/html/forms/menu_list_inner_element.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/html/list_item_ordinal.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/absolute_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/anchor_evaluator_impl.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/baseline_utils.h`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm_utils.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/block_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/box_fragment_builder.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/column_layout_algorithm.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/exclusions/exclusion_space.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
+- `third_party/blink/renderer/core/layout/forms/fieldset_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
+- `third_party/blink/renderer/core/layout/fragmentation_utils.cc`: Copyright 2017 The Chromium Authors
+- `third_party/blink/renderer/core/layout/geometry/layout_unit_diffuser.h`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_baseline_accumulator.h`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/grid/grid_item.cc`: Copyright 2021 The Chromium Authors
@@ -61,10 +66,15 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/inline/inline_layout_algorithm.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/inline_node.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/justification_utils.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/line_break_candidate.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/line_break_candidate.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_breaker.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_truncator.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/line_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/inline/logical_line_builder.cc`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/paragraph_line_breaker.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/score_line_break_context.h`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/layout/inline/score_line_breaker.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_block_flow_hot.cc`: Copyright 2022 The Chromium Authors
 - `third_party/blink/renderer/core/layout/layout_utils.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/length_utils.cc`: Copyright 2016 The Chromium Authors
@@ -74,6 +84,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/list/unpositioned_list_marker.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/logical_box_fragment.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/logical_box_fragment.h`: Copyright 2016 The Chromium Authors
+- `third_party/blink/renderer/core/layout/out_of_flow_layout_part.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/physical_box_fragment.h`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/layout/scrollable_overflow_calculator.h`: Copyright 2020 The Chromium Authors
@@ -92,6 +103,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/paint/text_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/display_style.h`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/style/position_area.cc`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/opentype/open_type_caps_support.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
@@ -250,6 +262,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/platform/fonts/shaping/harfbuzz_face.cc`: Copyright (c) 2012 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/shaping/harfbuzz_shaper.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
 - `third_party/blink/renderer/platform/fonts/shaping/shape_result.cc`: Copyright (c) 2012 Google Inc. All rights reserved.; Copyright (C) 2013 BlackBerry Limited. All rights reserved.
+- `third_party/blink/renderer/platform/fonts/web_font_decoder.cc`: Copyright (C) 2009 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/geometry/layout_unit.h`: Copyright (c) 2012, Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/styled_stroke_data.cc`: Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/platform/text/character.h`: Copyright (C) 2014 Google Inc. All rights reserved.
@@ -620,6 +633,62 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 You can contact the author at:
   - rapidhash source repository: https://github.com/Nicoshev/rapidhash
+```
+
+## OTS (OpenType Sanitizer): BSD 3-Clause (ots-bsd)
+
+- `third_party/ots/src/src/cff_charstring.cc`: Copyright (c) 2010-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/cff.cc`: Copyright (c) 2012-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/cmap.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/cvt.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/fpgm.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/gasp.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/glyf.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/hdmx.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/head.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/hhea.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/kern.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/loca.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/ltsh.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/math.cc`: Copyright (c) 2014-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/maxp.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/metrics.cc`: Copyright (c) 2011-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/name.cc`: Copyright (c) 2011-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/os2.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/ots.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/ots.h`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/post.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/prep.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/vdmx.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/vhea.cc`: Copyright (c) 2011-2017 The OTS Authors. All rights reserved.
+- `third_party/ots/src/src/vorg.cc`: Copyright (c) 2009-2017 The OTS Authors. All rights reserved.
+
+```
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
 ## fdlibm (in V8): the Sun Microsystems notice (fdlibm-sun)
