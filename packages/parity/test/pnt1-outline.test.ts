@@ -24,7 +24,9 @@ import { boxes } from './paint-model.ts';
 import type { OutlineFaults } from './outline-model.ts';
 import { NO_OUTLINE_FAULTS, outlineModelAt, outlineOrder, outlines } from './outline-model.ts';
 
-const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).filter((f) => f.kind === 'layout');
+// outline-layers paints outlines in their paint layers, under and inside positioned boxes: pnt1-effects proves it with the Appendix E
+// model, so this model (boxes in tree order, every outline last) leaves it out.
+const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).filter((f) => f.kind === 'layout' && f.id !== 'outline-layers');
 
 /** Each outline plant's host twin: a shift in device px and the model's faults. */
 const TWINS: Record<'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped', { readonly shift: number; readonly faults: OutlineFaults }> = {

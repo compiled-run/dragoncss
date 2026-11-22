@@ -1250,6 +1250,7 @@ public final class DragonTree {
       if offsets.count != idx.count { fatalError("dragon: \(bId): the engine's lines give \(offsets.count) fragments, its layout \(idx.count)") }
       inlineLines[bId] = zip(idx, offsets).map { (i, o) in (edges: [snapped[i].left - be[0], snapped[i].top - be[1], snapped[i].right - be[0], snapped[i].bottom - be[1]], baseline: o / lu) }
     }
+    dragonAfterTree(root)
   }
 
   /// The dump read back from the live tree: frames via dragonLayoutRect (transforms ignored), applied values from the live objects.
@@ -2700,6 +2701,7 @@ class DragonTree(val context: Context) {
       if (offsets.size != idx.size) throw IllegalStateException("dragon: " + bId + ": the engine's lines give " + offsets.size + " fragments, its layout " + idx.size)
       inlineLines[bId] = idx.indices.map { j -> val e = snapped[idx[j]]; doubleArrayOf(e.left - be[0], e.top - be[1], e.right - be[0], e.bottom - be[1], offsets[j] / lu) }
     }
+    dragonAfterTree(root)
   }
 
   /** The dump read back from the live tree: frames from the layout positions up to the root (dragonLayoutOffset), divided by density. */
@@ -2866,6 +2868,7 @@ function paintStagesSource(backend: NativeBackend): string {
   const after = calls(paints.flatMap((m) => (m.native.afterLayout === null ? [] : [m.native.afterLayout])), 'v, shape, scale');
   const applied = paints.flatMap((m) => (m.native.applied === null ? [] : [m.native.applied]));
   const afterText = calls(paints.flatMap((m) => (m.native.afterText === undefined ? [] : [m.native.afterText])), 'v, tv, g');
+  const afterTree = calls(paints.flatMap((m) => (m.native.afterTree === undefined ? [] : [m.native.afterTree])), 'root');
   const rounded = soleHook(backend, 'roundedPath');
   const container = soleHook(backend, 'container');
   if (ios) {
@@ -2900,6 +2903,10 @@ public struct DragonTextGeometry {
 /// Registration point (TDEC-b): after the text pass configures a text view, each paint module's after-text hook in registry order.
 public func dragonAfterText(_ v: DragonBoxView, _ tv: DragonTextView, _ g: DragonTextGeometry) {
 ${afterText}}
+
+/// Registration point: once a layout has placed every view of the tree, each paint module's after-tree hook in registry order.
+public func dragonAfterTree(_ root: DragonRootView) {
+${afterTree}}
 
 /// Registration point (EMS): a box's applied values, each paint module's readback in registry order.
 public func dragonPaintApplied(_ v: DragonBoxView) -> DumpJsonObject {
@@ -2949,6 +2956,10 @@ class DragonTextGeometry(val id: String, val lines: List<DoubleArray>, val cps: 
 /** Registration point (TDEC-b): after the text pass configures a text view, each paint module's after-text hook in registry order. */
 fun dragonAfterText(v: DragonBoxView, tv: DragonTextView, g: DragonTextGeometry) {
 ${afterText}}
+
+/** Registration point: once a layout has placed every view of the tree, each paint module's after-tree hook in registry order. */
+fun dragonAfterTree(root: DragonRootView) {
+${afterTree}}
 
 /** Registration point (EMS): a box's applied values, each paint module's readback in registry order. */
 fun dragonPaintApplied(v: DragonBoxView): List<Pair<String, DumpJson>> {
