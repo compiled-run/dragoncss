@@ -82,7 +82,8 @@ export const collectNodes = (props: string[]): CollectedElement[] => {
     }
     const texts: CollectedElement['texts'][number][] = [];
     for (const child of Array.from(el.childNodes)) {
-      if (child.nodeType !== Node.TEXT_NODE) continue;
+      // FORM-b: a textarea's text is its value, which its UA shadow editor lays out (captureTextFieldParts); it has no box.
+      if (child.nodeType !== Node.TEXT_NODE || el.tagName === 'TEXTAREA') continue;
       const range = document.createRange();
       range.selectNodeContents(child);
       texts.push({ data: (child as Text).data, box: rect(range.getBoundingClientRect()), rects: Array.from(range.getClientRects()).map(rect) });
@@ -249,7 +250,7 @@ const isTextFieldInput = (type: string | undefined): boolean => {
 };
 
 /**
- * FORM-b: the UA shadow parts of every single-line text field with a data-dragon-id, as element nodes "<id>::placeholder" (while
+ * FORM-b: the UA shadow parts of every single-line text field and textarea with a data-dragon-id, as element nodes "<id>::placeholder" (while
  * Chrome shows one) and "<id>::editor" after the input, each followed by its text node "<id>::<part>:text0" and the text's
  * fragments "<id>::<part>:text0:line<j>" when it holds text: boxes from DOM.getBoxModel and DOM.getContentQuads (a text node's
  * quads are its fragments, the rects Range.getClientRects gives light-DOM text), computed values from CSS.getComputedStyleForNode.
@@ -267,9 +268,9 @@ async function captureTextFieldParts(page: Page, props: readonly string[]): Prom
   return out;
 }
 
-/** Runs f over each data-dragon-id text field's shadow parts (placeholder while shown, then editor); a page without one opens no session. */
+/** Runs f over each data-dragon-id text field's and textarea's shadow parts (placeholder while shown, then editor); a page without one opens no session. */
 async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: readonly { id: string; parts: readonly (readonly [string, DomNode])[] }[]) => Promise<void>): Promise<void> {
-  const count = await page.evaluate((types: readonly string[]) => Array.from(document.querySelectorAll('input[data-dragon-id]')).filter((e) => (e as HTMLInputElement).type !== undefined && types.includes((e as HTMLInputElement).type)).length, TEXT_FIELD_TYPES);
+  const count = await page.evaluate((types: readonly string[]) => Array.from(document.querySelectorAll('input[data-dragon-id]')).filter((e) => (e as HTMLInputElement).type !== undefined && types.includes((e as HTMLInputElement).type)).length + document.querySelectorAll('textarea[data-dragon-id]').length, TEXT_FIELD_TYPES);
   if (count === 0) return;
   const cdp = await page.context().newCDPSession(page);
   try {
@@ -284,22 +285,33 @@ async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: reado
         return undefined;
       };
       const id = at('data-dragon-id');
-      if (n.nodeName === 'INPUT' && id !== undefined && isTextFieldInput(at('type'))) inputs.push({ id, node: n });
+      if (((n.nodeName === 'INPUT' && isTextFieldInput(at('type'))) || n.nodeName === 'TEXTAREA') && id !== undefined) inputs.push({ id, node: n });
       for (const c of n.children ?? []) walk(c);
     };
     walk(doc.root);
     if (inputs.length !== count) throw new Error(`the pierced document holds ${inputs.length} text fields with a data-dragon-id, the page ${count}`);
-    const fields = inputs.map(({ id, node }) => {
+    const fields: { id: string; parts: readonly (readonly [string, DomNode])[] }[] = [];
+    for (const { id, node } of inputs) {
       const kids = (node.shadowRoots?.[0]?.children ?? []).filter((k) => k.nodeName === 'DIV');
       const placeholder = kids.find((k) => (k.attributes ?? []).includes('placeholder'));
       const editor = kids.find((k) => k !== placeholder);
       if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
-      return { id, parts: [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const] };
-    });
+      // Chrome keeps a hidden placeholder (display: none) while the value is not empty; Dragon leaves it out of the tree.
+      const shown = placeholder !== undefined && (await computedDisplay(cdp, `${id}::placeholder`, placeholder)) !== 'none';
+      fields.push({ id, parts: [...(shown ? [['placeholder', placeholder] as const] : []), ['editor', editor] as const] });
+    }
     await f(cdp, fields);
   } finally {
     await cdp.detach();
   }
+}
+
+/** A UA shadow part's computed display. */
+async function computedDisplay(cdp: CDPSession, partId: string, n: DomNode): Promise<string> {
+  const style = (await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] };
+  const display = style.computedStyle.find((e) => e.name === 'display')?.value;
+  if (display === undefined) throw new Error(`${partId}: CDP gave no computed display`);
+  return display;
 }
 
 /** A UA shadow part as the element "<partId>", then its text "<partId>:text0" and the text's fragments "<partId>:text0:line<j>". */

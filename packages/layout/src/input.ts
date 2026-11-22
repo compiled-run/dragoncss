@@ -593,8 +593,11 @@ export type ReplacedLeaf = {
  * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent);
  * - text-field (FORM-b): a single-line text field, a block container of its placeholder (if any) and its inner editor. Its intrinsic
  *   content inline size is size x the advance of 0 in its font, rounded up to a whole px; its auto content height is the editor's,
- *   which it centres unsafely in the block axis, and the placeholder is centred on the editor. font and lineHeight are the input's
- *   own, which decide the editor's line height (controls.ts textEditorLineHeight);
+ *   which it centres unsafely in the block axis, and the placeholder's baseline is put on the editor's. font and lineHeight are the
+ *   input's own, which decide the editor's line height (environment.ts editorLineHeightIsNormal);
+ * - text-area (FORM-b): a textarea, a block container of its placeholder (if any) and its inner editor, both at its content box
+ *   start. Its intrinsic content inline size is cols x the advance of 0, rounded up to a whole px, and its auto content height is
+ *   rows x its line height, whatever its text; font and lineHeight are the textarea's own;
  * - text-editor: the inner editor, a block container holding the value's text;
  * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow;
  * - fieldset: a block fieldset, whose rendered legend sits in its block-start border and whose other contents flow in an anonymous
@@ -611,6 +614,7 @@ export type ControlKind =
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
   | { readonly kind: 'button-block' }
   | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'text-area'; readonly cols: number; readonly rows: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }
