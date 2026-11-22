@@ -26979,7 +26979,7 @@
     "css/css-sizing/aspect-ratio/flex-aspect-ratio-054.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/flex-aspect-ratio-055.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/floats-aspect-ratio-001.html": {"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-sizing/aspect-ratio/fractional-aspect-ratio.html": {"missing":"DRAGON_UNSUPPORTED_VALUE:0.00025 / 0.0001","status":"not-runnable"},
+    "css/css-sizing/aspect-ratio/fractional-aspect-ratio.html": {"chrome":{"alsoFails":0,"checks":{"pass":2,"total":2},"harness":0,"subtests":{"pass":2,"total":2}},"status":"pass","subtests":{"pass":2,"total":2}},
     "css/css-sizing/aspect-ratio/grid-aspect-ratio-001.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/grid-aspect-ratio-002.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/grid-aspect-ratio-003.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},

@@ -18,18 +18,20 @@
     "fractionalFreeSpace",
     "divInt",
     "cumulativeShareRounded",
-    "distributedOffset"
+    "distributedOffset",
+    "layoutRatioWidth",
+    "layoutRatioHeight"
   ],
   "mutatedVectors": 258,
   "generatedTrees": 20000,
   "libraryPerOperation": 2000,
   "cases": {
     "vectors": 258,
-    "units": 320000,
+    "units": 360000,
     "engine": 20258,
     "library": 22000,
     "rt": 55362,
-    "hit": 3600,
+    "hit": 3640,
     "animator": 30,
     "interaction": 21,
     "band": 27,
@@ -37,24 +39,24 @@
     "select": 5
   },
   "engineSplit": {
-    "ok": 14257,
-    "unsupported": 5889,
+    "ok": 14233,
+    "unsupported": 5913,
     "refused": 112,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors": "641cece88222150d86e3545b75c0690edf914fc32b9ada1af8c58d3785d40713",
-    "units": "41c7a09c581011303f9896e233dfca4bc1bfc33266b817af269199de755508a7",
-    "engine": "c95fc4f833dd95405904a313ec02df546f3d3975e253abf8882173864642fa3d",
+    "vectors": "7c08135de26c84195cb595a7ce7b4e33b02f28bcd7a9b936543073e0e7d87b09",
+    "units": "46fa13a7ba336af11b629e9b3edf102fea86fba7787e1075dbcd4dd50208a96e",
+    "engine": "d7ec6b6591d1b29d92c5555fb2b6367909813e570f73dc6325538224cf7995c0",
     "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d",
     "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
-    "hit": "dc6f4fc3e35582e8969232f454363805c59ec09511d77c3c717f1e08c6bf605b",
+    "hit": "93c2cc0b6d1d0f4c2fbb7e3fa9293eeb51e1db56e750724902a76f9857e7a7a2",
     "animator": "eb5c4e45f15d597675e7dfb712f176dc615aaf6d6ed340ad966a3a4a5deb00e8",
     "interaction": "f97585c89a98da73b70b9c08ccb5fd9d912b204367bd75e5f6ccdf1987b9e662",
     "band": "4769309d2fe3df09c6e125ae33c0f629e8eb50f69cff11021b3e37b86f8446ab",
     "pointer": "171598a0f34bbcf9532b89a9ddeb93fc32ab44ffc36dd3255f595dab61a84d2c",
     "select": "0c71e6e0f678811952386f61dffd29b55387956a8475712e347d07dfe2e557c7"
   },
-  "digest": "f9c99b106bb0fd5b7b30c2b870746dd612217d22720f05e1e54dc3286e3203b5"
+  "digest": "91d78d32ab54248bf0845b192000fd71d986cbb2efb1aefccdf32819cb833c50"
 }
