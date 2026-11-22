@@ -99,7 +99,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   const keyword = (k: string): LU | null => {
     if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
-    return add(intrinsicContentInlineSize(ctx, box, k === 'min-content' ? 'min' : k === 'max-content' ? 'max' : kind), bp);
+    return add(intrinsicContentInlineSize(ctx, node.kind === 'control' ? node : box, k === 'min-content' ? 'min' : k === 'max-content' ? 'max' : kind), bp);
   };
   const width = keyword(s.width.kind);
   const maxWidth = keyword(s.maxWidth.kind);

@@ -690,9 +690,9 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
     // css-sizing-4 §3.1: stretch fills the space the margins leave (auto margins as 0), whatever box-sizing says.
     if (k === 'stretch') return stretched;
-    const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
+    const minC = add(intrinsicContentInlineSize(ctx, node, 'min'), hbp);
     if (k === 'min-content') return minC;
-    const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
+    const maxC = add(intrinsicContentInlineSize(ctx, node, 'max'), hbp);
     if (k === 'max-content') return maxC;
     return min(maxC, max(minC, stretched));
   };
