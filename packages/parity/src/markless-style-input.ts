@@ -812,6 +812,14 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
+  // The animator keeps one state for the page, so a row's copies would share one clock and a row added later would never run.
+  const inRows = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[dragonIds.get(n.id) as string, n.id] as const])));
+  for (const [t, x] of Object.entries(exported.targets)) {
+    if (x.anim === undefined) continue;
+    const animated = [...x.anim.slots, ...x.anim.animations, ...x.anim.bases].map((e) => e.node);
+    const row = animated.find((node) => inRows.has(node));
+    if (row !== undefined) fail(`${t}: ${inRows.get(row)} has a transition or animation inside a @for row, which a phone runs only for the page, not per row, yet`);
+  }
   // Named with no frame: an element a hidden attribute (fixed or by state) or a style state another assignment shows it in hides here, and its contents.
   const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));

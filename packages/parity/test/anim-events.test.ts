@@ -1,8 +1,8 @@
 // The CSS animation events the animator gives a host (rt-animator.ts animationEvents), against Chrome's: each frame case with
 // animations runs in Chrome frozen, a state step morphing the page in place and an advance moving its running animations as the
 // frame lanes do, with every animationstart, animationiteration, animationend and animationcancel recorded after the step; the
-// TypeScript animator runs the same steps. Each element's events, in order, with their animation name and elapsed time, must be
-// the same.
+// TypeScript animator runs the same steps. The events across the page, in dispatch order, with their animation name and elapsed
+// time, must be the same.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Browser } from 'playwright';
 import type { Assignment } from 'dragon';
@@ -26,10 +26,22 @@ afterAll(async () => {
   await browser.close();
 });
 
-const byNode = (events: readonly Fired[]): Map<string, string[]> => {
-  const out = new Map<string, string[]>();
-  for (const e of events) out.set(e.node, [...(out.get(e.node) ?? []), `${e.type} ${e.name} ${e.elapsedTime.toFixed(6)}`]);
-  return out;
+// Every event in dispatch order across the page, since a handler can read what another element's handler wrote before it.
+// Chrome dispatches a style change's cancels before its other events, but orders the cancels among themselves by its own
+// hash-set walk (measured: three removed in tree order fire b, a, c), so a run of cancels is compared as a set.
+const inOrder = (events: readonly Fired[]): string[] => {
+  const out: string[] = [];
+  let cancels: string[] = [];
+  for (const e of events) {
+    const text = `${e.node} ${e.type} ${e.name} ${e.elapsedTime.toFixed(6)}`;
+    if (e.type === 'animationcancel') {
+      cancels.push(text);
+      continue;
+    }
+    out.push(...cancels.sort(), text);
+    cancels = [];
+  }
+  return [...out, ...cancels.sort()];
 };
 
 // Chrome's events over every case: the comparison is not vacuous.
@@ -42,7 +54,7 @@ describe('CSS animation events', () => {
   });
 
   for (const c of CASES)
-    it(`${c.id}: the animator's events are Chrome's, element by element`, async () => {
+    it(`${c.id}: the animator's events are Chrome's, in dispatch order`, async () => {
       const steps = frameScript(c);
       const sim = simulator(c);
       const ours: Fired[] = [];
@@ -114,7 +126,7 @@ describe('CSS animation events', () => {
             }, s.ms);
         }
         const chrome = (await page.evaluate(() => (window as unknown as { __fired: Fired[] }).__fired)) as Fired[];
-        expect(byNode(ours)).toEqual(byNode(chrome));
+        expect(inOrder(ours)).toEqual(inOrder(chrome));
         fired += chrome.length;
       } finally {
         await page.context().close();
