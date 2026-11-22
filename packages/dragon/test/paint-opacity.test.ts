@@ -305,6 +305,27 @@ describe('opacity: a group native pre-composites', () => {
     const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { painters: readonly string[] } | undefined;
     expect(w?.painters).toEqual(['p']);
   });
+  it('admits a group in one sticky or fixed box whose opaque square background holds it, naming that box; the device reads back that it held', () => {
+    for (const css of ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', '.w { position: fixed; top: 0; width: 50px; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }']) {
+      const c = build(css);
+      expect(errors(c), css).toEqual([]);
+      const p = nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const g = p.programs.uikit.nodes.find((n) => n.id === 'g');
+      const w = g?.writes.find((x) => x.kind === 'opacity-group');
+      expect((w as { backdrop: string | null } | undefined)?.backdrop, css).toBe('w');
+      expect(EFFECTS_EMITTER.applied({ opacityAlpha8, float32: Math.fround } as never, 'uikit', w as never, 2, {} as never), css).toEqual([1, opacityAlpha8(0.4), 'w', true]);
+    }
+    const cases: [string, string][] = [
+      ['.w { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky and no opaque background colour alone under it'],
+      ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); border-radius: 4px; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky and a background that is not its square border box'],
+      ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; }', 'it may be in the compositor layer of w and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
+    ];
+    for (const [css, why] of cases) {
+      const errs = errors(build(css)).filter((m) => / has opacity 0\.4;/.test(m));
+      expect(errs, css).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: ${why.replace(/[.()]/g, (x) => `\\${x}`)}$`))));
+    }
+  });
   it('admits a group\'s own scale (at most 1) and translate when no item in it is one draw op', () => {
     for (const css of ['.g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; transform: translate(3px, 2px) scale(0.9); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; scale: 0.9; } .k { border: 1px solid rgb(0, 0, 0); }']) {
       const c = build(css);

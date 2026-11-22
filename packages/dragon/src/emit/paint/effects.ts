@@ -83,7 +83,7 @@ public func dragonSetOpacity(_ v: DragonBoxView, _ opacity: Double) {
 /// live alpha (1), the alpha byte its overlay composites with and its backdrop box.
 public func dragonAppliedEffects(_ v: DragonBoxView) -> DumpJsonObject {
   if let g = v.dragonGroup {
-    let head: [DumpJson] = [.number(Double(v.alpha)), .number(Double(g.dragonAlpha8)), g.dragonBackdrop.map { DumpJson.string($0) } ?? .null]
+    let head: [DumpJson] = [.number(Double(v.alpha)), .number(Double(g.dragonAlpha8)), g.dragonBackdrop.map { DumpJson.string($0) } ?? .null] + (g.dragonBackdrop == nil ? [] : [.bool(g.dragonContained)])
     if g.dragonFilter.isEmpty { return [("dragonGroup", .array(head))] }
     return [("dragonFilterGroup", .array(head + g.dragonFilter.map { DumpJson.number($0) }))]
   }
@@ -244,6 +244,8 @@ public final class DragonGroupView: UIView {
   /// The last composite, premultiplied sRGB RGBA8, and its rect [left, top, right, bottom] in page device px.
   public private(set) var dragonQ: [UInt8] = []
   public private(set) var dragonQRect: [Int] = [0, 0, 0, 0]
+  /// D2: whether the sticky or fixed box's opaque background held the group's mapped extent at the last composite (true without one).
+  public private(set) var dragonContained = true
   public init(tree: DragonTree, group: DragonBoxView, alpha8: Int, backdrop: String?, painters: [String], filter: [Double] = [], matrices: JsArray<Double>? = nil) {
     dragonTree = tree
     dragonGroupBox = group
@@ -360,6 +362,12 @@ public final class DragonGroupView: UIView {
       let xs = cs.map { Double($0.x) * s }, ys = cs.map { Double($0.y) * s }
       bext = [Int((xs.min() ?? 0).rounded(.down)), Int((ys.min() ?? 0).rounded(.down)), Int((xs.max() ?? 0).rounded(.up)), Int((ys.max() ?? 0).rounded(.up))]
       bext = [max(bext[0], rootEdges[0]), max(bext[1], rootEdges[1]), min(bext[2], rootEdges[2]), min(bext[3], rootEdges[3])]
+    }
+    // D2: the sticky or fixed box's opaque background must hold the mapped extent, or Chrome's backdrop there is unknown (read back).
+    if let id = dragonBackdrop {
+      guard let lb = t.node(id) as? DragonBoxView else { fatalError("dragon: \(g.dragonId): layer box \(id) is not a built box") }
+      let le = dragonGroupEdges(dragonLayoutRect(lb, in: root), s)
+      dragonContained = bext[0] >= le[0] && bext[1] >= le[1] && bext[2] <= le[2] && bext[3] <= le[3]
     }
     let bw = max(bext[2] - bext[0], 0), bh = max(bext[3] - bext[1], 0)
     var bb = [UInt8](repeating: 255, count: bw * bh * 4)
@@ -723,7 +731,7 @@ fun dragonSetOpacity(v: DragonBoxView, opacity: Double) {
 fun dragonAppliedEffects(v: DragonBoxView): List<Pair<String, DumpJson>> {
   val g = v.dragonGroup
   if (g != null) {
-    val head = listOf(DumpJson.Num(v.alpha.toDouble()), DumpJson.Num(g.dragonAlpha8.toDouble()), g.dragonBackdrop?.let { DumpJson.Str(it) } ?: DumpJson.Null)
+    val head = listOf(DumpJson.Num(v.alpha.toDouble()), DumpJson.Num(g.dragonAlpha8.toDouble()), g.dragonBackdrop?.let { DumpJson.Str(it) } ?: DumpJson.Null) + (if (g.dragonBackdrop == null) emptyList() else listOf(DumpJson.Bool(g.dragonContained)))
     if (g.dragonFilter.isEmpty()) return listOf(Pair("dragonGroup", DumpJson.Arr(head)))
     return listOf(Pair("dragonFilterGroup", DumpJson.Arr(head + g.dragonFilter.map { DumpJson.Num(it) })))
   }
@@ -882,6 +890,9 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     private set
   var dragonQRect = IntArray(4)
     private set
+  /** D2: whether the sticky or fixed box's opaque background held the group's mapped extent at the last composite (true without one). */
+  var dragonContained = true
+    private set
   init {
     isClickable = false
     isFocusable = false
@@ -1021,6 +1032,13 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
     if (transformed) {
       val cs = listOf(toRoot((ext[0] - go0[0]).toFloat(), (ext[1] - go0[1]).toFloat()), toRoot((ext[2] - go0[0]).toFloat(), (ext[1] - go0[1]).toFloat()), toRoot((ext[2] - go0[0]).toFloat(), (ext[3] - go0[1]).toFloat()), toRoot((ext[0] - go0[0]).toFloat(), (ext[3] - go0[1]).toFloat()))
       bext = intArrayOf(maxOf(kotlin.math.floor(cs.minOf { it[0].toDouble() }).toInt(), 0), maxOf(kotlin.math.floor(cs.minOf { it[1].toDouble() }).toInt(), 0), minOf(kotlin.math.ceil(cs.maxOf { it[0].toDouble() }).toInt(), root.width), minOf(kotlin.math.ceil(cs.maxOf { it[1].toDouble() }).toInt(), root.height))
+    }
+    // D2: the sticky or fixed box's opaque background must hold the mapped extent, or Chrome's backdrop there is unknown (read back).
+    val layerId = dragonBackdrop
+    if (layerId != null) {
+      val lb = t.node(layerId) as? DragonBoxView ?: throw IllegalStateException("dragon: " + g.dragonId + ": layer box " + layerId + " is not a built box")
+      val lo = dragonLayoutOffset(lb, root)
+      dragonContained = bext[0] >= lo[0] && bext[1] >= lo[1] && bext[2] <= lo[0] + lb.width && bext[3] <= lo[1] + lb.height
     }
     val bw = maxOf(bext[2] - bext[0], 0)
     val bh = maxOf(bext[3] - bext[1], 0)
@@ -1348,7 +1366,8 @@ export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter
   // Both read back a float32: UIView.alpha is backed by CALayer.opacity (a Float), and Android's View alpha is a Float. A group
   // reads back its live alpha (1), its alpha byte and its backdrop box; a filter group then its filter's (code, amount) pairs; a
   // nested group its live alpha (1) and its alpha byte.
-  applied: (e, _b, w) => (w.kind === 'opacity' ? e.float32(e.opacityAlpha8(w.opacity) / 255) : w.kind === 'opacity-nested' ? [1, e.opacityAlpha8(w.opacity)] : w.kind === 'opacity-group' ? [1, e.opacityAlpha8(w.opacity), w.backdrop] : [1, e.opacityAlpha8(w.opacity), w.backdrop, ...filterPairs(w.filter)]),
+  // A group in a sticky or fixed box then reads back true: that box's opaque background held its extent (D2).
+  applied: (e, _b, w) => (w.kind === 'opacity' ? e.float32(e.opacityAlpha8(w.opacity) / 255) : w.kind === 'opacity-nested' ? [1, e.opacityAlpha8(w.opacity)] : w.kind === 'opacity-group' ? [1, e.opacityAlpha8(w.opacity), w.backdrop, ...(w.backdrop === null ? [] : [true])] : [1, e.opacityAlpha8(w.opacity), w.backdrop, ...(w.backdrop === null ? [] : [true]), ...filterPairs(w.filter)]),
   native: {
     uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, applied: 'dragonAppliedEffects' },
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutEffects', applied: 'dragonAppliedEffects' },
