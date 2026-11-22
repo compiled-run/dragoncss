@@ -25,7 +25,7 @@ import type { InteractionProbe, InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { selectPartOf, textFieldPartOf } from './resolve.ts';
-import { propagatedFrom } from './computed-checks.ts';
+import { holdsAtomicLine, propagatedFrom } from './computed-checks.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
 export const MAX_INTERACTION_STATES = 256;
@@ -647,17 +647,32 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
   return null;
 }
 
+/** The kinds of box hitUnmodelledBox names, with the package each waits for. */
+export type HitUnmodelledBox = {
+  readonly address: string;
+  readonly kind: 'float' | 'fixed box' | 'sticky box' | 'block with percentage padding around atomic inlines';
+  readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'INL2a';
+};
+
 /**
  * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
- * (FLT), which rt-hit.ts refuses in a block or inline-block container, a fixed box (POSX-f) and a sticky box (POSX-s). No Chrome hit
- * capture has them yet.
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container, a fixed box (POSX-f) and a sticky box (POSX-s), which no
+ * Chrome hit capture has yet, and a block container of an atomic inline's line with percentage padding (INL2a), whose lines rt-hit.ts
+ * places over a content box it does not resolve percentages for.
  */
-export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'sticky box'; readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' } | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): HitUnmodelledBox | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'sticky box'; pkg: 'FLT' | 'POSX-f' | 'POSX-s' } | null => {
+  const percent = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
+  const visit = (el: ResolvedElement): HitUnmodelledBox | null => {
+    if (holdsAtomicLine(el)) {
+      for (const p of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
+        const v = el.props.get(p);
+        if (v !== undefined && percent(v) && compiles(v)) return { address: el.element.address, kind: 'block with percentage padding around atomic inlines', pkg: 'INL2a' };
+      }
+    }
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
