@@ -1766,6 +1766,15 @@ function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
   return { percent: flag === 1, value: arg(a, i + 1) };
 }
 
+/** One [percent, value] border-radius component of a hit fact. */
+function factRadius(v: JsonValue, path: string): RadiusLength {
+  const pair = arr(v, path);
+  if (pair.length !== 2) return fail(`${path}: expected [percent, value]`);
+  const value = num(item(pair, 1, path), path);
+  if (value < 0) return fail(`${path}: radius ${value} is negative`);
+  return { percent: bool(item(pair, 0, path), path), value };
+}
+
 /** Eight radius lengths from argument i on. */
 function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
   const out: RadiusLength[] = [];
@@ -2744,10 +2753,14 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 4) return fail(`${path}: expected [id, pointerEvents, inherited, activation]`);
+    if (g.length !== 5) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii]`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path) });
+    const rs = arr(item(g, 4, path), `${path}[4]`);
+    if (rs.length !== 0 && rs.length !== 8) return fail(`${path}[4]: ${rs.length} radius components, not 0 or 8`);
+    const radii: RadiusLength[] = [];
+    for (let k = 0; k < rs.length; k++) radii.push(factRadius(item(rs, k, `${path}[4]`), `${path}[4][${k}]`));
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
