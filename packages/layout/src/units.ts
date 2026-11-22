@@ -46,6 +46,21 @@ export function fromPxCeil(px: number): LU {
   return saturate(Math.ceil(Math.fround(Math.fround(px) * LU_PER_PX)));
 }
 
+/** C++ ceilf of a float px to whole px, as LU (Blink LayoutTextControl's average-character-width sizes). */
+export function ceilFloatToWholePx(px: number): LU {
+  return saturate(Math.ceil(Math.fround(px)) * LU_PER_PX);
+}
+
+/** C roundf of a non-negative float px: the nearest whole px, a half away from zero. */
+export function roundfPx(px: number): number {
+  return Math.floor(Math.fround(px) + 0.5);
+}
+
+/** A px value as an int, toward zero (Blink's int ComputedLineHeight). */
+export function truncPxToInt(px: number): number {
+  return Math.trunc(px);
+}
+
 /**
  * Blink StyleBuilderConverter::ConvertBorderWidth (css-values-4 §6.1 line-width snapping): a width of at least one device px
  * floors to whole device px, a thinner non-zero width becomes one device px. S1 measured thin/medium/thick and fractional

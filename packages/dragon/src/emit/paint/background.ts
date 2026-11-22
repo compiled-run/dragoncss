@@ -95,13 +95,13 @@ public func dragonFoldedFill(_ v: DragonBoxView) -> CGImage? {
   let h = dragonCheckedInt(e[3] - e[1], "\(v.dragonId) folded fill height")
   if w <= 0 || h <= 0 { return nil }
   let fills = JsArray(dragonFoldBackdrop(v))
-  var rgba: [Double] = []
+  var rgba: [UInt8] = []
   rgba.reserveCapacity(w * h * 4)
   do {
     for y in 0..<h {
       for x in 0..<w {
         let c = try paintShadow_backdropAt(fills, e[0] + Double(x), e[1] + Double(y))
-        rgba.append(contentsOf: c.items)
+        rgba.append(contentsOf: c.items.map(dragonByte))
         rgba.append(255)
       }
     }
@@ -272,11 +272,12 @@ fun dragonFoldedFill(v: DragonBoxView): Bitmap? {
   val h = dragonCheckedInt(e[3] - e[1], v.dragonId + " folded fill height")
   if (w <= 0 || h <= 0) return null
   val fills = JsArray(dragonFoldBackdrop(v))
-  val rgba = ArrayList<Double>(w * h * 4)
+  val rgba = ByteArray(w * h * 4)
+  var i = 0
   for (y in 0 until h) {
     for (x in 0 until w) {
-      rgba.addAll(paintShadow_backdropAt(fills, e[0] + x, e[1] + y))
-      rgba.add(255.0)
+      for (c in paintShadow_backdropAt(fills, e[0] + x, e[1] + y)) rgba[i++] = dragonByte(c)
+      rgba[i++] = 255.toByte()
     }
   }
   return dragonShadowBitmap(rgba, w, h)

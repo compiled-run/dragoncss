@@ -1,0 +1,24 @@
+{
+  "case": "controls-text-field",
+  "dpr": 3,
+  "texts": [
+    {"id":"t1::editor:text0","lines":[[0,2]]},
+    {"id":"t2::placeholder:text0","lines":[[0,2]]},
+    {"id":"t3::editor:text0","lines":[[0,2]]},
+    {"id":"t4::editor:text0","lines":[[0,2]]},
+    {"id":"t5::editor:text0","lines":[[0,4]]},
+    {"id":"t6::editor:text0","lines":[[0,2]]},
+    {"id":"t7::placeholder:text0","lines":[[0,4]]},
+    {"id":"t8::editor:text0","lines":[[0,5]]},
+    {"id":"t10::editor:text0","lines":[[0,2]]},
+    {"id":"t11::editor:text0","lines":[[0,17]]},
+    {"id":"t12::editor:text0","lines":[[0,2]]},
+    {"id":"t13::placeholder:text0","lines":[[0,2]]},
+    {"id":"t14::editor:text0","lines":[[0,1]]},
+    {"id":"t15::editor:text0","lines":[[0,2]]},
+    {"id":"t16::editor:text0","lines":[[0,2]]},
+    {"id":"t17::placeholder:text0","lines":[[0,4]]},
+    {"id":"f1::editor:text0","lines":[[0,2]]},
+    {"id":"f2::editor:text0","lines":[[0,2]]}
+  ]
+}

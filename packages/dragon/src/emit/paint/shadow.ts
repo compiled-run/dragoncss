@@ -94,17 +94,17 @@ public func dragonShadowBackdropChanged(_ v: DragonBoxView) {
   }
 }
 
+/// A channel the translated painter computed as a number, checked to be a byte.
+public func dragonByte(_ c: Double) -> UInt8 {
+  if !(c >= 0 && c <= 255) || c.rounded(.towardZero) != c { fatalError("dragon: shadow channel \(c) is not a byte") }
+  return UInt8(c)
+}
+
 /// A premultiplied sRGB RGBA8 image from a paint-shadow.ts layer, or nil for an empty one.
-public func dragonShadowImage(_ rgba: [Double], _ w: Int, _ h: Int) -> CGImage? {
+public func dragonShadowImage(_ rgba: [UInt8], _ w: Int, _ h: Int) -> CGImage? {
   if w <= 0 || h <= 0 { return nil }
   if rgba.count != w * h * 4 { fatalError("dragon: a shadow layer of \(rgba.count) values is not \(w)x\(h) RGBA") }
-  var bytes = [UInt8](repeating: 0, count: rgba.count)
-  for i in 0..<rgba.count {
-    let c = rgba[i]
-    if !(c >= 0 && c <= 255) || c.rounded(.towardZero) != c { fatalError("dragon: shadow channel \(c) is not a byte") }
-    bytes[i] = UInt8(c)
-  }
-  guard let space = CGColorSpace(name: CGColorSpace.sRGB), let provider = CGDataProvider(data: Data(bytes) as CFData) else { fatalError("dragon: no sRGB space or data provider for a shadow") }
+  guard let space = CGColorSpace(name: CGColorSpace.sRGB), let provider = CGDataProvider(data: Data(rgba) as CFData) else { fatalError("dragon: no sRGB space or data provider for a shadow") }
   return CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4, space: space, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
 }
 
@@ -249,18 +249,18 @@ fun dragonShadowBackdropChanged(v: DragonBoxView) {
   }
 }
 
+/** A channel the translated painter computed as a number, checked to be a byte. */
+fun dragonByte(c: Double): Byte {
+  if (!(c >= 0.0 && c <= 255.0) || kotlin.math.truncate(c) != c) throw IllegalStateException("dragon: shadow channel " + c + " is not a byte")
+  return c.toInt().toByte()
+}
+
 /** A premultiplied RGBA8 bitmap from a paint-shadow.ts layer, or null for an empty one. */
-fun dragonShadowBitmap(rgba: List<Double>, w: Int, h: Int): Bitmap? {
+fun dragonShadowBitmap(rgba: ByteArray, w: Int, h: Int): Bitmap? {
   if (w <= 0 || h <= 0) return null
   if (rgba.size != w * h * 4) throw IllegalStateException("dragon: a shadow layer of " + rgba.size + " values is not " + w + "x" + h + " RGBA")
-  val bytes = ByteArray(rgba.size)
-  for (i in rgba.indices) {
-    val c = rgba[i]
-    if (!(c >= 0.0 && c <= 255.0) || kotlin.math.truncate(c) != c) throw IllegalStateException("dragon: shadow channel " + c + " is not a byte")
-    bytes[i] = c.toInt().toByte()
-  }
   val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-  b.copyPixelsFromBuffer(ByteBuffer.wrap(bytes))
+  b.copyPixelsFromBuffer(ByteBuffer.wrap(rgba))
   return b
 }
 

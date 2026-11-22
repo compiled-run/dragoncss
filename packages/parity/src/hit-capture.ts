@@ -27,11 +27,10 @@ export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/
  * The hit captures at a device DPR beside the DPR-1 ones: Chrome launched at that forced device scale factor (launchChrome(dpr), as
  * every DPR capture is), so it lays out and snaps text rects in device px, against the TS hit test at that DPR (expectedHitRuns, the
  * device-hit lane's and the device-traces reference's model). interaction-combo's step point (2, 30) is on c's bottom edge, which at
- * 2.625 is 78.75 device px, inside c's text rect snapped to device px (53 to 79): Chrome names c there, not DPR 1's d. The radius
- * cases check that px radii (CSS px in the hit facts) scale to device px, on the border box and on a rounded clip's padding edge.
+ * 2.625 is 78.75 device px, inside c's text rect snapped to device px (53 to 79): Chrome names c there, not DPR 1's d.
  */
 export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
-  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip'] },
+  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl'] },
 ];
 export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
 export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;
@@ -222,6 +221,9 @@ export function hitRefusal(n: NativeCase): string | null {
   // SVG-a1: Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit test models with SVG-a2.
   const svgs = (svgScenes(n.compiled, n.case.assignment) ?? []).map((s) => s.address);
   if (svgs.length > 0) return `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;
+  // PNT1-radius: Blink clips a hit to the rounded border box, which the hit test does not model yet.
+  const rounded = n.programs.uikit.nodes.filter((x) => x.writes.some((w) => w.kind === 'border-radius')).map((x) => x.id);
+  if (rounded.length > 0) return `border-radius on ${rounded.join(', ')}: hit testing through rounded corners is not modelled yet (PNT1)`;
   const input = programInput(n.programs.uikit, n.case.environment.viewport, 1);
   // GEN-c: Chrome hits a list item through its outside text ::marker box (beside the item's border box), which the hit test does not
   // model yet; Chrome hits no outside symbol marker at any captured point (list-markers-pseudo's disc and square items).
@@ -251,15 +253,14 @@ export const hitRefusedCases = (): readonly { readonly id: string; readonly reas
 export const HIT_FACTS_PATH = 'packages/layout/rt-vectors/hit/facts.json';
 
 /**
- * The text of HIT_FACTS_PATH for these cases: each case's facts as [id, pointerEvents, inherited, activation, radii], radii the
- * eight [percent, value] border-radius components or empty, sorted by id, and
+ * The text of HIT_FACTS_PATH for these cases: each case's facts as [id, pointerEvents, inherited, activation], sorted by id, and
  * the refused cases with their reasons, which the P1 hit suite skips by name.
  */
 export function hitFactsJson(cases: readonly NativeCase[], refused: readonly { readonly id: string; readonly reason: string }[] = hitRefusedCases()): string {
   const rows = cases.map((n) => {
     const facts = hitFacts(n.compiled, n.case.assignment);
     if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
-    const v = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => [id, f.pointerEvents, f.inherited, f.activation, f.radii.map((l) => [l.percent, l.value])]);
+    const v = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => [id, f.pointerEvents, f.inherited, f.activation]);
     return `    ${JSON.stringify(n.case.id)}: ${JSON.stringify(v)}`;
   });
   const no = refused.map((r) => `    ${JSON.stringify(r.id)}: ${JSON.stringify(r.reason)}`);
@@ -487,22 +488,7 @@ export type IdentityManifest = { readonly base: string; readonly files: { readon
 
 // ---------------------------------------------------------------- the device-hit host sources (SELD-R1b)
 
-/** The radii column of a hit facts line. */
-function radiiField(radii: readonly { readonly percent: boolean; readonly value: number }[]): string {
-  if (radii.length === 0) return '-';
-  if (radii.length !== 8) throw new Error(`${radii.length} radius components, not 8`);
-  return radii
-    .map((l) => {
-      if (!Number.isFinite(l.value) || l.value < 0) throw new Error(`radius component ${l.value} is not a finite non-negative number`);
-      return `${l.percent ? 1 : 0}:${l.value}`;
-    })
-    .join(',');
-}
-
-/**
- * Every layout case's hit facts as text lines "<case>\t<id>\t<pointer-events>\t<inherited 0|1>\t<activation 0|1>\t<radii>", in case
- * order; radii is "-" for square corners, else the eight components as "<percent 0|1>:<value>" joined by commas.
- */
+/** Every layout case's hit facts as text lines "<case>\t<id>\t<pointer-events>\t<inherited 0|1>\t<activation 0|1>", in case order. */
 export function hitFactLines(): string[] {
   const out: string[] = [];
   for (const n of hitCases()) {
@@ -510,7 +496,7 @@ export function hitFactLines(): string[] {
     if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
     for (const [id, f] of [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))) {
       for (const s of [n.case.id, id]) if (/[\t\n\\"$]/.test(s)) throw new Error(`${n.case.id}: id ${JSON.stringify(s)} holds a character the device facts table cannot carry`);
-      out.push(`${n.case.id}\t${id}\t${f.pointerEvents}\t${f.inherited ? 1 : 0}\t${f.activation ? 1 : 0}\t${radiiField(f.radii)}`);
+      out.push(`${n.case.id}\t${id}\t${f.pointerEvents}\t${f.inherited ? 1 : 0}\t${f.activation ? 1 : 0}`);
     }
   }
   return out;
@@ -546,34 +532,22 @@ ${chunks.map((c) => `  ${lit(c)},`).join('\n')}
 ]
 
 /// Every layout case's hit facts, by case id (script cases have none).
-/// The radii column of a hit facts line: "-", or eight "<percent 0|1>:<value>" components.
-func dragonHitRadii(_ field: String, _ line: String) -> [RadiusLength] {
-  if field == "-" { return [] }
-  let parts = field.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
-  guard parts.count == 8 else { fatalError("dragon host: bad hit facts radii: \\(line)") }
-  return parts.map { p in
-    let pv = p.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
-    guard pv.count == 2, pv[0] == "0" || pv[0] == "1", let v = Double(pv[1]), v.isFinite, v >= 0 else { fatalError("dragon host: bad hit facts radii: \\(line)") }
-    return RadiusLength(pv[0] == "1", v)
-  }
-}
-
-let dragonHitFactsTable: [String: [(String, String, Bool, Bool, [RadiusLength])]] = {
-  var out: [String: [(String, String, Bool, Bool, [RadiusLength])]] = [:]
+let dragonHitFactsTable: [String: [(String, String, Bool, Bool)]] = {
+  var out: [String: [(String, String, Bool, Bool)]] = [:]
   for chunk in dragonHitFactChunks {
     for line in chunk.split(separator: "\\n", omittingEmptySubsequences: true) {
       let f = line.split(separator: "\\t", omittingEmptySubsequences: false).map(String.init)
-      guard f.count == 6, f[2] == "auto" || f[2] == "none", f[3] == "0" || f[3] == "1", f[4] == "0" || f[4] == "1" else { fatalError("dragon host: bad hit facts line: \\(line)") }
-      out[f[0], default: []].append((f[1], f[2], f[3] == "1", f[4] == "1", dragonHitRadii(f[5], line)))
+      guard f.count == 5, f[2] == "auto" || f[2] == "none", f[3] == "0" || f[3] == "1", f[4] == "0" || f[4] == "1" else { fatalError("dragon host: bad hit facts line: \\(line)") }
+      out[f[0], default: []].append((f[1], f[2], f[3] == "1", f[4] == "1"))
     }
   }
   return out
 }()
 
 /// The translated hit test of a case at a device scale: its answers at every point of its derived grid, run-length encoded.
-func dragonHitRuns(_ c: DragonCase, _ facts: [(String, String, Bool, Bool, [RadiusLength])], scale: Double, measurer: TextMeasurer) -> String {
+func dragonHitRuns(_ c: DragonCase, _ facts: [(String, String, Bool, Bool)], scale: Double, measurer: TextMeasurer) -> String {
   let map = JsStringMap<HitFact>()
-  for (id, pe, inherited, activation, radii) in facts { map.set(JsString(id), HitFact(JsString(pe), inherited, activation, JsArray(radii))) }
+  for (id, pe, inherited, activation) in facts { map.set(JsString(id), HitFact(JsString(pe), inherited, activation)) }
   do {
     let t = try rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false))
     let zoom = scale * 64
@@ -605,20 +579,7 @@ private val dragonHitFactChunks: List<String> = listOf(
 ${chunks.map((c) => `  ${lit(c).replace(/\$/g, '\\$')},`).join('\n')}
 )
 
-class DragonHitFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean, val radii: List<RadiusLength>)
-
-/** The radii column of a hit facts line: "-", or eight "<percent 0|1>:<value>" components. */
-fun dragonHitRadii(field: String, line: String): List<RadiusLength> {
-  if (field == "-") return emptyList()
-  val parts = field.split(",")
-  if (parts.size != 8) throw IllegalStateException("dragon host: bad hit facts radii: " + line)
-  return parts.map { p ->
-    val pv = p.split(":")
-    val v = if (pv.size == 2 && (pv[0] == "0" || pv[0] == "1")) pv[1].toDoubleOrNull() else null
-    if (v == null || !v.isFinite() || v < 0) throw IllegalStateException("dragon host: bad hit facts radii: " + line)
-    RadiusLength(pv[0] == "1", v)
-  }
-}
+class DragonHitFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean)
 
 /** Every layout case's hit facts, by case id (script cases have none). */
 val dragonHitFactsTable: Map<String, List<DragonHitFact>> by lazy {
@@ -627,8 +588,8 @@ val dragonHitFactsTable: Map<String, List<DragonHitFact>> by lazy {
     for (line in chunk.split("\\n")) {
       if (line.isEmpty()) continue
       val f = line.split("\\t")
-      if (f.size != 6 || (f[2] != "auto" && f[2] != "none") || (f[3] != "0" && f[3] != "1") || (f[4] != "0" && f[4] != "1")) throw IllegalStateException("dragon host: bad hit facts line: " + line)
-      out.getOrPut(f[0]) { ArrayList() }.add(DragonHitFact(f[1], f[2], f[3] == "1", f[4] == "1", dragonHitRadii(f[5], line)))
+      if (f.size != 5 || (f[2] != "auto" && f[2] != "none") || (f[3] != "0" && f[3] != "1") || (f[4] != "0" && f[4] != "1")) throw IllegalStateException("dragon host: bad hit facts line: " + line)
+      out.getOrPut(f[0]) { ArrayList() }.add(DragonHitFact(f[1], f[2], f[3] == "1", f[4] == "1"))
     }
   }
   out
@@ -637,7 +598,7 @@ val dragonHitFactsTable: Map<String, List<DragonHitFact>> by lazy {
 /** The translated hit test of a case at a device scale: its answers at every point of its derived grid, run-length encoded. */
 fun dragonHitRuns(c: DragonCase, facts: List<DragonHitFact>, scale: Double, measurer: TextMeasurer): String {
   val map = JsStringMap<HitFact>()
-  for (f in facts) map.set(f.id, HitFact(f.pointerEvents, f.inherited, f.activation, JsArray(f.radii.toMutableList())))
+  for (f in facts) map.set(f.id, HitFact(f.pointerEvents, f.inherited, f.activation))
   val t = rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false))
   val zoom = scale * 64.0
   val grid = rtHit_hitGrid(t, c.viewportWidth * zoom, c.viewportHeight * zoom)

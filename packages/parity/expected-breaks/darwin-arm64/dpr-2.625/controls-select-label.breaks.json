@@ -1,0 +1,14 @@
+{
+  "case": "controls-select-label",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"l1a:text0","data":"X","lines":0,"units":[-1],"blank":[]},
+    {"id":"l2a:text0","data":"  X\n  Y  ","lines":0,"units":[-1,-1,-1,-1,-1,-1,-1,-1,-1],"blank":[]},
+    {"id":"l3a:text0","data":"AA","lines":0,"units":[-1,-1],"blank":[]},
+    {"id":"l3b:text0","data":"BB","lines":0,"units":[-1,-1],"blank":[]},
+    {"id":"l1::inner:text0","data":"L   L","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"l2::inner:text0","data":"X Y","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"l3::inner:text0","data":"LL","lines":1,"units":[0,0],"blank":[]}
+  ]
+}
