@@ -4,7 +4,7 @@ import type { LU } from './units.ts';
 import { add, ceilFloatToWholePx, fromCssPx, max, min, sum, toPx, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
-import { plainBox, textFieldInlineSize } from './controls.ts';
+import { compressesPercentWidth, plainBox, textFieldInlineSize } from './controls.ts';
 import { gridIntrinsicContentInlineSize } from './grid.ts';
 import { inlineIntrinsicSize, leafFontOf } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
@@ -121,6 +121,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   } else {
     const w = s.width.kind === 'stretch' ? AUTO : lengthWidth(box.id, s.width);
     if (w.kind !== 'auto' && !hasPercent(w)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
+    else if (w.kind !== 'auto' && kind === 'min' && node.kind === 'control' && compressesPercentWidth(node)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
     else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
     else size = add(intrinsicContentInlineSize(ctx, node, kind), bp);
   }

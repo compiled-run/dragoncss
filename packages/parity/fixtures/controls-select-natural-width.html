@@ -16,6 +16,8 @@ select { display: block; font: inherit; margin: 0 0 2px; color: #000; }
 .g { display: grid; grid-template-columns: auto 1fr; width: 300px; }
 .field { display: grid; width: 200px; }
 .w { width: 100%; }
+.wc { width: calc(50% + 10px); }
+.mct { display: inline-grid; grid-template-columns: min-content; }
 </style>
 </head>
 <body data-dragon-id="body">
@@ -32,6 +34,9 @@ select { display: block; font: inherit; margin: 0 0 2px; color: #000; }
 <div data-dragon-id="p" class="ib"><select data-dragon-id="m" class="b w"><option data-dragon-id="m-o0">XX</option><option data-dragon-id="m-o1">XXXXXXXX</option></select></div>
 <div data-dragon-id="g" class="g"><select data-dragon-id="u" class="b"><option data-dragon-id="u-o0">XXXXXX</option></select><div data-dragon-id="g2">X</div></div>
 <label data-dragon-id="v" class="field">Tag<select data-dragon-id="x" class="b w"><option data-dragon-id="x-o0">Work</option><option data-dragon-id="x-o1">Home</option><option data-dragon-id="x-o2">Ideas</option></select></label>
+<div data-dragon-id="mw" class="mn"><select data-dragon-id="y" class="b w"><option data-dragon-id="y-o0">XX</option><option data-dragon-id="y-o1">XXXXXXXX</option></select></div>
+<div data-dragon-id="mw2" class="mn"><select data-dragon-id="y2" class="n wc"><option data-dragon-id="y2-o0">XXXXXX</option></select></div>
+<div data-dragon-id="mtw"><div data-dragon-id="mt" class="mct"><select data-dragon-id="z" class="b w"><option data-dragon-id="z-o0">XXXXXXXX</option></select></div></div>
 <div data-dragon-id="q" class="fl"><select data-dragon-id="o" class="n w"><option data-dragon-id="o-o0">XXXX</option></select></div>
 </body>
 </html>

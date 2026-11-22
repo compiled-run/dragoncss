@@ -79,7 +79,7 @@ import {
 } from './box.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
-import { plainBox } from './controls.ts';
+import { compressesPercentWidth, plainBox } from './controls.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio } from './ratio.ts';
@@ -1848,15 +1848,12 @@ function layoutReplacedItem(ctx: Ctx, grid: GridState, item: GridItemData, leaf:
 function inlineContributionOf(ctx: Ctx, box: LayoutBox | ControlBox, kind: 'min' | 'max'): LU {
   const s = box.style;
   const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
-  // css-sizing-3 §5.2.2: a text field is compressible, so a percentage in its width or max-width resolves against zero in its min-content
-  // contribution; Chrome 145 does not compress a button's (grid-controls).
-  const compressed = kind === 'min' && box.kind === 'control' && box.control.kind === 'text-field';
+  const compressed = kind === 'min' && compressesPercentWidth(box);
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
   else if (compressed && (s.width.kind === 'percent' || s.width.kind === 'calc') && hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
   if (s.maxWidth.kind === 'px') size = minLu(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
-  else if (compressed && (s.maxWidth.kind === 'percent' || s.maxWidth.kind === 'calc') && hasPercent(s.maxWidth)) size = minLu(size, borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), bp, s.boxSizing));
   const minWidth = s.minWidth.kind === 'px' ? borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing) : bp;
   return maxLu(size, minWidth);
 }
