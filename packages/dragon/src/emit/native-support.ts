@@ -310,6 +310,11 @@ public final class DragonGlyphLayer: CALayer {
     actions = ["bounds": NSNull(), "position": NSNull(), "frame": NSNull(), "contents": NSNull()]
   }
   public override init(layer: Any) { super.init(layer: layer) }
+  /// PNT1-opacity-d: a group's backdrop capture draws text painted before it, so a text redraw marks every overlay stale.
+  public override func setNeedsDisplay() {
+    super.setNeedsDisplay()
+    dragonGroupsChanged()
+  }
   required init?(coder: NSCoder) { fatalError("DragonGlyphLayer is built in code") }
   public override func draw(in ctx: CGContext) {
     ctx.translateBy(x: -frame.minX, y: -frame.minY)
@@ -324,11 +329,6 @@ public final class DragonTextView: UIView, DragonNodeView {
   public let dragonId: String
   public let dragonKind: String
   public let dragonParent: String?
-  /// PNT1-opacity-d: a group's backdrop capture draws text painted before it, so a text change marks every overlay stale.
-  public override func setNeedsDisplay() {
-    super.setNeedsDisplay()
-    dragonGroupsChanged()
-  }
   public private(set) var dragonText = ""
   public private(set) var dragonFamily = ""
   public private(set) var dragonColor = DragonRGBA8(0, 0, 0, 255)
