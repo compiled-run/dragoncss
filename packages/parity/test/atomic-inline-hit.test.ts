@@ -1,11 +1,11 @@
 // HIT-atomic-inline: the compiler's R13 box check (interaction.ts hitUnmodelledBox, holdsAtomicLine) and the hit table (rt-hit.ts
 // hitRefusal) must agree on every layout case: the compiler refuses a case's interaction rules for an atomic inline's block exactly
-// when the table refuses that case for an atomic inline, and every other atomic-inline case the table models.
+// when the table refuses that case for an atomic inline, and every other atomic-inline case the table models and builds.
 import { describe, expect, it } from 'vitest';
 import type { ResolvedElement } from '../../dragon/src/analysis/resolve.ts';
 import { hitUnmodelledBox } from '../../dragon/src/analysis/interaction.ts';
 import { internalRecord } from '../../dragon/src/project.ts';
-import { hitRefusal } from '../src/hit-capture.ts';
+import { caseHitTable, hitRefusal } from '../src/hit-capture.ts';
 import { nativeCases } from '../src/native-host.ts';
 
 const ATOMIC_REFUSAL = / is an atomic inline outside an inline formatting context, | has percentage padding around atomic inlines, /;
@@ -37,7 +37,10 @@ describe('the compiler and the hit table agree on atomic inlines', () => {
       expect([n.case.id, compilerRefuses], n.case.id).toEqual([n.case.id, tableRefuses]);
       if (!elements(resolved).some((e) => ATOMIC_DISPLAYS.includes(display(e)))) continue;
       atomic++;
-      if (table === null) modelled++;
+      if (table !== null) continue;
+      // A case the table does not refuse builds: a refusal-free case that throws here would throw on the phone.
+      expect(() => caseHitTable(n), n.case.id).not.toThrow();
+      modelled++;
     }
     expect(atomic).toBeGreaterThan(10);
     expect(modelled).toBe(atomic);

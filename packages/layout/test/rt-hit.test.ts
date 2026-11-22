@@ -552,3 +552,40 @@ describe('hitTest through rounded corners (SELD-R2b, FloatRoundedRect::Intersect
     expect(at(nodes, 0, 0)).toBe(1);
   });
 });
+
+// HIT-atomic-inline in a block button: the engine moves a button's in-flow contents down by half its free block space
+// (buttonContentShift), so its lines and atomic inlines sit there in the table too, with or without a definite height.
+describe('atomic inlines in a block button', () => {
+  const buttonInput = async (sizing: 'auto' | 'height' | 'min-height', atom: 'box' | 'img' | 'none') => {
+    const { box, control, divStyle, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const ib = box('ib', { display: 'inline-block', width: px(20), height: px(8) }, [box('k', { width: px(10), height: px(4) })]);
+    const img = { kind: 'replaced', id: 'img', style: { ...divStyle, display: 'inline', width: px(12), height: px(6) }, natural: { kind: 'image', width: 12, height: 6 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) } as const;
+    const kids = atom === 'box' ? [text('t1', 'XX'), ib, text('t2', 'XX')] : atom === 'img' ? [text('t1', 'XX'), img, text('t2', 'XX')] : [text('t1', 'XX')];
+    const size = sizing === 'height' ? { height: px(60) } : sizing === 'min-height' ? { minHeight: px(60) } : {};
+    const btn = control('btn', { kind: 'button-block' }, { width: px(100), ...size }, kids);
+    const root = box('html', { width: px(200) }, [box('body', {}, [btn])]);
+    const facts = new Map(['html', 'body', 'btn', 'ib', 'k', 'img'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: id === 'btn', radii: [] }] as const));
+    return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
+  };
+
+  for (const sizing of ['auto', 'height', 'min-height'] as const) {
+    for (const atom of ['box', 'img', 'none'] as const) {
+      it(`builds the table for a ${sizing} button holding ${atom === 'none' ? 'text only' : `text and an ${atom === 'box' ? 'inline-block' : 'inline img'}`}, with each atomic inline at its laid-out place`, async () => {
+        const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+        const { ahemMeasurer, layout } = await import('../src/index.ts');
+        const { input, facts } = await buttonInput(sizing, atom);
+        const laid = layout(input, ahemMeasurer);
+        if (laid.kind !== 'ok') throw new Error(JSON.stringify(laid));
+        expect(hitRefusal(input)).toBeNull();
+        const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+        const id = atom === 'box' ? 'ib' : atom === 'img' ? 'img' : null;
+        if (id === null) return;
+        const n = t.nodes[t.ids.indexOf(id)] as HitNode;
+        const b = laid.boxes.find((x) => x.id === id);
+        expect([n.y, n.line]).toEqual([b?.y, 0]);
+        const hit = t.ids[t.nodes[hitTest(t.nodes, n.x + 2 * PX, n.y + 2 * PX, NO_HIT_FAULTS)]?.target ?? -1];
+        expect(hit).toBe(atom === 'box' ? 'k' : 'img');
+      });
+    }
+  }
+});

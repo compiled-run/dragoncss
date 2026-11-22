@@ -12,7 +12,7 @@ import { NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import { hasPercent, isScrollContainer, resolveBorder, resolvePadding } from './box.ts';
 import type { Edges } from './box.ts';
-import { controlAsBox } from './controls.ts';
+import { buttonContentShift, controlAsBox } from './controls.ts';
 import type { HitLine, LinePiece } from './inline.ts';
 import { placeHitLines, placeLines } from './inline.ts';
 import { fromRaw, ZERO } from './units.ts';
@@ -602,6 +602,8 @@ type TableState = {
   readonly zoomedReplaced: Map<string, LayoutStyle>;
   /** Each atomic inline's ink overflow, by node index, set once its subtree is built. */
   readonly inks: Map<string, InkRect>;
+  /** The ids of the boxes a block button lays out as, whose in-flow contents the engine moves down by buttonContentShift. */
+  readonly buttons: Set<string>;
   readonly ctx: EngineCtx;
   /** The input's device pixel ratio: the hit facts' px radii are CSS px, the rects device px (ctx's ratio is the zoomed input's 1). */
   readonly dpr: number;
@@ -886,7 +888,11 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     const childOrders = d === 'flex' || d === 'inline-flex' ? fragmentOrders(s, b) : d === 'grid' || d === 'inline-grid' ? gridOrders(s, b) : null;
     for (const c of b.children) {
       if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe, -1);
-      else if (c.kind === 'control') boxNodes(s, hitControlBox(c), i, childOrders, own, pe, -1);
+      else if (c.kind === 'control') {
+        const hb = hitControlBox(c);
+        if (c.control.kind === 'button-block') s.buttons.add(hb.id);
+        boxNodes(s, hb, i, childOrders, own, pe, -1);
+      }
       else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders, -1);
     }
   }
@@ -910,7 +916,7 @@ function inlineAtomicNodes(s: TableState, b: LayoutBox, parent: number, target: 
   const border = resolveBorder(zb.style, s.ctx.devicePixelRatio);
   const padding = resolvePadding(zb.style, ZERO);
   const left = r.x + border.left + padding.left;
-  const top = r.y + border.top + padding.top;
+  const contentTop = r.y + border.top + padding.top;
   const width = r.width - border.left - border.right - padding.left - padding.right;
   // Each leaf's and atomic inline's place among b's children, and the zoomed leaves (the engine's inlineLeaves order).
   const leafAt: number[] = [];
@@ -933,6 +939,10 @@ function inlineAtomicNodes(s: TableState, b: LayoutBox, parent: number, target: 
   const full: boolean[] = [];
   for (const leaf of leaves) full.push(inkAbove(leaf));
   const lines: HitLine[] = placeHitLines(s.ctx, zb, fromRaw(width));
+  const last = lines[lines.length - 1];
+  const linesHeight = last === undefined ? 0 : last.line.top + last.line.height;
+  const contentHeight = r.height - border.top - border.bottom - padding.top - padding.bottom;
+  const top = s.buttons.has(b.id) ? contentTop + buttonContentShift(fromRaw(contentHeight), fromRaw(linesHeight)) : contentTop;
   for (let k = 0; k < lines.length; k++) {
     const l = lines[k];
     if (l === undefined) throw new HitError(`${b.id}: no line ${k}`);
@@ -1188,7 +1198,7 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);
-  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, inks: new Map<string, InkRect>(), ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, inks: new Map<string, InkRect>(), buttons: new Set<string>(), ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
   boxNodes(s, input.root, -1, null, -1, 'auto', -1);
   const nodes: HitNode[] = [];
   for (let i = 0; i < s.nodes.length; i++) nodes.push(withInk(s, s.nodes[i] as HitNode, i));

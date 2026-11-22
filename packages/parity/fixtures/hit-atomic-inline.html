@@ -20,6 +20,8 @@ body { margin: 0; font-family: Ahem; font-size: 10px; }
 .none { pointer-events: none; }
 .auto { pointer-events: auto; }
 .clip { overflow: hidden; }
+.bh { display: block; width: 120px; height: 40px; margin: 0 0 4px; padding: 0; border: 1px solid rgb(0, 0, 0); background-color: rgb(220, 220, 220); color: rgb(0, 0, 0); font: inherit; line-height: 20px; }
+.bm { min-height: 40px; height: auto; }
 h1 { margin: 0; font-size: 20px; line-height: 1; }
 p { margin: 0; }
 </style>
@@ -33,5 +35,7 @@ p { margin: 0; }
 <div data-dragon-id="e2" class="c over"></div>
 <div data-dragon-id="f" class="c">aaa<img data-dragon-id="f1" class="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAYElEQVR42u3PIREAIBAAMJKgPwSaxIQgBBpNBDK8eLe7FVi7EaVijVJNQEBAQEBAQEBAQEBAQEBAQEBAQEBAQCAdiHlKvd1LCQgICAgICAgICAgICAgICAgICAgICAikfa8BuTxFzbnwAAAAAElFTkSuQmCC">bbb</div>
 <div data-dragon-id="g" class="c">a<span data-dragon-id="g1" class="ib pad none"><span data-dragon-id="g2" class="kid auto"></span></span>b<span data-dragon-id="g3" class="ib clip"><span data-dragon-id="g4" class="kid up"></span></span>c</div>
+<button data-dragon-id="bh" class="bh" type="button">aa<span data-dragon-id="bh1" class="ib"><span data-dragon-id="bh2" class="kid"></span></span>bb</button>
+<button data-dragon-id="bm" class="bh bm" type="button">cc<span data-dragon-id="bm1" class="ib"></span>dd</button>
 </body>
 </html>
