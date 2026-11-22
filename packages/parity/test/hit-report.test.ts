@@ -40,8 +40,8 @@ describe('the host hit lane', () => {
   });
 
   it('has a capture of every layout case, on the grid its hit table derives', () => {
-    // Derived-count pin: every layout case, including the 8 hit-* cases.
-    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl']);
+    // Derived-count pin: every layout case, including the 10 hit-* cases.
+    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl', 'hit-atomic-inline', 'hit-atomic-inline-rtl']);
     for (const n of cases) {
       const c = committedHits(n.case.id);
       const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
