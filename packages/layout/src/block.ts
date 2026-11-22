@@ -208,9 +208,9 @@ export type EngineFaults = {
   /** TXT2-g: line N gets an ellipsis even when it is the last line (Blink relayouts without the clamp when nothing follows). */
   readonly clampEllipsisOnExactLastLine: boolean;
   /** CQ: an inline-size contained box contributes its content's intrinsic inline sizes. */
+  readonly containedContentSized: boolean;
   /** FORM-b S4: a select's natural inline size measures only its shown option's label, not its widest option. */
   readonly menuListShownLabelOnly: boolean;
-  readonly containedContentSized: boolean;
   /** CQ: an inline-size contained block joins its parent's block formatting context (margins collapse through it). */
   readonly containerJoinsFlow: boolean;
   /** TXT-TW: text-wrap-style balance and pretty lay lines out greedily, as auto does (inline.ts wrapStyleLines). */

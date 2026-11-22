@@ -1,5 +1,5 @@
 // Intrinsic inline sizes (css-sizing-3 §5) and flex container intrinsic inline sizes (css-flexbox-1 §9.9.1, §9.9.2).
-import type { Auto, ControlBox, LayoutBox, LayoutNode, NoneValue, TextLeaf } from './input.ts';
+import type { Auto, ControlBox, LayoutBox, LayoutNode, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
 import { add, ceilFloatToWholePx, fromCssPx, max, min, sum, toPx, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
@@ -61,14 +61,23 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
  * natural-width). The planted menuListShownLabelOnly measures only the shown label.
  */
 function menuListNaturalInlineSize(ctx: Ctx, node: ControlBox): LU {
-  if (node.control.kind !== 'select-menulist') throw new Error(`${node.id} is not a select`);
-  const inner = node.children.find((k) => k.kind === 'control' && k.control.kind === 'select-inner');
-  if (inner === undefined || inner.kind !== 'control') throw new Error(`${node.id}: a select-menulist control without its select-inner control (validateLayoutInput rejects it)`);
-  const margin = (v: typeof inner.style.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : ZERO);
-  const insets = add(margin(inner.style.marginLeft), margin(inner.style.marginRight));
-  const shown = inner.children.filter((k): k is TextLeaf => k.kind === 'text').map((k) => k.text).join('');
+  const c = node.control;
+  if (c.kind !== 'select-menulist') throw new Error(`${node.id} is not a select`);
+  let insets = ZERO;
+  let shown = '';
+  let inners = 0;
+  for (const k of node.children) {
+    if (k.kind !== 'control' || k.control.kind !== 'select-inner') continue;
+    inners = inners + 1;
+    if (k.style.marginLeft.kind === 'px') insets = add(insets, fromCssPx(k.style.marginLeft.value));
+    if (k.style.marginRight.kind === 'px') insets = add(insets, fromCssPx(k.style.marginRight.value));
+    for (const t of k.children) {
+      if (t.kind === 'text') shown = shown + t.text;
+    }
+  }
+  if (inners !== 1) throw new Error(`${node.id}: a select-menulist control without exactly one select-inner control (validateLayoutInput rejects it)`);
   let widest = 0;
-  for (const o of node.control.options) {
+  for (const o of c.options) {
     if (ctx.faults.menuListShownLabelOnly && o.text !== shown) continue;
     const m = ctx.measurer.measure(o.text, leafFontOf(o));
     if (!m.ok) {
