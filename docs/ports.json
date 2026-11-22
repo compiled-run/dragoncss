@@ -4239,21 +4239,6 @@
       ]
     },
     {
-      "upstream": "ui/gfx/geometry/triangle_f.cc",
-      "licence": "bsd-chromium",
-      "noticeText": "chromium-bsd",
-      "licencePhrase": "Use of this source code is governed by a BSD-style license",
-      "copyright": "Copyright 2021 The Chromium Authors",
-      "fileSha256": "17a6e529896bbb3c4c823de50b622551f19a81d188b129f7562ef40bc0588c90",
-      "headerSha256": "40ecbf467cce38f1e17971fdcdfe424a7eaa7178173604fc79e6715eb35f11a8",
-      "ranges": [
-        { "lines": "11-40", "symbol": "PointIsInTriangle", "source": "located" }
-      ],
-      "dragon": [
-        { "file": "packages/layout/src/rt-hit.ts", "symbol": "inTriangle", "use": "port" }
-      ]
-    },
-    {
       "upstream": "v8/src/base/ieee754.cc",
       "licence": "fdlibm-sun",
       "attribution": "fdlibm (k_sin.c, k_cos.c), Copyright (C) 1993 by Sun Microsystems, Inc. The notice is kept in packages/translate/harness/harness.ts and THIRD_PARTY_NOTICES.md. V8's own changes to the file are under V8's BSD LICENSE; the harness takes only fdlibm's polynomials and constants.",
