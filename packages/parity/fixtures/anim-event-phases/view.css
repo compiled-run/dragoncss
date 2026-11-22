@@ -1,5 +1,5 @@
 @keyframes ka { from { width: 0px; } to { width: 100px; } }
-@keyframes kb { from { width: 100px; } to { width: 0px; } }
+@keyframes kb { from { height: 10px; } to { height: 2px; } }
 @keyframes kc { from { height: 2px; } to { height: 10px; } }
 .lst { height: 6px; animation: ka 1s linear infinite, kb 2s linear infinite; }
 .lst.one { animation: kb 2s linear infinite; }
