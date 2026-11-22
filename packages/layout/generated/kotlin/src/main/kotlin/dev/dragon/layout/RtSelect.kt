@@ -150,11 +150,11 @@ fun rtSelect_indexZoomed(m: JsStringMap<LayoutBox>, b: LayoutBox): Unit {
   m.set(b.id, b)
   // ts: packages/layout/src/rt-select.ts:167
   run {
-    val _a317 = b.children
-    var _i317 = 0
-    while (_i317 < _a317.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a317[_i317]
-      _i317++
+    val _a318 = b.children
+    var _i318 = 0
+    while (_i318 < _a318.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a318[_i318]
+      _i318++
       // ts: packages/layout/src/rt-select.ts:167
       if (jsStrEq(c.kind, "box")) {
         rtSelect_indexZoomed(m, (c as LayoutBox))
@@ -167,11 +167,11 @@ fun rtSelect_indexZoomed(m: JsStringMap<LayoutBox>, b: LayoutBox): Unit {
 fun rtSelect_listed(ids: JsArray<String>, id: String): Boolean {
   // ts: packages/layout/src/rt-select.ts:171
   run {
-    val _a318 = ids
-    var _i318 = 0
-    while (_i318 < _a318.size) {
-      val p: String = _a318[_i318]
-      _i318++
+    val _a319 = ids
+    var _i319 = 0
+    while (_i319 < _a319.size) {
+      val p: String = _a319[_i319]
+      _i319++
       // ts: packages/layout/src/rt-select.ts:171
       if (jsStrEq(p, id)) {
         return true
@@ -229,11 +229,11 @@ fun rtSelect_lineBlock(s: SelectState, b: LayoutBox, parent: Double): Unit {
   val first: Double = jsLength(s.nodes)
   // ts: packages/layout/src/rt-select.ts:207
   run {
-    val _a319 = zb.children
-    var _i319 = 0
-    while (_i319 < _a319.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a319[_i319]
-      _i319++
+    val _a320 = zb.children
+    var _i320 = 0
+    while (_i320 < _a320.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a320[_i320]
+      _i320++
       // ts: packages/layout/src/rt-select.ts:208
       if (!jsStrEq(c.kind, "text")) {
         continue
@@ -244,19 +244,19 @@ fun rtSelect_lineBlock(s: SelectState, b: LayoutBox, parent: Double): Unit {
   }
   // ts: packages/layout/src/rt-select.ts:212
   run {
-    val _a320 = inline_placeLines(s.ctx, zb, width)
-    var _i320 = 0
-    while (_i320 < _a320.size) {
-      val line: PlacedLine = _a320[_i320]
-      _i320++
+    val _a321 = inline_placeLines(s.ctx, zb, width)
+    var _i321 = 0
+    while (_i321 < _a321.size) {
+      val line: PlacedLine = _a321[_i321]
+      _i321++
       val pieces: JsArray<SelectPiece> = jsArrayOf<SelectPiece>()
       // ts: packages/layout/src/rt-select.ts:214
       run {
-        val _a321 = line.pieces
-        var _i321 = 0
-        while (_i321 < _a321.size) {
-          val p: LinePiece = _a321[_i321]
-          _i321++
+        val _a322 = line.pieces
+        var _i322 = 0
+        while (_i322 < _a322.size) {
+          val p: LinePiece = _a322[_i322]
+          _i322++
           val leaf: TextLeaf? = jsAt(zLeaves, p.leaf)
           // ts: packages/layout/src/rt-select.ts:216
           if ((leaf == null)) {
@@ -324,11 +324,11 @@ fun rtSelect_blockOf(s: SelectState, b: LayoutBox, parent: Double): Double {
   var leaves: Boolean = false
   // ts: packages/layout/src/rt-select.ts:250
   run {
-    val _a322 = b.children
-    var _i322 = 0
-    while (_i322 < _a322.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a322[_i322]
-      _i322++
+    val _a323 = b.children
+    var _i323 = 0
+    while (_i323 < _a323.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a323[_i323]
+      _i323++
       // ts: packages/layout/src/rt-select.ts:250
       if (jsStrEq(c.kind, "text")) {
         leaves = true
@@ -343,11 +343,11 @@ fun rtSelect_blockOf(s: SelectState, b: LayoutBox, parent: Double): Double {
   } else {
     // ts: packages/layout/src/rt-select.ts:256
     run {
-      val _a323 = b.children
-      var _i323 = 0
-      while (_i323 < _a323.size) {
-        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a323[_i323]
-        _i323++
+      val _a324 = b.children
+      var _i324 = 0
+      while (_i324 < _a324.size) {
+        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a324[_i324]
+        _i324++
         // ts: packages/layout/src/rt-select.ts:256
         if (jsStrEq(c.kind, "box")) {
           jsPush(blk.children, rtSelect_blockOf(s, (c as LayoutBox), within))
@@ -398,11 +398,11 @@ fun rtSelect_boxRefusal(b: LayoutBox): String? {
   }
   // ts: packages/layout/src/rt-select.ts:274
   run {
-    val _a324 = b.children
-    var _i324 = 0
-    while (_i324 < _a324.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a324[_i324]
-      _i324++
+    val _a325 = b.children
+    var _i325 = 0
+    while (_i325 < _a325.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a325[_i325]
+      _i325++
       // ts: packages/layout/src/rt-select.ts:275
       if (jsStrEq(c.kind, "replaced")) {
         return ((c as ReplacedLeaf).id + " is a replaced element, whose selection the model does not measure yet")
@@ -471,22 +471,22 @@ fun rtSelect_selectionTableOf(input: LayoutInput, measurer: TextMeasurer, facts:
   val nodes: JsArray<SelectNode> = jsArrayOf<SelectNode>()
   // ts: packages/layout/src/rt-select.ts:313
   run {
-    val _a325 = s.nodes
-    var _i325 = 0
-    while (_i325 < _a325.size) {
-      val n: NodeDraft = _a325[_i325]
-      _i325++
+    val _a326 = s.nodes
+    var _i326 = 0
+    while (_i326 < _a326.size) {
+      val n: NodeDraft = _a326[_i326]
+      _i326++
       jsPush(nodes, SelectNode(n.kind, n.id, n.parent, n.end, n.block, n.paragraph, n.selectable, n.text, n.from, n.to))
     }
   }
   val blocks: JsArray<SelectBlock> = jsArrayOf<SelectBlock>()
   // ts: packages/layout/src/rt-select.ts:315
   run {
-    val _a326 = s.blocks
-    var _i326 = 0
-    while (_i326 < _a326.size) {
-      val b: BlockDraft = _a326[_i326]
-      _i326++
+    val _a327 = s.blocks
+    var _i327 = 0
+    while (_i327 < _a327.size) {
+      val b: BlockDraft = _a327[_i327]
+      _i327++
       jsPush(blocks, SelectBlock(b.node, b.left, b.right, b.top, b.bottom, b.children, b.firstLine, b.lastLine))
     }
   }
@@ -517,11 +517,11 @@ fun rtSelect_lineEnd(line: SelectLine): Caret {
 fun rtSelect_caretOnLine(line: SelectLine, x: Double): Caret {
   // ts: packages/layout/src/rt-select.ts:336
   run {
-    val _a327 = line.pieces
-    var _i327 = 0
-    while (_i327 < _a327.size) {
-      val p: SelectPiece = _a327[_i327]
-      _i327++
+    val _a328 = line.pieces
+    var _i328 = 0
+    while (_i328 < _a328.size) {
+      val p: SelectPiece = _a328[_i328]
+      _i328++
       // ts: packages/layout/src/rt-select.ts:337
       run {
         var k: Double = 0.0
@@ -579,11 +579,11 @@ fun rtSelect_caretAt(t: SelectTable, x: Double, y: Double): Caret? {
       var next: Double = jsUnwrap(jsAt(blk.children, (jsLength(blk.children) - 1.0)))
       // ts: packages/layout/src/rt-select.ts:363
       run {
-        val _a328 = blk.children
-        var _i328 = 0
-        while (_i328 < _a328.size) {
-          val c: Double = _a328[_i328]
-          _i328++
+        val _a329 = blk.children
+        var _i329 = 0
+        while (_i329 < _a329.size) {
+          val c: Double = _a329[_i329]
+          _i329++
           // ts: packages/layout/src/rt-select.ts:364
           if ((y < jsUnwrap(jsAt(t.blocks, c)).bottom)) {
             next = c
@@ -660,11 +660,11 @@ fun rtSelect_hitElement(t: SelectTable, x: Double, y: Double): Double {
       var next: Double = -1.0
       // ts: packages/layout/src/rt-select.ts:401
       run {
-        val _a329 = jsUnwrap(jsAt(t.blocks, b)).children
-        var _i329 = 0
-        while (_i329 < _a329.size) {
-          val c: Double = _a329[_i329]
-          _i329++
+        val _a330 = jsUnwrap(jsAt(t.blocks, b)).children
+        var _i330 = 0
+        while (_i330 < _a330.size) {
+          val c: Double = _a330[_i330]
+          _i330++
           val k: SelectBlock = jsUnwrap(jsAt(t.blocks, c))
           // ts: packages/layout/src/rt-select.ts:403
           if (((((x >= k.left) && (x < k.right)) && (y >= k.top)) && (y < k.bottom))) {
@@ -731,18 +731,18 @@ fun rtSelect_pxToLu(v: Double): Double {
 fun rtSelect_caretRect(t: SelectTable, c: Caret): CaretRect {
   // ts: packages/layout/src/rt-select.ts:448
   run {
-    val _a330 = t.lines
-    var _i330 = 0
-    while (_i330 < _a330.size) {
-      val line: SelectLine = _a330[_i330]
-      _i330++
+    val _a331 = t.lines
+    var _i331 = 0
+    while (_i331 < _a331.size) {
+      val line: SelectLine = _a331[_i331]
+      _i331++
       // ts: packages/layout/src/rt-select.ts:449
       run {
-        val _a331 = line.pieces
-        var _i331 = 0
-        while (_i331 < _a331.size) {
-          val p: SelectPiece = _a331[_i331]
-          _i331++
+        val _a332 = line.pieces
+        var _i332 = 0
+        while (_i332 < _a332.size) {
+          val p: SelectPiece = _a332[_i332]
+          _i332++
           // ts: packages/layout/src/rt-select.ts:450
           if ((((p.node == c.node) && (c.offset >= p.start)) && (c.offset <= p.end))) {
             return CaretRect(jsUnwrap(jsAt(p.carets, (c.offset - p.start))), p.textTop, p.textHeight)
@@ -765,11 +765,11 @@ fun rtSelect_codePoints(text: String, from: Double, to: Double): String {
   var k: Double = 0.0
   // ts: packages/layout/src/rt-select.ts:464
   run {
-    val _a332 = jsCodePoints(text)
-    var _i332 = 0
-    while (_i332 < _a332.size) {
-      val ch: String = _a332[_i332]
-      _i332++
+    val _a333 = jsCodePoints(text)
+    var _i333 = 0
+    while (_i333 < _a333.size) {
+      val ch: String = _a333[_i333]
+      _i333++
       // ts: packages/layout/src/rt-select.ts:465
       if (((k >= from) && (k < to))) {
         out += ch
@@ -895,11 +895,11 @@ fun rtSelect_codePointCount(text: String): Double {
   var n: Double = 0.0
   // ts: packages/layout/src/rt-select.ts:553
   run {
-    val _a333 = jsCodePoints(text)
-    var _i333 = 0
-    while (_i333 < _a333.size) {
-      val ch: String = _a333[_i333]
-      _i333++
+    val _a334 = jsCodePoints(text)
+    var _i334 = 0
+    while (_i334 < _a334.size) {
+      val ch: String = _a334[_i334]
+      _i334++
       // ts: packages/layout/src/rt-select.ts:553
       if ((jsUnwrap(jsCodePointAt0(ch)) >= 0.0)) {
         n += 1.0

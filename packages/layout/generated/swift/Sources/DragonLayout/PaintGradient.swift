@@ -406,7 +406,7 @@ public func paintGradient_gradientFaults(_ plant: JsString) throws -> GradientFa
   let named: Bool = (((((f.offsetOne || f.unpremultiplied) || f.ditherOff) || f.layerOriginIgnored) || f.singleTileModelSwapped) || f.obscuredBorderIgnored)
   // ts: packages/layout/src/paint-gradient.ts:45
   if ((!named) && (plant != S.s_none)) {
-    throw JsError(message: jsConcat(S.s1172, plant))
+    throw JsError(message: jsConcat(S.s1177, plant))
   }
   return f
 }
@@ -952,11 +952,11 @@ public func paintGradient_gradientDesc(_ g: GradientImage, _ w: Double, _ h: Dou
   if (!normalize) {
     // ts: packages/layout/src/paint-gradient.ts:517
     do {
-      let _a215 = stops
-      var _i215 = 0
-      while _i215 < _a215.items.count {
-        let s: ResolvedStop = _a215.items[_i215]
-        _i215 += 1
+      let _a216 = stops
+      var _i216 = 0
+      while _i216 < _a216.items.count {
+        let s: ResolvedStop = _a216.items[_i216]
+        _i216 += 1
         _ = jsPush(offsets, s.offset)
         _ = jsPush(colors, s.color)
       }
@@ -989,11 +989,11 @@ public func paintGradient_gradientDesc(_ g: GradientImage, _ w: Double, _ h: Dou
   }
   // ts: packages/layout/src/paint-gradient.ts:543
   do {
-    let _a216 = stops
-    var _i216 = 0
-    while _i216 < _a216.items.count {
-      let s: ResolvedStop = _a216.items[_i216]
-      _i216 += 1
+    let _a217 = stops
+    var _i217 = 0
+    while _i217 < _a217.items.count {
+      let s: ResolvedStop = _a217.items[_i217]
+      _i217 += 1
       _ = try jsPush(offsets, paintGradient_f32((paintGradient_f32((s.offset - first)) / span)))
       _ = jsPush(colors, s.color)
     }
@@ -1144,11 +1144,11 @@ public func paintGradient_gradientShader(_ d: GradientDesc, _ local: Mat, _ faul
   var opaque: Bool = true
   // ts: packages/layout/src/paint-gradient.ts:694
   do {
-    let _a217 = cols
-    var _i217 = 0
-    while _i217 < _a217.items.count {
-      let c: PaintGradient_Color4 = _a217.items[_i217]
-      _i217 += 1
+    let _a218 = cols
+    var _i218 = 0
+    while _i218 < _a218.items.count {
+      let c: PaintGradient_Color4 = _a218.items[_i218]
+      _i218 += 1
       // ts: packages/layout/src/paint-gradient.ts:694
       if (c.a != 1.0) {
         opaque = false
@@ -1158,11 +1158,11 @@ public func paintGradient_gradientShader(_ d: GradientDesc, _ local: Mat, _ faul
   let pm: JsArray<PaintGradient_Color4> = JsArray<PaintGradient_Color4>([])
   // ts: packages/layout/src/paint-gradient.ts:696
   do {
-    let _a218 = cols
-    var _i218 = 0
-    while _i218 < _a218.items.count {
-      let c: PaintGradient_Color4 = _a218.items[_i218]
-      _i218 += 1
+    let _a219 = cols
+    var _i219 = 0
+    while _i219 < _a219.items.count {
+      let c: PaintGradient_Color4 = _a219.items[_i219]
+      _i219 += 1
       _ = try jsPush(pm, (faults.unpremultiplied ? c : paintGradient_premul(c)))
     }
   }
@@ -1613,20 +1613,20 @@ public func paintGradient_backgroundPixelExact(_ plan: BackgroundPlan, _ px: Dou
   let y: Double = (py - plan.originY)
   // ts: packages/layout/src/paint-gradient.ts:1215
   do {
-    let _a219 = plan.layers
-    var _i219 = 0
-    while _i219 < _a219.items.count {
-      let l: PlannedLayer = _a219.items[_i219]
-      _i219 += 1
+    let _a220 = plan.layers
+    var _i220 = 0
+    while _i220 < _a220.items.count {
+      let l: PlannedLayer = _a220.items[_i220]
+      _i220 += 1
       let p: LayerPlacement = l.placement
       let edges: JsArray<Double> = JsArray<Double>([p.destX, (p.destX + p.destWidth)])
       // ts: packages/layout/src/paint-gradient.ts:1218
       do {
-        let _a220 = edges
-        var _i220 = 0
-        while _i220 < _a220.items.count {
-          let e: Double = _a220.items[_i220]
-          _i220 += 1
+        let _a221 = edges
+        var _i221 = 0
+        while _i221 < _a221.items.count {
+          let e: Double = _a221.items[_i221]
+          _i221 += 1
           // ts: packages/layout/src/paint-gradient.ts:1218
           if try (((((e - (rtEasing_floorOf((e / 64.0)) * 64.0)) != 0.0) && (rtEasing_floorOf((e / 64.0)) == x)) && (y >= p.clipTop)) && (y < p.clipBottom)) {
             return false
@@ -1636,11 +1636,11 @@ public func paintGradient_backgroundPixelExact(_ plan: BackgroundPlan, _ px: Dou
       let vedges: JsArray<Double> = JsArray<Double>([p.destY, (p.destY + p.destHeight)])
       // ts: packages/layout/src/paint-gradient.ts:1220
       do {
-        let _a221 = vedges
-        var _i221 = 0
-        while _i221 < _a221.items.count {
-          let e: Double = _a221.items[_i221]
-          _i221 += 1
+        let _a222 = vedges
+        var _i222 = 0
+        while _i222 < _a222.items.count {
+          let e: Double = _a222.items[_i222]
+          _i222 += 1
           // ts: packages/layout/src/paint-gradient.ts:1220
           if try (((((e - (rtEasing_floorOf((e / 64.0)) * 64.0)) != 0.0) && (rtEasing_floorOf((e / 64.0)) == y)) && (x >= p.clipLeft)) && (x < p.clipRight)) {
             return false
@@ -1669,11 +1669,11 @@ public func paintGradient_backgroundRow(_ plan: BackgroundPlan, _ py: Double, _ 
         var `any`: Bool = false
         // ts: packages/layout/src/paint-gradient.ts:1240
         do {
-          let _a222 = plan.layers
-          var _i222 = 0
-          while _i222 < _a222.items.count {
-            let l: PlannedLayer = _a222.items[_i222]
-            _i222 += 1
+          let _a223 = plan.layers
+          var _i223 = 0
+          while _i223 < _a223.items.count {
+            let l: PlannedLayer = _a223.items[_i223]
+            _i223 += 1
             // ts: packages/layout/src/paint-gradient.ts:1240
             if try paintGradient_inLayer(l.placement, x, y) {
               `any` = true
@@ -1696,11 +1696,11 @@ public func paintGradient_backgroundRow(_ plan: BackgroundPlan, _ py: Double, _ 
           valid = JsArray<Bool>([])
           // ts: packages/layout/src/paint-gradient.ts:1253
           do {
-            let _a223 = plan.layers
-            var _i223 = 0
-            while _i223 < _a223.items.count {
-              let l: PlannedLayer = _a223.items[_i223]
-              _i223 += 1
+            let _a224 = plan.layers
+            var _i224 = 0
+            while _i224 < _a224.items.count {
+              let l: PlannedLayer = _a224.items[_i224]
+              _i224 += 1
               let m: Mat? = try paintGradient_tileMatrix(l.shader, tileX, tileY)
               _ = try jsPush(mats, ((m == nil) ? paintGradient_IDENTITY : jsUnwrap(m)))
               _ = jsPush(valid, (m != nil))
