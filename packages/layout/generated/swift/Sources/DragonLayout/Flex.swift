@@ -172,7 +172,7 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
       _i33 += 1
       // ts: packages/layout/src/flex.ts:149
       if (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
-        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s100, box.id, S.s279))
+        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s102, box.id, S.s281))
       }
       // ts: packages/layout/src/flex.ts:152
       if try (((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).kind == S.s_box) && position_isOutOfFlow(ctx, (k as! LayoutBox))) {
@@ -697,7 +697,7 @@ public func flex_percentMainHeight(_ box: any U_ControlBox_LayoutBox_ReplacedLea
   if ((basis as! any U_HeightBasis_definite_HeightBasis_flexDependent).kind == S.s_definite) {
     return (basis as! HeightBasis_definite).value
   }
-  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s676, jsConcat(prop, S.s155))
+  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s676, jsConcat(prop, S.s157))
 }
 
 // ts: packages/layout/src/flex.ts:660

@@ -118,7 +118,7 @@ public func rtBand_mediaSize(_ px: Double, _ dpr: Double) throws -> Double {
   }
   // ts: packages/layout/src/rt-band.ts:75
   if ((!(dpr > 0.0)) || (dpr == (1.0 / 0.0))) {
-    throw try BandError(jsConcat(S.s537, jsNumberToString(dpr)))
+    throw try BandError(jsConcat(S.s539, jsNumberToString(dpr)))
   }
   return try rtEasing_froundOf((rtEasing_froundOf(px) * rtEasing_froundOf((1.0 / rtEasing_froundOf(dpr)))))
 }
@@ -318,7 +318,7 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
       let b: JsArray<Bool> = try jsUnwrap(jsAt(table.bands, k))
       // ts: packages/layout/src/rt-band.ts:167
       if (jsLength(b) != jsLength(v)) {
-        throw try BandError(jsConcat(S.s612, jsNumberToString(k), S.s39, jsNumberToString(jsLength(b)), S.s173, jsNumberToString(jsLength(v)), S.s23))
+        throw try BandError(jsConcat(S.s612, jsNumberToString(k), S.s40, jsNumberToString(jsLength(b)), S.s175, jsNumberToString(jsLength(v)), S.s23))
       }
       var same: Bool = true
       // ts: packages/layout/src/rt-band.ts:169
@@ -347,10 +347,10 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
     while _i275 < _a275.items.count {
       let x: Bool = _a275.items[_i275]
       _i275 += 1
-      bits += (x ? S.s235 : S.s233)
+      bits += (x ? S.s237 : S.s235)
     }
   }
-  throw try BandError(jsConcat(S.s919, bits, S.s20, jsNumberToString(width), S.s186, jsNumberToString(height), S.s33))
+  throw try BandError(jsConcat(S.s919, bits, S.s20, jsNumberToString(width), S.s188, jsNumberToString(height), S.s34))
 }
 
 // ts: packages/layout/src/rt-band.ts:178

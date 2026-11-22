@@ -92,7 +92,7 @@ public func paintGroup_groupTileSpan(_ i: Double, _ tileSize: Double) throws -> 
 public func paintGroup_groupTileFoldIndex(_ draws: JsArray<Double>, _ tileLeft: Double, _ tileTop: Double, _ tileRight: Double, _ tileBottom: Double) throws -> Double {
   // ts: packages/layout/src/paint-group.ts:98
   if try ((jsLength(draws) - (5.0 * rtEasing_floorOf((jsLength(draws) / 5.0)))) != 0.0) {
-    throw JsError(message: jsConcat(S.s972, jsNumberToString(jsLength(draws)), S.s146))
+    throw JsError(message: jsConcat(S.s972, jsNumberToString(jsLength(draws)), S.s148))
   }
   var met: Double = 0.0
   var foldable: Bool = false
@@ -129,7 +129,7 @@ public func paintGroup_groupTileFolds(_ draws: JsArray<Double>, _ tileLeft: Doub
 public func paintGroup_groupFoldAlpha(_ ca: Double, _ opacity: Double) throws -> Double {
   // ts: packages/layout/src/paint-group.ts:131
   if (!((ca >= 0.0) && (ca <= 255.0))) {
-    throw JsError(message: jsConcat(S.s971, jsNumberToString(ca), S.s107))
+    throw JsError(message: jsConcat(S.s971, jsNumberToString(ca), S.s109))
   }
   let o: Double = try rtEasing_froundOf(((opacity < 0.0) ? 0.0 : ((opacity > 1.0) ? 1.0 : opacity)))
   let a: Double = try rtEasing_froundOf((rtEasing_froundOf((ca / 255.0)) * o))
@@ -176,11 +176,11 @@ public func paintGroup_colourRows(_ m0: Double, _ m1: Double, _ m2: Double, _ m4
 public func paintGroup_groupFilterMatrix(_ code: Double, _ amountIn: Double) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-group.ts:186
   if (!((amountIn >= 0.0) && (amountIn <= paintGroup_FLT_MAX))) {
-    throw JsError(message: jsConcat(S.s974, jsNumberToString(amountIn), S.s112))
+    throw JsError(message: jsConcat(S.s974, jsNumberToString(amountIn), S.s114))
   }
   // ts: packages/layout/src/paint-group.ts:187
   if ((((code >= 0.0) && (code <= 4.0)) && (code != 2.0)) && (amountIn > 1.0)) {
-    throw JsError(message: jsConcat(S.s973, jsNumberToString(code), S.s14, jsNumberToString(amountIn), S.s90))
+    throw JsError(message: jsConcat(S.s973, jsNumberToString(code), S.s14, jsNumberToString(amountIn), S.s92))
   }
   let a: Double = try rtEasing_froundOf(amountIn)
   // ts: packages/layout/src/paint-group.ts:189
@@ -234,7 +234,7 @@ public func paintGroup_groupFilterMatrix(_ code: Double, _ amountIn: Double) thr
 public func paintGroup_groupFilterMatrices(_ ops: JsArray<Double>) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-group.ts:232
   if try ((jsLength(ops) == 0.0) || ((jsLength(ops) - (2.0 * rtEasing_floorOf((jsLength(ops) / 2.0)))) != 0.0)) {
-    throw JsError(message: jsConcat(S.s970, jsNumberToString(jsLength(ops)), S.s145))
+    throw JsError(message: jsConcat(S.s970, jsNumberToString(jsLength(ops)), S.s147))
   }
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-group.ts:234
@@ -271,7 +271,7 @@ public func paintGroup_unorm8(_ v: Double) throws -> Double {
 public func paintGroup_groupFilterComposite(_ lr: Double, _ lg: Double, _ lb: Double, _ la: Double, _ dr: Double, _ dg: Double, _ db: Double, _ da: Double, _ matrices: JsArray<Double>, _ a8: Double) throws -> Double {
   // ts: packages/layout/src/paint-group.ts:259
   if try ((jsLength(matrices) == 0.0) || ((jsLength(matrices) - (20.0 * rtEasing_floorOf((jsLength(matrices) / 20.0)))) != 0.0)) {
-    throw JsError(message: jsConcat(S.s969, jsNumberToString(jsLength(matrices)), S.s138))
+    throw JsError(message: jsConcat(S.s969, jsNumberToString(jsLength(matrices)), S.s140))
   }
   // ts: packages/layout/src/paint-group.ts:260
   if (a8 <= 0.0) {

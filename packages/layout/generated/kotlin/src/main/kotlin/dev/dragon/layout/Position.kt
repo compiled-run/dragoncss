@@ -137,11 +137,6 @@ fun position_blockInset(box: U_ControlBox_LayoutBox_ReplacedLeaf, v: U_Auto_Leng
   return box_resolveLengthOrNull((v as U_LengthCalc_Percent_Px), null, faults)
 }
 
-// ts: packages/layout/src/position.ts:86
-fun position_relativeOffset(box: LayoutBox, cbInline: Double, cbBlock: U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, cbDirection: String): RelativeOffset {
-  return position_relativeOffsetWith(box, cbInline, cbBlock, cbDirection, block_NO_ENGINE_FAULTS)
-}
-
 // ts: packages/layout/src/position.ts:91
 fun position_relativeOffsetWith(box: U_ControlBox_LayoutBox_ReplacedLeaf, cbInline: Double, cbBlock: U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, cbDirection: String, faults: EngineFaults): RelativeOffset {
   // ts: packages/layout/src/position.ts:92

@@ -69,7 +69,7 @@ public func units_saturate(_ v: Double) throws -> Double {
 public func units_fromRaw(_ raw: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:25
   if (!jsIsInteger(raw)) {
-    throw JsError(message: jsConcat(S.s393, jsNumberToString(raw)))
+    throw JsError(message: jsConcat(S.s395, jsNumberToString(raw)))
   }
   return try units_saturate(raw)
 }
@@ -130,7 +130,7 @@ public func units_anchorPercentOffset(_ size: Double, _ fraction: Double) throws
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:93
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s1185, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1186, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -242,7 +242,7 @@ public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
 public func units_divLu(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:180
   if (b == 0.0) {
-    throw JsError(message: S.s392)
+    throw JsError(message: S.s394)
   }
   return try units_saturate(jsTrunc(((a * units_LU_PER_PX) / b)))
 }

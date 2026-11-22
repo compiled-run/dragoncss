@@ -215,7 +215,7 @@ public func paintDash_styleRank(_ style: JsString) throws -> Double {
   if (style == S.s_double) {
     return 9.0
   }
-  throw JsError(message: jsConcat(S.s963, style, S.s55))
+  throw JsError(message: jsConcat(S.s963, style, S.s56))
 }
 
 // ts: packages/layout/src/paint-dash.ts:91
@@ -354,7 +354,7 @@ public func paintDash_makeEdge(_ widths: JsArray<Double>, _ styles: JsArray<JsSt
   }
   // ts: packages/layout/src/paint-dash.ts:176
   if try (!paintDash_isBorderStyle(jsUnwrap(s))) {
-    throw try JsError(message: jsConcat(S.s963, jsUnwrap(s), S.s55))
+    throw try JsError(message: jsConcat(S.s963, jsUnwrap(s), S.s56))
   }
   let w: Double = try paintDash_at(widths, side)
   return try DashEdge(w, paintDash_effectiveStyle(jsUnwrap(s), w), paintDash_at(colors, (4.0 * side)), paintDash_at(colors, ((4.0 * side) + 1.0)), paintDash_at(colors, ((4.0 * side) + 2.0)), paintDash_at(colors, ((4.0 * side) + 3.0)))
@@ -1152,11 +1152,11 @@ public func paintDash_outlineNeedsSidePainter(_ style: JsString) throws -> Bool 
 public func paintDash_outlinePaintOps(_ left: Double, _ top: Double, _ right: Double, _ bottom: Double, _ width: Double, _ style: JsString, _ r: Double, _ g: Double, _ b: Double, _ a: Double, _ faults: DashFaults) throws -> JsArray<BorderOp> {
   // ts: packages/layout/src/paint-dash.ts:810
   if try (!paintDash_outlineNeedsSidePainter(style)) {
-    throw JsError(message: jsConcat(S.s968, style, S.s55))
+    throw JsError(message: jsConcat(S.s968, style, S.s56))
   }
   // ts: packages/layout/src/paint-dash.ts:811
   if (((!(width > 0.0)) || ((right - left) < (2.0 * width))) || ((bottom - top) < (2.0 * width))) {
-    throw JsError(message: jsConcat(S.s962, jsNumberToString(width), S.s34, jsNumberToString(left), S.s200, jsNumberToString(top), S.s200, jsNumberToString(right), S.s200, jsNumberToString(bottom)))
+    throw JsError(message: jsConcat(S.s962, jsNumberToString(width), S.s35, jsNumberToString(left), S.s202, jsNumberToString(top), S.s202, jsNumberToString(right), S.s202, jsNumberToString(bottom)))
   }
   let out: JsArray<BorderOp> = JsArray<BorderOp>([])
   let edges: JsArray<DashEdge> = JsArray<DashEdge>([])

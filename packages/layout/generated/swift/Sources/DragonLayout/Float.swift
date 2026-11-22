@@ -60,7 +60,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let s: LayoutStyle = node.style
   // ts: packages/layout/src/float.ts:68
   if (s.position != S.s_static) {
-    try unsupported_unsupported(S.s_float, node.id, S.s315, jsConcat(S.s532, s.position, S.s37, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s317, jsConcat(S.s534, s.position, S.s38, node.id))
   }
   let marginLeft: Double = try box_resolveMarginWith(s.marginLeft, cbInline, ctx.faults).value
   let marginRight: Double = try box_resolveMarginWith(s.marginRight, cbInline, ctx.faults).value
@@ -68,7 +68,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let marginBottom: Double = try box_resolveMarginWith(s.marginBottom, cbInline, ctx.faults).value
   // ts: packages/layout/src/float.ts:73
   if ((((marginLeft < 0.0) || (marginRight < 0.0)) || (marginTop < 0.0)) || (marginBottom < 0.0)) {
-    try unsupported_unsupported(S.s_float, node.id, S.s317, jsConcat(S.s545, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s319, jsConcat(S.s546, node.id))
   }
   // ts: packages/layout/src/float.ts:74
   if (node.kind == S.s_replaced) {
@@ -184,7 +184,7 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<B
         if (inner != nil) {
           // ts: packages/layout/src/float.ts:147
           if (kb.style.position != S.s_static) {
-            try unsupported_unsupported(S.s_float, kb.id, S.s314, jsConcat(S.s1131, kb.style.position, S.s27, kb.id, S.s69))
+            try unsupported_unsupported(S.s_float, kb.id, S.s316, jsConcat(S.s1131, kb.style.position, S.s27, kb.id, S.s70))
           }
           try b = units_add(jsUnwrap(p).y, jsUnwrap(inner))
         }

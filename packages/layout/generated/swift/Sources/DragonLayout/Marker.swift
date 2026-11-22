@@ -58,7 +58,7 @@ public let marker_MARKER_PADDING_PX: Double = 7.0
 
 // ts: packages/layout/src/marker.ts:25
 public func marker_markerTextId(_ markerId: JsString) throws -> JsString {
-  return jsConcat(markerId, S.s269)
+  return jsConcat(markerId, S.s271)
 }
 
 // ts: packages/layout/src/marker.ts:30

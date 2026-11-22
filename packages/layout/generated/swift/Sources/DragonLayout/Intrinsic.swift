@@ -20,7 +20,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/intrinsic.ts:33
   if (box.style.multicol != nil) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s684, jsConcat(S.s1131, kind, S.s225, box.id, S.s119))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s684, jsConcat(S.s1131, kind, S.s227, box.id, S.s121))
   }
   // ts: packages/layout/src/intrinsic.ts:34
   if (box.style.display == S.s_flex) {
@@ -38,7 +38,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   if try jsSome(kids, { (k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s256))
+    throw JsError(message: jsConcat(box.id, S.s258))
   }
   var widest: Double = units_ZERO
   var left: Double = units_ZERO
@@ -95,7 +95,7 @@ public func intrinsic_inlineContribution(_ ctx: Ctx, _ node: any U_ControlBox_La
     }
     // ts: packages/layout/src/intrinsic.ts:72
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s691, jsConcat(k, S.s176))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s691, jsConcat(k, S.s178))
     }
     return try units_add(intrinsic_intrinsicContentInlineSize(ctx, box, ((k == S.s_min_content) ? S.s_min : ((k == S.s_max_content) ? S.s_max : kind))), bp)
   }

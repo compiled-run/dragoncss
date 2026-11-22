@@ -93,11 +93,11 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
       _i236 += 1
       // ts: packages/layout/src/position.ts:47
       if try ((k.kind == S.s_replaced) && position_isOutOfFlow(ctx, (k as! ReplacedLeaf))) {
-        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s304, jsConcat(S.s565, (k as! ReplacedLeaf).id, S.s118))
+        try unsupported_unsupported(S.s_replaced_out_of_flow, (k as! ReplacedLeaf).id, S.s306, jsConcat(S.s565, (k as! ReplacedLeaf).id, S.s120))
       }
       // ts: packages/layout/src/position.ts:48
       if try ((k.kind == S.s_control) && position_isOutOfFlow(ctx, (k as! ControlBox))) {
-        try unsupported_unsupported(S.s_control_out_of_flow, (k as! ControlBox).id, S.s305, jsConcat(S.s564, (k as! ControlBox).id, S.s118))
+        try unsupported_unsupported(S.s_control_out_of_flow, (k as! ControlBox).id, S.s307, jsConcat(S.s564, (k as! ControlBox).id, S.s120))
       }
     }
   }
@@ -109,7 +109,7 @@ public func position_checkOutOfFlowSiblings(_ ctx: Ctx, _ box: LayoutBox) throws
   if try jsSome(box.children, { (k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return ((((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) || (((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).kind == S.s_box) && ((k as! LayoutBox).boxType == S.s_anonymous)))
 }) {
-    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s310, jsConcat(S.s563, jsUnwrap(oof).id, S.s24, box.id, S.s184))
+    try unsupported_unsupported(S.s_abspos_in_inline, jsUnwrap(oof).id, S.s312, jsConcat(S.s563, jsUnwrap(oof).id, S.s24, box.id, S.s186))
   }
 }
 
@@ -137,7 +137,7 @@ public func position_checkControlSubtree(_ ctx: Ctx, _ box: LayoutBox) throws ->
       }
       // ts: packages/layout/src/position.ts:65
       if try position_isOutOfFlow(ctx, ((k as! any U_ControlBox_LayoutBox) as! any U_ControlBox_LayoutBox_ReplacedLeaf)) {
-        try unsupported_unsupported(S.s_control_out_of_flow, (k as! any U_ControlBox_LayoutBox).id, S.s305, jsConcat(S.s563, (k as! any U_ControlBox_LayoutBox).id, S.s77, box.id, S.s118))
+        try unsupported_unsupported(S.s_control_out_of_flow, (k as! any U_ControlBox_LayoutBox).id, S.s307, jsConcat(S.s563, (k as! any U_ControlBox_LayoutBox).id, S.s78, box.id, S.s120))
       }
       try position_checkControlSubtree(ctx, controls_plainBox((k as! any U_ControlBox_LayoutBox)))
     }
@@ -163,11 +163,6 @@ public func position_blockInset(_ box: any U_ControlBox_LayoutBox_ReplacedLeaf, 
     try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s676, S.s998)
   }
   return try box_resolveLengthOrNull((v as! any U_LengthCalc_Percent_Px), nil, faults)
-}
-
-// ts: packages/layout/src/position.ts:86
-public func position_relativeOffset(_ box: LayoutBox, _ cbInline: Double, _ cbBlock: any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite, _ cbDirection: JsString) throws -> RelativeOffset {
-  return try position_relativeOffsetWith(box, cbInline, cbBlock, cbDirection, block_NO_ENGINE_FAULTS)
 }
 
 // ts: packages/layout/src/position.ts:91
