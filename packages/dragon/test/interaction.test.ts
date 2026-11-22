@@ -579,6 +579,23 @@ describe('interaction states: hit model (R13)', () => {
     expect(otherErrors(compile({}, grid.replace('display: grid;', 'display: inline-grid;'), gbody, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the inline-grid box g, which is not built yet (package G-INL hit model)`));
   });
 
+  // HIT-atomic-inline: rt-hit.ts hit-tests an atomic inline on its line, but places the lines of a block whose padding is a
+  // percentage over a content box it does not resolve, and refuses that block by name.
+  it('compiles interaction rules beside atomic inlines, and refuses them on native beside a block of atomic inlines with percentage padding', () => {
+    const css = BODY + '.w { width: 100px; } .ib { display: inline-block; width: 20px; height: 8px; } .if { display: inline-flex; width: 20px; height: 8px; } .k:hover { background-color: #0c0; }';
+    const wbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [text(r, 'wt', 'aa'), div(r, 'ib', ['ib']), div(r, 'if', ['if'])]), div(r, 'k', ['k'])];
+    expect(otherErrors(compile({}, css, wbody, TARGETS, 'derive').diagnostics)).toEqual([]);
+    const padded = css.replace('.w { width: 100px; }', '.w { width: 100px; padding-left: 10%; }');
+    expect(otherErrors(compile({}, padded, wbody, TARGETS, 'derive').diagnostics)).toEqual([
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through the block with percentage padding around atomic inlines w, which is not built yet (package INL2a hit model)',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through the block with percentage padding around atomic inlines w, which is not built yet (package INL2a hit model)',
+    ]);
+    expect(otherErrors(compile({}, padded, wbody, { web: {} }, 'derive').diagnostics)).toEqual([]);
+    // Beside a block child the atomics' line belongs to an anonymous box, which has no padding.
+    const mixed = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [div(r, 'blk', []), text(r, 'wt', 'aa'), div(r, 'ib', ['ib'])]), div(r, 'k', ['k'])];
+    expect(otherErrors(compile({}, padded, mixed, TARGETS, 'derive').diagnostics)).toEqual([]);
+  });
+
   it('catches the plant hitUnmodelledNotRefused', () => {
     expect(otherErrors(compile({ hitUnmodelledNotRefused: true }, css, body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
