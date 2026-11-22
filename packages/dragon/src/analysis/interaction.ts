@@ -4,7 +4,7 @@
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
-import { isControlTag } from './elements/controls.ts';
+import { inputTypeState, isControlTag, isTextFieldType } from './elements/controls.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
 import { isAnimationProperty } from '../css/properties/animation.ts';
@@ -22,8 +22,9 @@ import type { ResolvedValue } from './computed.ts';
 import { initialValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
-import { NO_INTERACTION, selectorMatches } from './match.ts';
+import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
+import { selectPartOf, textFieldPartOf } from './resolve.ts';
 import { propagatedFrom } from './computed-checks.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
@@ -232,9 +233,12 @@ export function interactionPartition(root: LinkedElement, resolve: (ix: Interact
       focusAt.set(key, focusValues.length - 1);
       return focusValues.length - 1;
     };
-    // R6 and R8: a tap or click focuses the nearest focusable inclusive ancestor, without focus-visible; keyboard focus sets it.
+    // R6 and R8: a tap or click focuses the nearest focusable inclusive ancestor, with focus-visible as pointerFocusVisible says; keyboard focus sets it.
     const pointerFocusOf = nodes.map((n) => {
-      for (let x: string | null | undefined = n.el.address; x !== null && x !== undefined; x = parentOf.get(x)) if (focusable[order.get(x) as number]) return focusValue(x, false);
+      for (let x: string | null | undefined = n.el.address; x !== null && x !== undefined; x = parentOf.get(x)) {
+        const i = order.get(x) as number;
+        if (focusable[i]) return focusValue(x, pointerFocusVisible((nodes[i] as { el: LinkedElement }).el));
+      }
       return 0;
     });
     const keyboardFocusOf = nodes.map((n, i) => (focusable[i] ? focusValue(n.el.address, true) : -1));
@@ -445,31 +449,16 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   return out;
 }
 
-/** FORM-b: a :focus or :focus-visible rule matching a select, focused or not, is refused until FORM-c's focus states land. */
-export function selectFocusRefusals(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, faults: CompilerFaults): Diagnostic[] {
-  const focusRules = rules.filter((r) => r.declarations.length > 0 && interactionPseudosOf(r).some((p) => p === 'focus' || p === 'focus-visible'));
-  if (cases === null || focusRules.length === 0) return [];
-  const out: Diagnostic[] = [];
-  const seen = new Set<string>();
-  const walk = (el: LinkedElement, chain: readonly LinkedElement[]): void => {
-    const here = [...chain, el];
-    if (el.tag === 'select' && !seen.has(el.address)) {
-      const ix: InteractionState = { hover: new Set(), active: new Set(), focus: new Set([el.address]), focusVisible: new Set([el.address]) };
-      const rule = focusRules.find((r) => r.selectors.some((sel) => selectorMatches(r, sel, here, here.length - 1, 0, faults, ix) || selectorMatches(r, sel, here, here.length - 1, 0, faults, NO_INTERACTION)));
-      if (rule !== undefined) {
-        seen.add(el.address);
-        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
-          origin: authored((rule.declarations[0] as Rule['declarations'][number]).span),
-          message: `a :focus or :focus-visible rule on <select> ${el.address} is not supported: a focused select's style and Chrome's focus ring wait for FORM-c's focus states`,
-          manual: `Remove the :focus and :focus-visible rules that match <select> ${el.address}.`,
-        }));
-      }
-    }
-    for (const c of el.children) if (c.kind === 'element') walk(c, here);
-  };
-  for (const c of cases) walk(c.root, []);
-  return out;
+/**
+ * Whether a tap or click that focuses el gives it :focus-visible, as Chrome 145 does for a text field and a textarea (T064 P6) and
+ * a select (form-b-select-focus.test.ts); every other element gets :focus alone. The partition and the runtime both read this.
+ */
+export function pointerFocusVisible(el: LinkedElement): boolean {
+  return el.tag === 'select' || el.tag === 'textarea' || (el.tag === 'input' && KEYBOARD_INPUT_TYPES.has(inputTypeState(el.attributes.get('type'))));
 }
+
+/** The input types a tap gives focus-visible, as for an element that may show a virtual keyboard (T064 P6). */
+const KEYBOARD_INPUT_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number']);
 
 /** SELD-R2 PR 5: the inputs an interaction row is proven for, each its own profile context interaction/<input>. */
 export const INTERACTION_INPUTS = ['forced-only', 'keyboard', 'mouse', 'touch'] as const;
@@ -634,9 +623,22 @@ export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedV
   return null;
 }
 
-/** FORM-a: the first form control of a resolved tree in preorder, or null; the hit table does not model a control's box (rt-hit.ts). */
+/** A select or text field, whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
+export function hitRetargetsParts(el: ResolvedElement): boolean {
+  return selectPartOf(el)?.part === null || textFieldPartOf(el)?.part === null;
+}
+
+/**
+ * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
+ * or null. A button, a select and a text field are modelled; a range is not (its touch, T064 P7), nor a block fieldset or any other
+ * control tag.
+ */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
-  if (isControlTag(root.element.tag)) return root.element.address;
+  const tag = root.element.tag;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && !(tag === 'input' && isTextFieldType(root.element.attributes.get('type')))) return root.element.address;
+  // A block fieldset lays out as the fieldset control with its rendered legend (ios-layout.ts), which the table refuses too.
+  const display = root.props.get('display');
+  if (tag === 'fieldset' && display !== undefined && display.value.kind === 'keyword' && display.value.value === 'block') return root.element.address;
   for (const c of root.children) {
     if (c.kind !== 'element') continue;
     const found = hitUnmodelledControl(c);
@@ -697,6 +699,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
       }
       if (JSON.stringify(v.value) !== init) return { property: p, address: el.element.address };
     }
+    if (hitRetargetsParts(el)) return null;
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
       const found = visit(c);

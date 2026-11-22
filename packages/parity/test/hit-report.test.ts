@@ -161,8 +161,7 @@ describe('planted hit faults (T047 §3.3 item 12, host half)', () => {
 });
 
 describe('tap dispatch', () => {
-  // No layout fixture holds an activation element yet (a href is DRAGON_UNSUPPORTED_ATTRIBUTE and button belongs to FORM-a), so
-  // every tap here activates nothing; packages/layout/test/rt-hit.test.ts proves the ancestor walk on a table with handlers.
+  // The controls fixtures' buttons are the layout fixtures' activation elements, so these taps walk to them on Chrome's elements.
   it('activates the nearest activation ancestor of Chrome\'s element at every captured point', () => {
     let taps = 0;
     for (const n of cases) {
@@ -177,7 +176,7 @@ describe('tap dispatch', () => {
         if (want !== null) taps++;
       });
     }
-    expect(taps).toBe(0);
+    expect(taps).toBeGreaterThan(0);
   });
 });
 
