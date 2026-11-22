@@ -1679,7 +1679,7 @@ function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], dia
   }
 }
 
-/** A form control as a grid item: the engine places no control in a grid (grid-control). */
+/** A range or fieldset as a grid item: the engine places only a block button, a select and a text field in a grid (grid-control). */
 function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
   if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
   const tag = el.element.tag;
@@ -1737,7 +1737,6 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   if (pos === 'absolute' || pos === 'fixed') {
     refuse(position, 'position', `position: ${pos} on <${tag}> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <${tag}> ${address} in its flow.`);
   }
-  refuseGridItem(el, parentDisplay, refuse);
   noteStaticOnNative(el, targets, diagnostics, reported);
   refuseScrollInControl(el, el, targets, diagnostics, reported);
   // The UA reset rows are not captured yet (#78's inherited-reset capture), so a button inheriting anything but the reset is refused.
@@ -1795,7 +1794,6 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   if (pos === 'absolute' || pos === 'fixed') {
     refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
   }
-  refuseGridItem(el, parentDisplay, refuse);
   const float = el.props.get('float') as ResolvedValue;
   if (keywordOf(float) !== 'none') {
     refuse(float, 'float', `float: ${valueToString(float.value)} on <input> ${address} is not supported on a text field: the engine lays out only an in-flow field`, `Float a wrapper element and keep <input> ${address} in its flow.`);

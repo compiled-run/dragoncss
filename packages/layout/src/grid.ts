@@ -14,6 +14,7 @@ import type {
   GridSelfAlign,
   GridSpan,
   CalcExpr,
+  ControlBox,
   LayoutBox,
   LayoutStyle,
   Percent,
@@ -77,6 +78,7 @@ import {
 import type { Ctx, EngineFaults } from './block.ts';
 import { directionOf, layoutContents } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { plainBox } from './controls.ts';
 import { isOutOfFlow, relativeOffset } from './position.ts';
 import { hasAspectRatio } from './ratio.ts';
 import { unsupported } from './unsupported.ts';
@@ -245,7 +247,7 @@ type GridDependentItem = { readonly sets: GridSetIndices; readonly cached: LU };
 type GridKeyedSet = { readonly s: GridSet; readonly i: number; readonly p: LU };
 type GridIndexedSet = { readonly s: GridSet; readonly i: number };
 type GridIndexedItem = { readonly item: GridItemData; readonly k: number };
-type GridIndexedBox = { readonly b: LayoutBox; readonly i: number };
+type GridIndexedBox = { readonly b: LayoutBox | ControlBox; readonly i: number };
 
 /** Blink TrackSpanProperties, for a range and for the tracks an item spans. */
 type GridProps = {
@@ -314,7 +316,7 @@ type GridSetIndices = { readonly begin: number; readonly end: number };
 
 /** Blink GridItemData for one in-flow item, both axes. */
 type GridItemData = {
-  readonly box: LayoutBox;
+  readonly box: LayoutBox | ControlBox;
   readonly index: number;
   column: GridLines;
   row: GridLines;
@@ -887,7 +889,7 @@ function clampSpan(s: GridSpan): GridAxisPosition {
 type GridPlacementResult = { readonly columns: GridLines[]; readonly rows: GridLines[]; readonly columnStartOffset: number; readonly rowStartOffset: number };
 
 /** Blink GridPlacement::RunAutoPlacementAlgorithm: the translated (non-negative) lines of every item in both axes. */
-function runPlacement(g: GridContainerStyle, boxes: readonly LayoutBox[], ctx: Ctx, columnTracks: GridAxisTracks, rowTracks: GridAxisTracks): GridPlacementResult {
+function runPlacement(g: GridContainerStyle, boxes: readonly (LayoutBox | ControlBox)[], ctx: Ctx, columnTracks: GridAxisTracks, rowTracks: GridAxisTracks): GridPlacementResult {
   const columnMajor = g.autoFlow === 'column';
   const sparse = !g.dense;
   const cols: GridAxisPosition[] = [];
@@ -1669,7 +1671,7 @@ function computeUsedTrackSizes(ctx: Ctx, grid: GridState, c: GridCollection, ava
 /** A self position or baseline alignment, from justify-self or justify-items (columns) or align-self or align-items (rows). */
 type GridItemAlign = GridSelfAlign | AlignItems;
 
-function selfAlignOf(container: GridContainerStyle, box: LayoutBox, axis: GridAxis, containerStyle: LayoutStyle): GridItemAlign {
+function selfAlignOf(container: GridContainerStyle, box: LayoutBox | ControlBox, axis: GridAxis, containerStyle: LayoutStyle): GridItemAlign {
   const gi = box.style.gridItem;
   if (axis === 'columns') {
     const own = gi === null ? 'auto' : gi.justifySelf;
@@ -1679,7 +1681,7 @@ function selfAlignOf(container: GridContainerStyle, box: LayoutBox, axis: GridAx
 }
 
 /** Blink AxisEdgeFromItemPosition: auto margins win, then the self position; normal and stretch stretch an auto size. */
-function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
+function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox | ControlBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
   const s = box.style;
   const rtl = directionOf(ctx, grid) === 'rtl';
   const startMargin = axis === 'columns' ? (rtl ? s.marginRight : s.marginLeft) : s.marginTop;
@@ -1701,7 +1703,7 @@ function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, ali
  * The self-position part of Blink AxisEdgeFromItemPosition, which an absolutely positioned child takes alone; its static position
  * takes first baseline as start and last baseline as end (AlignmentOffsetForOutOfFlow, grid_layout_utils.cc 407-445).
  */
-function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
+function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox | ControlBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
   const s = box.style;
   const rtl = directionOf(ctx, grid) === 'rtl';
   const sameDirection = directionOf(ctx, box) === directionOf(ctx, grid) || axis === 'rows';
@@ -1738,7 +1740,7 @@ function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox, axis: GridAxis, ali
 type GridMargins = { readonly inlineStart: LU; readonly inlineEnd: LU; readonly blockStart: LU; readonly blockEnd: LU };
 
 /** Blink ComputePhysicalMargins (third_party/blink/renderer/core/layout/length_utils.h 465-481): an indefinite basis is clamped to zero. */
-function marginsOf(box: LayoutBox, indefiniteOrBasis: LU, rtl: boolean): GridMargins {
+function marginsOf(box: LayoutBox | ControlBox, indefiniteOrBasis: LU, rtl: boolean): GridMargins {
   const s = box.style;
   const basis = indefiniteOrBasis === INDEFINITE ? ZERO : indefiniteOrBasis;
   const left = resolveMargin(s.marginLeft, basis).value;
@@ -1791,7 +1793,7 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
     const bor = resolveBorder(s, ctx.devicePixelRatio);
     const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
     const stretched = maxLu(vbp, sub(sub(areaBlock, margins.blockStart), margins.blockEnd));
-    forced = constrain(stretched, blockMinMax(item.box, basis, vbp));
+    forced = constrain(stretched, blockMinMax(plainBox(item.box), basis, vbp));
   }
   const r = layoutContents(ctx, item.box, {
     cbInline: areaInline,
@@ -1811,19 +1813,24 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
  * (Blink ComputeMinAndMaxContentContributionInternal, length_utils.cc 361-460). Its padding resolves against the indefinite size
  * clamped to zero (ComputePadding, length_utils.cc 1518-1545), so a calculation keeps its length part.
  */
-function inlineContributionOf(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max'): LU {
+function inlineContributionOf(ctx: Ctx, box: LayoutBox | ControlBox, kind: 'min' | 'max'): LU {
   const s = box.style;
   const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
+  // css-sizing-3 §5.2.2: a text field is compressible, so a percentage in its width or max-width resolves against zero in its min-content
+  // contribution; Chrome 145 does not compress a button's (grid-controls).
+  const compressed = kind === 'min' && box.kind === 'control' && box.control.kind === 'text-field';
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
+  else if (compressed && (s.width.kind === 'percent' || s.width.kind === 'calc') && hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
   if (s.maxWidth.kind === 'px') size = minLu(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
+  else if (compressed && (s.maxWidth.kind === 'percent' || s.maxWidth.kind === 'calc') && hasPercent(s.maxWidth)) size = minLu(size, borderBoxFromSpecified(resolveLength(s.maxWidth, ZERO, ctx.faults), bp, s.boxSizing));
   const minWidth = s.minWidth.kind === 'px' ? borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing) : bp;
   return maxLu(size, minWidth);
 }
 
 /** The border and padding of an item in one axis, with % padding against the given basis (0 when indefinite). */
-function borderPaddingOf(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): LU {
+function borderPaddingOf(ctx: Ctx, box: LayoutBox | ControlBox, axis: GridAxis, basis: LU): LU {
   const s = box.style;
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const pad = resolvePadding(s, basis === INDEFINITE ? ZERO : basis);
@@ -1835,7 +1842,7 @@ function borderPaddingOf(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): L
  * indefinite: a px minimum in border-box terms, or the border and padding for auto and %. Padding resolves against the given
  * basis: indefinite (zero) for columns, the item's column area for rows (Blink ComputePadding takes the inline size).
  */
-function specifiedMinimum(ctx: Ctx, box: LayoutBox, axis: GridAxis, basis: LU): LU {
+function specifiedMinimum(ctx: Ctx, box: LayoutBox | ControlBox, axis: GridAxis, basis: LU): LU {
   const s = box.style;
   const v = axis === 'columns' ? s.minWidth : s.minHeight;
   const bp = borderPaddingOf(ctx, box, axis, basis);
@@ -1919,13 +1926,13 @@ function trackBaseline(c: GridCollection, item: GridItemData): LU {
  * Blink LogicalBoxFragment::FirstBaselineOrSynthesize (logical_box_fragment.h 33-59) with the alphabetic baseline: the first
  * baseline, kept within the border box of a scroll container, or else the border-box block-end edge.
  */
-function firstBaselineOrSynthesize(box: LayoutBox, frag: Frag): LU {
+function firstBaselineOrSynthesize(box: LayoutBox | ControlBox, frag: Frag): LU {
   if (frag.baseline === null) return frag.height;
   return isScrollContainer(box.style) ? maxLu(ZERO, minLu(frag.baseline, frag.height)) : frag.baseline;
 }
 
 /** Blink GetLogicalBaseline for a first-baseline-aligned item in the row axis. */
-function itemBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU {
+function itemBaseline(ctx: Ctx, box: LayoutBox | ControlBox, frag: Frag): LU {
   if (frag.baseline === null && ctx.gridFaults.baselineSynthesizedAtTop) return ZERO;
   return firstBaselineOrSynthesize(box, frag);
 }
@@ -2149,17 +2156,26 @@ function logicalBsp(pad: Edges, bor: Edges, rtl: boolean): Edges {
   return { top: add(bor.top, pad.top), right: rtl ? left : right, bottom: add(bor.bottom, pad.bottom), left: rtl ? right : left };
 }
 
+/** FORM: the controls the grid places as items, laid out by their kind as in block flow and flex: a block button, a select and a text field. */
+function gridPlacesControl(c: ControlBox): boolean {
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field';
+}
+
 /** Builds the items, their placement and the two track collections of a grid container. */
 function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: GridAvailable): GridState {
   const s = box.style;
   const g = s.grid;
   if (g === null) throw new Error(`${box.id} is display: grid with no grid style; validateLayoutInput rejects this input`);
-  const inFlow: LayoutBox[] = [];
+  const inFlow: (LayoutBox | ControlBox)[] = [];
   const outOfFlow: LayoutBox[] = [];
   for (const k of box.children) {
-    if (k.kind === 'control') unsupported('grid-control', k.id, 'css-grid-2 §6', 'a form control as a grid item (not yet supported)');
-    if (k.kind !== 'box' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
+    if (k.kind === 'control' && !gridPlacesControl(k)) unsupported('grid-control', k.id, 'css-grid-2 §6', 'a form control as a grid item (not yet supported)');
+    if (k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
     if (k.kind === 'replaced') unsupported('grid-replaced', k.id, 'css-grid-2 §6', 'a replaced grid item (not yet supported)');
+    if (k.kind === 'control') {
+      inFlow.push(k);
+      continue;
+    }
     if (k.kind !== 'box') continue;
     // css-grid-2 §9: an absolutely positioned child is no grid item and takes no part in placement or track sizing.
     if (isOutOfFlow(ctx, k)) outOfFlow.push(k);
@@ -2296,7 +2312,7 @@ function placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: LU
     const y = add(blockOffset, rowOffset);
     const physicalX = grid.rtl ? sub(sub(borderBoxWidth, x), r.frag.width) : x;
     // css-grid-2 §9: relative offsets resolve against the grid area.
-    const offset = relativeOffset(item.box, areaInline, { kind: 'definite', value: areaBlock }, directionOf(ctx, grid.box));
+    const offset = relativeOffset(plainBox(item.box), areaInline, { kind: 'definite', value: areaBlock }, directionOf(ctx, grid.box));
     placed.push({ frag: r.frag, x: add(physicalX, offset.dx), y: add(y, offset.dy) });
     const before = baseline === null || item.row.start < baselineRow || (item.row.start === baselineRow && item.column.start < baselineColumn);
     if (before) {
