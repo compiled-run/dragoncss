@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 5376
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 5376
+  },
+  {
+   "id": "form",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 5376
+  },
+  {
+   "id": "button",
+   "parent": "form",
+   "x": 0,
+   "y": 0,
+   "width": 23040,
+   "height": 2688
+  },
+  {
+   "id": "button:text0",
+   "parent": "button",
+   "x": 9600,
+   "y": 384,
+   "width": 3840,
+   "height": 1920
+  },
+  {
+   "id": "button:text0:line0",
+   "parent": "button:text0",
+   "x": 0,
+   "y": 0,
+   "width": 3840,
+   "height": 1920
+  },
+  {
+   "id": "field",
+   "parent": "form",
+   "x": 0,
+   "y": 2688,
+   "width": 24192,
+   "height": 2688
+  },
+  {
+   "id": "field::editor",
+   "parent": "field",
+   "x": 576,
+   "y": 384,
+   "width": 23040,
+   "height": 1920
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 84,
+   "width": 1200,
+   "height": 84
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 84,
+   "width": 1200,
+   "height": 84
+  },
+  {
+   "id": "form",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 84,
+   "width": 1200,
+   "height": 84
+  },
+  {
+   "id": "button",
+   "left": 0,
+   "top": 0,
+   "right": 360,
+   "bottom": 42,
+   "width": 360,
+   "height": 42
+  },
+  {
+   "id": "button:text0",
+   "left": 150,
+   "top": 6,
+   "right": 210,
+   "bottom": 36,
+   "width": 60,
+   "height": 30
+  },
+  {
+   "id": "button:text0:line0",
+   "left": 150,
+   "top": 6,
+   "right": 210,
+   "bottom": 36,
+   "width": 60,
+   "height": 30
+  },
+  {
+   "id": "field",
+   "left": 0,
+   "top": 42,
+   "right": 378,
+   "bottom": 84,
+   "width": 378,
+   "height": 42
+  },
+  {
+   "id": "field::editor",
+   "left": 9,
+   "top": 48,
+   "right": 369,
+   "bottom": 78,
+   "width": 360,
+   "height": 30
+  }
+ ]
+}
