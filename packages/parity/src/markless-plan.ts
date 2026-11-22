@@ -5,8 +5,8 @@
 import { pathToFileURL } from 'node:url';
 import type { FontData, FontLengths, FontMetrics, LayoutInput, TextMeasurer } from '@dragon/layout';
 import { layout } from '@dragon/layout';
-import type { NativeStyleTarget, StateProgram } from 'dragon';
-import { programAt } from 'dragon';
+import type { InteractionProgram, NativeProgram, NativeStyleTarget, StateProgram } from 'dragon';
+import { interactionProgramAt, programAt } from 'dragon';
 import type { SlotField, SlotRefusal, SlotWrite } from './markless-slots.ts';
 import { repoPath } from './paths.ts';
 import type { MeasurerRecorder } from './system-fonts/measurer.ts';
@@ -130,11 +130,13 @@ function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFon
  * bundled files; `height` the height every recorded layout uses. A page whose text at PLAN_HEIGHTS' heights is not the text
  * recorded at `height` is refused, and so is a plan the device's reader (harness.ts checkMarklessPlan) cannot read all of, by field.
  */
-export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number): MarklessPlan {
-  const densities = PLAN_DENSITIES[t].map((dpr) => recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height));
-  const faces = systemFaceData(system(PLAN_DENSITIES[t][0] as number), sp, bundled);
-  const assignments = sp.assignments.map((_, i): PlanAssignment => {
-    const program = programAt(sp, i);
+export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, interaction?: InteractionProgram): MarklessPlan {
+  // With interaction states, the plan records every variant one of them lays out too, and each state is one more plan assignment,
+  // after the program's, in level then state order.
+  const all: StateProgram = interaction === undefined ? sp : { ...sp, variants: interaction.variants };
+  const densities = PLAN_DENSITIES[t].map((dpr) => recordDensity(t, all, system(dpr), bundled, authorFiles, dpr, height));
+  const faces = systemFaceData(system(PLAN_DENSITIES[t][0] as number), all, bundled);
+  const entry = (program: NativeProgram, variant: number): PlanAssignment => {
     const dashed: (readonly unknown[])[] = [];
     const scroll: string[] = [];
     for (const n of program.nodes) {
@@ -144,10 +146,20 @@ export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dp
       if (styles !== undefined && colors !== undefined) dashed.push([n.id, styles, colors.flatMap((c) => [c.r, c.g, c.b, c.alpha])]);
       if (writes.some((w) => w.kind === 'scroll-container')) scroll.push(n.id);
     }
-    return { variant: (sp.deltas[i] as { readonly variant: number }).variant, dashed, scroll };
-  });
-  const plan: MarklessPlan = { version: MARKLESS_PLAN_VERSION, faces: [...faces].map(([id, data]) => ({ id, data })), densities, variants: sp.variants, assignments };
+    return { variant, dashed, scroll };
+  };
+  const assignments = [
+    ...sp.assignments.map((_, i) => entry(programAt(sp, i), (sp.deltas[i] as { readonly variant: number }).variant)),
+    ...(interaction?.levels.flatMap((l, i) => l.deltas.map((d, k) => entry(interactionProgramAt(interaction, i, k), d.variant))) ?? []),
+  ];
+  const plan: MarklessPlan = { version: MARKLESS_PLAN_VERSION, faces: [...faces].map(([id, data]) => ({ id, data })), densities, variants: all.variants, assignments };
   const read = JSON.parse(harness.checkMarklessPlan(JSON.stringify(plan))) as readonly unknown[];
   if (read[0] !== 'ok') throw new Error(`${t}: the device cannot read this page's layout plan: ${read[0] === 'harness-error' ? String(read[1]) : 'its reader threw'}`);
   return plan;
+}
+
+/** The plan assignment of each interaction state, per level: after the program's own, in level then state order. */
+export function planInteractionAssignments(sp: StateProgram, interaction: InteractionProgram): number[][] {
+  let next = sp.assignments.length;
+  return interaction.levels.map((l) => l.deltas.map(() => next++));
 }

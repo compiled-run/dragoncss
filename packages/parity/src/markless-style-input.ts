@@ -816,6 +816,9 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
 /** The media features whose value changes with the viewport's height. */
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
+/** Each Dragon id an assignment's plan geometry names, with the input's id for it, where they differ. */
+const planNamesOf = (a: ExportAssignment, rename: (id: string) => string): (readonly [string, string])[] => a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
+
 /** Every interaction state's assignment of a target, in level order. */
 const interactionStates = (x: NativeStyleExport['targets'][NativeStyleTarget] & object): readonly ExportAssignment[] => x.interaction?.levels.flatMap((l) => l.states) ?? [];
 
@@ -841,10 +844,10 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
         return { ...l, addresses: l.addresses.map(rename), states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })) };
       }) } }),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: x.assignments.map((a) => {
-        const rename = renameIn(a);
-        return a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
-      }), planRepeats: planRepeats(parsed, dragonIds) }),
+      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: [
+        ...x.assignments.map((a) => planNamesOf(a, renameIn(a))),
+        ...(x.interaction?.levels.flatMap((l, i) => l.states.map((st) => planNamesOf(st, renameIn(x.assignments[i] as ExportAssignment)))) ?? []),
+      ], planRepeats: planRepeats(parsed, dragonIds) }),
     }])),
   };
   for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {

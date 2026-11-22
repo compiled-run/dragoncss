@@ -19,7 +19,7 @@ import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
 import type { MarklessPlan } from './markless-plan.ts';
-import { marklessPlan } from './markless-plan.ts';
+import { marklessPlan, planInteractionAssignments } from './markless-plan.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
 import { systemRequestOf } from './system-fonts/provider.ts';
 
@@ -108,7 +108,13 @@ export type ExportTarget = {
   readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
 };
 /** One assignment's interaction states: the runtime's tables, the node per table index, and per state its laid-out assignment. */
-export type ExportInteractionLevel = { readonly tables: InteractionTables; readonly addresses: readonly string[]; readonly states: readonly ExportAssignment[] };
+export type ExportInteractionLevel = {
+  readonly tables: InteractionTables;
+  readonly addresses: readonly string[];
+  readonly states: readonly ExportAssignment[];
+  /** With a plan: the plan assignment each state lays out as. */
+  readonly planAssignments?: readonly number[];
+};
 
 export type NativeStyleExport = {
   readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;
@@ -318,12 +324,14 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const assignments = sp.assignments.map((a, i) => exportAt(programAt(sp, i), a));
     // Each assignment's interaction states, laid out as the assignments are; the host selects one with Dragon's interaction runtime.
     const ip = o.interaction;
+    const planStates = ip === undefined ? null : planInteractionAssignments(sp, ip);
     const interaction = ip === undefined ? {} : {
       interaction: {
         levels: ip.levels.map((l, i): ExportInteractionLevel => ({
           tables: l.tables,
           addresses: l.addresses,
           states: l.deltas.map((_, k) => exportAt(interactionProgramAt(ip, i, k), sp.assignments[i] as StateProgram['assignments'][number])),
+          ...(plan ? { planAssignments: (planStates as number[][])[i] as number[] } : {}),
         })),
       },
     };
@@ -333,7 +341,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
     if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
-    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height) } : {};
+    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, o.interaction) } : {};
     targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated, ...interaction };
   }
   const files = vendoredFaces();
