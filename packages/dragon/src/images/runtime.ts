@@ -11,6 +11,7 @@ import { diagnostic } from '../diagnostics/catalogue.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { Band } from '../media/band.ts';
 import { contains } from '../media/band.ts';
+import { wholeAtOrAbove, wholeAtOrBelow } from '../media/viewport.ts';
 import type { Diagnostic, Origin } from '../types.ts';
 
 /**
@@ -116,9 +117,9 @@ export function bandEdgeWidths(band: Band, devices: readonly LayoutDevice[]): nu
   const widest = Math.max(...devices.map((d) => d.width));
   const out: number[] = [];
   for (const i of band.width) {
-    let lo = Math.max(0, Math.ceil(i.lo));
+    let lo = Math.max(0, wholeAtOrAbove(i.lo));
     if (!contains(i, lo)) lo += 1;
-    const top = i.hi === Infinity ? Math.max(widest, lo) : Math.floor(i.hi);
+    const top = i.hi === Infinity ? Math.max(widest, lo) : wholeAtOrBelow(i.hi);
     const hi = contains(i, top) ? top : top - 1;
     if (contains(i, lo)) out.push(lo);
     if (hi !== lo && contains(i, hi)) out.push(hi);
