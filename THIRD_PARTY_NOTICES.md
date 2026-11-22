@@ -48,6 +48,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/exclusions/exclusion_space.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/flex_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/flex/line_flexer.cc`: Copyright 2024 The Chromium Authors
+- `third_party/blink/renderer/core/layout/forms/fieldset_layout_algorithm.cc`: Copyright 2018 The Chromium Authors
 - `third_party/blink/renderer/core/layout/fragmentation_utils.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/layout_unit_diffuser.h`: Copyright 2025 The Chromium Authors
 - `third_party/blink/renderer/core/layout/geometry/writing_mode_converter.cc`: Copyright 2020 The Chromium Authors
