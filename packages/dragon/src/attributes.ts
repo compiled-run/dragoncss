@@ -26,10 +26,10 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
   // The form attributes: submission names, autofill hints and constraints, read by form submission, autofill and constraint
   // validation, and matched by :required, :optional, :valid and :invalid (refused on their own), never by an HTML §15 rule.
   { name: 'name', exceptOn: [], html: 'name names a form control or form for submission (HTML §4.10.19.1, §4.10.3); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-name' },
-  { name: 'autocomplete', exceptOn: [], html: 'autocomplete is an autofill hint (HTML §4.10.18.7); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-autocomplete' },
+  { name: 'autocomplete', exceptOn: [], html: 'autocomplete is an autofill hint (HTML §4.10.19.7); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-autocomplete' },
   { name: 'required', exceptOn: [], html: 'required is a constraint for validation (HTML §4.10.5.3.4); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-required' },
-  { name: 'minlength', exceptOn: [], html: 'minlength is a constraint for validation (HTML §4.10.18.3); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-minlength' },
-  { name: 'maxlength', exceptOn: [], html: 'maxlength is a constraint for editing and validation (HTML §4.10.18.2); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-maxlength' },
+  { name: 'minlength', exceptOn: [], html: 'minlength is a constraint for validation (HTML §4.10.19.4); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-minlength' },
+  { name: 'maxlength', exceptOn: [], html: 'maxlength is a constraint for editing and validation (HTML §4.10.19.3); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-maxlength' },
   { name: 'target', exceptOn: ['a', 'area', 'link', 'form'], html: 'target is defined only on a, area and form (HTML §4.6.5); HTML §15 styles only hyperlinks, so elsewhere it has no rendering, and on a form it governs submission.', proof: 'attr-neutral-target' },
 ];
 
