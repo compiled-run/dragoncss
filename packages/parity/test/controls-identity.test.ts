@@ -207,7 +207,7 @@ describe('FORM-a A3 helpers', () => {
 
 // GRID-items plants. Each one rewrites the engine input of the grid items it names into what the engine would lay out if it
 // had the fault, then lays it out against the committed Chrome captures, which must catch it:
-// - replacedGridItemStretches: a replaced grid item aligned normal stretches, as a box does (grid_item.cc gives it fit-content);
+// - replacedGridItemStretches: a replaced grid item aligned normal stretches, as a box does (the engine gives it fit-content);
 // - gridButtonContentNotCentred: a block button grid item is laid out as a plain box, so its contents stay at the top.
 describe('GRID-items plants against the committed Chrome captures', () => {
   type Plant = (node: LayoutNode, grid: LayoutBox) => LayoutNode;
