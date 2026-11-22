@@ -1,4 +1,4 @@
-// FORM-b select S3 (lower/paint/control.ts): DragonTree.apply stores each select's arrow from the translated paint.ts menuListArrows
+// FORM-b select S3 (lower/paint/control.ts): DragonTree.apply stores each select's arrow from the translated paint-menulist.ts menuListArrows
 // after every layout; the background-layers stage strokes it in device px with the svg module's path and stroke helpers.
 import type { JsonValue } from '../expected-dump.ts';
 import type { PaintEmitter } from './types.ts';

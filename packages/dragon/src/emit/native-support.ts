@@ -901,9 +901,9 @@ public final class DragonTree {
     let boxes = ok.boxes.items
     let snapped = try snap_snapEdges(ok.boxes).items
     let abs = try layout_absoluteRects(ok.boxes)
-    // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint.ts menuListArrows.
+    // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint-menulist.ts menuListArrows.
     var arrows: [String: MenuListArrow] = [:]
-    for a in try paint_menuListArrows(input, ok.boxes, measurer).items { arrows[a.id.description] = a.arrow }
+    for a in try paintMenulist_menuListArrows(input, ok.boxes, measurer).items { arrows[a.id.description] = a.arrow }
     // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
     let zoomed = try lineClamp_clampedInput(try layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     var zBoxes: [String: LayoutBox] = [:]
@@ -2145,7 +2145,7 @@ import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
 import dev.dragon.layout.paintMarker_markerSymbolPaint
-import dev.dragon.layout.paint_menuListArrows
+import dev.dragon.layout.paintMenulist_menuListArrows
 import dev.dragon.layout.paint_replacedPaint
 import dev.dragon.layout.TextFont
 import dev.dragon.layout.TextLeaf
@@ -2332,9 +2332,9 @@ class DragonTree(val context: Context) {
     val boxes = ok.boxes
     val snapped = snap_snapEdges(ok.boxes)
     val abs = layout_absoluteRects(ok.boxes)
-    // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint.ts menuListArrows.
+    // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint-menulist.ts menuListArrows.
     val arrows = HashMap<String, MenuListArrow>()
-    for (a in paint_menuListArrows(input, ok.boxes, measurer)) arrows[a.id] = a.arrow
+    for (a in paintMenulist_menuListArrows(input, ok.boxes, measurer)) arrows[a.id] = a.arrow
     // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
     val zoomed = lineClamp_clampedInput(layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     val zBoxes = HashMap<String, LayoutBox>()
