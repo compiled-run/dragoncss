@@ -47,6 +47,11 @@ export type NativeStylesConfig = {
    */
   readonly canvas?: 'host';
   /**
+   * 'host': the host app runs a form's submission and reset itself (a Markless app), so a submit or reset button inside a <form>
+   * compiles. Absent: such a button is refused, as the native outputs submit and reset nothing.
+   */
+  readonly forms?: 'host';
+  /**
    * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
    * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
    * block the target.
@@ -118,6 +123,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
         : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
       ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
+      ...(config.forms === 'host' ? { hostForms: true } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
     },
@@ -125,6 +131,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
   if (config.systemFonts !== undefined && (config.systemFonts !== 'measured' || support !== 'lanes')) throw new Error(`compileNativeStyles: systemFonts ${JSON.stringify(config.systemFonts)} is 'measured', with support 'lanes'`);
   if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);
   if (config.canvas !== undefined && config.canvas !== 'host') throw new Error(`compileNativeStyles: canvas ${JSON.stringify(config.canvas)} is not 'host'`);
+  if (config.forms !== undefined && config.forms !== 'host') throw new Error(`compileNativeStyles: forms ${JSON.stringify(config.forms)} is not 'host'`);
   const output = config.output ?? 'program-and-sources';
   if (output !== 'program-and-sources' && output !== 'program') throw new Error(`compileNativeStyles: output ${JSON.stringify(output)} is neither 'program-and-sources' nor 'program'`);
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;
