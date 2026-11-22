@@ -13,6 +13,8 @@ export type Ty =
   | { readonly k: 'class'; readonly name: string }
   | { readonly k: 'union'; readonly name: string }
   | { readonly k: 'array'; readonly elem: Ty }
+  /** A Uint8Array: a fixed-length shared buffer of bytes, read as numbers, each store wrapped to 0-255 as JS does. */
+  | { readonly k: 'bytes' }
   | { readonly k: 'map'; readonly key: Ty; readonly value: Ty }
   | { readonly k: 'opt'; readonly inner: Ty }
   | { readonly k: 'fn'; readonly params: readonly Ty[]; readonly ret: Ty };
@@ -23,6 +25,7 @@ export const STR: Ty = { k: 'str' };
 export const VOID: Ty = { k: 'void' };
 export const NEVER: Ty = { k: 'never' };
 export const NULL: Ty = { k: 'null' };
+export const BYTES: Ty = { k: 'bytes' };
 
 export function tyEq(a: Ty, b: Ty): boolean {
   return tyKey(a) === tyKey(b);
@@ -114,6 +117,7 @@ export type Builtin =
   | 'isNaN' | 'isFinite' | 'isInteger'
   | 'arrLength' | 'arrIndex' | 'arrPush' | 'arrMap' | 'arrMapI' | 'arrFilter' | 'arrFind' | 'arrSome' | 'arrForEach' | 'arrForEachI'
   | 'arrSlice' | 'arrReverse' | 'arrFlatMap' | 'arrSort' | 'arrCopy' | 'arrConcat'
+  | 'bytesNew' | 'bytesLength' | 'bytesIndex' | 'bytesSet'
   | 'strCodePoints' | 'strCodePointAt0' | 'numToStringRadix16' | 'strToUpperCase' | 'numToString'
   | 'mapGet' | 'mapSet' | 'mapHas'
   | 'hostBitsHex' | 'hostHexBits' | 'hostParseNumber' | 'hostFromCodePoint'

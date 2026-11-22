@@ -1790,6 +1790,21 @@ function backdropFills(a: readonly JsonValue[], i: number): BackdropFill[] {
   return out;
 }
 
+/** Uint8Array semantics: a buffer of length n with v stored at index i, as its elements then the element read at i (-1 when absent). */
+function bytesStore(n: number, i: number, v: number): string {
+  const b = new Uint8Array(n);
+  b[i] = v;
+  const out: number[] = [];
+  for (let k = 0; k < b.length; k++) out.push(readByte(b, k));
+  out.push(readByte(b, i));
+  return numList(out);
+}
+
+function readByte(b: Uint8Array, i: number): number {
+  const v = b[i];
+  return v === undefined ? -1 : v;
+}
+
 /** A shape result: its edges then its eight radii. */
 function shapeResult(s: ShadowShape): string {
   const xs: number[] = [s.left, s.top, s.right, s.bottom];
@@ -2128,6 +2143,7 @@ export function runUnitsCase(line: string): string {
     if (first === undefined) return fail('empty case');
     const name = str(first, '$[0]');
     try {
+      if (name === 'bytes:store') return bytesStore(arg(a, 1), arg(a, 2), arg(a, 3));
       const paint = paintResult(name, a);
       if (paint !== null) return paint;
       return `["ok",${h(unitsResult(name, a))}]`;
