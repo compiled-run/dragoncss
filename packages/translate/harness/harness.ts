@@ -1122,8 +1122,8 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'button-block' };
   }
   if (k === 'text-field') {
-    const o = obj(v, ['kind', 'size', 'font', 'lineHeight'], path);
-    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+    const o = obj(v, ['kind', 'size', 'font', 'lineHeight', 'searchCancel'], path);
+    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), searchCancel: bool(field(o, 'searchCancel', path), `${path}.searchCancel`) };
   }
   if (k === 'text-editor') {
     obj(v, ['kind'], path);
@@ -1278,7 +1278,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1373,6 +1373,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     containerJoinsFlow: b('containerJoinsFlow'),
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
+    searchCancelIgnored: b('searchCancelIgnored'),
   };
 }
 

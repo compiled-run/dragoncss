@@ -18,7 +18,7 @@ import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
 import type { SvgPathShape, SvgSegment } from './svg-path-types.ts';
 import type { TextMeasurer } from './text.ts';
 import type { LU } from './units.ts';
-import { ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatAdd, floatDiv, floatMul, fromCssPx, fromDouble, intDiv, roundfPx, sub, toPx, truncPxToInt, ZERO } from './units.ts';
+import { ceilFloatToWholePx, clampNegativeToZero, computedPixelSize, divInt, doubleMul, float32, floatAdd, floatDiv, floatMul, fromCssPx, fromDouble, intDiv, roundfPx, sub, toPx, truncPxToInt, ZERO } from './units.ts';
 
 /** A range's default track length in CSS px: Chrome 145 lays out an auto-width range with a 129 px content box (FORM-0 boxes). */
 export const SLIDER_DEFAULT_TRACK_LENGTH = 129;
@@ -108,6 +108,16 @@ export function menuListInnerInsets(arrowWidth: number, zoom: number, device: nu
   const z = float32(zoom);
   const block = truncPxToInt(z);
   return { start: truncPxToInt(floatMul(4, z)), end: truncPxToInt(floatAdd(z, menuListArrowBox(arrowWidth, zoom, device))), top: block, bottom: block };
+}
+
+/**
+ * FORM-search: the side of a search field's cancel button in device px, as Chrome 145 lays it out (measured, notes/FORM-search-spec.md
+ * fact 3): 9px scaled by the field's computed pixel size over 13px, clamped to [5, 21] and rounded; fontSizePx is the zoomed size.
+ */
+export function searchCancelSide(fontSizePx: number): number {
+  const scaled = floatDiv(floatMul(9, computedPixelSize(fontSizePx)), 13);
+  const clamped = scaled < 5 ? 5 : scaled > 21 ? 21 : scaled;
+  return roundfPx(clamped);
 }
 
 /** FORM-b: a menulist-button select's drop-down arrow, an open "v" stroked 2 device px wide in the select's colour, in device px. */

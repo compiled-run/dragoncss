@@ -40,6 +40,8 @@ const KEY_SPECS = {
   'button[disabled]': { tag: 'button', attrs: { type: 'button', disabled: '' } },
   input: { tag: 'input', attrs: {} },
   'input[type=range]': { tag: 'input', attrs: { type: 'range' } },
+  // FORM-search: html.css gives a search field box-sizing: border-box.
+  'input[type=search]': { tag: 'input', attrs: { type: 'search' } },
   a: { tag: 'a', attrs: {} },
   // A fresh profile has no history, so the link is unvisited (:link).
   'a[href]': { tag: 'a', attrs: { href: 'https://dragon.invalid/unvisited' } },

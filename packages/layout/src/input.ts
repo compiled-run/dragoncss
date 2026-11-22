@@ -610,7 +610,7 @@ export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
   | { readonly kind: 'button-block' }
-  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly searchCancel: boolean }
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }

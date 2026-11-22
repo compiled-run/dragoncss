@@ -215,6 +215,8 @@ export type EngineFaults = {
   readonly wrapStyleGreedy: boolean;
   /** css-inline-3 §5.1: text-box-trim is ignored; every line keeps its line box's block-start and block-end edges. */
   readonly textBoxTrimIgnored: boolean;
+  /** FORM-search: a search field's editor and placeholder take the whole content box, as if it had no cancel button. */
+  readonly searchCancelIgnored: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
@@ -304,6 +306,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   containerJoinsFlow: false,
   wrapStyleGreedy: false,
   textBoxTrimIgnored: false,
+  searchCancelIgnored: false,
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */

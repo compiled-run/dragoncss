@@ -241,7 +241,7 @@ async function captureRangeParts(page: Page, props: readonly string[]): Promise<
 }
 
 /** The input types whose UA shadow tree is a placeholder and an inner editor alone (dragon's isTextFieldType, HTML §4.10.5). */
-const TEXT_FIELD_TYPES = ['text', 'tel', 'url', 'email', 'password'];
+const TEXT_FIELD_TYPES = ['text', 'search', 'tel', 'url', 'email', 'password'];
 const INPUT_TYPES = ['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button'];
 const isTextFieldInput = (type: string | undefined): boolean => {
   const t = type === undefined || !INPUT_TYPES.includes(type.toLowerCase()) ? 'text' : type.toLowerCase();
@@ -292,7 +292,10 @@ async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: reado
     const fields = inputs.map(({ id, node }) => {
       const kids = (node.shadowRoots?.[0]?.children ?? []).filter((k) => k.nodeName === 'DIV');
       const placeholder = kids.find((k) => (k.attributes ?? []).includes('placeholder'));
-      const editor = kids.find((k) => k !== placeholder);
+      const outer = kids.find((k) => k !== placeholder);
+      // A search field's editor sits in its decoration container's editing view port, beside the cancel button (FORM-search).
+      const decorated = outer !== undefined && (outer.attributes ?? []).includes('-webkit-textfield-decoration-container');
+      const editor = decorated ? outer.children?.[0]?.children?.[0] : outer;
       if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
       return { id, parts: [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const] };
     });

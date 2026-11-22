@@ -68,7 +68,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
+import { inputTypeState, isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
 import { rangePartOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
@@ -1021,7 +1021,7 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
     // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font
     // and line height, which decide its default width and its editor's line height (the engine's controls.ts).
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight }, strut, children };
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, searchCancel: inputTypeState(el.element.attributes.get('type')) === 'search' }, strut, children };
   }
   if (field !== undefined) {
     // The inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at rest it

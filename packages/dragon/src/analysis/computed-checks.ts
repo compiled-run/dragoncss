@@ -1812,8 +1812,33 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   if (family.origin !== 'user-agent' && first !== 'ahem') {
     refuse(family, 'width-font', `<input> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text field by the face's average character width, which Dragon proves only for Ahem`, `Draw <input> ${address} in Ahem, or target web only, until real faces are measured for text fields.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
   }
+  if (state === 'search') checkSearchField(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
   if (!el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<input> ${address} is an editable text field: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <input> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+}
+
+/**
+ * FORM-search (notes/FORM-search-spec.md R5): the cancel button narrows a search field's editor and placeholder at their inline
+ * end, which no fixture measures under a text-align that moves text off the inline start, or under an author ::placeholder margin.
+ * refuse refuses on the native targets only: on the web Chrome lays the field out itself.
+ */
+function checkSearchField(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const align = el.props.get('text-align') as ResolvedValue;
+  const a = keywordOf(align);
+  const rtl = keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl';
+  if (!(a === 'start' || (a === 'left' && !rtl) || (a === 'right' && rtl))) {
+    refuse(align, 'search-align', `text-align: ${valueToString(align.value)} on the search field ${address} is not supported: its cancel button narrows the editor, which moves centred and end-aligned text in a way no fixture measures yet`, `Keep text-align: start on <input type=search> ${address}.`);
+  }
+  for (const c of el.children) {
+    if (c.kind !== 'element') continue;
+    const part = textFieldPartOf(c as ResolvedElement);
+    if (part === undefined || part.part !== 'placeholder') continue;
+    for (const side of ['margin-left', 'margin-right'] as const) {
+      const m = (c as ResolvedElement).props.get(side) as ResolvedValue;
+      if (valueToString(m.value) !== '0px') refuse(m, `search-placeholder-${side}`, `${side}: ${valueToString(m.value)} on the placeholder of the search field ${address} is not supported: the cancel button takes the placeholder's inline end, which no fixture measures with an author margin`, `Remove the ::placeholder ${side} for <input type=search> ${address}.`);
+    }
   }
 }
 

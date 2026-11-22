@@ -22,7 +22,7 @@ export function controlUaKey(tag: string, type: string | undefined, disabled = f
   if (tag === 'button') return disabled ? 'button[disabled]' : 'button';
   // html.css select:disabled gives opacity, border colour and colour, captured on a disabled select.
   if (tag === 'select') return disabled ? 'select[disabled]' : 'select';
-  if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : 'input';
+  if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : inputTypeState(type) === 'search' ? 'input[type=search]' : 'input';
   return null;
 }
 
@@ -36,8 +36,11 @@ export function isRangeType(type: string | undefined): boolean {
 /** Every input type keyword HTML §4.10.5 defines; any other value, or none, is the Text state. */
 const INPUT_TYPES: ReadonlySet<string> = new Set(['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button']);
 
-/** The single-line text field states FORM-c lays out: their UA shadow tree is the inner editor alone (no decoration container). */
-const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'tel', 'url', 'email', 'password']);
+/**
+ * The single-line text field states FORM-c lays out: their UA shadow tree is the inner editor alone, except search, whose
+ * decoration container also holds the cancel button (FORM-search), which the engine lays out as the editor's inline-end margin.
+ */
+const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'tel', 'url', 'email', 'password']);
 
 /** HTML §4.10.5: an input's type state, the keyword ASCII-lowercased; a missing or unknown type is text. */
 export function inputTypeState(type: string | undefined): string {
