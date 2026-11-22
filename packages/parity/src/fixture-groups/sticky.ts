@@ -11,5 +11,7 @@ export const STICKY: readonly FixtureSpec[] = [
   // The coverage probe's shape: a sticky box of two blocks of text with no insets, which stays in flow.
   both('sticky-probe'),
   both('sticky-viewport'),
+  // A sticky box its top inset moves down at rest, over the rows after it; its absolute child over a later relative box.
+  both('sticky-shift'),
   reject('reject-sticky-nested', 'DRAGON_UNSUPPORTED_VALUE', 'sticky', 'position: sticky on i inside the sticky o'),
 ];
