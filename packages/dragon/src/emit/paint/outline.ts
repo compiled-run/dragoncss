@@ -237,6 +237,8 @@ public func dragonAfterLayoutOutline(_ v: DragonBoxView, _ shape: DragonBoxShape
   CATransaction.commit()
   dragonRaiseOutlines(host)
   o.setNeedsDisplay()
+  // A pre-composited group's overlay renders the outline view, so its composite is stale now.
+  dragonGroupsChanged()
 }
 
 /// The readback of the outline module: every ring's outer and inner rect in device px from the root, from the view's live frame;
@@ -492,6 +494,8 @@ fun dragonAfterLayoutOutline(v: DragonBoxView, shape: DragonBoxShape, scale: Dou
   dragonRaiseOutlines(host)
   host.requestLayout()
   o.invalidate()
+  // A pre-composited group's overlay draws the outline view, so its composite is stale now.
+  dragonGroupsChanged()
 }
 
 /**

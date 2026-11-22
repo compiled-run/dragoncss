@@ -99,9 +99,9 @@ const checkOutline: PaintCheck = (el, targets, diagnostics, reported) => {
  * transform or opacity, a clip-path, containment, a mask image, isolation: isolate, backface-visibility: hidden, a mix-blend-mode,
  * a filter, or the top layer), or null.
  */
-function groupReason(el: ResolvedElement, transforms = true): string | null {
+function groupReason(el: ResolvedElement, transforms = true, opacityGroup = true): string | null {
   const opacity = opacityOf((el.props.get('opacity') as ResolvedValue).value);
-  if (opacity !== null && opacity < 1) return `opacity: ${opacity}`;
+  if (opacityGroup && opacity !== null && opacity < 1) return `opacity: ${opacity}`;
   if (hasBackdropFilter(el.props.get('backdrop-filter')?.value)) return 'a backdrop-filter';
   if (transforms && transformsDescendants(el)) return transformWord(el);
   if (elementWillChange(el).includes('opacity')) return 'will-change: opacity';
@@ -147,7 +147,7 @@ const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 
  * that clips its overflow (its view clips the views it hosts). propagated is the element whose overflow the viewport takes
  * (css-overflow-3 §3.3), which does not clip.
  */
-export function checkOutlinePlacement(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+export function checkOutlinePlacement(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, opacityGroups: ReadonlySet<string> = new Set()): void {
   const outlined: { readonly el: ResolvedElement; readonly clip: ResolvedElement | null; readonly ancestors: readonly ResolvedElement[] }[] = [];
   const walk = (el: ResolvedElement, clip: ResolvedElement | null, ancestors: readonly ResolvedElement[]): void => {
     if (keywordOf(el, 'display') === 'none') return;
@@ -175,10 +175,12 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
       refuse(el, 'clip', `has an outline inside the overflow clip of ${clip.element.address}, and Dragon draws native outlines in their paint layer's view, outside that clip`, `Move the outline to a box outside ${clip.element.address}, or let ${clip.element.address} overflow visibly.`, targets, diagnostics, reported);
       continue;
     }
-    // A 2D transform (or will-change: transform, or perspective) moves its view, and the outline view inside it with it.
-    const grouped = [...ancestors, el].reverse().find((a) => groupReason(a, false) !== null);
+    // A 2D transform (or will-change: transform, or perspective) moves its view, and the outline view inside it with it; an opacity
+    // group Dragon pre-composites from the platform's rendering of its view (analysis/paint-values/effects.ts) holds the outline view.
+    const reasonAt = (a: ResolvedElement): string | null => groupReason(a, false, !opacityGroups.has(a.element.address));
+    const grouped = [...ancestors, el].reverse().find((a) => reasonAt(a) !== null);
     if (grouped !== undefined) {
-      const why = groupReason(grouped, false) as string;
+      const why = reasonAt(grouped) as string;
       const where = grouped === el ? 'and has' : `inside ${grouped.element.address}, which has`;
       refuse(el, 'stacking', `has an outline ${where} ${why}, and Dragon draws native outlines only in the layer of a positioned or transformed box, a z-index or the root, not yet inside a layer made by ${why}`, `Outline a box outside the ${why} box, or outline: none.`, targets, diagnostics, reported);
       continue;
@@ -214,7 +216,7 @@ const SIDE_PAINTER_STYLES: readonly string[] = ['dotted', 'dashed', 'groove', 'r
  * The colour an element's outline paints in: outline-color, or color for currentcolor (lower/paint/outline.ts), with the
  * declaration that set it.
  */
-function outlineColor(el: ResolvedElement): { readonly color: Rgba8; readonly value: ResolvedValue } {
+export function outlineColor(el: ResolvedElement): { readonly color: Rgba8; readonly value: ResolvedValue } {
   const c = el.props.get('outline-color') as ResolvedValue | undefined;
   const own = el.props.get('color') as ResolvedValue | undefined;
   if (c === undefined || own === undefined) throw new Error(`${el.element.address}: outline-color did not resolve`);
