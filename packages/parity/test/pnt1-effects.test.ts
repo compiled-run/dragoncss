@@ -11,7 +11,7 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, hasRoundedCorner, LU_PER_PX, NO_RADIUS_FAULTS, opacityAlpha8, roundedShape, snapEdges } from '@dragon/layout';
 import { filterPairs } from '../../dragon/src/emit/paint/effects.ts';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
@@ -22,6 +22,7 @@ import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
 import { expectedEngine, nativeCompile, nativeCompileOnce } from '../src/native-host.ts';
 import { casePoints, committedPixels, devicePoints, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
+import { radiusFacts } from '../src/paint-samples/radius.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 
 type Px = [number, number, number, number];
@@ -82,7 +83,8 @@ describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color
 
 // ---------------------------------------------------------------- the model
 
-type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[] };
+/** radii: the outer then padding-edge corner radii (16, device px, paint-radius.ts roundedShape), or null for square corners. */
+type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null };
 
 /** A node's translation in device px: its own and its ancestors' translate functions, each a whole number of device px. */
 function translationOf(p: NativeProgram, id: string, dpr: number): [number, number] {
@@ -103,7 +105,7 @@ function translationOf(p: NativeProgram, id: string, dpr: number): [number, numb
 }
 
 /** The boxes of a program at a DPR with their snapped edges (moved by their translations) and device-px borders. */
-function boxes(p: NativeProgram, viewport: { width: number; height: number }, dpr: number): Box[] {
+function boxes(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, squareCorners = false): Box[] {
   const engine = expectedEngine();
   const input = programInput(p, viewport, dpr);
   const out = engine.layout(input, engine.measurer);
@@ -117,7 +119,11 @@ function boxes(p: NativeProgram, viewport: { width: number; height: number }, dp
     if (n === undefined || n.kind === 'text') return;
     const s = snapped[i] as { left: number; top: number; right: number; bottom: number };
     const [dx, dy] = translationOf(p, n.id, dpr);
-    list.push({ node: n, l: s.left + dx, t: s.top + dy, r: s.right + dx, b: s.bottom + dy, border: borders.get(r.id) ?? [0, 0, 0, 0] });
+    const border = borders.get(r.id) ?? [0, 0, 0, 0];
+    const f = squareCorners ? null : radiusFacts(p, n.id);
+    const shape = f === null ? null : roundedShape(s.left + dx, s.top + dy, s.right + dx, s.bottom + dy, r.width / LU_PER_PX, r.height / LU_PER_PX, border, f.lengths, dpr, NO_RADIUS_FAULTS);
+    const radii = shape !== null && hasRoundedCorner(shape.slice(0, 8)) ? shape : null;
+    list.push({ node: n, l: s.left + dx, t: s.top + dy, r: s.right + dx, b: s.bottom + dy, border, radii });
   });
   return list;
 }
@@ -136,14 +142,14 @@ const stackingOf = (n: ProgramNode): Stacking => {
 
 /**
  * Planted model faults the test must catch: the alpha ignored (alpha-ignored), tree order instead of the paint order (order-swap),
- * and a colour-matrix filter list ignored (filter-ignored).
+ * a colour-matrix filter list ignored (filter-ignored), and square corners for rounded boxes.
  */
-type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean };
+type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean; readonly squareCorners?: boolean };
 const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
 
 /** The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. */
 function paintItems(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, faults: ModelFaults = NO_MODEL_FAULTS): Item[] {
-  const list = boxes(p, viewport, dpr);
+  const list = boxes(p, viewport, dpr, faults.squareCorners === true);
   const byId = new Map(list.map((b) => [b.node.id, b]));
   const children = new Map<string, ProgramNode[]>();
   for (const n of p.nodes) if (n.parent !== null) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
@@ -184,6 +190,22 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
 }
 
 const inside = (x: number, y: number, l: number, t: number, r: number, b: number): boolean => x >= l && x < r && y >= t && y < b;
+
+/** Whether a point is inside a rect rounded by eight radii (horizontal then vertical, top-left first). */
+function insideRounded(x: number, y: number, l: number, t: number, r: number, b: number, radii: readonly number[]): boolean {
+  if (!inside(x, y, l, t, r, b)) return false;
+  for (const [k, sx, sy] of [[0, -1, -1], [1, 1, -1], [2, 1, 1], [3, -1, 1]] as const) {
+    const rx = radii[k] as number;
+    const ry = radii[k + 4] as number;
+    if (!(rx > 0 && ry > 0)) continue;
+    const cx = sx < 0 ? l + rx : r - rx;
+    const cy = sy < 0 ? t + ry : b - ry;
+    const dx = (x - cx) * sx;
+    const dy = (y - cy) * sy;
+    if (dx > 0 && dy > 0 && (dx / rx) ** 2 + (dy / ry) ** 2 > 1) return false;
+  }
+  return true;
+}
 
 /**
  * The draw ops of a box's display item: a background rect, then its border: four solid sides in one colour are one op (Blink
@@ -268,14 +290,15 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
  * which takes the colour's alpha times it in float (cc ScopedRasterFlags, measured: groupFoldAlpha).
  */
 function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, fold: number | null): Px {
-  if (clippedOut(b.node, byId, cx, cy) || !inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
+  if (clippedOut(b.node, byId, cx, cy) || !(b.radii === null ? inside(cx, cy, b.l, b.t, b.r, b.b) : insideRounded(cx, cy, b.l, b.t, b.r, b.b, b.radii))) return dst;
   let out = dst;
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
   if (bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0) {
     out = color32(out, bg.color, fold === null ? bg.color.alpha : groupFoldAlpha(bg.color.alpha, fold));
   }
   const [bt, br, bb, bl] = b.border as [number, number, number, number];
-  if (inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb)) return out;
+  // A rounded box's border is four opaque solid sides in one colour (analysis paint-values/effects.ts): one DrawDRRect over the fill.
+  if (b.radii === null ? inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb) : insideRounded(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb, b.radii.slice(8))) return out;
   const styles = b.node.writes.find((w) => w.kind === 'border-styles');
   const colours = b.node.writes.find((w) => w.kind === 'border-colors');
   if (styles === undefined || styles.kind !== 'border-styles' || colours === undefined || colours.kind !== 'border-colors') return out;
@@ -323,6 +346,7 @@ function itemsById(items: readonly Item[], into = new Map<string, Item>()): Map<
 
 /** A backdrop painter box as the device paints it (DragonGroupView): its opaque fill and solid opaque sides, unclipped. */
 function backdropBox(dst: Px, b: Box, cx: number, cy: number): Px {
+  if (b.radii !== null) throw new Error(`${b.node.id}: a rounded backdrop painter, which native refuses`);
   if (!inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
   if (b.node.writes.some((w) => w.kind === 'visibility')) return dst;
   let out = dst;
@@ -400,6 +424,7 @@ const softwareGroup = (items: readonly Item[]): boolean => items.some((it) => it
 
 /** A box's own paint as the device's software layer draws it: its background over the box, then one side's colour, each with groupFill. */
 function softwareBox(dst: Px, b: Box, x: number, y: number): Px {
+  if (b.radii !== null) throw new Error(`${b.node.id}: a rounded box in a software group, which native refuses`);
   if (!(x >= b.l && x < b.r && y >= b.t && y < b.b) || b.node.writes.some((w) => w.kind === 'visibility')) return dst;
   let out = dst;
   const bg = bgOf(b);
@@ -497,14 +522,14 @@ const GROUPS = ['effects', 'filter'];
 const FIXTURES = FIXTURE_GROUPS.filter((g) => GROUPS.includes(g.id)).flatMap((g) => g.fixtures).filter((f) => f.kind === 'layout');
 
 /** The mismatches of the model against the committed Chrome PNGs at every non-edge point of a program, and the points compared. */
-function modelProblems(caseId: string, p: NativeProgram, viewport: { width: number; height: number }): { problems: string[]; compared: number } {
+function modelProblems(caseId: string, p: NativeProgram, viewport: { width: number; height: number }, faults: ModelFaults = NO_MODEL_FAULTS): { problems: string[]; compared: number } {
   const problems: string[] = [];
   let compared = 0;
   for (const dpr of DPRS) {
     const chrome = committedPixels(caseId, dpr);
     if (chrome === null) throw new Error(`${caseId}@${dpr}: no committed Chrome PNG`);
-    const items = paintItems(p, viewport, dpr);
-    const byId = new Map(boxes(p, viewport, dpr).map((b) => [b.node.id, b]));
+    const items = paintItems(p, viewport, dpr, faults);
+    const byId = new Map(boxes(p, viewport, dpr, faults.squareCorners === true).map((b) => [b.node.id, b]));
     for (const pt of casePoints(p, viewport, dpr)) {
       if (ruleKind(pt.rule) === 'edge') continue;
       compared++;
@@ -519,7 +544,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity, stacking and filter fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'opacity-group-rounded', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -823,10 +848,30 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
       expect(groupTileFolds(groupDraws(it.items), it.box.l, it.box.t, it.box.r, it.box.b), it.box.node.id).toBe(false);
     }
   });
+  it('renders rounded boxes in a group as Chrome draws them, folding a lone rounded fill or rounded four-side border, one op each', () => {
+    const spec = FIXTURES.find((f) => f.id === 'opacity-group-rounded');
+    if (spec === undefined) throw new Error('no opacity-group-rounded fixture');
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      const p = r.programs.uikit;
+      for (const dpr of DPRS) {
+        const folds: Record<string, boolean> = {};
+        for (const g of paintItems(p, c.environment.viewport, dpr)) {
+          if (g.kind === 'group') folds[g.box.node.id] = groupTileFolds(groupDraws(g.items), g.box.l, g.box.t, g.box.r, g.box.b);
+        }
+        expect(folds, `${c.id} @${dpr}`).toEqual({ 'or-a': true, 'or-b': false, 'or-d': false, 'or-e': true, 'or-f': false, 'or-g': false });
+      }
+      expect(modelProblems(c.id, p, c.environment.viewport).problems, c.id).toEqual([]);
+      // Planted: square corners miss Chrome at a point outside a rounded corner at every DPR.
+      const square = modelProblems(c.id, p, c.environment.viewport, { ...NO_MODEL_FAULTS, squareCorners: true }).problems;
+      for (const dpr of DPRS) expect(square.some((m) => m.startsWith('radius') && m.includes(` @${dpr}:`)), `${c.id} square corners @${dpr}`).toBe(true);
+    }
+  });
   const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
   const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
   it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(10);
+    expect(groupFixtures.length).toBe(11);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);

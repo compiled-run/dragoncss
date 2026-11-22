@@ -204,7 +204,8 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   if (!viewportScroller) for (const p of ['overflow-x', 'overflow-y']) if (!allowed.includes(keywordAt(el, p) ?? 'visible')) return `${a} has ${p}: ${keywordAt(el, p)}${role === 'ancestor-painter' ? ', a scroller' : ', a clip or scroller'}`;
   if ((keywordAt(el, 'visibility') ?? 'visible') !== 'visible') return `${a} is not visible`;
   if (paintedOutlineStyle(el) !== null) return `${a} has an outline`;
-  if (rounds(el)) return `${a} has a border radius`;
+  const rounded = rounds(el);
+  if (rounded && !content) return `${a} has a border radius`;
   const colors = usedColors(el);
   const bg = colors['background-color'].alpha;
   if (bg !== 0 && bg !== 255 && !content) return `${a} has a translucent background`;
@@ -230,7 +231,26 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   // Chrome draws translucent sides in one colour as one op on all four sides or one, and otherwise differently (measured).
   if (translucent && sides.length !== 4 && sides.length !== 1) return `${a} has a translucent border on ${sides.length} sides, which Chrome draws otherwise than four sides or one`;
   if (canvasTag && sides.length > 0) return `${a} has a border`;
+  // Blink shrinks a rounded box's background inside a border that hides its edge, drawing a fill and one DrawDRRect
+  // (box_decoration_data.cc ComputeBleedAvoidance, box_border_painter.cc PaintBorderFastPath); any other rounded border is a clip layer.
+  if (rounded && sides.length > 0) {
+    if (sides.length !== 4 || translucent) return `${a} has a border radius with a border that is not four opaque solid sides, which Chrome paints in a clip layer`;
+    if (new Set(SIDES.map((side) => (el.props.get(`border-${side}-width` as never)?.value as { value: number }).value)).size > 1) return `${a} has a border radius with border sides of more than one width`;
+  }
   return null;
+}
+
+/** Whether a box paints a translucent fill or border side, which makes the device build its group's layer in software (S2). */
+function translucentPaint(el: ResolvedElement): boolean {
+  const colors = usedColors(el);
+  const bg = colors['background-color'].alpha;
+  if (bg > 0 && bg < 255) return true;
+  return SIDES.some((side) => {
+    const style = keywordAt(el, `border-${side}-style`);
+    const w = el.props.get(`border-${side}-width` as never)?.value;
+    const a = colors[`border-${side}-color` as 'border-top-color'].alpha;
+    return style !== null && style !== 'none' && style !== 'hidden' && w !== undefined && w.kind === 'length' && w.value > 0 && a > 0 && a < 255;
+  });
 }
 
 /** Why a text run of a group cannot be rendered as Chrome draws it (null when it can): an opaque fill and nothing else. */
@@ -296,6 +316,12 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       // A decoration reaches the text of the boxes inside its box too.
       const line = keywordAt(m, 'text-decoration-line') ?? 'none';
       if (line !== 'none' && members.some((x) => x !== m && x.children.some((c) => c.kind === 'text') && ancestors(x).includes(m))) return refused(`${m.element.address} has a text-decoration-line, which reaches the text inside it`);
+    }
+    // S2's software layer draws square boxes only.
+    const roundedMember = members.find((m) => rounds(m));
+    if (roundedMember !== undefined) {
+      const soft = members.find((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m));
+      if (soft !== undefined) return refused(`${roundedMember.element.address} has a border radius, and ${soft.element.address} makes Dragon build the group's layer in software, which draws square boxes only`);
     }
     // What composites it differently: an enclosing group, layer, scroller or fixed box, or a decoration from above.
     const up = ancestors(g);
