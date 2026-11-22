@@ -340,7 +340,6 @@ function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<str
 }
 
 /** The model's colour at the centre of pixel (x, y). */
-export { paintItems as debugPaintItems, boxes as debugBoxes };
 export function effectsModelAt(items: readonly Item[], byId: ReadonlyMap<string, Box>, x: number, y: number, dpr: number): Px {
   const size = ccTileSize(true, dpr);
   const ix = ccTileIndex(x, size);
