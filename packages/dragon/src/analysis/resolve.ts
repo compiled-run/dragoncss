@@ -26,7 +26,7 @@ import { generatedElement, generatedText, generatedTextNode, hostRefusal } from 
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { isSvgShapeTag, SVG_TAG, svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
-import { inputTypeState, isRangeType, isTextFieldType } from './elements/controls.ts';
+import { inputTypeState, isRangeType, isTextFieldType, selectAppearance } from './elements/controls.ts';
 import { sanitizedTextValue, shownPlaceholder, TEXT_FIELD_UA_SHADOW } from '../forms/text-field.ts';
 import type { SelectOption } from '../forms/select.ts';
 import { labelKeepsWhiteSpace, SELECT_UA_SHADOW, shownLabel, shownOptionIndex } from '../forms/select.ts';
@@ -365,6 +365,10 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     // applyShadowUserAgent below.
     const shadowRules = part === null ? [] : part === 'inner' ? SELECT_UA_SHADOW.inner : isTextFieldPart(part) ? TEXT_FIELD_UA_SHADOW[part] : RANGE_UA_SHADOW[part];
     const shadowSet = new Set<string>(shadowRules.flatMap((r) => r.declarations.map(([name]) => (name === 'min-inline-size' ? 'min-width' : name))));
+    // FORM-b: applySelectShadow, the select[disabled] > option colour and the menulist line-height reset below.
+    if (part === 'inner') for (const p of ['white-space-collapse', 'direction', 'unicode-bidi', 'text-align']) shadowSet.add(p);
+    if (pseudo === null && part === null && el.tag === 'select') shadowSet.add('line-height');
+    if (pseudo === null && part === null && el.tag === 'option' && parent !== null && parent.element.tag === 'select' && parent.element.attributes.has('disabled')) shadowSet.add('color');
     const laterUserAgent = (p: Longhand): boolean =>
       ((p === 'font-weight' || p === 'font-style') && textFontsOf(environment.ua, el.tag)[p] !== undefined) || ((p === 'color' || p === 'text-decoration-line') && isAnyLink(el)) || shadowSet.has(p);
     for (const p of LONGHANDS) {
@@ -441,6 +445,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     else if (part !== null) (isTextFieldPart(part) ? applyTextFieldShadow : applyShadowUserAgent)(part as never, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
+    // FORM-b: LayoutThemeDefault::AdjustMenuListStyle resets a themed or devolved select's line height (layout_theme_default.cc:222-227).
+    if (pseudo === null && part === null && el.tag === 'select' && selectAppearance(props) === 'menulist-button') props.set('line-height', { value: parseValueText('line-height', 'normal'), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
     applyHidden(el, props, defaulted);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
@@ -539,6 +545,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
       const shown = shownOptionIndex(options.map(selectOptionOf));
       if (shown !== null) shownOptions.set(el, resolved[shown] as ResolvedElement);
       kids.push(visit(textPartElement(el, 'inner', shown === null ? '' : shownLabel(selectOptionOf(options[shown] as LinkedElement))), here, self, null, 'inner'));
+      // FORM-b S4: every option's label in the inner element's text style, beside the tree, for the select's natural width.
+      selectOptionLabels.set(self, options.map((o, k) => visit(optionLabelElement(el, k, shownLabel(selectOptionOf(o))), here, self, null, 'inner')));
     }
     // css-position-4 §3.2: a <dialog> shown modal (the host presents the top layer: project.ts refuses <dialog> otherwise) has a
     // ::backdrop box, which inherits from it; it is the dialog's last child here and lowerTree moves both into the top layer.
@@ -746,6 +754,20 @@ const PART_PSEUDO: Readonly<Record<ShadowPart, ControlPart | null>> = { containe
 /** The resolved option a select shows, beside the tree (it has no box). */
 const shownOptions = new WeakMap<LinkedElement, ResolvedElement>();
 const selectOptions = new WeakMap<ResolvedElement, readonly ResolvedElement[]>();
+
+const selectOptionLabels = new WeakMap<ResolvedElement, readonly ResolvedElement[]>();
+
+/** FORM-b S4: each option's label as an inner element "<select address>::option<k>", resolved beside the tree; empty for any other element. */
+export function selectOptionLabelsOf(el: ResolvedElement): readonly ResolvedElement[] {
+  return selectOptionLabels.get(el) ?? [];
+}
+
+/** An option's label as an inner element of its select, at "<select address>::option<k>" with one text child (none for an empty label). */
+function optionLabelElement(host: LinkedElement, k: number, text: string): LinkedElement {
+  const address = `${host.address}::option${k}`;
+  const children: LinkedText[] = text === '' ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::option${k}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  return { kind: 'element', address, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children };
+}
 
 /** A select's resolved options in tree order, beside the tree; empty for every other element. */
 export function selectOptionsOf(el: ResolvedElement): readonly ResolvedElement[] {

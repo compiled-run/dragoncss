@@ -28,8 +28,10 @@ import { compileFixture } from '../src/pipeline.ts';
 
 const controlIds = new Set(CONTROLS.map((f) => f.id));
 // Later fixtures that hold buttons by design are not earlier cases: OVFL's overflow-controls (buttons in scroll boxes), the
-// anchor group's anchor-control (a button as an anchor) and the Markless ladder's ms-button-disabled (:disabled on a button).
-const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled'];
+// anchor group's anchor-control (a button as an anchor), the Markless ladder's ms-button-disabled (:disabled on a button) and
+// FORM-attrs' attr-neutral-form-* pairs (each form attribute on a form, a button and a range).
+const FORM_ATTRIBUTE_PAIRS: readonly string[] = ['none', 'name', 'autocomplete', 'required', 'minlength', 'maxlength'].map((a) => `attr-neutral-form-${a}`);
+const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields', ...FORM_ATTRIBUTE_PAIRS];
 const notEarlier = new Set([...controlIds, ...LATER_WITH_CONTROLS]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !notEarlier.has(f.id));
 
@@ -49,10 +51,10 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('FORM-a A3 identity: every case that predates the button package is unchanged', () => {
   it('covers every earlier layout fixture, and the controls group adds only its own', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    // 14: the A3 buttons and A4 ranges, then fieldset-legend, fieldset-positioned, controls-text-field, the two FORM-b selects, then
-    // GRID-items' grid-button-block and -flex.
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(14);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(14 + LATER_WITH_CONTROLS.length);
+    // 16: the A3 buttons and A4 ranges, then fieldset-legend, fieldset-positioned, controls-text-field, the four FORM-b selects (S4's
+    // controls-select-natural-width among them), then GRID-items' grid-button-block and -flex.
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(16);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(16 + LATER_WITH_CONTROLS.length);
   });
 
   it('no earlier element is a control, and the display adjustment leaves every one alone (appearance-values sets appearance only on displays Chrome keeps)', () => {
@@ -122,12 +124,12 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
 // input or part, each lowers to its committed vector input with no range or thumb control box, and emits its committed web body
 // (the committed vectors and emitted CSS of these cases are byte-identical to A3, git diff form-a3 in the receipt).
 describe('FORM-a A4 identity: every case that predates the range package is unchanged', () => {
-  const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-'));
+  const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-') && !FORM_ATTRIBUTE_PAIRS.includes(f.id));
   const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && (c.control.kind === 'range' || c.control.kind === 'slider-thumb') ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
   it('covers every earlier layout fixture, the A3 controls cases included', () => {
-    // 12: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, the two FORM-b selects and the two
+    // 14: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, the four FORM-b selects and the two
     // grid-button cases, which hold no range.
-    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(12);
+    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(14);
     expect(FIXTURES.filter((f) => f.id.startsWith('controls-range-')).length).toBe(2);
   });
   it('no earlier case resolves a range, lowers a range or thumb box, or changes its vector input or web body', () => {

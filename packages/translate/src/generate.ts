@@ -66,6 +66,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('overflow.ts'), name: 'scrollMetricsWithFaults' },
     // OVFL-B: each scroll container's offset range in device px, which the native scroll views clamp to.
     { file: at('overflow.ts'), name: 'scrollRanges' },
+    // FORM-b: each menulist-button select's drop-down arrow, which the native select views stroke after layout.
+    { file: at('paint-menulist.ts'), name: 'menuListArrows' },
     // TXT2-g: the line-clamp containers' children as the layout clamped them, whose lines the native text views place.
     { file: at('line-clamp.ts'), name: 'clampedInput' },
   ];
@@ -140,7 +142,7 @@ export function lowerAll(): Lowered {
   if (el.violations.length > 0) throw new TranslateError(el.violations);
   const hFiles = [...files, HARNESS_FILE];
   const hProgram = createProgram([...hFiles, HOST_FILE]);
-  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }, { file: HARNESS_FILE, name: 'runSnapCase' }, { file: HARNESS_FILE, name: 'runMarklessLayout' }, { file: HARNESS_FILE, name: 'runMarklessRowsLayout' }] });
+  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }, { file: HARNESS_FILE, name: 'runSnapCase' }, { file: HARNESS_FILE, name: 'runMarklessLayout' }, { file: HARNESS_FILE, name: 'runMarklessRowsLayout' }, { file: HARNESS_FILE, name: 'runMarklessAnimation' }] });
   const harness = hl.lower();
   if (hl.violations.length > 0) throw new TranslateError(hl.violations);
   // The harness may use only the engine as translated for the roots: no extra engine declaration, no new union of engine classes.

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -290,6 +290,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
       if (node['boxless'] !== undefined && node['boxless'] !== true) fail(`${id}: boxless is true or absent`);
       if (MARKLESS_BOXLESS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+      if (LISTED_OPTIONS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${LISTED_OPTIONS_ATTRIBUTE} is Dragon's own attribute`);
       if (node['classByState'] !== undefined) {
         if ('class' in (node['attributes'] as Record<string, unknown>)) fail(`${id}: class is both a fixed attribute and a class by state`);
         checkByState('classByState', node['classByState']);
@@ -300,7 +301,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         for (const [name, byState] of Object.entries(attributesByState as Record<string, unknown>)) {
           if (name === 'class' || !/^[a-z][a-z0-9-]*$/.test(name)) fail(`${id}: attributesByState names ${JSON.stringify(name)}, which is not a non-class attribute name`);
           if (name in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${name} is both a fixed attribute and an attribute by state`);
-          if (name === MARKLESS_BOXLESS_ATTRIBUTE) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+          if (name === MARKLESS_BOXLESS_ATTRIBUTE || name === LISTED_OPTIONS_ATTRIBUTE) fail(`${id}: ${name} is Dragon's own attribute`);
           checkByState(`attributesByState.${name}`, byState);
         }
       }
@@ -555,6 +556,8 @@ export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string,
         ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
         ...(marklessShownModal(n) && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         ...(n.boxless === true ? [{ name: MARKLESS_BOXLESS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
+        // FORM-b S4: a select holding a list's rows has only the template option here, so Dragon keeps its widest-option refusals.
+        ...(n.kind === 'element' && n.element === 'select' && input.nodes.some((k) => k.parent === n.id && k.row !== undefined) ? [{ name: LISTED_OPTIONS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
           const entryOf = entriesOf(n.id, `attributesByState.${name}`, byState);
@@ -633,7 +636,7 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -771,6 +774,18 @@ export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: read
   return [...out];
 }
 
+/** Whether a node is an option or optgroup inside a select, or a node inside such an option: Chrome's closed control draws only the shown label, so it has no box. */
+export function inSelectOptions(byId: ReadonlyMap<string, MarklessStyleInput['nodes'][number]>, n: MarklessStyleInput['nodes'][number]): boolean {
+  let at: MarklessStyleInput['nodes'][number] | undefined = n;
+  let listed = false;
+  while (at !== undefined) {
+    if (at.kind === 'element' && at.element === 'select') return listed;
+    if (at.kind === 'element' && (at.element === 'option' || at.element === 'optgroup')) listed = true;
+    at = at.parent === null ? undefined : byId.get(at.parent);
+  }
+  return false;
+}
+
 type PlanNode = { readonly id: string; readonly kind: string; readonly children?: readonly PlanNode[] };
 
 /**
@@ -831,6 +846,14 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
+  // The animator keeps one state for the page, so a row's copies would share one clock and a row added later would never run.
+  const inRows = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[dragonIds.get(n.id) as string, n.id] as const])));
+  for (const [t, x] of Object.entries(exported.targets)) {
+    if (x.anim === undefined) continue;
+    const animated = [...x.anim.slots, ...x.anim.animations, ...x.anim.bases].map((e) => e.node);
+    const row = animated.find((node) => inRows.has(node));
+    if (row !== undefined) fail(`${t}: ${inRows.get(row)} has a transition or animation inside a @for row, which a phone runs only for the page, not per row, yet`);
+  }
   // Named with no frame: an element a hidden attribute (fixed or by state) or a style state another assignment shows it in hides here, and its contents.
   const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
     const have = new Set(a.nodes.map((n) => n.id));
@@ -863,6 +886,8 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
     (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
   }
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
+  const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
@@ -870,7 +895,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const boxed = parsed.nodes.filter((n) => boxless(n) && have.has(n.id)).map((n) => n.id);
     if (boxed.length > 0) fail(`${t}: ${boxed.join(', ')} must generate no box (an ancestor in the markup, there for selectors and inheritance), but the CSS gives it a display other than contents`);
     // Whitespace-only text Dragon drops where it collapses away, as Chrome generates no box for it.
-    const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
+    const missing = parsed.nodes.filter((n) => !boxless(n) && !inSelectList(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
   if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
@@ -895,15 +920,18 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
 
 /**
  * Each list of the input as a phone lays its rows out (harness.ts runMarklessRowsLayout): the box its rows hang from and the ids of
- * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy.
+ * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy. A list
+ * of a select's options has no rows to lay out: the closed control draws only the shown label.
  */
 function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, string>): { readonly id: string; readonly parent: string; readonly template: readonly string[] }[] {
-  return (parsed.repeats ?? []).map((r) => {
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n] as const));
+  return (parsed.repeats ?? []).flatMap((r) => {
     const top = parsed.nodes.filter((n) => n.row === r.id && n.parent === r.parent);
+    if (top.length > 0 && top.every((n) => inSelectOptions(byId, n))) return [];
     const text = top.find((n) => n.kind === 'text');
     if (text !== undefined) fail(`${text.id}: text right inside a row of ${r.id} has no box a phone can copy per row; wrap it in an element`);
     if (top.length === 0) fail(`${r.id}: its rows hold no node`);
-    return { id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) };
+    return [{ id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) }];
   });
 }
 

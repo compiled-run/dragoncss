@@ -68,8 +68,8 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { isControlTag } from '../analysis/elements/controls.ts';
-import { rangePartOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
+import { rangePartOf, selectOptionLabelsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
@@ -918,6 +918,13 @@ function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridConta
   };
 }
 
+/** FORM-b: a select's arrow width in DIP when it draws Chrome's arrow (menulist-button), else 0; computed-checks.ts refuses a platform without one. */
+function menuListArrowWidthOf(el: ResolvedElement, ua: UaDataset): number {
+  if (selectAppearance(el.props) !== 'menulist-button') return 0;
+  if (ua.menuListArrowWidth === null) throw new LoweringError(el.element.address, 'appearance', `no menulist arrow width was captured on ${ua.platform}`);
+  return ua.menuListArrowWidth;
+}
+
 // CSS2 §10.2, §10.5, §10.7, §8.3, css-sizing-4 §5.1 and css-overflow-3 §3: a non-replaced inline box takes no width, height, min
 // or max size, block margins, ratio or overflow. A block-in-inline box is that inline box (its web output keeps display: inline), so its block box takes none
 // of them either (measured against Chrome 145: span { height: 20px; width: 30px; margin-top: 10px } lays out as if unset).
@@ -1028,7 +1035,10 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   if (select !== undefined && select.part === null) {
     // FORM-b: a single select is a flex row container whatever its display; its font and line height decide its inner element's.
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight }, strut, children };
+    // FORM-b S4: every option's label as a text leaf in the select's own face, which the engine measures for the natural width.
+    const labelMode: LowerMode = { kind: l.mode.kind, faceOf: () => l.mode.faceOf(id) };
+    const options = selectOptionLabelsOf(el).flatMap((o) => o.children.filter((k): k is ResolvedText => k.kind === 'text').map((t) => lowerText(t, labelMode, zoom)));
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: menuListArrowWidthOf(el, l.ua), options }, strut, children };
   }
   // An empty inner element still lays out one line of its own font, so it always carries its strut.
   if (select !== undefined) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'select-inner' }, strut: strut ?? strutOf(el, true, l.mode, zoom), children };

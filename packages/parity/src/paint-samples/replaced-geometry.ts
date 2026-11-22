@@ -48,9 +48,9 @@ export function replacedBoxes(ctx: PaintSampleContext): ReadonlyMap<string, Repl
   const input = programInput(ctx.program, ctx.viewport, ctx.dpr);
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error(`the engine refused the program at ${ctx.dpr}`);
-  const paints = replacedGeometries(engine, input, out.boxes);
+  const paints = replacedGeometries(engine, input, out.boxes, engine.measurer);
   const snapped = snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input);
+  const borders = borderDevicePx(engine, input, engine.measurer);
   const order = new Map(out.boxes.map((b, i) => [b.id, i]));
   const byId = new Map(ctx.program.nodes.map((n) => [n.id, n]));
   const clipped = (id: string | null): boolean => {

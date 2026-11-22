@@ -1,0 +1,9 @@
+<div r1
+{on === true ? 'on' : ''}
+<div r2
+<div r3
+<div r4
+on: [false, true] = false
+component App
+<html>
+<body>

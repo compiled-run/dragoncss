@@ -10,6 +10,7 @@ import type { NativeBackend } from '../../lower/native-program.ts';
 import { PROGRAM_VERSIONS } from '../../lower/native-program.ts';
 import type { GeneratedFile, Scalar } from '../../types.ts';
 import type { HitFact } from './hit.ts';
+import { radiusLengthLit } from '../paint/radius.ts';
 import type { Lang } from '../native-support.ts';
 import { doubleLit, environmentArgs, inputFunctions, stringLit } from '../native-support.ts';
 import { commentText, deltaLit, nodeLit, valueKey } from './state.ts';
@@ -79,7 +80,9 @@ public struct DragonInteractionFact {
   public let pointerEvents: String
   public let inherited: Bool
   public let activation: Bool
-  public init(_ id: String, _ pointerEvents: String, _ inherited: Bool, _ activation: Bool) { self.id = id; self.pointerEvents = pointerEvents; self.inherited = inherited; self.activation = activation }
+  /// The eight border-radius components when a corner is rounded, else empty.
+  public let radii: [RadiusLength]
+  public init(_ id: String, _ pointerEvents: String, _ inherited: Bool, _ activation: Bool, _ radii: [RadiusLength]) { self.id = id; self.pointerEvents = pointerEvents; self.inherited = inherited; self.activation = activation; self.radii = radii }
 }
 
 /// One app assignment's interaction level: the rt-interaction tables, the element address of each table index, each interaction
@@ -347,7 +350,7 @@ public final class DragonInteractionMachine {
     var entry = hitTables[key]
     if entry == nil {
       let map = JsStringMap<HitFact>()
-      for r in facts[f] { map.set(JsString(r.id), HitFact(JsString(r.pointerEvents), r.inherited, r.activation)) }
+      for r in facts[f] { map.set(JsString(r.id), HitFact(JsString(r.pointerEvents), r.inherited, r.activation, JsArray(r.radii))) }
       let t = dragonInteractionCall("hit table") { try rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea), measurer, map, HitTableFaults(false)) }
       let prepared = dragonInteractionCall("prepare hit") { try rtHit_prepareHit(t.nodes, HitFaults(false, false)) }
       entry = (prepared, t.ids.items.map { $0.description })
@@ -448,7 +451,7 @@ function kotlinSupportText(): string {
 import dev.dragon.layout.*
 
 /** One element's hit facts in one interaction state (rt-hit.ts HitFact). */
-class DragonInteractionFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean)
+class DragonInteractionFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean, val radii: List<RadiusLength>)
 
 /**
  * One app assignment's interaction level: the rt-interaction tables, the element address of each table index, each interaction
@@ -693,7 +696,7 @@ class DragonInteractionMachine(
     val key = laidOut.toString() + "|" + f
     val entry = hitTables.getOrPut(key) {
       val map = JsStringMap<HitFact>()
-      for (r in facts[f]) map.set(r.id, HitFact(r.pointerEvents, r.inherited, r.activation))
+      for (r in facts[f]) map.set(r.id, HitFact(r.pointerEvents, r.inherited, r.activation, JsArray(r.radii.toMutableList())))
       val t = rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea), measurer, map, HitTableFaults(false))
       Pair(rtHit_prepareHit(t.nodes, HitFaults(false, false)), t.ids.toList())
     }
@@ -821,7 +824,7 @@ function factsLit(lang: Lang, facts: ReadonlyMap<string, HitFact>): string {
   const q = (s: string): string => stringLit(lang, s);
   const rows = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => {
     if (f.pointerEvents !== 'auto' && f.pointerEvents !== 'none') throw new InteractionEmitError(`${id}: pointer-events ${JSON.stringify(f.pointerEvents)}`);
-    return `DragonInteractionFact(${q(id)}, ${q(f.pointerEvents)}, ${f.inherited}, ${f.activation})`;
+    return `DragonInteractionFact(${q(id)}, ${q(f.pointerEvents)}, ${f.inherited}, ${f.activation}, ${list(lang, f.radii.map((l) => radiusLengthLit(lang, l)))})`;
   });
   return list(lang, rows);
 }

@@ -542,7 +542,7 @@ func dragonBreaks(_ input: LayoutInput, _ measurer: TextMeasurer) throws -> Stri
   let result = try layout_layout(input, measurer)
   guard let ok = result as? LayoutResult_ok else { return "refused" }
   let boxes = ok.boxes.items
-  let zoomed = try lineClamp_clampedInput(try layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
+  let zoomed = try lineClamp_clampedInput(try layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
   var zBoxes: [String: LayoutBox] = [:]
   var zParent: [String: String] = [:]
   var replaced: Set<String> = []
@@ -645,7 +645,7 @@ fun dragonBreaks(input: LayoutInput, measurer: TextMeasurer): String {
   val result = layout_layout(input, measurer)
   val ok = result as? LayoutResult_ok ?: return "refused"
   val boxes = ok.boxes
-  val zoomed = lineClamp_clampedInput(layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
+  val zoomed = lineClamp_clampedInput(layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
   val zBoxes = HashMap<String, LayoutBox>()
   val zParent = HashMap<String, String>()
   val replaced = HashSet<String>()

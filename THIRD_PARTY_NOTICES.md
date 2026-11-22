@@ -36,6 +36,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/css/properties/shorthands/shorthands_custom.cc`: Copyright 2019 The Chromium Authors
 - `third_party/blink/renderer/core/css/property_registration.cc`: Copyright 2016 The Chromium Authors
 - `third_party/blink/renderer/core/css/ua_counter_style_map.cc`: Copyright 2020 The Chromium Authors
+- `third_party/blink/renderer/core/html/forms/internal_popup_menu.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/html/forms/menu_list_inner_element.cc`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/core/html/list_item_ordinal.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/layout/absolute_utils.cc`: Copyright 2016 The Chromium Authors
@@ -138,6 +139,8 @@ Those files are under the licences below, with the copyright lines from their he
 - `ui/gfx/geometry/rect_f.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/sin_cos_degrees.h`: Copyright 2023 The Chromium Authors
 - `ui/gfx/geometry/transform.cc`: Copyright 2012 The Chromium Authors
+- `ui/gfx/geometry/triangle_f.cc`: Copyright 2021 The Chromium Authors
+- `ui/native_theme/native_theme_base.cc`: Copyright 2012 The Chromium Authors
 
 ```
 Copyright 2015 The Chromium Authors

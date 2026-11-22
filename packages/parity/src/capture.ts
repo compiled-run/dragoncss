@@ -4,7 +4,7 @@
 import type { Browser, CDPSession, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
-import { isWhitespaceText, lineId, pseudoId, textAddresser } from './node-ids.ts';
+import { generatedTextId, isWhitespaceText, lineId, pseudoId, textAddresser } from './node-ids.ts';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage, videosReady } from './chrome.ts';
 import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
@@ -260,7 +260,7 @@ async function captureTextFieldParts(page: Page, props: readonly string[]): Prom
   await withTextFieldParts(page, async (cdp, fields) => {
     for (const { id, parts } of fields) {
       const nodes: CapturedNode[] = [];
-      for (const [part, n] of parts) nodes.push(...(await shadowPartNodes(cdp, `${id}::${part}`, n, props)));
+      for (const [part, n] of parts) nodes.push(...(await shadowPartNodes(cdp, pseudoId(id, part), n, props)));
       out.set(id, nodes);
     }
   });
@@ -339,8 +339,9 @@ async function shadowPartNodes(cdp: CDPSession, partId: string, n: DomNode, prop
   const ux = Math.min(...rects.map((r) => r.x));
   const uy = Math.min(...rects.map((r) => r.y));
   const union = rects.length === 0 ? { x: 0, y: 0, width: 0, height: 0 } : { x: ux, y: uy, width: Math.max(...rects.map((r) => r.x + r.width)) - ux, height: Math.max(...rects.map((r) => r.y + r.height)) - uy };
-  nodes.push({ id: `${partId}:text0`, kind: 'text', hasBox: rects.length > 0, ...union, computed: null });
-  rects.forEach((r, j) => nodes.push({ id: `${partId}:text0:line${j}`, kind: 'line', hasBox: true, ...r, computed: null }));
+  const textId = generatedTextId(partId);
+  nodes.push({ id: textId, kind: 'text', hasBox: rects.length > 0, ...union, computed: null });
+  rects.forEach((r, j) => nodes.push({ id: lineId(textId, j), kind: 'line', hasBox: true, ...r, computed: null }));
   return nodes;
 }
 
@@ -349,7 +350,7 @@ async function captureSelectParts(page: Page, props: readonly string[]): Promise
   const out = new Map<string, CapturedNode[]>();
   await withSelectInners(page, async (cdp, inners) => {
     // A select showing no option holds an empty text node, which Dragon's inner element leaves out.
-    for (const { id, inner } of inners) out.set(id, await shadowPartNodes(cdp, `${id}::inner`, inner, props, true));
+    for (const { id, inner } of inners) out.set(id, await shadowPartNodes(cdp, pseudoId(id, 'inner'), inner, props, true));
   });
   return out;
 }
@@ -359,8 +360,8 @@ async function captureSelectParts(page: Page, props: readonly string[]): Promise
  * "<partId>:text0", which no script Range reaches. None of them wraps (text-wrap-mode: nowrap), so every unit is on the text's one
  * fragment; a text of more fragments, or one holding a character whose break or width the fragment count cannot show, is an error.
  */
-export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[] }[]> {
-  const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
+export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[]> {
+  const out: { id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
   const read = async (cdp: CDPSession, partId: string, n: DomNode): Promise<void> => {
     const text = (n.children ?? []).find((c) => c.nodeName === '#text' && c.nodeValue !== '');
     if (text === undefined) return;
@@ -368,13 +369,17 @@ export async function captureShadowBreakTexts(page: Page): Promise<{ id: string;
     if (/[\u0000-\u001f\u00ad\u200b]/.test(data)) throw new Error(`${partId}: the shadow text ${JSON.stringify(data)} holds a control, soft hyphen or zero-width space, whose breaks are not captured`);
     const quads = ((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads;
     if (quads.length !== 1) throw new Error(`${partId}: the shadow text has ${quads.length} fragments, not one`);
-    out.push({ id: `${partId}:text0`, data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] });
+    // TXT2-e: Chrome renders the part's text transformed, as the light-DOM capture records (line-breaks.ts renderedTexts).
+    const computed = ((await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] }).computedStyle;
+    const transform = computed.find((p) => p.name === 'text-transform')?.value ?? 'none';
+    const base = { id: generatedTextId(partId), data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] };
+    out.push(transform === 'none' ? base : { ...base, transform });
   };
   await withTextFieldParts(page, async (cdp, fields) => {
-    for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, `${id}::${part}`, n);
+    for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, pseudoId(id, part), n);
   });
   await withSelectInners(page, async (cdp, inners) => {
-    for (const { id, inner } of inners) await read(cdp, `${id}::inner`, inner);
+    for (const { id, inner } of inners) await read(cdp, pseudoId(id, 'inner'), inner);
   });
   return out;
 }

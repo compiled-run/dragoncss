@@ -91,3 +91,22 @@ function devolvableAppearance(control: 'button' | 'textfield', props: ReadonlyMa
   }
   return usedAppearance(control, { appearance, background, border, thumbAppearance: 'auto' });
 }
+
+/** FORM-b: a single select's used appearance: none, menulist-button (devolved), or theme (a themed menulist or another keyword). */
+export type SelectAppearance = 'none' | 'menulist-button' | 'theme';
+
+/**
+ * A select's used appearance: auto devolves to menulist-button when the author declares a background or border longhand or the
+ * box-shadow is not none (layout_theme.cc IsControlStyled for kMenulist and AdjustAppearanceWithAuthorStyle, a reference); with
+ * none of them Chrome draws its themed menulist. Every keyword but none and auto counts as theme, so Dragon never claims one.
+ */
+export function selectAppearance(props: ReadonlyMap<Longhand, ResolvedValue>): SelectAppearance {
+  const appearance = keyword(props.get('appearance') as ResolvedValue);
+  if (appearance === 'none') return 'none';
+  if (appearance !== 'auto') return 'theme';
+  if (keyword(props.get('box-shadow') as ResolvedValue) !== 'none') return 'menulist-button';
+  for (const [p, v] of props) {
+    if (v.declaration !== null && (DEVOLVING_BACKGROUND.test(p) || DEVOLVING_BORDER.test(p))) return 'menulist-button';
+  }
+  return 'theme';
+}
