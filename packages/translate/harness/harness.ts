@@ -3900,8 +3900,10 @@ export function runMarklessLayout(line: string): string {
 export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
   try {
     const parsed = parseJson(line);
-    const withSlots = parsed.kind === 'obj' && parsed.values.has('slots');
-    return marklessLayout(obj(parsed, withSlots ? ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows', 'slots'] : ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'], '$'), shaper);
+    const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'];
+    if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
+    if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
+    return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -4090,7 +4092,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density, live);
     const parts = planAssignment(plan, numField(o, 'assignment', '$'));
-    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values);
+    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null);
     const variant = spliced === null ? slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
@@ -4193,8 +4195,58 @@ function slotted(plan: JsonObj): boolean {
   return planSlots(plan).length > 0;
 }
 
+/** The page's own texts a host gives at run time ($.texts): each text leaf's current string, by leaf id. */
+function pageTexts(textsValue: JsonValue | null): Map<string, string> {
+  const texts = new Map<string, string>();
+  if (textsValue === null) return texts;
+  const pairs = arr(textsValue, '$.texts');
+  for (let pi = 0; pi < pairs.length; pi++) {
+    const p = arr(pairs[pi] as JsonValue, `$.texts[${pi}]`);
+    if (p.length !== 2) fail(`$.texts[${pi}]: expected [leaf id, text]`);
+    const leaf = str(p[0] as JsonValue, `$.texts[${pi}][0]`);
+    if (texts.has(leaf)) fail(`$.texts[${pi}]: ${leaf} is given twice`);
+    texts.set(leaf, str(p[1] as JsonValue, `$.texts[${pi}][1]`));
+  }
+  return texts;
+}
+
+/** `v` with each page text leaf named in `texts` holding its given string, white space processed as the build processes it. */
+function withPageTexts(v: JsonValue, texts: ReadonlyMap<string, string>, used: Map<string, boolean>, alone: boolean): JsonValue {
+  if (v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    for (const item of v.items) items.push(withPageTexts(item, texts, used, alone));
+    return { kind: 'arr', items };
+  }
+  if (v.kind !== 'obj') return v;
+  const id = v.values.get('id');
+  const kind = v.values.get('kind');
+  const values = new Map<string, JsonValue>();
+  for (const k of v.keys) {
+    const value = v.values.get(k) as JsonValue;
+    if (k === 'text' && kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str' && texts.has(id.text)) {
+      const mode = v.values.get('whiteSpaceCollapse');
+      used.set(id.text, true);
+      values.set(k, { kind: 'str', text: rowText(texts.get(id.text) as string, mode !== undefined && mode.kind === 'str' ? mode.text : '', `$.texts: ${id.text}`, alone) });
+    } else values.set(k, withPageTexts(value, texts, used, k === 'children' && kind !== undefined && kind.kind === 'str' && kind.text === 'box' && value.kind === 'arr' && value.items.length === 1));
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+/** The id of every text leaf in `v`. */
+function textLeafIds(v: JsonValue, into: Map<string, boolean>): void {
+  if (v.kind === 'arr') {
+    for (const item of v.items) textLeafIds(item, into);
+    return;
+  }
+  if (v.kind !== 'obj') return;
+  const id = v.values.get('id');
+  const kind = v.values.get('kind');
+  if (kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str') into.set(id.text, true);
+  for (const k of v.keys) textLeafIds(v.values.get(k) as JsonValue, into);
+}
+
 /** The page variant with each list's rows in place of its template ($.rows), with the page's and each row copy's dashed borders and scrolling. */
-function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[]): RowsVariant {
+function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null): RowsVariant {
   const slots = planSlots(plan);
   const vi = parts.variant;
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
@@ -4254,7 +4306,12 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   for (const [id, d] of parts.dashed) sink.dashed.set(id, d);
   for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
   const page = slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
-  const root = withRows(page, lists, sink);
+  const texts = pageTexts(textsValue);
+  const usedTexts = new Map<string, boolean>();
+  const root = withRows(withPageTexts(page, texts, usedTexts, false), lists, sink);
+  const kept = new Map<string, boolean>();
+  textLeafIds(root, kept);
+  for (const [leaf, _text] of texts) if (!usedTexts.has(leaf) || !kept.has(leaf)) fail(`$.texts: ${leaf} is no text leaf of the page outside its lists' rows`);
   for (const parent of parents) if (!sink.placed.has(parent) && (lists.get(parent) as RowList).rows.length > 0) fail(`$.rows: the page has no box ${parent} to hold its list's rows`);
   if (root.kind !== 'obj' || kindOf(root, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
   return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers, rows: all };

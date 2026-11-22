@@ -46,12 +46,12 @@ const EDGE_ROWS: readonly Row[] = [
 ];
 
 /** The page as the web renders it with these rows: each row's nodes named "<id>@<key>", its class its item's, its text its own. */
-function writtenOut(rows: readonly Row[], css = ''): MarklessStyleInput {
+function writtenOut(rows: readonly Row[], css = '', page: ReadonlyMap<string, string> = new Map()): MarklessStyleInput {
   const nodes: MarklessStyleInput['nodes'][number][] = [];
   let placed = false;
   for (const n of input.nodes) {
     if (n.row !== repeat.id) {
-      nodes.push(n);
+      nodes.push(n.kind === 'text' && page.has(n.id) ? { ...n, text: page.get(n.id)! } : n);
       continue;
     }
     if (placed) continue;
@@ -102,7 +102,7 @@ describe('styled @for rows', () => {
   });
 
   /** The device's layout of these rows on a target: its boxes in device px, absolute, by id. */
-  function deviceBoxes(t: 'ios' | 'android', rows: readonly Row[], x = exported.targets[t]!): { readonly abs: (id: string) => number[]; readonly ids: readonly string[]; readonly names: ReadonlyMap<string, string> } {
+  function deviceBoxes(t: 'ios' | 'android', rows: readonly Row[], x = exported.targets[t]!, pageTexts: ReadonlyMap<string, string> = new Map()): { readonly abs: (id: string) => number[]; readonly ids: readonly string[]; readonly names: ReadonlyMap<string, string> } {
     const shown = rows.length === 0 ? '0' : '1';
     const at = (option: string): number => x.assignments.findIndex((a) => a.values[branch.id] === shown && a.values[rowState.cell] === option);
     const page = at(rowState.initial as string);
@@ -114,6 +114,7 @@ describe('styled @for rows', () => {
       safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
       plan: x.plan,
       rows: x.planRepeats!.map((r) => ({ parent: r.parent, template: r.template, rows: rows.map((row) => ({ key: row.key, assignment: at(pinnedOption(row.pinned)), texts: [[names.get(titleText) ?? titleText, row.title]] })) })),
+      ...(pageTexts.size > 0 ? { texts: [...pageTexts].map(([id, text]) => [names.get(id) ?? id, text]) } : {}),
     });
     const out = JSON.parse(runMarklessRowsLayout(line, systemFontsFor(t, x.dpr).shaper as never)) as unknown[];
     if (out[0] !== 'ok') throw new Error(JSON.stringify(out));
@@ -144,10 +145,11 @@ describe('styled @for rows', () => {
     it(`lays a taller pinned row out on the ${t} device exactly as the build does`, () => expectAsBuilt(t, ROWS, '.note.pinned { padding: 18px; }'));
   }
 
-  function expectAsBuilt(t: 'ios' | 'android', rows: readonly Row[], css = ''): void {
+  function expectAsBuilt(t: 'ios' | 'android', rows: readonly Row[], css = '', page: ReadonlyMap<string, string> = new Map()): void {
     {
-      const device = deviceBoxes(t, rows, css === '' ? exported.targets[t]! : marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true).exported.targets[t]!);
-      const built = marklessStyleExport(JSON.stringify(writtenOut(rows, css === '' ? '' : `\n${css}`)), PATH, undefined, 'system').exported.targets[t]!;
+      const device = deviceBoxes(t, rows, css === '' ? exported.targets[t]! : marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true).exported.targets[t]!, page);
+      const written = writtenOut(rows, css === '' ? '' : `\n${css}`, page);
+      const built = marklessStyleExport(JSON.stringify(written), PATH, undefined, 'system').exported.targets[t]!;
       const a = built.assignments.find((x) => x.values[branch.id] === '1')!;
       const byId = new Map(a.nodes.map((n) => [n.id, n]));
       const absBuilt = (id: string): number[] => {
@@ -157,7 +159,7 @@ describe('styled @for rows', () => {
         const p = absBuilt(n.parent);
         return [p[0]! + f.x, p[1]! + f.y, f.width, f.height];
       };
-      const elements = writtenOut(rows).nodes.filter((n) => n.kind === 'element').map((n) => n.id);
+      const elements = written.nodes.filter((n) => n.kind === 'element').map((n) => n.id);
       let compared = 0;
       for (const id of elements) {
         const n = byId.get(id);
@@ -170,6 +172,27 @@ describe('styled @for rows', () => {
       expect(compared).toBeGreaterThanOrEqual(10);
     }
   }
+
+  const pageText = (text: string): string => input.nodes.find((n) => n.kind === 'text' && n.row === undefined && n.text === text)!.id;
+  for (const t of ['ios', 'android'] as const) {
+    // A page text that follows state with no finite domain: the host gives its current string, and the page is laid out around it.
+    it(`lays the page out on the ${t} device around page texts given at run time, as the build lays out the page written with them`, () =>
+      expectAsBuilt(t, ROWS, '', new Map([
+        [pageText('Notes'), 'Notes about the kitchen, the garden and everything else that needs doing this week'],
+        [pageText('Add note'), 'Add another   note'],
+      ])));
+  }
+
+  it('refuses a page text for a leaf it does not have, or for a leaf inside a list\'s rows', () => {
+    const x = exported.targets.ios!;
+    const page = x.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === rowState.initial);
+    const names = new Map((x.planNames?.[page] ?? []).map(([d, m]) => [m, d]));
+    const run = (texts: unknown): unknown[] =>
+      JSON.parse(runMarklessRowsLayout(JSON.stringify({ assignment: page, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan, rows: x.planRepeats!.map((r) => ({ parent: r.parent, template: r.template, rows: [{ key: 'a', assignment: page, texts: [] }] })), texts }), systemFontsFor('ios', x.dpr).shaper as never)) as unknown[];
+    expect(run([['nope', 'x']])).toEqual(['harness-error', '$.texts: nope is no text leaf of the page outside its lists\' rows']);
+    expect(run([[names.get(titleText) ?? titleText, 'x']])[0]).toBe('harness-error');
+    expect(run([[names.get(pageText('Notes')) ?? pageText('Notes'), 'x'], [names.get(pageText('Notes')) ?? pageText('Notes'), 'y']])[1]).toContain('is given twice');
+  });
 
   const withCss = (css: string): string => JSON.stringify({ ...JSON.parse(TEXT), css: `${input.css}\n${css}` });
 
