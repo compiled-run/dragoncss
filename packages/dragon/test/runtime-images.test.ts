@@ -22,7 +22,7 @@ const DEVICES: RuntimeImageLayout = { devices: [{ width: 400, height: 300, dpr: 
 const img = (ref: SourceRef, id: string, classes: string[], runtimeSrc: unknown, attrs: Record<string, string> = {}, tag = 'img'): ElementNode => {
   const origin: Origin = { kind: 'authored', span: { source: ref, start: 0, end: 0 } };
   const attributes: AttributeBinding[] = Object.entries(attrs).map(([name, value]) => ({ name, value: [{ when: always, value }], origin }));
-  return { kind: 'element', id, tag, classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)), attributes, children: [], origin, ...(runtimeSrc === undefined ? {} : { runtimeSrc }) } as ElementNode;
+  return { kind: 'element', id, tag, classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)), attributes, children: [], origin, ...(runtimeSrc === undefined ? {} : { runtimeSrc }) } as unknown as ElementNode;
 };
 const compile = (css: string, body: (r: SourceRef) => TreeNode[], runtimeImageLayout: RuntimeImageLayout | null = DEVICES) =>
   createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width: 400, height: 300 }, ...(runtimeImageLayout === null ? {} : { runtimeImageLayout }) }).compile(inputFor(css, body));

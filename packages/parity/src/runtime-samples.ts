@@ -10,9 +10,7 @@ import type { LayoutInput } from '@dragon/layout';
 import { layoutWithFaults, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { FrontEndResult, RuntimeImageLayout, TreeNode } from 'dragon';
 import type { WebCapture } from './capture.ts';
-import type { RgbaImage } from './native-compare.ts';
 import { repoPath } from './paths.ts';
-import { decodePng } from './pixel-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { referenceShapedMeasurer } from './text-shaper-host.ts';
 
@@ -144,7 +142,6 @@ export const runtimeCapturePath = (caseId: string, sample: string, dpr: number, 
 export const runtimePixelsPath = (caseId: string, sample: string, dpr: number, platform: string = REFERENCE_PLATFORM): string => `${runtimeCaptureDir(platform)}/${caseId}~${sample}@${dpr}.png`;
 
 export const committedRuntimeCapture = (caseId: string, sample: string, dpr: number): WebCapture => JSON.parse(readFileSync(runtimeCapturePath(caseId, sample, dpr), 'utf8')) as WebCapture;
-export const committedRuntimePixels = (caseId: string, sample: string, dpr: number): RgbaImage => decodePng(readFileSync(runtimePixelsPath(caseId, sample, dpr)));
 
 /** The fixtures whose samples are also screenshotted, at each device DPR in the ltr environment: where the image and the outline are drawn. */
 export const RUNTIME_PIXEL_FIXTURES: readonly string[] = ['replaced-runtime-fit', 'replaced-runtime-absent', 'replaced-runtime-src-change'];

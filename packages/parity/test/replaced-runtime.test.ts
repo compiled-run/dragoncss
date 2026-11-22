@@ -2,6 +2,7 @@
 // (runtime-samples.ts, committed by parity:runtime-capture). Every sample's boxes equal Dragon's one layout at DPR 1, 2, 2.625 and
 // 3 in both directions; where Chrome draws each sample is where the engine's runtimeImagePaint puts it for that sample's size; the
 // no-image outline is where Chrome strokes it; the old image stays while a new src loads. Each planted fault fails.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 // targets.ts first: it and dpr.ts import each other, and dpr.ts must finish before targets.ts runs.
 import { deviceDprs } from '../src/targets.ts';
@@ -18,9 +19,11 @@ import type { RgbaImage } from '../src/native-compare.ts';
 import { compileFixture, enforcedCompile } from '../src/pipeline.ts';
 import type { Projection } from '../src/pipeline.ts';
 import type { RuntimeSample } from '../src/runtime-samples.ts';
-import { committedRuntimeCapture, committedRuntimePixels, fixtureRuntimeLayout, QUADRANTS, RUNTIME_DPRS, runtimeImgs, samplesOf } from '../src/runtime-samples.ts';
+import { committedRuntimeCapture, fixtureRuntimeLayout, QUADRANTS, RUNTIME_DPRS, runtimeImgs, runtimePixelsPath, samplesOf } from '../src/runtime-samples.ts';
+import { decodePng } from '../src/pixel-reference.ts';
 import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
+const committedRuntimePixels = (caseId: string, sample: string, dpr: number): RgbaImage => decodePng(readFileSync(runtimePixelsPath(caseId, sample, dpr)));
 const RUNTIME = FIXTURES.filter((s) => s.format === 'html' && runtimeImgs(fixtureInput(s)).length > 0);
 const LAYOUT = RUNTIME.filter((s) => s.kind === 'layout');
 const DEVICE_DPRS = [...new Set([...deviceDprs('ios'), ...deviceDprs('android')])].sort((a, b) => a - b);
