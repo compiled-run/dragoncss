@@ -33,7 +33,8 @@ describe('EMS: engine paint seams', () => {
     const lines = readFileSync(join(layout, 'src/index.ts'), 'utf8').split('\n').filter((l) => l.includes("'./paint"));
     // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line, and
     // the outline styles add outlineNeedsSidePainter and outlinePaintOps to paint-dash's; PNT1-opacity-b adds paint-group's line, and FORM-b paint-menulist's two. TXT-FX adds textShadowLayerOver and
-    // textShadowLayerOverTexts (with its TextLinePaint) to paint-shadow's, and the blur margin helpers its text-shadow sample points read.
+    // textShadowLayerOverTexts (with its TextLinePaint) to paint-shadow's, and the blur margin helpers its text-shadow sample points read;
+    // the shadows of a scaled or translated box add the mapped layers and their ShadowTransform.
     expect(lines).toEqual([
       "export type { ReplacedPaint } from './paint.ts';",
       "export { opacityAlpha8, replacedPaint } from './paint.ts';",
@@ -43,8 +44,8 @@ describe('EMS: engine paint seams', () => {
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
       "export { borderDoubleRings, hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from './paint-radius.ts';",
-      "export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape, TextLinePaint } from './paint-shadow.ts';",
-      "export { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, textShadowLayerOver, textShadowLayerOverTexts } from './paint-shadow.ts';",
+      "export type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape, ShadowTransform, TextLinePaint } from './paint-shadow.ts';",
+      "export { IDENTITY_SHADOW_TRANSFORM, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerMapped, outerShadowLayerOver, outerShadowLayerOverMapped, shadowTransform, textShadowLayerOver, textShadowLayerOverTexts } from './paint-shadow.ts';",
       "export { boxBlurMargin, hasNoBlur, NO_BLUR_FAULTS, shadowSigma } from './paint-blur.ts';",
       "export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';",
       "export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from './paint-dash.ts';",

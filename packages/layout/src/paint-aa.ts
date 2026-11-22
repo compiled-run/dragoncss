@@ -668,6 +668,15 @@ export function translatePath(path: AaPath, dx: number, dy: number): AaPath {
   return { pts, verbs: path.verbs, weights: path.weights, evenOdd: path.evenOdd, convex: path.convex, bounds: { left: f32(b.left + dx), top: f32(b.top + dy), right: f32(b.right + dx), bottom: f32(b.bottom + dy) } };
 }
 
+/** A path mapped by a scale and translate with positive scales, as SkPath::transform maps its points (SkMatrix ScaleTrans_pts, float). */
+export function scaleTranslatePath(path: AaPath, sx: number, sy: number, dx: number, dy: number): AaPath {
+  if (!(sx > 0) || !(sy > 0)) throw new Error('SKIA-AA: a path scale is not positive');
+  const pts: Pt[] = [];
+  for (const p of path.pts) pts.push(pt(f32(f32(p.x * sx) + dx), f32(f32(p.y * sy) + dy)));
+  const b = path.bounds;
+  return { pts, verbs: path.verbs, weights: path.weights, evenOdd: path.evenOdd, convex: path.convex, bounds: { left: f32(f32(b.left * sx) + dx), top: f32(f32(b.top * sy) + dy), right: f32(f32(b.right * sx) + dx), bottom: f32(f32(b.bottom * sy) + dy) } };
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // SkGeometry: conics to quads (SK_SUPPORT_LEGACY_CONIC_CHOP) and SkChopQuadAtYExtrema.
 
