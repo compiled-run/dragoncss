@@ -74,6 +74,7 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-group-after-sticky-short'),
   both('opacity-group-button'),
   both('opacity-group-modal'),
+  both('opacity-group-modal-sticky'),
   reject('opacity-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(50% + 10%)', 'opacity: calc(50% + 10%) is unsupported:'),
   both('stacking-basic'),
   both('stacking-context'),

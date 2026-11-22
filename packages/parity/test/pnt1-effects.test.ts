@@ -209,13 +209,12 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
   const layerEnd = new Map<string, number>();
   for (const n of p.nodes) if (n.kind !== 'text') layerEnd.set(stackingOf(n).paintLayer, Math.max(layerEnd.get(stackingOf(n).paintLayer) ?? -1, rank(n)));
   const owners = new Map(p.nodes.map((n) => [n.id, n]));
-  const rings = outlines(p, list.map((b) => ({ ...b, radii: null })), dpr, 0);
+  const rings = outlines(p, list, dpr, 0);
   type Entry = { readonly node: ProgramNode; readonly rank: number; readonly rings: Rings | null };
   const entries: Entry[] = [
     ...p.nodes.filter((x) => x.kind !== 'text').map((n) => ({ node: n, rank: rank(n), rings: null })),
     ...rings.map((r, k) => {
       const owner = owners.get(r.box.node.id) as ProgramNode;
-      if (owner.writes.some((w) => w.kind === 'border-radius')) throw new Error(`${owner.id}: the model draws square outlines only`);
       return { node: owner, rank: faults.outlinesLast ? p.nodes.length + k : (layerEnd.get(stackingOf(owner).paintLayer) as number) + 0.5 + k / (2 * rings.length), rings: r };
     }),
   ];
@@ -653,7 +652,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity, stacking and filter fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'opacity-group-outline', 'opacity-group-rounded', 'opacity-group-transform', 'opacity-group-sticky', 'opacity-group-sticky-short', 'opacity-group-after-sticky', 'opacity-group-after-sticky-short', 'opacity-group-button', 'opacity-group-modal', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'opacity-group-outline', 'opacity-group-rounded', 'opacity-group-transform', 'opacity-group-sticky', 'opacity-group-sticky-short', 'opacity-group-after-sticky', 'opacity-group-after-sticky-short', 'opacity-group-button', 'opacity-group-modal', 'opacity-group-modal-sticky', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -982,7 +981,7 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
   const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
   const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
   it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(19);
+    expect(groupFixtures.length).toBe(20);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);

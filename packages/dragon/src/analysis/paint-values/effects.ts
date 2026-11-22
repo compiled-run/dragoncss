@@ -394,12 +394,12 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     // transparent pixels when the page scrolls (the sticky box is then composited) and in the root layer when it does not; the device
     // picks the composite by whether the root overflows (groupCompositeLayered).
     const earlier = before.filter((id) => !id.includes(':text#')).map(elementOf).filter((el) => !up.includes(el) && ['sticky', 'fixed'].includes(keywordAt(el, 'position') ?? 'static'));
-    const after = earlier[0] ?? null;
+    // Inside a sticky or fixed box the group composites into that box's layer (or the root's) over the box's opaque paint (D2).
+    const after = layerBox === null ? (earlier[0] ?? null) : null;
     if (after !== null) {
       const at = after.element.address;
       if (earlier.length > 1) return refused(`${earlier.map((el) => el.element.address).join(' and ')} have position sticky or fixed and paint before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know`);
       if (keywordAt(after, 'position') !== 'sticky') return refused(`${at} has position fixed and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know`);
-      if (layerBox !== null) return refused(`it is inside ${layerBox.element.address} and paints after ${at}, two compositor layers`);
       if (filter.length > 0) return refused(`it has a filter and paints after ${at}, which has position sticky, a composite in a layer of its own Dragon has not measured`);
       if (members.some((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m))) return refused(`it paints after ${at}, which has position sticky, and Dragon builds its layer in software (translucent paint or a nested group inside it)`);
       let end = -1;

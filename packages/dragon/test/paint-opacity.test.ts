@@ -331,6 +331,14 @@ describe('opacity: a group native pre-composites', () => {
       expect(errs, css).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: ${why.replace(/[.()]/g, (x) => `\\${x}`)}$`))));
     }
   });
+  it('admits a group inside a fixed box painted after a sticky box: it composites in the fixed box\'s layer over its opaque paint, in one step', () => {
+    const c = build('.u { position: sticky; top: 0; } .w { position: fixed; top: 0; width: 50px; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { backdrop: string | null; after?: string } | undefined;
+    expect([w?.backdrop, w?.after]).toEqual(['w', undefined]);
+  });
   it('admits a group painted right after one sticky box, naming it for the device\'s two-step composite when the page scrolls', () => {
     const c = build('.u { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }');
     expect(errors(c)).toEqual([]);
