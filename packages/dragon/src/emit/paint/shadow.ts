@@ -73,6 +73,14 @@ public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill
     if let b = s as? DragonBoxView { chain.insert(b, at: 0) }
     p = s.superview
   }
+  // A layer item paints its outer shadows after the boxes its host painted before it (CSS 2.1 Appendix E), so they are beneath too.
+  if !own, v.dragonPaintBucket != 0, let sv = v.dragonShadowView, let host = sv.superview, let at = host.subviews.firstIndex(where: { $0 === sv }) {
+    func add(_ b: DragonBoxView) {
+      chain.append(b)
+      if b.dragonClipView == nil { for c in b.dragonContainer.subviews { if let k = c as? DragonBoxView { add(k) } } }
+    }
+    for c in host.subviews[..<at] { if let k = c as? DragonBoxView { add(k) } }
+  }
   var out: [BackdropFill] = []
   for b in chain {
     let c = b.dragonBackgroundColor
@@ -83,8 +91,18 @@ public func dragonShadowBackdrop(_ v: DragonBoxView, own: Bool) -> [BackdropFill
   return out
 }
 
+/// After the tree is laid out: the outer shadows of every layer item again, over the boxes now painted before it.
+public func dragonAfterTreeShadow(_ root: DragonRootView) {
+  func visit(_ view: UIView) {
+    if let b = view as? DragonBoxView, b.dragonPaintBucket != 0, b.dragonShadowView != nil { dragonAfterLayoutShadow(b, b.dragonShape, b.dragonScale) }
+    for c in view.subviews { visit(c) }
+  }
+  visit(root)
+}
+
 /// After a background write: the shadows (and text shadows) of the box and of every descendant box, whose backdrop the write
-/// changed, and each descendant's folded fill (the background module), drawn over the same backdrop.
+/// changed, and each descendant's folded fill (the background module), drawn over the same backdrop. A layer item's shadows over a
+/// box its host painted before it are redrawn by dragonAfterTreeShadow, which every rebuild of the tree runs.
 public func dragonShadowBackdropChanged(_ v: DragonBoxView) {
   if !v.dragonShadows.isEmpty { dragonAfterLayoutShadow(v, v.dragonShape, v.dragonScale) }
   // TXT-FX: the text shadows of the box's texts are composited over the same backdrop.
@@ -234,6 +252,19 @@ fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFi
     if (p is DragonBoxView) chain.add(0, p)
     p = p.parent
   }
+  // A layer item paints its outer shadows after the boxes its host painted before it (CSS 2.1 Appendix E), so they are beneath too.
+  val sv = v.dragonShadowView
+  val host = sv?.parent as? ViewGroup
+  if (!own && v.dragonPaintBucket != 0 && sv != null && host != null) {
+    fun add(b: DragonBoxView) {
+      chain.add(b)
+      if (b.dragonClipView == null) {
+        val g = b.dragonContainer
+        for (i in 0 until g.childCount) { val k = g.getChildAt(i); if (k is DragonBoxView) add(k) }
+      }
+    }
+    for (i in 0 until host.indexOfChild(sv)) { val k = host.getChildAt(i); if (k is DragonBoxView) add(k) }
+  }
   val out = ArrayList<BackdropFill>()
   for (b in chain) {
     val c = b.dragonBackgroundColor
@@ -244,9 +275,19 @@ fun dragonShadowBackdrop(v: DragonBoxView, own: Boolean): MutableList<BackdropFi
   return out
 }
 
+/** After the tree is laid out: the outer shadows of every layer item again, over the boxes now painted before it. */
+fun dragonAfterTreeShadow(root: DragonRootView) {
+  fun visit(view: android.view.View) {
+    if (view is DragonBoxView && view.dragonPaintBucket != 0 && view.dragonShadowView != null) dragonAfterLayoutShadow(view, view.dragonShape, view.dragonShadowScale)
+    if (view is ViewGroup) for (i in 0 until view.childCount) visit(view.getChildAt(i))
+  }
+  visit(root)
+}
+
 /**
  * After a background write: the shadows (and text shadows) of the box and of every descendant box, whose backdrop the write
- * changed, and each descendant's folded fill (the background module), drawn over the same backdrop.
+ * changed, and each descendant's folded fill (the background module), drawn over the same backdrop. A layer item's shadows over a
+ * box its host painted before it are redrawn by dragonAfterTreeShadow, which every rebuild of the tree runs.
  */
 fun dragonShadowBackdropChanged(v: DragonBoxView) {
   if (v.dragonShadows.isNotEmpty()) dragonAfterLayoutShadow(v, v.dragonShape, v.dragonShadowScale)
@@ -333,8 +374,8 @@ export const SHADOW_EMITTER: PaintEmitter<'box-shadow', 'shadow-offset-1'> = {
   },
   applied: (_e, _b, w) => w.shadows.map((s) => [s.inset ? 1 : 0, s.x, s.y, s.blur, s.spread, s.color.r, s.color.g, s.color.b, s.color.alpha]),
   native: {
-    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, stages: { 'inset-shadow': 'dragonPaintInsetShadowStage' }, afterLayout: 'dragonAfterLayoutShadow', applied: 'dragonAppliedShadow' },
-    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, stages: { 'inset-shadow': 'dragonPaintInsetShadowStage' }, afterLayout: 'dragonAfterLayoutShadow', applied: 'dragonAppliedShadow' },
+    uikit: { ...NO_NATIVE_PAINT, boxMembers: SWIFT_MEMBERS, file: SWIFT, stages: { 'inset-shadow': 'dragonPaintInsetShadowStage' }, afterLayout: 'dragonAfterLayoutShadow', applied: 'dragonAppliedShadow', afterTree: 'dragonAfterTreeShadow' },
+    'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, stages: { 'inset-shadow': 'dragonPaintInsetShadowStage' }, afterLayout: 'dragonAfterLayoutShadow', applied: 'dragonAppliedShadow', afterTree: 'dragonAfterTreeShadow' },
   },
   plants: [
     {
