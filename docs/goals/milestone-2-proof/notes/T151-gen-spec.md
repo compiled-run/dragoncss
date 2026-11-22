@@ -481,7 +481,7 @@ No other S16 path is allowed.
   - reject-gen-display-list-item, reject-gen-preserved-newline;
   - reject-gen-state-dependent (a `[ui-open]` state flip of content);
   - reject-gen-abspos-beside-text;
-  - reject-gen-static-empty-host (`::file-selector-button` with an `<input type=file>`; it was `::placeholder` on an input with a placeholder until FORM-c made `::placeholder` style that part);
+  - reject-gen-placeholder-host (`::placeholder` with an input carrying a placeholder);
   - the existing reject-selector-pseudo-element.html **retargeted** to `.a::first-line { width: 20px }` (still refused, same intent).
 - **Plants.**
   - Compiler:
@@ -492,7 +492,7 @@ No other S16 path is allowed.
     - `contentFirstStringOnly` (gen-inline-text);
     - `generatedTextCollapsedAlone` (gen-inline-text lines);
     - `pseudoOnReplacedGenerated` (reject-gen-on-img becomes accepted, so the reject test fails);
-    - `staticEmptyIgnoresHost` (reject-gen-static-empty-host).
+    - `staticEmptyIgnoresHost` (reject-gen-placeholder-host).
   - Capture: `snapshotTextNotScaled` (the R9 cross-check at DPR 2, 3 and 2.625) and `pseudoSetUnchecked` (the set check is skipped; a unit test feeds a capture with an extra Chrome box).
 - **Profile rows (new only):** `content: <string>` on before and after in the contexts pseudo-inline-in-block/<dir>, pseudo-flex-item/<axis>/<dir>, pseudo-abspos-in-block/<dir> and pseudo-block/<dir>, plus the selector rows for `::before` and `::after`.
 - **allowed_files:**
