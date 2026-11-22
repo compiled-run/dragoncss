@@ -275,7 +275,7 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const lh = own.lineHeight.kind === 'normal' ? menuListLineHeight(own.font, env) : null;
     const lined = lh === null ? children : children.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withLineHeight(k, lh) : k));
     const inset = c.arrowWidth > 0 ? lined.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withInternalPadding(k, c.arrowWidth, style.direction, env) : k)) : lined;
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: c.arrowWidth }, strut: resolveStrutOf(b, env), children: inset };
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: c.arrowWidth, options: c.options.map((o) => resolveText(o, env)) }, strut: resolveStrutOf(b, env), children: inset };
   }
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
   return { kind: 'control', id: b.id, boxType: b.boxType, style, control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };

@@ -360,8 +360,8 @@ async function captureSelectParts(page: Page, props: readonly string[]): Promise
  * "<partId>:text0", which no script Range reaches. None of them wraps (text-wrap-mode: nowrap), so every unit is on the text's one
  * fragment; a text of more fragments, or one holding a character whose break or width the fragment count cannot show, is an error.
  */
-export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[] }[]> {
-  const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
+export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[]> {
+  const out: { id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
   const read = async (cdp: CDPSession, partId: string, n: DomNode): Promise<void> => {
     const text = (n.children ?? []).find((c) => c.nodeName === '#text' && c.nodeValue !== '');
     if (text === undefined) return;
@@ -369,7 +369,11 @@ export async function captureShadowBreakTexts(page: Page): Promise<{ id: string;
     if (/[\u0000-\u001f\u00ad\u200b]/.test(data)) throw new Error(`${partId}: the shadow text ${JSON.stringify(data)} holds a control, soft hyphen or zero-width space, whose breaks are not captured`);
     const quads = ((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads;
     if (quads.length !== 1) throw new Error(`${partId}: the shadow text has ${quads.length} fragments, not one`);
-    out.push({ id: generatedTextId(partId), data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] });
+    // TXT2-e: Chrome renders the part's text transformed, as the light-DOM capture records (line-breaks.ts renderedTexts).
+    const computed = ((await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] }).computedStyle;
+    const transform = computed.find((p) => p.name === 'text-transform')?.value ?? 'none';
+    const base = { id: generatedTextId(partId), data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] };
+    out.push(transform === 'none' ? base : { ...base, transform });
   };
   await withTextFieldParts(page, async (cdp, fields) => {
     for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, pseudoId(id, part), n);
