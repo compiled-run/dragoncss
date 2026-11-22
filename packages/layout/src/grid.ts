@@ -1816,9 +1816,9 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
 function inlineContributionOf(ctx: Ctx, box: LayoutBox | ControlBox, kind: 'min' | 'max'): LU {
   const s = box.style;
   const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
-  // css-sizing-3 §5.2.2: a text field is compressible, so a percentage in its width or max-width resolves against zero in its min-content
-  // contribution; Chrome 145 does not compress a button's (grid-controls).
-  const compressed = kind === 'min' && box.kind === 'control' && box.control.kind === 'text-field';
+  // css-sizing-3 §5.2.2: a text field and a textarea are compressible, so a percentage in its width or max-width resolves against zero in
+  // its min-content contribution; Chrome 145 does not compress a button's (grid-controls).
+  const compressed = kind === 'min' && box.kind === 'control' && (box.control.kind === 'text-field' || box.control.kind === 'text-area');
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
   else if (compressed && (s.width.kind === 'percent' || s.width.kind === 'calc') && hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
@@ -2156,9 +2156,9 @@ function logicalBsp(pad: Edges, bor: Edges, rtl: boolean): Edges {
   return { top: add(bor.top, pad.top), right: rtl ? left : right, bottom: add(bor.bottom, pad.bottom), left: rtl ? right : left };
 }
 
-/** FORM: the controls the grid places as items, laid out by their kind as in block flow and flex: a block button, a select and a text field. */
+/** FORM: the controls the grid places as items, laid out by their kind as in block flow and flex: a block button, a select, a text field and a textarea. */
 function gridPlacesControl(c: ControlBox): boolean {
-  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field';
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area';
 }
 
 /** Builds the items, their placement and the two track collections of a grid container. */

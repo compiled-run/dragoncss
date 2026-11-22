@@ -623,19 +623,19 @@ export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedV
   return null;
 }
 
-/** A select or text field, whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
+/** A select, text field or textarea (textFieldPartOf holds both), whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
 export function hitRetargetsParts(el: ResolvedElement): boolean {
   return selectPartOf(el)?.part === null || textFieldPartOf(el)?.part === null;
 }
 
 /**
  * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
- * or null. A button, a select and a text field are modelled; a range is not (its touch, T064 P7), nor a block fieldset or any other
- * control tag.
+ * or null. A button, a select, a text field and a textarea are modelled; a range is not (its touch, T064 P7), nor a block fieldset or
+ * any other control tag.
  */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
   const tag = root.element.tag;
-  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && !(tag === 'input' && isTextFieldType(root.element.attributes.get('type')))) return root.element.address;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && isTextFieldType(root.element.attributes.get('type')))) return root.element.address;
   // A block fieldset lays out as the fieldset control with its rendered legend (ios-layout.ts), which the table refuses too.
   const display = root.props.get('display');
   if (tag === 'fieldset' && display !== undefined && display.value.kind === 'keyword' && display.value.value === 'block') return root.element.address;

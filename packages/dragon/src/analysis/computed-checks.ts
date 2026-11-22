@@ -1681,7 +1681,7 @@ function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], dia
   }
 }
 
-/** A range or fieldset as a grid item: the engine places only a block button, a select and a text field in a grid (grid-control). */
+/** A range or fieldset as a grid item: the engine places only a block button, a select, a text field and a textarea in a grid (grid-control). */
 function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
   if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
   const tag = el.element.tag;
@@ -1764,7 +1764,7 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
- * positioned one or a grid item; one whose font is Chrome's UA control font; and on iOS and Android an editable field, as
+ * positioned one; one whose font is Chrome's UA control font; and on iOS and Android an editable field, as
  * Dragon has no caret or keyboard input there yet (the FORM-b editing slice). A readonly field shows its value as drawn text.
  */
 function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
