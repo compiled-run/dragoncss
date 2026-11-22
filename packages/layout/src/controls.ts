@@ -15,9 +15,10 @@
 //   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
 //   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
 import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
+import type { SvgPathShape, SvgSegment } from './svg-path-types.ts';
 import type { TextMeasurer } from './text.ts';
 import type { LU } from './units.ts';
-import { ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatMul, fromCssPx, fromDouble, roundfPx, sub, toPx, ZERO } from './units.ts';
+import { ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatAdd, floatDiv, floatMul, fromCssPx, fromDouble, intDiv, roundfPx, sub, toPx, truncPxToInt, ZERO } from './units.ts';
 
 /** A range's default track length in CSS px: Chrome 145 lays out an auto-width range with a 129 px content box (FORM-0 boxes). */
 export const SLIDER_DEFAULT_TRACK_LENGTH = 129;
@@ -87,4 +88,74 @@ export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKi
 /** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */
 export function textEditorShift(contentBoxBlockSize: LU, editorBlockSize: LU): LU {
   return divInt(sub(contentBoxBlockSize, editorBlockSize), 2);
+}
+
+/**
+ * FORM-b: the width of a menulist-button select's arrow box in zoomed px, as Chrome 145 sizes it (layout_theme_default.cc
+ * ClampedMenuListArrowPaddingSize, a reference: the captured inner element margins and arrow pixels pin it). arrowWidth is the
+ * platform's arrow width in DIP; the box is the scaled width at a zoom below the device scale, else the width times the zoom.
+ */
+export function menuListArrowBox(arrowWidth: number, zoom: number, device: number): number {
+  const scaled = truncPxToInt(floatMul(arrowWidth, float32(device)));
+  const deviceScale = floatDiv(scaled, arrowWidth);
+  return float32(zoom) < deviceScale ? scaled : floatMul(arrowWidth, float32(zoom));
+}
+
+/** FORM-b: a menulist-button select's inner element margins (inline start, end) and paddings (block start, end) in zoomed px, whole. */
+export type MenuListInsets = { readonly start: number; readonly end: number; readonly top: number; readonly bottom: number };
+
+export function menuListInnerInsets(arrowWidth: number, zoom: number, device: number): MenuListInsets {
+  const z = float32(zoom);
+  const block = truncPxToInt(z);
+  return { start: truncPxToInt(floatMul(4, z)), end: truncPxToInt(floatAdd(z, menuListArrowBox(arrowWidth, zoom, device))), top: block, bottom: block };
+}
+
+/** FORM-b: a menulist-button select's drop-down arrow, an open "v" stroked 2 device px wide in the select's colour, in device px. */
+export type MenuListArrow = { readonly shape: SvgPathShape; readonly strokeWidth: number };
+
+function minInt(a: number, b: number): number {
+  return a < b ? a : b;
+}
+
+function maxInt(a: number, b: number): number {
+  return a > b ? a : b;
+}
+
+/**
+ * FORM-b: the arrow of a menulist-button select whose snapped border box is left, top, width, height in device px with whole
+ * border widths borderLeft and borderRight, in horizontal-tb: centred in the arrow box at the inline end (theme_painter_default.cc
+ * SetupMenuListArrow, a reference pinned by the captured arrow pixels), as an 8:4 "v" scaled with the box and fitted to the
+ * border box (native_theme_base.cc:691-800 NativeThemeBase::PaintMenuList), in Chrome's int and float steps.
+ */
+export function menuListArrow(left: number, top: number, width: number, height: number, borderLeft: number, borderRight: number, arrowBox: number, arrowWidth: number, inlineEndLeft: boolean): MenuListArrow {
+  const innerLeft = left + truncPxToInt(borderLeft);
+  const innerRight = left + width - truncPxToInt(borderRight);
+  const middle = top + intDiv(height, 2);
+  const size = floatMul(8, floatDiv(arrowBox, arrowWidth));
+  const arrowX = truncPxToInt(inlineEndLeft ? innerLeft + (arrowBox - size) / 2 : innerRight - (arrowBox + size) / 2);
+  const wantW = truncPxToInt(size);
+  const wantH = intDiv(wantW, 2);
+  const wantY = middle - intDiv(wantH, 2);
+  let x = maxInt(arrowX, left);
+  let y = maxInt(wantY, top);
+  let w = minInt(arrowX + wantW, left + width) - x;
+  let h = minInt(wantY + wantH, top + height) - y;
+  if (w <= 0 || h <= 0) {
+    x = 0;
+    y = 0;
+    w = 0;
+    h = 0;
+  }
+  if (w !== wantW || h !== wantH) {
+    if ((wantH - h) * 2 > wantW - w) w = h * 2;
+    else h = intDiv(w, 2);
+    x = arrowX + intDiv(wantW - w, 2);
+    y = middle - intDiv(h, 2);
+  }
+  const segments: SvgSegment[] = [
+    { kind: 'move', x: x, y: y },
+    { kind: 'line', x: x + intDiv(w, 2), y: y + h },
+    { kind: 'line', x: x + w, y: y },
+  ];
+  return { shape: { kind: 'path', segments: segments }, strokeWidth: 2 };
 }
