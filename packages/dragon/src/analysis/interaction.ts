@@ -4,7 +4,7 @@
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
-import { isControlTag } from './elements/controls.ts';
+import { isControlTag, isTextFieldType } from './elements/controls.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
 import { isAnimationProperty } from '../css/properties/animation.ts';
@@ -616,9 +616,13 @@ export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedV
   return null;
 }
 
-/** FORM-a: the first form control of a resolved tree in preorder, or null; the hit table does not model a control's box (rt-hit.ts). */
+/**
+ * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
+ * or null. A button, a select and a text field are modelled; a range is not (its touch, T064 P7), nor any other control tag.
+ */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
-  if (isControlTag(root.element.tag)) return root.element.address;
+  const tag = root.element.tag;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && !(tag === 'input' && isTextFieldType(root.element.attributes.get('type')))) return root.element.address;
   for (const c of root.children) {
     if (c.kind !== 'element') continue;
     const found = hitUnmodelledControl(c);

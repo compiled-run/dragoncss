@@ -14,7 +14,7 @@ import { isScrollContainer, resolveBorder } from './box.ts';
 import { controlAsBox } from './controls.ts';
 import { placeLines } from './inline.ts';
 import { fromRaw } from './units.ts';
-import type { LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { ControlBox, LayoutBox, LayoutInput, LayoutNode, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
@@ -615,7 +615,8 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   }, b.id, act);
   const leaves: TextLeaf[] = [];
   let kids = 0;
-  for (const c of b.children) {
+  for (const child of b.children) {
+    const c = child.kind === 'control' ? hitControlBox(child) : child;
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
     else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
@@ -628,7 +629,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : b.style.display === 'grid' ? gridOrders(s, b) : null;
   for (const c of b.children) {
     if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe);
-    else if (c.kind === 'control') throw new HitError(controlRefusal(c.id));
+    else if (c.kind === 'control') boxNodes(s, hitControlBox(c), i, childOrders, own, pe);
     else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders);
   }
 }
@@ -673,6 +674,19 @@ function controlRefusal(id: string): string {
   return `${id} is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)`;
 }
 
+/** Whether the hit table models a control: a button, a select or a text field; a range (its touch, T064 P7), a fieldset and a legend not yet. */
+function hitModelsControl(c: ControlBox): boolean {
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field';
+}
+
+/** A control the hit table models as its box: a button with its children, a select or text field as one box, since Chrome retargets its UA shadow parts to it. */
+function hitControlBox(c: ControlBox): LayoutBox {
+  if (!hitModelsControl(c)) throw new HitError(controlRefusal(c.id));
+  if (c.control.kind === 'button-block') return controlAsBox(c);
+  const none: LayoutNode[] = [];
+  return { kind: 'box', id: c.id, boxType: c.boxType, style: c.style, strut: c.strut, marker: null, children: none };
+}
+
 function isAtomicInline(b: LayoutBox | ReplacedLeaf): boolean {
   const d = b.style.display;
   if (b.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
@@ -704,9 +718,10 @@ function clampRefusal(id: string): string {
 }
 
 function boxHitRefusal(b: LayoutBox): string | null {
-  for (const c of b.children) {
+  for (const child of b.children) {
+    if (child.kind === 'control' && !hitModelsControl(child)) return controlRefusal(child.id);
+    const c = child.kind === 'control' ? hitControlBox(child) : child;
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
-    if (c.kind === 'control') return controlRefusal(c.id);
     if (c.kind === 'replaced' && isAtomicInline(c)) return atomicRefusal(c.id);
     if ((c.kind === 'box' || c.kind === 'replaced') && (c.style.position === 'fixed' || c.style.position === 'sticky')) return fixedRefusal(c.id, c.style.position);
     if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) return floatRefusal(c.id);
@@ -722,7 +737,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
 
 /**
  * Why hitTableOf refuses an engine input, or null when it models it: an inline box or a <br> (INL1a), an atomic inline (INL2a), a
- * line-clamp container (TXT2-g) and a form control (FORM-a) have no hit model yet.
+ * line-clamp container (TXT2-g), a range, a fieldset and a legend (FORM-a) have no hit model yet.
  */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);

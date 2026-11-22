@@ -117,3 +117,14 @@ The `select` element itself stays a Markless-native control: Markless's host ope
   - They are gated like any focus rule: the device proofs, and the native hit model. The hit model refuses every interaction rule in a case that holds a form control (`hitUnmodelledControl`, FORM-a); that is the next slice.
   - A reachable focus-visible state whose outline is Chrome's ring (`outline: auto`) is still refused natively (T064 row 149).
 - **Proof:** for a tap and for a click, Chrome's `:focus`, `:focus-visible`, `border-top-color` and `background-color` on two selects and a button equal Dragon's pointer-focus value and its resolved style in that state.
+
+## S5b: form controls in the native hit table (2026-11-22)
+
+- **Before:** any case with an interaction rule and a form control anywhere was refused natively. Both the analysis (`hitUnmodelledControl`) and the hit table (rt-hit.ts `controlRefusal`) refused it, so no Chrome hit capture covered a control.
+- **Change:**
+  - rt-hit.ts models three controls: a block button, a select (menulist) and a single-line text field.
+    - A button is the box it lays out as, and its own children are hit as in any box.
+    - A select and a text field are one box with no child nodes, because Chrome retargets a hit on their UA shadow parts (the inner element, the editor and the placeholder) to the control element.
+  - A range is still refused (its touch is consumed, T064 P7), and so are a fieldset and a legend. A control that is an atomic inline is refused as any atomic inline is (INL2a).
+  - `hitUnmodelledControl` refuses only the controls rt-hit.ts does not model.
+- **Proof:** the hit lane's own suite against Chrome. Every layout case the hit table no longer refuses (`controls-button-*`, `controls-select-*`, `controls-text-field`) gets its `expected-hit` capture from `document.elementFromPoint` at every point of its derived hit grid. The P1 hit suite and the host hit lane compare the table's answers with those captures.
