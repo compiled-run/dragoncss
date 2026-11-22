@@ -6,12 +6,11 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { sizesToContent } from '../css/properties/field-sizing.ts';
 import type { FieldSizingFaults } from '../faults/field-sizing.ts';
 import type { Diagnostic } from '../types.ts';
-import { CONTROL_TAGS } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import type { ResolvedElement, ResolvedValue } from './resolve.ts';
 
 /** The form controls Dragon builds (FORM-a), whose default size field-sizing: content could change. */
-const FORM_CONTROL_TAGS: readonly string[] = CONTROL_TAGS;
+const FORM_CONTROL_TAGS: readonly string[] = ['button', 'input'];
 
 /** Refuses field-sizing: content on a replaced element or a form control. */
 export function checkFieldSizing(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: FieldSizingFaults): void {

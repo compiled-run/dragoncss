@@ -32,7 +32,7 @@ const specOf = (id: string) => {
 };
 
 const LAYOUT = 'field-sizing-values';
-const REJECTS = ['reject-field-sizing-svg', 'reject-field-sizing-textarea'];
+const REJECTS = ['reject-field-sizing-svg'];
 const live = () => ({ authored: liveAuthored(browser), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' as const });
 
 describe('the field-sizing fixtures against live Chrome', () => {

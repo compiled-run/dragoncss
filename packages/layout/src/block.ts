@@ -557,9 +557,7 @@ function layoutTextArea(box: LayoutBox, flow: readonly Placed[], contentTop: LU,
   for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
   const editor = flow.find((p) => p.frag.id === editorId);
   if (editor === undefined) throw new Error(`${box.id} is a textarea without an inner editor; validateLayoutInput rejects this input`);
-  // block_layout_algorithm.cc FinishTextControlPlaceholder: a part sits at the editor's inline start, its margins ignored.
-  const rtl = box.style.direction === 'rtl';
-  const placed = flow.map((p): Placed => ({ frag: p.frag, x: p === editor || !rtl ? editor.x : sub(add(editor.x, editor.frag.width), p.frag.width), y: contentTop }));
+  const placed = flow.map((p): Placed => ({ frag: p.frag, x: p.x, y: contentTop }));
   const baseline = editor.frag.baseline === null ? null : add(contentTop, editor.frag.baseline);
   return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
 }
