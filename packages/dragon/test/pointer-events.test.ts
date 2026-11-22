@@ -81,8 +81,8 @@ describe('pointer-events: compile and hit facts', () => {
   it('carries the computed value, its inheritance and the activation handler', () => {
     const c = project().compile(inputFor('.a { pointer-events: none; }', tree));
     const facts = hitFacts(c, []);
-    expect(facts?.get('a')).toEqual({ pointerEvents: 'none', inherited: false, activation: false });
-    expect(facts?.get('b')).toEqual({ pointerEvents: 'none', inherited: true, activation: false });
+    expect(facts?.get('a')).toMatchObject({ pointerEvents: 'none', inherited: false, activation: false, context: false, transform: [] });
+    expect(facts?.get('b')).toMatchObject({ pointerEvents: 'none', inherited: true, activation: false, context: false, transform: [] });
     for (const [id, f] of facts ?? []) if (id !== 'a' && id !== 'b') expect(f.pointerEvents, id).toBe('auto');
     expect([...ACTIVATION_TAGS]).toEqual(['a', 'button']);
     expect(hitFacts({}, [])).toBeNull();

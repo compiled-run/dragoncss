@@ -19,6 +19,8 @@ import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { internalRecord } from '../src/project.ts';
+import { elementOps } from '../src/lower/paint/transform.ts';
+import { hitTransformRefusal } from '@dragon/layout';
 import { referenceDataset } from '../src/ua/datasets.ts';
 import { always, DOC, div, eq, inputFor, text } from './helpers.ts';
 
@@ -461,12 +463,58 @@ describe('interaction states: collapse and cap (R5, R7)', () => {
   });
 });
 
+const elementAt = (el: ResolvedElement, address: string): ResolvedElement | undefined => {
+  if (el.element.address === address) return el;
+  for (const c of el.children) {
+    const found = c.kind === 'element' ? elementAt(c, address) : undefined;
+    if (found !== undefined) return found;
+  }
+  return undefined;
+};
+
 describe('interaction states: hit model (R13)', () => {
-  const css = BODY + '.h { width: 10px; height: 10px; transform: translateX(5px); } .k:hover { background-color: #0c0; }';
+  const css = BODY + '.h { width: 10px; height: 10px; transform: rotate(5deg); } .k:hover { background-color: #0c0; }';
   const body = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'h', ['h']), div(r, 'k', ['k'])];
 
-  // Since PNT2 (#74) the enforced profiles compile translateX() too, so R13 refuses in both modes (spec §10: the owned rise that
-  // SELD-R2b clears).
+  // hit-report.test.ts proves these against Chrome over transform-hit-scale and the opacity cases.
+  it('compiles an interaction rule on native through a scale or translate transform, opacity and box-shadow', () => {
+    const pressed = `${BODY}.card { height: 20px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); } .k { height: 20px; } .k:active { transform: scale(0.97); opacity: 0.85; } .k:focus-visible { outline: 2px solid #0969da; }`;
+    const two = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'card', ['card']), div(r, 'k', ['k'])];
+    expect(errors(compile({}, pressed, two, TARGETS, 'derive').diagnostics).filter((m) => m.includes('needs Dragon hit testing'))).toEqual([]);
+    for (const t of ['translate(10px, 5%)', 'scale(1.5) translateY(-4px)', 'scaleX(-1)', 'matrix(2, 0, 0, 0.5, 3, 4)', 'rotate(0deg) scale(0.5)']) {
+      const found = errors(compile({}, css.replace('rotate(5deg)', t), body, TARGETS, 'derive').diagnostics);
+      expect(found.filter((m) => m.includes('needs Dragon hit testing')), t).toEqual([]);
+    }
+    for (const extra of ['.h { opacity: 0; }', '.h { opacity: 0.5; }', '.h { box-shadow: 0 0 0 30px #000; }']) {
+      expect(errors(compile({}, css.replace('transform: rotate(5deg);', '') + extra, body, TARGETS, 'derive').diagnostics), extra).toEqual([]);
+    }
+  });
+
+  it('still refuses a rotation, a matrix that rotates and an individual transform by name', () => {
+    for (const t of ['scale(0.97) rotate(1deg)', 'matrix(0, 1, -1, 0, 0, 0)', 'rotate(180deg)']) {
+      expect(errors(compile({}, css.replace('rotate(5deg)', t), body, TARGETS, 'derive').diagnostics), t).toEqual([
+        'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
+        'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
+      ]);
+    }
+    expect(errors(compile({}, css.replace('transform: rotate(5deg);', 'scale: 0.5;'), body, TARGETS, 'derive').diagnostics)).toEqual([
+      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through scale on h, which is not built yet (package SELD-R2b)',
+      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through scale on h, which is not built yet (package SELD-R2b)',
+    ]);
+  });
+
+  it('models a transform exactly when rt-hit.ts does, over the functions the lowering writes', () => {
+    for (const t of ['none', 'translate(10px, 5%)', 'scale(0.97)', 'scaleY(-1) translateX(3px)', 'matrix(2, 0, 0, 0.5, 3, 4)', 'matrix(-1, 0, 0, 1, 0, 0)', 'rotate(0deg)', 'rotate(90deg)', 'rotate(360deg)', 'scale(2) rotate(-30deg)', 'matrix(0, 1, -1, 0, 0, 0)']) {
+      const root = internalRecord(compile({}, css.replace('rotate(5deg)', t), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
+      const h = elementAt(root, 'h');
+      const v = h?.props.get('transform')?.value;
+      if (h === undefined || v === undefined) throw new Error(`${t}: no transform on h`);
+      const ops = elementOps(h);
+      expect([t, HIT_MODELLED.get('transform')?.(v)], t).toEqual([t, hitTransformRefusal('h', ops) === null]);
+    }
+  });
+
+  // The enforced profiles compile rotate(), so R13 refuses it in both modes.
   it('refuses an interaction rule on native in a case with an unmodelled paint fact, and not on web', () => {
     expect(otherErrors(compile({}, css, body, TARGETS, 'derive').diagnostics)).toEqual([
       'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
@@ -478,7 +526,7 @@ describe('interaction states: hit model (R13)', () => {
       'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
       'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through transform on h, which is not built yet (package SELD-R2b)',
     ]);
-    expect(otherErrors(compile({}, css.replace('transform: translateX(5px);', ''), body, TARGETS, 'derive').diagnostics)).toEqual([]);
+    expect(otherErrors(compile({}, css.replace('transform: rotate(5deg);', ''), body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
 
   it('counts an overflow value computed from a refused partner as refused, and leaves R13 to the lanes', () => {
@@ -529,8 +577,11 @@ describe('interaction states: hit model (R13)', () => {
     const record = internalRecord(compile({}, css, body, TARGETS, 'derive'));
     const root = record?.cases[0]?.resolved as ResolvedElement;
     expect(hitUnmodelledFact(root, referenceDataset())).toEqual({ property: 'transform', address: 'h' });
-    expect([...HIT_MODELLED.keys()]).not.toContain('transform');
-    const plain = internalRecord(compile({}, css.replace('transform: translateX(5px);', 'overflow: hidden; transform-origin: 0 0;'), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
+    const h = elementAt(root, 'h');
+    const rotated = h?.props.get('transform')?.value;
+    if (rotated === undefined) throw new Error('no transform on h');
+    expect(HIT_MODELLED.get('transform')?.(rotated)).toBe(false);
+    const plain = internalRecord(compile({}, css.replace('transform: rotate(5deg);', 'overflow: hidden; transform-origin: 0 0;'), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
     expect(hitUnmodelledFact(plain, referenceDataset())).toBeNull();
   });
 });

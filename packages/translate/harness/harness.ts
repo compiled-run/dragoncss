@@ -2696,8 +2696,9 @@ function rtAnimationsResult(a: readonly JsonValue[]): string {
 
 // ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
 
-const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false };
+const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false };
 const HIT_CLEAN: HitFaults = { ignorePointerEventsNone: false, reversedOrder: false };
+const HIT_NO_ORIGIN: TransformOrigin = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 
 /** A hit read: [op, platform, input, facts] -> the run-length encoded answers at every point of the input's derived grid. */
 function rtHitResult(a: readonly JsonValue[]): string {
@@ -2708,10 +2709,14 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 4) return fail(`${path}: expected [id, pointerEvents, inherited, activation]`);
+    if (g.length !== 4 && g.length !== 7) return fail(`${path}: expected [id, pointerEvents, inherited, activation] or those and [context, transform, origin]`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path) });
+    const painted = g.length === 7;
+    const context = painted ? bool(item(g, 4, path), `${path}[4]`) : false;
+    const transform = painted ? decodeOps(item(g, 5, path), `${path}[5]`) : [];
+    const origin = painted ? decodeOrigin(item(g, 6, path), `${path}[6]`) : HIT_NO_ORIGIN;
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), context, transform, origin });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);

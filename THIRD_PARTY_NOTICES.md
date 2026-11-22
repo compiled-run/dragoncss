@@ -130,6 +130,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `ui/gfx/animation/keyframe/timing_function.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/color_conversions.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/color_utils.cc`: Copyright 2012 The Chromium Authors
+- `ui/gfx/geometry/axis_transform2d.h`: Copyright 2017 The Chromium Authors
 - `ui/gfx/geometry/cubic_bezier.cc`: Copyright 2014 The Chromium Authors
 - `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/rect_f.cc`: Copyright 2012 The Chromium Authors
@@ -304,6 +305,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/blink/renderer/core/css/font_face_cache.cc`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/css/font_face_cache.h`: Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.; Copyright (C) 2013 Google Inc. All rights reserved.
 - `third_party/blink/renderer/core/editing/iterators/text_iterator.cc`: Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.; Copyright (C) 2005 Alexey Proskuryakov.
+- `third_party/blink/renderer/core/paint/hit_testing_transform_state.cc`: Copyright (C) 2011 Apple Inc.  All rights reserved.
 - `third_party/blink/renderer/platform/fonts/font_family.cc`: Copyright (C) 2004, 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/color.cc`: Copyright (C) 2003, 2004, 2005, 2006, 2008 Apple Inc. All rights reserved.
 - `third_party/blink/renderer/platform/graphics/gradient.cc`: Copyright (C) 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2013 Google Inc. All rights reserved.

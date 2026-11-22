@@ -6,7 +6,9 @@ import type { HitNode } from '../src/rt-hit.ts';
 import { activationTarget, HitError, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../src/rt-hit.ts';
 
 const PX = 64;
-const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto' } as const;
+const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 } as const;
+const NO_ORIGIN = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } } as const;
+const FLAT = { context: false, transform: [], origin: NO_ORIGIN } as const;
 const box = (parent: number, target: number, x: number, y: number, w: number, h: number, more: Partial<HitNode> = {}): HitNode => ({ ...base, kind: 'box', parent, target, x: x * PX, y: y * PX, width: w * PX, height: h * PX, ...more });
 const at = (nodes: readonly HitNode[], x: number, y: number, faults = NO_HIT_FAULTS): number => hitTest(nodes, Math.floor(x * PX), Math.floor(y * PX), faults);
 
@@ -115,7 +117,7 @@ describe('hitTableOf hit-tests a replaced element as a childless box', () => {
     const parent = { ...box('p', { display, width: px(100) }), children: [leaf('a', 40), box('d', { width: px(30), height: px(10) }), leaf('b', 20)] };
     const root = { ...box('html', { width: px(100) }), children: [parent] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const fact = (p: 'auto' | 'none', inherited: boolean) => ({ pointerEvents: p, inherited, activation: false });
+    const fact = (p: 'auto' | 'none', inherited: boolean) => ({ pointerEvents: p, inherited, activation: false, ...FLAT });
     const facts = new Map([['html', fact('auto', true)], ['p', fact('auto', true)], ['a', fact(pe, false)], ['d', fact('auto', true)], ['b', fact('auto', true)]]) as unknown as Parameters<typeof hitTableOf>[2];
     return hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
   };
@@ -161,7 +163,7 @@ describe('hitTableOf and hitRefusal refuse a form control by name', () => {
     const parent = { ...box('p', { display, width: px(100) }), children: [box('wrap', {}, [first]), box('after', { width: px(20), height: px(10) })] };
     const root = { ...box('html', { width: px(100) }), children: [parent] };
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const fact = (activation: boolean) => ({ pointerEvents: 'auto', inherited: true, activation }) as const;
+    const fact = (activation: boolean) => ({ pointerEvents: 'auto', inherited: true, activation, ...FLAT }) as const;
     const ids = ['html', 'p', 'wrap', 'btn', 'label', 'icon', 'after', 'container', 'track', 'thumb'];
     return { input, facts: new Map(ids.map((id) => [id, fact(id === 'btn')] as const)) };
   };
@@ -200,7 +202,7 @@ describe('hitTableOf and prepareHit scale with the table', () => {
     const items = Array.from({ length: n }, (_, k) => box(`i${k}`, { width: px(itemWidth), height: px(itemHeight) }));
     const container = box('f', { display: 'flex', flexWrap: wrap, width: px(100) }, items);
     const root = box('html', {}, [container]);
-    const facts = new Map(['html', 'f', ...items.map((b) => b.id)].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    const facts = new Map(['html', 'f', ...items.map((b) => b.id)].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, ...FLAT }] as const));
     return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts, container };
   };
 
@@ -283,7 +285,7 @@ describe('hitTableOf stacks positioned flex children in order-modified document 
     const flex = box('f', { display: 'flex', flexDirection: dir, position: 'relative', width: px(row ? 200 : 60), height: px(row ? 40 : 200), ...extra }, kids);
     const root = box('html', { width: px(400) }, [flex]) as unknown as Parameters<typeof hitTableOf>[0]['root'];
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-    const fact = { pointerEvents: 'auto', inherited: true, activation: false };
+    const fact = { pointerEvents: 'auto', inherited: true, activation: false, ...FLAT };
     const facts = new Map(['html', 'f', ...items.map(([id]) => id)].map((id) => [id, fact])) as unknown as Parameters<typeof hitTableOf>[2];
     const t = hitTableOf(input as Parameters<typeof hitTableOf>[0], ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
     return t.ids[hitTest(t.nodes, x * PX, y * PX, NO_HIT_FAULTS)];
@@ -321,7 +323,7 @@ describe('hitTableOf clips every clipping overflow', () => {
       const c = box('c', { overflowX: o, overflowY: o, width: px(20), height: px(20) }, [box('k', { width: px(60), height: px(10) })]);
       const root = box('html', { width: px(100) }, [c]);
       const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
-      const fact = { pointerEvents: 'auto', inherited: true, activation: false } as const;
+      const fact = { pointerEvents: 'auto', inherited: true, activation: false, ...FLAT } as const;
       return hitTableOf(input, ahemMeasurer, new Map([['html', fact], ['c', fact], ['k', fact]]), NO_HIT_TABLE_FAULTS);
     };
     for (const o of ['hidden', 'auto', 'scroll', 'clip'] as const) {
@@ -346,7 +348,7 @@ describe('grid containers', () => {
     const items = ['a', 'b'].map((id, k) => box(id, { height: px(20), order: 1 - k, ...(inGrid ? { gridItem: cell } : {}) }));
     const container = inGrid ? box('g', { display: 'grid', width: px(100), grid }, items) : box('g', { width: px(100) }, items);
     const root = box('html', {}, [box('body', {}, [container])]);
-    const facts = new Map(['html', 'body', 'g', 'a', 'b'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false }] as const));
+    const facts = new Map(['html', 'body', 'g', 'a', 'b'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, ...FLAT }] as const));
     return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
   };
 
@@ -368,5 +370,84 @@ describe('grid containers', () => {
     const { input, facts } = await gridInput(false);
     expect(hitRefusal(input)).toBeNull();
     expect(hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS).ids).toEqual(['html', 'body', 'g', 'a', 'b']);
+  });
+});
+
+// SELD-R2b: a scale and translate transform maps the point and its 1x1 px box into the box's space in float, as Blink's
+// HitTestingTransformState does over gfx::AxisTransform2d (no fused multiply-add), then hit tests the enclosing LU box there.
+// The edges below are Chrome 145's elementFromPoint transitions, measured on 100x100 boxes scaled about their centre.
+describe('scale and translate transforms', () => {
+  const root = box(-1, 0, 0, 0, 800, 600);
+  // A box at left x scaled by s about its centre: Blink's translation is float(x + (50 - 50 * float(s))).
+  const scaled = (x: number, s: number): HitNode => {
+    const f = Math.fround(s);
+    return box(0, 1, x, 0, 100, 100, { context: true, transformed: true, scaleX: f, scaleY: f, offsetX: Math.fround(x + Math.fround(50 + Math.fround(-50 * f))), offsetY: Math.fround(Math.fround(50 + Math.fround(-50 * f))) });
+  };
+  it('hits a scaled box at the edges Chrome hits, both sides of each', () => {
+    const half = [root, scaled(200, 0.5)];
+    expect([at(half, 224, 50), at(half, 224.015625, 50), at(half, 274.984375, 50), at(half, 275, 50)]).toEqual([0, 1, 1, 0]);
+    const pressed = [root, scaled(400, 0.97)];
+    expect([at(pressed, 400.5, 50), at(pressed, 400.515625, 50), at(pressed, 498.5, 50), at(pressed, 498.515625, 50)]).toEqual([0, 1, 1, 0]);
+    const grown = [root, scaled(600, 1.5)];
+    expect([at(grown, 574, 50), at(grown, 574.015625, 50), at(grown, 724.984375, 50), at(grown, 725, 50)]).toEqual([0, 1, 1, 0]);
+  });
+  it('hits nothing in a transform that is not invertible, and maps a child through its transformed parent', () => {
+    expect(at([root, scaled(200, 0)], 250, 50)).toBe(0);
+    // A child at (210, 10) 20x20 of the box scaled 0.5 about (250, 50): drawn at (230, 30) 10x10.
+    const t = [root, scaled(200, 0.5), box(1, 2, 210, 10, 20, 20)];
+    expect([at(t, 235, 35), at(t, 225, 35), at(t, 215, 15)]).toEqual([2, 1, 0]);
+  });
+  it('paints a transformed box and a stacking context as their own layers, over later flow content', () => {
+    const flow = (more: Partial<HitNode>) => [root, box(0, 1, 0, 0, 100, 40, more), box(0, 2, 0, 20, 100, 40)];
+    expect(at(flow({}), 50, 30)).toBe(2);
+    expect(at(flow({ context: true }), 50, 30)).toBe(1);
+    expect(at(flow({ context: true, transformed: true, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }), 50, 30)).toBe(1);
+  });
+  it('refuses a transformed node that is no stacking context, the root or a text node', () => {
+    expect(() => hitTest([root, box(0, 1, 0, 0, 10, 10, { transformed: true })], 0, 0, NO_HIT_FAULTS)).toThrow(/makes no stacking context/);
+    expect(() => hitTest([box(-1, 0, 0, 0, 10, 10, { transformed: true, context: true })], 0, 0, NO_HIT_FAULTS)).toThrow(/only a box below the root/);
+  });
+  it('derives grid points around the edges the transform draws', async () => {
+    const { hitGrid } = await import('../src/rt-hit.ts');
+    const t = { nodes: [root, scaled(200, 0.5)], ids: ['html', 's'], activation: [false, false] };
+    const xs = new Set(hitGrid(t, 800 * PX, 600 * PX).map((p) => p.x));
+    for (const x of [225 * PX - PX, 225 * PX - PX + 1, 275 * PX - 1, 275 * PX]) expect(xs.has(x), String(x / PX)).toBe(true);
+  });
+});
+
+describe('hitTableOf reads a transform and a stacking context from the hit facts', () => {
+  const setup = async (transform: readonly import('../src/rt-interpolate.ts').TransformOp[], context: boolean) => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box: layoutBox, neutralEnvironment, px } = await import('./helpers.ts');
+    const root = { ...layoutBox('html', { width: px(400) }), children: [layoutBox('a', { width: px(100), height: px(40) }), layoutBox('b', { width: px(100), height: px(40), marginTop: px(-20) })] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const centre = { x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } } as const;
+    const facts = new Map([['html', { pointerEvents: 'auto', inherited: false, activation: false, ...FLAT }], ['a', { pointerEvents: 'auto', inherited: false, activation: false, context, transform, origin: centre }], ['b', { pointerEvents: 'auto', inherited: false, activation: false, ...FLAT }]] as const);
+    return (faults = NO_HIT_TABLE_FAULTS) => hitTableOf(input, ahemMeasurer, facts as unknown as Parameters<typeof hitTableOf>[2], faults);
+  };
+  const len = (v: number) => ({ kind: 'px', px: v, percent: 0 }) as const;
+  it('places a scaled box about its origin in float and orders it over the later box; the plants undo each', async () => {
+    const table = await setup([{ fn: 'scale', x: len(0), y: len(0), angle: 0, sx: 0.5, sy: 0.5 }], true);
+    const t = table();
+    const a = t.nodes[1] as HitNode;
+    expect([a.transformed, a.context, a.scaleX, a.offsetX, a.offsetY]).toEqual([true, true, 0.5, 25, 10]);
+    // a draws at (25, 10) 50x20, b lies at y 20 to 60 under it.
+    expect(t.ids[hitTest(t.nodes, 50 * PX, 25 * PX, NO_HIT_FAULTS)]).toBe('a');
+    expect(t.ids[hitTest(t.nodes, 10 * PX, 15 * PX, NO_HIT_FAULTS)]).toBe('html');
+    const ignored = table({ ...NO_HIT_TABLE_FAULTS, transformIgnored: true });
+    expect(ignored.ids[hitTest(ignored.nodes, 10 * PX, 15 * PX, NO_HIT_FAULTS)]).toBe('a');
+  });
+  it('orders an opacity context over the later box unless contextNotLayered', async () => {
+    const table = await setup([], true);
+    expect(table().ids[hitTest(table().nodes, 50 * PX, 30 * PX, NO_HIT_FAULTS)]).toBe('a');
+    const flat = table({ ...NO_HIT_TABLE_FAULTS, contextNotLayered: true });
+    expect(flat.ids[hitTest(flat.nodes, 50 * PX, 30 * PX, NO_HIT_FAULTS)]).toBe('b');
+  });
+  it('refuses a rotation by name', async () => {
+    const table = await setup([{ fn: 'rotate', x: len(0), y: len(0), angle: 10, sx: 1, sy: 1 }], true);
+    expect(table).toThrow(new HitError('a rotates, and the hit table models scale and translate transforms only (SELD-R2b)'));
+    const still = await setup([{ fn: 'rotate', x: len(0), y: len(0), angle: 0, sx: 1, sy: 1 }, { fn: 'translateX', x: len(5), y: len(0), angle: 0, sx: 1, sy: 1 }], true);
+    expect((still().nodes[1] as HitNode).offsetX).toBe(5);
   });
 });

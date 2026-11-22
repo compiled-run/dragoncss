@@ -41,6 +41,11 @@ export function fromPxRound(px: number): LU {
   return saturate(roundHalfAwayFromZero(px * LU_PER_PX));
 }
 
+/** Blink LayoutUnit::FromFloatFloor: floor(float(v) * 64). */
+export function fromPxFloor(px: number): LU {
+  return saturate(Math.floor(Math.fround(Math.fround(px) * LU_PER_PX)));
+}
+
 /** Blink LayoutUnit::FromFloatCeil: ceil(float(v) * 64). */
 export function fromPxCeil(px: number): LU {
   return saturate(Math.ceil(Math.fround(Math.fround(px) * LU_PER_PX)));
