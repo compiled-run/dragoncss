@@ -352,7 +352,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     const layerBox = layers[0] ?? null;
     if (layers.length > 1) return refused(`it is inside ${layers.map((a) => a.element.address).join(' and ')}, more than one sticky or fixed box`);
     // The box at or inside it whose opaque background must hold the group's extent (inset clear of its corners; the device checks it).
-    const opaque = (a: ResolvedElement): boolean => usedColors(a)['background-color'].alpha === 255 && (keywordAt(a, 'background-image') ?? 'none') === 'none' && (keywordAt(a, 'background-clip') ?? 'border-box') === 'border-box';
+    const opaque = (a: ResolvedElement): boolean => (keywordAt(a, 'visibility') ?? 'visible') === 'visible' && usedColors(a)['background-color'].alpha === 255 && (keywordAt(a, 'background-image') ?? 'none') === 'none' && (keywordAt(a, 'background-clip') ?? 'border-box') === 'border-box';
     const backdropBox = layerBox === null ? null : (up.slice(0, up.indexOf(layerBox) + 1).find(opaque) ?? null);
     if (layerBox !== null && backdropBox === null) return refused(`it is inside ${layerBox.element.address}, which has position ${keywordAt(layerBox, 'position')}, and no box at or inside it has an opaque background colour alone under it`);
     for (const a of up) {

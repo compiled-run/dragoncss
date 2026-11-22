@@ -24,6 +24,7 @@ describe('see-through groups in the Markless export', () => {
 
   it('refuses a group whose own box is one draw op, or that holds a box of one draw op, which cc may fold', () => {
     expect(() => marklessStyleExport(withCss('.details.mk-gf91et { opacity: 0.5; }'), PATH)).toThrow('h4 is a see-through group whose own box is one draw op, which cc may fold; the hosts draw no per-tile fold');
+    expect(() => marklessStyleExport(withCss('.details.mk-gf91et { opacity: 0.5; filter: grayscale(1); }'), PATH)).toThrow('h4 is a see-through group whose own box is one draw op, which cc may fold; the hosts draw no per-tile fold');
     expect(() => marklessStyleExport(withCss('.order.mk-gf91et { opacity: 0.5; border: 1px solid #000; }'), PATH)).toThrow('inside the see-through group h0 is one draw op, which cc may fold; the hosts draw no per-tile fold');
   });
 });

@@ -1207,7 +1207,7 @@ function checkHostGroups(nodes: readonly ExportNode[], where: string): void {
     return fill + (sides === 4 ? 1 : sides);
   };
   for (const g of nodes) {
-    if (!g.writes.some((w) => w['kind'] === 'opacity-group')) continue;
+    if (!g.writes.some((w) => w['kind'] === 'opacity-group' || w['kind'] === 'filter-group')) continue;
     if (ops(g) === 1) fail(`${where}: ${g.id} is a see-through group whose own box is one draw op, which cc may fold; the hosts draw no per-tile fold`);
     const visit = (n: ExportNode): void => {
       for (const c of kids.get(n.id) ?? []) {

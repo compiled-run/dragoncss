@@ -324,6 +324,7 @@ describe('opacity: a group native pre-composites', () => {
     }
     const cases: [string, string][] = [
       ['.w { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky, and no box at or inside it has an opaque background colour alone under it'],
+      ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); visibility: hidden; } .g { opacity: 0.4; visibility: visible; } .k { border: 1px solid rgb(0, 0, 0); }', 'it is inside w, which has position sticky, and no box at or inside it has an opaque background colour alone under it'],
       ['.w { position: sticky; top: 0; background-color: rgb(250, 250, 250); } .g { opacity: 0.4; }', 'it may be in the compositor layer of w and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],
     ];
     for (const [css, why] of cases) {
