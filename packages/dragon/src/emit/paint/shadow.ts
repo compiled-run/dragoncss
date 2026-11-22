@@ -4,7 +4,10 @@
 // the inset shadows into a bitmap the inset-shadow stage draws, clipped to the padding box. Both are the *Over layers: each shadow
 // blitted onto the backdrop the box's ancestors paint (and its own background, for inset) as Chrome blits it, then encoded as the
 // pixel whose platform composite over that backdrop is Chrome's colour. A background write re-applies the shadows of the box and
-// its descendants, whose backdrop it changes. Layers change with implicit actions disabled; nothing animates.
+// its descendants, whose backdrop it changes. Layers change with implicit actions disabled; nothing animates. A box's own scale and
+// translate is the CTM Chrome draws its outer shadows under, so the bitmap is rastered at the mapped geometry and the companion,
+// which the box's platform transform does not cover, shows it untransformed (a layer the platform composites, when Chrome
+// composites the shadows of a scale with no translate as one layer: paint-shadow.ts ShadowTransform.layered).
 import type { ShadowValue } from '../../lower/paint/shadow.ts';
 import type { PaintEmitter } from './types.ts';
 import { NO_NATIVE_PAINT } from './types.ts';
@@ -108,6 +111,12 @@ public func dragonShadowImage(_ rgba: [Double], _ w: Int, _ h: Int) -> CGImage? 
   return CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4, space: space, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
 }
 
+/// The box's own scale and translate (the transform module's functions and origin) in page device px.
+public func dragonShadowTransform(_ v: DragonBoxView, _ e: [Double], _ scale: Double) throws -> ShadowTransform {
+  guard let origin = v.dragonTransformOrigin, !v.dragonTransformOps.isEmpty else { return paintShadow_IDENTITY_SHADOW_TRANSFORM }
+  return try paintShadow_shadowTransform(JsArray(v.dragonTransformOps), origin, e[0], e[1], e[2], e[3], scale, dragonTransformTrig)
+}
+
 /// After every layout: the outer shadow bitmap on the companion view (in its points, relative to the box's frame) and the inset
 /// shadow bitmap for the inset-shadow stage, both from the translated paint-shadow.ts at the device scale.
 public func dragonAfterLayoutShadow(_ v: DragonBoxView, _ shape: DragonBoxShape, _ scale: Double) {
@@ -119,7 +128,8 @@ public func dragonAfterLayoutShadow(_ v: DragonBoxView, _ shape: DragonBoxShape,
   let opaque = v.dragonBackgroundColor.a == 255
   let cg = CGFloat(scale)
   do {
-    let outer = try paintShadow_outerShadowLayerOver(e[0], e[1], e[2], e[3], JsArray(sh.radii), opaque, JsArray(v.dragonShadows), scale, ShadowFaults(false, false, false), JsArray(dragonShadowBackdrop(v, own: false)))
+    let map = try dragonShadowTransform(v, e, scale)
+    let outer = try paintShadow_outerShadowLayerOverMapped(e[0], e[1], e[2], e[3], JsArray(sh.radii), opaque, JsArray(v.dragonShadows), scale, ShadowFaults(false, false, false), JsArray(dragonShadowBackdrop(v, own: false)), map)
     let inset = try paintShadow_insetShadowLayerOver(e[0], e[1], e[2], e[3], JsArray(sh.borders), JsArray(inner), JsArray(v.dragonShadows), scale, ShadowFaults(false, false, false), JsArray(dragonShadowBackdrop(v, own: true)))
     CATransaction.begin()
     CATransaction.setDisableActions(true)
@@ -174,8 +184,11 @@ import dev.dragon.layout.BackdropFill
 import dev.dragon.layout.JsArray
 import dev.dragon.layout.ShadowFaults
 import dev.dragon.layout.ShadowInput
+import dev.dragon.layout.ShadowTransform
+import dev.dragon.layout.paintShadow_IDENTITY_SHADOW_TRANSFORM
 import dev.dragon.layout.paintShadow_insetShadowLayerOver
-import dev.dragon.layout.paintShadow_outerShadowLayerOver
+import dev.dragon.layout.paintShadow_outerShadowLayerOverMapped
+import dev.dragon.layout.paintShadow_shadowTransform
 import java.nio.ByteBuffer
 
 /** Device px added to the outer shadow bitmap's x; 0 except in the shadow-offset-1 raster plant build. */
@@ -264,6 +277,14 @@ fun dragonShadowBitmap(rgba: List<Double>, w: Int, h: Int): Bitmap? {
   return b
 }
 
+/** The box's own scale and translate (the transform module's functions and origin) in page device px. */
+fun dragonShadowTransform(v: DragonBoxView, shape: DragonBoxShape, scale: Double): ShadowTransform {
+  val origin = v.dragonTransformOrigin
+  if (origin == null || v.dragonTransformOps.isEmpty()) return paintShadow_IDENTITY_SHADOW_TRANSFORM
+  val e = shape.edges
+  return paintShadow_shadowTransform(ArrayList(v.dragonTransformOps), origin, e[0], e[1], e[2], e[3], scale, dragonTransformTrig)
+}
+
 /**
  * After every layout: the outer shadow bitmap on the companion view (at its device-px offset from the box's frame) and the inset
  * shadow bitmap for the inset-shadow stage, both from the translated paint-shadow.ts at the device scale.
@@ -276,7 +297,7 @@ fun dragonAfterLayoutShadow(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
   val inner = if (r == null) DoubleArray(8) else r.copyOfRange(8, 16)
   val opaque = v.dragonBackgroundColor.a == 255
   val faults = ShadowFaults(false, false, false)
-  val outer = paintShadow_outerShadowLayerOver(e[0], e[1], e[2], e[3], JsArray(shape.radii.toMutableList()), opaque, JsArray(v.dragonShadows.toMutableList()), scale, faults, JsArray(dragonShadowBackdrop(v, false)))
+  val outer = paintShadow_outerShadowLayerOverMapped(e[0], e[1], e[2], e[3], JsArray(shape.radii.toMutableList()), opaque, JsArray(v.dragonShadows.toMutableList()), scale, faults, JsArray(dragonShadowBackdrop(v, false)), dragonShadowTransform(v, shape, scale))
   val inset = paintShadow_insetShadowLayerOver(e[0], e[1], e[2], e[3], JsArray(shape.borders.toMutableList()), JsArray(inner.toMutableList()), JsArray(v.dragonShadows.toMutableList()), scale, faults, JsArray(dragonShadowBackdrop(v, true)))
   val s = v.dragonShadowView
   if (s != null) {

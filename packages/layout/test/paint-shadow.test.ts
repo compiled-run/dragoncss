@@ -7,7 +7,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { BackdropFill, ShadowInput, ShadowLayer } from '../src/paint-shadow.ts';
-import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape, textShadowLayerOver, textShadowLayerOverTexts } from '../src/paint-shadow.ts';
+import { backdropAt, blurredCoverage, encodeOver, IDENTITY_SHADOW_TRANSFORM, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerMapped, outerShadowLayerOver, outerShadowLayerOverMapped, platformOver, shadowTransform, shapeCoverage, shapeType, spreadShape, textShadowLayerOver, textShadowLayerOverTexts } from '../src/paint-shadow.ts';
+import type { TransformOp } from '../src/rt-interpolate.ts';
 import { opacityAlpha8 } from '../src/paint.ts';
 
 const SQUARE = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -270,11 +271,56 @@ describe('paint-shadow: a text layer over earlier texts', () => {
   });
 });
 
+describe('paint-shadow: a box under its own scale and translate', () => {
+  const TRIG = { sin: Math.sin, cos: Math.cos };
+  const len = (v: number) => ({ kind: 'px' as const, px: v, percent: 0 });
+  const pct = (v: number) => ({ kind: 'percent' as const, px: 0, percent: v });
+  const scale = (sx: number, sy: number): TransformOp => ({ fn: 'scale', x: len(0), y: len(0), angle: 0, sx, sy });
+  const translate = (x: number, y: number): TransformOp => ({ fn: 'translate', x: len(x), y: len(y), angle: 0, sx: 1, sy: 1 });
+  const CENTRE = { x: pct(50), y: pct(50) };
+  const ROUND = [6, 6, 6, 6, 6, 6, 6, 6];
+  const two = [shadow({ y: 2, blur: 8, a: 115 }), shadow({ y: 1, blur: 2, a: 77 })];
+
+  it('the identity transform gives the unmapped layers bit for bit', () => {
+    expect(outerShadowLayerMapped(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS, IDENTITY_SHADOW_TRANSFORM)).toEqual(outerShadowLayer(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS));
+    const fills: BackdropFill[] = [{ left: 0, top: 0, right: 200, bottom: 160, radii: SQUARE, r: 251, g: 248, b: 241, a: 255 }];
+    expect(outerShadowLayerOverMapped(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS, fills, IDENTITY_SHADOW_TRANSFORM)).toEqual(outerShadowLayerOver(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS, fills));
+  });
+
+  it('maps a scale about the centre to device px, layered only when the functions scale with no translation', () => {
+    const m = shadowTransform([scale(0.9, 0.9)], CENTRE, 40, 40, 140, 90, 2, TRIG);
+    expect([m.sx, m.sy, m.layered]).toEqual([Math.fround(0.9), Math.fround(0.9), true]);
+    // The centre (90, 65) stays put: x' = sx x + tx.
+    expect(m.sx * 90 + m.tx).toBeCloseTo(90, 4);
+    expect(m.sy * 65 + m.ty).toBeCloseTo(65, 4);
+    expect([m.tx, m.ty]).toEqual([Math.fround(m.tx), Math.fround(m.ty)]);
+    expect(shadowTransform([translate(0, 0), scale(0.9, 0.9)], CENTRE, 40, 40, 140, 90, 2, TRIG).layered).toBe(true);
+    const c = shadowTransform([translate(4, 2), scale(0.94, 0.94)], { x: len(0), y: len(0) }, 40, 40, 140, 90, 2, TRIG);
+    expect([c.sx, c.layered]).toEqual([Math.fround(0.94), false]);
+    expect(c.sx * 40 + c.tx).toBeCloseTo(48, 4);
+    expect(c.sy * 40 + c.ty).toBeCloseTo(44, 4);
+    expect(shadowTransform([translate(3, 0)], CENTRE, 40, 40, 140, 90, 2, TRIG).layered).toBe(false);
+    expect(() => shadowTransform([{ fn: 'rotate', x: len(0), y: len(0), angle: 10, sx: 1, sy: 1 }], CENTRE, 40, 40, 140, 90, 2, TRIG)).toThrow(/positive scale and translate/);
+  });
+
+  it('draws the shadow at the mapped geometry with its blur scaled, and a layered box\'s layer is the plain one', () => {
+    const m = shadowTransform([scale(0.5, 0.5)], CENTRE, 40, 40, 140, 90, 2, TRIG);
+    const plain = outerShadowLayer(40, 40, 140, 90, ROUND, true, [shadow({ blur: 8, a: 255 })], 2, NO_SHADOW_FAULTS);
+    const mapped = outerShadowLayerMapped(40, 40, 140, 90, ROUND, true, [shadow({ blur: 8, a: 255 })], 2, NO_SHADOW_FAULTS, m);
+    // The half-size box at the centre, blurred by half the sigma, reaches half as far past its edges.
+    expect(mapped.right - mapped.left).toBeLessThan((plain.right - plain.left) / 2 + 4);
+    expect((mapped.left + mapped.right) / 2).toBeCloseTo((plain.left + plain.right) / 2, 0);
+    const fills: BackdropFill[] = [{ left: 0, top: 0, right: 200, bottom: 160, radii: SQUARE, r: 251, g: 248, b: 241, a: 255 }];
+    expect(outerShadowLayerOverMapped(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS, fills, m)).toEqual(outerShadowLayerMapped(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS, m));
+    expect(outerShadowLayerOverMapped(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS, fills, { ...m, layered: false })).not.toEqual(outerShadowLayerMapped(40, 40, 140, 90, ROUND, true, two, 2, NO_SHADOW_FAULTS, m));
+  });
+});
+
 describe('paint-shadow vectors', () => {
   it('are committed and cover every exported function', () => {
     const v = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'paint-vectors', 'shadow', 'vectors.json'), 'utf8')) as { feature: string; lines: string[] };
     expect(v.feature).toBe('shadow');
     const names = new Set(v.lines.map((l) => (JSON.parse(l) as string[])[0]));
-    expect([...names].sort()).toEqual(['paint:shadow:backdropAt', 'paint:shadow:blurredCoverage', 'paint:shadow:encodeOver', 'paint:shadow:insetShadowLayer', 'paint:shadow:insetShadowLayerOver', 'paint:shadow:outerShadowLayer', 'paint:shadow:outerShadowLayerOver', 'paint:shadow:platformOver', 'paint:shadow:shapeCoverage', 'paint:shadow:shapeType', 'paint:shadow:spreadShape', 'paint:shadow:textShadowLayerOver']);
+    expect([...names].sort()).toEqual(['paint:shadow:backdropAt', 'paint:shadow:blurredCoverage', 'paint:shadow:encodeOver', 'paint:shadow:insetShadowLayer', 'paint:shadow:insetShadowLayerOver', 'paint:shadow:outerShadowLayer', 'paint:shadow:outerShadowLayerMapped', 'paint:shadow:outerShadowLayerOver', 'paint:shadow:outerShadowLayerOverMapped', 'paint:shadow:platformOver', 'paint:shadow:shadowTransform', 'paint:shadow:shapeCoverage', 'paint:shadow:shapeType', 'paint:shadow:spreadShape', 'paint:shadow:textShadowLayerOver']);
   });
 });

@@ -12,6 +12,10 @@
 // shadow is on top. Every exported function is a translated engine root (translate/src/generate.ts), proven TS = Swift = Kotlin by
 // packages/layout/paint-vectors/shadow.
 //
+// A box's own scale and translate (outerShadowLayerMapped) is the CTM the outer shadows are drawn under (BoxPainterBase's looper
+// respects transforms): the looper offset is a canvas translate in the box's coordinates, the shape is mapped to the device and the
+// blur sigma by SkMatrix::mapRadius.
+//
 // Chrome blits each shadow straight onto the raster tile, which already holds the backdrop (BoxPainterBase::PaintNormalBoxShadow
 // draws one looper shadow per list entry into no layer; Skia's blit_mask_d32_a8 floors (backdrop * (256 - alpha)) >> 8 per
 // shadow). The device composites one premultiplied layer over its backdrop, rounding to nearest. So the device takes the *Over
@@ -27,10 +31,13 @@
 import type { A8Mask, BlurFaults, IRect } from './paint-blur.ts';
 import { boxBlur, boxBlurMargin, hasNoBlur, maskBounds, mulDiv255Round, rectShadowCoverage, shadowSigma } from './paint-blur.ts';
 import type { AaPath, Device, IRect as AaIRect, Radius, SkRRect } from './paint-aa.ts';
-import { a8Device, aaRoute, antiFillPath, devicePixels, drrectPath, NO_AA_FAULTS, ovalPath, rrectPath, setRectRadii, translatePath, whiteDevice } from './paint-aa.ts';
+import { a8Device, aaRoute, antiFillPath, devicePixels, drrectPath, NO_AA_FAULTS, ovalPath, rrectPath, scaleTranslatePath, setRectRadii, sqrt32, translatePath, whiteDevice } from './paint-aa.ts';
 import { ccTileEnd, ccTileIndex, ccTileStart } from './paint-dither.ts';
 import { constrainCornerRadii, hasRoundedCorner } from './paint-radius.ts';
+import type { TransformOrigin } from './paint-transform.ts';
+import { paintTransformMatrix, transformFunctionsMatrix } from './paint-transform.ts';
 import { floorOf, froundOf } from './rt-easing.ts';
+import type { TransformOp, Trig } from './rt-interpolate.ts';
 import type { GlyphInk } from './text-decoration.ts';
 import { ahemLineInk } from './text-decoration.ts';
 
@@ -80,6 +87,16 @@ export type ShadowLayer = { readonly left: number; readonly top: number; readonl
 
 /** A shape in page device px: a rect with eight radii (horizontal then vertical, top-left first; all 0 for a rect). */
 export type ShadowShape = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly radii: readonly number[] };
+
+/**
+ * A box's own transform as the CTM its shadows are drawn under, a scale and translate of page device px (x' = sx x + tx,
+ * y' = sy y + ty) with positive scales in float, as the SkM44 of cc's ConcatOp holds it. layered: Chrome 145 composites the box's
+ * shadows as one layer, rounding to nearest, instead of blitting each onto the backdrop; measured for a transform whose functions
+ * scale with no translation (scale(0.9), translate(0px) scale(0.9)), never with one (translate(1px) scale(0.9)) or without a scale.
+ */
+export type ShadowTransform = { readonly sx: number; readonly sy: number; readonly tx: number; readonly ty: number; readonly layered: boolean };
+
+export const IDENTITY_SHADOW_TRANSFORM: ShadowTransform = { sx: 1, sy: 1, tx: 0, ty: 0, layered: false };
 
 type Cell = { v: number };
 
@@ -229,6 +246,40 @@ function offsetShape(s: ShadowShape, dx: number, dy: number): ShadowShape {
   return { left: f32(s.left + dx), top: f32(s.top + dy), right: f32(s.right + dx), bottom: f32(s.bottom + dy), radii: s.radii };
 }
 
+function isTranslate(m: ShadowTransform): boolean {
+  return m.sx === 1 && m.sy === 1;
+}
+
+/** A shape mapped to the device: SkMatrix::mapRect of its rect and, under a scale, SkRRect::transform's radii times the scale (legacy). */
+function mapShape(s: ShadowShape, m: ShadowTransform): ShadowShape {
+  if (isTranslate(m)) return offsetShape(s, m.tx, m.ty);
+  const radii: number[] = [];
+  for (let i = 0; i < 8; i++) radii.push(f32(at(s.radii, i) * (i < 4 ? m.sx : m.sy)));
+  return { left: f32(f32(s.left * m.sx) + m.tx), top: f32(f32(s.top * m.sy) + m.ty), right: f32(f32(s.right * m.sx) + m.tx), bottom: f32(f32(s.bottom * m.sy) + m.ty), radii };
+}
+
+/** SkMatrix::mapRadius of a blur sigma (the geometric mean of the mapped axis lengths), capped as computeXformedSigma caps it. */
+function xformedSigma(sigma: number, m: ShadowTransform): number {
+  if (isTranslate(m)) return sigma;
+  const d0 = f32(sigma * m.sx);
+  const d1 = f32(sigma * m.sy);
+  const l0 = sqrt32(f32(d0 * d0));
+  const l1 = sqrt32(f32(d1 * d1));
+  return minNum(sqrt32(f32(l0 * l1)), 128);
+}
+
+/**
+ * The shadow transform of a box with a scale and translate (edges in page device px): paint-transform.ts's paint matrix at the
+ * border-box size in css px, about the box's top left, scaled to device px and moved to the page.
+ */
+export function shadowTransform(ops: readonly TransformOp[], origin: TransformOrigin, left: number, top: number, right: number, bottom: number, dpr: number, trig: Trig): ShadowTransform {
+  const m = paintTransformMatrix(ops, origin, (right - left) / dpr, (bottom - top) / dpr, trig);
+  if (m.b !== 0 || m.c !== 0 || !(m.a > 0) || !(m.d > 0)) throw new Error('paint-shadow: a shadowed box\'s transform is not a positive scale and translate');
+  const fns = transformFunctionsMatrix(ops, (right - left) / dpr, (bottom - top) / dpr, trig);
+  const layered = fns.e === 0 && fns.f === 0 && (fns.a !== 1 || fns.d !== 1);
+  return { sx: f32(m.a), sy: f32(m.d), tx: f32(left - m.a * left + m.e * dpr), ty: f32(top - m.d * top + m.f * dpr), layered };
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Antialiased coverage of a shape (supersampled).
 
@@ -302,8 +353,9 @@ function shapePath(s: ShadowShape, hole: ShadowShape | null): AaPath {
  * The device path of a shape (minus a hole) given in the canvas's coordinates: the path is built there and its points moved by
  * the canvas translate (dx, dy), as SkDraw::drawPath maps a path (SkPath::transform, float adds).
  */
-function devicePath(s: ShadowShape, hole: ShadowShape | null, dx: number, dy: number): AaPath {
-  return translatePath(shapePath(s, hole), dx, dy);
+function devicePath(s: ShadowShape, hole: ShadowShape | null, m: ShadowTransform): AaPath {
+  const p = shapePath(s, hole);
+  return isTranslate(m) ? translatePath(p, m.tx, m.ty) : scaleTranslatePath(p, m.sx, m.sy, m.tx, m.ty);
 }
 
 /**
@@ -408,41 +460,41 @@ function rrectNine(s: ShadowShape, sigma: number): A8Mask | null {
  * SkDraw::DrawToMask then SkBlurMask::BoxBlur: the shape (minus a hole), in the canvas's coordinates moved by (dx, dy) into the
  * device, rastered over its mask bounds, trimmed to the tile clip.
  */
-function pathBlur(s: ShadowShape, hole: ShadowShape | null, dx: number, dy: number, sigma: number, clip: IRect): A8Mask {
-  const path = devicePath(s, hole, dx, dy);
+function pathBlur(s: ShadowShape, hole: ShadowShape | null, m: ShadowTransform, sigma: number, clip: IRect): A8Mask {
+  const path = devicePath(s, hole, m);
   const pb = path.bounds;
   const b = maskBounds({ left: pb.left, top: pb.top, right: pb.right, bottom: pb.bottom }, clip, boxBlurMargin(sigma));
-  return boxBlur(rasterMask(path, offsetShape(s, dx, dy), hole === null ? null : offsetShape(hole, dx, dy), b, b, true), sigma, NO_BLUR);
+  return boxBlur(rasterMask(path, mapShape(s, m), hole === null ? null : mapShape(hole, m), b, b, true), sigma, NO_BLUR);
 }
 
 /** The coverage of a filled shape drawn with a normal blur of sigma, through the path Skia picks, rastered into a tile at clip. */
 export function blurredCoverage(s: ShadowShape, sigma: number, clip: IRect): A8Mask {
-  return coverageOf(s, 0, 0, sigma, clip);
+  return coverageOf(s, IDENTITY_SHADOW_TRANSFORM, sigma, clip);
 }
 
 /**
- * blurredCoverage of a shape in the canvas's coordinates under a canvas translate (dx, dy): a rect or rrect is mapped to the device
- * (SkMatrix::mapRect, SkRRect::transform), a path is built first and its points moved (SkPath::transform).
+ * blurredCoverage of a shape in the canvas's coordinates under the device matrix m, sigma being the device sigma: a rect or rrect is
+ * mapped to the device (SkMatrix::mapRect, SkRRect::transform), a path is built first and its points mapped (SkPath::transform).
  */
-function coverageOf(s: ShadowShape, dx: number, dy: number, sigma: number, clip: IRect): A8Mask {
+function coverageOf(s: ShadowShape, m: ShadowTransform, sigma: number, clip: IRect): A8Mask {
   const type = shapeType(s);
   if (type === 'empty') return { bounds: { left: 0, top: 0, right: 0, bottom: 0 }, data: [] };
-  const ds = offsetShape(s, dx, dy);
+  const ds = mapShape(s, m);
   if (!(sigma > 0) || hasNoBlur(sigma)) {
     // Drawn with no blur: its antialiased coverage over its rounded-out bounds.
     const b = roundOut(ds.left, ds.top, ds.right, ds.bottom);
-    return rasterMask(devicePath(s, null, dx, dy), ds, null, b, clip, false);
+    return rasterMask(devicePath(s, null, m), ds, null, b, clip, false);
   }
   if (type === 'rect') {
     const cov = rectShadowCoverage({ left: ds.left, top: ds.top, right: ds.right, bottom: ds.bottom }, sigma, clip, NO_BLUR);
     if (cov.path === 'nine-patch-rect') return cov.mask;
-    return pathBlur(s, null, dx, dy, sigma, clip);
+    return pathBlur(s, null, m, sigma, clip);
   }
   if (type !== 'oval') {
     const nine = rrectNine(ds, sigma);
     if (nine !== null) return nine;
   }
-  return pathBlur(s, null, dx, dy, sigma, clip);
+  return pathBlur(s, null, m, sigma, clip);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -630,13 +682,15 @@ function localClip(i: number, j: number): IRect {
  * (a canvas translate the looper's offset is added to in float), so the shape is placed in the tile's coordinates as Skia maps
  * it, f32(edge + f32(offset - origin)), which decides the float rounding of the path, and the mask is moved back.
  */
-function tileMaskAt(cache: TileMask[], spread: ShadowShape, ox: number, oy: number, sigma: number, x: number, y: number): A8Mask {
+function tileMaskAt(cache: TileMask[], spread: ShadowShape, ox: number, oy: number, sigma: number, x: number, y: number, map: ShadowTransform): A8Mask {
   const i = ccTileIndex(x, TILE);
   const j = ccTileIndex(y, TILE);
   for (const t of cache) if (t.i === i && t.j === j) return t.mask;
   const x0 = ccTileStart(i, TILE);
   const y0 = ccTileStart(j, TILE);
-  const mask = moveMask(coverageOf(spread, f32(ox - x0), f32(oy - y0), sigma, localClip(i, j)), x0, y0);
+  // The tile translate concatenated with the box's matrix, then the looper's offset pre-translated (SkM44 preTranslate).
+  const m: ShadowTransform = { sx: map.sx, sy: map.sy, tx: f32(f32(map.sx * ox) + f32(map.tx - x0)), ty: f32(f32(map.sy * oy) + f32(map.ty - y0)), layered: map.layered };
+  const mask = moveMask(coverageOf(spread, m, sigma, localClip(i, j)), x0, y0);
   cache.push({ i, j, mask });
   return mask;
 }
@@ -647,15 +701,29 @@ function tileMaskAt(cache: TileMask[], spread: ShadowShape, ox: number, oy: numb
  * background is opaque). Inset shadows and fully obscured ones (no offset, blur or spread) are skipped.
  */
 export function outerShadowLayer(left: number, top: number, right: number, bottom: number, radii: readonly number[], opaqueBackground: boolean, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults): ShadowLayer {
-  return outerLayer(left, top, right, bottom, radii, opaqueBackground, shadows, dpr, faults, null);
+  return outerLayer(left, top, right, bottom, radii, opaqueBackground, shadows, dpr, faults, null, IDENTITY_SHADOW_TRANSFORM);
 }
 
 /** outerShadowLayer as the device shows it: each shadow blitted onto the backdrop as Chrome blits it, encoded over it. */
 export function outerShadowLayerOver(left: number, top: number, right: number, bottom: number, radii: readonly number[], opaqueBackground: boolean, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[]): ShadowLayer {
-  return outerLayer(left, top, right, bottom, radii, opaqueBackground, shadows, dpr, faults, backdrop);
+  return outerLayer(left, top, right, bottom, radii, opaqueBackground, shadows, dpr, faults, backdrop, IDENTITY_SHADOW_TRANSFORM);
 }
 
-function outerLayer(left: number, top: number, right: number, bottom: number, radii: readonly number[], opaqueBackground: boolean, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[] | null): ShadowLayer {
+/**
+ * outerShadowLayer of a box drawn under its own scale and translate (BoxPainterBase's looper respects transforms: the offset is a
+ * canvas translate in the box's coordinates and the blur mask filter maps its sigma by the CTM), in page device px.
+ */
+export function outerShadowLayerMapped(left: number, top: number, right: number, bottom: number, radii: readonly number[], opaqueBackground: boolean, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, map: ShadowTransform): ShadowLayer {
+  return outerLayer(left, top, right, bottom, radii, opaqueBackground, shadows, dpr, faults, null, map);
+}
+
+/** outerShadowLayerMapped as the device shows it, encoded over the backdrop as outerShadowLayerOver is. */
+export function outerShadowLayerOverMapped(left: number, top: number, right: number, bottom: number, radii: readonly number[], opaqueBackground: boolean, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[], map: ShadowTransform): ShadowLayer {
+  return outerLayer(left, top, right, bottom, radii, opaqueBackground, shadows, dpr, faults, backdrop, map);
+}
+
+function outerLayer(left: number, top: number, right: number, bottom: number, radii: readonly number[], opaqueBackground: boolean, shadows: readonly ShadowInput[], dpr: number, faults: ShadowFaults, backdrop: readonly BackdropFill[] | null, map: ShadowTransform): ShadowLayer {
+  if (!(map.sx > 0) || !(map.sy > 0)) throw new Error('paint-shadow: a shadow transform scale is not positive');
   const rounded = hasRoundedCorner(radii);
   const border: ShadowShape = { left, top, right, bottom, radii: rounded ? radii : [0, 0, 0, 0, 0, 0, 0, 0] };
   const shapes: ShadowShape[] = [];
@@ -671,9 +739,10 @@ function outerLayer(left: number, top: number, right: number, bottom: number, ra
     spreads.push(spread);
     offsets.push(at(z, 0));
     offsets.push(at(z, 1));
-    sigmas.push(at(z, 4));
+    const sigma = xformedSigma(at(z, 4), map);
+    sigmas.push(sigma);
     const obscured = sh.x === 0 && sh.y === 0 && sh.blur === 0 && sh.spread === 0;
-    if (!sh.inset && !obscured && shapeType(shape) !== 'empty') bounds = union(bounds, reach(shape, at(z, 4)));
+    if (!sh.inset && !obscured && shapeType(shape) !== 'empty') bounds = union(bounds, reach(mapShape(shape, map), sigma));
   }
   if (bounds === null) return { left: 0, top: 0, right: 0, bottom: 0, rgba: [] };
   const b = bounds;
@@ -683,6 +752,8 @@ function outerLayer(left: number, top: number, right: number, bottom: number, ra
   // ClipToBorderEdge: the border box, inset by one device px when the background is opaque, clipped out.
   const inset = opaqueBackground ? 1 : 0;
   const clipOut = spreadShape(left, top, right, bottom, border.radii, -inset, NO_SHADOW_FAULTS);
+  const identity = isTranslate(map) && map.tx === 0 && map.ty === 0;
+  const deviceClipOut = mapShape(clipOut, map);
   for (let k = shadows.length - 1; k >= 0; k--) {
     const sh = shadows[k] as ShadowInput;
     const shape = shapes[k] as ShadowShape;
@@ -693,14 +764,15 @@ function outerLayer(left: number, top: number, right: number, bottom: number, ra
     const oy = at(offsets, 2 * k + 1);
     const cache: TileMask[] = [];
     compositeOnto(layer, over, b, b, sh, (x, y) => {
-      const m = tileMaskAt(cache, spread, ox, oy, sigma, x, y);
+      const m = tileMaskAt(cache, spread, ox, oy, sigma, x, y, map);
       const c = maskAt(m, x, y);
       if (c === 0 || faults.shadowNotClippedOut) return c;
-      if (!rounded) return x >= clipOut.left && x < clipOut.right && y >= clipOut.top && y < clipOut.bottom ? 0 : c;
-      return mulDiv255Round(c, 255 - shapeCoverage(clipOut, x, y));
+      if (!rounded && identity) return x >= clipOut.left && x < clipOut.right && y >= clipOut.top && y < clipOut.bottom ? 0 : c;
+      return mulDiv255Round(c, 255 - shapeCoverage(deviceClipOut, x, y));
     });
   }
-  return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: layerValues(layer, over, back) };
+  // A layered box's shadows reach the backdrop in one platform composite, which rounds as Chrome's layer composite does.
+  return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: map.layered ? values(layer) : layerValues(layer, over, back) };
 }
 
 /**
@@ -771,7 +843,8 @@ function insetLayer(left: number, top: number, right: number, bottom: number, bo
         // The raster clip: the padding box (ClipContouredRect or Clip) within the tile.
         const lc = localClip(i, j);
         const clip: IRect = { left: maxNum(lb.left, lc.left), top: maxNum(lb.top, lc.top), right: minNum(lb.right, lc.right), bottom: minNum(lb.bottom, lc.bottom) };
-        const local = !(sigma > 0) || hasNoBlur(sigma) ? rasterMask(devicePath(outer, hole, dx, dy), shape, offsetShape(hole, dx, dy), lb, clip, false) : pathBlur(outer, hole, dx, dy, sigma, clip);
+        const tm: ShadowTransform = { sx: 1, sy: 1, tx: dx, ty: dy, layered: false };
+        const local = !(sigma > 0) || hasNoBlur(sigma) ? rasterMask(devicePath(outer, hole, tm), shape, offsetShape(hole, dx, dy), lb, clip, false) : pathBlur(outer, hole, tm, sigma, clip);
         m = moveMask(local, x0, y0);
         cache.push({ i, j, mask: m });
       }
