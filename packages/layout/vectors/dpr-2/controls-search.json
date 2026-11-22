@@ -618,7 +618,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -1132,7 +1135,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -1486,7 +1492,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -1840,7 +1849,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2193,7 +2202,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -2546,7 +2558,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2899,7 +2911,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -3412,7 +3427,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -3765,7 +3783,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -4118,7 +4139,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -4471,7 +4495,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -4824,7 +4851,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [
@@ -5177,7 +5207,10 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": true
+          "cancelButton": {
+           "marginStart": 1,
+           "marginEnd": 3
+          }
          },
          "strut": null,
          "children": [

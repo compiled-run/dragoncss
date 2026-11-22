@@ -241,7 +241,10 @@ async function captureRangeParts(page: Page, props: readonly string[]): Promise<
   return out;
 }
 
-/** The input types whose UA shadow tree is a placeholder and an inner editor alone (dragon's isTextFieldType, HTML §4.10.5). */
+/**
+ * The input types whose UA shadow tree is a placeholder and an inner editor (dragon's isTextFieldType, HTML §4.10.5); a search
+ * field's editor sits in its decoration container's editing view port, beside the cancel button.
+ */
 const TEXT_FIELD_TYPES = ['text', 'search', 'tel', 'url', 'email', 'password'];
 const INPUT_TYPES = ['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button'];
 const isTextFieldInput = (type: string | undefined): boolean => {
@@ -294,10 +297,10 @@ async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: reado
     for (const { id, node } of inputs) {
       const kids = (node.shadowRoots?.[0]?.children ?? []).filter((k) => k.nodeName === 'DIV');
       const placeholder = kids.find((k) => (k.attributes ?? []).includes('placeholder'));
-      const outer = kids.find((k) => k !== placeholder);
-      // A search field's editor sits in its decoration container's editing view port, beside the cancel button (FORM-search).
-      const decorated = outer !== undefined && (outer.attributes ?? []).includes('-webkit-textfield-decoration-container');
-      const editor = decorated ? outer.children?.[0]?.children?.[0] : outer;
+      const container = kids.find((k) => (k.attributes ?? []).includes('text-field-container'));
+      const viewPort = container?.children?.find((k) => (k.attributes ?? []).includes('editing-view-port'));
+      if (container !== undefined && viewPort === undefined) throw new Error(`${id}: CDP exposed a decoration container without an editing view port`);
+      const editor = viewPort !== undefined ? viewPort.children?.find((k) => k.nodeName === 'DIV') : kids.find((k) => k !== placeholder);
       if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
       // Chrome keeps a hidden placeholder (display: none) while the value is not empty; Dragon leaves it out of the tree.
       const shown = placeholder !== undefined && (await computedDisplay(cdp, `${id}::placeholder`, placeholder)) !== 'none';

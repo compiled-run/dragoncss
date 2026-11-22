@@ -59,3 +59,25 @@ Every number below was measured in the pinned Chrome 145.0.7632.6 headless shell
 
 - Drawing the cancel icon, and clearing the value on a tap (`search` event): both wait on editing.
 - `incremental`, `results` and `autosave` attributes (non-standard, refused as unknown attributes).
+
+## Merged with #645 (planner ruling, 2026-11-22)
+
+#645 (`cw/markless-text-field`) owns the search field's layout. Its `ControlKind` text-field `cancelButton` and `controls.ts`
+`searchCancelButtonSize` are the one engine path, and its formula matches every measurement in fact 3: the side is lroundf of the
+clamp of 9 × the zoomed font size, rounded first, over 13, to 5..21 device px. This slice's own engine path is gone:
+`searchCancelSide`, the editor margin it set, and its UA key and type-list entries, which #645 carries identically. The planted
+`searchCancelIgnored` fault now applies to #645's path, and `search-cancel.test.ts` asserts the measured sides through it.
+
+Kept from this slice:
+- this spec;
+- the R5 refusals;
+- `controls-search`, which passes on #645's engine with its Chrome boxes unchanged;
+- `form-search.test.ts`;
+- the pseudo-element host fix.
+
+Changed by the merge:
+- R5 lets end alignment through in ltr, because #645's `controls-text-field-search` measures it at DPR 1, 2, 2.625 and 3. Centred
+  text stays refused.
+- An rtl search field is refused (#645's `search-rtl`), because #645's engine places the cancel button at the inline end only. The
+  rtl measurements above stay as the record for when that is built.
+- The Markless export compiles an editable search field, since #645's `textEditing: 'host'` lets the host edit it.

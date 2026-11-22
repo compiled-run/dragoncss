@@ -36,6 +36,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
+  layout('controls-text-field-search'),
   layout('controls-textarea'),
   // FORM-checkbox: a themed checkbox, 13px unless sized, as a block and a flex item (the notes form's row), checked
   // and not, under a dark and a light accent; the rejects name what the slice does not draw.

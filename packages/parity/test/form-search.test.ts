@@ -51,7 +51,8 @@ describe('a search field (FORM-search)', () => {
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" placeholder="PP">'))).toEqual([]);
     expect(errors(page('<input data-dragon-id="s" type="search" value="XX">'))).toEqual([expect.stringMatching(/^<input> s is an editable text control/)]);
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { text-align: center; }'))).toEqual([expect.stringMatching(/^text-align: center on the search field s is not supported/)]);
-    expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { text-align: right; }'))).toEqual([expect.stringMatching(/^text-align: right on the search field s is not supported/)]);
+    expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { text-align: right; }'))).toEqual([]);
+    expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { direction: rtl; }'))).toContainEqual(expect.stringMatching(/^direction: rtl on <input type=search> s is not supported/));
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { text-align: left; }'))).toEqual([]);
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" placeholder="PP">', 'input::placeholder { margin-right: 2px; }'))).toEqual([expect.stringMatching(/^margin-right: 2px on the placeholder of the search field s is not supported/)]);
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" placeholder="PP">', 'input::placeholder { text-align: center; }'))).toEqual([expect.stringMatching(/^text-align: center on the placeholder of the search field s is not supported/)]);
@@ -59,7 +60,7 @@ describe('a search field (FORM-search)', () => {
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input::-webkit-search-cancel-button { display: none; }')).length).toBeGreaterThan(0);
   });
 
-  it("compiles the notes list's search field once it is readonly, and names only editing when it is not", () => {
+  it("compiles the notes list's search field, readonly or edited by the host", () => {
     const css = '* { box-sizing: border-box; }\nbody { margin: 0; font-family: Ahem; font-size: 16px; }\ninput { font: inherit; color: inherit; }\n.search { display: block; width: 100%; margin-bottom: 18px; padding: 12px 16px; border: 1px solid #c9c2ad; border-radius: 999px; background: #fffdf7; }\n';
     const input = (readonly: boolean): string =>
       JSON.stringify({
@@ -81,8 +82,7 @@ describe('a search field (FORM-search)', () => {
       }
     };
     expect(refusal(true)).toBeNull();
-    const editable = refusal(false);
-    expect(editable).toMatch(/is an editable text control/);
-    expect(editable).not.toMatch(/of type search is not supported/);
+    // The Markless export compiles with textEditing 'host' (#645), so the editable field compiles too.
+    expect(refusal(false)).toBeNull();
   });
 });

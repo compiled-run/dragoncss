@@ -636,7 +636,7 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', textEditing: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);

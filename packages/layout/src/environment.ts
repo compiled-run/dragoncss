@@ -62,7 +62,7 @@ import type {
 } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
-import { menuListInnerInsets, searchCancelSide, zoomTrackLength } from './controls.ts';
+import { menuListInnerInsets, zoomTrackLength } from './controls.ts';
 import type { FontLengths, TextMeasurer } from './text.ts';
 import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
 import { unsupported } from './unsupported.ts';
@@ -269,9 +269,7 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
     const normal = editorLineHeightIsNormal(c, style, env);
     const children = normal ? b.children.map((k) => (k.kind === 'control' && k.control.kind === 'text-editor' ? withNormalLineHeight(k) : k)) : b.children;
-    const resolved = resolveChildren(children, env);
-    const inset = c.searchCancel && !env.faults.searchCancelIgnored ? resolved.map((k) => (k.kind === 'control' && (k.control.kind === 'text-editor' || k.control.kind === 'text-placeholder') ? withSearchCancel(k, computedSize(c.font, env), style.direction, env) : k)) : resolved;
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight, searchCancel: c.searchCancel }, strut: resolveStrutOf(b, env), children: inset };
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight, cancelButton: c.cancelButton === null ? null : { marginStart: zoomCssPx(c.cancelButton.marginStart, env.zoom), marginEnd: zoomCssPx(c.cancelButton.marginEnd, env.zoom) } }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
   }
   if (c.kind === 'text-area') {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
@@ -317,17 +315,6 @@ function withInternalPadding(e: ControlBox, arrowWidth: number, direction: Direc
   const i = menuListInnerInsets(arrowWidth, env.zoom, env.device);
   const ltr = direction === 'ltr';
   const style: LayoutStyle = { ...e.style, marginLeft: { kind: 'px', value: ltr ? i.start : i.end }, marginRight: { kind: 'px', value: ltr ? i.end : i.start }, paddingTop: { kind: 'px', value: i.top }, paddingBottom: { kind: 'px', value: i.bottom } };
-  return { ...e, style };
-}
-
-/**
- * FORM-search: a search field's editor and placeholder end before its cancel button, a square of searchCancelSide device px with
- * margins of 1px and 3px (html.css), at the inline end; the button itself paints nothing and takes no hit in a compiled state.
- */
-function withSearchCancel(e: ControlBox, fontSizePx: number, direction: Direction, env: Env): ControlBox {
-  const end = floatAdd(searchCancelSide(fontSizePx), floatMul(4, float32(env.zoom)));
-  const ltr = direction === 'ltr';
-  const style: LayoutStyle = { ...e.style, marginLeft: ltr ? e.style.marginLeft : { kind: 'px', value: end }, marginRight: ltr ? { kind: 'px', value: end } : e.style.marginRight };
   return { ...e, style };
 }
 

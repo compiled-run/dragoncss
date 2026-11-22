@@ -584,6 +584,9 @@ export type ReplacedLeaf = {
   readonly objectPositionY: ObjectPositionValue;
 };
 
+/** A search field's cancel button: its inline start and end margins in CSS px (zoomed by the environment pass). */
+export type CancelButton = { readonly marginStart: number; readonly marginEnd: number };
+
 /**
  * What a form control's box does beyond a plain box (FORM-a, Blink 145):
  * - range: the input[type=range] flex container, whose intrinsic content inline size is defaultInlineSize CSS px (the compiler
@@ -594,8 +597,9 @@ export type ReplacedLeaf = {
  * - text-field (FORM-b): a single-line text field, a block container of its placeholder (if any) and its inner editor. Its intrinsic
  *   content inline size is size x the advance of 0 in its font, rounded up to a whole px; its auto content height is the editor's,
  *   which it centres unsafely in the block axis, and the placeholder's baseline is put on the editor's. font and lineHeight are the
- *   input's own, which decide the editor's line height (environment.ts editorLineHeightIsNormal);
- * - text-area (FORM-b): a textarea, a block container of its placeholder (if any) and its inner editor, both at its content box
+ *   input's own, which decide the editor's line height (controls.ts textEditorLineHeight). cancelButton: a search field's, which takes
+ *   the inline end of the editor's line and is centred with the editor (controls.ts searchCancelButtonSize); null for any other field;
+ *   - text-area (FORM-b): a textarea, a block container of its placeholder (if any) and its inner editor, both at its content box
  *   start. Its intrinsic content inline size is cols x the advance of 0, rounded up to a whole px, and its auto content height is
  *   rows x its line height, whatever its text; font and lineHeight are the textarea's own;
  * - text-editor: the inner editor, a block container holding the value's text;
@@ -615,7 +619,7 @@ export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
   | { readonly kind: 'button-block' }
-  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly searchCancel: boolean }
+  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly cancelButton: CancelButton | null }
   | { readonly kind: 'text-area'; readonly cols: number; readonly rows: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }

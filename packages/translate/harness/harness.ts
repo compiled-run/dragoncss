@@ -1122,8 +1122,10 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'button-block' };
   }
   if (k === 'text-field') {
-    const o = obj(v, ['kind', 'size', 'font', 'lineHeight', 'searchCancel'], path);
-    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), searchCancel: bool(field(o, 'searchCancel', path), `${path}.searchCancel`) };
+    const o = obj(v, ['kind', 'size', 'font', 'lineHeight', 'cancelButton'], path);
+    const cancel = field(o, 'cancelButton', path);
+    const c = cancel.kind === 'null' ? null : obj(cancel, ['marginStart', 'marginEnd'], `${path}.cancelButton`);
+    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), cancelButton: c === null ? null : { marginStart: numField(c, 'marginStart', `${path}.cancelButton`), marginEnd: numField(c, 'marginEnd', `${path}.cancelButton`) } };
   }
   if (k === 'text-area') {
     const o = obj(v, ['kind', 'cols', 'rows', 'font', 'lineHeight'], path);

@@ -17,11 +17,11 @@
 // - a block button (button-block): its in-flow contents are centred in the block axis, safely (html.css
 //   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
 //   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
-import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
+import type { CancelButton, ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
 import type { SvgPathShape, SvgSegment } from './svg-path-types.ts';
 import type { TextMeasurer } from './text.ts';
 import type { LU } from './units.ts';
-import { ceilFloatToWholePx, clampNegativeToZero, computedPixelSize, divInt, doubleMul, float32, floatAdd, floatDiv, floatMul, fromCssPx, fromDouble, intDiv, roundfPx, sub, toPx, truncPxToInt, ZERO } from './units.ts';
+import { add, ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatAdd, floatDiv, floatMax, floatMin, floatMul, fromCssPx, fromDouble, intDiv, roundfPx, sub, toPx, truncPxToInt, ZERO } from './units.ts';
 
 /** A range's default track length in CSS px: Chrome 145 lays out an auto-width range with a 129 px content box (FORM-0 boxes). */
 export const SLIDER_DEFAULT_TRACK_LENGTH = 129;
@@ -102,6 +102,20 @@ export function textAreaInlineSize(measurer: TextMeasurer, c: Extract<ControlKin
   return ceilFloatToWholePx(floatMul(zero, float32(c.cols)));
 }
 
+/**
+ * FORM-b: the side of a search field's cancel button in zoomed px, lroundf(clamp(9 x size / 13, 5, 21)) of its zoomed font size
+ * rounded to a whole px (Chromium's LayoutThemeDefault::AdjustSearchFieldCancelButtonStyle; Chrome 145 under Ahem probed at 1x,
+ * 2.625x and 3x: 7px at 10px, 17px at 25px, 5px at 4px, 21px at 40px; 8px at 10.5px and 12px at 18.375px zoomed).
+ */
+export function searchCancelButtonSize(c: Extract<ControlKind, { kind: 'text-field' }>): number {
+  return roundfPx(floatMin(floatMax(5, floatMul(9, floatDiv(roundfPx(c.font.size), 13))), 21));
+}
+
+/** FORM-b: the inline size a search field's cancel button and its margins take from the editor's line, in LU. */
+export function searchDecorationInlineSize(c: Extract<ControlKind, { kind: 'text-field' }>, cancel: CancelButton): LU {
+  return add(fromCssPx(searchCancelButtonSize(c)), add(fromCssPx(cancel.marginStart), fromCssPx(cancel.marginEnd)));
+}
+
 /** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */
 export function textEditorShift(contentBoxBlockSize: LU, editorBlockSize: LU): LU {
   return divInt(sub(contentBoxBlockSize, editorBlockSize), 2);
@@ -125,16 +139,6 @@ export function menuListInnerInsets(arrowWidth: number, zoom: number, device: nu
   const z = float32(zoom);
   const block = truncPxToInt(z);
   return { start: truncPxToInt(floatMul(4, z)), end: truncPxToInt(floatAdd(z, menuListArrowBox(arrowWidth, zoom, device))), top: block, bottom: block };
-}
-
-/**
- * FORM-search: the side of a search field's cancel button in device px, as Chrome 145 lays it out (measured, notes/FORM-search-spec.md
- * fact 3): 9px scaled by the field's computed pixel size over 13px, clamped to [5, 21] and rounded; fontSizePx is the zoomed size.
- */
-export function searchCancelSide(fontSizePx: number): number {
-  const scaled = floatDiv(floatMul(9, computedPixelSize(fontSizePx)), 13);
-  const clamped = scaled < 5 ? 5 : scaled > 21 ? 21 : scaled;
-  return roundfPx(clamped);
 }
 
 /** FORM-b: a menulist-button select's drop-down arrow, an open "v" stroked 2 device px wide in the select's colour, in device px. */

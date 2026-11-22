@@ -1294,7 +1294,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -1658,7 +1658,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2592,7 +2592,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -4314,7 +4314,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -5980,7 +5980,7 @@
             "lineHeight": {
              "kind": "normal"
             },
-            "searchCancel": false
+            "cancelButton": null
            },
            "strut": null,
            "children": [

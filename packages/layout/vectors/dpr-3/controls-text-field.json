@@ -617,7 +617,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -970,7 +970,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -1484,7 +1484,7 @@
            "kind": "px",
            "value": 4
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -1840,7 +1840,7 @@
            "kind": "px",
            "value": 30
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2196,7 +2196,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2550,7 +2550,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2905,7 +2905,7 @@
            "kind": "px",
            "value": 30
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -3419,7 +3419,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -3772,7 +3772,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -4241,7 +4241,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -4595,7 +4595,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -4950,7 +4950,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -5303,7 +5303,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -5816,7 +5816,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -6171,7 +6171,7 @@
            "kind": "px",
            "value": 12
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -6528,7 +6528,7 @@
            "kind": "px",
            "value": 12
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -6883,7 +6883,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -7542,7 +7542,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -7896,7 +7896,7 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "searchCancel": false
+          "cancelButton": null
          },
          "strut": null,
          "children": [

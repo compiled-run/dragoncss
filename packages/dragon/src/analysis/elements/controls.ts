@@ -16,7 +16,7 @@ export const CONTROL_TAGS: readonly string[] = ['button', 'input', 'select', 'te
 
 /**
  * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it), but do on
- * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range (ASCII
+ * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range, type=search (ASCII
  * case-insensitive, HTML §4.10.5) and type=checkbox (FORM-checkbox) read keys of their own; any other input reads the plain input key.
  */
 export function controlUaKey(tag: string, type: string | undefined, disabled = false): ControlKey | null {
@@ -44,8 +44,8 @@ export function isCheckboxType(type: string | undefined): boolean {
 const INPUT_TYPES: ReadonlySet<string> = new Set(['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button']);
 
 /**
- * The single-line text field states FORM-c lays out: their UA shadow tree is the inner editor alone, except search, whose
- * decoration container also holds the cancel button (FORM-search), which the engine lays out as the editor's inline-end margin.
+ * The single-line text field states FORM-c lays out: their UA shadow tree is the inner editor alone, except search's, whose
+ * decoration container also holds the cancel button (the engine's controls.ts searchCancelButtonSize).
  */
 const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'tel', 'url', 'email', 'password']);
 
