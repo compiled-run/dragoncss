@@ -311,7 +311,7 @@ export type InternalOptions = {
   readonly hostCanvas?: boolean;
   /** The host app runs a form's submission and reset (a Markless host), so a submit or reset button inside a <form> compiles. */
   readonly hostForms?: boolean;
-  /** The host draws and edits every text field natively (a Markless host), so an editable field is laid out; else native refuses it. */
+  /** The host draws and edits every single-line text field natively (a Markless host), so an editable one is laid out; else native refuses it. */
   readonly hostTextEditing?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;

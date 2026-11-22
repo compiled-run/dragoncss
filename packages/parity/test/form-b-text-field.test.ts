@@ -151,6 +151,10 @@ describe('FORM-b text fields', () => {
     expect([clearRegion('t'), clearRegion('v')]).toEqual([7 + 1 + 3, 0]);
   });
 
+  it('still refuses a textarea when the host edits single-line fields', () => {
+    expect(errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <textarea> a is not supported/)]);
+  });
+
   it('accepts an editable search field in a Markless compile (textEditing: host) and refuses it in a plain native compile', () => {
     const text = JSON.stringify({
       version: 'markless.native-style-input/0',

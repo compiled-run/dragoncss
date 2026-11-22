@@ -52,7 +52,7 @@ export type ResolveEnvironment = {
   readonly colorScheme?: 'light' | 'dark' | null;
   /** The output paints the root's canvas in its used scheme, so a root whose used scheme is dark resolves with the dark UA dataset. */
   readonly hostCanvas?: boolean;
-  /** The host draws and edits every text field natively, so an editable field is not refused on native (computed-checks.ts). */
+  /** The host draws and edits every single-line text field natively, so an editable one is not refused on native (computed-checks.ts). */
   readonly hostTextEditing?: boolean;
 };
 
