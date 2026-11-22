@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 22016
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 22016
+  },
+  {
+   "id": "bar",
+   "parent": "body",
+   "x": 0,
+   "y": 2560,
+   "width": 51200,
+   "height": 5120
+  },
+  {
+   "id": "r1",
+   "parent": "body",
+   "x": 0,
+   "y": 5888,
+   "width": 51200,
+   "height": 3840
+  },
+  {
+   "id": "r2",
+   "parent": "body",
+   "x": 0,
+   "y": 10496,
+   "width": 51200,
+   "height": 3840
+  },
+  {
+   "id": "r3",
+   "parent": "body",
+   "x": 0,
+   "y": 15104,
+   "width": 51200,
+   "height": 3840
+  },
+  {
+   "id": "foot",
+   "parent": "body",
+   "x": 0,
+   "y": 18944,
+   "width": 51200,
+   "height": 3072
+  },
+  {
+   "id": "tag",
+   "parent": "bar",
+   "x": 33280,
+   "y": 3840,
+   "width": 7680,
+   "height": 3840
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 344,
+   "width": 800,
+   "height": 344
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 344,
+   "width": 800,
+   "height": 344
+  },
+  {
+   "id": "bar",
+   "left": 0,
+   "top": 40,
+   "right": 800,
+   "bottom": 120,
+   "width": 800,
+   "height": 80
+  },
+  {
+   "id": "r1",
+   "left": 0,
+   "top": 92,
+   "right": 800,
+   "bottom": 152,
+   "width": 800,
+   "height": 60
+  },
+  {
+   "id": "r2",
+   "left": 0,
+   "top": 164,
+   "right": 800,
+   "bottom": 224,
+   "width": 800,
+   "height": 60
+  },
+  {
+   "id": "r3",
+   "left": 0,
+   "top": 236,
+   "right": 800,
+   "bottom": 296,
+   "width": 800,
+   "height": 60
+  },
+  {
+   "id": "foot",
+   "left": 0,
+   "top": 296,
+   "right": 800,
+   "bottom": 344,
+   "width": 800,
+   "height": 48
+  },
+  {
+   "id": "tag",
+   "left": 520,
+   "top": 100,
+   "right": 640,
+   "bottom": 160,
+   "width": 120,
+   "height": 60
+  }
+ ]
+}
