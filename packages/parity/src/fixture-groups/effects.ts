@@ -17,7 +17,10 @@
 // fill (folded at the float alpha product), a translucent child fill, a translucent fill under a translucent four-side border, a
 // translucent border alone (one op, folded), a translucent lone side, and opaque text over a translucent fill (-translucent). Rounded groups and members (-rounded): a lone rounded fill and a rounded
 // four-side border alone, each one op cc folds, a pill with a 1 px border and text, a rounded bordered child in a square group, an
-// elliptical radius with a border and text, and a circle holding a rounded child (Blink shrinks the fill inside the border). Every group sits clear of the cc raster tile seams at DPR 2, 3
+// elliptical radius with a border and text, and a circle holding a rounded child (Blink shrinks the fill inside the border). Groups with
+// their own scale or translate (-transform), each a fill and a border so cc never folds them: a scaled square and pill, a scaled and
+// translated group with a bordered child, a translated group, a scaled group with text, a scaled rounded group over an earlier
+// rounded box, a scaled group and an unscaled one over earlier text (PNT1-opacity-d: the platform draws the backdrop). Every group sits clear of the cc raster tile seams at DPR 2, 3
 // and 2.625 in both directions (x in 16-48, 64-96 or 104-136 css px, y below 168). opacity-web holds the fractional cases (0.3,
 // 45%, an inherited 0.5, translucent groups with a child, text and a border): the lanes compile it on native as a lane-only case
 // (project.ts), so it proves web rows only, and the device pixel lanes skip what its groups paint (pixel-reference.ts devicePoints).
@@ -59,6 +62,7 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-group-translucent'),
   layout('opacity-group-outline'),
   both('opacity-group-rounded'),
+  both('opacity-group-transform'),
   reject('opacity-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(50% + 10%)', 'opacity: calc(50% + 10%) is unsupported:'),
   both('stacking-basic'),
   both('stacking-context'),

@@ -19,7 +19,7 @@ import { ProgramError } from './types.ts';
 
 export type EffectsWrite =
   | { readonly kind: 'opacity'; readonly opacity: number }
-  /** A pre-composited group: its opacity, its backdrop box (null for the canvas) and the painters before it there, in paint order. */
+  /** A pre-composited group: its opacity, its backdrop box (null: the platform draws the backdrop) and the earlier groups in it. */
   | { readonly kind: 'opacity-group'; readonly opacity: number; readonly backdrop: string | null; readonly painters: readonly string[] }
   /** A pre-composited group with a colour-matrix filter: its opacity (1 for none), its filter functions, backdrop box and painters. */
   | { readonly kind: 'filter-group'; readonly opacity: number; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[] }
@@ -36,7 +36,7 @@ const FILTER_DETAIL = (how: string): string => `DragonBoxView [alpha, Chrome's a
 
 const NESTED_DETAIL = "DragonBoxView [alpha, Chrome's alpha byte]: the view keeps alpha 1; the overlay of the pre-composited group it is nested in builds that group's layer in software and composites this group into it (paint-group.ts groupComposite, or groupFill at groupFoldAlpha where cc folds it)";
 
-const GROUP_DETAIL = (how: string): string => `DragonBoxView [alpha, Chrome's alpha byte, backdrop id or null]: the view keeps alpha 1 and a DragonGroupView overlay, its last child, shows Chrome's composite (paint-group.ts groupComposite per cc raster tile) of the group's layer over a software backdrop of the listed painters, at whole device px with nearest filtering. ${how}`;
+const GROUP_DETAIL = (how: string): string => `DragonBoxView [alpha, Chrome's alpha byte, backdrop id or null]: the view keeps alpha 1 and a DragonGroupView overlay, its last child, shows Chrome's composite (paint-group.ts groupComposite per cc raster tile) of the group's layer over the platform's own drawing of what paints before it (the listed earlier groups' composites first), at whole device px with nearest filtering. ${how}`;
 
 export const EFFECTS_LOWERING: PaintLowering<EffectsWrite> = {
   name: 'effects',

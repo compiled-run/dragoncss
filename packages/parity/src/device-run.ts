@@ -91,6 +91,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // pre-composited groups (the overlay composites at byte 255, PNT1-opacity-b); stacking-basic samples the interiors of
   // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
   'alpha-ignored': ['opacity-basic', 'opacity-group-text'],
+  // The capture keeps the group drawn: its own paint lands in its backdrop, so its interiors show the opaque content.
+  'group-backdrop-unhidden': ['opacity-group-border'],
   'order-swap': ['stacking-basic'],
   // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
@@ -153,6 +155,7 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
   'shadow-offset-1': /^shadow:/,
   'alpha-ignored': /^interior:/,
+  'group-backdrop-unhidden': /^interior:og-/,
   'order-swap': /^interior:/,
   // A shifted ring moves its band and its outer edge: the outline points catch it.
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
