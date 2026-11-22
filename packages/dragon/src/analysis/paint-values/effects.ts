@@ -15,6 +15,7 @@ import type { FilterFunction } from '../../css/properties/filter.ts';
 import { colorMatrixFilters, filterApplies } from '../../css/properties/filter.ts';
 import { SIDES } from '../../css/properties.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
+import { buttonAppearance } from '../elements/controls.ts';
 import { isReplacedTag, SVG_SHAPE_TAGS } from '../elements/replaced.ts';
 import { FILTER_LIST_TYPE } from '../../css/properties/filter.ts';
 import { computedFilterText } from '../../css/properties/fx.ts';
@@ -191,7 +192,9 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   const tag = el.element.tag;
   const canvasTag = tag === 'html' || tag === 'body';
   const content = role === 'group' || role === 'member';
-  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && !content)) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `${a} is a <${tag}>, a control, replaced or svg box`;
+  // A <button> Chrome paints as CSS boxes (an author background or border devolves its theme: Blink IsControlStyled) is a plain box.
+  const cssButton = tag === 'button' && content && buttonAppearance(el.props) === 'css';
+  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && !content) && !cssButton) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `${a} is a <${tag}>, a control, replaced or svg box`;
   if (!FOLD_DISPLAYS.includes(keywordAt(el, 'display') ?? '')) return `${a} has display ${keywordAt(el, 'display')}, not a plain block or inline-block box`;
   for (const [p, ok] of GROUP_KEYWORDS) {
     // The group's own filter is what the overlay applies (matrixFilterOf admits it).

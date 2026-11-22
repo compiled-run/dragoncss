@@ -355,6 +355,14 @@ describe('opacity: a group native pre-composites', () => {
     const between = errors(build('.u { position: sticky; top: 0; } .p { position: relative; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }', true)).filter((m) => / has opacity 0\.4;/.test(m));
     expect(between).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: p paints between u, which has position sticky, and it, in the compositor layer Chrome may give it$`))));
   });
+  it('admits a <button> Chrome paints as CSS boxes (an author background or border) as a group, and refuses a themed one', () => {
+    const run = (css: string) => {
+      const input = inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } ${css}`, (r) => [{ ...div(r, 'g', ['g'], [text(r, 'gt', 'Ab')]), tag: 'button' }]);
+      return errors(createProjectWith({ projectId: 'test', targets: native }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input)).filter((m) => / has opacity 0\.4;/.test(m));
+    };
+    expect(run('.g { opacity: 0.4; background-color: rgb(250, 250, 250); border: 1px solid rgb(0, 0, 0); }')).toEqual([]);
+    expect(run('.g { opacity: 0.4; }')).toEqual(['ios', 'android'].map((t) => expect.stringMatching(new RegExp(`^${t} g has opacity 0\\.4; .*, and this one is not: g is a <button>, a control, replaced or svg box$`))));
+  });
   it('admits a group\'s own scale (at most 1) and translate when no item in it is one draw op', () => {
     for (const css of ['.g { opacity: 0.4; transform: scale(0.97); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; transform: translate(3px, 2px) scale(0.9); } .k { border: 1px solid rgb(0, 0, 0); }', '.g { opacity: 0.4; scale: 0.9; } .k { border: 1px solid rgb(0, 0, 0); }']) {
       const c = build(css);
