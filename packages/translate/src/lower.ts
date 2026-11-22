@@ -284,7 +284,7 @@ export class Lowerer {
         const sorted = [...new Set(members)].sort(cmp);
         if (sorted.length === 1) base = { k: 'class', name: sorted[0] as string };
         else {
-          const name = `U_${sorted.join('_')}`;
+          const name = unionName(sorted);
           this.unions.set(name, sorted);
           base = { k: 'union', name };
         }
@@ -1418,4 +1418,16 @@ function cap(s: string): string {
 
 export function cmp(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// A JVM class file name holds at most 255 bytes, ".class" included.
+const MAX_UNION_NAME = 200;
+
+/** A union's class name: its sorted members joined, or past MAX_UNION_NAME their common prefix and a hash of the full list. */
+export function unionName(sorted: readonly string[]): string {
+  const full = `U_${sorted.join('_')}`;
+  if (full.length <= MAX_UNION_NAME) return full;
+  let prefix = sorted[0] as string;
+  for (const m of sorted) while (!m.startsWith(prefix)) prefix = prefix.slice(0, -1);
+  return `U_${prefix}${createHash('sha256').update(sorted.join(',')).digest('hex').slice(0, 16)}`;
 }
