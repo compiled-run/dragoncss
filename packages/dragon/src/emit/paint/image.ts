@@ -26,21 +26,6 @@ const SWIFT_MEMBERS = String.raw`  /// REPL-a image: the decoded bitmap, its nat
     dragonImagePixelated = true
     setNeedsDisplay()
   }
-  /// REPL-r1: a runtimeSrc img's write, and whether the app said it has no image (its outline then shows).
-  public private(set) var dragonRuntime: DragonRuntimeSpec? = nil
-  public private(set) var dragonRuntimeMissing = false
-  public func dragonSetRuntimeImage(fit: String, position: [String], outline: DragonRGBA8?) {
-    dragonRuntime = DragonRuntimeSpec(fit: fit, position: position, outline: outline)
-    dragonImageFit = fit
-    setNeedsDisplay()
-  }
-  /// The image the app set (DragonTree.setRuntimeImage) at its pixel size; nil with missing when the img has no src.
-  public func dragonShowRuntimeImage(_ image: CGImage?, width: Double, height: Double, missing: Bool) {
-    dragonImage = image
-    dragonImageNatural = [width, height]
-    dragonRuntimeMissing = missing
-    setNeedsDisplay()
-  }
   /// SVG-a2: the svg's viewBox (min-x, min-y, width, height) or nil, and its shapes in paint order.
   public private(set) var dragonSvgViewBox: [Double]? = nil
   public private(set) var dragonSvgShapes: [DragonSvgShape]? = nil
@@ -198,27 +183,6 @@ public func dragonAppliedSvg(_ v: DragonBoxView) -> DumpJsonObject {
   return [("dragonSvg", .object([("viewBox", vb), ("shapes", .array(rows))]))]
 }
 
-/// REPL-r1: a runtimeSrc img's write: its object-fit, object-position (CSS text) and no-image outline colour (nil: never missing).
-public struct DragonRuntimeSpec {
-  public let fit: String
-  public let position: [String]
-  public let outline: DragonRGBA8?
-}
-
-/// REPL-r1: Blink ImagePainter's no-image outline: once the app said a runtimeSrc img that may lack a src has none, a 1 device px band
-/// of light gray inside its snapped content box, when that box is over 2 device px each way.
-public func dragonPaintNoImageOutline(_ v: DragonBoxView, _ ctx: CGContext) {
-  guard v.dragonImage == nil, v.dragonRuntimeMissing, let color = v.dragonRuntime?.outline, let c = v.dragonReplacedContent, c[2] > 2, c[3] > 2 else { return }
-  let s = v.dragonScale
-  ctx.saveGState()
-  ctx.setShouldAntialias(false)
-  ctx.setFillColor(dragonUIColor(color).cgColor)
-  for r in [[c[0], c[1], c[2], 1], [c[0], c[1] + c[3] - 1, c[2], 1], [c[0], c[1] + 1, 1, c[3] - 2], [c[0] + c[2] - 1, c[1] + 1, 1, c[3] - 2]] {
-    ctx.fill(CGRect(x: r[0] / s, y: r[1] / s, width: r[2] / s, height: r[3] / s))
-  }
-  ctx.restoreGState()
-}
-
 /// Device px added to the drawn destination x; 0 except in the image-offset-1 raster plant build, which proves the pixel lane sees the image.
 public let dragonImagePlantDevicePx: Double = 0
 /// Whether a pixelated image is drawn filtered anyway; false except in the image-smooth raster plant build, which proves the pixel
@@ -239,7 +203,6 @@ public func dragonDecodeImage(_ base64: String, _ id: String) -> CGImage {
 /// quality filter, or, for image-rendering: pixelated, nearest-neighbour (.none), the texel under each device pixel's centre as Skia does.
 public func dragonPaintImageStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape: DragonBoxShape) {
   dragonPaintSvg(v, ctx)
-  dragonPaintNoImageOutline(v, ctx)
   guard let image = v.dragonImage, let d = v.dragonReplacedDest, let c = v.dragonReplacedDrawn else { return }
   let s = CGFloat(v.dragonScale)
   ctx.saveGState()
@@ -256,10 +219,6 @@ public func dragonPaintImageStage(_ v: DragonBoxView, _ ctx: CGContext, _ shape:
 /// The readback of the image module: the natural size, the fit, the destination rect in points relative to the box and, for a
 /// pixelated image only, pixelated.
 public func dragonAppliedImage(_ v: DragonBoxView) -> DumpJsonObject {
-  if let r = v.dragonRuntime {
-    let dest: DumpJson = v.dragonReplacedDest.map { .array($0.map { .number($0 / v.dragonScale) }) } ?? .null
-    return [("dragonRuntimeImage", .object([("fit", .string(r.fit)), ("position", .array(r.position.map { .string($0) })), ("outline", r.outline.map { dragonRGBAJson($0) } ?? .null), ("dest", dest)]))]
-  }
   guard v.dragonImage != nil else { return dragonAppliedSvg(v) }
   let s = v.dragonScale
   let dest: DumpJson = v.dragonReplacedDest.map { .array($0.map { .number($0 / s) }) } ?? .null
@@ -294,24 +253,6 @@ const KOTLIN_MEMBERS = String.raw`  /** REPL-a image: the decoded bitmap, its na
     dragonImagePixelated = true
     invalidate()
   }
-  /** REPL-r1: a runtimeSrc img's write, and whether the app said it has no image (its outline then shows). */
-  var dragonRuntime: DragonRuntimeSpec? = null
-    private set
-  var dragonRuntimeMissing: Boolean = false
-    private set
-  fun dragonSetRuntimeImage(fit: String, position: List<String>, outline: DragonRGBA8?, layer: Boolean) {
-    dragonRuntime = DragonRuntimeSpec(fit, position, outline)
-    dragonImageFit = fit
-    dragonImageLayer = layer
-    invalidate()
-  }
-  /** The image the app set (DragonTree.setRuntimeImage) at its pixel size; null with missing when the img has no src. */
-  fun dragonShowRuntimeImage(image: android.graphics.Bitmap?, width: Double, height: Double, missing: Boolean) {
-    dragonImage = image
-    dragonImageNatural = doubleArrayOf(width, height)
-    dragonRuntimeMissing = missing
-    invalidate()
-  }
   /** SVG-a2: the svg's viewBox (min-x, min-y, width, height) or null, and its shapes in paint order. */
   var dragonSvgViewBox: DoubleArray? = null
     private set
@@ -336,24 +277,6 @@ import android.graphics.RenderNode
 import android.util.Base64
 import android.view.View
 import dev.dragon.dump.DumpJson
-
-/** REPL-r1: a runtimeSrc img's write: its object-fit, object-position (CSS text) and no-image outline colour (null: never missing). */
-class DragonRuntimeSpec(val fit: String, val position: List<String>, val outline: DragonRGBA8?)
-
-/**
- * REPL-r1: Blink ImagePainter's no-image outline: once the app said a runtimeSrc img that may lack a src has none, a 1 device px band
- * of light gray inside its snapped content box, when that box is over 2 device px each way.
- */
-fun dragonPaintNoImageOutline(v: DragonBoxView, canvas: Canvas) {
-  if (v.dragonImage != null || !v.dragonRuntimeMissing) return
-  val color = v.dragonRuntime?.outline ?: return
-  val c = v.dragonReplacedContent ?: return
-  if (c[2] <= 2 || c[3] <= 2) return
-  val paint = Paint().apply { style = Paint.Style.FILL; isAntiAlias = false; this.color = dragonArgb(color) }
-  for (r in listOf(doubleArrayOf(c[0], c[1], c[2], 1.0), doubleArrayOf(c[0], c[1] + c[3] - 1, c[2], 1.0), doubleArrayOf(c[0], c[1] + 1, 1.0, c[3] - 2), doubleArrayOf(c[0] + c[2] - 1, c[1] + 1, 1.0, c[3] - 2))) {
-    canvas.drawRect(r[0].toFloat(), r[1].toFloat(), (r[0] + r[2]).toFloat(), (r[1] + r[3]).toFloat(), paint)
-  }
-}
 
 /** Device px added to the drawn destination x; 0 except in the image-offset-1 raster plant build, which proves the pixel lane sees the image. */
 const val DRAGON_IMAGE_PLANT_DEVICE_PX = 0.0
@@ -512,7 +435,6 @@ fun dragonDecodeImage(base64: String, id: String): Bitmap {
  */
 fun dragonPaintImageStage(v: DragonBoxView, canvas: Canvas, shape: DragonBoxShape) {
   dragonPaintSvg(v, canvas)
-  dragonPaintNoImageOutline(v, canvas)
   val image = v.dragonImage ?: return
   val d = v.dragonReplacedDest ?: return
   val c = v.dragonReplacedDrawn ?: return
@@ -574,11 +496,6 @@ fun dragonWholePxTranslate(v: View): Boolean {
 
 /** The readback of the image module: the natural size, the fit, the destination rect in device px relative to the box and, for a pixelated image only, pixelated. */
 fun dragonAppliedImage(v: DragonBoxView): List<Pair<String, DumpJson>> {
-  val r = v.dragonRuntime
-  if (r != null) {
-    val d = v.dragonReplacedDest
-    return listOf(Pair("dragonRuntimeImage", DumpJson.Obj(listOf(Pair("fit", DumpJson.Str(r.fit)), Pair("position", DumpJson.Arr(r.position.map { DumpJson.Str(it) })), Pair("outline", r.outline?.let { dragonRGBAJson(it) } ?: DumpJson.Null), Pair("dest", if (d == null) DumpJson.Null else DumpJson.Arr(d.map { DumpJson.Num(it) }))))))
-  }
   if (v.dragonImage == null) return dragonAppliedSvg(v)
   val d = v.dragonReplacedDest
   val dest = if (d == null) DumpJson.Null else DumpJson.Arr(d.map { DumpJson.Num(it) })
@@ -608,21 +525,14 @@ const numLit = (n: number): string => {
 
 const svgColor = (c: { r: number; g: number; b: number; alpha: number } | null, backend: 'swift' | 'kotlin'): string => (c === null ? (backend === 'swift' ? 'nil' : 'null') : rgbaLit(c));
 
-/** object-position as the CSS text the readback compares: 7px or 30%. */
-const positionText = (v: { readonly kind: string; readonly value: number }): string => `${v.value}${v.kind === 'px' ? 'px' : '%'}`;
-
-export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes' | 'runtime-image', 'image-offset-1' | 'image-smooth' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped' | 'svg-cap-butt' | 'svg-join-miter' | 'svg-miter-limit-4' | 'svg-dash-solid' | 'svg-dash-phase-0' | 'svg-paint-order-normal' | 'svg-vector-effect-none'> = {
+export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes', 'image-offset-1' | 'image-smooth' | 'svg-stroke-first' | 'svg-even-odd' | 'svg-stroke-unscaled' | 'svg-paint-swapped' | 'svg-cap-butt' | 'svg-join-miter' | 'svg-miter-limit-4' | 'svg-dash-solid' | 'svg-dash-phase-0' | 'svg-paint-order-normal' | 'svg-vector-effect-none'> = {
   name: 'image',
-  kinds: ['replaced-image', 'svg-shapes', 'runtime-image'],
+  kinds: ['replaced-image', 'svg-shapes'],
   lines: {
-    uikit: (v, _n, w) => (w.kind === 'runtime-image'
-      ? [`  ${v}.dragonSetRuntimeImage(fit: ${keywordLit(w.fit)}, position: [${w.position.map((p) => `"${positionText(p)}"`).join(', ')}], outline: ${w.absent === null ? 'nil' : rgbaLit(w.absent.color)})`, ...(w.pixelated ? [`  ${v}.dragonSetImagePixelated()`] : [])]
-      : w.kind === 'svg-shapes'
+    uikit: (v, _n, w) => (w.kind === 'svg-shapes'
       ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'nil' : `[${w.viewBox.map(numLit).join(', ')}]`}, [${w.shapes.map((sh) => `DragonSvgShape([${sh.path.map(numLit).join(', ')}], ${svgColor(sh.fill, 'swift')}, ${svgColor(sh.stroke, 'swift')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, [${sh.dashes.map(numLit).join(', ')}], ${numLit(sh.dashPhase)}, ${sh.strokeFirst ? 'true' : 'false'}, ${sh.nonScalingStroke ? 'true' : 'false'})`).join(', ')}])`]
       : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, width: ${pxLit(w.width)}, height: ${pxLit(w.height)}, fit: ${keywordLit(w.fit)})`, ...(w.pixelated ? [`  ${v}.dragonSetImagePixelated()`] : [])]),
-    'android-views': (v, _n, w) => (w.kind === 'runtime-image'
-      ? [`  ${v}.dragonSetRuntimeImage(${keywordLit(w.fit)}, listOf(${w.position.map((p) => `"${positionText(p)}"`).join(', ')}), ${w.absent === null ? 'null' : rgbaLit(w.absent.color)}, ${w.layer ? 'true' : 'false'})`, ...(w.pixelated ? [`  ${v}.dragonSetImagePixelated()`] : [])]
-      : w.kind === 'svg-shapes'
+    'android-views': (v, _n, w) => (w.kind === 'svg-shapes'
       ? [`  ${v}.dragonSetSvg(${w.viewBox === null ? 'null' : `doubleArrayOf(${w.viewBox.map(numLit).join(', ')})`}, listOf(${w.shapes.map((sh) => `DragonSvgShape(doubleArrayOf(${sh.path.map(numLit).join(', ')}), ${svgColor(sh.fill, 'kotlin')}, ${svgColor(sh.stroke, 'kotlin')}, ${numLit(sh.width)}, ${keywordLit(sh.cap)}, ${keywordLit(sh.join)}, ${numLit(sh.miterLimit)}, ${keywordLit(sh.fillRule)}, doubleArrayOf(${sh.dashes.map(numLit).join(', ')}), ${numLit(sh.dashPhase)}, ${sh.strokeFirst ? 'true' : 'false'}, ${sh.nonScalingStroke ? 'true' : 'false'})`).join(', ')}))`]
       : [`  ${v}.dragonSetImage(${base64Lit(w.data)}, ${pxLit(w.width)}, ${pxLit(w.height)}, ${keywordLit(w.fit)}, ${w.layer ? 'true' : 'false'})`, ...(w.pixelated ? [`  ${v}.dragonSetImagePixelated()`] : [])]),
   },
@@ -632,7 +542,6 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes' | 'runt
       return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width, sh.cap, sh.join, sh.miterLimit, sh.fillRule, [...sh.dashes], sh.dashPhase, sh.strokeFirst, sh.nonScalingStroke]) };
     }
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');
-    if (w.kind === 'runtime-image') return { fit: w.fit, position: w.position.map(positionText), outline: w.absent === null ? null : [w.absent.color.r, w.absent.color.g, w.absent.color.b, w.absent.color.alpha], dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest] };
     return { natural: [w.width, w.height], fit: w.fit, dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest], ...(w.pixelated ? { pixelated: true } : {}) };
   },
   native: {

@@ -1006,7 +1006,6 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       case 'foreign-view':
       case 'video-view':
       case 'svg-shapes':
-      case 'runtime-image':
         // REPL-a draws an image or hosts a web view, MEDIA-EL a video player, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
         throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
       case 'border-radius':
