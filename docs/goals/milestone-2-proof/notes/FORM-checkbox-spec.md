@@ -77,6 +77,16 @@ length below is in CSS px times the DPR:
     Dirty checkedness (Judge amendment 2, HTML §4.10.5.1.15): measured in Chrome, after a user toggle, setting or removing the
     `checked` attribute changes nothing, while on a checkbox no one has toggled it still does. `dragonSetCheckboxChecked` marks the
     view dirty, after which a later `dragonSetCheckbox` write (a re-render) keeps the host's state and takes only its colours.
+
+    A Markless host never creates Dragon's views; it draws a styled control from Dragon's native style export. The export carries
+    the checkbox as a `checkbox` write on its node (`checked`, the attribute's state, and the five colours: unchecked background
+    and border, checked background, accent fill and check, the check `#3b3b3b` or white by the contrast rule), and the device
+    layout (`runMarklessLayout`) returns each checkbox's theme marks last, tagged `["checkbox-marks", [[id, x, y, side, plain,
+    radius, backgroundInset, borderInset, borderWidth, [check x, y pairs], checkWidth]]]`, in device px from its snapped border box
+    at the layout's ratio (the plan lists the checkboxes per assignment as `checkboxes`). The host draws the unchecked or checked
+    drawing from the input's live checkedness, which Markless already toggles on a tap on the box or its label. Judge amendment 1
+    is met by that existing Markless tap toggle plus this export; `dragonSetCheckboxChecked` stays for Dragon's own hosts. A
+    checkbox in a list row is refused by the device layout until a row's copy is named in the plan.
 13. While the pointer is down Chrome draws the pressed colours: unchecked border `#8d8d8d`; checked, the accent with its HSL
     lightness raised 0.11 (`#0075ff` to `#3793ff`, `#c2410c` to `#f15516`), or lowered 0.11 when the dark colours are in use
     (`#fb923c` to `#fa7305`). Hover darkens instead; the phones have no hover. This slice does not draw the pressed colours, so a
@@ -109,6 +119,9 @@ length below is in CSS px times the DPR:
   pixels are the check colour; the same test fails a planted fault that draws the check white under a light accent.
 - Refusal tests for every item in Refused, and the tap-path test: tap the label text, then again, with the form data and the
   hit table's target checked against Chrome, and dirty checkedness measured.
+- The export: `packages/parity/test/markless-plan.test.ts` builds the notes row (checked and unchecked) through the Markless
+  style input and checks the export's `checkbox` write against `checkboxColors` and the device layout's `checkbox-marks` against
+  `checkboxMarks` of the device frame at every ratio the plan measures text at, at two viewport sizes: the same functions the Chrome pixel test proves.
 - The native lanes inherit the paint through the translated geometry (`packages/layout/src/paint.ts`), the device pixel lanes
   run it on the phones after landing.
 

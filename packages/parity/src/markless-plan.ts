@@ -40,6 +40,8 @@ export type PlanAssignment = {
   /** Each box with border-styles and border-colors writes: [id, styles, rgba per side]. */
   readonly dashed: readonly (readonly unknown[])[];
   readonly scroll: readonly string[];
+  /** Only when the assignment has one: each themed checkbox (a checkbox write), whose marks the device layout returns. */
+  readonly checkboxes?: readonly string[];
   /** Only for an input with slots: the style fields and write numbers that follow them (markless-slots.ts). */
   readonly slotFields?: readonly SlotField[];
   readonly slotWrites?: readonly SlotWrite[];
@@ -135,14 +137,17 @@ export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dp
     const program = programAt(sp, i);
     const dashed: (readonly unknown[])[] = [];
     const scroll: string[] = [];
+    const checkboxes: string[] = [];
     for (const n of program.nodes) {
       const writes = n.writes as readonly Write[];
       const styles = writes.find((w) => w.kind === 'border-styles')?.['styles'] as readonly string[] | undefined;
       const colors = writes.find((w) => w.kind === 'border-colors')?.['colors'] as readonly { r: number; g: number; b: number; alpha: number }[] | undefined;
       if (styles !== undefined && colors !== undefined) dashed.push([n.id, styles, colors.flatMap((c) => [c.r, c.g, c.b, c.alpha])]);
       if (writes.some((w) => w.kind === 'scroll-container')) scroll.push(n.id);
+      if (writes.some((w) => w.kind === 'checkbox')) checkboxes.push(n.id);
     }
-    return { variant: (sp.deltas[i] as { readonly variant: number }).variant, dashed, scroll };
+    const variant = (sp.deltas[i] as { readonly variant: number }).variant;
+    return checkboxes.length === 0 ? { variant, dashed, scroll } : { variant, dashed, scroll, checkboxes };
   });
   const plan: MarklessPlan = { version: MARKLESS_PLAN_VERSION, faces: [...faces].map(([id, data]) => ({ id, data })), densities, variants: sp.variants, assignments };
   const read = JSON.parse(harness.checkMarklessPlan(JSON.stringify(plan))) as readonly unknown[];
