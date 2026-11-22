@@ -101,7 +101,8 @@ public func dragonAfterTreeShadow(_ root: DragonRootView) {
 }
 
 /// After a background write: the shadows (and text shadows) of the box and of every descendant box, whose backdrop the write
-/// changed, and each descendant's folded fill (the background module), drawn over the same backdrop.
+/// changed, and each descendant's folded fill (the background module), drawn over the same backdrop. A layer item's shadows over a
+/// box its host painted before it are redrawn by dragonAfterTreeShadow, which every rebuild of the tree runs.
 public func dragonShadowBackdropChanged(_ v: DragonBoxView) {
   if !v.dragonShadows.isEmpty { dragonAfterLayoutShadow(v, v.dragonShape, v.dragonScale) }
   // TXT-FX: the text shadows of the box's texts are composited over the same backdrop.
@@ -285,7 +286,8 @@ fun dragonAfterTreeShadow(root: DragonRootView) {
 
 /**
  * After a background write: the shadows (and text shadows) of the box and of every descendant box, whose backdrop the write
- * changed, and each descendant's folded fill (the background module), drawn over the same backdrop.
+ * changed, and each descendant's folded fill (the background module), drawn over the same backdrop. A layer item's shadows over a
+ * box its host painted before it are redrawn by dragonAfterTreeShadow, which every rebuild of the tree runs.
  */
 fun dragonShadowBackdropChanged(v: DragonBoxView) {
   if (v.dragonShadows.isNotEmpty()) dragonAfterLayoutShadow(v, v.dragonShape, v.dragonShadowScale)

@@ -154,6 +154,24 @@ describe('box-shadow: native refusals of what the companion view and the backdro
     for (const wrap of [false, true]) expect(shadowRefusals(tree(SCALED, wrap)), String(wrap)).toEqual([]);
   });
 
+  it('refuses a shadow on a scaled box painted over an earlier box its backdrop cannot hold: transformed, see-through, or clipping a filled box', () => {
+    const SCALED = `.b { transform: scale(0.98); box-shadow: ${SHADOW}; }`;
+    const tree = (css: string) => {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'p', ['p'], [div(r, 'k', ['k'])]), div(r, 'b', ['b'])])]);
+      return createProjectWith({ projectId: 'test', targets: ALL }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    };
+    for (const [css, says] of [
+      ['.p { transform: translateX(20px); }', 'whose a transform'],
+      ['.p { opacity: 0.3; }', 'whose opacity 0.3'],
+      ['.p { overflow: hidden; height: 10px; } .k { height: 20px; background-color: rgb(0, 90, 200); }', 'whose overflow hidden'],
+    ] as const) {
+      const got = shadowRefusals(tree(`${SCALED} ${css}`));
+      expect(got.map((d) => d.target).sort(), css).toEqual(['android', 'ios']);
+      for (const d of got) expect(d.message, css).toContain(`so Chrome paints it after p, ${says}`);
+    }
+    expect(shadowRefusals(tree(`${SCALED} .p { overflow: hidden; height: 10px; } .k { height: 20px; }`))).toEqual([]);
+  });
+
   it('refuses nothing for a static block shadow, none, a shadow beside a transformed sibling, or a group with no shadow below it', () => {
     for (const css of [`.b { box-shadow: ${SHADOW}; }`, '.b { box-shadow: none; position: relative; transform: rotate(1deg); }', `.a { box-shadow: ${SHADOW}; } .b { transform: rotate(1deg); }`, '.a { will-change: opacity; } .b { background-color: red; }']) {
       const { c } = compileTree(css);

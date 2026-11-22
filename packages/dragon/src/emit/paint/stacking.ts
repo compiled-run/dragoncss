@@ -53,13 +53,15 @@ public func dragonSetPaintOrder(_ t: DragonTree, _ v: DragonBoxView, _ host: Str
 public func dragonSortPaintOrder(_ c: UIView) {
   let subs = c.subviews
   if !subs.contains(where: { (($0 as? DragonBoxView)?.dragonPaintBucket ?? 0) != 0 || $0 is DragonGroupView }) { return }
+  var owners: [ObjectIdentifier: Int] = [:]
+  for (k, v) in subs.enumerated() { if let sh = (v as? DragonBoxView)?.dragonShadowView { owners[ObjectIdentifier(sh)] = k } }
   func key(_ s: UIView, _ i: Int) -> [Int] {
     // PNT1-opacity-b: a group's overlay shows the whole group's composite, so it sorts after every layer item (bucket 3).
     if s is DragonGroupView { return [3, 0, 2 * i] }
     // PNT1-outline-layer: a layer's outline views paint after its flow and before its layer items (outline.ts).
     if s is DragonOutlineView { return [0, 1, 2 * i] }
     // A layer item's outer shadow view paints with it, just beneath it.
-    if let sh = s as? DragonShadowView, let k = subs.firstIndex(where: { ($0 as? DragonBoxView)?.dragonShadowView === sh }), let b = subs[k] as? DragonBoxView, b.dragonPaintBucket != 0 {
+    if s is DragonShadowView, let k = owners[ObjectIdentifier(s)], let b = subs[k] as? DragonBoxView, b.dragonPaintBucket != 0 {
       return [dragonOrderPlantSwapped ? -3 + b.dragonPaintBucket : b.dragonPaintBucket, b.dragonPaintRank, 2 * k - 1]
     }
     guard let b = s as? DragonBoxView, b.dragonPaintBucket != 0 else { return [0, 0, 2 * i] }
@@ -121,6 +123,8 @@ fun dragonSetPaintOrder(t: DragonTree, v: DragonBoxView, host: String, bucket: I
 fun dragonSortPaintOrder(c: ViewGroup) {
   val subs = (0 until c.childCount).map { c.getChildAt(it) }
   if (subs.none { (it is DragonBoxView && it.dragonPaintBucket != 0) || it is DragonGroupView }) return
+  val owners = java.util.IdentityHashMap<View, Int>()
+  for ((k, v) in subs.withIndex()) { val sh = (v as? DragonBoxView)?.dragonShadowView; if (sh != null) owners[sh] = k }
   fun key(s: View, i: Int): IntArray {
     // PNT1-opacity-b: a group's overlay shows the whole group's composite, so it sorts after every layer item (bucket 3).
     if (s is DragonGroupView) return intArrayOf(3, 0, 2 * i)
@@ -128,7 +132,7 @@ fun dragonSortPaintOrder(c: ViewGroup) {
     if (s is DragonOutlineView) return intArrayOf(0, 1, 2 * i)
     // A layer item's outer shadow view paints with it, just beneath it.
     if (s is DragonShadowView) {
-      val k = subs.indexOfFirst { (it as? DragonBoxView)?.dragonShadowView === s }
+      val k = owners[s] ?: -1
       val owner = if (k >= 0) subs[k] as DragonBoxView else null
       if (owner != null && owner.dragonPaintBucket != 0) return intArrayOf(if (DRAGON_ORDER_PLANT_SWAPPED) -3 + owner.dragonPaintBucket else owner.dragonPaintBucket, owner.dragonPaintRank, 2 * k - 1)
     }

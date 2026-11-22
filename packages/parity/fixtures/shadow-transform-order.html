@@ -9,6 +9,7 @@ body { margin: 0; }
 .card { display: block; box-sizing: border-box; height: 40px; border: 1px solid #e4ddcf; border-radius: 14px; background-color: #ffffff; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.05); }
 .pressed { transform: scale(0.98); }
 .tight { row-gap: 4px; margin-top: 24px; }
+.own { isolation: isolate; }
 .deep { height: 48px; border-radius: 10px; background-color: #ffffff; box-shadow: 0 6px 6px rgba(0, 0, 0, 0.45); }
 .tint { height: 48px; border-radius: 10px; background-color: #dbeafe; }
 .lift { transform: translate(0, -2px) scale(0.96); }
@@ -16,15 +17,19 @@ body { margin: 0; }
 </head>
 <body data-dragon-id="body">
 <div data-dragon-id="page" class="page">
+<div data-dragon-id="s1" class="own">
 <ul data-dragon-id="list" class="list">
 <li data-dragon-id="i1" class="item"><div data-dragon-id="c1" class="card"></div></li>
 <li data-dragon-id="i2" class="item"><div data-dragon-id="c2" class="card pressed"></div></li>
 <li data-dragon-id="i3" class="item"><div data-dragon-id="c3" class="card"></div></li>
 </ul>
+</div>
+<div data-dragon-id="s2" class="own">
 <ul data-dragon-id="list2" class="list tight">
 <li data-dragon-id="j1" class="item"><div data-dragon-id="d1" class="deep lift"></div></li>
 <li data-dragon-id="j2" class="item"><div data-dragon-id="d2" class="tint"></div></li>
 </ul>
+</div>
 </div>
 </body>
 </html>

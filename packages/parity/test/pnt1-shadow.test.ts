@@ -69,7 +69,6 @@ function platformOver(l: ShadowLayer, x: number, y: number, under: Rgba): number
   return [0, 1, 2].map((k) => Math.round((l.rgba[i + k] as number) + ((under[k] as number) * (255 - a)) / 255));
 }
 
-/** The backdrop fills the device gathers for a box's shadows: each ancestor's background, outermost first, then its own for inset. */
 /** The host a layer item's paint-order write places it under, or null for a flow box. */
 function layerHost(b: Box): string | null {
   const w = b.node.writes.find((x) => x.kind === 'paint-order');
