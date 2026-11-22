@@ -928,8 +928,9 @@ function layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
     let inline: BlockLevelInline;
     let c: ContentsResult;
     // A replaced box is not a block container, so Blink places it as a new formatting context (LayoutBox::CreatesNewFormattingContext);
-    // so does a form control, which LayoutBox::ShouldBeConsideredAsReplaced (a block button, a text field; a range is a flex
-    // container), and a fieldset (LayoutFieldset). css-multicol-1 §2: a multi-column container establishes one too.
+    // so does a form control, which LayoutBox::ShouldBeConsideredAsReplaced (a text field; a range is a flex container), a block
+    // button, whose UA align-content is not normal (layout_block_flow_hot.cc:38-45, LayoutBlockFlow::CreatesNewFormattingContext),
+    // and a fieldset (LayoutFieldset). css-multicol-1 §2: a multi-column container establishes one too.
     const newFormattingContext = kid.kind === 'replaced' || establishesFormattingContext(kid.style, ctx.faults) || (kid.kind === 'control' && (kid.control.kind === 'button-block' || kid.control.kind === 'text-field' || kid.control.kind === 'fieldset')) || kid.style.multicol !== null;
     const container: InlineContainer = { bfcLineOffset: a.bfcLineOffset, borderBoxWidth: a.borderBoxWidth, lineLeft: a.origin.x, newFormattingContext, textAlign: box.style.textAlign };
     if (kid.kind === 'replaced') {

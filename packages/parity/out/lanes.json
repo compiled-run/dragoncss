@@ -194,7 +194,7 @@
           "caseListSha256": "490641241c9725d0a1fec196bc6d8fc78962a77d2dd56954cc2cc7f12dbc6b52",
           "totalCases": 637427,
           "run": {
-            "toolchain": "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)",
+            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
               {
                 "corpus": "p1",
@@ -2499,7 +2499,7 @@
           "caseListSha256": "490641241c9725d0a1fec196bc6d8fc78962a77d2dd56954cc2cc7f12dbc6b52",
           "totalCases": 637427,
           "run": {
-            "toolchain": "kotlinc-jvm 2.4.21 (JRE 21.0.13+9-LTS); openjdk version \"21.0.13\" 2026-10-20 LTS",
+            "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.21+0); openjdk version \"17.0.21\" 2026-10-20",
             "suites": [
               {
                 "corpus": "p1",

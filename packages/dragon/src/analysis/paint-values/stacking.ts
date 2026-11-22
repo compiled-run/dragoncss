@@ -10,6 +10,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import { containsDescendants, paintContained } from '../containment.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
+import { selectPartOf } from '../resolve.ts';
 import { isTopLayer } from '../top-layer.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { PaintValues } from './types.ts';
@@ -21,8 +22,8 @@ const keyword = (el: ResolvedElement, p: 'display' | 'position' | 'overflow-x'):
 
 /**
  * The stacking tree of a resolved document: display: none subtrees generate no boxes; text is never positioned. A box clips as the
- * native tree's does (lower/paint/clip.ts: any overflow but visible, or paint containment), except an inline box and the element whose overflow the
- * viewport takes (propagated; css-overflow-3 §3.3), which use visible.
+ * native tree's does (lower/paint/clip.ts: any overflow but visible, paint containment, or a single select's control clip), except
+ * an inline box and the element whose overflow the viewport takes (propagated; css-overflow-3 §3.3), which use visible.
  */
 export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedElement | null): StackNode {
   let texts = 0;
@@ -44,7 +45,7 @@ export function resolvedStackTree(root: ResolvedElement, propagated: ResolvedEle
       ...(containsDescendants(el) ? { containsAbsolute: true } : {}),
       ...(backfaceHidden(el) ? { layered: true } : {}),
       ...(isTopLayer(el) ? { topLayer: true } : {}),
-      clips: el !== propagated && keyword(el, 'display') !== 'inline' && (keyword(el, 'overflow-x') !== 'visible' || paintContained(el)),
+      clips: el !== propagated && keyword(el, 'display') !== 'inline' && (keyword(el, 'overflow-x') !== 'visible' || paintContained(el) || selectPartOf(el)?.part === null),
       text: false,
       children: el.children.flatMap((c): StackNode[] => {
         if (c.kind === 'text') return [{ id: `${el.element.address}:text#${texts++}`, position: 'static', z: null, opacity: 1, transformed: false, clips: false, text: true, children: [] }];
