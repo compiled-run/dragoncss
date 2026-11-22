@@ -300,7 +300,9 @@ async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: reado
       if (container !== undefined && viewPort === undefined) throw new Error(`${id}: CDP exposed a decoration container without an editing view port`);
       const editor = viewPort !== undefined ? viewPort.children?.find((k) => k.nodeName === 'DIV') : kids.find((k) => k !== placeholder);
       if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
-      return { id, parts: [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const] };
+      const cancel = container?.children?.find((k) => (k.attributes ?? []).includes('-webkit-search-cancel-button'));
+      if (container !== undefined && cancel === undefined) throw new Error(`${id}: CDP exposed a decoration container without a cancel button`);
+      return { id, parts: [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const, ...(cancel === undefined ? [] : [['cancel', cancel] as const])] };
     });
     await f(cdp, fields);
   } finally {

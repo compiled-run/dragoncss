@@ -1022,7 +1022,10 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
     // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font
     // and line height, which decide its default width and its editor's line height (the engine's controls.ts).
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, cancelButton: inputTypeState(el.element.attributes.get('type')) === 'search' ? SEARCH_CANCEL_BUTTON : null }, strut, children };
+    const search = inputTypeState(el.element.attributes.get('type')) === 'search';
+    // A search field's cancel button is a box of its own (<id>::cancel), which the engine sizes and places beside the editor.
+    const parts = search ? [...children, anonymousBox(el, `${id}::cancel`, [], l)] : children;
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, cancelButton: search ? SEARCH_CANCEL_BUTTON : null }, strut, children: parts };
   }
   if (field !== undefined) {
     // The inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at rest it

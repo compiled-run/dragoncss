@@ -5,7 +5,8 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
-import { environmentOf, markerStyleOf, selectOptionsOf } from './analysis/resolve.ts';
+import { environmentOf, markerStyleOf, selectOptionsOf, textFieldPartOf } from './analysis/resolve.ts';
+import { inputTypeState } from './analysis/elements/controls.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -208,6 +209,12 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
     if (m.type.kind === 'none' || item === undefined) continue;
     const color = usedColors(markerStyleOf(item)).color;
     out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
+  }
+  // FORM-b: a search field's cancel button box inherits the field's color, with its initial background and currentcolor borders.
+  for (const [address, el] of items) {
+    if (textFieldPartOf(el)?.part !== null || inputTypeState(el.element.attributes.get('type')) !== 'search') continue;
+    const color = usedColors(el).color;
+    out.set(`${address}::cancel`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
   }
   return out;
 }

@@ -538,7 +538,7 @@ function checkRule(value: unknown, rule: Rule, path: string, errors: ValidationE
   }
 }
 
-function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null, inControl = false): void {
+function checkNode(value: unknown, path: string, errors: ValidationError[], ids: Set<string>, parentId: string | null, inControl = false, inSearchField = false): void {
   if (!isRecord(value)) {
     errors.push({ path, code: 'wrong-type', message: 'expected a box, replaced leaf, inline box, line break or text object' });
     return;
@@ -623,7 +623,8 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   const controlKind = isControl && isRecord(value['control']) ? value['control']['kind'] : null;
   // A fieldset and its legend hold positioned descendants as any block container does; the other controls fence theirs.
   const fences = isControl && controlKind !== 'fieldset' && controlKind !== 'legend';
-  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || fences));
+  const searchField = controlKind === 'text-field' && isRecord(value['control']) && value['control']['cancelButton'] !== null;
+  children.forEach((child: unknown, i: number) => checkNode(child, `${path}.children[${i}]`, errors, ids, typeof id === 'string' ? id : null, inControl || fences, searchField));
   // The rendered legend is the one first in-flow legend of its fieldset (block.ts layoutFieldset).
   let legends = 0;
   children.forEach((child: unknown, i: number) => {
@@ -637,12 +638,16 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   if (controlKind === 'text-field') {
     let editors = 0;
     let placeholders = 0;
+    let cancels = 0;
+    const search = isRecord(value['control']) && value['control']['cancelButton'] !== null;
     children.forEach((child: unknown, i: number) => {
       const part = fieldPart(child);
       if (part === 'text-editor') editors++;
       else if (part === 'text-placeholder') placeholders++;
-      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a text field control holds only its text-editor control and at most one text-placeholder control' });
+      else if (search && isRecord(child) && child['kind'] === 'box' && child['boxType'] === 'anonymous' && Array.isArray(child['children']) && child['children'].length === 0) cancels++;
+      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box' });
     });
+    if (search && cancels !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a search field control holds exactly one cancel-button box' });
     if (editors !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds exactly one text-editor control' });
     if (placeholders > 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds at most one text-placeholder control' });
   } else {
@@ -676,7 +681,9 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
   if (isRecord(style) && clipsOnly(style['overflowX']) !== clipsOnly(style['overflowY'])) {
     errors.push({ path: `${path}.style.overflowY`, code: 'bad-value', message: 'overflowX and overflowY must be a computed pair: css-overflow-3 §3.1 computes visible beside hidden, auto or scroll to auto, and clip to hidden' });
   }
-  if (value['boxType'] === 'anonymous') checkAnonymous(value, children, path, errors, parentId);
+  // A search field's cancel button is the one anonymous box with no content, named "<field id>::cancel" (block.ts layoutTextField).
+  const cancelBox = inSearchField && children.length === 0 && parentId !== null && value['id'] === `${parentId}::cancel`;
+  if (value['boxType'] === 'anonymous' && !cancelBox) checkAnonymous(value, children, path, errors, parentId);
   // BII: a block-in-inline box is a static block box of block-level boxes only (block.ts withBlockInInlineLines).
   if (value['boxType'] === 'block-in-inline') {
     if (!isRecord(style) || style['display'] !== 'block' || style['position'] !== 'static' || style['float'] !== 'none') errors.push({ path: `${path}.style`, code: 'bad-value', message: 'a block-in-inline box is a static, unfloated block box' });
