@@ -10,7 +10,7 @@ import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTre
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
-import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import { checkPlan, HEIGHT_FEATURES, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -816,8 +816,6 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
   return leaves.size === 0 ? plan : { ...plan, transformed: [...leaves].sort() };
 }
 
-/** The media features whose value changes with the viewport's height. */
-const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);

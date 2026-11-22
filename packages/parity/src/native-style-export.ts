@@ -19,7 +19,7 @@ import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
 import type { MarklessPlan } from './markless-plan.ts';
-import { marklessPlan, PLAN_DENSITIES } from './markless-plan.ts';
+import { heightDependence, marklessPlan, PLAN_DENSITIES } from './markless-plan.ts';
 import type { DensityJob, DensityResult } from './markless-plan-workers.ts';
 import { planWorkers, recordDensitiesInWorkers } from './markless-plan-workers.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
@@ -255,6 +255,8 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
   const faces = new Set<string>();
   const undecided = new Set<string>();
   const targets: { [T in NativeStyleTarget]?: ExportTarget } = {};
+  // The plan checks its text at other heights unless Dragon's analysis proves the page's text cannot depend on the height.
+  const checksHeights = (o: Extract<NativeStyles['targets'][NativeStyleTarget], { readonly kind: 'emitted' }>): boolean => heightDependence(o.program, (o.bands?.table.atoms ?? []).map((a) => a.feature)) !== null;
   // The plan's recordings with systemFontsFor's fonts run in worker threads first, every target's ratios at once; each is used,
   // or its error thrown, where the target's plan is made.
   const recorded = new Map<NativeStyleTarget, readonly DensityResult[]>();
@@ -263,7 +265,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const authorFiles = inputFonts.map((f) => [registerFace(f.bytes), f.bytes] as const);
     const jobs = (['ios', 'android'] as const).flatMap((t) => {
       const o = styles.targets[t];
-      return o?.kind !== 'emitted' ? [] : PLAN_DENSITIES[t].map((dpr): DensityJob => ({ t, sp: o.program, bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height }));
+      return o?.kind !== 'emitted' ? [] : PLAN_DENSITIES[t].map((dpr): DensityJob => ({ t, sp: o.program, bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height, checkHeights: checksHeights(o) }));
     });
     const results = recordDensitiesInWorkers(jobs, workers);
     for (const t of ['ios', 'android'] as const) recorded.set(t, results.filter((_, i) => jobs[i]?.t === t));
@@ -328,7 +330,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
     if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
-    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, recorded.get(t)) } : {};
+    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, recorded.get(t), checksHeights(o)) } : {};
     targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated };
   }
   const files = vendoredFaces();

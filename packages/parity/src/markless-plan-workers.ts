@@ -13,6 +13,8 @@ export type DensityJob = {
   readonly authorFiles: readonly (readonly [string, Uint8Array])[];
   readonly dpr: number;
   readonly height: number;
+  /** False when heightDependence proves the page's text cannot change with the height. */
+  readonly checkHeights: boolean;
 };
 /** A recording, or the message recordDensity threw. */
 export type DensityResult = { readonly density: PlanDensity } | { readonly error: string };
@@ -114,7 +116,7 @@ if (!isMainThread && parentPort !== null && (workerData as { port?: MessagePort 
     let result: DensityResult;
     try {
       for (const [, bytes] of job.authorFiles) registerFace(bytes);
-      result = { density: recordDensity(job.t, job.sp, systemFontsFor(job.t, job.dpr), job.bundled, new Map(job.authorFiles), job.dpr, job.height) };
+      result = { density: recordDensity(job.t, job.sp, systemFontsFor(job.t, job.dpr), job.bundled, new Map(job.authorFiles), job.dpr, job.height, job.checkHeights) };
     } catch (e) {
       result = { error: (e as Error).message };
     }
