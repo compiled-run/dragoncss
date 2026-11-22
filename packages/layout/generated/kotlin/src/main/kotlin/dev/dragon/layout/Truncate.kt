@@ -61,11 +61,11 @@ fun truncate_codePoints(text: String, start: Double, end: Double): String {
   var k: Double = 0.0
   // ts: packages/layout/src/truncate.ts:49
   run {
-    val _a380 = jsCodePoints(text)
-    var _i380 = 0
-    while (_i380 < _a380.size) {
-      val ch: String = _a380[_i380]
-      _i380++
+    val _a386 = jsCodePoints(text)
+    var _i386 = 0
+    while (_i386 < _a386.size) {
+      val ch: String = _a386[_i386]
+      _i386++
       // ts: packages/layout/src/truncate.ts:50
       if (((k >= start) && (k < end))) {
         out += ch
@@ -118,18 +118,18 @@ fun truncate_offsetToFit(ctx: Ctx, nodeId: String, s: TruncSource, shaped: Boole
   var clusterEnd: Double = 0.0
   // ts: packages/layout/src/truncate.ts:85
   run {
-    val _a381 = result.runs
-    var _i381 = 0
-    while (_i381 < _a381.size) {
-      val run: ShapingRun = _a381[_i381]
-      _i381++
+    val _a387 = result.runs
+    var _i387 = 0
+    while (_i387 < _a387.size) {
+      val run: ShapingRun = _a387[_i387]
+      _i387++
       // ts: packages/layout/src/truncate.ts:86
       run {
-        val _a382 = run.glyphs
-        var _i382 = 0
-        while (_i382 < _a382.size) {
-          val g: ShapingGlyph = _a382[_i382]
-          _i382++
+        val _a388 = run.glyphs
+        var _i388 = 0
+        while (_i388 < _a388.size) {
+          val g: ShapingGlyph = _a388[_i388]
+          _i388++
           val at: Double = (run.start + g.ci)
           // ts: packages/layout/src/truncate.ts:88
           if (((at < s.start) || (at >= s.end))) {

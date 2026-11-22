@@ -13,7 +13,7 @@ public final class ClampedChild {
 public func lineClamp_clampChild(_ ctx: Ctx, _ box: LayoutBox, _ kid: LayoutBox, _ borderBoxWidth: Double, _ cbInline: Double, _ left: Double, _ after: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>) throws -> ClampedChild {
   // ts: packages/layout/src/line-clamp.ts:30
   if try ((kid.strut == nil) || box_establishesFormattingContext(kid.style, ctx.faults)) {
-    try unsupported_unsupported(S.s_line_clamp, kid.id, S.s687, jsConcat(kid.id, S.s75, box.id, S.s107))
+    try unsupported_unsupported(S.s_line_clamp, kid.id, S.s695, jsConcat(kid.id, S.s77, box.id, S.s110))
   }
   let pad: Edges = try box_resolvePaddingWith(kid.style, cbInline, ctx.faults)
   let bor: Edges = try box_resolveBorder(kid.style, ctx.devicePixelRatio)
@@ -34,11 +34,11 @@ public func lineClamp_clampedInput(_ input: LayoutInput, _ boxes: JsArray<Layout
   let widths: JsStringMap<Double> = JsStringMap<Double>()
   // ts: packages/layout/src/line-clamp.ts:48
   do {
-    let _a177 = boxes
-    var _i177 = 0
-    while _i177 < _a177.items.count {
-      let r: LayoutRect = _a177.items[_i177]
-      _i177 += 1
+    let _a181 = boxes
+    var _i181 = 0
+    while _i181 < _a181.items.count {
+      let r: LayoutRect = _a181.items[_i181]
+      _i181 += 1
       _ = widths.set(r.id, r.width)
     }
   }
@@ -47,7 +47,7 @@ public func lineClamp_clampedInput(_ input: LayoutInput, _ boxes: JsArray<Layout
     let w: Double? = widths.get(id)
     // ts: packages/layout/src/line-clamp.ts:51
     if (w == nil) {
-      throw JsError(message: jsConcat(S.s642, id))
+      throw JsError(message: jsConcat(S.s650, id))
     }
     return try jsUnwrap(w)
   }
