@@ -4470,7 +4470,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute rel on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute rel on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -4479,7 +4479,7 @@
     "id": "App/privacy-link",
     "tag": "a"
    },
-   "message": "attribute rel on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "message": "attribute rel on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4487,7 +4487,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute target on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/privacy-link|attribute target on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -4496,7 +4496,7 @@
     "id": "App/privacy-link",
     "tag": "a"
    },
-   "message": "attribute target on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "message": "attribute target on privacy-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4504,7 +4504,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute rel on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute rel on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -4513,7 +4513,7 @@
     "id": "App/terms-link",
     "tag": "a"
    },
-   "message": "attribute rel on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "message": "attribute rel on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",
@@ -4521,7 +4521,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute target on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "key": "DRAGON_UNSUPPORTED_ATTRIBUTE|*|el@App/terms-link|attribute target on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "code": "DRAGON_UNSUPPORTED_ATTRIBUTE",
    "severity": "error",
    "target": null,
@@ -4530,7 +4530,7 @@
     "id": "App/terms-link",
     "tag": "a"
    },
-   "message": "attribute target on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink it changes link behaviour)",
+   "message": "attribute target on terms-link is not supported: its rendering effect belongs to the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)",
    "viaRelated": false,
    "passes": [
     "A-authored",

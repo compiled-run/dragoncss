@@ -1,0 +1,13 @@
+@keyframes ka { from { width: 0px; } to { width: 100px; } }
+.t1 { height: 4px; animation: ka 1s linear infinite; }
+.t1.on { animation-delay: 2s; }
+.t2 { height: 4px; animation: ka 0.1s linear infinite; }
+.t2.on { animation-duration: 1s; }
+.t3 { height: 4px; animation: ka 1s linear 2s infinite; }
+.t3.on { animation-delay: 0s; }
+.t4 { height: 4px; animation: ka 0.1s linear infinite; }
+.t4.on { animation-delay: 0.2s; }
+.t5 { height: 4px; animation: ka 1s linear 0.1s infinite; }
+.t5.on { animation: none; }
+.t6 { height: 4px; animation: ka 1s linear 2s infinite; }
+.t6.on { animation-name: none; }

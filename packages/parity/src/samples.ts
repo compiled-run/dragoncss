@@ -10,6 +10,9 @@ export type SampleRule = (typeof SAMPLE_RULES)[number];
 /** Sample geometry, not a tolerance: how far a colour point stays from any edge or arc (T002 section 6). */
 export const SAMPLE_INSET_DEVICE_PX = 2;
 
+/** Device px a svg colour point keeps from every shape edge, stroke edge, vertex and clip edge: the inset plus a pixel's half diagonal. */
+export const SVG_CLEAR_DEVICE_PX = SAMPLE_INSET_DEVICE_PX + Math.SQRT1_2;
+
 type Side = 'top' | 'right' | 'bottom' | 'left';
 const SIDES: readonly Side[] = ['top', 'right', 'bottom', 'left'];
 const CORNERS = ['top-left', 'top-right', 'bottom-right', 'bottom-left'] as const;

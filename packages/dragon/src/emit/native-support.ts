@@ -929,8 +929,11 @@ public final class DragonTree {
     let boxes = ok.boxes.items
     let snapped = try snap_snapEdges(ok.boxes).items
     let abs = try layout_absoluteRects(ok.boxes)
+    // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint-menulist.ts menuListArrows.
+    var arrows: [String: MenuListArrow] = [:]
+    for a in try paintMenulist_menuListArrows(input, ok.boxes, measurer).items { arrows[a.id.description] = a.arrow }
     // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
-    let zoomed = try lineClamp_clampedInput(try layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
+    let zoomed = try lineClamp_clampedInput(try layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     var zBoxes: [String: LayoutBox] = [:]
     var zStyles: [String: LayoutStyle] = [:]
     var zLeaves: [(String, ReplacedLeaf)] = []
@@ -1081,6 +1084,7 @@ public final class DragonTree {
           bv.dragonMarkerRect = [mp.left - e.left, mp.top - e.top, mp.right - mp.left, mp.bottom - mp.top]
           bv.dragonMarkerCoverage = mp.coverage.items
         }
+        if let a = arrows[id] { dragonSetSelectArrowGeometry(bv, a, e.left, e.top) }
         dragonAfterLayout(bv, bv.dragonShape, s)
         bv.setNeedsDisplay()
       }
@@ -2178,6 +2182,7 @@ import dev.dragon.layout.LayoutRect
 import dev.dragon.layout.LayoutResult_ok
 import dev.dragon.layout.LayoutStyle
 import dev.dragon.layout.ListMarker
+import dev.dragon.layout.MenuListArrow
 import dev.dragon.layout.SafeAreaInsets
 import dev.dragon.layout.ObjectRect
 import dev.dragon.layout.PieceGlyphs_okFalse
@@ -2185,6 +2190,7 @@ import dev.dragon.layout.PieceGlyphs_okTrue
 import dev.dragon.layout.PixelRect
 import dev.dragon.layout.ReplacedLeaf
 import dev.dragon.layout.paintMarker_markerSymbolPaint
+import dev.dragon.layout.paintMenulist_menuListArrows
 import dev.dragon.layout.paint_replacedPaint
 import dev.dragon.layout.paint_runtimeImagePaint
 import dev.dragon.layout.NaturalSizeValue_runtime
@@ -2207,7 +2213,7 @@ import dev.dragon.layout.inline_placeIfcLines
 import dev.dragon.layout.grid_NO_GRID_FAULTS
 import dev.dragon.layout.layout_absoluteRects
 import dev.dragon.layout.layout_layout
-import dev.dragon.layout.layout_zoomInput
+import dev.dragon.layout.layout_resolvedInput
 import dev.dragon.layout.lineClamp_clampedInput
 import dev.dragon.layout.overflow_scrollRanges
 import dev.dragon.layout.ScrollRangesResult_ok
@@ -2402,8 +2408,11 @@ class DragonTree(val context: Context) {
     val boxes = ok.boxes
     val snapped = snap_snapEdges(ok.boxes)
     val abs = layout_absoluteRects(ok.boxes)
+    // FORM-b: each menulist-button select's drop-down arrow in absolute device px, from the translated paint-menulist.ts menuListArrows.
+    val arrows = HashMap<String, MenuListArrow>()
+    for (a in paintMenulist_menuListArrows(input, ok.boxes, measurer)) arrows[a.id] = a.arrow
     // TXT2-g: each line-clamp container's children as the layout clamped them, so a child's lines are placed as the layout did.
-    val zoomed = lineClamp_clampedInput(layout_zoomInput(input, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
+    val zoomed = lineClamp_clampedInput(layout_resolvedInput(input, measurer, block_NO_ENGINE_FAULTS), ok.boxes, measurer)
     val zBoxes = HashMap<String, LayoutBox>()
     val zStyles = HashMap<String, LayoutStyle>()
     val zLeaves = ArrayList<ReplacedLeaf>()
@@ -2561,6 +2570,8 @@ class DragonTree(val context: Context) {
           v.dragonMarkerRect = intArrayOf(dragonCheckedInt(mp.left - e.left, id + " marker x"), dragonCheckedInt(mp.top - e.top, id + " marker y"), dragonCheckedInt(mp.right - mp.left, id + " marker width"), dragonCheckedInt(mp.bottom - mp.top, id + " marker height"))
           v.dragonMarkerCoverage = mp.coverage.toList()
         }
+        val arrow = arrows[id]
+        if (arrow != null) dragonSetSelectArrowGeometry(v, arrow, e.left, e.top)
         dragonAfterLayout(v, v.dragonShape, scale)
         v.invalidate()
       }
@@ -3419,7 +3430,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
                   : c.kind === 'legend'
                     ? `ControlKind_legend(${str('legend')})`
                     : c.kind === 'select-menulist'
-                      ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+                      ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${doubleLit(c.arrowWidth)})`
                       : `ControlKind_selectInner(${str('select-inner')})`;
   const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;

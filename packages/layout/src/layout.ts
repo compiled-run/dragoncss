@@ -247,9 +247,9 @@ export function layoutMeasurer(measurer: TextMeasurer, faults: EngineFaults): Te
 }
 
 /**
- * The input resolved for its environment as layoutWithFaults lays it out: ex, ch, cap and lh read the measurer's faces; a planted
- * platform rule reads the Ahem font data, as zoomInput (the device's) does. Post-layout passes (scroll metrics, the hit table)
- * resolve with it too. A face the measurer does not hold throws the text-glyph UnsupportedSignal.
+ * The input resolved for its environment as layoutWithFaults lays it out: ex, ch, cap, lh and a select's normal line height read
+ * the measurer's faces; a planted platform rule reads the Ahem font data, as zoomInput does. Every caller that holds the layout's
+ * measurer resolves with this, the device included. A face the measurer does not hold throws the text-glyph UnsupportedSignal.
  */
 export function resolvedInput(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutInput {
   return faults.metricHalfUp || faults.untruncatedFontSize ? zoomInput(given, faults) : resolveEnvironment(given, faults, layoutMeasurer(measurer, faults));
@@ -282,8 +282,8 @@ function placeOutOfFlow(ctx: Ctx, input: LayoutInput, out: Placement, icb: Conta
 
 /**
  * The input in zoomed px, with devicePixelRatio 1 (a zoomed px is a device px), and every length and font resolved for its
- * environment with the Ahem font data and the planted font rules (environment.ts applyEnvironment): the engine lays out only
- * Ahem, and a device's bridge measurer is self-checked equal to it.
+ * environment with the Ahem font data and the planted font rules (environment.ts applyEnvironment). Only for an Ahem input or a
+ * planted-fault one: a caller that holds the layout's measurer resolves with resolvedInput, which reads that measurer's faces.
  */
 export function zoomInput(input: LayoutInput, faults: EngineFaults): LayoutInput {
   return applyEnvironment(input, faults);
