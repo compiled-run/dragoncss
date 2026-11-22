@@ -24,6 +24,7 @@ import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
 import { NO_INTERACTION, selectorMatches } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
+import { textFieldPartOf } from './resolve.ts';
 import { propagatedFrom } from './computed-checks.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
@@ -691,7 +692,8 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
       if (JSON.stringify(v.value) !== init) return { property: p, address: el.element.address };
     }
     for (const c of el.children) {
-      if (c.kind !== 'element') continue;
+      // A text field's UA shadow parts retarget to the field (Chrome), so their paint facts decide no hit.
+      if (c.kind !== 'element' || textFieldPartOf(c) !== undefined) continue;
       const found = visit(c);
       if (found !== null) return found;
     }
