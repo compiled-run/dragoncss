@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { ExportAssignment, ExportNode } from '../src/native-style-export.ts';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
+import { interactionPaintRows } from '../src/markless-style-compare.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
 import { repoPath } from '../src/paths.ts';
 
@@ -100,5 +101,17 @@ describe('interaction states in the Markless style export', () => {
       }
     }
     expect(compared).toBeGreaterThan(0);
+  });
+
+  it("fails a state whose pressed colour is not Chrome's, and names a changed write it cannot read from Chrome", () => {
+    const node = (writes: ExportNode['writes']): ExportNode => ({ id: 'h5', parent: 'body', kind: 'element', native: 'DragonBoxView', text: null, frame: { x: 0, y: 0, width: 10, height: 10 }, borderWidths: null, writes });
+    const at = (writes: ExportNode['writes']): ExportAssignment => ({ values: {}, pageScroll: null, nodes: [node(writes)] });
+    const base = at([{ kind: 'background-color', color: { r: 241, g: 250, b: 238, alpha: 255 } }]);
+    const chrome = [{ id: 'h5', kind: 'element' as const, hasBox: true, x: 0, y: 0, width: 10, height: 10, computed: { 'background-color': 'rgb(42, 157, 143)' } }];
+    expect(interactionPaintRows('ios', '0-state0', base, at([{ kind: 'background-color', color: PRESSED }]), chrome).map((r) => r.pass)).toEqual([true]);
+    const wrong = interactionPaintRows('ios', '0-state0', base, at([{ kind: 'background-color', color: { r: 230, g: 57, b: 70, alpha: 255 } }]), chrome);
+    expect(wrong.map((r) => [r.pass, r.problem])).toEqual([[false, 'background-color {"r":230,"g":57,"b":70,"alpha":255} in the export, {"r":42,"g":157,"b":143,"alpha":255} in Chrome']]);
+    const other = interactionPaintRows('ios', '0-state0', base, at([...base.nodes[0]!.writes, { kind: 'opacity', value: 0.85 }]), chrome);
+    expect(other.map((r) => [r.pass, r.problem])).toEqual([[false, 'the state changes its opacity write, which this comparison does not read from Chrome yet']]);
   });
 });
