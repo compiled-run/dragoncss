@@ -30,5 +30,7 @@ export const GENERATED_CONTENT: readonly FixtureSpec[] = [
   reject('reject-gen-preserved-newline', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="a" class="a">xx</div>', 'white-space-collapse: preserve on the inline box <::before> a::before'),
   rejectTree('reject-gen-state-dependent', 'DRAGON_UNSUPPORTED_VALUE', "'+'"),
   reject('reject-gen-abspos-beside-text', 'DRAGON_UNSUPPORTED_VALUE', 'absolute', 'position: absolute on a::after beside text in a would place it in the text\'s inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)'),
-  reject('reject-gen-placeholder-host', 'DRAGON_UNSUPPORTED_SELECTOR', '::placeholder', '::placeholder is accepted only when no element can host it'),
+  // FORM-c made ::placeholder style a text field's placeholder part (controls-text-field), so a statically empty pseudo-element
+  // with a real host, ::file-selector-button on <input type=file>, keeps the refusal this reject pins.
+  reject('reject-gen-static-empty-host', 'DRAGON_UNSUPPORTED_SELECTOR', '::file-selector-button', '::file-selector-button is accepted only when no element can host it'),
 ];
