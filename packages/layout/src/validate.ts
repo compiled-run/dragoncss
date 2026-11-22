@@ -263,7 +263,7 @@ export const replacedLeafSchema = obj({
 });
 
 /** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
-export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema }, 'select-inner': {} });
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-area': { cols: num(1), rows: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema }, 'select-inner': {} });
 
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
@@ -851,7 +851,7 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
   };
   if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
   if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
-  if ((control['kind'] === 'text-field' || control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'a text field and its parts are block containers');
+  if ((control['kind'] === 'text-field' || control['kind'] === 'text-area' || control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'a text field and its parts are block containers');
   if (control['kind'] === 'select-menulist' && style['display'] !== 'flex') bad('style.display', 'a select is a flex container');
   if (control['kind'] === 'select-inner' && style['display'] !== 'block') bad('style.display', 'a select inner element is a block container');
   if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['display'] !== 'block') bad('style.display', `a ${control['kind']} control is a block container`);

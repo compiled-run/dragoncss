@@ -76,11 +76,11 @@ fun float_placeFloat(floats: JsArray<FloatArea>, side: String, width: Double, he
   var at: Double = top
   // ts: packages/layout/src/float.ts:99
   run {
-    val _a47 = floats
-    var _i47 = 0
-    while (_i47 < _a47.size) {
-      val f: FloatArea = _a47[_i47]
-      _i47++
+    val _a48 = floats
+    var _i48 = 0
+    while (_i48 < _a48.size) {
+      val f: FloatArea = _a48[_i48]
+      _i48++
       at = units_max(at, f.y)
     }
   }
@@ -93,11 +93,11 @@ fun float_placeFloat(floats: JsArray<FloatArea>, side: String, width: Double, he
       var next: Double? = null
       // ts: packages/layout/src/float.ts:106
       run {
-        val _a48 = floats
-        var _i48 = 0
-        while (_i48 < _a48.size) {
-          val f: FloatArea = _a48[_i48]
-          _i48++
+        val _a49 = floats
+        var _i49 = 0
+        while (_i49 < _a49.size) {
+          val f: FloatArea = _a49[_i49]
+          _i49++
           val bottom: Double = units_add(f.y, f.height)
           // ts: packages/layout/src/float.ts:110
           if (((bottom <= at) || (f.width <= 0.0))) {
@@ -132,11 +132,11 @@ fun float_floatsBottom(ctx: Ctx, box: LayoutBox, placed: JsArray<Box_Placed>, cb
   var bottom: Double? = null
   // ts: packages/layout/src/float.ts:133
   run {
-    val _a49 = box.children
-    var _i49 = 0
-    while (_i49 < _a49.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a49[_i49]
-      _i49++
+    val _a50 = box.children
+    var _i50 = 0
+    while (_i50 < _a50.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a50[_i50]
+      _i50++
       // ts: packages/layout/src/float.ts:134
       if ((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
         continue
@@ -144,11 +144,11 @@ fun float_floatsBottom(ctx: Ctx, box: LayoutBox, placed: JsArray<Box_Placed>, cb
       var p: Box_Placed? = null
       // ts: packages/layout/src/float.ts:136
       run {
-        val _a50 = placed
-        var _i50 = 0
-        while (_i50 < _a50.size) {
-          val x: Box_Placed = _a50[_i50]
-          _i50++
+        val _a51 = placed
+        var _i51 = 0
+        while (_i51 < _a51.size) {
+          val x: Box_Placed = _a51[_i51]
+          _i51++
           // ts: packages/layout/src/float.ts:136
           if (jsStrEq(x.frag.id, (k as U_LayoutBox_ReplacedLeaf).id)) {
             p = x

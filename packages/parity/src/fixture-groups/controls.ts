@@ -32,6 +32,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
+  layout('controls-textarea'),
   both('controls-select-none'),
   layout('controls-select-label'),
   reject('reject-controls-select-multiple', 'DRAGON_UNSUPPORTED_ELEMENT', '<select data-dragon-id="s" multiple=""><option data-dragon-id="o">A</option></select>', '<select multiple> s is a list box, which waits for the FORM-b listbox package'),
