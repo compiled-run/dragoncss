@@ -5,7 +5,7 @@ export const CONTROLS_OUT: readonly string[] = [
   'controls-button-demo-rtl', 'controls-button-type', 'controls-button-type-rtl', 'controls-appearance-display', 'controls-appearance-display-rtl',
   'controls-range-block', 'controls-range-block-rtl', 'controls-range-flex', 'controls-range-flex-rtl',
   'fieldset-legend', 'fieldset-legend-rtl', 'fieldset-positioned', 'fieldset-positioned-rtl', 'ms-button-disabled#0', 'ms-button-disabled#1', 'ms-button-disabled#0-rtl', 'ms-button-disabled#1-rtl',
-  'overflow-controls', 'overflow-controls-rtl', 'anchor-control', 'anchor-control-rtl',
+  'overflow-controls', 'overflow-controls-rtl', 'anchor-control', 'anchor-control-rtl', 'controls-text-field-search',
   // FORM-attrs: each form attribute's pair holds a button and a range.
   ...['none', 'name', 'autocomplete', 'required', 'minlength', 'maxlength'].flatMap((a) => [`attr-neutral-form-${a}`, `attr-neutral-form-${a}-rtl`]),
 ];
