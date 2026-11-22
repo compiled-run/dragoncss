@@ -6,10 +6,12 @@
 // box or inside the padding box, each shadow's own coverage smooth over the 5 x 5 neighbourhood, and the backdrop model one colour
 // over the pixel grown by 2 device px) that no later box covers. The largest per-channel difference must be 0: the shadow
 // allowance (allowances/shadow.ts) is GATE_CHANNEL_DELTA (decisions.md, box-shadow device pixels: no allowance). The plain layers
-// (composited onto transparent, one platform composite) measured 2 here, one floor per shadow short of Chrome's.
+// (composited onto transparent, one platform composite) measured 2 here, one floor per shadow short of Chrome's. A box with its own
+// scale and translate (shadow-transform) is modelled where it paints, and its outer layers are drawn under that transform; two
+// planted faults, the shadow drawn untransformed and its blur left unscaled by the transform, must each move a clear pixel.
 import { describe, expect, it } from 'vitest';
-import { insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayer, outerShadowLayerOver } from '@dragon/layout';
-import type { BackdropFill, ShadowInput, ShadowLayer } from '@dragon/layout';
+import { IDENTITY_SHADOW_TRANSFORM, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayerMapped, outerShadowLayerOverMapped } from '@dragon/layout';
+import type { BackdropFill, ShadowInput, ShadowLayer, ShadowTransform } from '@dragon/layout';
 import { nativePrograms } from 'dragon';
 import { SHADOW_CHANNEL_DELTA } from '../src/allowances/shadow.ts';
 import { GATE_CHANNEL_DELTA } from '../src/compare.ts';
@@ -18,7 +20,7 @@ import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS } from '../src/fixtures.ts';
 import { nativeCompile } from '../src/native-host.ts';
 import { casePoints, committedPixels } from '../src/pixel-reference.ts';
-import { shadowInputs } from '../src/paint-samples/shadow.ts';
+import { ownShadowTransform, shadowInputs } from '../src/paint-samples/shadow.ts';
 import { SAMPLE_INSET_DEVICE_PX } from '../src/samples.ts';
 import type { Box, Rgba } from './paint-model.ts';
 import { boxes, modelAt } from './paint-model.ts';
@@ -85,23 +87,39 @@ const inside = (b: Box, x: number, y: number): boolean => x + 1 > b.l && x < b.r
 
 type Measure = { max: number; pixels: number; worst: string };
 
+/** A box's own scale and translate, and the box where it paints under it (edges, borders and both radius sets mapped). */
+function placed(p: import('dragon').NativeProgram, b: Box, dpr: number): { map: ShadowTransform; at: Box } {
+  const map = ownShadowTransform(p, b.node.id, b.l, b.t, b.r, b.b, dpr);
+  if (map === IDENTITY_SHADOW_TRANSFORM) return { map, at: b };
+  const radii = b.radii === null ? null : b.radii.map((v, i) => v * (i % 8 < 4 ? map.sx : map.sy));
+  const border = b.border.map((v, i) => v * (i % 2 === 0 ? map.sy : map.sx));
+  return { map, at: { ...b, l: map.sx * b.l + map.tx, t: map.sy * b.t + map.ty, r: map.sx * b.r + map.tx, b: map.sy * b.b + map.ty, border, radii } };
+}
+
+/** A planted fault of the transformed shadows: drawn untransformed, or under the transform with the blur left at its local sigma. */
+type Plant = 'none' | 'untransformed' | 'blur-unscaled';
+
 /** The measured difference of one case at one DPR over every clear shadow pixel. */
-function measure(caseId: string, list: readonly Box[], p: import('dragon').NativeProgram, dpr: number): { over: Measure; plain: Measure } {
+function measure(caseId: string, boxList: readonly Box[], p: import('dragon').NativeProgram, dpr: number, plant: Plant = 'none'): { over: Measure; plain: Measure } {
   const chrome = committedPixels(caseId, dpr);
   if (chrome === null) throw new Error(`${caseId}@${dpr}: no committed Chrome PNG`);
   const m: Measure = { max: 0, pixels: 0, worst: '' };
   const mp: Measure = { max: 0, pixels: 0, worst: '' };
-  const layers = list.map((b) => {
-    const shadows = shadowInputs(p, b.node.id);
-    if (shadows === null) return null;
+  const list = boxList.map((b) => placed(p, b, dpr).at);
+  const layers = boxList.map((b) => {
+    const own = shadowInputs(p, b.node.id);
+    if (own === null) return null;
+    const placedMap = placed(p, b, dpr).map;
+    const map = plant === 'untransformed' ? IDENTITY_SHADOW_TRANSFORM : placedMap;
+    const shadows = plant === 'blur-unscaled' ? own.map((s) => ({ ...s, blur: s.blur / Math.sqrt(placedMap.sx * placedMap.sy) })) : own;
     const bg = b.node.writes.find((w) => w.kind === 'background-color');
     const opaque = bg !== undefined && bg.kind === 'background-color' && bg.color.alpha === 255;
     const zero = [0, 0, 0, 0, 0, 0, 0, 0];
     const layerOf = (list: readonly ShadowInput[]): [ShadowLayer, ShadowLayer] => [
-      outerShadowLayer(b.l, b.t, b.r, b.b, b.radii === null ? zero : b.radii.slice(0, 8), opaque, list, dpr, NO_SHADOW_FAULTS),
+      outerShadowLayerMapped(b.l, b.t, b.r, b.b, b.radii === null ? zero : b.radii.slice(0, 8), opaque, list, dpr, NO_SHADOW_FAULTS, map),
       insetShadowLayer(b.l, b.t, b.r, b.b, b.border, b.radii === null ? zero : b.radii.slice(8, 16), list, dpr, NO_SHADOW_FAULTS),
     ];
-    const outer = outerShadowLayerOver(b.l, b.t, b.r, b.b, b.radii === null ? zero : b.radii.slice(0, 8), opaque, shadows, dpr, NO_SHADOW_FAULTS, backdropOf(list, b, false));
+    const outer = outerShadowLayerOverMapped(b.l, b.t, b.r, b.b, b.radii === null ? zero : b.radii.slice(0, 8), opaque, shadows, dpr, NO_SHADOW_FAULTS, backdropOf(list, b, false), map);
     const inset = insetShadowLayerOver(b.l, b.t, b.r, b.b, b.border, b.radii === null ? zero : b.radii.slice(8, 16), shadows, dpr, NO_SHADOW_FAULTS, backdropOf(list, b, true));
     const [plainOuter, plainInset] = layerOf(shadows);
     return { outer, inset, plainOuter, plainInset, coverage: shadows.flatMap((s) => layerOf([{ ...s, r: 0, g: 0, b: 0, a: 255 }])) };
@@ -122,6 +140,7 @@ function measure(caseId: string, list: readonly Box[], p: import('dragon').Nativ
     record(mp, plain, x, y, under);
   };
   list.forEach((b, index) => {
+    // Chrome paints a transformed box (a stacking context) after its in-flow siblings; the cases keep its shadow clear of them.
     const l = layers[index];
     if (l === null || l === undefined) return;
     const later = list.slice(index + 1);
@@ -152,7 +171,7 @@ function measure(caseId: string, list: readonly Box[], p: import('dragon').Nativ
 
 describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pixel (the measured allowance)', () => {
   it('covers the shadow fixtures and the calibration set in both directions', () => {
-    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'shadow-webkit-alias', 'calib-shadow-blur', 'calib-shadow-colors']);
+    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'shadow-webkit-alias', 'shadow-transform', 'calib-shadow-blur', 'calib-shadow-colors']);
   });
   const all: Measure = { max: 0, pixels: 0, worst: '' };
   const plainAll: Measure = { max: 0, pixels: 0, worst: '' };
@@ -178,6 +197,25 @@ describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pix
         expect(problems).toEqual([]);
       }, 600_000);
     }
+  }
+  const transformed = SHADOW_FIXTURES.find((f) => f.id === 'shadow-transform');
+  if (transformed === undefined) throw new Error('no shadow-transform fixture');
+  for (const c of casesOf(transformed, fixtureInput(transformed))) {
+    it(`${c.id}: the shadow drawn untransformed, and drawn with its blur left unscaled, each differ from Chrome at a clear pixel at every DPR`, () => {
+      const programs = nativePrograms(nativeCompile(transformed, c.environment.direction), c.assignment);
+      if (programs.kind !== 'ready') throw new Error(programs.reason);
+      const p = programs.programs.uikit;
+      const missed: string[] = [];
+      for (const dpr of DPRS) {
+        const list = boxes(p, c.environment.viewport, dpr);
+        for (const plant of ['untransformed', 'blur-unscaled'] as const) {
+          const { over: m } = measure(c.id, list, p, dpr, plant);
+          console.log(`pnt1-shadow ${c.id}@${dpr} plant ${plant}: ${m.pixels} pixels, max channel difference ${m.max}`);
+          if (!(m.max > SHADOW_MEASURED_MAX)) missed.push(`${plant}@${dpr}`);
+        }
+      }
+      expect(missed).toEqual([]);
+    }, 600_000);
   }
   it('the device layers measure 0 (the plain layers, one platform composite, measure 2); the allowance is GATE_CHANNEL_DELTA (decisions.md)', () => {
     console.log(`pnt1-shadow: ${all.pixels} shadow pixels over the shadow fixtures and the calibration set, max channel difference ${all.max}; plain layers ${plainAll.max}`);

@@ -16,6 +16,7 @@ import type { ElementColors, NativeBackend, NativeProgram } from './lower/native
 import { colorChannels, lowerNativeProgram, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
 import type { InteractionPartition } from './analysis/interaction.ts';
+import { pointerFocusVisible } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -635,9 +636,6 @@ export type { InteractionEmit, InteractionScript, InteractionScriptStep } from '
 export { emitInteractionPrograms, INTERACTION_FAULT_FIELDS, INTERACTION_RUNTIME_VERSION, INTERACTION_TABLE_FIELDS, InteractionEmitError, interactionFaultsLit, interactionTablesLit, TRACE_LINE, traceLineOf } from './emit/runtime/interaction.ts';
 import type { InteractionLevelInput as LevelInput } from './lower/interaction-program.ts';
 
-/** HTML text fields (input types whose element may show a virtual keyboard, R8, P6): pointer focus on them is focus-visible. */
-const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number']);
-
 /**
  * The interaction level input of one app assignment for one backend: its partition, each partition state's per-case program, and
  * per element whether its control consumes a touch (input type=range, P7) and whether pointer focus on it is focus-visible (R8).
@@ -669,8 +667,9 @@ export function interactionLevelInput(compiled: object, assignment: Assignment, 
     programs,
     touchConsumesTap: (address) => typeOf(address) === 'range',
     keyboardInput: (address) => {
-      const type = typeOf(address);
-      return type === 'textarea' || (type !== null && TEXT_FIELD_TYPES.has(type));
+      const el = elements.get(address)?.element;
+      return el !== undefined && pointerFocusVisible(el);
     },
   };
 }
+export { LISTED_OPTIONS_ATTRIBUTE } from './forms/select.ts';

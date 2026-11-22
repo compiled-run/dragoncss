@@ -177,6 +177,8 @@ export function resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
 function boxNeedsEnvironment(b: LayoutBox | ControlBox, faults: EngineFaults): boolean {
   // FORM-b: a text field's editor line height is decided by the pass (editorLineHeightIsNormal).
   if (b.kind === 'control' && (b.control.kind === 'text-field' || b.control.kind === 'select-menulist')) return true;
+  // A textarea's own font and line height, which size it, are resolved by the pass like a strut's.
+  if (b.kind === 'control' && b.control.kind === 'text-area') return true;
   if (styleNeedsEnvironment(b.style)) return true;
   if (b.strut !== null && fontNeedsEnvironment(b.strut.font, b.strut.lineHeight, faults)) return true;
   if (b.kind === 'box' && b.marker !== null && fontNeedsEnvironment(b.marker.font, b.marker.lineHeight, faults)) return true;
@@ -269,13 +271,17 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const children = normal ? b.children.map((k) => (k.kind === 'control' && k.control.kind === 'text-editor' ? withNormalLineHeight(k) : k)) : b.children;
     return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
   }
+  if (c.kind === 'text-area') {
+    const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-area', cols: c.cols, rows: c.rows, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
+  }
   if (c.kind === 'select-menulist') {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
     const children = resolveChildren(b.children, env);
     const lh = own.lineHeight.kind === 'normal' ? menuListLineHeight(own.font, env) : null;
     const lined = lh === null ? children : children.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withLineHeight(k, lh) : k));
     const inset = c.arrowWidth > 0 ? lined.map((k) => (k.kind === 'control' && k.control.kind === 'select-inner' ? withInternalPadding(k, c.arrowWidth, style.direction, env) : k)) : lined;
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: c.arrowWidth }, strut: resolveStrutOf(b, env), children: inset };
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: c.arrowWidth, options: c.options.map((o) => resolveText(o, env)) }, strut: resolveStrutOf(b, env), children: inset };
   }
   const control: ControlKind = c.kind === 'range' ? { kind: 'range', defaultInlineSize: zoomTrackLength(c.defaultInlineSize, env.zoom) } : c;
   return { kind: 'control', id: b.id, boxType: b.boxType, style, control, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };

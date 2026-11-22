@@ -5,6 +5,8 @@
 export const INLINE_OUT: readonly string[] = [
   // contain-intrinsic-ahem and containment-layout hold inline-blocks (their contained boxes' stacking contexts are ordered now).
   'contain-intrinsic-ahem', 'contain-intrinsic-ahem-rtl', 'containment-layout', 'containment-layout-rtl',
+  // GRID-controls: the fixtures' inline-grid container sits on its line as an atomic inline.
+  'grid-controls', 'grid-controls-rtl', 'grid-controls-fields',
   // GEN and TABLE (#443): an inline ::before or ::after box, and table-properties' inline boxes.
   'gen-inline-text', 'gen-inline-text-rtl', 'gen-inline-empty', 'gen-cascade', 'gen-cascade-rtl', 'gen-hr-li', 'gen-hr-li-rtl', 'gen-counters-quotes', 'gen-counters-quotes-rtl', 'table-properties', 'table-properties-rtl',
   'inline-mixed-sizes', 'inline-mixed-sizes-rtl', 'inline-empty-boxes', 'inline-empty-boxes-rtl', 'inline-br', 'inline-br-rtl', 'inline-box-boundaries',
