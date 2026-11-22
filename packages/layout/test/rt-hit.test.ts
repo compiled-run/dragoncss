@@ -507,6 +507,20 @@ describe('atomic inlines on their lines', () => {
     expect(t.ids[hitTest(t.nodes, 20 * PX, c1.y + 6 * PX, { ignorePointerEventsNone: false, reversedOrder: true })]).toBe('p');
   });
 
+  it('never places a positioned atomic inline on a line: the engine refuses it first (inline-box-position)', async () => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, layout } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput();
+    const p = input.root.children[0]?.kind === 'box' ? input.root.children[0].children[0] : undefined;
+    if (p?.kind !== 'box') throw new Error('no p');
+    const c1 = p.children[1];
+    if (c1?.kind !== 'box') throw new Error('no c1');
+    const moved = { ...input, root: { ...input.root, children: [{ ...input.root.children[0], children: [{ ...p, children: [p.children[0], { ...c1, style: { ...c1.style, position: 'relative' } }, p.children[2]] }] }] } } as typeof input;
+    const r = layout(moved, ahemMeasurer);
+    expect(r.kind === 'ok' ? 'ok' : r.unsupported.code).toBe('inline-box-position');
+    expect(() => hitTableOf(moved, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(/inline-box-position at c1/);
+  });
+
   it('refuses by name a block of atomic inlines with percentage padding', async () => {
     const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
     const { ahemMeasurer } = await import('../src/index.ts');
