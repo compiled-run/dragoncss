@@ -1051,6 +1051,7 @@
     "controls-range-flex": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-range-flex-rtl": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-text-field": "t1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
+    "controls-text-field-search": "s1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-select-none": "stacking context on s14: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "controls-select-none-rtl": "stacking context on s14: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "controls-select-button": "b1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
