@@ -6,11 +6,13 @@
 // The hit lane refuses the G1a cases by name (rt-hit.ts hitRefusal), and native :hover, :active and :focus rules in a case with a
 // grid container are refused (DRAGON_UNSUPPORTED_SELECTOR, package GRID hit model) until grid hit testing is built.
 import type { FixtureSpec } from '../fixtures.ts';
-import { both, reject } from './define.ts';
+import { both, layout, reject } from './define.ts';
 
 export const GRID: readonly FixtureSpec[] = [
-  // FORM: block buttons, readonly text fields and selects as grid items, in fixed, fr and auto tracks, stretched and aligned.
+  // FORM: block buttons and selects as grid items, in fixed, fr and auto tracks, stretched and aligned; with readonly text fields
+  // in ltr only, since an rtl text field's preserved editor text is refused (FORM-b).
   both('grid-controls'),
+  layout('grid-controls-fields'),
   both('grid-inert-placement'),
   both('grid-inert-templates'),
   // GRID G1a: grid layout in block flow and as a flex item, each exact against Chrome 145 in both directions.

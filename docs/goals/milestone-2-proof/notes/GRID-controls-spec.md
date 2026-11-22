@@ -22,3 +22,4 @@ Who needs it: the Markless notes form. Its `label.field` is `display: grid`, so 
 - The Chrome expected and emitted outputs come from the PR's regen, in their own commit. The receipt is CI green.
 - **Ledger, not fixed here:** `intrinsic.ts` `inlineContribution`, which block and flex intrinsic sizing use, still treats a text field's percentage width as auto, not compressed. That gap predates this change. Next: probe a `width: 100%` text field in a shrink-to-fit block and a flex item against Chrome, and fix it or refuse it by name.
 - **Follow-up:** `<textarea>` as a grid item comes with #575.
+- **Directions:** `grid-controls` (buttons and selects) runs in both directions. The text fields moved to `grid-controls-fields`, ltr only, because Dragon refuses an rtl text field's preserved editor text (#571). Measured locally, both match live Chrome in every direction they run in, at DPR 1 and 3.
