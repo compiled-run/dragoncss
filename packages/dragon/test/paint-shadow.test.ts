@@ -95,7 +95,11 @@ describe('box-shadow: native refusals of what the companion view and the backdro
       [`.b { display: inline; box-shadow: ${SHADOW}; }`, 'span', 'until INL1b'],
       [`.b { position: relative; box-shadow: ${SHADOW}; }`, null, 'position: relative'],
       [`.b { position: absolute; box-shadow: ${SHADOW}; } .a { position: relative; }`, null, 'position: absolute'],
-      [`.b { transform: rotate(10deg); box-shadow: ${SHADOW}; }`, null, 'and a transform'],
+      [`.b { transform: rotate(10deg); box-shadow: ${SHADOW}; }`, null, 'and the transform function rotate(10deg)'],
+      [`.b { transform: scale(0.98) rotate(1deg); box-shadow: ${SHADOW}; }`, null, 'and the transform function rotate(1deg)'],
+      [`.b { rotate: 5deg; box-shadow: ${SHADOW}; }`, null, 'and the transform function'],
+      [`.b { transform: matrix(1, 0, 0, 1, 2, 3); box-shadow: ${SHADOW}; }`, null, 'and the transform function matrix'],
+      [`.b { transform: scale(-1, 1); box-shadow: ${SHADOW}; }`, null, 'a scale that flips or collapses'],
       [`.b { perspective: 100px; box-shadow: ${SHADOW}; }`, null, 'and a perspective'],
       [`.b { will-change: transform; box-shadow: ${SHADOW}; }`, null, 'and will-change: transform'],
       [`.b { will-change: opacity; box-shadow: ${SHADOW}; }`, null, 'and will-change: opacity'],
@@ -123,6 +127,21 @@ describe('box-shadow: native refusals of what the companion view and the backdro
         expect(d.message, group).toContain(`inside a, whose ${says} makes it a compositing group`);
       }
       expectCatalogued(refused);
+    }
+  });
+
+  it('refuses an inset shadow on a scaled box, and a shadow on a scaled box that is also an opacity group, on ios and android', () => {
+    for (const [css, says] of [[`.b { transform: scale(0.98); box-shadow: inset ${SHADOW}, ${SHADOW}; }`, 'an inset box-shadow and a transform'], [`.b { transform: scale(0.98); opacity: 0.5; box-shadow: ${SHADOW}; }`, 'b has a box-shadow']] as const) {
+      const { c } = compileTree(css);
+      const refused = c.diagnostics.filter((d) => d.severity === 'error' && d.message.includes(says));
+      expect(refused.map((d) => d.target).sort(), css).toEqual(['android', 'ios']);
+    }
+  });
+
+  it('compiles an outer shadow on a box with a scale and translate on every target, the companion drawing it at the mapped geometry', () => {
+    for (const t of ['transform: scale(0.98)', 'transform: scale(0.9, 0.95) translate(4px, -2%)', 'translate: 6px 4px', 'scale: 0.9', 'transform: translateX(3px) scaleY(1.1); transform-origin: 0 0']) {
+      const { c } = compileTree(`.b { width: 40px; height: 20px; border-radius: 6px; background-color: white; ${t}; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.05); }`);
+      expect(c.diagnostics.filter((d) => d.severity === 'error'), t).toEqual([]);
     }
   });
 
