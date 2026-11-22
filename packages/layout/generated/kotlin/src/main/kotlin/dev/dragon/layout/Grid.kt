@@ -620,11 +620,11 @@ fun grid_repeaterSize(sizes: JsArray<U_TrackSize_breadth_TrackSize_fitContent_Tr
   var size: Double = units_ZERO
   // ts: packages/layout/src/grid.ts:513
   run {
-    val _a51 = sizes
-    var _i51 = 0
-    while (_i51 < _a51.size) {
-      val t: U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a51[_i51]
-      _i51++
+    val _a52 = sizes
+    var _i52 = 0
+    while (_i52 < _a52.size) {
+      val t: U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a52[_i52]
+      _i52++
       // ts: packages/layout/src/grid.ts:514
       if (grid_definitionIntrinsic(t)) {
         throw JsError("an automatic repetition beside an intrinsic track size; validateLayoutInput rejects this input")
@@ -663,11 +663,11 @@ fun grid_autoRepetitions(template: JsArray<TrackRepeater>, auto: GridAutoRepeat,
   var nonAuto: Double = units_ZERO
   // ts: packages/layout/src/grid.ts:537
   run {
-    val _a52 = template
-    var _i52 = 0
-    while (_i52 < _a52.size) {
-      val r: TrackRepeater = _a52[_i52]
-      _i52++
+    val _a53 = template
+    var _i53 = 0
+    while (_i53 < _a53.size) {
+      val r: TrackRepeater = _a53[_i53]
+      _i53++
       nonAuto = units_add(nonAuto, units_mulInt(grid_repeaterSize(r.sizes, false, gutter, size, engineFaults), r.count))
     }
   }
@@ -708,11 +708,11 @@ fun grid_axisTracks(box: LayoutBox, g: GridContainerStyle, axis: String, availab
   if ((auto == null)) {
     // ts: packages/layout/src/grid.ts:563
     run {
-      val _a53 = template
-      var _i53 = 0
-      while (_i53 < _a53.size) {
-        val r: TrackRepeater = _a53[_i53]
-        _i53++
+      val _a54 = template
+      var _i54 = 0
+      while (_i54 < _a54.size) {
+        val r: TrackRepeater = _a54[_i54]
+        _i54++
         jsPush(repeaters, GridRepeater(r.count, r.sizes, false))
       }
     }
@@ -1033,11 +1033,11 @@ fun grid_frontOverlapping(list: GridPlacedList, c: GridCursor): Double {
   var best: Double = -1.0
   // ts: packages/layout/src/grid.ts:762
   run {
-    val _a54 = c.overlapping
-    var _i54 = 0
-    while (_i54 < _a54.size) {
-      val i: Double = _a54[_i54]
-      _i54++
+    val _a55 = c.overlapping
+    var _i55 = 0
+    while (_i55 < _a55.size) {
+      val i: Double = _a55[_i55]
+      _i55++
       // ts: packages/layout/src/grid.ts:763
       if ((best < 0.0)) {
         best = i
@@ -1152,11 +1152,11 @@ fun grid_moveCursorToFitGridSpan(list: GridPlacedList, c: GridCursor, majorSpan:
         nextMinor = c.current.minor
         // ts: packages/layout/src/grid.ts:829
         run {
-          val _a55 = c.overlapping
-          var _i55 = 0
-          while (_i55 < _a55.size) {
-            val i: Double = _a55[_i55]
-            _i55++
+          val _a56 = c.overlapping
+          var _i56 = 0
+          while (_i56 < _a56.size) {
+            val i: Double = _a56[_i56]
+            _i56++
             val p: GridPlacedItem = jsUnwrap(jsAt(list.items, i))
             // ts: packages/layout/src/grid.ts:831
             if (((nextMinor < p.minorEnd) && (p.minorStart < (nextMinor + minorSpan)))) {
@@ -1257,11 +1257,11 @@ fun grid_runPlacement(g: GridContainerStyle, boxes: JsArray<LayoutBox>, ctx: Ctx
   var rowStartOffset: Double = 0.0
   // ts: packages/layout/src/grid.ts:897
   run {
-    val _a56 = boxes
-    var _i56 = 0
-    while (_i56 < _a56.size) {
-      val b: LayoutBox = _a56[_i56]
-      _i56++
+    val _a57 = boxes
+    var _i57 = 0
+    while (_i57 < _a57.size) {
+      val b: LayoutBox = _a57[_i57]
+      _i57++
       val gi: GridItemStyle? = b.style.gridItem
       // ts: packages/layout/src/grid.ts:899
       if ((gi == null)) {
@@ -1339,11 +1339,11 @@ fun grid_runPlacement(g: GridContainerStyle, boxes: JsArray<LayoutBox>, ctx: Ctx
 })
     // ts: packages/layout/src/grid.ts:940
     run {
-      val _a57 = ordered
-      var _i57 = 0
-      while (_i57 < _a57.size) {
-        val o: GridIndexedPlaced = _a57[_i57]
-        _i57++
+      val _a58 = ordered
+      var _i58 = 0
+      while (_i58 < _a58.size) {
+        val o: GridIndexedPlaced = _a58[_i58]
+        _i58++
         val index: Double = jsLength(list.items)
         o.p.prev = list.tail
         jsPush(list.items, o.p)
@@ -1360,11 +1360,11 @@ fun grid_runPlacement(g: GridContainerStyle, boxes: JsArray<LayoutBox>, ctx: Ctx
     val minorCursors: JsArray<GridMinorCursor> = jsArrayOf<GridMinorCursor>()
     // ts: packages/layout/src/grid.ts:953
     run {
-      val _a58 = locked
-      var _i58 = 0
-      while (_i58 < _a58.size) {
-        val i: Double = _a58[_i58]
-        _i58++
+      val _a59 = locked
+      var _i59 = 0
+      while (_i59 < _a59.size) {
+        val i: Double = _a59[_i59]
+        _i59++
         val major: GridAxisPosition = jsUnwrap(jsAt(majors, i))
         val minor: GridAxisPosition = jsUnwrap(jsAt(minors, i))
         val c: GridCursor = grid_newCursor(list)
@@ -1401,11 +1401,11 @@ fun grid_runPlacement(g: GridContainerStyle, boxes: JsArray<LayoutBox>, ctx: Ctx
     var cursor: GridCursor = grid_newCursor(list)
     // ts: packages/layout/src/grid.ts:975
     run {
-      val _a59 = notLocked
-      var _i59 = 0
-      while (_i59 < _a59.size) {
-        val i: Double = _a59[_i59]
-        _i59++
+      val _a60 = notLocked
+      var _i60 = 0
+      while (_i60 < _a60.size) {
+        val i: Double = _a60[_i60]
+        _i60++
         val major: GridAxisPosition = jsUnwrap(jsAt(majors, i))
         val minor: GridAxisPosition = jsUnwrap(jsAt(minors, i))
         // ts: packages/layout/src/grid.ts:978
@@ -1450,11 +1450,11 @@ fun grid_buildRanges(explicit: JsArray<GridRepeater>, implicitSize: Double, star
   var cur: Double = startOffset
   // ts: packages/layout/src/grid.ts:1020
   run {
-    val _a60 = explicit
-    var _i60 = 0
-    while (_i60 < _a60.size) {
-      val r: GridRepeater = _a60[_i60]
-      _i60++
+    val _a61 = explicit
+    var _i61 = 0
+    while (_i61 < _a61.size) {
+      val r: GridRepeater = _a61[_i61]
+      _i61++
       jsPush(starts, cur)
       cur += grid_repeaterTrackCount(r)
       jsPush(ends, cur)
@@ -1469,11 +1469,11 @@ fun grid_buildRanges(explicit: JsArray<GridRepeater>, implicitSize: Double, star
   }
   // ts: packages/layout/src/grid.ts:1032
   run {
-    val _a61 = spans
-    var _i61 = 0
-    while (_i61 < _a61.size) {
-      val s: GridLines = _a61[_i61]
-      _i61++
+    val _a62 = spans
+    var _i62 = 0
+    while (_i62 < _a62.size) {
+      val s: GridLines = _a62[_i62]
+      _i62++
       jsPush(starts, s.start)
       jsPush(ends, s.end)
     }
@@ -1554,11 +1554,11 @@ fun grid_newCollection(axis: String, explicit: JsArray<GridRepeater>, ranges: Js
   var tracks: Double = 0.0
   // ts: packages/layout/src/grid.ts:1099
   run {
-    val _a62 = ranges
-    var _i62 = 0
-    while (_i62 < _a62.size) {
-      val r: GridRange = _a62[_i62]
-      _i62++
+    val _a63 = ranges
+    var _i63 = 0
+    while (_i63 < _a63.size) {
+      val r: GridRange = _a63[_i63]
+      _i63++
       // ts: packages/layout/src/grid.ts:1099
       if ((!r.collapsed)) {
         tracks += r.trackCount
@@ -1644,11 +1644,11 @@ fun grid_buildSets(grid: GridState, c: GridCollection, available: Double): Unit 
   var all: GridProps = grid_NO_PROPS()
   // ts: packages/layout/src/grid.ts:1157
   run {
-    val _a63 = c.ranges
-    var _i63 = 0
-    while (_i63 < _a63.size) {
-      val range: GridRange = _a63[_i63]
-      _i63++
+    val _a64 = c.ranges
+    var _i64 = 0
+    while (_i64 < _a64.size) {
+      val range: GridRange = _a64[_i64]
+      _i64++
       var props: GridProps = grid_NO_PROPS()
       // ts: packages/layout/src/grid.ts:1159
       if (range.collapsed) {
@@ -1706,11 +1706,11 @@ fun grid_buildSets(grid: GridState, c: GridCollection, available: Double): Unit 
   c.props = all
   // ts: packages/layout/src/grid.ts:1187
   run {
-    val _a64 = c.sets
-    var _i64 = 0
-    while (_i64 < _a64.size) {
-      val s: GridSet = _a64[_i64]
-      _i64++
+    val _a65 = c.sets
+    var _i65 = 0
+    while (_i65 < _a65.size) {
+      val s: GridSet = _a65[_i65]
+      _i65++
       val t: GridTrack = s.track
       // ts: packages/layout/src/grid.ts:1189
       if ((t.fitContent && (t.limit != null))) {
@@ -1756,11 +1756,11 @@ fun grid_totalTrackSize(c: GridCollection): Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/grid.ts:1217
   run {
-    val _a65 = c.sets
-    var _i65 = 0
-    while (_i65 < _a65.size) {
-      val s: GridSet = _a65[_i65]
-      _i65++
+    val _a66 = c.sets
+    var _i66 = 0
+    while (_i66 < _a66.size) {
+      val s: GridSet = _a66[_i66]
+      _i66++
       total = units_add(total, units_add(s.baseSize, units_mulInt(c.gutter, s.trackCount)))
     }
   }
@@ -1774,11 +1774,11 @@ fun grid_cacheInitializedGeometry(c: GridCollection, first: Double): Unit {
   var offset: Double = first
   // ts: packages/layout/src/grid.ts:1225
   run {
-    val _a66 = c.sets
-    var _i66 = 0
-    while (_i66 < _a66.size) {
-      val s: GridSet = _a66[_i66]
-      _i66++
+    val _a67 = c.sets
+    var _i67 = 0
+    while (_i67 < _a67.size) {
+      val s: GridSet = _a67[_i67]
+      _i67++
       // ts: packages/layout/src/grid.ts:1226
       if ((s.growthLimit == grid_INDEFINITE)) {
         jsPush(lastIndefinite, (jsLength(lastIndefinite) - 1.0))
@@ -1801,11 +1801,11 @@ fun grid_finalizeGeometry(c: GridCollection, first: Double, gutter: Double): Uni
   var offset: Double = first
   // ts: packages/layout/src/grid.ts:1242
   run {
-    val _a67 = c.sets
-    var _i67 = 0
-    while (_i67 < _a67.size) {
-      val s: GridSet = _a67[_i67]
-      _i67++
+    val _a68 = c.sets
+    var _i68 = 0
+    while (_i68 < _a68.size) {
+      val s: GridSet = _a68[_i68]
+      _i68++
       offset = units_add(offset, units_add(s.baseSize, units_mulInt(gutter, s.trackCount)))
       jsPush(geometry, GridSetGeometry(offset, s.trackCount))
     }
@@ -2030,11 +2030,11 @@ fun grid_distributeExtraSpace(ctx: Ctx, extraSpace: Double, flexSum: Double, equ
   if ((extra == grid_INDEFINITE)) {
     // ts: packages/layout/src/grid.ts:1395
     run {
-      val _a68 = toGrow
-      var _i68 = 0
-      while (_i68 < _a68.size) {
-        val s: GridSet = _a68[_i68]
-        _i68++
+      val _a69 = toGrow
+      var _i69 = 0
+      while (_i69 < _a69.size) {
+        val s: GridSet = _a69[_i69]
+        _i69++
         s.itemIncurredIncrease = grid_growthPotential(s, type, true)
       }
     }
@@ -2043,11 +2043,11 @@ fun grid_distributeExtraSpace(ctx: Ctx, extraSpace: Double, flexSum: Double, equ
   var growable: Double = 0.0
   // ts: packages/layout/src/grid.ts:1399
   run {
-    val _a69 = toGrow
-    var _i69 = 0
-    while (_i69 < _a69.size) {
-      val s: GridSet = _a69[_i69]
-      _i69++
+    val _a70 = toGrow
+    var _i70 = 0
+    while (_i70 < _a70.size) {
+      val s: GridSet = _a70[_i70]
+      _i70++
       s.itemIncurredIncrease = units_ZERO
       // ts: packages/layout/src/grid.ts:1401
       if ((grid_growthPotential(s, type, true) != units_ZERO)) {
@@ -2113,11 +2113,11 @@ fun grid_distributeExtraSpace(ctx: Ctx, extraSpace: Double, flexSum: Double, equ
   }
   // ts: packages/layout/src/grid.ts:1438
   run {
-    val _a70 = sets
-    var _i70 = 0
-    while (_i70 < _a70.size) {
-      val s: GridSet = _a70[_i70]
-      _i70++
+    val _a71 = sets
+    var _i71 = 0
+    while (_i71 < _a71.size) {
+      val s: GridSet = _a71[_i71]
+      _i71++
       // ts: packages/layout/src/grid.ts:1439
       if ((growable == 0.0)) {
         break
@@ -2135,11 +2135,11 @@ fun grid_distributeExtraSpace(ctx: Ctx, extraSpace: Double, flexSum: Double, equ
     growable = 0.0
     // ts: packages/layout/src/grid.ts:1446
     run {
-      val _a71 = beyondSets
-      var _i71 = 0
-      while (_i71 < _a71.size) {
-        val s: GridSet = _a71[_i71]
-        _i71++
+      val _a72 = beyondSets
+      var _i72 = 0
+      while (_i72 < _a72.size) {
+        val s: GridSet = _a72[_i72]
+        _i72++
         // ts: packages/layout/src/grid.ts:1446
         if ((beyondPotential(s) != units_ZERO)) {
           growable += s.trackCount
@@ -2149,11 +2149,11 @@ fun grid_distributeExtraSpace(ctx: Ctx, extraSpace: Double, flexSum: Double, equ
     ratioSum = growable
     // ts: packages/layout/src/grid.ts:1448
     run {
-      val _a72 = beyondSets
-      var _i72 = 0
-      while (_i72 < _a72.size) {
-        val s: GridSet = _a72[_i72]
-        _i72++
+      val _a73 = beyondSets
+      var _i73 = 0
+      while (_i73 < _a73.size) {
+        val s: GridSet = _a73[_i73]
+        _i73++
         // ts: packages/layout/src/grid.ts:1449
         if ((growable == 0.0)) {
           break
@@ -2205,21 +2205,21 @@ fun grid_itemSpanSize(item: GridItemData, axis: String): Double {
 fun grid_accommodateItems(ctx: Ctx, c: GridCollection, group: JsArray<GridItemData>, type: String, spansFlex: Boolean, contribution: (String, GridItemData) -> Double): Unit {
   // ts: packages/layout/src/grid.ts:1475
   run {
-    val _a73 = c.sets
-    var _i73 = 0
-    while (_i73 < _a73.size) {
-      val s: GridSet = _a73[_i73]
-      _i73++
+    val _a74 = c.sets
+    var _i74 = 0
+    while (_i74 < _a74.size) {
+      val s: GridSet = _a74[_i74]
+      _i74++
       s.plannedIncrease = grid_INDEFINITE
     }
   }
   // ts: packages/layout/src/grid.ts:1476
   run {
-    val _a74 = group
-    var _i74 = 0
-    while (_i74 < _a74.size) {
-      val item: GridItemData = _a74[_i74]
-      _i74++
+    val _a75 = group
+    var _i75 = 0
+    while (_i75 < _a75.size) {
+      val item: GridItemData = _a75[_i75]
+      _i75++
       val toGrow: JsArray<GridSet> = jsArrayOf<GridSet>()
       val beyond: JsArray<GridSet> = jsArrayOf<GridSet>()
       var flexSum: Double = 0.0
@@ -2230,11 +2230,11 @@ fun grid_accommodateItems(ctx: Ctx, c: GridCollection, group: JsArray<GridItemDa
       }
       // ts: packages/layout/src/grid.ts:1482
       run {
-        val _a75 = grid_setsOf(c, grid_itemSets(item, c.axis))
-        var _i75 = 0
-        while (_i75 < _a75.size) {
-          val s: GridSet = _a75[_i75]
-          _i75++
+        val _a76 = grid_setsOf(c, grid_itemSets(item, c.axis))
+        var _i76 = 0
+        while (_i76 < _a76.size) {
+          val s: GridSet = _a76[_i76]
+          _i76++
           spanned = units_add(spanned, grid_affectedSize(s, type))
           // ts: packages/layout/src/grid.ts:1484
           if ((spansFlex && (!grid_isFlex(s.track.max)))) {
@@ -2275,11 +2275,11 @@ fun grid_accommodateItems(ctx: Ctx, c: GridCollection, group: JsArray<GridItemDa
       }
       // ts: packages/layout/src/grid.ts:1497
       run {
-        val _a76 = toGrow
-        var _i76 = 0
-        while (_i76 < _a76.size) {
-          val s: GridSet = _a76[_i76]
-          _i76++
+        val _a77 = toGrow
+        var _i77 = 0
+        while (_i77 < _a77.size) {
+          val s: GridSet = _a77[_i77]
+          _i77++
           s.plannedIncrease = grid_maxLu(s.itemIncurredIncrease, s.plannedIncrease)
         }
       }
@@ -2287,11 +2287,11 @@ fun grid_accommodateItems(ctx: Ctx, c: GridCollection, group: JsArray<GridItemDa
   }
   // ts: packages/layout/src/grid.ts:1499
   run {
-    val _a77 = c.sets
-    var _i77 = 0
-    while (_i77 < _a77.size) {
-      val s: GridSet = _a77[_i77]
-      _i77++
+    val _a78 = c.sets
+    var _i78 = 0
+    while (_i78 < _a78.size) {
+      val s: GridSet = _a78[_i78]
+      _i78++
       grid_growAffectedSize(type, s)
     }
   }
@@ -2400,21 +2400,21 @@ fun grid_maximizeTracks(ctx: Ctx, c: GridCollection, available: GridAvailable, c
     var tracks: Double = 0.0
     // ts: packages/layout/src/grid.ts:1555
     run {
-      val _a78 = c.sets
-      var _i78 = 0
-      while (_i78 < _a78.size) {
-        val s: GridSet = _a78[_i78]
-        _i78++
-        tracks += s.trackCount
-      }
-    }
-    // ts: packages/layout/src/grid.ts:1556
-    run {
       val _a79 = c.sets
       var _i79 = 0
       while (_i79 < _a79.size) {
         val s: GridSet = _a79[_i79]
         _i79++
+        tracks += s.trackCount
+      }
+    }
+    // ts: packages/layout/src/grid.ts:1556
+    run {
+      val _a80 = c.sets
+      var _i80 = 0
+      while (_i80 < _a80.size) {
+        val s: GridSet = _a80[_i80]
+        _i80++
         grid_increaseBaseSize(s, units_add(s.baseSize, units_equalShare(free, s.trackCount, tracks)))
       }
     }
@@ -2426,11 +2426,11 @@ fun grid_maximizeTracks(ctx: Ctx, c: GridCollection, available: GridAvailable, c
   val sets: JsArray<GridSet> = grid_distributeExtraSpace(ctx, free, 0.0, true, "free-space", jsCopy(c.sets), null, false)
   // ts: packages/layout/src/grid.ts:1561
   run {
-    val _a80 = sets
-    var _i80 = 0
-    while (_i80 < _a80.size) {
-      val s: GridSet = _a80[_i80]
-      _i80++
+    val _a81 = sets
+    var _i81 = 0
+    while (_i81 < _a81.size) {
+      val s: GridSet = _a81[_i81]
+      _i81++
       grid_increaseBaseSize(s, units_add(s.baseSize, s.itemIncurredIncrease))
     }
   }
@@ -2447,11 +2447,11 @@ fun grid_maximizeTracks(ctx: Ctx, c: GridCollection, available: GridAvailable, c
     val redone: JsArray<GridSet> = grid_distributeExtraSpace(ctx, room, 0.0, true, "free-space", jsCopy(c.sets), null, false)
     // ts: packages/layout/src/grid.ts:1571
     run {
-      val _a81 = redone
-      var _i81 = 0
-      while (_i81 < _a81.size) {
-        val s: GridSet = _a81[_i81]
-        _i81++
+      val _a82 = redone
+      var _i82 = 0
+      while (_i82 < _a82.size) {
+        val s: GridSet = _a82[_i82]
+        _i82++
         grid_increaseBaseSize(s, units_add(s.baseSize, s.itemIncurredIncrease))
       }
     }
@@ -2483,11 +2483,11 @@ fun grid_stretchAutoTracks(ctx: Ctx, grid: GridState, c: GridCollection, availab
   val sets: JsArray<GridSet> = grid_distributeExtraSpace(ctx, free, 0.0, true, "free-space", toGrow, toGrow, true)
   // ts: packages/layout/src/grid.ts:1584
   run {
-    val _a82 = sets
-    var _i82 = 0
-    while (_i82 < _a82.size) {
-      val s: GridSet = _a82[_i82]
-      _i82++
+    val _a83 = sets
+    var _i83 = 0
+    while (_i83 < _a83.size) {
+      val s: GridSet = _a83[_i83]
+      _i83++
       grid_increaseBaseSize(s, units_add(s.baseSize, s.itemIncurredIncrease))
     }
   }
@@ -2501,11 +2501,11 @@ fun grid_findFrSize(ctx: Ctx, c: GridCollection, sets: JsArray<GridSet>, space: 
   val flexible: JsArray<GridSet> = jsArrayOf<GridSet>()
   // ts: packages/layout/src/grid.ts:1593
   run {
-    val _a83 = sets
-    var _i83 = 0
-    while (_i83 < _a83.size) {
-      val s: GridSet = _a83[_i83]
-      _i83++
+    val _a84 = sets
+    var _i84 = 0
+    while (_i84 < _a84.size) {
+      val s: GridSet = _a84[_i84]
+      _i84++
       // ts: packages/layout/src/grid.ts:1594
       if ((grid_isFlex(s.track.max) && (!units_floatNearlyEqual(grid_setFlex(s), 0.0)))) {
         flexSum = units_flexSumAdd(flexSum, grid_setFlex(s))
@@ -2578,11 +2578,11 @@ fun grid_expandFlexibleTracks(ctx: Ctx, c: GridCollection, items: JsArray<GridIt
   } else {
     // ts: packages/layout/src/grid.ts:1633
     run {
-      val _a84 = items
-      var _i84 = 0
-      while (_i84 < _a84.size) {
-        val item: GridItemData = _a84[_i84]
-        _i84++
+      val _a85 = items
+      var _i85 = 0
+      while (_i85 < _a85.size) {
+        val item: GridItemData = _a85[_i85]
+        _i85++
         // ts: packages/layout/src/grid.ts:1634
         if ((!grid_itemProps(item, c.axis).flexible)) {
           continue
@@ -2597,11 +2597,11 @@ fun grid_expandFlexibleTracks(ctx: Ctx, c: GridCollection, items: JsArray<GridIt
     }
     // ts: packages/layout/src/grid.ts:1639
     run {
-      val _a85 = c.sets
-      var _i85 = 0
-      while (_i85 < _a85.size) {
-        val s: GridSet = _a85[_i85]
-        _i85++
+      val _a86 = c.sets
+      var _i86 = 0
+      while (_i86 < _a86.size) {
+        val s: GridSet = _a86[_i86]
+        _i86++
         // ts: packages/layout/src/grid.ts:1640
         if ((!grid_isFlex(s.track.max))) {
           continue
@@ -2618,11 +2618,11 @@ fun grid_expandFlexibleTracks(ctx: Ctx, c: GridCollection, items: JsArray<GridIt
   var leftover: Double = 0.0
   // ts: packages/layout/src/grid.ts:1647
   run {
-    val _a86 = c.sets
-    var _i86 = 0
-    while (_i86 < _a86.size) {
-      val s: GridSet = _a86[_i86]
-      _i86++
+    val _a87 = c.sets
+    var _i87 = 0
+    while (_i87 < _a87.size) {
+      val s: GridSet = _a87[_i87]
+      _i87++
       // ts: packages/layout/src/grid.ts:1648
       if ((!grid_isFlex(s.track.max))) {
         continue
@@ -2646,11 +2646,11 @@ fun grid_computeUsedTrackSizes(ctx: Ctx, grid: GridState, c: GridCollection, ava
   }
   // ts: packages/layout/src/grid.ts:1661
   run {
-    val _a87 = c.sets
-    var _i87 = 0
-    while (_i87 < _a87.size) {
-      val s: GridSet = _a87[_i87]
-      _i87++
+    val _a88 = c.sets
+    var _i88 = 0
+    while (_i88 < _a88.size) {
+      val s: GridSet = _a88[_i88]
+      _i88++
       // ts: packages/layout/src/grid.ts:1661
       if ((s.growthLimit == grid_INDEFINITE)) {
         s.growthLimit = s.baseSize
@@ -3010,11 +3010,11 @@ fun grid_computeBaselines(ctx: Ctx, grid: GridState, axis: String): Unit {
   grid_resetBaselines(c)
   // ts: packages/layout/src/grid.ts:2022
   run {
-    val _a88 = grid.items
-    var _i88 = 0
-    while (_i88 < _a88.size) {
-      val item: GridItemData = _a88[_i88]
-      _i88++
+    val _a89 = grid.items
+    var _i89 = 0
+    while (_i89 < _a89.size) {
+      val item: GridItemData = _a89[_i89]
+      _i89++
       // ts: packages/layout/src/grid.ts:2023
       if (jsStrEq(grid_baselineKind(item, axis), "none")) {
         continue
@@ -3113,11 +3113,11 @@ fun grid_initializeTrackSizes(ctx: Ctx, grid: GridState, axis: String): Unit {
   grid_buildSets(grid, c, available)
   // ts: packages/layout/src/grid.ts:2106
   run {
-    val _a89 = grid.items
-    var _i89 = 0
-    while (_i89 < _a89.size) {
-      val item: GridItemData = _a89[_i89]
-      _i89++
+    val _a90 = grid.items
+    var _i90 = 0
+    while (_i90 < _a90.size) {
+      val item: GridItemData = _a90[_i90]
+      _i90++
       val span: GridLines = (if (jsStrEq(axis, "columns")) item.column else item.row)
       val sets: GridSetIndices = grid_setIndicesOf(c, span)
       val props: GridProps = grid_spanPropsOf(c, span)
@@ -3158,11 +3158,11 @@ fun grid_completeTrackSizing(ctx: Ctx, grid: GridState, axis: String, constraint
   if ((checkDependent && jsStrEq(axis, "rows"))) {
     // ts: packages/layout/src/grid.ts:2137
     run {
-      val _a90 = grid.items
-      var _i90 = 0
-      while (_i90 < _a90.size) {
-        val item: GridItemData = _a90[_i90]
-        _i90++
+      val _a91 = grid.items
+      var _i91 = 0
+      while (_i91 < _a91.size) {
+        val item: GridItemData = _a91[_i91]
+        _i91++
         // ts: packages/layout/src/grid.ts:2137
         if (item.sizingDependsOnBlockSize) {
           jsPush(dependent, GridDependentItem(item.rowSets, grid_setSpanSize(c, item.rowSets.begin, item.rowSets.end)))
@@ -3174,11 +3174,11 @@ fun grid_completeTrackSizing(ctx: Ctx, grid: GridState, axis: String, constraint
   grid_finalizeGeometry(c, first.start, first.gutter)
   // ts: packages/layout/src/grid.ts:2141
   run {
-    val _a91 = dependent
-    var _i91 = 0
-    while (_i91 < _a91.size) {
-      val d: GridDependentItem = _a91[_i91]
-      _i91++
+    val _a92 = dependent
+    var _i92 = 0
+    while (_i92 < _a92.size) {
+      val d: GridDependentItem = _a92[_i92]
+      _i92++
       // ts: packages/layout/src/grid.ts:2141
       if ((grid_setSpanSize(c, d.sets.begin, d.sets.end) != d.cached)) {
         return true
@@ -3207,11 +3207,11 @@ fun grid_buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   val outOfFlow: JsArray<LayoutBox> = jsArrayOf<LayoutBox>()
   // ts: packages/layout/src/grid.ts:2159
   run {
-    val _a92 = box.children
-    var _i92 = 0
-    while (_i92 < _a92.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a92[_i92]
-      _i92++
+    val _a93 = box.children
+    var _i93 = 0
+    while (_i93 < _a93.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a93[_i93]
+      _i93++
       // ts: packages/layout/src/grid.ts:2160
       if (jsStrEq(k.kind, "control")) {
         unsupported_unsupported("grid-control", (k as ControlBox).id, "css-grid-2 \u00a76", "a form control as a grid item (not yet supported)")
@@ -3320,11 +3320,11 @@ fun grid_placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: Do
   var firstSet: Double = grid_NOT_FOUND
   // ts: packages/layout/src/grid.ts:2281
   run {
-    val _a93 = grid.items
-    var _i93 = 0
-    while (_i93 < _a93.size) {
-      val item: GridItemData = _a93[_i93]
-      _i93++
+    val _a94 = grid.items
+    var _i94 = 0
+    while (_i94 < _a94.size) {
+      val item: GridItemData = _a94[_i94]
+      _i94++
       val inlineOffset: Double = grid_setOffset(grid.columns, item.columnSets.begin)
       val blockOffset: Double = grid_setOffset(grid.rows, item.rowSets.begin)
       val areaInline: Double = grid_areaSize(grid.columns, item.columnSets)

@@ -97,11 +97,11 @@ fun flex_layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult 
   val absolute: JsArray<LayoutBox> = jsArrayOf<LayoutBox>()
   // ts: packages/layout/src/flex.ts:147
   run {
-    val _a34 = box.children
-    var _i34 = 0
-    while (_i34 < _a34.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a34[_i34]
-      _i34++
+    val _a35 = box.children
+    var _i35 = 0
+    while (_i35 < _a35.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a35[_i35]
+      _i35++
       // ts: packages/layout/src/flex.ts:149
       if (((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control")) && !jsStrEq((k as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
         throw JsError(((k as U_InlineBox_LineBreak_TextLeaf).id + " is inline content directly in flex container " + box.id + "; validateLayoutInput rejects this input"))
@@ -140,11 +140,11 @@ fun flex_layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult 
   val lines: JsArray<Flex_Line> = flex_collectLines(items, jsUnwrap(mainInner), mainGap, singleLine)
   // ts: packages/layout/src/flex.ts:176
   run {
-    val _a35 = lines
-    var _i35 = 0
-    while (_i35 < _a35.size) {
-      val line: Flex_Line = _a35[_i35]
-      _i35++
+    val _a36 = lines
+    var _i36 = 0
+    while (_i36 < _a36.size) {
+      val line: Flex_Line = _a36[_i36]
+      _i36++
       flex_resolveFlexibleLengths(line.items, jsUnwrap(mainInner), mainGap)
     }
   }
@@ -152,11 +152,11 @@ fun flex_layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult 
   val hypoCross: JsObjectMap<Flex_Item, Double> = JsObjectMap<Flex_Item, Double>()
   // ts: packages/layout/src/flex.ts:181
   run {
-    val _a36 = items
-    var _i36 = 0
-    while (_i36 < _a36.size) {
-      val item: Flex_Item = _a36[_i36]
-      _i36++
+    val _a37 = items
+    var _i37 = 0
+    while (_i37 < _a37.size) {
+      val item: Flex_Item = _a37[_i37]
+      _i37++
       val leaf: U_ControlBox_LayoutBox_ReplacedLeaf = item.box
       // ts: packages/layout/src/flex.ts:183
       if (jsStrEq(leaf.kind, "replaced")) {
@@ -196,11 +196,11 @@ fun flex_layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult 
   }
   // ts: packages/layout/src/flex.ts:219
   run {
-    val _a37 = lines
-    var _i37 = 0
-    while (_i37 < _a37.size) {
-      val line: Flex_Line = _a37[_i37]
-      _i37++
+    val _a38 = lines
+    var _i38 = 0
+    while (_i38 < _a38.size) {
+      val line: Flex_Line = _a38[_i38]
+      _i38++
       // ts: packages/layout/src/flex.ts:220
       if ((singleLine && (crossInner != null))) {
         line.cross = jsUnwrap(crossInner)
@@ -211,11 +211,11 @@ fun flex_layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult 
       var toEnd: Double = units_ZERO
       // ts: packages/layout/src/flex.ts:227
       run {
-        val _a38 = line.items
-        var _i38 = 0
-        while (_i38 < _a38.size) {
-          val i: Flex_Item = _a38[_i38]
-          _i38++
+        val _a39 = line.items
+        var _i39 = 0
+        while (_i39 < _a39.size) {
+          val i: Flex_Item = _a39[_i39]
+          _i39++
           // ts: packages/layout/src/flex.ts:228
           if ((isRow && participates(i))) {
             val b: ItemBaseline = baselineOf(i)
@@ -258,11 +258,11 @@ fun flex_layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult 
     var autoCount: Double = 0.0
     // ts: packages/layout/src/flex.ts:263
     run {
-      val _a39 = flowItems
-      var _i39 = 0
-      while (_i39 < _a39.size) {
-        val i: Flex_Item = _a39[_i39]
-        _i39++
+      val _a40 = flowItems
+      var _i40 = 0
+      while (_i40 < _a40.size) {
+        val i: Flex_Item = _a40[_i40]
+        _i40++
         autoCount += ((if (i.autoMainStart) 1.0 else 0.0) + (if (i.autoMainEnd) 1.0 else 0.0))
       }
     }
@@ -283,11 +283,11 @@ fun flex_layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): FlexResult 
     var groupCount: Double = 0.0
     // ts: packages/layout/src/flex.ts:276
     run {
-      val _a40 = flowItems
-      var _i40 = 0
-      while (_i40 < _a40.size) {
-        val i: Flex_Item = _a40[_i40]
-        _i40++
+      val _a41 = flowItems
+      var _i41 = 0
+      while (_i41 < _a41.size) {
+        val i: Flex_Item = _a41[_i41]
+        _i41++
         // ts: packages/layout/src/flex.ts:277
         if ((!participates(i))) {
           continue
@@ -596,11 +596,11 @@ fun flex_columnIntrinsicBlockSize(ctx: Ctx, box: U_ControlBox_LayoutBox, cbInlin
   val columnFlex: Boolean = (jsStrEq(box.style.display, "flex") && (jsStrEq(box.style.flexDirection, "column") || jsStrEq(box.style.flexDirection, "column-reverse")))
   // ts: packages/layout/src/flex.ts:621
   run {
-    val _a41 = box.children
-    var _i41 = 0
-    while (_i41 < _a41.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a41[_i41]
-      _i41++
+    val _a42 = box.children
+    var _i42 = 0
+    while (_i42 < _a42.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a42[_i42]
+      _i42++
       // ts: packages/layout/src/flex.ts:622
       if ((((jsStrEq(k.kind, "text") || jsStrEq((k as U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf).kind, "inline")) || jsStrEq((k as U_ControlBox_LayoutBox_LineBreak_ReplacedLeaf).kind, "br")) || position_isOutOfFlow(ctx, (k as U_ControlBox_LayoutBox_ReplacedLeaf)))) {
         continue
@@ -674,11 +674,11 @@ fun flex_collectLines(items: JsArray<Flex_Item>, mainInner: Double, gap: Double,
   var used: Double = units_ZERO
   // ts: packages/layout/src/flex.ts:689
   run {
-    val _a42 = items
-    var _i42 = 0
-    while (_i42 < _a42.size) {
-      val item: Flex_Item = _a42[_i42]
-      _i42++
+    val _a43 = items
+    var _i43 = 0
+    while (_i43 < _a43.size) {
+      val item: Flex_Item = _a43[_i43]
+      _i43++
       val outer: Double = flex_outerHypothetical(item)
       // ts: packages/layout/src/flex.ts:691
       if (((jsLength(current) > 0.0) && (units_add(used, outer) > mainInner))) {
@@ -708,11 +708,11 @@ fun flex_resolveFlexibleLengths(items: JsArray<Flex_Item>, mainInner: Double, ga
   var totalWeighted: Double = units_FACTOR_ZERO
   // ts: packages/layout/src/flex.ts:712
   run {
-    val _a43 = items
-    var _i43 = 0
-    while (_i43 < _a43.size) {
-      val i: Flex_Item = _a43[_i43]
-      _i43++
+    val _a44 = items
+    var _i44 = 0
+    while (_i44 < _a44.size) {
+      val i: Flex_Item = _a44[_i44]
+      _i44++
       i.frozen = false
       totalGrow = units_factorAdd(totalGrow, i.grow)
       totalShrink = units_factorAdd(totalShrink, i.shrink)
@@ -724,11 +724,11 @@ fun flex_resolveFlexibleLengths(items: JsArray<Flex_Item>, mainInner: Double, ga
   fun freeze(list: JsArray<Flex_Item>): Unit {
     // ts: packages/layout/src/flex.ts:720
     run {
-      val _a44 = list
-      var _i44 = 0
-      while (_i44 < _a44.size) {
-        val i: Flex_Item = _a44[_i44]
-        _i44++
+      val _a45 = list
+      var _i45 = 0
+      while (_i45 < _a45.size) {
+        val i: Flex_Item = _a45[_i45]
+        _i45++
         remaining = units_sub(remaining, units_sub(i.target, i.base))
         totalGrow = units_factorSubClampZero(totalGrow, i.grow)
         totalShrink = units_factorSubClampZero(totalShrink, i.shrink)
@@ -740,11 +740,11 @@ fun flex_resolveFlexibleLengths(items: JsArray<Flex_Item>, mainInner: Double, ga
   val inflexible: JsArray<Flex_Item> = jsArrayOf<Flex_Item>()
   // ts: packages/layout/src/flex.ts:730
   run {
-    val _a45 = items
-    var _i45 = 0
-    while (_i45 < _a45.size) {
-      val i: Flex_Item = _a45[_i45]
-      _i45++
+    val _a46 = items
+    var _i46 = 0
+    while (_i46 < _a46.size) {
+      val i: Flex_Item = _a46[_i46]
+      _i46++
       val factor: Double = (if (growing) i.grow else i.shrink)
       // ts: packages/layout/src/flex.ts:732
       if ((((factor == 0.0) || (growing && (i.base > i.hypothetical))) || ((!growing) && (i.base < i.hypothetical)))) {
@@ -957,11 +957,11 @@ fun flex_alignContent(box: LayoutBox, axes: Axes, lines: JsArray<Flex_Line>, fre
     val extra: Double = units_divInt(free, n)
     // ts: packages/layout/src/flex.ts:881
     run {
-      val _a46 = flowLines
-      var _i46 = 0
-      while (_i46 < _a46.size) {
-        val l: Flex_Line = _a46[_i46]
-        _i46++
+      val _a47 = flowLines
+      var _i47 = 0
+      while (_i47 < _a47.size) {
+        val l: Flex_Line = _a47[_i47]
+        _i47++
         l.cross = units_add(l.cross, extra)
       }
     }
