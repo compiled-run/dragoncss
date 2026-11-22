@@ -506,13 +506,15 @@ describe('interaction states: hit model (R13)', () => {
   });
 
   // GRID G-HIT: rt-hit.ts hit-tests grid items in order-modified document order, which the host hit lane proves against Chrome.
-  it('compiles an interaction rule on native in a case with a grid container, as on web', () => {
+  it('compiles an interaction rule on native in a case with a block grid container, as on web, and refuses one with an inline-grid', () => {
     const grid = BODY + '.g { display: grid; grid-template-columns: 50px 50px; } .i { height: 10px; } .k:hover { background-color: #0c0; }';
     const gbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'g', ['g'], [div(r, 'i1', ['i']), div(r, 'i2', ['i'])]), div(r, 'k', ['k'])];
     expect(otherErrors(compile({}, grid, gbody, TARGETS, 'derive').diagnostics)).toEqual([]);
     expect(otherErrors(compile({}, grid, gbody, { web: {} }, 'derive').diagnostics)).toEqual([]);
     const root = internalRecord(compile({}, grid, gbody, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
     expect(hitUnmodelledFact(root, referenceDataset())).toBeNull();
+    // An inline-grid is still an atomic inline the hit table refuses (rt-hit.ts atomicRefusal), so it stays refused here.
+    expect(otherErrors(compile({}, grid.replace('display: grid;', 'display: inline-grid;'), gbody, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the inline-grid box g, which is not built yet (package G-INL hit model)`));
   });
 
   it('catches the plant hitUnmodelledNotRefused', () => {
