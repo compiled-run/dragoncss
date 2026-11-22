@@ -1,10 +1,8 @@
-// css-sizing-4 §5.1 aspect-ratio (SIZE-ar): the parse Chrome 145 applies, the computed and emitted value, the raw layout ratio
-// the lowering gives the engine (equal to the engine's own float conversion), and the build-time refusals.
+// css-sizing-4 §5.1 aspect-ratio (SIZE-ar, ARAT): the parse Chrome 145 applies, the computed and emitted value, the authored parts
+// the lowering gives the engine (which converts them as Blink does), and the build-time refusals.
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
-import { layoutRatio } from '../../layout/src/units.ts';
 import { createProjectWith, iosLayoutProjection, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
-import { exactLayoutRatio } from '../src/css/values.ts';
 import { div, inputFor } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -68,38 +66,27 @@ describe('aspect-ratio parsing (Chrome 145, probed in the pinned Chrome)', () =>
   });
 });
 
-describe('the layout ratio the lowering gives the engine', () => {
-  it('is Blink raw LayoutUnits: exact parts kept, auto && <ratio> as auto-ratio, a degenerate ratio as auto', () => {
-    expect(lowered('16 / 9')).toEqual({ kind: 'ratio', width: 1024, height: 576 });
-    expect(lowered('auto 16 / 9')).toEqual({ kind: 'auto-ratio', width: 1024, height: 576 });
-    expect(lowered('1')).toEqual({ kind: 'ratio', width: 64, height: 64 });
-    expect(lowered('1.5')).toEqual({ kind: 'ratio', width: 96, height: 64 });
+describe('the ratio the lowering gives the engine', () => {
+  it('is the authored parts: auto && <ratio> as auto-ratio, a ratio with a zero part as auto', () => {
+    expect(lowered('16 / 9')).toEqual({ kind: 'ratio', width: 16, height: 9 });
+    expect(lowered('auto 16 / 9')).toEqual({ kind: 'auto-ratio', width: 16, height: 9 });
+    expect(lowered('1')).toEqual({ kind: 'ratio', width: 1, height: 1 });
+    expect(lowered('1.5')).toEqual({ kind: 'ratio', width: 1.5, height: 1 });
+    expect(lowered('3 / 3.4')).toEqual({ kind: 'ratio', width: 3, height: 3.4 });
+    expect(lowered('1.1875626880641925')).toEqual({ kind: 'ratio', width: 1.1875626880641925, height: 1 });
+    expect(lowered('0.7 / 0.7')).toEqual({ kind: 'ratio', width: 0.7, height: 0.7 });
+    // The engine zeroes a tiny part (gfx::SizeF); the compiler leaves that to it and lowers only a zero part as auto.
+    expect(lowered('1 / 0.0000005')).toEqual({ kind: 'ratio', width: 1, height: 0.0000005 });
     expect(lowered('0')).toEqual({ kind: 'auto' });
     expect(lowered('1 / 0')).toEqual({ kind: 'auto' });
     expect(lowered('auto')).toEqual({ kind: 'auto' });
   });
-  it('equals the engine float conversion (units.ts layoutRatio) wherever the compiler gives one', () => {
-    let compared = 0;
-    for (let a = 0; a <= 40; a++) {
-      for (let b = 0; b <= 40; b++) {
-        for (const [w, h] of [[a, b], [a / 64, b], [a / 4, b / 8], [a * 1000, b * 997], [a / 10, a / 10]] as const) {
-          const mine = exactLayoutRatio(w, h);
-          if (mine === null) continue;
-          compared++;
-          expect(mine === 'degenerate' ? null : mine, `${w} / ${h}`).toEqual(layoutRatio(w, h));
-        }
-      }
+  it('refuses no ratio for being fractional, tiny or large, on any target', () => {
+    for (const v of ['0.7', '3 / 3.4', '1 / 3.14159265358979', '1 / 0.0000005', '1000000 / 1.7', '1e40 / 1']) {
+      const c = compile(`.a { width: 100px; aspect-ratio: ${v}; }`);
+      expect(c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE'), v).toEqual([]);
+      expect(c.outputs.web.kind, v).toBe('ready');
     }
-    expect(compared).toBeGreaterThan(8000);
-  });
-  it('refuses a ratio that needs Blink float continued fraction, at the declaration, on every target', () => {
-    const c = compile('.a { aspect-ratio: 0.7; }');
-    const d = c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(d.map((x) => x.target).sort()).toEqual(['ios', 'web']);
-    expect(d[0]?.message).toMatch(/^aspect-ratio: 0.7 \/ 1 on a is unsupported: Chrome converts a ratio whose parts are not whole multiples of 1\/64/);
-    expect(c.outputs.web.kind).toBe('blocked');
-    // Equal parts are 1 / 1 without float arithmetic.
-    expect(lowered('0.7 / 0.7')).toEqual({ kind: 'ratio', width: 64, height: 64 });
   });
   it('refuses a percentage height, min-height or max-height beside a ratio, and allows it beside a degenerate one', () => {
     for (const [p, v] of [['height', '50%'], ['min-height', '10%'], ['max-height', 'calc(50% - 1px)']]) {
@@ -109,6 +96,8 @@ describe('the layout ratio the lowering gives the engine', () => {
       expect(d[0]?.message, p).toMatch(new RegExp(`^${p}: .* beside aspect-ratio: 2 / 1 on a is unsupported`));
     }
     expect(compile('.a { aspect-ratio: 0 / 1; height: 50%; }').diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
+    // A fractional ratio, and a tiny part Chrome takes as auto: refused all the same, since the compiler does not decide degeneracy.
+    for (const ratio of ['3 / 3.4', '1 / 0.0000005']) expect(compile(`.a { aspect-ratio: ${ratio}; height: 50%; }`).diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE').map((x) => x.target).sort(), ratio).toEqual(['ios', 'web']);
     expect(compile('.a { aspect-ratio: 2; height: 50px; }').diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
   });
 });

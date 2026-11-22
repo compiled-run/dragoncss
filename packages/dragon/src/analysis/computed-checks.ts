@@ -8,7 +8,7 @@ import { fontLoweringGap, viewportFontSize } from '../lower/ios-layout.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
-import { exactLayoutRatio, featureOf, isMathValue } from '../css/values.ts';
+import { featureOf, isMathValue } from '../css/values.ts';
 import { isPercentMath, mathContextFor, parseMath } from '../css/math.ts';
 import type { CssValue, FamilyKeyContext } from '../css/values.ts';
 import type { SupportProfile } from '../profiles/types.ts';
@@ -1135,9 +1135,8 @@ function refuseSizeKeywords(el: ResolvedElement, where: string, manual: string, 
   }
 }
 
-// css-sizing-4 §5.1: the engine takes aspect-ratio as Blink's raw layout ratio. A ratio whose parts are not whole 64ths needs
-// Blink's float continued fraction, which the compiler does not run, and a percentage block size beside a ratio has no
-// percentage basis in the engine (packages/layout/src/validate.ts); both are refused on every target at the declaration.
+// css-sizing-4 §5.1: a percentage block size beside a ratio has no percentage basis in the engine (packages/layout/src/validate.ts),
+// so it is refused on every target at the declaration beside a ratio whose parts are both non-zero, tiny parts included.
 function checkAspectRatio(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const ratio = el.props.get('aspect-ratio') as ResolvedValue;
   if (ratio.value.kind !== 'ratio') return;
@@ -1152,13 +1151,8 @@ function checkAspectRatio(el: ResolvedElement, layoutParent: ResolvedElement | n
   };
   const shown = valueToString(ratio.value);
   if (!isReplacedTag(el.element.tag)) refuseSizeKeywords(el, `beside aspect-ratio: ${shown}`, `Use a length or auto beside aspect-ratio on ${el.element.address}.`, targets, diagnostics, reported);
-  const raw = exactLayoutRatio(ratio.value.width, ratio.value.height);
-  if (raw === null) {
-    refuse(ratio, 'inexact', `aspect-ratio: ${shown} on ${el.element.address} is unsupported: Chrome converts a ratio whose parts are not whole multiples of 1/64 with a float continued fraction that Dragon does not compute at build time`, 'Write the ratio with whole numbers, for example 16 / 9, or parts that are multiples of 1/64.');
-    return;
-  }
   // A replaced box resolves a percentage block size against its basis itself (packages/layout/src/replaced.ts).
-  if (raw === 'degenerate' || isReplacedTag(el.element.tag)) return;
+  if (ratio.value.width === 0 || ratio.value.height === 0 || isReplacedTag(el.element.tag)) return;
   if (layoutParent !== null) refuseGridRatioItem(el, layoutParent, parentDisplay, shown, (v, what, message, manual) => refuse(v, what, message, manual, targets.filter((t) => t !== 'web')));
   for (const p of RATIO_BLOCK_SIZES) {
     const v = el.props.get(p) as ResolvedValue;

@@ -132,6 +132,7 @@ import {
   LU_PER_PX,
   fromDouble,
   fromFloatRound,
+  layoutRatio,
   fromPxCeil,
   fromPxRound,
   fontMetricPx,
@@ -1278,6 +1279,7 @@ const FAULT_KEYS: readonly string[] = [
   'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
+  'ratioNoTrivialClamp', 'ratioDoubleFraction', 'ratioTruncatedParts', 'ratioEightSteps', 'ratioExactSpec', 'ratioRoundedMulDiv',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1370,6 +1372,12 @@ function decodeFaults(v: JsonValue): EngineFaults {
     containerJoinsFlow: b('containerJoinsFlow'),
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
+    ratioNoTrivialClamp: b('ratioNoTrivialClamp'),
+    ratioDoubleFraction: b('ratioDoubleFraction'),
+    ratioTruncatedParts: b('ratioTruncatedParts'),
+    ratioEightSteps: b('ratioEightSteps'),
+    ratioExactSpec: b('ratioExactSpec'),
+    ratioRoundedMulDiv: b('ratioRoundedMulDiv'),
   };
 }
 
@@ -1729,6 +1737,14 @@ function unitsResult(name: string, a: readonly JsonValue[]): number {
       return doubleMaxStep(arg(a, 1), arg(a, 2));
     case 'calcToLu':
       return calcToLu(arg(a, 1), arg(a, 2) !== 0);
+    case 'layoutRatioWidth': {
+      const lr = layoutRatio(arg(a, 1), arg(a, 2));
+      return lr === null ? -1 : lr.width;
+    }
+    case 'layoutRatioHeight': {
+      const lr = layoutRatio(arg(a, 1), arg(a, 2));
+      return lr === null ? -1 : lr.height;
+    }
     case 'distributedOffset': {
       const v = a[1];
       if (v === undefined) return fail('missing mode');

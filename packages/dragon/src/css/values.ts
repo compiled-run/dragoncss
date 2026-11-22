@@ -409,23 +409,6 @@ export function positionOffsetText(o: PositionOffset): string {
   return `${o.value}${o.unit}`;
 }
 
-/** Raw LayoutUnit parts at most 2^24, so a part that is a whole number of 64ths is also exact as the float Blink stores. */
-const MAX_EXACT_RATIO_RAW = 16777216;
-
-/**
- * The layout ratio of a <ratio> that needs no float arithmetic (Blink LayoutRatioFromSizeF): a part of zero makes it degenerate
- * (auto for layout); parts that are whole 64ths are kept as raw LayoutUnits; equal parts are 1 / 1. null for any other ratio,
- * which Chrome converts by a float continued fraction (packages/layout/src/units.ts layoutRatio) that the compiler does not run.
- */
-export function exactLayoutRatio(width: number, height: number): { readonly width: number; readonly height: number } | 'degenerate' | null {
-  if (width === 0 || height === 0) return 'degenerate';
-  const rw = width * 64;
-  const rh = height * 64;
-  if (Number.isInteger(rw) && Number.isInteger(rh) && rw <= MAX_EXACT_RATIO_RAW && rh <= MAX_EXACT_RATIO_RAW) return { width: rw, height: rh };
-  if (width === height) return { width: 64, height: 64 };
-  return null;
-}
-
 /** What a font-family feature key is resolved against: the project's font map and the families its @font-face rules declare. */
 export type FamilyKeyContext = { readonly map: FontMap | null; readonly declared: ReadonlySet<string> };
 

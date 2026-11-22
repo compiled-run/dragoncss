@@ -22,7 +22,19 @@ export const CORPUS_SPEC = {
 export const UNITS_FUNCTIONS = [
   'fromCssPx', 'fromDouble', 'fromPxRound', 'fromPxCeil', 'snapBorderWidth', 'percentOf', 'roundFontMetricToWholePx', 'platformFontSize',
   'textAdvance', 'lineHeightFromNumber', 'growShare', 'shrinkShare', 'fractionalFreeSpace', 'divInt', 'cumulativeShareRounded', 'distributedOffset',
+  'layoutRatioWidth', 'layoutRatioHeight',
 ] as const;
+
+const TRIVIAL = 2 ** -20;
+/**
+ * ARAT: authored aspect-ratio parts for units.ts layoutRatio: gfx::SizeF's 2^-20 and the doubles and floats either side of it (the
+ * tie halfway to the next float rounds to even, so to 2^-20), the probed fractions, and whole, huge and tiny parts.
+ */
+export const RATIO_PARTS: readonly number[] = [
+  TRIVIAL, TRIVIAL * (1 + 2 ** -52), TRIVIAL * (1 - 2 ** -53), TRIVIAL * (1 + 2 ** -23), TRIVIAL * (1 - 2 ** -24), TRIVIAL * (1 + 2 ** -24), TRIVIAL * (1 + 3 * 2 ** -25),
+  0.00000095367432, 0.0000009536744, 0.0000005, 0.000001, 0, 1, 16, 9, 3, 3.4, 9.1, 0.7, 1.3, 1.1875626880641925, 3.14159265358979, 1.618033988749895,
+  1.23456789, 2.718281828, 1.414213562, 0.3333333333, 1.0000005, 1000000, 1.7, 1e40, 33554432, 0.015625,
+];
 
 /** A small deterministic generator (mulberry32). */
 export class Rng {
@@ -107,6 +119,11 @@ function unitsArgs(name: (typeof UNITS_FUNCTIONS)[number], r: Rng): (number | st
       return [r.chance(0.02) ? -1 : pos(), r.int(12), r.chance(0.02) ? 0 : small()];
     case 'distributedOffset':
       return [r.pick(['space-between', 'space-around', 'space-evenly']), pos(), small(), r.int(12)];
+    case 'layoutRatioWidth':
+    case 'layoutRatioHeight': {
+      const part = (): number => (r.chance(0.6) ? r.pick(RATIO_PARTS) : r.chance(0.5) ? r.next() * 10 : Math.abs(px(r)));
+      return [part(), part()];
+    }
   }
 }
 
@@ -238,10 +255,10 @@ function randomStyle(r: Rng, flexParent: boolean, depth: number): LayoutStyle {
   s.rowGap = gap();
   s.columnGap = gap();
   s.textAlign = r.chance(0.03) ? 'justify' : r.pick(['start', 'start', 'end', 'left', 'right', 'center']);
-  // SIZE-ar: a layout ratio (raw LayoutUnits) where no block length holds a percentage, which the validator refuses beside one.
+  // SIZE-ar, ARAT: authored ratio parts where no block length holds a percentage, which the validator refuses beside one.
   const percentBlock = s.height.kind === 'percent' || s.minHeight.kind === 'percent' || s.maxHeight.kind === 'percent';
   if (!percentBlock && r.chance(0.1)) {
-    const parts = r.pick([[1024, 576], [64, 64], [7, 10], [1, 1234], [2111, 171], [128, 64], [64, 192]]);
+    const parts = r.pick([[16, 9], [1, 1], [0.7, 1], [3, 3.4], [1.1875626880641925, 1], [1, 3.14159265358979], [1.618033988749895, 1], [1, TRIVIAL], [1, 0.0000005], [1000000, 1.7], [1.3, 1.3], [1, 0.0000009536744]]);
     s.aspectRatio = { kind: r.chance(0.25) ? 'auto-ratio' : 'ratio', width: parts[0] as number, height: parts[1] as number };
   }
   return s;

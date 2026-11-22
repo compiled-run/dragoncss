@@ -10,11 +10,17 @@
 // - The calc goldens (packages/layout/vectors/calc) have no generator (T009 kept them by hand), so `--migrate-calc-goldens`
 //   inserts the neutral key after textAlign in each of their LayoutStyle objects; the check then proves the result additive.
 // `--plant <name>` alters one file in memory before the check, which must then fail (PLANTS below).
-// Run with: node scripts/check-aspect-ratio-migration.ts <base-commit> [--migrate-calc-goldens] [--plant <name>]
+// `--parts` checks the ARAT migration instead (docs/decisions.md, the exception to the migration rule): aspectRatio's width and
+// height change in place from raw LayoutUnits to the authored parts. Each changed vector differs from the base only in those
+// parts, and the engine converts the new parts to the old raw pair (layoutRatio(new) equals old, so equal parts such as 1.3 / 1.3
+// pass as 64 / 64); with the old pairs put back the file is byte-identical. Captures and emitted CSS (outside the compilation
+// digest) are byte-identical, and every added file belongs to a fixture added since the base. `--plant parts-*` applies to it.
+// Run with: node scripts/check-aspect-ratio-migration.ts <base-commit> [--migrate-calc-goldens | --parts] [--plant <name>]
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { layoutRatio } from '../packages/layout/src/units.ts';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const base = process.argv[2];
@@ -118,14 +124,67 @@ function stripEmitted(after: string, before: string, path: string): { text: stri
   return { text: kept.join('\n'), removed };
 }
 
-const MIGRATIONS: readonly Migration[] = [
+/**
+ * ARAT: restores each changed ratio's old raw pair after checking that the new parts convert to it; every other byte must match.
+ * A ratio that was absent or of another kind at the base is not a migration.
+ */
+function stripParts(after: string, before: string, path: string): { text: string; removed: number } {
+  const was = JSON.parse(before) as unknown;
+  const now = JSON.parse(after) as unknown;
+  let n = 0;
+  const walk = (a: unknown, b: unknown, at: string): unknown => {
+    if (Array.isArray(a)) return Array.isArray(b) && a.length === b.length ? a.map((x, i) => walk(x, b[i], `${at}[${i}]`)) : a;
+    if (!isRecord(a) || !isRecord(b)) return a;
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(a)) {
+      const old = b[k];
+      if (k === 'aspectRatio' && isLayoutStyle(a) && isRecord(x) && isRecord(old) && x['kind'] !== 'auto' && x['kind'] === old['kind'] && (x['width'] !== old['width'] || x['height'] !== old['height'])) {
+        const w = x['width'];
+        const h = x['height'];
+        const converted = typeof w === 'number' && typeof h === 'number' ? layoutRatio(w, h) : null;
+        if (converted === null || converted.width !== old['width'] || converted.height !== old['height']) throw new Error(`${path} ${at}.aspectRatio: ${JSON.stringify(x)} converts to ${JSON.stringify(converted)}, not the old raw pair ${JSON.stringify(old)}`);
+        n++;
+        out[k] = old;
+      } else out[k] = walk(x, old, `${at}.${k}`);
+    }
+    return out;
+  };
+  return { text: `${JSON.stringify(walk(now, was, '$'), null, indentOf(before))}\n`, removed: n };
+}
+
+/** Byte-identical, but for the emitted CSS header's compilation digest, which changes with every compiler change. */
+function sameButDigest(after: string, before: string, path: string): { text: string; removed: number } {
+  const lines = after.split('\n');
+  const was = before.split('\n');
+  if (!HEADER.test(lines[0] ?? '') || !HEADER.test(was[0] ?? '')) throw new Error(`${path}: the header is not the generated-file header`);
+  return { text: [was[0] as string, ...lines.slice(1)].join('\n'), removed: 0 };
+}
+
+const unchanged: Migration['strip'] = (after) => ({ text: after, removed: 0 });
+
+const PARTS_MIGRATIONS: readonly Migration[] = [
+  { name: 'aspectRatio parts in place (ARAT)', roots: ['packages/layout/vectors', 'packages/layout/break-vectors'], extension: '.json', strip: stripParts },
+  { name: 'captures unchanged (ARAT)', roots: ['packages/parity/expected', 'packages/parity/expected-dpr'], extension: '.json', strip: unchanged },
+  { name: 'emitted CSS unchanged (ARAT)', roots: ['packages/parity/emitted'], extension: '.css', strip: sameButDigest },
+];
+
+const T050_MIGRATIONS: readonly Migration[] = [
   { name: 'aspectRatio engine field (T050)', roots: ['packages/layout/vectors', 'packages/layout/break-vectors'], extension: '.json', strip: jsonStrip(isLayoutStyle, 'aspectRatio', autoRatio) },
   { name: 'aspect-ratio computed value (T050)', roots: ['packages/parity/expected', 'packages/parity/expected-dpr'], extension: '.json', strip: jsonStrip(isComputed, 'aspect-ratio', (x) => x === 'auto') },
   { name: 'aspect-ratio emitted declaration (T050)', roots: ['packages/parity/emitted'], extension: '.css', strip: stripEmitted },
 ];
 
 /** Planted faults, each of which the check must catch: [migration index, file suffix, how the text changes]. */
-const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) => string] } = {
+const PARTS = process.argv.includes('--parts');
+const MIGRATIONS: readonly Migration[] = PARTS ? PARTS_MIGRATIONS : T050_MIGRATIONS;
+
+const PLANTS: { readonly [name: string]: readonly [number, string, (t: string) => string] } = PARTS ? {
+  'parts-not-converting': [0, 'layout/vectors/sizing-ratio-block.json', (t) => t.replace(/("kind": "ratio",\n\s*"width": )16,/, '$117,')],
+  'parts-output': [0, 'layout/vectors/sizing-ratio-block.json', (t) => t.replace(/"height": (\d+)/, (_m, k: string) => `"height": ${Number(k) + 1}`)],
+  'parts-capture': [1, 'darwin-arm64/sizing-ratio-block.web.json', (t) => t.replace(/"height": (\d+)/, (_m, k: string) => `"height": ${Number(k) + 1}`)],
+  'parts-emitted': [2, 'emitted/sizing-ratio-block.css', (t) => t.replace('  width: auto;', '  width: 10px;')],
+  'parts-stray-file': [1, '', (t) => t],
+} : {
   'vector-output': [0, 'layout/vectors/dpr-2/margin-collapse-body.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'capture-box': [1, 'darwin-arm64/margin-collapse-body.web.json', (t) => t.replace(/"height": (\d+)/, (_m, n: string) => `"height": ${Number(n) + 1}`)],
   'capture-ratio': [1, 'dpr-3/margin-collapse-body.web.json', (t) => t.replace('"aspect-ratio": "auto"', '"aspect-ratio": "1 / 1"')],
@@ -238,7 +297,7 @@ for (const [index, m] of MIGRATIONS.entries()) {
       failures++;
     }
   }
-  console.log(`${m.name}: ${atBase.length} files at ${base}, ${changed} changed, ${removed} neutral additions, every other byte identical; ${added.length} files added, all from the ${newFixtures.length} new fixtures`);
+  console.log(`${m.name}: ${atBase.length} files at ${base}, ${changed} changed, ${removed} ${PARTS ? 'ratio pairs converting to the old raw pair' : 'neutral additions'}, every other byte identical; ${added.length} files added, all from the ${newFixtures.length} new fixtures`);
 }
 if (plant !== null && !planted) throw new Error(`plant ${plantName as string} found no file to alter`);
 if (failures > 0) {

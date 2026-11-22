@@ -1716,7 +1716,7 @@ function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutNode, axis: GridAxis, al
       // grid_item.cc AxisEdgeFromItemPosition: normal sizes a replaced item's auto size as fit-content in both axes.
       if (box.kind === 'replaced') return { edge: 'start', stretch: false, safe: false, baseline: 'none' };
       // css-align-3 §6.1 (Blink GridItemData): normal block-axis alignment of an item with a preferred aspect ratio is start.
-      return axis === 'rows' && hasAspectRatio(s) ? { edge: 'start', stretch: false, safe: false, baseline: 'none' } : { edge: 'start', stretch: true, safe: false, baseline: 'none' };
+      return axis === 'rows' && hasAspectRatio(s, ctx.faults) ? { edge: 'start', stretch: false, safe: false, baseline: 'none' } : { edge: 'start', stretch: true, safe: false, baseline: 'none' };
     case 'stretch':
       return { edge: 'start', stretch: true, safe: false, baseline: 'none' };
     case 'start':

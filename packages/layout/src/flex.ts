@@ -306,7 +306,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
           borderBoxWidth: isRow ? mainBorderBox : crossSize,
           forcedBorderBoxHeight: isRow ? (stretched ? crossSize : null) : mainBorderBox,
           // Blink AspectRatioProvidesBlockMainSize: a column item's ratio makes its main size definite.
-          forcedHeightDefinite: isRow ? stretchDefinite : containerMainDefinite || hasAspectRatio(node.style),
+          forcedHeightDefinite: isRow ? stretchDefinite : containerMainDefinite || hasAspectRatio(node.style, ctx.faults),
           heightBasis: itemHeightBasis,
           formattingContextRoot: true,
           bfcLineOffset: ZERO,
@@ -507,7 +507,7 @@ function buildItem(
       w = min(maxC, max(minC, avail));
       // css-sizing-4 §5.1: fit-content over the ratio's transferred size when the height is definite, else over the content, with
       // the transferred min and max either way. A stretched width takes neither (Blink kStretchExplicit).
-      if (hasAspectRatio(s)) w = ratioBlockLevelInlineSize(ctx, plainBox(box), cbInline, w);
+      if (hasAspectRatio(s, ctx.faults)) w = ratioBlockLevelInlineSize(ctx, plainBox(box), cbInline, w);
     }
     columnCross = max(constrain(w, mm), hbp);
   }
@@ -540,7 +540,7 @@ function buildItem(
   };
 
   // css-flexbox-1 §9.2 step 3B with css-sizing-4 §5.1: an auto main size comes from the ratio and the cross size (ratio.ts).
-  const ratio = box.kind === 'box' && hasAspectRatio(s) && specifiedMain === null
+  const ratio = box.kind === 'box' && hasAspectRatio(s, ctx.faults) && specifiedMain === null
     ? ratioFlexMain(ctx, box, isRow, columnCross, !isRow ? null : rowCrossBlock(box, align, singleLine, crossInner, a.sizeIsFlexDependent, mt.auto || mb.auto, vbp, ctx.faults), cbInline)
     : null;
   let base: LU;
@@ -940,7 +940,7 @@ function ratioFlexMain(ctx: Ctx, box: LayoutBox, isRow: boolean, columnCross: LU
     const plainMin = crossBlock === null ? minC : add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
     return { base: contentBox(maxC, hbp), suggestion: contentBox(max(minC, plainMin), hbp) };
   }
-  const fromRatio = blockFromRatio(s, hbp, vbp, columnCross);
+  const fromRatio = blockFromRatio(s, ctx.faults, hbp, vbp, columnCross);
   // The content height without the ratio (Blink LayoutResult::IntrinsicBlockSize).
   const plain: LayoutBox = { kind: 'box', id: box.id, boxType: box.boxType, style: { ...s, aspectRatio: { kind: 'auto' } }, strut: box.strut, marker: box.marker, children: box.children };
   const r = layoutContents(ctx, plain, { cbInline, borderBoxWidth: columnCross, forcedBorderBoxHeight: null, forcedHeightDefinite: false, heightBasis: { kind: 'indefinite' }, formattingContextRoot: true, bfcLineOffset: ZERO, blockStretch: NO_STRETCH });
@@ -950,6 +950,6 @@ function ratioFlexMain(ctx: Ctx, box: LayoutBox, isRow: boolean, columnCross: LU
     min: minWidth.kind === 'auto' ? hbp : borderBoxFromSpecified(resolveLength(minWidth, cbInline, ctx.faults), hbp, s.boxSizing),
     max: maxWidth.kind === 'none' ? null : borderBoxFromSpecified(resolveLength(maxWidth, cbInline, ctx.faults), hbp, s.boxSizing),
   };
-  const content = constrain(r.frag.height, transferredBlockMinMax(s, inlineMm, hbp, vbp));
+  const content = constrain(r.frag.height, transferredBlockMinMax(s, ctx.faults, inlineMm, hbp, vbp));
   return { base: contentBox(fromRatio, vbp), suggestion: contentBox(max(fromRatio, content), vbp) };
 }

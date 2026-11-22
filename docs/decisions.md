@@ -173,6 +173,7 @@ This decision uses the spike's measurements in docs/research/text-spike/: 620 ca
 
 - **New engine input fields are required,** with an explicit neutral value when unused (for example `aspectRatio: auto`). The translator subset has no optional fields, and inputs are fully specified.
 - **Migration rule.** Existing vectors are migrated by their generators only. Each gains only the new key, and outputs stay byte-identical. A committed check proves this. This is the rule approved for V2a.
+  - **Exception, ARAT (Judge, 2026-11-22):** `aspectRatio`'s `width` and `height` change meaning in place, from raw LayoutUnits to the authored `<ratio>` parts the engine converts. The ratio vectors' inputs change by value and gain no key. `scripts/check-aspect-ratio-migration.ts --parts` proves that each changed part pair converts to the old raw pair (`layoutRatio(new) = old`), that nothing else in any vector changed, and that captures and emitted CSS are unchanged apart from the new fixtures.
 - **New CSS longhands are real longhands.** Captures gain their computed values, and emitted CSS gains their declarations. A committed checker must prove the change is additive only: boxes, lines, other values and vectors are byte-identical. Any other difference is a stop.
 
 ## Paint (PM, T046 research)

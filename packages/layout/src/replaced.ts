@@ -10,6 +10,7 @@ import { borderBoxFromSpecified, constrain, hasPercent, lengthHeight, lengthMaxH
 import type { LayoutRatio, LU } from './units.ts';
 import { add, fromCssPx, max, min, mulDiv, snapEdge, snapSize, sub, ZERO } from './units.ts';
 import { unsupported } from './unsupported.ts';
+import { styleLayoutRatio } from './ratio.ts';
 
 /** css-images-3 §5.5 object-fit. */
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
@@ -50,18 +51,20 @@ export type ReplacedSize = { readonly inline: LU; readonly block: LU };
 /** The edge sums of the box: horizontal and vertical border plus padding. */
 export type BorderPadding = { readonly inline: LU; readonly block: LU };
 
-/** Blink BlockNode::GetReplacedAspectRatio: `<ratio>` wins, then the natural ratio, then the ratio of `auto && <ratio>`. */
-export function replacedAspectRatio(s: LayoutStyle, natural: NaturalSizing): LayoutRatio | null {
-  const r = s.aspectRatio;
-  if (r.kind === 'ratio') return { width: r.width, height: r.height };
+/**
+ * Blink BlockNode::GetReplacedAspectRatio: `<ratio>` wins, then the natural ratio, then the ratio of `auto && <ratio>`. A degenerate
+ * ratio is auto (StyleAspectRatio::GetType, core/style/style_aspect_ratio.h), so it falls through to the natural ratio.
+ */
+export function replacedAspectRatio(s: LayoutStyle, natural: NaturalSizing, faults: EngineFaults): LayoutRatio | null {
+  const own = styleLayoutRatio(s, faults);
+  if (own !== null && s.aspectRatio.kind === 'ratio') return own;
   if (natural.ratio !== null) return natural.ratio;
-  if (r.kind === 'auto-ratio') return { width: r.width, height: r.height };
-  return null;
+  return own;
 }
 
-/** Blink ComputedStyle::BoxSizingForAspectRatio: only a plain `<ratio>` follows box-sizing; a natural ratio sizes the content box. */
-function ratioBoxSizing(s: LayoutStyle): LayoutStyle['boxSizing'] {
-  return s.aspectRatio.kind === 'ratio' ? s.boxSizing : 'content-box';
+/** Blink ComputedStyle::BoxSizingForAspectRatio: only a plain, non-degenerate `<ratio>` follows box-sizing; a natural ratio sizes the content box. */
+function ratioBoxSizing(s: LayoutStyle, faults: EngineFaults): LayoutStyle['boxSizing'] {
+  return s.aspectRatio.kind === 'ratio' && styleLayoutRatio(s, faults) !== null ? s.boxSizing : 'content-box';
 }
 
 /** Blink InlineSizeFromAspectRatio. */
@@ -109,8 +112,8 @@ function mainNeedsContent(v: LengthPercent, basis: LU | null): boolean {
 
 /** Blink ComputeReplacedSize for a replaced box that is not an SVG document root. */
 export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSizing, defaultSize: ReplacedSize, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode, faults: EngineFaults): ReplacedSize {
-  const ratio = replacedAspectRatio(s, natural);
-  const sizing = ratioBoxSizing(s);
+  const ratio = replacedAspectRatio(s, natural, faults);
+  const sizing = ratioBoxSizing(s, faults);
   const naturalSize = normalizedNaturalSize(natural, defaultSize, bp, ratio, sizing);
   const width = lengthWidth(nodeId, s.width);
   const minWidth = lengthMinWidth(nodeId, s.minWidth);

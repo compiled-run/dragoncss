@@ -56,7 +56,7 @@ import type {
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
-import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
@@ -310,15 +310,13 @@ function textIndent(id: string, get: Get, l: Lowering): TextIndentValue {
   return lp === null ? fail(id, 'text-indent', get('text-indent'), 'px | % | a viewport length | a calculation') : lp;
 }
 
-// css-sizing-4 §5.1: the engine takes Blink's layout ratio as raw LayoutUnits (analysis/computed-checks.ts refuses the rest).
+// css-sizing-4 §5.1: the engine takes the authored parts and converts them as Blink does (layout units.ts layoutRatio).
 function aspectRatio(id: string, get: Get): AspectRatioValue {
   const v = get('aspect-ratio');
   if (v.kind === 'keyword' && v.value === 'auto') return { kind: 'auto' };
   if (v.kind !== 'ratio') return fail(id, 'aspect-ratio', v, 'auto | <ratio> | auto && <ratio>');
-  const raw = exactLayoutRatio(v.width, v.height);
-  if (raw === 'degenerate') return { kind: 'auto' };
-  if (raw === null) return fail(id, 'aspect-ratio', v, 'a ratio whose parts are whole multiples of 1/64, or equal');
-  return { kind: v.auto ? 'auto-ratio' : 'ratio', width: raw.width, height: raw.height };
+  if (v.width === 0 || v.height === 0) return { kind: 'auto' };
+  return { kind: v.auto ? 'auto-ratio' : 'ratio', width: v.width, height: v.height };
 }
 
 const ALIGN_ITEMS: readonly AlignItems[] = ['normal', 'stretch', 'flex-start', 'flex-end', 'center', 'baseline', 'start', 'end', 'self-start', 'self-end'];

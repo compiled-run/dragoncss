@@ -12,7 +12,7 @@ const lu = (cssPx: number): LU => fromCssPx(cssPx);
 const image = (w: number, h: number, zoom = 1): NaturalSizing => ({ width: lu(w * zoom), height: lu(h * zoom), ratio: { width: lu(w * zoom), height: lu(h * zoom) } });
 const NO_NATURAL: NaturalSizing = { width: null, height: null, ratio: null };
 const DEFAULT_OBJECT: ReplacedSize = { inline: lu(300), block: lu(150) };
-const ratio = (w: number, h: number, kind: 'ratio' | 'auto-ratio' = 'ratio'): LayoutStyle['aspectRatio'] => ({ kind, width: w * 64, height: h * 64 });
+const ratio = (w: number, h: number, kind: 'ratio' | 'auto-ratio' = 'ratio'): LayoutStyle['aspectRatio'] => ({ kind, width: w, height: h });
 const edges = (v: number): Partial<LayoutStyle> => ({ paddingTop: px(v), paddingRight: px(v), paddingBottom: px(v), paddingLeft: px(v) });
 const border = (v: number): Partial<LayoutStyle> => ({ borderTopWidth: px(v), borderRightWidth: px(v), borderBottomWidth: px(v), borderLeftWidth: px(v) });
 
@@ -90,6 +90,21 @@ function sizeMisses(spaceFor: (cbBlock: LU | null) => ReturnType<typeof blockFlo
 }
 
 describe('replaced sizing (Blink ComputeReplacedSize) against Chrome 145 block-level boxes', () => {
+  it('takes a degenerate <ratio> as auto (StyleAspectRatio::GetType): the natural ratio, with content-box sizing (ARAT)', () => {
+    // 1 / 0.0000005 is 1 / 0 once gfx::SizeF zeroes the tiny part; Chrome sizes the 160x80 image as with no aspect-ratio (100x58).
+    const base: Partial<LayoutStyle> = { ...edges(5), ...border(3), boxSizing: 'border-box', width: px(100) };
+    const bp = { inline: lu(16), block: lu(16) };
+    const size = (over: Partial<LayoutStyle>, faults = NO_ENGINE_FAULTS) => {
+      const r = replacedSize('r', { ...divStyle, ...base, ...over }, NATURAL['wide'] as NaturalSizing, DEFAULT_OBJECT, bp, blockFlowSpace(lu(200), null, lu(0)), 'normal', faults);
+      return [r.inline / 64, r.block / 64];
+    };
+    expect(size({})).toEqual([100, 58]);
+    expect(size({ aspectRatio: ratio(1, 0.0000005) })).toEqual([100, 58]);
+    expect(size({ aspectRatio: ratio(1, 0.0000005, 'auto-ratio') })).toEqual([100, 58]);
+    // Without the SizeF clamp the ratio is 2000000 / 1 and follows box-sizing: the planted fault moves the box.
+    expect(size({ aspectRatio: ratio(1, 0.0000005) }, { ...NO_ENGINE_FAULTS, ratioNoTrivialClamp: true })).not.toEqual([100, 58]);
+  });
+
   it('equals Chrome on every probed style, natural size and container height', () => {
     const r = sizeMisses((cbBlock) => blockFlowSpace(lu(200), cbBlock, lu(0)));
     expect(r.off).toEqual([]);

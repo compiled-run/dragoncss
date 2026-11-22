@@ -1991,7 +1991,8 @@
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedContribution", "use": "port" },
         { "file": "packages/layout/src/replaced.ts", "symbol": "replacedSize", "use": "port" },
-        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" }
+        { "file": "packages/layout/src/multicol.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
       ]
     },
     {
@@ -4024,6 +4025,22 @@
       ]
     },
     {
+      "upstream": "ui/gfx/geometry/size_f.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "13a2886c572e241d71f2f3d485c9f288665bd798f275a8f5ad92982a6ec8dab8",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "30-31", "symbol": "gfx::SizeF::SizeF", "source": "located" },
+        { "lines": "104-108", "symbol": "gfx::SizeF::clamp", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/units.ts", "symbol": "sizeFPart", "use": "port" }
+      ]
+    },
+    {
       "upstream": "ui/gfx/color_conversions.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -4154,7 +4171,25 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/replaced.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/units.ts", "symbol": "layoutRatio", "use": "port" }
+        { "file": "packages/layout/src/units.ts", "symbol": "layoutRatio", "use": "port" },
+        { "file": "packages/layout/src/chrome-deviations.ts", "symbol": "chromeDeviations", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/style/style_aspect_ratio.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "eb361f296daaa1de3f95d530bdb0ba6dfa6c6f1a2f16d70a8a027f8e7d89c4f2",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "27-32", "symbol": "StyleAspectRatio::GetType", "source": "located" },
+        { "lines": "40-47", "symbol": "StyleAspectRatio::GetLayoutRatio", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/ratio.ts", "symbol": "styleLayoutRatio", "use": "port" },
+        { "file": "packages/layout/src/replaced.ts", "symbol": "replacedAspectRatio", "use": "port" }
       ]
     },
     {
