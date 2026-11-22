@@ -118,8 +118,13 @@ export function hostsClipView(box: Parameters<typeof clipsChildren>[0], el: Reso
   return clipsChildren(box) || (el !== null && textClipFillOf(el) !== null);
 }
 
-/** Whether a box's overflow clips its children; one clipped axis alone has no native technique (OVFL-c). */
-export function clipsChildren(box: { readonly id: string; readonly style: { readonly overflowX: string; readonly overflowY: string } }): boolean {
+/**
+ * Whether a box's overflow clips its children; one clipped axis alone has no native technique (OVFL-c). A single select clips them
+ * whatever its overflow (Blink LayoutBox::HasControlClip), to its content box, which checkSelect keeps equal to the padding box
+ * wherever the inner element can overflow.
+ */
+export function clipsChildren(box: { readonly id: string; readonly style: { readonly overflowX: string; readonly overflowY: string }; readonly control?: { readonly kind: string } }): boolean {
+  if (box.control?.kind === 'select-menulist') return true;
   const x = box.style.overflowX !== 'visible';
   if (x !== (box.style.overflowY !== 'visible')) throw new ProgramError(`${box.id}: overflow clips one axis only, which has no native technique (OVFL-c)`);
   return x;
