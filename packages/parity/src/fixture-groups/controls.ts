@@ -39,6 +39,10 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-flex'),
   layout('controls-text-field'),
   layout('controls-text-field-search'),
+  // OVFL-B with PNT1: the Markless notes form's field, a rounded textarea (1px border, 10px radius, padding 12px 14px, a background),
+  // and the same field with a 4px border, whose corners the sampler can reach. Native clips a textarea at rest, so its content is
+  // clipped to the rounded padding box as Chrome's scroll container clips it (pnt1-radius.test.ts).
+  layout('controls-textarea-rounded'),
   layout('controls-textarea'),
   layout('controls-text-field-inline'),
   reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
