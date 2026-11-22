@@ -68,5 +68,21 @@ a content box it does not resolve percentages for; `paddingRefusal`, and the com
 `holdsAtomicLine` names the same block), an atomic inline outside an inline formatting context (never built by the compiler), an
 atomic inline inside an inline box (inline boxes are INL1a; the compiler rejects that layout anyway), a line whose items' visual
 order is not their tree order (the engine refuses those rtl paragraphs itself; the table checks the pen runs on), and everything
-the table refused before. The compiler keeps refusing inline-grid (and grid) under R13 through `hitUnmodelledGrid`, which is
-stricter than the table and unchanged here.
+the table refused before. The compiler keeps refusing an inline-grid box under R13 (`hitUnmodelledBox`, G-INL), which is stricter
+than the table and unchanged here.
+
+## Device-hit lane
+
+The device-hit lane inherits these cases from the host hit lane's table and vectors; no phone job has run it on this branch, so its
+device parity is inherited and unrun. Newly modelled cases: `hit-atomic-inline` and its rtl twin, and every atomic-inline fixture
+case the table no longer refuses for an atomic inline (`atomic-inline-shrink`, `atomic-inline-north-star`, `atomic-inline-links`,
+`atomic-inline-disclosure`, with their rtl twins where they exist; the others stay out for their `<br>`).
+
+## Judge amendments
+
+The Judge approved with amendments. A positioned atomic inline: `lineHit` skips an atomic that is its own layer, as `foreground`
+does, so only the layer pass tests it; and none reaches the table today, as the engine refuses a positioned atomic inline
+(`inline-box-position`, CSS2 §9.4.3) before the table is built, which `rt-hit.test.ts` pins. A Chrome capture of one waits on the
+engine placing it. With a z-index it is also a stacking context, which the hit capture refuses (PNT1). The captures and the lanes
+were rerun on a base carrying the padding-clip narrowing, with no local patch. Inline-grid stays refused under R13, plain inline
+boxes and `<br>` under INL1a.
