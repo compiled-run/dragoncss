@@ -455,10 +455,11 @@ function clampInterval(t: number, activeDuration: number): number {
   return m > 0 ? m : 0;
 }
 
-/** The running animation of a list with this list index and name, or null. */
-function sameAnimation(list: readonly RunningAnimation[] | undefined, a: RunningAnimation): RunningAnimation | null {
+/** The running animation of a list with this name and the same place among animations of that name, or null: the one the
+ * restyle kept (rt-animations.ts findRunning, as Blink's CSSAnimations matches by name), wherever the list moved it. */
+function sameAnimation(list: readonly RunningAnimation[] | undefined, a: RunningAnimation, faults: RtFaults): RunningAnimation | null {
   if (list === undefined) return null;
-  for (const b of list) if (b.listIndex === a.listIndex && b.name === a.name) return b;
+  for (const b of list) if (faults.nameChangeKeepsAnimation ? b.listIndex === a.listIndex : b.name === a.name && b.nameIndex === a.nameIndex) return b;
   return null;
 }
 
@@ -478,7 +479,7 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
     // A removed animation's cancel comes before the new list's events, as Chrome dispatches them.
     if (was !== undefined) {
       for (const b of was) {
-        if (now !== undefined && sameAnimation(now, b) !== null) continue;
+        if (now !== undefined && sameAnimation(now, b, faults) !== null) continue;
         const from = computeSecondsTiming(b.timing, b.held.seconds, faults);
         if (from.phase === 'active' || from.phase === 'before') out.push({ type: 'animationcancel', node: table.node, name: b.name, elapsedTime: from.activeTime === null ? 0 : from.activeTime });
       }
@@ -488,7 +489,7 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
         const norm = normalizeSeconds(a.timing);
         const start = clampInterval(-norm.startDelay, norm.activeDuration);
         const end = clampInterval(norm.endTime - norm.startDelay, norm.activeDuration);
-        const b = sameAnimation(was, a);
+        const b = sameAnimation(was, a, faults);
         const from = b === null ? null : computeSecondsTiming(b.timing, b.held.seconds, faults);
         const to = computeSecondsTiming(a.timing, a.held.seconds, faults);
         const fromPhase = from === null ? 'none' : from.phase;
@@ -499,7 +500,12 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
         } else if (fromPhase === 'active' && to.phase === 'active' && from !== null && from.currentIteration !== null && to.currentIteration !== null && to.currentIteration !== from.currentIteration) {
           out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: to.currentIteration * norm.iterationDuration });
         } else if (fromPhase === 'active' && to.phase === 'after') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
-        else if (fromPhase === 'after' && to.phase === 'before') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+        else if (fromPhase === 'active' && to.phase === 'before') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
+        else if (fromPhase === 'after' && to.phase === 'active') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+        else if (fromPhase === 'after' && to.phase === 'before') {
+          out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+          out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
+        }
       }
     }
   }
