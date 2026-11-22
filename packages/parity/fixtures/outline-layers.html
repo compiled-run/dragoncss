@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { min-height: 300px; margin: 0; background-color: rgb(236, 240, 244); }
+.bar { position: sticky; top: 0; display: flex; column-gap: 14px; height: 28px; padding: 8px 12px; border-bottom: 2px solid rgb(60, 60, 60); background-color: rgb(250, 250, 250); outline: 2px solid rgb(0, 120, 120); outline-offset: -6px; }
+.link { width: 40px; height: 28px; background-color: rgb(40, 90, 200); }
+.ring { outline: 3px solid rgb(220, 30, 30); outline-offset: 2px; }
+.under { height: 24px; margin: 6px 12px 0; background-color: rgb(250, 230, 120); outline: 6px solid rgb(120, 0, 160); outline-offset: 2px; }
+.row { display: flex; align-items: flex-start; column-gap: 28px; padding: 20px 16px 0; }
+.col { width: 82px; }
+.rel { position: relative; width: 70px; padding: 6px; background-color: rgb(200, 220, 200); }
+.kid { height: 20px; background-color: rgb(200, 60, 60); outline: 5px solid rgb(20, 20, 120); }
+.cover { position: relative; height: 14px; margin-top: -10px; background-color: rgb(60, 60, 60); }
+.box { position: relative; width: 70px; height: 40px; }
+.f1 { height: 30px; background-color: rgb(250, 160, 0); outline: 4px double rgb(0, 90, 0); outline-offset: 1px; }
+.abs { position: absolute; top: 22px; left: 20px; width: 30px; height: 24px; background-color: rgb(30, 150, 60); }
+.f2 { width: 60px; height: 24px; background-color: rgb(250, 250, 250); outline: 6px solid rgb(0, 0, 0); outline-offset: 3px; }
+.neg { position: relative; z-index: -1; top: -16px; left: 30px; width: 50px; height: 30px; background-color: rgb(200, 40, 200); }
+.z { width: 50px; height: 30px; background-color: rgb(250, 230, 120); }
+.z1 { z-index: 1; margin-inline-start: -34px; margin-top: 8px; background-color: rgb(40, 90, 200); }
+.op { opacity: 0.5; margin-inline-start: -34px; margin-top: 8px; background-color: rgb(200, 60, 60); }
+.low { width: 80px; height: 20px; margin: 46px 0 0 auto; margin-right: 40px; background-color: rgb(200, 220, 200); outline: 4px solid rgb(220, 30, 30); }
+.fixed { position: fixed; right: 20px; bottom: 6px; width: 50px; height: 26px; border: 2px solid rgb(0, 0, 0); background-color: rgb(40, 90, 200); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="bar" class="bar"><div data-dragon-id="l1" class="link ring"></div><div data-dragon-id="l2" class="link"></div></div>
+<div data-dragon-id="under" class="under"></div>
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="col" class="col"><div data-dragon-id="rel" class="rel"><div data-dragon-id="kid" class="kid"></div></div><div data-dragon-id="cover" class="cover"></div></div>
+<div data-dragon-id="box" class="box"><div data-dragon-id="f1" class="f1"></div><div data-dragon-id="abs" class="abs"></div></div>
+<div data-dragon-id="col2"><div data-dragon-id="f2" class="f2"></div><div data-dragon-id="neg" class="neg"></div></div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="za" class="z ring"></div><div data-dragon-id="z1" class="z z1"></div>
+<div data-dragon-id="zb" class="z ring"></div><div data-dragon-id="op" class="z op"></div>
+</div>
+<div data-dragon-id="low" class="low"></div>
+<div data-dragon-id="fixed" class="fixed"></div>
+</body>
+</html>

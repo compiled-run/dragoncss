@@ -1,0 +1,10 @@
+{
+  "case": "grid-replaced-tracks",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"x2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"x3:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"x7:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

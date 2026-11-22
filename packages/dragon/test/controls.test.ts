@@ -33,9 +33,16 @@ describe('FORM-a controls', () => {
     expect(range0.match(/appearance: none;/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('refuses a range as a grid item, and compiles a button as one (GRID-controls)', () => {
-    expect(errors(compile(`${BODY}${BUTTON}${RANGE}.p { display: grid; }`, inParent(range)).diagnostics)).toContainEqual(expect.stringMatching(/is a grid item, and a form control as a grid item is not supported yet/));
-    expect(errors(compile(`${BODY}${BUTTON}${RANGE}.p { display: grid; }`, inParent(button)).diagnostics).filter((m) => m.includes('grid item'))).toEqual([]);
+  it('refuses a range as a grid item, and takes a block or flex button as one', () => {
+    const out = compile(`${BODY}${BUTTON}${RANGE}.p { display: grid; }`, inParent(range));
+    expect(errors(out.diagnostics)).toContainEqual(expect.stringMatching(/<input> r is a grid item, and a form control as a grid item is not supported yet/));
+    const gridItem = /is a grid item/;
+    for (const display of ['block', 'flex', 'inline-block', 'inline-flex']) {
+      const ds = errors(compile(`${BODY}${BUTTON}.p { display: grid; } .b { display: ${display}; }`, inParent(button)).diagnostics);
+      expect(ds.filter((d) => gridItem.test(d)), display).toEqual([]);
+    }
+    // A grid button that blockifies to neither block nor flex keeps its display refusal.
+    expect(errors(compile(`${BODY}${BUTTON}.p { display: grid; } .b { display: grid; }`, inParent(button)).diagnostics)).toContainEqual(expect.stringMatching(/display: grid on <button> b is not supported on a button/));
     expect(errors(compile(`${BODY}${BUTTON}`, inParent(button)).diagnostics)).toEqual([]);
   });
 

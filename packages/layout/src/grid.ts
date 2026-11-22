@@ -16,11 +16,13 @@ import type {
   CalcExpr,
   ControlBox,
   LayoutBox,
+  LayoutNode,
   LayoutStyle,
   Percent,
   Px,
   TrackBreadth,
   TrackRepeater,
+  ReplacedLeaf,
   TrackSize,
 } from './input.ts';
 import type { LU } from './units.ts';
@@ -76,11 +78,13 @@ import {
   sumEdges,
 } from './box.ts';
 import type { Ctx, EngineFaults } from './block.ts';
-import { directionOf, layoutContents } from './block.ts';
-import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
 import { plainBox } from './controls.ts';
-import { isOutOfFlow, relativeOffset } from './position.ts';
+import { intrinsicContentInlineSize } from './intrinsic.ts';
+import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio } from './ratio.ts';
+import type { ReplacedSpace } from './replaced.ts';
+import { replacedBorderPadding, replacedContributionIn, replacedFrag, replacedMeasureSpace, sizeReplaced } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
 /** Blink kIndefiniteSize: LayoutUnit(-1), an indefinite size or an infinite growth limit. */
@@ -247,7 +251,7 @@ type GridDependentItem = { readonly sets: GridSetIndices; readonly cached: LU };
 type GridKeyedSet = { readonly s: GridSet; readonly i: number; readonly p: LU };
 type GridIndexedSet = { readonly s: GridSet; readonly i: number };
 type GridIndexedItem = { readonly item: GridItemData; readonly k: number };
-type GridIndexedBox = { readonly b: LayoutBox | ControlBox; readonly i: number };
+type GridIndexedBox = { readonly b: LayoutNode; readonly i: number };
 
 /** Blink TrackSpanProperties, for a range and for the tracks an item spans. */
 type GridProps = {
@@ -316,7 +320,7 @@ type GridSetIndices = { readonly begin: number; readonly end: number };
 
 /** Blink GridItemData for one in-flow item, both axes. */
 type GridItemData = {
-  readonly box: LayoutBox | ControlBox;
+  readonly box: LayoutNode;
   readonly index: number;
   column: GridLines;
   row: GridLines;
@@ -889,7 +893,7 @@ function clampSpan(s: GridSpan): GridAxisPosition {
 type GridPlacementResult = { readonly columns: GridLines[]; readonly rows: GridLines[]; readonly columnStartOffset: number; readonly rowStartOffset: number };
 
 /** Blink GridPlacement::RunAutoPlacementAlgorithm: the translated (non-negative) lines of every item in both axes. */
-function runPlacement(g: GridContainerStyle, boxes: readonly (LayoutBox | ControlBox)[], ctx: Ctx, columnTracks: GridAxisTracks, rowTracks: GridAxisTracks): GridPlacementResult {
+function runPlacement(g: GridContainerStyle, boxes: readonly LayoutNode[], ctx: Ctx, columnTracks: GridAxisTracks, rowTracks: GridAxisTracks): GridPlacementResult {
   const columnMajor = g.autoFlow === 'column';
   const sparse = !g.dense;
   const cols: GridAxisPosition[] = [];
@@ -1671,7 +1675,7 @@ function computeUsedTrackSizes(ctx: Ctx, grid: GridState, c: GridCollection, ava
 /** A self position or baseline alignment, from justify-self or justify-items (columns) or align-self or align-items (rows). */
 type GridItemAlign = GridSelfAlign | AlignItems;
 
-function selfAlignOf(container: GridContainerStyle, box: LayoutBox | ControlBox, axis: GridAxis, containerStyle: LayoutStyle): GridItemAlign {
+function selfAlignOf(container: GridContainerStyle, box: LayoutNode, axis: GridAxis, containerStyle: LayoutStyle): GridItemAlign {
   const gi = box.style.gridItem;
   if (axis === 'columns') {
     const own = gi === null ? 'auto' : gi.justifySelf;
@@ -1681,7 +1685,7 @@ function selfAlignOf(container: GridContainerStyle, box: LayoutBox | ControlBox,
 }
 
 /** Blink AxisEdgeFromItemPosition: auto margins win, then the self position; normal and stretch stretch an auto size. */
-function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox | ControlBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
+function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutNode, axis: GridAxis, align: GridItemAlign): GridAlignment {
   const s = box.style;
   const rtl = directionOf(ctx, grid) === 'rtl';
   const startMargin = axis === 'columns' ? (rtl ? s.marginRight : s.marginLeft) : s.marginTop;
@@ -1703,12 +1707,14 @@ function axisEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox | ControlBox, axis: 
  * The self-position part of Blink AxisEdgeFromItemPosition, which an absolutely positioned child takes alone; its static position
  * takes first baseline as start and last baseline as end (AlignmentOffsetForOutOfFlow, grid_layout_utils.cc 407-445).
  */
-function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox | ControlBox, axis: GridAxis, align: GridItemAlign): GridAlignment {
+function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutNode, axis: GridAxis, align: GridItemAlign): GridAlignment {
   const s = box.style;
   const rtl = directionOf(ctx, grid) === 'rtl';
   const sameDirection = directionOf(ctx, box) === directionOf(ctx, grid) || axis === 'rows';
   switch (align) {
     case 'normal':
+      // grid_item.cc AxisEdgeFromItemPosition: normal sizes a replaced item's auto size as fit-content in both axes.
+      if (box.kind === 'replaced') return { edge: 'start', stretch: false, safe: false, baseline: 'none' };
       // css-align-3 §6.1 (Blink GridItemData): normal block-axis alignment of an item with a preferred aspect ratio is start.
       return axis === 'rows' && hasAspectRatio(s) ? { edge: 'start', stretch: false, safe: false, baseline: 'none' } : { edge: 'start', stretch: true, safe: false, baseline: 'none' };
     case 'stretch':
@@ -1740,7 +1746,7 @@ function selfEdge(ctx: Ctx, grid: LayoutBox, box: LayoutBox | ControlBox, axis: 
 type GridMargins = { readonly inlineStart: LU; readonly inlineEnd: LU; readonly blockStart: LU; readonly blockEnd: LU };
 
 /** Blink ComputePhysicalMargins (third_party/blink/renderer/core/layout/length_utils.h 465-481): an indefinite basis is clamped to zero. */
-function marginsOf(box: LayoutBox | ControlBox, indefiniteOrBasis: LU, rtl: boolean): GridMargins {
+function marginsOf(box: LayoutNode, indefiniteOrBasis: LU, rtl: boolean): GridMargins {
   const s = box.style;
   const basis = indefiniteOrBasis === INDEFINITE ? ZERO : indefiniteOrBasis;
   const left = resolveMargin(s.marginLeft, basis).value;
@@ -1754,22 +1760,22 @@ function marginsOf(box: LayoutBox | ControlBox, indefiniteOrBasis: LU, rtl: bool
 }
 
 /** The item's border-box inline size in its grid area (Blink ComputeInlineSizeForFragment with the area as available size). */
-function itemInlineSize(ctx: Ctx, item: GridItemData, areaInline: LU, margins: GridMargins): LU {
-  const s = item.box.style;
+function itemInlineSize(ctx: Ctx, item: GridItemData, box: LayoutBox | ControlBox, areaInline: LU, margins: GridMargins): LU {
+  const s = box.style;
   const pad = resolvePadding(s, areaInline);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);
-  const specified = resolveInlineLength(lengthWidth(item.box.id, s.width), areaInline);
+  const specified = resolveInlineLength(lengthWidth(box.id, s.width), areaInline);
   const available = sub(sub(areaInline, margins.inlineStart), margins.inlineEnd);
   let raw: LU;
   if (specified !== null) raw = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   else if (item.columnStretch) raw = maxLu(hbp, available);
   else {
-    const minC = add(intrinsicContentInlineSize(ctx, item.box, 'min'), hbp);
-    const maxC = add(intrinsicContentInlineSize(ctx, item.box, 'max'), hbp);
+    const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
+    const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
     raw = minLu(maxC, maxLu(minC, clampNegativeToZero(available)));
   }
-  return constrain(raw, inlineMinMax(item.box.id, s, areaInline, hbp));
+  return constrain(raw, inlineMinMax(box.id, s, areaInline, hbp));
 }
 
 /**
@@ -1780,12 +1786,15 @@ type GridItemLayout = { readonly frag: Frag; readonly margins: GridMargins; read
 
 /**
  * Lays out an item in a grid area of the given inline size and block size (INDEFINITE while measuring rows): percentages resolve
- * against the area, and an auto height stretches to a definite area when the item stretches in the block axis.
+ * against the area, and an auto height stretches to a definite area when the item stretches in the block axis. A block button
+ * keeps its control facts, so its contents stay centred in a stretched row.
  */
 function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: LU, areaBlock: LU): GridItemLayout {
-  const s = item.box.style;
-  const margins = marginsOf(item.box, areaInline, grid.rtl);
-  const width = itemInlineSize(ctx, item, areaInline, margins);
+  const node = item.box;
+  if (node.kind === 'replaced') return layoutReplacedItem(ctx, grid, item, node, areaInline, areaBlock);
+  const s = node.style;
+  const margins = marginsOf(node, areaInline, grid.rtl);
+  const width = itemInlineSize(ctx, item, node, areaInline, margins);
   const basis: HeightBasis = areaBlock === INDEFINITE ? { kind: 'indefinite' } : { kind: 'definite', value: areaBlock };
   let forced: LU | null = null;
   if (areaBlock !== INDEFINITE && item.rowStretch && s.height.kind === 'auto') {
@@ -1793,9 +1802,9 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
     const bor = resolveBorder(s, ctx.devicePixelRatio);
     const vbp = sumEdges(bor.top, bor.bottom, pad.top, pad.bottom);
     const stretched = maxLu(vbp, sub(sub(areaBlock, margins.blockStart), margins.blockEnd));
-    forced = constrain(stretched, blockMinMax(plainBox(item.box), basis, vbp));
+    forced = constrain(stretched, blockMinMax(plainBox(node), basis, vbp));
   }
-  const r = layoutContents(ctx, item.box, {
+  const r = layoutContents(ctx, node, {
     cbInline: areaInline,
     borderBoxWidth: width,
     forcedBorderBoxHeight: forced,
@@ -1806,6 +1815,29 @@ function layoutItem(ctx: Ctx, grid: GridState, item: GridItemData, areaInline: L
     blockStretch: NO_STRETCH,
   });
   return { frag: r.frag, margins, lastBaseline: r.defaultLastBaseline, lastBaselineFlex: r.defaultLastBaselineFlex };
+}
+
+/**
+ * Blink GridLayoutAlgorithm::CreateConstraintSpace for a replaced item: the grid area is its available and percentage size, and an
+ * auto size stretches into it only under an explicit stretch (AxisEdgeFromItemPosition gives normal a fit-content auto size).
+ */
+function layoutReplacedItem(ctx: Ctx, grid: GridState, item: GridItemData, leaf: ReplacedLeaf, areaInline: LU, areaBlock: LU): GridItemLayout {
+  const margins = marginsOf(leaf, areaInline, grid.rtl);
+  const block = areaBlock === INDEFINITE ? null : areaBlock;
+  const space: ReplacedSpace = {
+    availableInline: areaInline,
+    availableBlock: block,
+    percentInline: areaInline,
+    percentBlock: block,
+    fixedInline: null,
+    fixedBlock: null,
+    inlineAuto: item.columnStretch ? 'stretch-explicit' : 'fit-content',
+    blockAutoStretch: item.rowStretch,
+    inlineMargins: add(margins.inlineStart, margins.inlineEnd),
+    blockMargins: add(margins.blockStart, margins.blockEnd),
+  };
+  const size = sizeReplaced(ctx, leaf, replacedBorderPadding(ctx, leaf, areaInline), space, 'normal');
+  return { frag: replacedFrag(leaf, size), margins, lastBaseline: null, lastBaselineFlex: '' };
 }
 
 /**
@@ -1830,7 +1862,7 @@ function inlineContributionOf(ctx: Ctx, box: LayoutBox | ControlBox, kind: 'min'
 }
 
 /** The border and padding of an item in one axis, with % padding against the given basis (0 when indefinite). */
-function borderPaddingOf(ctx: Ctx, box: LayoutBox | ControlBox, axis: GridAxis, basis: LU): LU {
+function borderPaddingOf(ctx: Ctx, box: LayoutNode, axis: GridAxis, basis: LU): LU {
   const s = box.style;
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const pad = resolvePadding(s, basis === INDEFINITE ? ZERO : basis);
@@ -1842,7 +1874,7 @@ function borderPaddingOf(ctx: Ctx, box: LayoutBox | ControlBox, axis: GridAxis, 
  * indefinite: a px minimum in border-box terms, or the border and padding for auto and %. Padding resolves against the given
  * basis: indefinite (zero) for columns, the item's column area for rows (Blink ComputePadding takes the inline size).
  */
-function specifiedMinimum(ctx: Ctx, box: LayoutBox | ControlBox, axis: GridAxis, basis: LU): LU {
+function specifiedMinimum(ctx: Ctx, box: LayoutNode, axis: GridAxis, basis: LU): LU {
   const s = box.style;
   const v = axis === 'columns' ? s.minWidth : s.minHeight;
   const bp = borderPaddingOf(ctx, box, axis, basis);
@@ -1855,13 +1887,21 @@ type GridMeasure = { readonly size: LU; readonly shim: LU };
 /**
  * An item's min- or max-content contribution without margins: in the column axis its inline contribution (flagging an item whose
  * size depends on the block size, as Blink's is_sizing_dependent_on_block_size) plus the baseline shim of an item baseline-aligned
- * in the inline axis (MinOrMaxContentSize, grid_layout_algorithm.cc 927-956), in the row axis its block contribution.
+ * in the inline axis (MinOrMaxContentSize, grid_layout_algorithm.cc 927-956), in the row axis its block contribution. A replaced
+ * item is measured with its row area as its block size (CreateConstraintSpaceForMeasure).
  */
 function contentContribution(ctx: Ctx, grid: GridState, item: GridItemData, columns: boolean, kind: 'min' | 'max'): GridMeasure {
   if (columns) {
-    const s = item.box.style;
+    const node = item.box;
+    const s = node.style;
     if (percentSize(s.height) || percentSize(s.minHeight) || percentSize(s.maxHeight) || (s.height.kind === 'auto' && item.rowStretch)) item.sizingDependsOnBlockSize = true;
-    const size = inlineContributionOf(ctx, item.box, kind);
+    let size: LU;
+    if (node.kind === 'replaced') {
+      const rowArea = areaSize(grid.rows, item.rowSets);
+      size = replacedContributionIn(ctx, node, kind, replacedMeasureSpace(rowArea === INDEFINITE ? null : rowArea, item.rowStretch));
+    } else {
+      size = inlineContributionOf(ctx, node, kind);
+    }
     // Columns are measured with an indefinite inline size, so % margins resolve against zero, as in contributionFor.
     const shim = baselineAligned(item, 'columns') ? baselineShim(ctx, grid, item, 'columns', inlineBaseline(ctx, grid, item, size), INDEFINITE) : ZERO;
     return { size: add(size, shim), shim };
@@ -1926,13 +1966,13 @@ function trackBaseline(c: GridCollection, item: GridItemData): LU {
  * Blink LogicalBoxFragment::FirstBaselineOrSynthesize (logical_box_fragment.h 33-59) with the alphabetic baseline: the first
  * baseline, kept within the border box of a scroll container, or else the border-box block-end edge.
  */
-function firstBaselineOrSynthesize(box: LayoutBox | ControlBox, frag: Frag): LU {
+function firstBaselineOrSynthesize(box: LayoutNode, frag: Frag): LU {
   if (frag.baseline === null) return frag.height;
   return isScrollContainer(box.style) ? maxLu(ZERO, minLu(frag.baseline, frag.height)) : frag.baseline;
 }
 
 /** Blink GetLogicalBaseline for a first-baseline-aligned item in the row axis. */
-function itemBaseline(ctx: Ctx, box: LayoutBox | ControlBox, frag: Frag): LU {
+function itemBaseline(ctx: Ctx, box: LayoutNode, frag: Frag): LU {
   if (frag.baseline === null && ctx.gridFaults.baselineSynthesizedAtTop) return ZERO;
   return firstBaselineOrSynthesize(box, frag);
 }
@@ -1984,12 +2024,12 @@ function percentSize(v: LayoutStyle['height'] | LayoutStyle['maxHeight'] | Layou
  * width is its min-content size, clamped by its min and max widths; % padding resolves against zero, as in inlineContributionOf.
  * Only an item with no percentage width, min-width or max-width reaches it (its area spans an intrinsic or flexible column).
  */
-function indefiniteInlineSize(ctx: Ctx, item: GridItemData): LU {
-  const s = item.box.style;
-  const bp = borderPaddingOf(ctx, item.box, 'columns', INDEFINITE);
-  const specified = resolveInlineLength(lengthWidth(item.box.id, s.width), ZERO);
-  const raw = specified !== null ? borderBoxFromSpecified(specified, bp, s.boxSizing) : add(intrinsicContentInlineSize(ctx, item.box, 'min'), bp);
-  return constrain(raw, inlineMinMax(item.box.id, s, ZERO, bp));
+function indefiniteInlineSize(ctx: Ctx, box: LayoutBox | ControlBox): LU {
+  const s = box.style;
+  const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
+  const specified = resolveInlineLength(lengthWidth(box.id, s.width), ZERO);
+  const raw = specified !== null ? borderBoxFromSpecified(specified, bp, s.boxSizing) : add(intrinsicContentInlineSize(ctx, box, 'min'), bp);
+  return constrain(raw, inlineMinMax(box.id, s, ZERO, bp));
 }
 
 /** Resets one axis's major and minor baselines to LU_MIN for each set (Blink GridSizingTrackCollection::ResetBaselines). */
@@ -2036,7 +2076,9 @@ function computeBaselines(ctx: Ctx, grid: GridState, axis: GridAxis): void {
       const dependsOnTrack = item.columnProps.intrinsic || item.columnProps.flexible;
       item.columnFallback = dependsOnTrack && (percentSize(s.width) || percentSize(s.minWidth) || percentSize(s.maxWidth));
       if (item.columnFallback) continue;
-      const width = areaInline === INDEFINITE ? indefiniteInlineSize(ctx, item) : itemInlineSize(ctx, item, areaInline, m);
+      const node = item.box;
+      if (node.kind === 'replaced') throw new Error(`${node.id} is a baseline-aligned replaced grid item; buildGrid refuses it`);
+      const width = areaInline === INDEFINITE ? indefiniteInlineSize(ctx, node) : itemInlineSize(ctx, item, node, areaInline, m);
       baseline = inlineBaseline(ctx, grid, item, width);
     } else {
       const r = layoutItem(ctx, grid, item, areaInline, areaSize(c, item.rowSets));
@@ -2166,20 +2208,16 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   const s = box.style;
   const g = s.grid;
   if (g === null) throw new Error(`${box.id} is display: grid with no grid style; validateLayoutInput rejects this input`);
-  const inFlow: (LayoutBox | ControlBox)[] = [];
+  const inFlow: LayoutNode[] = [];
   const outOfFlow: LayoutBox[] = [];
   for (const k of box.children) {
-    if (k.kind === 'control' && !gridPlacesControl(k)) unsupported('grid-control', k.id, 'css-grid-2 §6', 'a form control as a grid item (not yet supported)');
-    if (k.kind !== 'box' && k.kind !== 'control' && k.kind !== 'replaced') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
-    if (k.kind === 'replaced') unsupported('grid-replaced', k.id, 'css-grid-2 §6', 'a replaced grid item (not yet supported)');
-    if (k.kind === 'control') {
-      inFlow.push(k);
-      continue;
-    }
-    if (k.kind !== 'box') continue;
+    if (k.kind !== 'box' && k.kind !== 'replaced' && k.kind !== 'control') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
+    if (k.kind === 'control' && !gridPlacesControl(k)) unsupported('grid-control', k.id, 'css-grid-2 §6', `a ${k.control.kind} control as a grid item (not yet supported)`);
     // css-grid-2 §9: an absolutely positioned child is no grid item and takes no part in placement or track sizing.
-    if (isOutOfFlow(ctx, k)) outOfFlow.push(k);
-    else inFlow.push(k);
+    if (!isOutOfFlow(ctx, k)) inFlow.push(k);
+    else if (k.kind === 'box') outOfFlow.push(k);
+    else if (k.kind === 'replaced') unsupported('replaced-out-of-flow', k.id, 'CSS 2.2 §10.3.8, §10.6.5', `absolutely positioned replaced ${k.id} is not supported`);
+    else unsupported('control-out-of-flow', k.id, 'CSS2 §10.3.7, §10.6.4', `absolutely positioned form control ${k.id} is not supported`);
   }
   // css-grid-2 §8.5 with css-flexbox-1 §5.4: order-modified document order, stable.
   const ordered = inFlow.map((b, i): GridIndexedBox => ({ b, i })).sort((x, y) => (x.b.style.order !== y.b.style.order && !ctx.faults.ignoreOrder ? x.b.style.order - y.b.style.order : x.i - y.i)).map((e) => e.b);
@@ -2190,6 +2228,7 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   const items: GridItemData[] = ordered.map((b, i): GridItemData => {
     const columnAlign = axisEdge(ctx, box, b, 'columns', selfAlignOf(g, b, 'columns', s));
     const rowAlign = axisEdge(ctx, box, b, 'rows', selfAlignOf(g, b, 'rows', s));
+    if (b.kind === 'replaced' && (columnAlign.baseline !== 'none' || rowAlign.baseline !== 'none')) unsupported('grid-replaced', b.id, 'css-align-3 §9.1', `the baseline-aligned replaced grid item ${b.id} (not yet supported)`);
     return {
       box: b,
       index: i,
@@ -2312,7 +2351,7 @@ function placeItems(ctx: Ctx, grid: GridState, a: GridArgs, intrinsicContent: LU
     const y = add(blockOffset, rowOffset);
     const physicalX = grid.rtl ? sub(sub(borderBoxWidth, x), r.frag.width) : x;
     // css-grid-2 §9: relative offsets resolve against the grid area.
-    const offset = relativeOffset(plainBox(item.box), areaInline, { kind: 'definite', value: areaBlock }, directionOf(ctx, grid.box));
+    const offset = relativeOffsetWith(item.box, areaInline, { kind: 'definite', value: areaBlock }, directionOf(ctx, grid.box), NO_ENGINE_FAULTS);
     placed.push({ frag: r.frag, x: add(physicalX, offset.dx), y: add(y, offset.dy) });
     const before = baseline === null || item.row.start < baselineRow || (item.row.start === baselineRow && item.column.start < baselineColumn);
     if (before) {

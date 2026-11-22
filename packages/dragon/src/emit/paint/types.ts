@@ -31,6 +31,8 @@ export type NativePaint = {
    * text view, its DragonTextGeometry). Absent for a module with none.
    */
   readonly afterText?: string;
+  /** The after-tree hook, run once a layout has placed every view of the tree; it takes the tree's root view. Absent for a module with none. */
+  readonly afterTree?: string;
 };
 
 /**

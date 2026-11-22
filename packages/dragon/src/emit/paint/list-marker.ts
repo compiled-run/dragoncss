@@ -33,13 +33,13 @@ public func dragonAfterLayoutListMarker(_ v: DragonBoxView, _ shape: DragonBoxSh
   let h = dragonCheckedInt(v.dragonMarkerRect[3], "\(v.dragonId) marker height")
   if v.dragonMarkerCoverage.count != max(0, w) * max(0, h) { fatalError("dragon: \(v.dragonId): \(v.dragonMarkerCoverage.count) marker coverage values for a \(w)x\(h) rect") }
   let c = v.dragonMarkerColor
-  var rgba = [Double](repeating: 0, count: v.dragonMarkerCoverage.count * 4)
+  var rgba = [UInt8](repeating: 0, count: v.dragonMarkerCoverage.count * 4)
   for (k, cov) in v.dragonMarkerCoverage.enumerated() {
     let a = (dragonCheckedInt(cov, "\(v.dragonId) marker coverage") * c.a + 127) / 255
-    rgba[4 * k] = Double((c.r * a + 127) / 255)
-    rgba[4 * k + 1] = Double((c.g * a + 127) / 255)
-    rgba[4 * k + 2] = Double((c.b * a + 127) / 255)
-    rgba[4 * k + 3] = Double(a)
+    rgba[4 * k] = dragonByte(Double((c.r * a + 127) / 255))
+    rgba[4 * k + 1] = dragonByte(Double((c.g * a + 127) / 255))
+    rgba[4 * k + 2] = dragonByte(Double((c.b * a + 127) / 255))
+    rgba[4 * k + 3] = dragonByte(Double(a))
   }
   v.dragonMarkerImage = dragonShadowImage(rgba, w, h)
   v.setNeedsDisplay()
@@ -94,13 +94,13 @@ fun dragonAfterLayoutListMarker(v: DragonBoxView, shape: DragonBoxShape, scale: 
   val h = v.dragonMarkerRect[3]
   if (v.dragonMarkerCoverage.size != maxOf(0, w) * maxOf(0, h)) throw IllegalStateException("dragon: " + v.dragonId + ": " + v.dragonMarkerCoverage.size + " marker coverage values for a " + w + "x" + h + " rect")
   val c = v.dragonMarkerColor
-  val rgba = ArrayList<Double>(v.dragonMarkerCoverage.size * 4)
-  for (cov in v.dragonMarkerCoverage) {
+  val rgba = ByteArray(v.dragonMarkerCoverage.size * 4)
+  for ((k, cov) in v.dragonMarkerCoverage.withIndex()) {
     val a = (dragonCheckedInt(cov, v.dragonId + " marker coverage") * c.a + 127) / 255
-    rgba.add(((c.r * a + 127) / 255).toDouble())
-    rgba.add(((c.g * a + 127) / 255).toDouble())
-    rgba.add(((c.b * a + 127) / 255).toDouble())
-    rgba.add(a.toDouble())
+    rgba[4 * k] = dragonByte(((c.r * a + 127) / 255).toDouble())
+    rgba[4 * k + 1] = dragonByte(((c.g * a + 127) / 255).toDouble())
+    rgba[4 * k + 2] = dragonByte(((c.b * a + 127) / 255).toDouble())
+    rgba[4 * k + 3] = dragonByte(a.toDouble())
   }
   v.dragonMarkerBitmap = dragonShadowBitmap(rgba, w, h)
   v.invalidate()

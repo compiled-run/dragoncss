@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.grid { display: grid; grid-template-columns: 40px 1fr; gap: 6px; width: 160px; margin: 30px; padding: 4px; background-color: #ddf4ff; }
+.cell { height: 24px; background-color: #cf222e; }
+.c2 { background-color: #1a7f37; }
+.c3 { background-color: #8250df; }
+.rotate { transform: rotate(8deg); }
+.scale { transform: scale(0.75); transform-origin: 0 0; }
+.lift { transform: translateY(-4px); }
+.item { transform: translateX(10px) rotate(-12deg); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g1" class="grid rotate"><div data-dragon-id="a1" class="cell"></div><div data-dragon-id="b1" class="cell c2">XX</div><div data-dragon-id="c1" class="cell c3"></div></div>
+<div data-dragon-id="g2" class="grid scale"><div data-dragon-id="a2" class="cell"></div><div data-dragon-id="b2" class="cell c2 item"></div></div>
+<div data-dragon-id="g3" class="grid lift"><div data-dragon-id="a3" class="cell c3">XX XX</div><div data-dragon-id="b3" class="cell"></div></div>
+</body>
+</html>

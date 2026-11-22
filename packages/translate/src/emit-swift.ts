@@ -87,6 +87,8 @@ export class SwiftEmitter {
         return `any ${t.name}`;
       case 'array':
         return `JsArray<${this.ty(t.elem)}>`;
+      case 'bytes':
+        return 'JsBytes';
       case 'map':
         return t.key.k === 'str' ? `JsStringMap<${this.ty(t.value)}>` : `JsObjectMap<${this.ty(t.key)}, ${this.ty(t.value)}>`;
       case 'opt': {
@@ -412,6 +414,14 @@ export class SwiftEmitter {
         return `jsCopy(${x})`;
       case 'arrConcat':
         return `jsConcatArrays([${a.join(', ')}])`;
+      case 'bytesNew':
+        return `jsBytesNew(${x})`;
+      case 'bytesLength':
+        return `jsBytesLength(${x})`;
+      case 'bytesIndex':
+        return `jsBytesAt(${x}, ${y})`;
+      case 'bytesSet':
+        return `jsBytesSet(${x}, ${y}, ${a[2]})`;
       case 'strCodePoints':
         return `jsCodePoints(${x})`;
       case 'strCodePointAt0':
@@ -457,7 +467,7 @@ export function mayThrow(e: Expr, errorClasses: ReadonlySet<string>): boolean {
     case 'new':
       return errorClasses.has(e.cls) || e.args.some(sub);
     case 'builtin':
-      if (['numToStringRadix16', 'hostHexBits', 'hostParseNumber', 'arrMap', 'arrMapI', 'arrForEach', 'arrForEachI', 'arrFilter', 'arrFind', 'arrSome', 'arrFlatMap', 'arrSort'].includes(e.op)) return true;
+      if (['numToStringRadix16', 'hostHexBits', 'hostParseNumber', 'arrMap', 'arrMapI', 'arrForEach', 'arrForEachI', 'arrFilter', 'arrFind', 'arrSome', 'arrFlatMap', 'arrSort', 'bytesNew'].includes(e.op)) return true;
       return e.args.some(sub);
     case 'lambda':
       return false;
