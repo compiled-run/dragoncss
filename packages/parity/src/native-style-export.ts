@@ -108,10 +108,19 @@ export type ExportTarget = {
   readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
 };
 /** One assignment's interaction states: the runtime's tables, the node per table index, and per state its laid-out assignment. */
+export type ExportInteractionMatch = {
+  readonly hover: readonly string[];
+  readonly active: readonly string[];
+  readonly focus: string | null;
+  readonly focusVisible: string | null;
+  readonly force: readonly { readonly address: string; readonly pseudo: string }[];
+};
 export type ExportInteractionLevel = {
   readonly tables: InteractionTables;
   readonly addresses: readonly string[];
   readonly states: readonly ExportAssignment[];
+  /** Per state: the nodes each pseudo-class matches in it, and what CSS.forcePseudoState forces to reach it in Chrome. */
+  readonly matches: readonly ExportInteractionMatch[];
   /** With a plan: the plan assignment each state lays out as. */
   readonly planAssignments?: readonly number[];
 };
@@ -331,6 +340,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           tables: l.tables,
           addresses: l.addresses,
           states: l.deltas.map((_, k) => exportAt(interactionProgramAt(ip, i, k), sp.assignments[i] as StateProgram['assignments'][number])),
+          matches: (o.interactionValues?.[i] ?? []).map((v): ExportInteractionMatch => ({ hover: v.hover, active: v.active, focus: v.focus, focusVisible: v.focusVisible, force: v.force })),
           ...(plan ? { planAssignments: (planStates as number[][])[i] as number[] } : {}),
         })),
       },

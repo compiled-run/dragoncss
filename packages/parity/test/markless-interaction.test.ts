@@ -49,6 +49,12 @@ describe('interaction states in the Markless style export', () => {
       // Each cell pressed is one state: that cell takes the pressed background and every other node keeps the base's writes.
       const pressed = level.states.map((st) => st.nodes.filter((n) => JSON.stringify(background(n)) === JSON.stringify(PRESSED)).map((n) => n.id));
       expect(pressed.flat().sort(), t).toEqual([...cells].sort());
+      // Each state names what it matches, and Chrome reaches it by forcing :active on that state's pressed chain.
+      expect(level.matches.length, t).toBe(level.states.length);
+      for (const [k, m] of level.matches.entries()) {
+        expect(m.active, `${t} state ${k}`).toEqual(expect.arrayContaining(pressed[k] as string[]));
+        expect(m.force.some((f) => f.pseudo === 'active' && (pressed[k] as string[]).includes(f.address)), `${t} state ${k}`).toBe(true);
+      }
       for (const st of level.states) {
         for (const n of st.nodes) {
           if (cells.includes(n.id)) continue;

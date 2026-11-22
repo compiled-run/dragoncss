@@ -841,7 +841,13 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       // An interaction state is laid out under its assignment's values, so it takes that assignment's names.
       ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => {
         const rename = renameIn(x.assignments[i] as ExportAssignment);
-        return { ...l, addresses: l.addresses.map(rename), states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })) };
+        const one = (id: string | null): string | null => (id === null ? null : rename(id));
+        return {
+          ...l,
+          addresses: l.addresses.map(rename),
+          states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })),
+          matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
+        };
       }) } }),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
       ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: [

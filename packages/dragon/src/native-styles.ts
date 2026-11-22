@@ -5,6 +5,7 @@ import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
 import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
 import type { InteractionProgram } from './lower/interaction-program.ts';
+import type { InteractionValue } from './analysis/interaction.ts';
 import { deriveInteractionProgram } from './lower/interaction-program.ts';
 import type { AnimProgram } from './lower/anim-program.ts';
 import type { rtBand } from '@dragon/layout';
@@ -88,6 +89,8 @@ export type NativeStyleOutput = {
    * Dragon's interaction runtime (layout/src/rt-interaction.ts); absent when no assignment has an interaction state.
    */
   readonly interaction?: InteractionProgram;
+  /** With interaction: per level, each state's value (analysis/interaction.ts): what it matches and what Chrome forces to reach it. */
+  readonly interactionValues?: readonly (readonly InteractionValue[])[];
   /**
    * The sheet's @media bands, or null without @media: each atom is one media feature the device evaluates, each band the truth
    * vector of every atom; the program's env#band state selects one, so a band change is a setter like any other.
@@ -154,7 +157,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
 }
 
 /** The interaction program over a target's state program: one level per program assignment, from its case in its band. */
-function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend): InteractionProgram | string {
+function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend): { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | string {
   const isBand = (x: StateProgram['assignments'][number]['assignment'][number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
   const inputs = [];
   for (const { assignment } of program.assignments) {
@@ -163,7 +166,7 @@ function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: St
     if (typeof input === 'string') return input;
     inputs.push(input);
   }
-  return deriveInteractionProgram(program, inputs);
+  return { program: deriveInteractionProgram(program, inputs), values: inputs.map((i) => i.partition.states) };
 }
 
 function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean, hostAnimates: boolean): NativeStyleOutput | NativeStyleBlocked {
@@ -204,7 +207,7 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
     const anim = animated ? animProgramOf(compiled, program.assignments.map((a) => a.assignment)) : null;
     const interaction = interactive ? interactionProgramOf(compiled, program, backend) : null;
     if (typeof interaction === 'string') return { kind: 'blocked', reason: interaction };
-    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction }) };
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }) };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
