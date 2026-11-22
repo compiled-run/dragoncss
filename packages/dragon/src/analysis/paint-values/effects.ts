@@ -158,7 +158,7 @@ function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: 
  * the admitted groups painted before it (their composites are in that capture) and every id painted before it; a group nested in an admitted group (its outer group's overlay composites it); or why not.
  */
 export type GroupPlan =
-  | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[]; readonly before: readonly string[]; readonly after: string | null }
+  | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[]; readonly before: readonly string[]; readonly after: string | null; readonly unstable: readonly string[] }
   | { readonly kind: 'nested'; readonly outer: string }
   | { readonly kind: 'refused'; readonly reason: string };
 
@@ -351,11 +351,10 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     const layers = up.filter((a) => ['sticky', 'fixed'].includes(keywordAt(a, 'position') ?? 'static'));
     const layerBox = layers[0] ?? null;
     if (layers.length > 1) return refused(`it is inside ${layers.map((a) => a.element.address).join(' and ')}, more than one sticky or fixed box`);
-    if (layerBox !== null) {
-      const at = layerBox.element.address;
-      if (usedColors(layerBox)['background-color'].alpha !== 255 || (keywordAt(layerBox, 'background-image') ?? 'none') !== 'none') return refused(`it is inside ${at}, which has position ${keywordAt(layerBox, 'position')} and no opaque background colour alone under it`);
-      if (rounds(layerBox) || (keywordAt(layerBox, 'background-clip') ?? 'border-box') !== 'border-box') return refused(`it is inside ${at}, which has position ${keywordAt(layerBox, 'position')} and a background that is not its square border box`);
-    }
+    // The box at or inside it whose opaque background must hold the group's extent (inset clear of its corners; the device checks it).
+    const opaque = (a: ResolvedElement): boolean => usedColors(a)['background-color'].alpha === 255 && (keywordAt(a, 'background-image') ?? 'none') === 'none' && (keywordAt(a, 'background-clip') ?? 'border-box') === 'border-box';
+    const backdropBox = layerBox === null ? null : (up.slice(0, up.indexOf(layerBox) + 1).find(opaque) ?? null);
+    if (layerBox !== null && backdropBox === null) return refused(`it is inside ${layerBox.element.address}, which has position ${keywordAt(layerBox, 'position')}, and no box at or inside it has an opaque background colour alone under it`);
     for (const a of up) {
       const at = a.element.address;
       if (opacityAt(a) < 1) return refused(`it is inside ${at}, which has opacity ${opacityAt(a)}`);
@@ -433,6 +432,8 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     // The backdrop is the platform's own drawing of what paints before it (DragonGroupView captures it), except paint whose capture
     // is not proven equal to the screen: a platform blend, a mask, a clip path, a rounded overflow clip, a filter or a blend mode.
     const painters: string[] = [];
+    // Earlier paint whose capture may differ from the screen; the device checks that none of it meets the group's extent.
+    const unstable: string[] = [];
     for (const id of before) {
       if (id.includes(':text#')) continue;
       const el = elementOf(id);
@@ -441,26 +442,29 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
         painters.push(id);
         continue;
       }
-      if (opacityAt(el) < 1) return refused(`${id} paints before it with opacity ${opacityAt(el)}`);
-      if (clipsAt(el) && rounds(el) && !up.includes(el)) return refused(`${id} paints before it with a rounded overflow clip, a mask the backdrop capture does not draw`);
-      for (const [p, ok] of [['clip-path', ['none']], ['mask-image', ['none']], ['filter', ['none']], ['backdrop-filter', ['none']], ['mix-blend-mode', ['normal']]] as const) {
-        const k = keywordAt(el, p);
-        if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with a ${p}, which the backdrop capture is not proven to draw as the screen does`);
+      const masked = [['clip-path', ['none']], ['mask-image', ['none']], ['filter', ['none']], ['backdrop-filter', ['none']], ['mix-blend-mode', ['normal']]].find(([p, ok]) => {
+        const k = keywordAt(el, p as string);
+        return k !== null && !(ok as readonly string[]).includes(k);
+      });
+      if (up.includes(el)) {
+        if (masked !== undefined) return refused(`it is inside ${id}, which has a ${String(masked[0])}, which the backdrop capture is not proven to draw as the screen does`);
+        continue;
       }
-      if (up.includes(el)) continue;
+      if (opacityAt(el) < 1) return refused(`${id} paints before it with opacity ${opacityAt(el)}`);
+      if ((clipsAt(el) && rounds(el)) || masked !== undefined) {
+        unstable.push(id);
+        continue;
+      }
       // Paint Chrome may composite in a layer of its own (so the group over it is composited for overlap, with its own tiles), or
       // that changes without a box invalidation (a scroller's offset, a video frame, a control's own drawing).
       const tag = el.element.tag;
       const plainButton = tag === 'button' && buttonAppearance(el.props) === 'css';
-      if (tag !== 'html' && tag !== 'body' && ((FOLD_TAGS_OUT.has(tag) && !plainButton) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag))) return refused(`${id} paints before it and is a <${tag}>, a control, replaced or svg box, which the backdrop capture is not proven to draw as the screen does`);
-      if (el !== propagated) for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(el, p) ?? 'visible')) return refused(`${id} paints before it and scrolls (${p}: ${keywordAt(el, p)}), which the backdrop capture does not follow`);
-      if (elementWillChange(el).length > 0) return refused(`${id} paints before it with will-change, a compositor layer`);
-      for (const [p, ok] of [['transform-style', ['flat']], ['backface-visibility', ['visible']], ['perspective', ['none']]] as const) {
-        const k = keywordAt(el, p);
-        if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with ${p}: ${k}, a compositor layer`);
-      }
+      const control = tag !== 'html' && tag !== 'body' && ((FOLD_TAGS_OUT.has(tag) && !plainButton) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag));
+      const scrolls = el !== propagated && ['overflow-x', 'overflow-y'].some((p) => ['auto', 'scroll'].includes(keywordAt(el, p) ?? 'visible'));
+      const layered = elementWillChange(el).length > 0 || [['transform-style', 'flat'], ['backface-visibility', 'visible'], ['perspective', 'none']].some(([p, ok]) => (keywordAt(el, p as string) ?? ok) !== ok);
+      if (control || scrolls || layered) unstable.push(id);
     }
-    return { kind: 'group', filter, backdrop: layerBox === null ? null : layerBox.element.address, painters, before, after: after === null ? null : after.element.address };
+    return { kind: 'group', filter, backdrop: backdropBox === null ? null : backdropBox.element.address, painters, before, after: after === null ? null : after.element.address, unstable };
   };
 
   for (const id of order) {
