@@ -501,7 +501,7 @@ function checkSvgContent(valid: ValidInput, diagnostics: Diagnostic[]): void {
 /**
  * FORM-attrs: a button whose form owner is an ancestor <form> submits it when activated (HTML §4.10.6: type submit, the missing
  * and invalid value default) or resets it (type reset): Chrome navigates, or moves a range back to its value, and a form with a
- * submit button also submits implicitly on Enter in a range (§4.10.21.2). The native outputs do none of that, so such a button is
+ * submit button also submits implicitly on Enter in a range (§4.10.22.2). The native outputs do none of that, so such a button is
  * refused; type=button, whose activation does nothing, compiles. Walked on the expanded tree, as checkSvgContent is, so a
  * component's button is checked in each form it is called in.
  */
