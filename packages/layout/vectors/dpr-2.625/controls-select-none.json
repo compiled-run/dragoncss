@@ -616,8 +616,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -968,8 +967,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -1320,8 +1318,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -1672,8 +1669,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -2024,8 +2020,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -2345,8 +2340,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -2697,8 +2691,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -3018,8 +3011,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -3371,8 +3363,7 @@
           "lineHeight": {
            "kind": "px",
            "value": 30
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -3727,8 +3718,7 @@
           "lineHeight": {
            "kind": "px",
            "value": 4
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -4082,8 +4072,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -4434,8 +4423,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -4786,8 +4774,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -5138,8 +5125,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -5490,8 +5476,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -5842,8 +5827,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -6194,8 +6178,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -6546,8 +6529,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -7046,8 +7028,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [
@@ -7399,8 +7380,7 @@
           },
           "lineHeight": {
            "kind": "normal"
-          },
-          "arrowWidth": 0
+          }
          },
          "strut": null,
          "children": [

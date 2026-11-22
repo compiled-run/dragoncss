@@ -88,7 +88,7 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import { absoluteRects, layout, layoutWithFaults, resolvedInput } from '../../layout/src/layout.ts';
+import { absoluteRects, layout, layoutWithFaults, resolvedInput, zoomInput } from '../../layout/src/layout.ts';
 import type { Ctx } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
@@ -111,9 +111,6 @@ import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import type { SnappedRect } from '../../layout/src/snap.ts';
 import { snapEdges, snapRect } from '../../layout/src/snap.ts';
-import type { MenuListArrowPaint } from '../../layout/src/paint.ts';
-import { menuListArrows } from '../../layout/src/paint.ts';
-import type { SvgSegment } from '../../layout/src/svg-geometry.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
@@ -1142,8 +1139,8 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'legend' };
   }
   if (k === 'select-menulist') {
-    const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth'], path);
-    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path) };
+    const o = obj(v, ['kind', 'font', 'lineHeight'], path);
+    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
   }
   if (k === 'select-inner') {
     obj(v, ['kind'], path);
@@ -1592,53 +1589,6 @@ function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: str
   return `${out}]]`;
 }
 
-/** FORM-b: the drop-down arrow of every menulist-button select (paint.ts menuListArrows), only in a result that has one. */
-function arrowSuffix(input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): string {
-  return arrowsJson(menuListArrows(input, boxes, measurer), null);
-}
-
-/** The arrows in absolute device px, or with abs (absolute LU rects) relative to each select's snapped border box, as DragonTree stores them. */
-function arrowsJson(arrows: readonly MenuListArrowPaint[], abs: Map<string, LayoutRect> | null): string {
-  if (arrows.length === 0) return '';
-  let out = ',["menulist-arrows",[';
-  arrows.forEach((a, i) => {
-    if (i > 0) out += ',';
-    let dx = 0;
-    let dy = 0;
-    if (abs !== null) {
-      const r = abs.get(a.id);
-      if (r === undefined) fail(`the engine gives an arrow for ${a.id}, which it did not lay out`);
-      else {
-        const b = snapRect(r);
-        dx = b.left;
-        dy = b.top;
-      }
-    }
-    out += `[${q(a.id)},${h(a.arrow.strokeWidth)},[`;
-    a.arrow.shape.segments.forEach((g, k) => {
-      if (k > 0) out += ',';
-      out += segmentJson(g, dx, dy);
-    });
-    out += ']]';
-  });
-  return `${out}]]`;
-}
-
-function segmentJson(g: SvgSegment, dx: number, dy: number): string {
-  switch (g.kind) {
-    case 'move':
-      return `["move",${h(g.x - dx)},${h(g.y - dy)}]`;
-    case 'line':
-      return `["line",${h(g.x - dx)},${h(g.y - dy)}]`;
-    case 'quad':
-      return `["quad",${h(g.x1 - dx)},${h(g.y1 - dy)},${h(g.x - dx)},${h(g.y - dy)}]`;
-    case 'cubic':
-      return `["cubic",${h(g.x1 - dx)},${h(g.y1 - dy)},${h(g.x2 - dx)},${h(g.y2 - dy)},${h(g.x - dx)},${h(g.y - dy)}]`;
-    case 'close':
-      return '["close"]';
-  }
-}
-
 /**
  * The first shaping plant set in faults, or ''. The shaping plants act only through a shaped measurer (platform.ts
  * shapedMeasurerFor, or replayMeasurer here), so a case without a shape transcript, which measurerFor's Ahem measurer lays out,
@@ -1700,7 +1650,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}${arrowSuffix(input, r.boxes, m.measurer)}]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -3940,9 +3890,7 @@ export function checkMarklessPlan(line: string): string {
  * One Markless layout: {"assignment", "dpr", "viewport": {width, height}, "safeArea": {top, right, bottom, left}, "plan"}. The
  * result is ["ok", pageScroll, nodes] with every number as its bit pattern: pageScroll [minX, maxX, minY, maxY] or ["undecided",
  * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
- * left] or null, lines or null, borderOps or null, scrollRange or null]; on a slotted page ("slots" given), then the slot
- * writes; with a menulist-button select, last, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
- * its select's snapped border box.
+ * left] or null, lines or null, borderOps or null, scrollRange or null].
  */
 export function runMarklessLayout(line: string): string {
   try {
@@ -4180,7 +4128,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const texts = new Map<string, string>();
     planTexts(input.root, texts);
     const deviceBorders = new Map<string, readonly number[]>();
-    const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
+    const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
     planDeviceBorders(zoomed.root, zoomed.devicePixelRatio, deviceBorders);
     const lines = new Map<string, string>();
     for (const t of planTextLines(input, measurer, boxes)) {
@@ -4219,16 +4167,15 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       const range = rangeOf.get(b.id);
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
-    const arrows = arrowsJson(menuListArrows(input, boxes, measurer), abs);
-    if (!o.values.has('slots')) return `${out}]${arrows}]`;
+    if (!o.values.has('slots')) return `${out}]]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
-    if (spliced === null) return `${out}${arrows}]`;
+    if (spliced === null) return `${out}]`;
     // Each row's write numbers at its own values, for every node of its assignment; the host applies those of its copy.
     out += ',[';
     spliced.rows.forEach((row, i) => {
       out += `${i === 0 ? '' : ','}[${q(row.key)},${writeNumbers(row.parts, row.values, `${row.at}.slots`)}]`;
     });
-    return `${out}]${arrows}]`;
+    return `${out}]]`;
 }
 
 /** Every bound write number of an assignment at these slot values: [[node, write kind, path, value], ...]. */

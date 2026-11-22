@@ -8,9 +8,14 @@
 import { sqrtF64 } from './paint-gradient.ts';
 import { froundOf } from './rt-easing.ts';
 
-import type { SvgPathShape, SvgSegment } from './svg-path-types.ts';
+export type SvgMove = { readonly kind: 'move'; readonly x: number; readonly y: number };
+export type SvgLine = { readonly kind: 'line'; readonly x: number; readonly y: number };
+export type SvgQuad = { readonly kind: 'quad'; readonly x1: number; readonly y1: number; readonly x: number; readonly y: number };
+export type SvgCubic = { readonly kind: 'cubic'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly x: number; readonly y: number };
+export type SvgClose = { readonly kind: 'close' };
 
-export type { SvgClose, SvgCubic, SvgLine, SvgMove, SvgPathShape, SvgQuad, SvgSegment } from './svg-path-types.ts';
+/** One absolute segment in float32 user space. */
+export type SvgSegment = SvgMove | SvgLine | SvgQuad | SvgCubic | SvgClose;
 
 /** A float32 rect as [left, top, right, bottom]. */
 export type SvgBounds = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
@@ -199,6 +204,7 @@ function computeBounds(segments: readonly SvgSegment[]): SvgBounds | null {
 // ---------------------------------------------------------------------------------------------------------------------
 // Shapes and the viewport.
 
+export type SvgPathShape = { readonly kind: 'path'; readonly segments: readonly SvgSegment[] };
 /** rx and ry: SVG-rrect's used corner radii, both positive and at most half the width and height; absent on a square rect. */
 export type SvgRectShape = { readonly kind: 'rect'; readonly x: number; readonly y: number; readonly width: number; readonly height: number; readonly rx?: number; readonly ry?: number };
 export type SvgCircleShape = { readonly kind: 'circle'; readonly cx: number; readonly cy: number; readonly r: number };

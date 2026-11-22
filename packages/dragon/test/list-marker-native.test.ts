@@ -4,7 +4,7 @@
 // holds a text node at the engine's text fragment, which the device draws as any Ahem text view.
 import { describe, expect, it } from 'vitest';
 import type { LU } from '@dragon/layout';
-import { layout, LU_PER_PX, markerTextId as engineMarkerTextId, measurerFor, menuListArrows, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvedInput, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { layout, LU_PER_PX, markerTextId as engineMarkerTextId, measurerFor, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { ElementNode, Origin, SourceRef, TreeNode } from '../src/index.ts';
 import type { ExpectedEngine } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitUikitCases, expectedDump, nativePrograms, NO_FAULTS } from '../src/internal.ts';
@@ -15,7 +15,7 @@ import { DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const m = measurerFor('darwin-arm64');
 if (m.kind !== 'ok') throw new Error(m.code);
-const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, resolvedInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, scrollRanges, menuListArrows, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
+const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, scrollRanges, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
 const VIEW = { width: 400, height: 300 };
 
 function el(ref: SourceRef, id: string, tag: string, classes: string[] = [], children: TreeNode[] = []): ElementNode {

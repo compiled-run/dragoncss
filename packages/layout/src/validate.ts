@@ -263,7 +263,7 @@ export const replacedLeafSchema = obj({
 });
 
 /** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
-export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema, arrowWidth: num(0) }, 'select-inner': {} });
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema }, 'select-inner': {} });
 
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });

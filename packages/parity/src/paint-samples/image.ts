@@ -12,7 +12,7 @@
 // The nearest points sit a quarter of a texel inside its corners, where a filtered draw would blend the neighbours in.
 import { viewBoxTransform } from '@dragon/layout';
 import type { RgbaImage } from '../native-compare.ts';
-import { ALONG_POSITIONS, SAMPLE_INSET_DEVICE_PX, SVG_CLEAR_DEVICE_PX } from '../samples.ts';
+import { ALONG_POSITIONS, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
 import type { SamplePoint } from '../samples.ts';
 import { clearInside, clearOutside } from './radius.ts';
 import type { ReplacedSamplesBox } from './replaced-geometry.ts';
@@ -235,7 +235,8 @@ export const IMAGE_SAMPLES: PaintSamples = {
 
 // ---------------------------------------------------------------- SVG-a2
 
-export { SVG_CLEAR_DEVICE_PX } from '../samples.ts';
+/** Device px a svg colour point keeps from every shape edge, stroke edge, vertex and clip edge: the inset plus a pixel's half diagonal. */
+export const SVG_CLEAR_DEVICE_PX = SAMPLE_INSET_DEVICE_PX + Math.SQRT1_2;
 /** Steps a curve or circle is flattened into when measuring distances to it (each step is far below a device px at fixture sizes). */
 const FLATTEN_STEPS = 64;
 /** The grid of candidate points over an svg's content box, per axis. */

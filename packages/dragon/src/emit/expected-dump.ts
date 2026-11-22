@@ -3,7 +3,7 @@
 // the device scale (border widths, the padding-box clip, the text instance size) come from the TS engine with the same helpers
 // the generated code runs on the device through the translated engine. The digest of an expected dump is embedded in the
 // generated code, keyed by case and DPR. The compiler core imports the engine for types only, so the host passes the TS engine in.
-import type { ControlBox, Edges, EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, MenuListArrowPaint, ObjectRect, ReplacedLeaf, ReplacedPaint, ScrollRangesResult, SnappedRect, TextMeasurer } from '@dragon/layout';
+import type { ControlBox, Edges, EngineFaults, InlineChild, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, ObjectRect, ReplacedLeaf, ReplacedPaint, ScrollRangesResult, SnappedRect, TextMeasurer } from '@dragon/layout';
 import { canonicalJson, sha256Hex } from '../digest.ts';
 import type { Longhand } from '../css/properties.ts';
 import type { NativeBackend, NativeProgram, ProgramNode, ProgramWrite } from '../lower/native-program.ts';
@@ -35,8 +35,6 @@ export type ExpectedEngine = {
   readonly measurer: TextMeasurer;
   readonly snapEdges: (boxes: readonly LayoutRect[]) => SnappedRect[];
   readonly zoomInput: (input: LayoutInput, faults: EngineFaults) => LayoutInput;
-  /** The input resolved for its environment with the layout's measurer (layout.ts resolvedInput), as the device resolves it. */
-  readonly resolvedInput: (input: LayoutInput, measurer: TextMeasurer, faults: EngineFaults) => LayoutInput;
   readonly noFaults: EngineFaults;
   readonly resolveBorder: (style: LayoutStyle, devicePixelRatio: number) => Edges;
   /** REPL-a: padding against a containing block's content width, and a replaced box's paint rects (layout paint.ts). */
@@ -48,8 +46,6 @@ export type ExpectedEngine = {
   readonly platformFontSize: (px: number) => number;
   readonly zoomFontSize: (px: number, zoom: number) => number;
   readonly float32: (x: number) => number;
-  /** FORM-b: every menulist-button select's drop-down arrow in absolute device px (layout paint.ts). */
-  readonly menuListArrows: (input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer) => MenuListArrowPaint[];
   /** OVFL-B: every element scroll container's offset range in device px (layout overflow.ts). */
   readonly scrollRanges: (input: LayoutInput, measurer: TextMeasurer) => ScrollRangesResult;
   /** The TS paint references (paint-*.ts) whose translations the device runs. */
@@ -59,15 +55,12 @@ export type ExpectedEngine = {
 /** A replaced box's paint rects in device px relative to its snapped border box: [x, y, width, height]; drawn null for none. */
 export type ReplacedGeometry = { readonly content: readonly number[]; readonly dest: readonly number[]; readonly drawn: readonly number[] | null };
 
-/** A select's drop-down arrow: its open path verb-coded (0 move, 1 line) in device px from the snapped border box, and its stroke width. */
-export type SelectArrowGeometry = { readonly path: readonly number[]; readonly stroke: number };
-
 /**
  * The device values of one node at one scale, from the engine: border widths in whole device px, the snapped border box, the
  * layout border-box size before snapping, a text run's computed font size in device px from the resolved input (null for a box),
- * for a replaced box its paint rects, and for a menulist-button select its arrow.
+ * and for a replaced box its paint rects.
  */
-export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly size: readonly [number, number]; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null; readonly scroll: readonly [number, number, number, number] | null; readonly selectArrow: SelectArrowGeometry | null };
+export type NodeGeometry = { readonly border: readonly [number, number, number, number]; readonly box: SnappedRect; readonly size: readonly [number, number]; readonly fontSize: number | null; readonly replaced: ReplacedGeometry | null; readonly scroll: readonly [number, number, number, number] | null };
 
 const rgba = (c: { r: number; g: number; b: number; alpha: number }): number[] => [c.r, c.g, c.b, c.alpha];
 
@@ -109,8 +102,8 @@ export function programInput(p: NativeProgram, viewport: { readonly width: numbe
 }
 
 /** The computed font size in device px of every text leaf and text marker of the resolved input (environment.ts writes it). */
-export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput, measurer: TextMeasurer): Map<string, number> {
-  const zoomed = engine.resolvedInput(input, measurer, engine.noFaults);
+export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput): Map<string, number> {
+  const zoomed = engine.zoomInput(input, engine.noFaults);
   const out = new Map<string, number>();
   const inline = (c: InlineChild): void => {
     if (c.kind === 'text') out.set(c.id, c.font.size);
@@ -128,8 +121,8 @@ export function resolvedFontSizes(engine: ExpectedEngine, input: LayoutInput, me
 }
 
 /** Border widths of every box of the zoomed input, in whole device px (box.ts resolveBorder at zoomed ratio 1). */
-export function borderDevicePx(engine: ExpectedEngine, input: LayoutInput, measurer: TextMeasurer): Map<string, readonly [number, number, number, number]> {
-  const zoomed = engine.resolvedInput(input, measurer, engine.noFaults);
+export function borderDevicePx(engine: ExpectedEngine, input: LayoutInput): Map<string, readonly [number, number, number, number]> {
+  const zoomed = engine.zoomInput(input, engine.noFaults);
   const lu = engine.luPerPx;
   const out = new Map<string, readonly [number, number, number, number]>();
   const walk = (b: LayoutBox | ControlBox): void => {
@@ -153,8 +146,8 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
  * The paint rects of every replaced leaf of the zoomed input, from its content box in absolute LU: the border box less its
  * borders and its padding against the parent's content width (the viewport's for the root), as the device computes them.
  */
-export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): Map<string, ReplacedPaint> {
-  const zoomed = engine.resolvedInput(input, measurer, engine.noFaults);
+export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[]): Map<string, ReplacedPaint> {
+  const zoomed = engine.zoomInput(input, engine.noFaults);
   const abs = new Map<string, { x: number; y: number; width: number; height: number }>();
   for (const b of boxes) {
     const p = b.parent === null ? undefined : abs.get(b.parent);
@@ -188,22 +181,6 @@ export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, b
   return out;
 }
 
-/** Each select's arrow relative to its snapped border box, by id, as DragonTree.apply stores it on the device. */
-export function selectArrowGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[], snapped: readonly SnappedRect[], measurer: TextMeasurer): Map<string, SelectArrowGeometry> {
-  const at = new Map(snapped.map((s) => [s.id, s]));
-  const out = new Map<string, SelectArrowGeometry>();
-  for (const a of engine.menuListArrows(input, boxes, measurer)) {
-    const box = at.get(a.id);
-    if (box === undefined) throw new Error(`the engine gives an arrow for ${a.id}, which it did not lay out`);
-    const path = a.arrow.shape.segments.flatMap((g) => {
-      if (g.kind === 'move' || g.kind === 'line') return [g.kind === 'move' ? 0 : 1, g.x - box.left, g.y - box.top];
-      throw new Error(`${a.id}: a select arrow segment ${g.kind} is not a move or a line`);
-    });
-    out.set(a.id, { path, stroke: a.arrow.strokeWidth });
-  }
-  return out;
-}
-
 /** A pixel rect relative to a snapped box. */
 const relative = (r: { x: number; y: number; width: number; height: number }, box: SnappedRect): number[] => [r.x - box.left, r.y - box.top, r.width, r.height];
 
@@ -213,10 +190,9 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the case (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const snapped = engine.snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input, engine.measurer);
-  const fontSizes = resolvedFontSizes(engine, input, engine.measurer);
-  const replaced = replacedGeometries(engine, input, out.boxes, engine.measurer);
-  const arrows = selectArrowGeometries(engine, input, out.boxes, snapped, engine.measurer);
+  const borders = borderDevicePx(engine, input);
+  const fontSizes = resolvedFontSizes(engine, input);
+  const replaced = replacedGeometries(engine, input, out.boxes);
   const ranges = engine.scrollRanges(input, engine.measurer);
   if (ranges.kind !== 'ok') throw new Error(`${caseId}@${dpr}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
   const scroll = new Map(ranges.ranges.map((r) => [r.id, [r.minX, r.maxX, r.minY, r.maxY] as const]));
@@ -229,7 +205,7 @@ export function expectedDump(p: NativeProgram, caseId: string, viewport: { reado
     if (n === undefined) throw new Error(`${caseId}@${dpr}: the engine laid out ${r.id}, which the program does not have`);
     const box = snapped[i] as SnappedRect;
     const rp = replaced.get(r.id);
-    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, size: [r.width / engine.luPerPx, r.height / engine.luPerPx], fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) }, scroll: scroll.get(r.id) ?? null, selectArrow: arrows.get(r.id) ?? null };
+    const g: NodeGeometry = { border: borders.get(r.id) ?? [0, 0, 0, 0], box, size: [r.width / engine.luPerPx, r.height / engine.luPerPx], fontSize: fontSizes.get(r.id) ?? null, replaced: rp === undefined ? null : { content: relative(rp.content, box), dest: relative(rp.dest, box), drawn: rp.drawn === null ? null : relative(rp.drawn, box) }, scroll: scroll.get(r.id) ?? null };
     const no = unscrollable.get(r.id);
     if (no !== undefined && n.writes.some((w) => w.kind === 'scroll-container')) throw new Error(`${caseId}@${dpr}: the engine refused the scroll range of ${r.id} at ${no.nodeId}: ${no.detail}`);
     const applied: { [key: string]: JsonValue } = {};

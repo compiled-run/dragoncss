@@ -12,5 +12,3 @@ export { FORM_FAULT_NAMES, FORM_PLANTS, NO_FORM_FAULTS } from './faults.ts';
 export type { FormFaults } from './faults.ts';
 export { authorStyleOf, compareForms, expectedButtonChildren } from './compare.ts';
 export type * from './compare.ts';
-export { arrowPixelProblems, compareMenuList, menuListArrowWidthOf } from './menulist.ts';
-export type { MenuListCapture, MenuListCase, MenuListPixels, MenuListReference } from './menulist.ts';

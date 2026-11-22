@@ -83,7 +83,7 @@ function deviceStrokes(p: NativeProgram, dpr: number): Map<string, number> {
   }
   return out;
 }
-const NO_GEOMETRY = { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 }, size: [0, 0], fontSize: null, replaced: null, scroll: null, selectArrow: null } as unknown as Parameters<typeof appliedValue>[4];
+const NO_GEOMETRY = { border: [0, 0, 0, 0], box: { x: 0, y: 0, width: 0, height: 0 }, size: [0, 0], fontSize: null, replaced: null, scroll: null } as unknown as Parameters<typeof appliedValue>[4];
 
 /** The glyphs of a program at a DPR, with each text's fill and stroke from its writes. */
 function inks(p: NativeProgram, dpr: number): Ink[] {

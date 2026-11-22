@@ -124,7 +124,7 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error(`the engine refused ${nc.case.id}@${dpr}`);
   const snapped = snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input, engine.measurer);
+  const borders = borderDevicePx(engine, input);
   const boxOf = new Map<string, Box>(out.boxes.map((b: LayoutRect, i) => [b.id, snapped[i] as Box]));
   const order = paintOrder(p.root);
   const layer = positionedLayer(p.root);
