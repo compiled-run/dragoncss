@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { min-height: 300px; margin: 0; background-color: rgb(236, 240, 244); }
+.row { display: flex; align-items: flex-start; column-gap: 34px; padding: 24px 24px 0; }
+.card { width: 80px; height: 50px; border: 1px solid rgb(120, 120, 120); border-radius: 12px; background-color: rgb(250, 250, 250); }
+.press { transform: scale(0.97); outline: 3px solid rgb(0, 90, 200); outline-offset: 2px; }
+.shift { width: 80px; padding: 8px; background-color: rgb(200, 220, 200); transform: translate(6px, 4px); }
+.kid { height: 24px; background-color: rgb(250, 160, 0); outline: 4px solid rgb(120, 0, 160); outline-offset: 1px; }
+.turn { width: 70px; height: 40px; background-color: rgb(40, 90, 200); transform: rotate(8deg); outline: 4px solid rgb(220, 30, 30); outline-offset: 3px; }
+.grow { width: 40px; height: 24px; background-color: rgb(250, 230, 120); transform: scale(1.5); transform-origin: 0 0; outline: 6px double rgb(0, 90, 0); outline-offset: 2px; }
+.flat { width: 90px; height: 30px; background-color: rgb(200, 60, 60); outline: 6px solid rgb(20, 20, 120); outline-offset: 2px; }
+.over { width: 50px; height: 30px; margin-top: -20px; margin-inline-start: 30px; background-color: rgb(60, 60, 60); transform: translate(4px, 0); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="press" class="card press"></div>
+<div data-dragon-id="shift" class="shift"><div data-dragon-id="kid" class="kid"></div></div>
+<div data-dragon-id="turn" class="turn"></div>
+</div>
+<div data-dragon-id="row2" class="row">
+<div data-dragon-id="grow" class="grow"></div>
+<div data-dragon-id="col"><div data-dragon-id="flat" class="flat"></div><div data-dragon-id="over" class="over"></div></div>
+</div>
+</body>
+</html>

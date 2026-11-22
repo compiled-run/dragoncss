@@ -96,8 +96,9 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'outline-offset-1': ['outline-solid'],
   // outline-dashed's dashes and round dots move along each side when the gap is not fitted; outline-3d's ring points swap colours.
   'outline-dash-unfitted': ['outline-dashed'],
-  // PNT1-outline-layer: an outline a later layer covers, or one inside a layer under another layer, paints over them from the root.
-  'outline-root-hosted': ['outline-layers'],
+  // PNT1-outline-layer: an outline a later layer covers, or one inside a layer under another layer, paints over them from the root;
+  // one inside a transformed layer paints untransformed.
+  'outline-root-hosted': ['outline-layers', 'outline-transform'],
   'outline-tones-swapped': ['outline-3d'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
