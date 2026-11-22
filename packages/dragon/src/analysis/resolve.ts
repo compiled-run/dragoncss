@@ -34,6 +34,9 @@ import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
 import type { BlockInInlineChild } from './block-in-inline.ts';
 import { blockInInlineBlocker, isBlockInInline, markBlockInInline } from './block-in-inline.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
+import { type SelectPart, selectParts } from './select-parts.ts';
+export { selectPartOf } from './select-parts.ts';
+export type { SelectPart, SelectPartInfo } from './select-parts.ts';
 import type { TransformItem } from './text-transform.ts';
 import { textTransformOf, transformRun } from './text-transform.ts';
 import type { InteractionState } from './match.ts';
@@ -734,16 +737,11 @@ function computePseudoContent(props: Map<Longhand, ResolvedValue>, faults: Compi
 export type RangeShadowPart = 'container' | 'track' | 'thumb';
 /** The parts of a single-line text field's UA shadow tree (FORM-b): the placeholder and the inner editor. */
 export type TextFieldPart = 'placeholder' | 'editor';
-/** The part of a single select's UA shadow tree (FORM-b): the inner element. */
-export type SelectPart = 'inner';
 type ShadowPart = RangeShadowPart | TextFieldPart | SelectPart;
 const isTextFieldPart = (p: ShadowPart): p is TextFieldPart => p === 'placeholder' || p === 'editor';
 // No author selector reaches the inner editor in Chrome 145 (::-webkit-inner-editor is not exposed to author style).
 const PART_PSEUDO: Readonly<Record<ShadowPart, ControlPart | null>> = { container: null, track: 'track', thumb: 'thumb', placeholder: 'placeholder', editor: null, inner: null };
 
-/** A single select (part null) or its inner element, with the select element. */
-export type SelectPartInfo = { readonly part: SelectPart | null; readonly host: LinkedElement };
-const selectParts = new WeakMap<ResolvedElement, SelectPartInfo>();
 
 /** The resolved option a select shows, beside the tree (it has no box). */
 const shownOptions = new WeakMap<LinkedElement, ResolvedElement>();
@@ -754,10 +752,6 @@ export function selectOptionsOf(el: ResolvedElement): readonly ResolvedElement[]
   return selectOptions.get(el) ?? [];
 }
 
-/** The single select or select part a resolved element is, or undefined for every other element. */
-export function selectPartOf(el: ResolvedElement): SelectPartInfo | undefined {
-  return selectParts.get(el);
-}
 
 /** An option's facts for the selectedness and label rules: its attributes and its text children's text. */
 function selectOptionOf(o: LinkedElement): SelectOption {
