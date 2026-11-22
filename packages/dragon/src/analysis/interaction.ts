@@ -25,6 +25,7 @@ import type { InteractionProbe, InteractionState } from './match.ts';
 import { NO_INTERACTION, selectorMatches } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { propagatedFrom } from './computed-checks.ts';
+import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
 export const MAX_INTERACTION_STATES = 256;
@@ -551,12 +552,18 @@ const all = (): boolean => true;
 // hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
 const overflowAtRest = (v: CssValue): boolean => v.kind === 'keyword' && OVERFLOW_AT_REST.has(v.value);
+/** none, or translate and scale functions with a rotate only by 0, as rt-hit.ts hitTransformRefusal models. */
+export const hitModelsTransform = (v: CssValue): boolean => {
+  if (v.kind === 'keyword') return v.value === 'none';
+  if (v.kind !== 'other' || v.type !== TRANSFORM_LIST_TYPE) return false;
+  return transformFunctionsOf(v.text).every((f) => f.kind === 'translate' || f.kind === 'scale' || (f.kind === 'rotate' ? f.deg : matrixParts(f.values).deg) === 0);
+};
 
 /**
  * R13: the paint longhands Dragon's hit test (packages/layout/src/rt-hit.ts) models, each with the values it models. Box
  * geometry (every layout longhand) and pointer-events are modelled too. Every other paint longhand at any value but its
  * initial one is an unmodelled fact (fail closed): a later paint package is refused here until the hit test reads it (T146).
- * transform-origin only moves a transform, which is itself unmodelled.
+ * The individual translate, rotate and scale stay unmodelled: Blink maps a hit through each as its own node, uncaptured.
  */
 export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new Map<Longhand, (v: CssValue) => boolean>([
   ['color', all],
@@ -577,6 +584,10 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['border-top-right-radius', all],
   ['border-bottom-right-radius', all],
   ['border-bottom-left-radius', all],
+  // Blink hits the border box (box-shadow is ink only); opacity, 0 too, moves no hit, and below 1 is a layer rt-hit.ts orders.
+  ['box-shadow', all],
+  ['opacity', all],
+  ['transform', hitModelsTransform],
   // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
   // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
   ['view-transition-name', all],

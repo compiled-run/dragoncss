@@ -2289,6 +2289,24 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/hit_testing_transform_state.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2011 Apple Inc.  All rights reserved.",
+      "fileSha256": "cb8bf9fed53a94196cb170b5d651b36b8e76081be84635de24c6826c3c45b47a",
+      "headerSha256": "24ce322c3ba30d2df2a1e7a98744abb04f2cbb20701d681dfcb2f0c09c343531",
+      "ranges": [
+        { "lines": "45-56", "symbol": "Flatten", "source": "located" },
+        { "lines": "58-61", "symbol": "MappedPoint", "source": "cited" },
+        { "lines": "68-70", "symbol": "BoundsOfMappedQuad", "source": "cited" },
+        { "lines": "77-81", "symbol": "BoundsOfMappedQuadInternal", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/outline_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -4314,6 +4332,23 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/emit/paint/transform.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "ui/gfx/geometry/axis_transform2d.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "8189b744359347fe982e446695cb63e5f9c06a2269eeb5d31d324b3a4d795945",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "74-85", "symbol": "Invert", "source": "cited" },
+        { "lines": "92-94", "symbol": "MapPoint", "source": "cited" },
+        { "lines": "133-138", "symbol": "MapX", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
       ]
     },
     {
