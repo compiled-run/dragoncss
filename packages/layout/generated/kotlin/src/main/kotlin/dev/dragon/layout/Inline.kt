@@ -348,11 +348,11 @@ val inline_NEARLY_MAX_RAW: Double = 2147483646.0
 fun inline_isRtlSafe(text: String): Boolean {
   // ts: packages/layout/src/inline.ts:208
   run {
-    val _a91 = jsCodePoints(text)
-    var _i91 = 0
-    while (_i91 < _a91.size) {
-      val ch: String = _a91[_i91]
-      _i91++
+    val _a93 = jsCodePoints(text)
+    var _i93 = 0
+    while (_i93 < _a93.size) {
+      val ch: String = _a93[_i93]
+      _i93++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       val letter: Boolean = (((cp >= 65.0) && (cp <= 90.0)) || ((cp >= 97.0) && (cp <= 122.0)))
       // ts: packages/layout/src/inline.ts:211
@@ -368,11 +368,11 @@ fun inline_isRtlSafe(text: String): Boolean {
 fun inline_checkRtlText(box: LayoutBox, leaves: JsArray<TextLeaf>, items: JsArray<Inline_Item>): Unit {
   // ts: packages/layout/src/inline.ts:221
   run {
-    val _a92 = leaves
-    var _i92 = 0
-    while (_i92 < _a92.size) {
-      val t: TextLeaf = _a92[_i92]
-      _i92++
+    val _a94 = leaves
+    var _i94 = 0
+    while (_i94 < _a94.size) {
+      val t: TextLeaf = _a94[_i94]
+      _i94++
       // ts: packages/layout/src/inline.ts:222
       if ((!inline_isRtlSafe(t.text))) {
         unsupported_unsupported("bidi-neutral", t.id, "UAX #9 W1-W7, N1-N2", ("text in the rtl paragraph of " + box.id + " holds a character other than A-Z, a-z, space and U+200B"))
@@ -382,11 +382,11 @@ fun inline_checkRtlText(box: LayoutBox, leaves: JsArray<TextLeaf>, items: JsArra
   var zwsp: Double = -1.0
   // ts: packages/layout/src/inline.ts:228
   run {
-    val _a93 = items
-    var _i93 = 0
-    while (_i93 < _a93.size) {
-      val it: Inline_Item = _a93[_i93]
-      _i93++
+    val _a95 = items
+    var _i95 = 0
+    while (_i95 < _a95.size) {
+      val it: Inline_Item = _a95[_i95]
+      _i95++
       // ts: packages/layout/src/inline.ts:229
       if (jsStrEq(it.kind, "br")) {
         // ts: packages/layout/src/inline.ts:230
@@ -514,11 +514,11 @@ fun inline_inlineLeaves(box: LayoutBox): JsArray<TextLeaf> {
   fun walk(kids: JsArray<U_InlineBox_LineBreak_TextLeaf>): Unit {
     // ts: packages/layout/src/inline.ts:282
     run {
-      val _a94 = kids
-      var _i94 = 0
-      while (_i94 < _a94.size) {
-        val k: U_InlineBox_LineBreak_TextLeaf = _a94[_i94]
-        _i94++
+      val _a96 = kids
+      var _i96 = 0
+      while (_i96 < _a96.size) {
+        val k: U_InlineBox_LineBreak_TextLeaf = _a96[_i96]
+        _i96++
         // ts: packages/layout/src/inline.ts:283
         if (jsStrEq(k.kind, "text")) {
           jsPush(out, (k as TextLeaf))
@@ -537,11 +537,11 @@ fun inline_inlineContent(box: LayoutBox): JsArray<U_InlineBox_LineBreak_TextLeaf
   val out: JsArray<U_InlineBox_LineBreak_TextLeaf> = jsArrayOf<U_InlineBox_LineBreak_TextLeaf>()
   // ts: packages/layout/src/inline.ts:322
   run {
-    val _a95 = box.children
-    var _i95 = 0
-    while (_i95 < _a95.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a95[_i95]
-      _i95++
+    val _a97 = box.children
+    var _i97 = 0
+    while (_i97 < _a97.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a97[_i97]
+      _i97++
       // ts: packages/layout/src/inline.ts:322
       if (((!jsStrEq(c.kind, "box") && !jsStrEq((c as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control")) && !jsStrEq((c as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
         jsPush(out, (c as U_InlineBox_LineBreak_TextLeaf))
@@ -556,11 +556,11 @@ fun inline_inlineChildren(box: LayoutBox): JsArray<U_ControlBox_InlineBox_Layout
   val out: JsArray<U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = jsArrayOf<U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>()
   // ts: packages/layout/src/inline.ts:329
   run {
-    val _a96 = box.children
-    var _i96 = 0
-    while (_i96 < _a96.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a96[_i96]
-      _i96++
+    val _a98 = box.children
+    var _i98 = 0
+    while (_i98 < _a98.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a98[_i98]
+      _i98++
       // ts: packages/layout/src/inline.ts:330
       if ((((jsStrEq(c.kind, "box") || jsStrEq((c as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced")) && (!inlineBox_isAtomicInline(((c as U_LayoutBox_ReplacedLeaf) as U_ControlBox_LayoutBox_ReplacedLeaf)))) || jsStrEq(c.kind, "control"))) {
         throw JsError((box.id + " mixes boxes and inline content; validateLayoutInput rejects this input"))
@@ -683,11 +683,11 @@ fun inline_checkAtomic(a: U_ControlBox_LayoutBox_ReplacedLeaf): Unit {
 fun inline_flattenTop(ctx: Ctx, kids: JsArray<U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>, out: Flat): Unit {
   // ts: packages/layout/src/inline.ts:423
   run {
-    val _a97 = kids
-    var _i97 = 0
-    while (_i97 < _a97.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a97[_i97]
-      _i97++
+    val _a99 = kids
+    var _i99 = 0
+    while (_i99 < _a99.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a99[_i99]
+      _i99++
       // ts: packages/layout/src/inline.ts:424
       if (jsStrEq(k.kind, "control")) {
         throw JsError(((k as ControlBox).id + ": a control among inline content; validateLayoutInput rejects it"))
@@ -709,11 +709,11 @@ fun inline_flattenTop(ctx: Ctx, kids: JsArray<U_ControlBox_InlineBox_LayoutBox_L
 fun inline_flatten(ctx: Ctx, kids: JsArray<U_InlineBox_LineBreak_TextLeaf>, parent: Double, out: Flat): Unit {
   // ts: packages/layout/src/inline.ts:435
   run {
-    val _a98 = kids
-    var _i98 = 0
-    while (_i98 < _a98.size) {
-      val k: U_InlineBox_LineBreak_TextLeaf = _a98[_i98]
-      _i98++
+    val _a100 = kids
+    var _i100 = 0
+    while (_i100 < _a100.size) {
+      val k: U_InlineBox_LineBreak_TextLeaf = _a100[_i100]
+      _i100++
       // ts: packages/layout/src/inline.ts:436
       if (jsStrEq(k.kind, "text")) {
         val leaf: Double = jsLength(out.leaves)
@@ -722,11 +722,11 @@ fun inline_flatten(ctx: Ctx, kids: JsArray<U_InlineBox_LineBreak_TextLeaf>, pare
         val preserved: Boolean = !jsStrEq((k as TextLeaf).whiteSpaceCollapse, "collapse")
         // ts: packages/layout/src/inline.ts:441
         run {
-          val _a99 = jsCodePoints((k as TextLeaf).text)
-          var _i99 = 0
-          while (_i99 < _a99.size) {
-            val ch: String = _a99[_i99]
-            _i99++
+          val _a101 = jsCodePoints((k as TextLeaf).text)
+          var _i101 = 0
+          while (_i101 < _a101.size) {
+            val ch: String = _a101[_i101]
+            _i101++
             val cp: Double = jsUnwrap(jsCodePointAt0(ch))
             jsPush(out.items, Inline_Item((if ((preserved && (cp == inline_LINE_FEED))) "nl" else "char"), leaf, (at++), ch, cp, parent, -1.0, -1.0))
           }
@@ -832,11 +832,11 @@ fun inline_buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   var shaped: Boolean = false
   // ts: packages/layout/src/inline.ts:507
   run {
-    val _a100 = flat.leaves
-    var _i100 = 0
-    while (_i100 < _a100.size) {
-      val t: TextLeaf = _a100[_i100]
-      _i100++
+    val _a102 = flat.leaves
+    var _i102 = 0
+    while (_i102 < _a102.size) {
+      val t: TextLeaf = _a102[_i102]
+      _i102++
       // ts: packages/layout/src/inline.ts:507
       if (!jsStrEq(t.font.family, text_AHEM_FACE_ID)) {
         shaped = true
@@ -852,11 +852,11 @@ fun inline_buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   if ((shaped && (atom != null))) {
     // ts: packages/layout/src/inline.ts:512
     run {
-      val _a101 = flat.leaves
-      var _i101 = 0
-      while (_i101 < _a101.size) {
-        val t: TextLeaf = _a101[_i101]
-        _i101++
+      val _a103 = flat.leaves
+      var _i103 = 0
+      while (_i103 < _a103.size) {
+        val t: TextLeaf = _a103[_i103]
+        _i103++
         // ts: packages/layout/src/inline.ts:513
         if (!jsStrEq(t.font.family, text_AHEM_FACE_ID)) {
           unsupported_unsupported("atomic-beside-shaped-text", t.id, "CSS2 \u00a79.2.4", ("text " + t.id + " in a real face shares the inline formatting context of " + box.id + " with atomic inline " + jsUnwrap(atom).id + " (INL2c)"))
@@ -866,20 +866,20 @@ fun inline_buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
   }
   // ts: packages/layout/src/inline.ts:516
   run {
-    val _a102 = flat.leaves
-    var _i102 = 0
-    while (_i102 < _a102.size) {
-      val t: TextLeaf = _a102[_i102]
-      _i102++
+    val _a104 = flat.leaves
+    var _i104 = 0
+    while (_i104 < _a104.size) {
+      val t: TextLeaf = _a104[_i104]
+      _i104++
       // ts: packages/layout/src/inline.ts:518
       if ((inline_leafFontOf(t).letterSpacing != 0.0)) {
         // ts: packages/layout/src/inline.ts:519
         run {
-          val _a103 = jsCodePoints(t.text)
-          var _i103 = 0
-          while (_i103 < _a103.size) {
-            val ch: String = _a103[_i103]
-            _i103++
+          val _a105 = jsCodePoints(t.text)
+          var _i105 = 0
+          while (_i105 < _a105.size) {
+            val ch: String = _a105[_i105]
+            _i105++
             // ts: packages/layout/src/inline.ts:519
             if ((jsUnwrap(jsCodePointAt0(ch)) == 173.0)) {
               unsupported_unsupported("letter-spacing", t.id, "css-text-3 \u00a78.2", (t.id + " has letter-spacing and a soft hyphen"))
@@ -891,11 +891,11 @@ fun inline_buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
       if ((inline_leafFontOf(t).wordSpacing != 0.0)) {
         // ts: packages/layout/src/inline.ts:522
         run {
-          val _a104 = jsCodePoints(t.text)
-          var _i104 = 0
-          while (_i104 < _a104.size) {
-            val ch: String = _a104[_i104]
-            _i104++
+          val _a106 = jsCodePoints(t.text)
+          var _i106 = 0
+          while (_i106 < _a106.size) {
+            val ch: String = _a106[_i106]
+            _i106++
             // ts: packages/layout/src/inline.ts:522
             if ((jsUnwrap(jsCodePointAt0(ch)) == 173.0)) {
               unsupported_unsupported("word-spacing", t.id, "css-text-3 \u00a78.1", (t.id + " has word-spacing and a soft hyphen"))
@@ -913,11 +913,11 @@ fun inline_buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
       }
       // ts: packages/layout/src/inline.ts:527
       run {
-        val _a105 = inline_lineFeedSegments(t)
-        var _i105 = 0
-        while (_i105 < _a105.size) {
-          val segment: String = _a105[_i105]
-          _i105++
+        val _a107 = inline_lineFeedSegments(t)
+        var _i107 = 0
+        while (_i107 < _a107.size) {
+          val segment: String = _a107[_i107]
+          _i107++
           // ts: packages/layout/src/inline.ts:528
           if (jsStrEq(segment, "")) {
             continue
@@ -1037,11 +1037,11 @@ fun inline_mergeBoundaries(a: JsArray<Boundary>, b: JsArray<Boundary>): JsArray<
   var lastAt: Double = -1.0
   // ts: packages/layout/src/inline.ts:622
   run {
-    val _a106 = ordered
-    var _i106 = 0
-    while (_i106 < _a106.size) {
-      val x: Boundary = _a106[_i106]
-      _i106++
+    val _a108 = ordered
+    var _i108 = 0
+    while (_i108 < _a108.size) {
+      val x: Boundary = _a108[_i108]
+      _i108++
       // ts: packages/layout/src/inline.ts:623
       if ((x.at == lastAt)) {
         continue
@@ -1063,11 +1063,11 @@ fun inline_lineFeedSegments(t: TextLeaf): JsArray<String> {
   var seg: String = ""
   // ts: packages/layout/src/inline.ts:635
   run {
-    val _a107 = jsCodePoints(t.text)
-    var _i107 = 0
-    while (_i107 < _a107.size) {
-      val ch: String = _a107[_i107]
-      _i107++
+    val _a109 = jsCodePoints(t.text)
+    var _i109 = 0
+    while (_i109 < _a109.size) {
+      val ch: String = _a109[_i109]
+      _i109++
       // ts: packages/layout/src/inline.ts:636
       if (jsStrEq(ch, "\u000a")) {
         jsPush(out, seg)
@@ -1089,11 +1089,11 @@ fun inline_checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: String
   }
   // ts: packages/layout/src/inline.ts:652
   run {
-    val _a108 = flat.leaves
-    var _i108 = 0
-    while (_i108 < _a108.size) {
-      val t: TextLeaf = _a108[_i108]
-      _i108++
+    val _a110 = flat.leaves
+    var _i110 = 0
+    while (_i110 < _a110.size) {
+      val t: TextLeaf = _a110[_i110]
+      _i110++
       // ts: packages/layout/src/inline.ts:653
       if (!jsStrEq(t.whiteSpaceCollapse, mode)) {
         unsupported_unsupported("mixed-white-space", t.id, "css-text-4 \u00a74.1.1", ("text runs with different white-space-collapse in one formatting context of " + box.id))
@@ -1116,11 +1116,11 @@ fun inline_checkPreservedText(ctx: Ctx, box: LayoutBox, flat: Flat, mode: String
       }
       // ts: packages/layout/src/inline.ts:659
       run {
-        val _a109 = jsCodePoints(t.text)
-        var _i109 = 0
-        while (_i109 < _a109.size) {
-          val ch: String = _a109[_i109]
-          _i109++
+        val _a111 = jsCodePoints(t.text)
+        var _i111 = 0
+        while (_i111 < _a111.size) {
+          val ch: String = _a111[_i111]
+          _i111++
           val cp: Double = jsUnwrap(jsCodePointAt0(ch))
           // ts: packages/layout/src/inline.ts:661
           if ((cp == 9.0)) {
@@ -1145,11 +1145,11 @@ fun inline_checkPreservedBesideInline(box: LayoutBox, kids: JsArray<U_ControlBox
   var inline: Boolean = false
   // ts: packages/layout/src/inline.ts:671
   run {
-    val _a110 = kids
-    var _i110 = 0
-    while (_i110 < _a110.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a110[_i110]
-      _i110++
+    val _a112 = kids
+    var _i112 = 0
+    while (_i112 < _a112.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a112[_i112]
+      _i112++
       // ts: packages/layout/src/inline.ts:671
       if (!jsStrEq(k.kind, "text")) {
         inline = true
@@ -1163,11 +1163,11 @@ fun inline_checkPreservedBesideInline(box: LayoutBox, kids: JsArray<U_ControlBox
   val leaves: JsArray<TextLeaf> = inline_inlineLeaves(box)
   // ts: packages/layout/src/inline.ts:674
   run {
-    val _a111 = leaves
-    var _i111 = 0
-    while (_i111 < _a111.size) {
-      val t: TextLeaf = _a111[_i111]
-      _i111++
+    val _a113 = leaves
+    var _i113 = 0
+    while (_i113 < _a113.size) {
+      val t: TextLeaf = _a113[_i113]
+      _i113++
       // ts: packages/layout/src/inline.ts:674
       if (!jsStrEq(t.whiteSpaceCollapse, "collapse")) {
         unsupported_unsupported("mixed-white-space", t.id, "css-text-4 \u00a74.1.1", ("white-space-collapse: " + t.whiteSpaceCollapse + " text beside inline boxes, <br>s or atomic inlines in " + box.id))
@@ -1216,11 +1216,11 @@ fun inline_leadingSpaceEnds(items: JsArray<Inline_Item>): JsArray<Double> {
 fun inline_latinScopeRefusal(text: String): String {
   // ts: packages/layout/src/inline.ts:705
   run {
-    val _a112 = jsCodePoints(text)
-    var _i112 = 0
-    while (_i112 < _a112.size) {
-      val ch: String = _a112[_i112]
-      _i112++
+    val _a114 = jsCodePoints(text)
+    var _i114 = 0
+    while (_i114 < _a114.size) {
+      val ch: String = _a114[_i114]
+      _i114++
       val cp: Double = jsUnwrap(jsCodePointAt0(ch))
       val sc: Double = scriptData_scriptCode(cp)
       // ts: packages/layout/src/inline.ts:708
@@ -1236,11 +1236,11 @@ fun inline_latinScopeRefusal(text: String): String {
       var latin: Boolean = false
       // ts: packages/layout/src/inline.ts:713
       run {
-        val _a113 = ext
-        var _i113 = 0
-        while (_i113 < _a113.size) {
-          val e: Double = _a113[_i113]
-          _i113++
+        val _a115 = ext
+        var _i115 = 0
+        while (_i115 < _a115.size) {
+          val e: Double = _a115[_i115]
+          _i115++
           // ts: packages/layout/src/inline.ts:713
           if ((e == scriptData_USCRIPT_LATIN)) {
             latin = true
@@ -1263,11 +1263,11 @@ fun inline_checkShapedText(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, 
   if ((!ctx.faults.latinCheckSkipped)) {
     // ts: packages/layout/src/inline.ts:726
     run {
-      val _a114 = leaves
-      var _i114 = 0
-      while (_i114 < _a114.size) {
-        val t: TextLeaf = _a114[_i114]
-        _i114++
+      val _a116 = leaves
+      var _i116 = 0
+      while (_i116 < _a116.size) {
+        val t: TextLeaf = _a116[_i116]
+        _i116++
         val r: String = inline_latinScopeRefusal(t.text)
         // ts: packages/layout/src/inline.ts:728
         if (!jsStrEq(r, "")) {
@@ -1279,11 +1279,11 @@ fun inline_checkShapedText(ctx: Ctx, box: LayoutBox, leaves: JsArray<TextLeaf>, 
   var last: Double = -1.0
   // ts: packages/layout/src/inline.ts:732
   run {
-    val _a115 = items
-    var _i115 = 0
-    while (_i115 < _a115.size) {
-      val it: Inline_Item = _a115[_i115]
-      _i115++
+    val _a117 = items
+    var _i117 = 0
+    while (_i117 < _a117.size) {
+      val it: Inline_Item = _a117[_i117]
+      _i117++
       // ts: packages/layout/src/inline.ts:733
       if (jsStrEq(it.kind, "br")) {
         last = -1.0
@@ -1322,11 +1322,11 @@ fun inline_addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: JsArray<Inline_Ite
 })
   // ts: packages/layout/src/inline.ts:761
   run {
-    val _a116 = inline_opportunities(ctx, box, cps, wrap, shaped, mode, breakAll)
-    var _i116 = 0
-    while (_i116 < _a116.size) {
-      val p: Double = _a116[_i116]
-      _i116++
+    val _a118 = inline_opportunities(ctx, box, cps, wrap, shaped, mode, breakAll)
+    var _i118 = 0
+    while (_i118 < _a118.size) {
+      val p: Double = _a118[_i118]
+      _i118++
       jsPush(out, Boundary(inline_afterCloses(items, jsUnwrap(jsAt(run, (p - 1.0)))), false))
       jsPush(starts, jsUnwrap(jsAt(run, p)))
     }
@@ -1335,11 +1335,11 @@ fun inline_addSoftBoundaries(ctx: Ctx, box: LayoutBox, items: JsArray<Inline_Ite
   if (((shaped && wrap) && (!ctx.faults.spaceOnlyBreaks))) {
     // ts: packages/layout/src/inline.ts:765
     run {
-      val _a117 = inline_hyphenLeads(cps)
-      var _i117 = 0
-      while (_i117 < _a117.size) {
-        val p: Double = _a117[_i117]
-        _i117++
+      val _a119 = inline_hyphenLeads(cps)
+      var _i119 = 0
+      while (_i119 < _a119.size) {
+        val p: Double = _a119[_i119]
+        _i119++
         jsPush(leads, jsUnwrap(jsAt(run, p)))
       }
     }
@@ -1378,11 +1378,11 @@ fun inline_boundariesOf(ctx: Ctx, box: LayoutBox, items: JsArray<Inline_Item>, w
   var lastAt: Double = 0.0
   // ts: packages/layout/src/inline.ts:797
   run {
-    val _a118 = ordered
-    var _i118 = 0
-    while (_i118 < _a118.size) {
-      val b: Boundary = _a118[_i118]
-      _i118++
+    val _a120 = ordered
+    var _i120 = 0
+    while (_i120 < _a120.size) {
+      val b: Boundary = _a120[_i120]
+      _i120++
       // ts: packages/layout/src/inline.ts:798
       if (((b.at <= lastAt) || (b.at >= jsLength(items)))) {
         continue
@@ -1426,11 +1426,11 @@ fun inline_opportunities(ctx: Ctx, box: LayoutBox, cps: JsArray<Double>, wrap: B
   if (breakAll) {
     // ts: packages/layout/src/inline.ts:820
     run {
-      val _a119 = cps
-      var _i119 = 0
-      while (_i119 < _a119.size) {
-        val cp: Double = _a119[_i119]
-        _i119++
+      val _a121 = cps
+      var _i121 = 0
+      while (_i121 < _a121.size) {
+        val cp: Double = _a121[_i121]
+        _i121++
         // ts: packages/layout/src/inline.ts:820
         if ((cp == inline_OBJECT)) {
           unsupported_unsupported("word-break", box.id, "css-text-3 \u00a75.2", ("word-break: break-all beside an atomic inline in " + box.id + " is not measured"))
@@ -1441,11 +1441,11 @@ fun inline_opportunities(ctx: Ctx, box: LayoutBox, cps: JsArray<Double>, wrap: B
     if ((!shaped)) {
       // ts: packages/layout/src/inline.ts:821
       run {
-        val _a120 = cps
-        var _i120 = 0
-        while (_i120 < _a120.size) {
-          val cp: Double = _a120[_i120]
-          _i120++
+        val _a122 = cps
+        var _i122 = 0
+        while (_i122 < _a122.size) {
+          val cp: Double = _a122[_i122]
+          _i122++
           // ts: packages/layout/src/inline.ts:821
           if ((text_coveredIndex(cp) < 0.0)) {
             unsupported_unsupported("line-break", box.id, "css-text-3 \u00a75", ("U+" + jsToUpperCase(jsToStringRadix16(cp)) + " is outside the code points the line breaker decides"))
@@ -1482,11 +1482,11 @@ fun inline_atomicOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boole
         }
         // ts: packages/layout/src/inline.ts:839
         run {
-          val _a121 = inline_ahemOpportunities(box, seg, wrap, faults)
-          var _i121 = 0
-          while (_i121 < _a121.size) {
-            val p: Double = _a121[_i121]
-            _i121++
+          val _a123 = inline_ahemOpportunities(box, seg, wrap, faults)
+          var _i123 = 0
+          while (_i123 < _a123.size) {
+            val p: Double = _a123[_i123]
+            _i123++
             jsPush(out, (start + p))
           }
         }
@@ -1517,11 +1517,11 @@ fun inline_atomicOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boole
         var seen: Boolean = false
         // ts: packages/layout/src/inline.ts:849
         run {
-          val _a122 = out
-          var _i122 = 0
-          while (_i122 < _a122.size) {
-            val p: Double = _a122[_i122]
-            _i122++
+          val _a124 = out
+          var _i124 = 0
+          while (_i124 < _a124.size) {
+            val p: Double = _a124[_i124]
+            _i124++
             // ts: packages/layout/src/inline.ts:849
             if ((p == i)) {
               seen = true
@@ -1569,11 +1569,11 @@ fun inline_ahemOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolean
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/inline.ts:877
   run {
-    val _a123 = cps
-    var _i123 = 0
-    while (_i123 < _a123.size) {
-      val cp: Double = _a123[_i123]
-      _i123++
+    val _a125 = cps
+    var _i125 = 0
+    while (_i125 < _a125.size) {
+      val cp: Double = _a125[_i125]
+      _i125++
       // ts: packages/layout/src/inline.ts:877
       if ((text_coveredIndex(cp) < 0.0)) {
         unsupported_unsupported("line-break", box.id, "css-text-3 \u00a75", ("U+" + jsToUpperCase(jsToStringRadix16(cp)) + " is outside the code points the line breaker decides"))
@@ -1862,11 +1862,11 @@ fun inline_latinBreaksAllowed(cps: JsArray<Double>): JsArray<Boolean> {
   val cls: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/inline.ts:1066
   run {
-    val _a124 = cps
-    var _i124 = 0
-    while (_i124 < _a124.size) {
-      val cp: Double = _a124[_i124]
-      _i124++
+    val _a126 = cps
+    var _i126 = 0
+    while (_i126 < _a126.size) {
+      val cp: Double = _a126[_i126]
+      _i126++
       jsPush(cls, inline_latinBreakClass(cp))
     }
   }
@@ -1917,11 +1917,11 @@ fun inline_latinOpportunities(box: LayoutBox, cps: JsArray<Double>, wrap: Boolea
   val out: JsArray<Double> = jsArrayOf<Double>()
   // ts: packages/layout/src/inline.ts:1105
   run {
-    val _a125 = cps
-    var _i125 = 0
-    while (_i125 < _a125.size) {
-      val cp: Double = _a125[_i125]
-      _i125++
+    val _a127 = cps
+    var _i127 = 0
+    while (_i127 < _a127.size) {
+      val cp: Double = _a127[_i127]
+      _i127++
       // ts: packages/layout/src/inline.ts:1105
       if ((inline_latinBreakClass(cp) < 0.0)) {
         unsupported_unsupported("line-break", box.id, "css-text-3 \u00a75", ("U+" + jsToUpperCase(jsToStringRadix16(cp)) + " is outside the code points the line breaker decides"))
@@ -2186,11 +2186,11 @@ fun inline_segmentAt(t: TextLeaf, at: Double): LineFeedSegment {
   var text: String = ""
   // ts: packages/layout/src/inline.ts:1326
   run {
-    val _a126 = jsCodePoints(t.text)
-    var _i126 = 0
-    while (_i126 < _a126.size) {
-      val ch: String = _a126[_i126]
-      _i126++
+    val _a128 = jsCodePoints(t.text)
+    var _i128 = 0
+    while (_i128 < _a128.size) {
+      val ch: String = _a128[_i128]
+      _i128++
       // ts: packages/layout/src/inline.ts:1327
       if (jsStrEq(ch, "\u000a")) {
         // ts: packages/layout/src/inline.ts:1328
@@ -2264,11 +2264,11 @@ fun inline_endsOf(ifc: Ifc): JsArray<Boundary> {
   val out: JsArray<Boundary> = jsArrayOf<Boundary>()
   // ts: packages/layout/src/inline.ts:1370
   run {
-    val _a127 = ifc.boundaries
-    var _i127 = 0
-    while (_i127 < _a127.size) {
-      val b: Boundary = _a127[_i127]
-      _i127++
+    val _a129 = ifc.boundaries
+    var _i129 = 0
+    while (_i129 < _a129.size) {
+      val b: Boundary = _a129[_i129]
+      _i129++
       jsPush(out, b)
     }
   }
@@ -2373,11 +2373,11 @@ fun inline_graphemeBreakIn(ctx: Ctx, ifc: Ifc, adv: JsArray<Double>, start: Doub
   var first: Double = -1.0
   // ts: packages/layout/src/inline.ts:1460
   run {
-    val _a128 = ifc.graphemes
-    var _i128 = 0
-    while (_i128 < _a128.size) {
-      val g: Boundary = _a128[_i128]
-      _i128++
+    val _a130 = ifc.graphemes
+    var _i130 = 0
+    while (_i130 < _a130.size) {
+      val g: Boundary = _a130[_i130]
+      _i130++
       // ts: packages/layout/src/inline.ts:1461
       if (((g.at <= from) || (g.at >= to))) {
         continue
@@ -2452,11 +2452,11 @@ fun inline_prevCharBefore(ifc: Ifc, i: Double): Double {
 fun inline_fragmentStartAt(ifc: Ifc, i: Double): Boolean {
   // ts: packages/layout/src/inline.ts:1496
   run {
-    val _a129 = ifc.fragmentStarts
-    var _i129 = 0
-    while (_i129 < _a129.size) {
-      val f: Double = _a129[_i129]
-      _i129++
+    val _a131 = ifc.fragmentStarts
+    var _i131 = 0
+    while (_i131 < _a131.size) {
+      val f: Double = _a131[_i131]
+      _i131++
       // ts: packages/layout/src/inline.ts:1496
       if ((f == i)) {
         return true
@@ -2470,11 +2470,11 @@ fun inline_fragmentStartAt(ifc: Ifc, i: Double): Boolean {
 fun inline_leadAt(ifc: Ifc, i: Double): Boolean {
   // ts: packages/layout/src/inline.ts:1501
   run {
-    val _a130 = ifc.leadItems
-    var _i130 = 0
-    while (_i130 < _a130.size) {
-      val o: Double = _a130[_i130]
-      _i130++
+    val _a132 = ifc.leadItems
+    var _i132 = 0
+    while (_i132 < _a132.size) {
+      val o: Double = _a132[_i132]
+      _i132++
       // ts: packages/layout/src/inline.ts:1501
       if ((o == i)) {
         return true
@@ -2488,11 +2488,11 @@ fun inline_leadAt(ifc: Ifc, i: Double): Boolean {
 fun inline_opportunityAt(ifc: Ifc, i: Double): Boolean {
   // ts: packages/layout/src/inline.ts:1506
   run {
-    val _a131 = ifc.opportunityItems
-    var _i131 = 0
-    while (_i131 < _a131.size) {
-      val o: Double = _a131[_i131]
-      _i131++
+    val _a133 = ifc.opportunityItems
+    var _i133 = 0
+    while (_i133 < _a133.size) {
+      val o: Double = _a133[_i133]
+      _i133++
       // ts: packages/layout/src/inline.ts:1506
       if ((o == i)) {
         return true
@@ -2506,11 +2506,11 @@ fun inline_opportunityAt(ifc: Ifc, i: Double): Boolean {
 fun inline_graphemeAt(ifc: Ifc, i: Double): Boolean {
   // ts: packages/layout/src/inline.ts:1514
   run {
-    val _a132 = ifc.graphemeItems
-    var _i132 = 0
-    while (_i132 < _a132.size) {
-      val g: Double = _a132[_i132]
-      _i132++
+    val _a134 = ifc.graphemeItems
+    var _i134 = 0
+    while (_i134 < _a134.size) {
+      val g: Double = _a134[_i134]
+      _i134++
       // ts: packages/layout/src/inline.ts:1514
       if ((g == i)) {
         return true
@@ -2668,11 +2668,11 @@ fun inline_breakShapedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: Doubl
   var start: Double = 0.0
   // ts: packages/layout/src/inline.ts:1598
   run {
-    val _a133 = (r as BrokenLines_okTrue).lines
-    var _i133 = 0
-    while (_i133 < _a133.size) {
-      val bl: BrokenLine = _a133[_i133]
-      _i133++
+    val _a135 = (r as BrokenLines_okTrue).lines
+    var _i135 = 0
+    while (_i135 < _a135.size) {
+      val bl: BrokenLine = _a135[_i135]
+      _i135++
       // ts: packages/layout/src/inline.ts:1599
       if ((!inline_hasContent(ifc, start, jsLength(ifc.items)))) {
         break
@@ -2737,11 +2737,11 @@ fun inline_spanWidth(ctx: Ctx, ifc: Ifc, adv: JsArray<Double>, line: Inline_Line
   var total: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:1636
   run {
-    val _a134 = line.pieces
-    var _i134 = 0
-    while (_i134 < _a134.size) {
-      val p: ShapedPiece = _a134[_i134]
-      _i134++
+    val _a136 = line.pieces
+    var _i136 = 0
+    while (_i136 < _a136.size) {
+      val p: ShapedPiece = _a136[_i136]
+      _i136++
       // ts: packages/layout/src/inline.ts:1637
       if (((p.from < start) || (p.from >= end))) {
         continue
@@ -2783,11 +2783,11 @@ fun inline_maybeCjkIdeographOrSymbol(cp: Double): Boolean {
   }
   // ts: packages/layout/src/inline.ts:1677
   run {
-    val _a135 = inline_CJK_IDEOGRAPH_OR_SYMBOL_VALUES
-    var _i135 = 0
-    while (_i135 < _a135.size) {
-      val v: Double = _a135[_i135]
-      _i135++
+    val _a137 = inline_CJK_IDEOGRAPH_OR_SYMBOL_VALUES
+    var _i137 = 0
+    while (_i137 < _a137.size) {
+      val v: Double = _a137[_i137]
+      _i137++
       // ts: packages/layout/src/inline.ts:1677
       if ((cp == v)) {
         return true
@@ -2950,11 +2950,11 @@ fun inline_shapedJustifiedRuns(line: Inline_Line, expansions: JsArray<Double>): 
   val runs: JsArray<JustifiedRun> = jsArrayOf<JustifiedRun>()
   // ts: packages/layout/src/inline.ts:1769
   run {
-    val _a136 = line.pieces
-    var _i136 = 0
-    while (_i136 < _a136.size) {
-      val p: ShapedPiece = _a136[_i136]
-      _i136++
+    val _a138 = line.pieces
+    var _i138 = 0
+    while (_i138 < _a138.size) {
+      val p: ShapedPiece = _a138[_i138]
+      _i138++
       // ts: packages/layout/src/inline.ts:1770
       if (((p.from < line.start) || (p.visibleTo > line.visibleEnd))) {
         throw JsError(("the text result [" + jsNumberToString(p.from) + ", " + jsNumberToString(p.to) + ") is outside its line"))
@@ -2984,11 +2984,11 @@ fun inline_justifiedSpan(j: Justified, start: Double, end: Double): Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:1783
   run {
-    val _a137 = j.runs
-    var _i137 = 0
-    while (_i137 < _a137.size) {
-      val r: JustifiedRun = _a137[_i137]
-      _i137++
+    val _a139 = j.runs
+    var _i139 = 0
+    while (_i139 < _a139.size) {
+      val r: JustifiedRun = _a139[_i139]
+      _i139++
       // ts: packages/layout/src/inline.ts:1784
       if (((r.from < start) || (r.from >= end))) {
         continue
@@ -3168,11 +3168,11 @@ fun inline_zeroSpacing(e: U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_Cal
 fun inline_holdsSoftHyphen(ifc: Ifc): Boolean {
   // ts: packages/layout/src/inline.ts:1920
   run {
-    val _a138 = ifc.items
-    var _i138 = 0
-    while (_i138 < _a138.size) {
-      val it: Inline_Item = _a138[_i138]
-      _i138++
+    val _a140 = ifc.items
+    var _i140 = 0
+    while (_i140 < _a140.size) {
+      val it: Inline_Item = _a140[_i140]
+      _i140++
       // ts: packages/layout/src/inline.ts:1920
       if ((jsStrEq(it.kind, "char") && (it.cp == inline_SOFT_HYPHEN))) {
         return true
@@ -3187,11 +3187,11 @@ fun inline_overflowingLine(ctx: Ctx, ifc: Ifc, adv: JsArray<Double>, lines: JsAr
   val fit: FitFaults = FitFaults(ctx.faults.fitWithoutEpsilon, false)
   // ts: packages/layout/src/inline.ts:1927
   run {
-    val _a139 = lines
-    var _i139 = 0
-    while (_i139 < _a139.size) {
-      val l: Inline_Line = _a139[_i139]
-      _i139++
+    val _a141 = lines
+    var _i141 = 0
+    while (_i141 < _a141.size) {
+      val l: Inline_Line = _a141[_i141]
+      _i141++
       // ts: packages/layout/src/inline.ts:1927
       if ((!inline_lineFits(ctx, ifc, adv, l.start, l.end, available, fit))) {
         return true
@@ -3205,11 +3205,11 @@ fun inline_overflowingLine(ctx: Ctx, ifc: Ifc, adv: JsArray<Double>, lines: JsAr
 fun inline_breaksInside(ifc: Ifc, line: Inline_Line): Boolean {
   // ts: packages/layout/src/inline.ts:1933
   run {
-    val _a140 = ifc.boundaries
-    var _i140 = 0
-    while (_i140 < _a140.size) {
-      val b: Boundary = _a140[_i140]
-      _i140++
+    val _a142 = ifc.boundaries
+    var _i142 = 0
+    while (_i142 < _a142.size) {
+      val b: Boundary = _a142[_i142]
+      _i142++
       // ts: packages/layout/src/inline.ts:1933
       if (((b.at > line.start) && (b.at < line.end))) {
         return true
@@ -3226,11 +3226,11 @@ fun inline_scoredLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: JsArray<Double>,
   val offsets: JsArray<Double> = jsArrayOf<Double>(first)
   // ts: packages/layout/src/inline.ts:1948
   run {
-    val _a141 = ifc.boundaries
-    var _i141 = 0
-    while (_i141 < _a141.size) {
-      val b: Boundary = _a141[_i141]
-      _i141++
+    val _a143 = ifc.boundaries
+    var _i143 = 0
+    while (_i143 < _a143.size) {
+      val b: Boundary = _a143[_i143]
+      _i143++
       // ts: packages/layout/src/inline.ts:1948
       if (((b.at > first) && (b.at < n))) {
         jsPush(offsets, b.at)
@@ -3270,11 +3270,11 @@ fun inline_scoredLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: JsArray<Double>,
   var start: Double = first
   // ts: packages/layout/src/inline.ts:1967
   run {
-    val _a142 = jsUnwrap(points)
-    var _i142 = 0
-    while (_i142 < _a142.size) {
-      val p: Double = _a142[_i142]
-      _i142++
+    val _a144 = jsUnwrap(points)
+    var _i144 = 0
+    while (_i144 < _a144.size) {
+      val p: Double = _a144[_i144]
+      _i144++
       val end: Double = jsUnwrap(jsAt(offsets, p))
       jsPush(out, Inline_Line(start, end, inline_visibleEndOf(ifc, start, end), jsArrayOf<ShapedPiece>(), (end == n), null))
       start = end
@@ -3317,11 +3317,11 @@ fun inline_bisectedLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: JsArray<Double
   var total: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:1997
   run {
-    val _a143 = greedy
-    var _i143 = 0
-    while (_i143 < _a143.size) {
-      val l: Inline_Line = _a143[_i143]
-      _i143++
+    val _a145 = greedy
+    var _i145 = 0
+    while (_i145 < _a145.size) {
+      val l: Inline_Line = _a145[_i145]
+      _i145++
       total = units_add(total, units_clampNegativeToZero(inline_width(ctx, ifc, adv, l.start, l.visibleEnd)))
     }
   }
@@ -3591,11 +3591,11 @@ fun inline_placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: JsArray<A
         if ((!ctx.faults.lineHeightIgnoresInlineBoxes)) {
           // ts: packages/layout/src/inline.ts:2177
           run {
-            val _a144 = on
-            var _i144 = 0
-            while (_i144 < _a144.size) {
-              val b: Double = _a144[_i144]
-              _i144++
+            val _a146 = on
+            var _i146 = 0
+            while (_i146 < _a146.size) {
+              val b: Double = _a146[_i146]
+              _i146++
               above = units_max(above, jsUnwrap(jsAt(ifc.boxMetrics, b)).above)
               below = units_max(below, jsUnwrap(jsAt(ifc.boxMetrics, b)).below)
             }
@@ -3672,11 +3672,11 @@ fun inline_placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: JsArray<A
         val boxRects: JsArray<Rect> = jsArrayOf<Rect>()
         // ts: packages/layout/src/inline.ts:2229
         run {
-          val _a145 = on
-          var _i145 = 0
-          while (_i145 < _a145.size) {
-            val b: Double = _a145[_i145]
-            _i145++
+          val _a147 = on
+          var _i147 = 0
+          while (_i147 < _a147.size) {
+            val b: Double = _a147[_i147]
+            _i147++
             val bm: BoxMetrics = jsUnwrap(jsAt(ifc.boxMetrics, b))
             val open: Double = jsUnwrap(jsAt(ifc.openAt, b))
             val close: Double = jsUnwrap(jsAt(ifc.closeAt, b))
@@ -3695,11 +3695,11 @@ fun inline_placeAtomicLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, atoms: JsArray<A
         val atomicRects: JsArray<Rect> = jsArrayOf<Rect>()
         // ts: packages/layout/src/inline.ts:2245
         run {
-          val _a146 = onAtoms
-          var _i146 = 0
-          while (_i146 < _a146.size) {
-            val j: Double = _a146[_i146]
-            _i146++
+          val _a148 = onAtoms
+          var _i148 = 0
+          while (_i148 < _a148.size) {
+            val j: Double = _a148[_i148]
+            _i148++
             val it: Inline_Item = jsUnwrap(jsAt(ifc.items, j))
             val a: AtomicLayout = jsUnwrap(jsAt(atoms, it.atom))
             jsPush(atomics, it.atom)
@@ -3875,11 +3875,11 @@ fun inline_truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: Double,
   }
   // ts: packages/layout/src/inline.ts:2369
   run {
-    val _a147 = on
-    var _i147 = 0
-    while (_i147 < _a147.size) {
-      val b: Double = _a147[_i147]
-      _i147++
+    val _a149 = on
+    var _i149 = 0
+    while (_i149 < _a149.size) {
+      val b: Double = _a149[_i149]
+      _i149++
       // ts: packages/layout/src/inline.ts:2370
       if ((jsUnwrap(jsAt(ifc.firstContent, b)) < 0.0)) {
         unsupported_unsupported("text-overflow", jsUnwrap(jsAt(ifc.boxes, b)).id, "css-overflow-4 \u00a73.1", ("the empty inline box " + jsUnwrap(jsAt(ifc.boxes, b)).id + " is on a truncated line of " + box.id))
@@ -3894,11 +3894,11 @@ fun inline_truncatePieces(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: Double,
   val sources: JsArray<TruncSource> = jsArrayOf<TruncSource>()
   // ts: packages/layout/src/inline.ts:2375
   run {
-    val _a148 = pieces
-    var _i148 = 0
-    while (_i148 < _a148.size) {
-      val p: LinePiece = _a148[_i148]
-      _i148++
+    val _a150 = pieces
+    var _i150 = 0
+    while (_i150 < _a150.size) {
+      val p: LinePiece = _a150[_i150]
+      _i150++
       val t: TextLeaf = jsUnwrap(jsAt(ifc.leaves, p.leaf))
       val font: TextFont = inline_leafFontOf(t)
       // ts: packages/layout/src/inline.ts:2379
@@ -3942,11 +3942,11 @@ fun inline_preservedFragments(ctx: Ctx, ifc: Ifc, adv: JsArray<Double>, line: In
   if (ifc.shaped) {
     // ts: packages/layout/src/inline.ts:2411
     run {
-      val _a149 = line.pieces
-      var _i149 = 0
-      while (_i149 < _a149.size) {
-        val p: ShapedPiece = _a149[_i149]
-        _i149++
+      val _a151 = line.pieces
+      var _i151 = 0
+      while (_i151 < _a151.size) {
+        val p: ShapedPiece = _a151[_i151]
+        _i151++
         jsPush(out, PreservedFragment(p.from, p.to, p.visibleTo, (if (p.hangs) p.width else p.visibleWidth), p.hangs))
       }
     }
@@ -4035,11 +4035,11 @@ fun inline_placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: JsArray<D
   var shown: Double = units_ZERO
   // ts: packages/layout/src/inline.ts:2472
   run {
-    val _a150 = own
-    var _i150 = 0
-    while (_i150 < _a150.size) {
-      val f: PreservedFragment = _a150[_i150]
-      _i150++
+    val _a152 = own
+    var _i152 = 0
+    while (_i152 < _a152.size) {
+      val f: PreservedFragment = _a152[_i152]
+      _i152++
       // ts: packages/layout/src/inline.ts:2472
       if ((!f.hangs)) {
         shown = units_add(shown, f.width)
@@ -4054,11 +4054,11 @@ fun inline_placePreservedLine(ctx: Ctx, box: LayoutBox, ifc: Ifc, adv: JsArray<D
   val pieces: JsArray<LinePiece> = jsArrayOf<LinePiece>()
   // ts: packages/layout/src/inline.ts:2479
   run {
-    val _a151 = frags
-    var _i151 = 0
-    while (_i151 < _a151.size) {
-      val f: PreservedFragment = _a151[_i151]
-      _i151++
+    val _a153 = frags
+    var _i153 = 0
+    while (_i153 < _a153.size) {
+      val f: PreservedFragment = _a153[_i153]
+      _i153++
       val first: Inline_Item = jsUnwrap(jsAt(ifc.items, f.from))
       val t: TextLeaf = jsUnwrap(jsAt(ifc.leaves, first.leaf))
       val m: FontMetrics = inline_fontMetricsOf(ctx, t.id, t.font)
@@ -4115,11 +4115,11 @@ fun inline_unionOf(rects: JsArray<Rect>): Rect {
   var bottom: Double = units_add(r0.y, r0.height)
   // ts: packages/layout/src/inline.ts:2528
   run {
-    val _a152 = rects
-    var _i152 = 0
-    while (_i152 < _a152.size) {
-      val p: Rect = _a152[_i152]
-      _i152++
+    val _a154 = rects
+    var _i154 = 0
+    while (_i154 < _a154.size) {
+      val p: Rect = _a154[_i154]
+      _i154++
       left = units_min(left, p.x)
       top = units_min(top, p.y)
       right = units_max(right, units_add(p.x, p.width))
@@ -4133,11 +4133,11 @@ fun inline_unionOf(rects: JsArray<Rect>): Rect {
 fun inline_leafBox(ifc: Ifc, li: Double): Double {
   // ts: packages/layout/src/inline.ts:2542
   run {
-    val _a153 = ifc.items
-    var _i153 = 0
-    while (_i153 < _a153.size) {
-      val it: Inline_Item = _a153[_i153]
-      _i153++
+    val _a155 = ifc.items
+    var _i155 = 0
+    while (_i155 < _a155.size) {
+      val it: Inline_Item = _a155[_i155]
+      _i155++
       // ts: packages/layout/src/inline.ts:2542
       if ((jsStrEq(it.kind, "char") && (it.leaf == li))) {
         return it.box
@@ -4170,11 +4170,11 @@ fun inline_boxLineRects(ctx: Ctx, ifc: Ifc, line: PlacedLine, b: Double): JsArra
   var cut: Boolean = false
   // ts: packages/layout/src/inline.ts:2559
   run {
-    val _a154 = line.pieces
-    var _i154 = 0
-    while (_i154 < _a154.size) {
-      val p: LinePiece = _a154[_i154]
-      _i154++
+    val _a156 = line.pieces
+    var _i156 = 0
+    while (_i156 < _a156.size) {
+      val p: LinePiece = _a156[_i156]
+      _i156++
       // ts: packages/layout/src/inline.ts:2559
       if ((inline_within(ifc.boxParent, inline_leafBox(ifc, p.leaf), b) && (p.truncated || ((e != null) && (jsUnwrap(e).leaf == p.leaf))))) {
         cut = true
@@ -4188,11 +4188,11 @@ fun inline_boxLineRects(ctx: Ctx, ifc: Ifc, line: PlacedLine, b: Double): JsArra
   }
   // ts: packages/layout/src/inline.ts:2564
   run {
-    val _a155 = line.pieces
-    var _i155 = 0
-    while (_i155 < _a155.size) {
-      val p: LinePiece = _a155[_i155]
-      _i155++
+    val _a157 = line.pieces
+    var _i157 = 0
+    while (_i157 < _a157.size) {
+      val p: LinePiece = _a157[_i157]
+      _i157++
       // ts: packages/layout/src/inline.ts:2565
       if ((!inline_within(ifc.boxParent, inline_leafBox(ifc, p.leaf), b))) {
         continue
@@ -4223,18 +4223,18 @@ fun inline_collectFragments(ctx: Ctx, ifc: Ifc, atoms: JsArray<AtomicLayout>, at
     val rects: JsArray<Rect> = jsArrayOf<Rect>()
     // ts: packages/layout/src/inline.ts:2578
     run {
-      val _a156 = lines
-      var _i156 = 0
-      while (_i156 < _a156.size) {
-        val line: PlacedLine = _a156[_i156]
-        _i156++
+      val _a158 = lines
+      var _i158 = 0
+      while (_i158 < _a158.size) {
+        val line: PlacedLine = _a158[_i158]
+        _i158++
         // ts: packages/layout/src/inline.ts:2579
         run {
-          val _a157 = line.pieces
-          var _i157 = 0
-          while (_i157 < _a157.size) {
-            val p: LinePiece = _a157[_i157]
-            _i157++
+          val _a159 = line.pieces
+          var _i159 = 0
+          while (_i159 < _a159.size) {
+            val p: LinePiece = _a159[_i159]
+            _i159++
             // ts: packages/layout/src/inline.ts:2580
             if ((p.leaf != li)) {
               continue
@@ -4260,18 +4260,18 @@ fun inline_collectFragments(ctx: Ctx, ifc: Ifc, atoms: JsArray<AtomicLayout>, at
     val rects: JsArray<Rect> = jsArrayOf<Rect>()
     // ts: packages/layout/src/inline.ts:2592
     run {
-      val _a158 = lines
-      var _i158 = 0
-      while (_i158 < _a158.size) {
-        val line: PlacedLine = _a158[_i158]
-        _i158++
+      val _a160 = lines
+      var _i160 = 0
+      while (_i160 < _a160.size) {
+        val line: PlacedLine = _a160[_i160]
+        _i160++
         // ts: packages/layout/src/inline.ts:2592
         run {
-          val _a159 = inline_boxLineRects(ctx, ifc, line, bi)
-          var _i159 = 0
-          while (_i159 < _a159.size) {
-            val r: Rect = _a159[_i159]
-            _i159++
+          val _a161 = inline_boxLineRects(ctx, ifc, line, bi)
+          var _i161 = 0
+          while (_i161 < _a161.size) {
+            val r: Rect = _a161[_i161]
+            _i161++
             jsPush(rects, r)
           }
         }
@@ -4290,11 +4290,11 @@ fun inline_collectFragments(ctx: Ctx, ifc: Ifc, atoms: JsArray<AtomicLayout>, at
   jsForEachI(ifc.brs, fun(br: LineBreak, ri: Double): Unit {
     // ts: packages/layout/src/inline.ts:2598
     run {
-      val _a160 = lines
-      var _i160 = 0
-      while (_i160 < _a160.size) {
-        val line: PlacedLine = _a160[_i160]
-        _i160++
+      val _a162 = lines
+      var _i162 = 0
+      while (_i162 < _a162.size) {
+        val line: PlacedLine = _a162[_i162]
+        _i162++
         // ts: packages/layout/src/inline.ts:2599
         run {
           var j: Double = 0.0
@@ -4320,11 +4320,11 @@ fun inline_collectFragments(ctx: Ctx, ifc: Ifc, atoms: JsArray<AtomicLayout>, at
   jsForEachI(ifc.atomics, fun(a: U_LayoutBox_ReplacedLeaf, ai: Double): Unit {
     // ts: packages/layout/src/inline.ts:2608
     run {
-      val _a161 = atomicLines
-      var _i161 = 0
-      while (_i161 < _a161.size) {
-        val line: AtomicLine = _a161[_i161]
-        _i161++
+      val _a163 = atomicLines
+      var _i163 = 0
+      while (_i163 < _a163.size) {
+        val line: AtomicLine = _a163[_i163]
+        _i163++
         // ts: packages/layout/src/inline.ts:2609
         run {
           var j: Double = 0.0
@@ -4353,11 +4353,11 @@ fun inline_collectFragments(ctx: Ctx, ifc: Ifc, atoms: JsArray<AtomicLayout>, at
 fun inline_placeFragments(kids: JsArray<U_InlineBox_LineBreak_TextLeaf>, fragments: Fragments, out: JsArray<Box_Placed>): Unit {
   // ts: packages/layout/src/inline.ts:2621
   run {
-    val _a162 = kids
-    var _i162 = 0
-    while (_i162 < _a162.size) {
-      val k: U_InlineBox_LineBreak_TextLeaf = _a162[_i162]
-      _i162++
+    val _a164 = kids
+    var _i164 = 0
+    while (_i164 < _a164.size) {
+      val k: U_InlineBox_LineBreak_TextLeaf = _a164[_i164]
+      _i164++
       val p: Box_Placed? = fragments.placed.get(k.id)
       // ts: packages/layout/src/inline.ts:2623
       if ((p != null)) {
@@ -4375,11 +4375,11 @@ fun inline_placeFragments(kids: JsArray<U_InlineBox_LineBreak_TextLeaf>, fragmen
 fun inline_placeTopFragments(kids: JsArray<U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>, fragments: Fragments, out: JsArray<Box_Placed>): Unit {
   // ts: packages/layout/src/inline.ts:2630
   run {
-    val _a163 = kids
-    var _i163 = 0
-    while (_i163 < _a163.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a163[_i163]
-      _i163++
+    val _a165 = kids
+    var _i165 = 0
+    while (_i165 < _a165.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a165[_i165]
+      _i165++
       // ts: packages/layout/src/inline.ts:2631
       if (jsStrEq(k.kind, "control")) {
         throw JsError(((k as ControlBox).id + ": a control among inline content; validateLayoutInput rejects it"))
@@ -4427,11 +4427,11 @@ fun inline_columnBaseline(lines: JsArray<PlacedLine>, first: Boolean): Double? {
   var out: Double? = null
   // ts: packages/layout/src/inline.ts:2664
   run {
-    val _a164 = lines
-    var _i164 = 0
-    while (_i164 < _a164.size) {
-      val l: PlacedLine = _a164[_i164]
-      _i164++
+    val _a166 = lines
+    var _i166 = 0
+    while (_i166 < _a166.size) {
+      val l: PlacedLine = _a166[_i166]
+      _i166++
       // ts: packages/layout/src/inline.ts:2665
       if (((out == null) || (if (first) (l.baseline < jsUnwrap(out)) else (l.baseline > jsUnwrap(out))))) {
         out = l.baseline
@@ -4456,11 +4456,11 @@ fun inline_inlineIntrinsicSize(ctx: Ctx, box: LayoutBox, kind: String): Double {
   var afterForced: Boolean = false
   // ts: packages/layout/src/inline.ts:2680
   run {
-    val _a165 = (if (jsStrEq(kind, "min")) inline_minEndsOf(ifc) else inline_endsOf(ifc))
-    var _i165 = 0
-    while (_i165 < _a165.size) {
-      val b: Boundary = _a165[_i165]
-      _i165++
+    val _a167 = (if (jsStrEq(kind, "min")) inline_minEndsOf(ifc) else inline_endsOf(ifc))
+    var _i167 = 0
+    while (_i167 < _a167.size) {
+      val b: Boundary = _a167[_i167]
+      _i167++
       // ts: packages/layout/src/inline.ts:2681
       if ((jsStrEq(kind, "max") && (!b.forced))) {
         continue
@@ -4516,11 +4516,11 @@ fun inline_shapedIntrinsicSize(ctx: Ctx, box: LayoutBox, ifc: Ifc, kind: String)
   var afterForced: Boolean = false
   // ts: packages/layout/src/inline.ts:2730
   run {
-    val _a166 = inline_minEndsOf(ifc)
-    var _i166 = 0
-    while (_i166 < _a166.size) {
-      val b: Boundary = _a166[_i166]
-      _i166++
+    val _a168 = inline_minEndsOf(ifc)
+    var _i168 = 0
+    while (_i168 < _a168.size) {
+      val b: Boundary = _a168[_i168]
+      _i168++
       val visible: Double = inline_intrinsicEndOf(ctx, ifc, start, b.at, "min")
       var w: Double = inline_cachedWidth(ctx, ifc, jsArrayOf<Double>(), start, visible)
       val lastChar: Inline_Item? = (if ((visible > start)) jsUnwrap(jsAt(ifc.items, (visible - 1.0))) else null)
