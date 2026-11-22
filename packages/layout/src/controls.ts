@@ -86,12 +86,12 @@ export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKi
 }
 
 /**
- * FORM-b: the side of a search field's cancel button in zoomed px, from its zoomed font size: lroundf(clamp(9 x size / 13, 5, 21))
- * (Chromium's LayoutThemeDefault::AdjustSearchFieldCancelButtonStyle; Chrome 145 under Ahem: 7px at 10px, 10px at 15px, 17px at
- * 25px, 5px at 4px, 21px at 40px). A device pixel ratio zooms the font size, so the clamp is in device px (16px at 3x is 21).
+ * FORM-b: the side of a search field's cancel button in zoomed px, lroundf(clamp(9 x size / 13, 5, 21)) of its zoomed font size
+ * rounded to a whole px (Chromium's LayoutThemeDefault::AdjustSearchFieldCancelButtonStyle; Chrome 145 under Ahem probed at 1x,
+ * 2.625x and 3x: 7px at 10px, 17px at 25px, 5px at 4px, 21px at 40px; 8px at 10.5px and 12px at 18.375px zoomed).
  */
 export function searchCancelButtonSize(c: Extract<ControlKind, { kind: 'text-field' }>): number {
-  return roundfPx(floatMin(floatMax(5, floatMul(9, floatDiv(float32(c.font.size), 13))), 21));
+  return roundfPx(floatMin(floatMax(5, floatMul(9, floatDiv(roundfPx(c.font.size), 13))), 21));
 }
 
 /** FORM-b: the inline size a search field's cancel button and its margins take from the editor's line, in LU. */
