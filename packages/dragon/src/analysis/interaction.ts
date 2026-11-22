@@ -537,9 +537,9 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
-// OVFL: rt-hit clips hidden and clip at the padding box. auto and scroll are native scroll views (OVFL-B) the user scrolls, and the
-// hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
-const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
+// OVFL: rt-hit clips hidden, clip, auto and scroll at the padding box. auto and scroll are hit at rest (scroll offset 0, overlay
+// scrollbars not shown), as #658 hits a sticky box; the scrolled case reads no offset yet (OVFL-B2). Any other value is unmodelled.
+const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip', 'auto', 'scroll']);
 const overflowAtRest = (v: CssValue): boolean => v.kind === 'keyword' && OVERFLOW_AT_REST.has(v.value);
 /** none, or translate and non-negative scale functions (no translate after a scale) with a rotate only by 0, as rt-hit.ts hitTransformRefusal models. */
 export const hitModelsTransform = (v: CssValue): boolean => {

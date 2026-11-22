@@ -32,9 +32,11 @@ export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/
  * 2.625 is 78.75 device px, inside c's text rect snapped to device px (53 to 79): Chrome names c there, not DPR 1's d. The radius
  * cases check that px radii (CSS px in the hit facts) scale to device px, on the border box and on a rounded clip's padding edge. The
  * transform cases check that a scaled box's paint offset rounds to whole device px, which at 2.625 is almost every box.
+ * The scroll cases (SELD-R2b at rest) check that auto and scroll containers clip their content's hits to the padding box
+ * in device px, with scrollbar-width auto, thin and none, and that a textarea is hit as one box.
  */
 export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
-  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform'] },
+  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', 'overflow-hit-at-rest', 'overflow-hit-at-rest-rtl', 'scroll-scrollbar-values', 'scroll-scrollbar-values-rtl', 'overflow-scroll-basic', 'controls-textarea-hit'] },
 ];
 export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
 export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;

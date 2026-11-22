@@ -110,7 +110,7 @@ describe('the host hit lane at a fractional device DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
     expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform']);
+      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', 'overflow-hit-at-rest', 'overflow-hit-at-rest-rtl', 'scroll-scrollbar-values', 'scroll-scrollbar-values-rtl', 'overflow-scroll-basic', 'controls-textarea-hit']);
       const mismatches: string[] = [];
       for (const id of ids) {
         const n = byId.get(id);

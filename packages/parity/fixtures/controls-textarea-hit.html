@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.form { display: grid; gap: 6px; width: 260px; padding: 10px; background-color: #eee; }
+textarea { box-sizing: border-box; width: 100%; font: inherit; appearance: none; margin: 0; color: #000; background-color: #fff; border: 1px solid #036; padding: 12px 14px; resize: none; scrollbar-width: none; }
+.tall { min-height: 60px; }
+.short { height: 34px; }
+.x { display: block; overflow-x: auto; overflow-y: hidden; scrollbar-width: auto; white-space: pre; }
+.block { width: 200px; padding: 6px; background-color: #ddd; }
+.after { height: 10px; background-color: #9ad; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="form" class="form">
+<textarea data-dragon-id="t1" readonly="" class="tall">XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX</textarea>
+<textarea data-dragon-id="t2" readonly="" class="short">XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX</textarea>
+</div>
+<div data-dragon-id="block" class="block">
+<textarea data-dragon-id="t3" readonly="" class="short x">XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX</textarea>
+</div>
+<div data-dragon-id="after" class="after"></div>
+</body>
+</html>

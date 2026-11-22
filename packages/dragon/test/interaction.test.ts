@@ -549,17 +549,21 @@ describe('interaction states: hit model (R13)', () => {
     const found = errors(compile({}, clip, body).diagnostics);
     expect(found.some((m) => m.includes('OVFL-c'))).toBe(true);
     expect(found.filter((m) => m.includes('needs Dragon hit testing'))).toEqual([]);
-    // OVFL: rt-hit clips hidden and clip at the padding box, and html's propagated overflow-x: hidden leaves html and body
-    // visible, so those are modelled facts. auto and scroll (overflow-x: hidden alone computes overflow-y: auto) are native scroll
-    // views the user scrolls (OVFL-B), whose offsets the hit test does not read yet: unmodelled, so R13 refuses the hover on native.
-    for (const extra of ['html { overflow-x: hidden; }', '.h { overflow: clip; }', '.h { overflow: hidden; }']) {
-      expect(errors(compile({}, `${BODY}${extra} .k:hover { background-color: #0c0; }`, body).diagnostics), extra).toEqual([]);
+    // OVFL: rt-hit clips hidden, clip, auto and scroll at the padding box, and html's propagated overflow-x: hidden leaves html and
+    // body visible, so those are modelled facts. auto and scroll (overflow-x: hidden alone computes overflow-y: auto) are native
+    // scroll views hit at rest, scroll offset 0 (hit-report.test.ts proves overflow-hit-at-rest and controls-textarea-hit).
+    for (const extra of ['html { overflow-x: hidden; }', '.h { overflow: clip; }', '.h { overflow: hidden; }', '.h { overflow: auto; }', '.h { overflow: scroll; }', '.h { overflow-x: hidden; }', '.h { overflow-x: scroll; overflow-y: hidden; }']) {
+      expect(errors(compile({}, `${BODY}${extra} .k:hover { background-color: #0c0; } .k:active { background-color: #00c; }`, body).diagnostics), extra).toEqual([]);
     }
-    for (const extra of ['.h { overflow: auto; }', '.h { overflow: scroll; }', '.h { overflow-x: hidden; }']) {
-      const found = errors(compile({}, `${BODY}${extra} .k:hover { background-color: #0c0; }`, body).diagnostics);
-      expect(found.filter((m) => m.includes('needs Dragon hit testing')).length, extra).toBe(2);
-      expect(found.every((m) => m.includes('needs Dragon hit testing')), extra).toBe(true);
-    }
+    // The fact is modelled only at the values rt-hit.ts clips as a scroll container or not at all (box.ts isScrollContainer).
+    const overflowX = HIT_MODELLED.get('overflow-x');
+    for (const v of ['visible', 'hidden', 'clip', 'auto', 'scroll']) expect(overflowX?.({ kind: 'keyword', value: v }), v).toBe(true);
+    for (const v of ['overlay', 'inherit']) expect(overflowX?.({ kind: 'keyword', value: v }), v).toBe(false);
+    // The notes form's shape: a readonly textarea (overflow auto from html.css) beside a pressed button no longer refuses the press.
+    const ta = `${BODY}textarea { display: block; width: 100px; font: inherit; appearance: none; resize: none; scrollbar-width: none; } .k { height: 10px; } .k:active { background-color: #00c; } .k:focus-visible { outline: 2px solid #0969da; }`;
+    const attr = (name: string, value: string) => ({ name, value: [{ when: { kind: 'true' as const }, value }], origin: { kind: 'unlocated' as const, reason: 'test' } });
+    const form = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [{ ...div(r, 't', []), tag: 'textarea', attributes: [attr('readonly', '')], children: [text(r, 'tt', 'XX XX')] }, div(r, 'k', ['k'])];
+    expect(errors(compile({}, ta, form).diagnostics)).toEqual([]);
     // Outside the lanes the interaction rules are refused on native already, so R13 adds nothing.
     expect(otherErrors(compile({}, css, body, TARGETS, 'derive', false).diagnostics)).toEqual([
       'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover is not supported on ios: no passing device proof of selector:pseudo-class(:hover) in interaction/mouse, selector:pseudo-class(:hover) in interaction/touch (a derive compile reads no support profile)',

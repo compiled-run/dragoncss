@@ -37,6 +37,9 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-flex'),
   layout('controls-text-field'),
   layout('controls-textarea'),
+  // SELD-R2b at rest: textareas in a grid form (the notes form's shape) with text past their padding box, and one
+  // that scrolls on x with scrollbar-width auto.
+  layout('controls-textarea-hit'),
   // FORM-checkbox: a themed checkbox, 13px unless sized, as a block and a flex item (the notes form's row), checked
   // and not, under a dark and a light accent; the rejects name what the slice does not draw.
   both('controls-checkbox'),

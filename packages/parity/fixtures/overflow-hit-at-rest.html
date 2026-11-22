@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.s { overflow: auto; width: 80px; height: 30px; padding: 3px; border: 2px solid #1a1a2e; }
+.c { width: 130px; height: 70px; background-color: #e8d36a; }
+.under { height: 10px; margin-top: -6px; background-color: #9ad; }
+.scroll { overflow: scroll; }
+.x { overflow-x: auto; overflow-y: hidden; }
+.n { scrollbar-width: none; }
+.t { scrollbar-width: thin; }
+.rel { position: relative; left: 12px; top: 8px; }
+.pos { position: relative; }
+.abs { position: absolute; left: 70px; top: 30px; width: 40px; height: 30px; background-color: #c00; }
+.row { display: flex; width: 220px; gap: 4px; }
+.row > .s { width: 60px; }
+.wrap { position: relative; height: 50px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="s"><div data-dragon-id="c1" class="c">XX XX XX XX XX XX XX XX</div></div>
+<div data-dragon-id="u1" class="under">X</div>
+<div data-dragon-id="s2" class="s scroll n"><div data-dragon-id="c2" class="c rel">XX</div></div>
+<div data-dragon-id="u2" class="under"></div>
+<div data-dragon-id="s3" class="s x t"><div data-dragon-id="c3" class="c">XXXXXXXXXXXXX</div></div>
+<div data-dragon-id="s4" class="s pos"><div data-dragon-id="c4" class="c"></div><div data-dragon-id="a4" class="abs"></div></div>
+<div data-dragon-id="u4" class="under"></div>
+<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="s5" class="s n"><div data-dragon-id="c5" class="c"><div data-dragon-id="a5" class="abs"></div></div></div></div>
+<div data-dragon-id="row" class="row"><div data-dragon-id="r1" class="s t"><div data-dragon-id="rc1" class="c">X</div></div><div data-dragon-id="r2" class="s"><div data-dragon-id="rc2" class="c">X</div></div><div data-dragon-id="r3" class="c">X</div></div>
+</body>
+</html>

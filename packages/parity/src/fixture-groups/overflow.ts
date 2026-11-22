@@ -48,5 +48,8 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // Block buttons inside scroll containers and past the viewport: a form control adds its border box to the scrollable overflow
   // when its contents stay inside it (overflow.ts controlContribution), so pages and boxes holding buttons have a decided range.
   both('overflow-controls'),
+  // SELD-R2b at rest: auto and scroll containers with content past their padding box, scrollbar-width auto, thin and
+  // none, a relative child, absolute children inside and outside the scroller's containing-block chain, and flex item scrollers.
+  both('overflow-hit-at-rest'),
   reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
 ];
