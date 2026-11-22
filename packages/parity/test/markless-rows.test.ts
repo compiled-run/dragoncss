@@ -207,6 +207,13 @@ describe('styled @for rows', () => {
     expect((JSON.parse(rowsLine(x, rowState.initial as string, [{ key: 'a', option: pinnedOption(false), texts: [[leaf, 'Buy  milk']] }])) as unknown[])[0]).toBe('ok');
   });
 
+  it('refuses a transition or animation inside a row, which the animator runs only for the page, and keeps one outside the rows', () => {
+    const appear = '@keyframes appear { from { background-color: #000000; } to { background-color: #ffffff; } } ';
+    expect(() => marklessStyleExport(withCss(`${appear}.note.mk-1gmxfth { animation: appear 1s; }`), PATH, undefined, 'system', undefined, true)).toThrow('inside a @for row');
+    expect(() => marklessStyleExport(withCss('.note.mk-1gmxfth { transition: background-color 1s; }'), PATH, undefined, 'system', undefined, true)).toThrow('inside a @for row');
+    expect(() => marklessStyleExport(withCss(`${appear}.heading.mk-1gmxfth { animation: appear 1s; }`), PATH, undefined, 'system', undefined, true)).not.toThrow();
+  });
+
   it('refuses a row\'s text the build transforms, from the computed text-transform', () => {
     expect(() => marklessStyleExport(withCss('.title.mk-1gmxfth { text-transform: uppercase; }'), PATH, undefined, 'system', undefined, true)).toThrow('text-transform: uppercase is not supported yet');
     expect(() => marklessStyleExport(withCss('.notes.mk-1gmxfth { text-transform: lowercase; }'), PATH, undefined, 'system', undefined, true)).toThrow('text-transform: lowercase is not supported yet');

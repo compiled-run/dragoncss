@@ -458,9 +458,7 @@ function clampInterval(t: number, activeDuration: number): number {
 /** The running animation of a list with this name and the same place among animations of that name, or null: the one the
  * restyle kept (rt-animations.ts findRunning, as Blink's CSSAnimations matches by name), wherever the list moved it. */
 function sameAnimation(list: readonly RunningAnimation[] | undefined, a: RunningAnimation, faults: RtFaults): RunningAnimation | null {
-  if (list === undefined) return null;
-  for (const b of list) if (faults.nameChangeKeepsAnimation ? b.listIndex === a.listIndex : b.name === a.name && b.nameIndex === a.nameIndex) return b;
-  return null;
+  return list === undefined ? null : findRunning(list, a.name, a.nameIndex, a.listIndex, faults);
 }
 
 /**
@@ -471,13 +469,14 @@ function sameAnimation(list: readonly RunningAnimation[] | undefined, a: Running
  * active phase (the boundary crossed); cancel when it stops running outside its after phase (its current time).
  */
 export function animationEvents(before: AnimatorState, after: AnimatorState, t: AnimTables, faults: RtFaults): AnimationEventRecord[] {
+  // Every cancel of a style change comes before any other event, as Chrome dispatches them; the rest go in tree order.
   const out: AnimationEventRecord[] = [];
+  const rest: AnimationEventRecord[] = [];
   for (let i = 0; i < t.animations.length; i++) {
     const table = t.animations[i];
     if (table === undefined) continue;
     const was = before.lists[i];
     const now = after.lists[i];
-    // A removed animation's cancel comes before the new list's events, as Chrome dispatches them.
     if (was !== undefined) {
       for (const b of was) {
         if (now !== undefined && sameAnimation(now, b, faults) !== null) continue;
@@ -494,24 +493,25 @@ export function animationEvents(before: AnimatorState, after: AnimatorState, t: 
         const from = b === null ? null : computeSecondsTiming(b.timing, b.held.seconds, faults);
         const to = computeSecondsTiming(a.timing, a.held.seconds, faults);
         const fromPhase = from === null ? 'none' : from.phase;
-        if ((fromPhase === 'none' || fromPhase === 'before') && to.phase === 'active') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
+        if ((fromPhase === 'none' || fromPhase === 'before') && to.phase === 'active') rest.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
         else if ((fromPhase === 'none' || fromPhase === 'before') && to.phase === 'after') {
-          out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
-          out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
+          rest.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: start });
+          rest.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
         } else if (fromPhase === 'active' && to.phase === 'active' && from !== null && from.currentIteration !== null && to.currentIteration !== null && to.currentIteration !== from.currentIteration) {
           // A kept animation whose iteration went backwards reports the start of the iteration after it (Blink OnEventCondition).
           const boundary = from.currentIteration > to.currentIteration ? to.currentIteration + 1 : to.currentIteration;
-          out.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: boundary * norm.iterationDuration });
-        } else if (fromPhase === 'active' && to.phase === 'after') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
-        else if (fromPhase === 'active' && to.phase === 'before') out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
-        else if (fromPhase === 'after' && to.phase === 'active') out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+          rest.push({ type: 'animationiteration', node: table.node, name: a.name, elapsedTime: boundary * norm.iterationDuration });
+        } else if (fromPhase === 'active' && to.phase === 'after') rest.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: end });
+        else if (fromPhase === 'active' && to.phase === 'before') rest.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
+        else if (fromPhase === 'after' && to.phase === 'active') rest.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
         else if (fromPhase === 'after' && to.phase === 'before') {
-          out.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
-          out.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
+          rest.push({ type: 'animationstart', node: table.node, name: a.name, elapsedTime: end });
+          rest.push({ type: 'animationend', node: table.node, name: a.name, elapsedTime: start });
         }
       }
     }
   }
+  for (const e of rest) out.push(e);
   return out;
 }
 
